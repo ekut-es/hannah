@@ -1,0 +1,3 @@
+[submodule "models/honk"]
+	path = models/honk
+	url = https://github.com/castorini/honk.git
