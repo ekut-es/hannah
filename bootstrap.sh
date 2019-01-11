@@ -31,6 +31,3 @@ python3.6 -m pip install --user requests
 python3.6 -m pip install --user SpeechRecognition
 
 
-pushd datasets/
-./get_datasets.sh
-popd
