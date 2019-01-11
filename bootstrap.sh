@@ -17,6 +17,7 @@ do
     esac
 done
 
+git submodule update --init --recursive
 
 sudo yum install python36 python36-devel -y 
 sudo yum install freeglut-devel -y 
