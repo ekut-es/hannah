@@ -1,5 +1,23 @@
 #!/bin/bash
 
+enable_gpu=0
+
+while [[ $# -gt 0 ]]
+do
+    key=$1
+    case key in
+	--gpu) # Install machine learning frameworks for gpu
+	    enable_gpu=1
+	    shift
+	    ;;
+	*)    # unknown option
+	    echo "Found unknown option: $key"
+	    exit 1
+	    ;;
+    esac
+done
+
+
 sudo yum install python36 python36-devel -y 
 sudo yum install freeglut-devel -y 
 sudo yum install portaudio-devel -y
@@ -7,15 +25,21 @@ sudo yum install portaudio-devel -y
 python3.6 -m ensurepip --user
 
 #install torch
-python3.6 -m pip install https://download.pytorch.org/whl/cpu/torch-1.0.0-cp36-cp36m-linux_x86_64.whl --user
-#python3.6 -m pip install torch --user
+if [ $enable_gpu == 0 ]; then
+    python3.6 -m pip install https://download.pytorch.org/whl/cpu/torch-1.0.0-cp36-cp36m-linux_x86_64.whl --user
+else
+    python3.6 -m pip install torch --user
+fi
+
 python3.6 -m pip install torchvision --user
 
 
 #install tensorflow
-python3.6 -m pip install tensorflow --user
-#python3.6 -m pip install tensorflow-gpu --user
-
+if [ $enable_gpu == 0 ]; then
+    python3.6 -m pip install tensorflow --user
+else
+    python3.6 -m pip install tensorflow-gpu --user
+fi
 
 python3.6 -m pip install --user chainmap
 python3.6 -m pip install --user cherrypy
