@@ -29,3 +29,8 @@ python3.6 -m pip install --user PyOpenGL_accelerate
 python3.6 -m pip install --user pyttsx3
 python3.6 -m pip install --user requests
 python3.6 -m pip install --user SpeechRecognition
+
+
+pushd datasets/
+./get_datasets.sh
+popd
