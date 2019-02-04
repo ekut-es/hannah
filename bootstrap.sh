@@ -5,7 +5,8 @@ enable_gpu=0
 while [[ $# -gt 0 ]]
 do
     key=$1
-    case key in
+    
+    case $key in
 	--gpu) # Install machine learning frameworks for gpu
 	    enable_gpu=1
 	    shift
