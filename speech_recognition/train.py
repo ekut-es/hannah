@@ -46,7 +46,7 @@ def print_eval(name, scores, labels, loss, end="\n"):
     accuracy = (torch.max(scores, 1)[1].view(batch_size).data == labels.data).float().sum() / batch_size
     loss = loss.item()
     print("{} accuracy: {:>5}, loss: {:<25}".format(name, accuracy, loss), end=end)
-    return accuracy
+    return accuracy.item()
 
 def set_seed(config):
     seed = config["seed"]
@@ -105,6 +105,7 @@ def train(config):
     step_no = 0
 
     for epoch_idx in range(config["n_epochs"]):
+        print("Training epoch", epoch_idx, "of", config["n_epochs"])
         for batch_idx, (model_in, labels) in enumerate(train_loader):
             model.train()
             optimizer.zero_grad()
@@ -143,17 +144,17 @@ def train(config):
             if avg_acc > max_acc:
                 print("saving best model...")
                 max_acc = avg_acc
-                model.save(config["output_file"])
+                model.save(os.path.join(config["output_dir"], "model.pt"))
     evaluate(config, model, test_loader)
 
 def main():
-    output_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "model", "model.pt")
+    output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", choices=[x.value for x in list(mod.ConfigType)], default="honk-cnn-trad-pool2", type=str)
     config, _ = parser.parse_known_args()
 
     global_config = dict(no_cuda=False, n_epochs=500, lr=[0.001], schedule=[np.inf], batch_size=64, dev_every=10, seed=0,
-        use_nesterov=False, input_file="", output_file=output_file, gpu_no=1, cache_size=32768, momentum=0.9, weight_decay=0.00001)
+        use_nesterov=False, input_file="", output_dir=output_dir, gpu_no=1, cache_size=32768, momentum=0.9, weight_decay=0.00001)
     mod_cls = mod.find_model(config.model)
     builder = ConfigBuilder(
         mod.find_config(config.model),
