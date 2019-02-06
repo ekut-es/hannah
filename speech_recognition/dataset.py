@@ -66,6 +66,7 @@ class SpeechDataset(data.Dataset):
         config["n_dct_filters"] = 40
         config["input_length"] = 16000
         config["n_mels"] = 40
+        config["mel_stride_ms"] = 10
         config["timeshift_ms"] = 100
         config["unknown_prob"] = 0.1
         config["train_pct"] = 80

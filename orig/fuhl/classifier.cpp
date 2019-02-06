@@ -100,8 +100,6 @@ void load_alldata(std::vector<matrix<float>> &train_img, std::vector<unsigned lo
   names[1] = "name2";
   names[2] = "name3";
   
-
-
   for (int ii = 0; ii < 10; ii++) {
     for (int jj = 0; jj < 50; jj++) {
       for (int nn = 0; nn < 3; nn++) {

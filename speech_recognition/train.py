@@ -10,6 +10,8 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 
+from tensorboardX import SummaryWriter
+
 from . import models as mod
 from . import dataset
 
@@ -85,6 +87,8 @@ def evaluate(config, model=None, test_loader=None):
     print("final test accuracy: {}".format(sum(results) / total))
 
 def train(config):
+    summary_writer = SummaryWriter()
+
     train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
     model = config["model_class"](config)
     if config["input_file"]:
@@ -124,7 +128,12 @@ def train(config):
                 print("changing learning rate to {}".format(config["lr"][sched_idx]))
                 optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][sched_idx],
                     nesterov=config["use_nesterov"], momentum=config["momentum"], weight_decay=config["weight_decay"])
-            print_eval("train step #{}".format(step_no), scores, labels, loss)
+
+            if step_no % 100 == 0:
+                print_eval("train step #{}".format(step_no), scores, labels, loss)
+                #for name, param in model.named_parameters():
+                #    summary_writer.add_histogram(name, param.clone().cpu().data.numpy(), step_no)
+                    
 
         if epoch_idx % config["dev_every"] == config["dev_every"] - 1:
             model.eval()
@@ -146,6 +155,7 @@ def train(config):
                 max_acc = avg_acc
                 model.save(os.path.join(config["output_dir"], "model.pt"))
     evaluate(config, model, test_loader)
+    summary_writer.close()
 
 def main():
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")

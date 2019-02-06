@@ -18,7 +18,10 @@ class RawSpeechModel(SerializableModule):
         last_size = 0
 
         x = Variable(torch.zeros(1,1,width))
-        
+
+        self.convolutions = nn.ModuleList()
+        self.dense = nn.ModuleList()
+
         count = 1
         while "conv{}_size".format(count) in config:
 
@@ -49,8 +52,17 @@ class RawSpeechModel(SerializableModule):
                                  padding=pad,
                                  dilation=conv_dilation)
                 x = conv(x)
-                self.add_module("conv{}".format(count), conv)
+                self.convolutions.append(conv)
 
+                activation = nn.ReLU()
+                self.convolutions.append(activation)
+                x = activation(x)
+
+
+                dropout = nn.Dropout(config["dropout_prob"])
+                self.convolutions.append(dropout)
+                x = dropout(x)
+                
             last_size = x.view(1,-1).size(1)
             print("Last size:", "conv{}".format(count), last_size, x.size())
 
@@ -60,7 +72,7 @@ class RawSpeechModel(SerializableModule):
                 pool_stride = config[pool_stride_name]
                 pool = nn.MaxPool1d(pool_size, pool_stride)
                 x = pool(x)
-                self.add_module("pool{}".format(count), pool)
+                self.convolutions.append(pool)
 
 
             last_size = x.view(1,-1).size(1)
@@ -76,72 +88,70 @@ class RawSpeechModel(SerializableModule):
             dnn_size = config["dnn{}_size".format(count)]
 
             dnn = nn.Linear(last_size, dnn_size)
-            self.add_module("dnn{}".format(count), dnn)
+            self.dense.append(dnn)
 
             x = dnn(x)
             last_size = x.view(1,-1).size(1)
             print("Last size:", "dnn{}".format(count), last_size, x.size())
 
             count += 1
-            
+
+            activation = nn.ReLU()
+            self.dense.append(activation)
+            x = activation(x)
+
+
+            dropout = nn.Dropout(config["dropout_prob"])
+            self.dense.append(dropout)
+            x = dropout(x)
+                
+
         self.output = nn.Linear(last_size, n_labels)
+        self.dense.append(self.output)
         x = self.output(x)
         last_size = x.view(1,-1).size(1)
         print("Last size:", "dnn{}".format(count), last_size, x.size())
 
-        self.add_module("dnn_last", self.output)
-
-        dropout_prob = config["dropout_prob"]
-        self.add_module("dropout", nn.Dropout(dropout_prob))
+        sum = 0
+        for param in self.parameters():
+            sum += param.view(-1).size(0)
+    
+        print("total_paramters:", sum)
         
     def forward(self, x):
-        if hasattr(self, 'conv1'):
-            print("conv1", self.conv1)
-            x = self.conv1(x)
-            x = self.dropout(x)
-        if hasattr(self, 'pool1'):
-            print("pool1", self.pool1)
-            x = self.pool1(x)
-
-        if hasattr(self, 'conv2'):
-            print("conv2", self.conv2)
-            x = self.conv2(x)
-            x = self.dropout(x)
-
-        if hasattr(self, 'pool2'):
-            print("pool2", self.pool2)
-            x = self.pool2(x)
-
-        if hasattr(self, 'conv3'):
-            print("conv3", self.conv3)
-            x = self.conv3(x)
-            x = self.dropout(x)
-
-        if hasattr(self, 'pool3'):
-            print("pool3", self.pool3)
-            x = self.pool3(x)
-
-        # Reshape tensor for Dense Layers
-        x = x.view(x.size(0), -1)
-
-        if hasattr(self, 'dnn1'):
-            print("dnn1", self.dnn1)
-            x = self.dnn1(x)
-            x = self.dropout(x)
-
-        if hasattr(self, 'dnn2'):
-            print("dnn2", self.dnn2)
-            x = self.dnn2(x)
-            x = self.dropout(x)
-
-        print("output", self.output)
-        x = self.output(x)
-
+        for layer in self.convolutions:
+            #print(layer)
+            x = layer(x)
+        x = x.view(x.size(0),-1)
+        for layer in self.dense:
+            #print(layer)
+            x = layer(x)
+       
         return x
 
 
 configs= {
-     ConfigType.EKUT_RAW_CNN3_1D.value: dict(
+     ConfigType.EKUT_RAW_CNN2_1D.value: dict(
+        preprocessing="raw",
+        dropout_prob = 0.5,
+        n_labels = 4,
+        n_feature_maps_1 = 1,
+        conv1_size = 21,
+        conv1_stride = 5,
+        pool1_size = 4,
+        pool1_stride = 4, 
+        n_feature_maps_2 = 16,
+        conv2_size = 5,
+        conv2_stride = 1,
+        pool2_size = 4,
+        pool2_stride = 4,
+        n_feature_maps_3 = 32,
+        conv3_size = 3,
+        conv3_stride = 1,
+        n_feature_maps_4 = 5,
+        dnn1_size = 256,
+    ),
+    ConfigType.EKUT_RAW_CNN3_1D.value: dict(
         preprocessing="raw",
         dropout_prob = 0.5,
         n_labels = 4,
@@ -162,5 +172,29 @@ configs= {
         pool3_stride = 4, 
         n_feature_maps_4 = 64,
         dnn1_size = 256,
+    ),
+
+    ConfigType.EKUT_RAW_CNN3_1D_NARROW.value: dict(
+        preprocessing="raw",
+        dropout_prob = 0.5,
+        n_labels = 4,
+        n_feature_maps_1 = 1,
+        conv1_size = 5,
+        conv1_stride = 1,
+        pool1_size = 4,
+        pool1_stride = 4, 
+        n_feature_maps_2 = 8,
+        conv2_size = 5,
+        conv2_stride = 1,
+        pool2_size = 4,
+        pool2_stride = 4,
+        n_feature_maps_3 = 16,
+        conv3_size = 5,
+        conv3_stride = 1,
+        pool3_size = 4,
+        pool3_stride = 4, 
+        n_feature_maps_4 = 32,
+        dnn1_size = 128,
     )
+    
 }

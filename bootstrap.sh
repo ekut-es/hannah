@@ -56,4 +56,4 @@ python3.6 -m pip install --user pyttsx3
 python3.6 -m pip install --user requests
 python3.6 -m pip install --user SpeechRecognition
 python3.6 -m pip install --user git+https://github.com/daemon/pytorch-pcen
-
+python3.6 -m pip install --user tensorboardX
