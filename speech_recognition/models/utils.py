@@ -13,8 +13,7 @@ class SerializableModule(nn.Module):
     def load(self, filename):
         self.load_state_dict(torch.load(filename, map_location=lambda storage, loc: storage))
 
-    def export_onnx(self, filename):
-        dummy_input = None
+    def save_onnx(self, filename, dummy_input):
         torch.onnx.export(self, dummy_input, filename, verbose=True) 
 
 

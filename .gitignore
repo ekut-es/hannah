@@ -2,3 +2,5 @@
 *.pyc
 .DS_Store
 *.tar.gz
+datasets/speech_commands_v0.02/
+trained_models

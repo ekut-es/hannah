@@ -90,6 +90,10 @@ def train(config):
     summary_writer = SummaryWriter()
 
     train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
+
+    config["width"] = train_set.width
+    config["height"] = train_set.height
+
     model = config["model_class"](config)
     if config["input_file"]:
         model.load(config["input_file"])
@@ -131,8 +135,6 @@ def train(config):
 
             if step_no % 100 == 0:
                 print_eval("train step #{}".format(step_no), scores, labels, loss)
-                #for name, param in model.named_parameters():
-                #    summary_writer.add_histogram(name, param.clone().cpu().data.numpy(), step_no)
                     
 
         if epoch_idx % config["dev_every"] == config["dev_every"] - 1:
@@ -154,6 +156,14 @@ def train(config):
                 print("saving best model...")
                 max_acc = avg_acc
                 model.save(os.path.join(config["output_dir"], "model.pt"))
+                print("saving onnx...")
+                print(dir(dev_loader))
+                model_in, label = next(iter(dev_loader), (None, None))
+                if not config["no_cuda"]:
+                    model_in = model_in.cuda()
+                model.save_onnx(os.path.join(config["output_dir"], "model.onnx"), model_in)
+
+    model.load(os.path.join(config["output_dir"], "model.pt"))
     evaluate(config, model, test_loader)
     summary_writer.close()
 

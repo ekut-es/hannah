@@ -43,7 +43,6 @@ class DNNSpeechModel(SerializableModule):
             count += 1
 
         self.output = nn.Linear(last_size, n_labels)
-        self.dense.append(self.output)
         x = self.output(x)
         last_size = x.view(1,-1).size(1)
 
@@ -59,6 +58,8 @@ class DNNSpeechModel(SerializableModule):
         x = x.view(x.size(0),-1)
         for layer in self.dense:
             x = layer(x)
+
+        x = self.output(x)
        
         return x
 
@@ -67,8 +68,6 @@ class DNNSpeechModel(SerializableModule):
 configs = {
     ConfigType.HELLO_DNN_SMALL.value : dict(
         dropout_prob=0.5,
-        height=101,
-        width=40,
         n_labels=12,
         dnn1_size = 144,
         dnn2_size = 144,
@@ -76,8 +75,6 @@ configs = {
     ),
     ConfigType.HELLO_DNN_MEDIUM.value : dict(
         dropout_prob=0.5,
-        height=101,
-        width=40,
         n_labels=12,
         dnn1_size = 256,
         dnn2_size = 256,
@@ -85,8 +82,6 @@ configs = {
     ),
     ConfigType.HELLO_DNN_LARGE.value : dict(
         dropout_prob=0.5,
-        height=101,
-        width=40,
         n_labels=12,
         dnn1_size = 436,
         dnn2_size = 436,

@@ -70,6 +70,7 @@ class SpeechModel(SerializableModule):
         dropout_prob = config["dropout_prob"]
         width = config["width"]
         height = config["height"]
+
         self.conv1 = nn.Conv2d(1, n_featmaps1, conv1_size, stride=conv1_stride)
         tf_variant = config.get("tf_variant")
         self.tf_variant = tf_variant
@@ -145,8 +146,6 @@ class SpeechModel(SerializableModule):
 
 configs = {
     ConfigType.HONK_CNN_TRAD_POOL2.value: dict(dropout_prob=0.5,
-                                               height=101,
-                                               width=40,
                                                n_labels=4,
                                                n_feature_maps1=64,
                                                n_feature_maps2=64,
@@ -159,8 +158,6 @@ configs = {
                                                tf_variant=True),
 
     ConfigType.HONK_CNN_ONE_STRIDE1.value: dict(dropout_prob=0.5,
-                                                height=101,
-                                                width=40,
                                                 n_labels=4,
                                                 n_feature_maps1=186,
                                                 conv1_size=(101, 8),
@@ -171,8 +168,6 @@ configs = {
                                                 tf_variant=True),
 
     ConfigType.HONK_CNN_TSTRIDE2.value: dict(dropout_prob=0.5,
-                                             height=101,
-                                             width=40,
                                              n_labels=4,
                                              n_feature_maps1=78,
                                              n_feature_maps2=78,
@@ -186,8 +181,6 @@ configs = {
                                              dnn2_size=128),
 
     ConfigType.HONK_CNN_TSTRIDE4.value: dict(dropout_prob=0.5,
-                                             height=101,
-                                             width=40,
                                              n_labels=4,
                                              n_feature_maps1=100,
                                              n_feature_maps2=78,
@@ -201,8 +194,6 @@ configs = {
                                              dnn2_size=128),
 
     ConfigType.HONK_CNN_TSTRIDE8.value: dict(dropout_prob=0.5,
-                                             height=101,
-                                             width=40,
                                              n_labels=4,
                                              n_feature_maps1=126,
                                              n_feature_maps2=78,
@@ -216,8 +207,6 @@ configs = {
                                              dnn2_size=128),
 
     ConfigType.HONK_CNN_TPOOL2.value: dict(dropout_prob=0.5,
-                                           height=101,
-                                           width=40,
                                            n_labels=4,
                                            n_feature_maps1=94,
                                            n_feature_maps2=94,
@@ -231,8 +220,6 @@ configs = {
                                            dnn2_size=128),
 
     ConfigType.HONK_CNN_TPOOL3.value: dict(dropout_prob=0.5,
-                                           height=101,
-                                           width=40,
                                            n_labels=4,
                                            n_feature_maps1=94,
                                            n_feature_maps2=94,
@@ -246,8 +233,6 @@ configs = {
                                            dnn2_size=128),
 
     ConfigType.HONK_CNN_ONE_FPOOL3.value: dict(dropout_prob=0.5,
-                                               height=101,
-                                               width=40,
                                                n_labels=4,
                                                n_feature_maps1=54,
                                                conv1_size=(101, 8),
@@ -257,8 +242,6 @@ configs = {
                                                dnn2_size=128),
 
     ConfigType.HONK_CNN_ONE_FSTRIDE4.value: dict(dropout_prob=0.5,
-                                                 height=101,
-                                                 width=40,
                                                  n_labels=4,
                                                  n_feature_maps1=186,
                                                  conv1_size=(101, 8),
@@ -268,8 +251,6 @@ configs = {
                                                  dnn2_size=128),
 
     ConfigType.HONK_CNN_ONE_FSTRIDE8.value: dict(dropout_prob=0.5,
-                                                 height=101,
-                                                 width=40,
                                                  n_labels=4,
                                                  n_feature_maps1=336,
                                                  conv1_size=(101, 8),

@@ -107,7 +107,6 @@ class RawSpeechModel(SerializableModule):
                 
 
         self.output = nn.Linear(last_size, n_labels)
-        self.dense.append(self.output)
         x = self.output(x)
         last_size = x.view(1,-1).size(1)
         print("Last size:", "dnn{}".format(count), last_size, x.size())
@@ -126,13 +125,15 @@ class RawSpeechModel(SerializableModule):
         for layer in self.dense:
             #print(layer)
             x = layer(x)
-       
+            
+        x = self.output(x)
+
         return x
 
 
 configs= {
      ConfigType.EKUT_RAW_CNN2_1D.value: dict(
-        preprocessing="raw",
+        features="raw",
         dropout_prob = 0.5,
         n_labels = 4,
         n_feature_maps_1 = 1,
@@ -152,7 +153,7 @@ configs= {
         dnn1_size = 256,
     ),
     ConfigType.EKUT_RAW_CNN3_1D.value: dict(
-        preprocessing="raw",
+        features="raw",
         dropout_prob = 0.5,
         n_labels = 4,
         n_feature_maps_1 = 1,
