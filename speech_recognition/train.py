@@ -11,6 +11,8 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 
+from tensorboardX import SummaryWriter
+
 from . import models as mod
 from . import dataset
 
@@ -20,7 +22,7 @@ def print_eval(name, scores, labels, loss, end="\n"):
     accuracy = (torch.max(scores, 1)[1].view(batch_size).data == labels.data).float().sum() / batch_size
     loss = loss.item()
     print("{} accuracy: {:>5}, loss: {:<25}".format(name, accuracy, loss), end=end)
-    return accuracy
+    return accuracy.item()
 
 def set_seed(config):
     seed = config["seed"]
@@ -59,7 +61,13 @@ def evaluate(config, model=None, test_loader=None):
     print("final test accuracy: {}".format(sum(results) / total))
 
 def train(config):
+    summary_writer = SummaryWriter()
+
     train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
+
+    config["width"] = train_set.width
+    config["height"] = train_set.height
+
     model = config["model_class"](config)
     if config["input_file"]:
         model.load(config["input_file"])
@@ -79,6 +87,7 @@ def train(config):
     step_no = 0
 
     for epoch_idx in range(config["n_epochs"]):
+        print("Training epoch", epoch_idx, "of", config["n_epochs"])
         for batch_idx, (model_in, labels) in enumerate(train_loader):
             model.train()
             optimizer.zero_grad()
@@ -97,7 +106,10 @@ def train(config):
                 print("changing learning rate to {}".format(config["lr"][sched_idx]))
                 optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][sched_idx],
                     nesterov=config["use_nesterov"], momentum=config["momentum"], weight_decay=config["weight_decay"])
-            print_eval("train step #{}".format(step_no), scores, labels, loss)
+
+            if step_no % 100 == 0:
+                print_eval("train step #{}".format(step_no), scores, labels, loss)
+                    
 
         if epoch_idx % config["dev_every"] == config["dev_every"] - 1:
             model.eval()
@@ -117,17 +129,26 @@ def train(config):
             if avg_acc > max_acc:
                 print("saving best model...")
                 max_acc = avg_acc
-                model.save(config["output_file"])
+                model.save(os.path.join(config["output_dir"], "model.pt"))
+                print("saving onnx...")
+                print(dir(dev_loader))
+                model_in, label = next(iter(dev_loader), (None, None))
+                if not config["no_cuda"]:
+                    model_in = model_in.cuda()
+                model.save_onnx(os.path.join(config["output_dir"], "model.onnx"), model_in)
+
+    model.load(os.path.join(config["output_dir"], "model.pt"))
     evaluate(config, model, test_loader)
+    summary_writer.close()
 
 def main():
-    output_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "model", "model.pt")
+    output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", choices=[x.value for x in list(mod.ConfigType)], default="honk-cnn-trad-pool2", type=str)
     config, _ = parser.parse_known_args()
 
     global_config = dict(no_cuda=False, n_epochs=500, lr=[0.001], schedule=[np.inf], batch_size=64, dev_every=10, seed=0,
-        use_nesterov=False, input_file="", output_file=output_file, gpu_no=1, cache_size=32768, momentum=0.9, weight_decay=0.00001)
+        use_nesterov=False, input_file="", output_dir=output_dir, gpu_no=1, cache_size=32768, momentum=0.9, weight_decay=0.00001)
     mod_cls = mod.find_model(config.model)
     builder = ConfigBuilder(
         mod.find_config(config.model),

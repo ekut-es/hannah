@@ -13,8 +13,7 @@ class SerializableModule(nn.Module):
     def load(self, filename):
         self.load_state_dict(torch.load(filename, map_location=lambda storage, loc: storage))
 
-    def export_onnx(self, filename):
-        dummy_input = None
+    def save_onnx(self, filename, dummy_input):
         torch.onnx.export(self, dummy_input, filename, verbose=True) 
 
 
@@ -42,3 +41,9 @@ class ConfigType(Enum):
     EKUT_RAW_CNN2_1D          = "ekut-raw-cnn2-1d"
     EKUT_RAW_CNN3_1D          = "ekut-raw-cnn3-1d"
     EKUT_RAW_CNN3_1D_NARROW   = "ekut-raw-cnn3-1d-narrow"
+
+
+    # Models for Hello Edge
+    HELLO_DNN_SMALL = "hello-dnn-small"
+    HELLO_DNN_MEDIUM = "hello-dnn-medium"
+    HELLO_DNN_LARGE = "hello-dnn-large"

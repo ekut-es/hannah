@@ -1,9 +1,0 @@
-[submodule "models/honk"]
-	path = models/honk
-	url = https://github.com/castorini/honk.git
-[submodule "model/ML-KWS-for-MCU"]
-	path = model/ML-KWS-for-MCU
-	url = https://github.com/ARM-software/ML-KWS-for-MCU.git
-[submodule "models/ML-KWS-for-MCU"]
-	path = models/ML-KWS-for-MCU
-	url = https://github.com/ARM-software/ML-KWS-for-MCU.git

@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-from .manage_audio import preprocess_audio
+from .manage_audio import preprocess_audio, calculate_feature_shape
 
 
 class SimpleCache(dict):
@@ -42,42 +42,65 @@ class SpeechDataset(data.Dataset):
         self.set_type = set_type
         self.audio_labels = list(data.values())
         config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
-        self.bg_noise_audio = [librosa.core.load(file, sr=16000)[0] for file in config["bg_noise_files"]]
+        self.samplingrate = config["samplingrate"]
+        self.bg_noise_audio = [librosa.core.load(file, sr=self.samplingrate)[0] for file in config["bg_noise_files"]]
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
         self.noise_prob = config["noise_prob"]
-        self.n_dct = config["n_dct_filters"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
-        self.filters = librosa.filters.dct(config["n_dct_filters"], config["n_mels"])
-        self.n_mels = config["n_mels"]
+        self.dct_filters = librosa.filters.dct(config["n_dct_filters"], config["n_mels"])
         self._audio_cache = SimpleCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
         n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
-        self.preprocessing = config['preprocessing']
+        self.features = config['features']
+        self.n_dct_filters = config["n_dct_filters"]
+        self.n_mels = config["n_mels"]
+        self.stride_ms = config["stride_ms"] 
+        self.window_ms = config["window_ms"]
+        self.freq_min = config["freq_min"]
+        self.freq_max = config["freq_max"]
+        
+        self.height, self.width = calculate_feature_shape(self.input_length, self.features, 
+                                                          self.samplingrate, self.n_dct_filters, 
+                                                          self.stride_ms)
         
     @staticmethod
     def default_config():
         config = {}
+        
+        #Input Description
+        config["wanted_words"] = ["command", "random"]
+        config["data_folder"] = "/data/speech_dataset"
+        config["samplingrate"] = 16000
+        config["input_length"] = 16000
+        config["timeshift_ms"] = 100
+
+        # Input Enhancement
         config["group_speakers_by_id"] = True
         config["silence_prob"] = 0.1
         config["noise_prob"] = 0.8
-        config["n_dct_filters"] = 40
-        config["input_length"] = 16000
-        config["n_mels"] = 40
-        config["timeshift_ms"] = 100
         config["unknown_prob"] = 0.1
         config["train_pct"] = 80
         config["dev_pct"] = 10
         config["test_pct"] = 10
-        config["wanted_words"] = ["command", "random"]
-        config["data_folder"] = "/data/speech_dataset"
-        config["preprocessing"] = "mel"
+
+        # Feature extraction
+        config["features"] = "mel"
+        config["n_dct_filters"] = 40
+        config["n_mels"] = 40
+        config["stride_ms"] = 10
+        config["window_ms"] = 30
+        config["freq_min"] = 20
+        config["freq_max"] = 4000
+
+      
+
         return config
 
     def _timeshift_audio(self, data):
-        shift = (16000 * self.timeshift_ms) // 1000
+        shift = (self.samplingrate * self.timeshift_ms) // 1000
         shift = random.randint(-shift, shift)
         a = -min(0, shift)
         b = max(0, shift)
@@ -104,7 +127,7 @@ class SpeechDataset(data.Dataset):
             data = np.zeros(in_len, dtype=np.float32)
         else:
             file_data = self._file_cache.get(example)
-            data = librosa.core.load(example, sr=16000)[0] if file_data is None else file_data
+            data = librosa.core.load(example, sr=self.samplingrate)[0] if file_data is None else file_data
             self._file_cache[example] = data
         data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
         data = data[0:in_len]
@@ -116,9 +139,18 @@ class SpeechDataset(data.Dataset):
             a = random.random() * 0.1
             data = np.clip(a * bg_noise + data, -1, 1)
         data = torch.from_numpy(preprocess_audio(data,
-                                                 self.n_mels,
-                                                 self.filters,
-                                                 self.preprocessing))
+                                                 features = self.features,
+                                                 samplingrate = self.samplingrate,
+                                                 n_mels = self.n_mels,
+                                                 dct_filters = self.dct_filters,
+                                                 freq_min = self.freq_min,
+                                                 freq_max = self.freq_max,
+                                                 window_ms = self.window_ms,
+                                                 stride_ms = self.stride_ms))
+
+        assert data.shape[0]  == self.height
+        assert data.shape[1] == self.width
+
         self._audio_cache[example] = data
         return data
 

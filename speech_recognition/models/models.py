@@ -1,5 +1,6 @@
 from . import honk
 from . import ekut
+from . import hello
 
 from .utils import ConfigType
     
@@ -12,6 +13,8 @@ def find_model(conf):
         return honk.SpeechModel
     elif conf.startswith("ekut"):
         return ekut.RawSpeechModel
+    elif conf.startswith("hello-dnn"):
+        return hello.DNNSpeechModel
     
     raise Exception("Could not find model for {}".format(str(conf)))
     
@@ -23,5 +26,7 @@ def find_config(conf):
         return honk.configs[conf]
     elif conf.startswith("ekut"):
         return ekut.configs[conf]
+    elif conf.startswith("hello"):
+        return hello.configs[conf]
     
     raise Exception("Could not find config for {}".format(str(conf)))
