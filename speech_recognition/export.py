@@ -160,6 +160,29 @@ class ComputeGraph(object):
 
         return ComputeGraph(nodes_, inputs, outputs, shape_dict)
 
+
+def constant_propagation(graph):
+
+    class OperationState(object):
+        def __init__(self, node, state):
+            self.node = node
+            self.output_state =  [state]
+    
+    worklist = []
+    for node in graph.nodes:
+        if node.op_type == "Shape":
+            print(node)
+            worklist.append(OperationState(node, []))
+        elif node.op_type == "Constant":
+            print(node)
+            worklist.append(OperationState(node, []))
+
+    state_dict = {}
+    while worklist:
+        node = worklist.pop()
+
+        
+    
 def export_model(config):
     onnx_model = onnx.load(config["input_file"])
     onnx.checker.check_model(onnx_model)
@@ -173,6 +196,7 @@ def export_model(config):
         if op.op_type == "Dropout":
             op.attribute[0].f = 0.0
 
+    ##TODO: remove BatchNorm
         
     print("Running model optimization")
     optimized_model = optimizer.optimize(onnx_model, ["eliminate_nop_dropout"])
@@ -184,8 +208,8 @@ def export_model(config):
 
     graph = ComputeGraph.from_onnx(optimized_model.graph)
 
+    constant_propagation(graph)
     
-
     # Generate Node Parameters
     parameter_header = "#ifndef NETWORK_PARAMETERS_H\n";
     parameter_header += "#define NETWORK_PARAMETERS_H\n";
@@ -195,7 +219,6 @@ def export_model(config):
         print(node.name, node.op_type)
         
         if node.input_tensors:
-            
             if node.op_type == "Conv" or node.op_type == "Gemm":
                 print(node.inputs)
                 type_code = "fp_t " + node.name + "_" + "coef[]"
@@ -221,7 +244,14 @@ def export_model(config):
     with open("network_parameters.c", "w") as f:
         f.write(parameter_code)
 
-    network_code = "#include \"network_parameters.h\"\n\n"
+    network_header = "#ifndef NETWORK_H\n"
+    network_header += "#define NETWORK_H\n"
+    network_header += "#include \"pico-cnn/parameters.h\"\n\n"
+    network_header += "void network(fp_t *input, fp_t *output);\n"
+    network_header += "#endif //NETWORK_H\n"
+
+    network_code =  "#include \"network.h\"\n"
+    network_code += "#include \"network_parameters.h\"\n\n"
     network_code += "#include \"pico-cnn/pico-cnn.h\"\n"
     network_code += "void network(fp_t *input, fp_t *output\n){"
     for num, node in enumerate(graph.nodes):
@@ -230,6 +260,22 @@ def export_model(config):
         for key, val in node.attrs.items():
             network_code += "//  " + str(key) + ": " + str(val) + "\n"
         network_code += "//Parameters\n"
+
+        if node.op_type == "Conv":
+            print("generating_convolution")
+
+        elif node.op_type == "Gemm":
+            print("generating fully connected layer")
+
+        elif node.op_type == "MaxPool":
+            print("generating max pooling layer")
+
+        elif node.op_type == "Relu":
+            print("generating max pooling layer")
+
+        else:
+            print("Unhandled node type:", node.op_type)
+        
         network_code += "\n"
         
     network_code += "}\n"
@@ -237,6 +283,10 @@ def export_model(config):
     with open("network.c", "w") as f:
         f.write(network_code)
 
+    with open("network.h", "w") as f:
+        f.write(network_header)
+
+        
 def export_data(config):
     print("Exporting_input_data")
     train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
@@ -247,7 +297,8 @@ def export_data(config):
     data = data.numpy().flatten()
     
     data_code = "#ifndef INPUT_DATA_H\n"
-    data_code += "float_t input[] = {" + ",".join((str(x) for x in data)) + "};\n"
+    data_code += "#include \"pico-cnn/parameters.h\"\n\n"
+    data_code += "fp_t input[] = {" + ",".join((str(x) for x in data)) + "};\n"
     data_code += "#endif //INPUT_DATA_H\n"
     with open("input_data.h", "w") as f:
         f.write(data_code)
