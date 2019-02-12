@@ -424,7 +424,7 @@ def export_model(config):
         if op.op_type == "Dropout":
             op.attribute[0].f = 0.0
 
-    ##TODO: remove BatchNorm
+    #TODO: remove BatchNorm
         
     print("Running model optimization")
     optimized_model = optimizer.optimize(onnx_model, ["eliminate_nop_dropout"])
@@ -438,12 +438,15 @@ def export_model(config):
     constant_states = constant_propagation(graph)
 
     #Remove nodes with constant values
-    for node in graph.nodes:
+    for node in list(graph.nodes):
         is_constant = True
+        print(node.name)
         for output in node.outputs:
+           
             if constant_states[output].value is None:
                 is_constant = False
-
+                print(output, "is not constant")
+                
         if is_constant:
             remove_node(graph, node)
 
@@ -745,7 +748,6 @@ def export_model(config):
     with open("network.h", "w") as f:
         f.write(network_header)
 
-        
 def export_data(config):
     print("Exporting_input_data")
     train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
