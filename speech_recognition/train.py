@@ -1,5 +1,5 @@
 from collections import ChainMap
-from config import ConfigBuilder
+from .config import ConfigBuilder
 import argparse
 import os
 import random
@@ -33,9 +33,10 @@ def set_seed(config):
     random.seed(seed)
 
 def evaluate(config, model=None, test_loader=None):
+    print("Evaluating network")
     if not test_loader:
         _, _, test_set = dataset.SpeechDataset.splits(config)
-        test_loader = data.DataLoader(test_set, batch_size=len(test_set))
+        test_loader = data.DataLoader(test_set, batch_size=1)
     if not config["no_cuda"]:
         torch.cuda.set_device(config["gpu_no"])
     if not model:
@@ -53,7 +54,10 @@ def evaluate(config, model=None, test_loader=None):
         if not config["no_cuda"]:
             model_in = model_in.cuda()
             labels = labels.cuda()
-        scores = model(model_in)
+        if total == 0:
+            scores = model(model_in, export=True)
+        else:
+            scores = model(model_in, export=False)
         labels = Variable(labels, requires_grad=False)
         loss = criterion(scores, labels)
         results.append(print_eval("test", scores, labels, loss) * model_in.size(0))

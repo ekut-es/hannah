@@ -117,17 +117,52 @@ class RawSpeechModel(SerializableModule):
     
         print("total_paramters:", sum)
         
-    def forward(self, x):
+    def forward(self, x, export=False):
+        
+
+        if export:
+            f = open("layer_outputs.h", "w")
+
+
+        if export:
+            data = x.detach().numpy().flatten()
+            f.write("static fp_t input[] = {" + ",".join((str(x) for x in data)) + "};\n\n")
+
+            
+        num = 0
         for layer in self.convolutions:
-            #print(layer)
+
+            if type(layer) == nn.modules.dropout.Dropout:
+                continue
+            
             x = layer(x)
+
+            if export:
+                data = x.detach().numpy().flatten()
+                f.write("static fp_t output_layer" + str(num) + "[] = {" + ",".join((str(x) for x in data)) + "};\n\n")
+
+            
+            num += 1
+            
         x = x.view(x.size(0),-1)
-        for layer in self.dense:
-            #print(layer)
+        for layer in self.dense:            
             x = layer(x)
+
+            if type(layer) == nn.modules.dropout.Dropout:
+                continue
+            
+            if export:
+                data = x.detach().numpy().flatten()
+                f.write("static fp_t output_layer" + str(num) + "[] = {" + ",".join((str(x) for x in data)) + "};\n\n")
+
+            num += 1
             
         x = self.output(x)
 
+        if export:
+            data = x.detach().numpy().flatten()
+            f.write("static fp_t output_layer" + str(num) + "[] = {" + ",".join((str(x) for x in data)) + "};\n\n")
+        
         return x
 
 
