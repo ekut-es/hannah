@@ -17,12 +17,19 @@ from . import models as mod
 from . import dataset
 
 
-def print_eval(name, scores, labels, loss, end="\n"):
+
+def get_eval(scores, labels, loss):
     batch_size = labels.size(0)
     accuracy = (torch.max(scores, 1)[1].view(batch_size).data == labels.data).float().sum() / batch_size
     loss = loss.item()
+
+    return accuracy.item(), loss
+
+def print_eval(name, scores, labels, loss, end="\n"):
+    accuracy, loss = get_eval(scores, labels, loss) 
     print("{} accuracy: {:>5}, loss: {:<25}".format(name, accuracy, loss), end=end)
-    return accuracy.item()
+    return accuracy
+
 
 def set_seed(config):
     seed = config["seed"]
@@ -65,86 +72,102 @@ def evaluate(config, model=None, test_loader=None):
     print("final test accuracy: {}".format(sum(results) / total))
 
 def train(config):
-    summary_writer = SummaryWriter()
 
-    train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
+    with SummaryWriter() as summary_writer:
+        train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
+         
+        config["width"] = train_set.width
+        config["height"] = train_set.height
+         
+        model = config["model_class"](config)
+        if config["input_file"]:
+            model.load(config["input_file"])
+        if not config["no_cuda"]:
+            torch.cuda.set_device(config["gpu_no"])
+            model.cuda()
+        optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][0], nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
+        schedule_steps = config["schedule"]
+        schedule_steps.append(np.inf)
+        sched_idx = 0
+        criterion = nn.CrossEntropyLoss()
+        max_acc = 0
+         
+        train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
+        dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
+        test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
+        step_no = 0
 
-    config["width"] = train_set.width
-    config["height"] = train_set.height
-
-    model = config["model_class"](config)
-    if config["input_file"]:
-        model.load(config["input_file"])
-    if not config["no_cuda"]:
-        torch.cuda.set_device(config["gpu_no"])
-        model.cuda()
-    optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][0], nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
-    schedule_steps = config["schedule"]
-    schedule_steps.append(np.inf)
-    sched_idx = 0
-    criterion = nn.CrossEntropyLoss()
-    max_acc = 0
-
-    train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
-    dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
-    test_loader = data.DataLoader(test_set, batch_size=min(len(test_set), 16), shuffle=True)
-    step_no = 0
-
-    for epoch_idx in range(config["n_epochs"]):
-        print("Training epoch", epoch_idx, "of", config["n_epochs"])
-        for batch_idx, (model_in, labels) in enumerate(train_loader):
-            model.train()
-            optimizer.zero_grad()
-            if not config["no_cuda"]:
-                model_in = model_in.cuda()
-                labels = labels.cuda()
-            model_in = Variable(model_in, requires_grad=False)
-            scores = model(model_in)
-            labels = Variable(labels, requires_grad=False)
-            loss = criterion(scores, labels)
-            loss.backward()
-            optimizer.step()
-            step_no += 1
-            if step_no > schedule_steps[sched_idx]:
-                sched_idx += 1
-                print("changing learning rate to {}".format(config["lr"][sched_idx]))
-                optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][sched_idx],
-                    nesterov=config["use_nesterov"], momentum=config["momentum"], weight_decay=config["weight_decay"])
-
-            if step_no % 100 == 0:
-                print_eval("train step #{}".format(step_no), scores, labels, loss)
-                    
-
-        if epoch_idx % config["dev_every"] == config["dev_every"] - 1:
-            model.eval()
-            accs = []
-            for model_in, labels in dev_loader:
-                model_in = Variable(model_in, requires_grad=False)
+        dummy_input, dummy_label = next(iter(test_loader))
+        model.eval()
+        summary_writer.add_graph(model, dummy_input)
+        
+        for epoch_idx in range(config["n_epochs"]):
+            print("Training epoch", epoch_idx, "of", config["n_epochs"])
+            for batch_idx, (model_in, labels) in enumerate(train_loader):
+                model.train()
+                optimizer.zero_grad()
                 if not config["no_cuda"]:
                     model_in = model_in.cuda()
                     labels = labels.cuda()
+                model_in = Variable(model_in, requires_grad=False)
                 scores = model(model_in)
                 labels = Variable(labels, requires_grad=False)
                 loss = criterion(scores, labels)
-                loss_numeric = loss.item()
-                accs.append(print_eval("dev", scores, labels, loss))
-            avg_acc = np.mean(accs)
-            print("final dev accuracy: {}".format(avg_acc))
-            if avg_acc > max_acc:
-                print("saving best model...")
-                max_acc = avg_acc
-                model.save(os.path.join(config["output_dir"], "model.pt"))
-                print("saving onnx...")
-                print(dir(dev_loader))
-                model_in, label = next(iter(dev_loader), (None, None))
-                if not config["no_cuda"]:
-                    model_in = model_in.cuda()
-                model.save_onnx(os.path.join(config["output_dir"], "model.onnx"), model_in)
 
-    model.load(os.path.join(config["output_dir"], "model.pt"))
-    evaluate(config, model, test_loader)
-    summary_writer.close()
+                loss.backward()
+                optimizer.step()
 
+                step_no += 1
+
+                scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
+                summary_writer.add_scalars('training', {'accuracy': scalar_accuracy,
+                                                        'loss': scalar_loss},
+                                           step_no)
+
+                
+                if step_no > schedule_steps[sched_idx]:
+                    sched_idx += 1
+                    print("changing learning rate to {}".format(config["lr"][sched_idx]))
+                    optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][sched_idx],
+                        nesterov=config["use_nesterov"], momentum=config["momentum"], weight_decay=config["weight_decay"])
+         
+                if step_no % 100 == 0:
+                    print_eval("train step #{}".format(step_no), scores, labels, loss)
+                        
+         
+            if epoch_idx % config["dev_every"] == config["dev_every"] - 1:
+                model.eval()
+                accs = []
+                for model_in, labels in dev_loader:
+                    model_in = Variable(model_in, requires_grad=False)
+                    if not config["no_cuda"]:
+                        model_in = model_in.cuda()
+                        labels = labels.cuda()
+                    scores = model(model_in)
+                    labels = Variable(labels, requires_grad=False)
+                    loss = criterion(scores, labels)
+                    loss_numeric = loss.item()
+                    accs.append(print_eval("dev", scores, labels, loss))
+                avg_acc = np.mean(accs)
+                print("final dev accuracy: {}".format(avg_acc))
+
+                summary_writer.add_scalars('validation', {'accuracy': avg_acc},
+                                           step_no)
+                
+                if avg_acc > max_acc:
+                    print("saving best model...")
+                    max_acc = avg_acc
+                    model.save(os.path.join(config["output_dir"], "model.pt"))
+                    print("saving onnx...")
+                    print(dir(dev_loader))
+                    model_in, label = next(iter(test_loader), (None, None))
+                    if not config["no_cuda"]:
+                        model_in = model_in.cuda()
+                    model.save_onnx(os.path.join(config["output_dir"], "model.onnx"), model_in)
+         
+        model.load(os.path.join(config["output_dir"], "model.pt"))
+        evaluate(config, model, test_loader)
+        
 def main():
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
     parser = argparse.ArgumentParser()
