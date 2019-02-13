@@ -85,6 +85,9 @@ class DSCNNSpeechModel(SerializableModule):
 
             batch_norm = nn.BatchNorm2d(n_maps)
             self.convs.append(batch_norm)
+
+            dropout = nn.Dropout(config["dropout_prob"]) 
+            self.convs.append(dropout)
             
             count += 1
 
@@ -99,6 +102,9 @@ class DSCNNSpeechModel(SerializableModule):
             self.ds_convs.append(conv)
             x = conv(x)
             print("x:", x.shape)
+
+            dropout = nn.Dropout(config["dropout_prob"]) 
+            self.ds_convs.append(dropout)
             
             count += 1
 
