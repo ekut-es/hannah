@@ -111,7 +111,11 @@ def train(model_name, config):
         step_no = 0
 
         dummy_input, dummy_label = next(iter(test_loader))
+        if not config["no_cuda"]:
+            model_in = model_in.cuda()
+       
         model.eval()
+                    
         summary_writer.add_graph(model, dummy_input)
         
         for epoch_idx in range(config["n_epochs"]):
