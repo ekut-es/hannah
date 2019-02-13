@@ -17,8 +17,11 @@ class DSConvLayer(nn.Module):
 
         pads = tuple(x // 2 for x in shape)
         
-        self.conv1 = nn.Conv2d(n_maps_in, n_maps_out, shape, strides, groups=n_maps_in, padding=pads)
-        self.batch_norm1 = nn.BatchNorm2d(n_maps_out)
+        self.conv1 = nn.Conv2d(n_maps_in, n_maps_in, shape, strides, groups=n_maps_in, padding=pads)
+        self.batch_norm1 = nn.BatchNorm2d(n_maps_in)
+
+        self.conv2 = nn.Conv2d(n_maps_in, n_maps_out, 1, 1, padding=1)
+        self.batch_norm2 = nn.BatchNorm2d(n_maps_out)
 
 
 
@@ -26,6 +29,9 @@ class DSConvLayer(nn.Module):
         x = self.conv1(x)
         x = F.relu(x)
         x = self.batch_norm1(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = self.batch_norm2(x)
 
         return x
 
