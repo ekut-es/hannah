@@ -14,6 +14,8 @@ class RawSpeechModel(SerializableModule):
         super().__init__()
         n_labels = config["n_labels"]
         width = config["input_length"]
+        act = config["act"] if 'act' in config else None
+        
         
         last_size = 0
 
@@ -54,9 +56,10 @@ class RawSpeechModel(SerializableModule):
                 x = conv(x)
                 self.convolutions.append(conv)
 
-                activation = nn.ReLU()
-                self.convolutions.append(activation)
-                x = activation(x)
+                if act == "relu":
+                    activation = nn.ReLU()
+                    self.convolutions.append(activation)
+                    x = activation(x)
 
 
                 dropout = nn.Dropout(config["dropout_prob"])
@@ -96,9 +99,10 @@ class RawSpeechModel(SerializableModule):
 
             count += 1
 
-            activation = nn.ReLU()
-            self.dense.append(activation)
-            x = activation(x)
+            if act == "relu":
+                activation = nn.ReLU()
+                self.dense.append(activation)
+                x = activation(x)
 
 
             dropout = nn.Dropout(config["dropout_prob"])
@@ -167,7 +171,7 @@ class RawSpeechModel(SerializableModule):
 
 
 configs= {
-     ConfigType.EKUT_RAW_CNN2_1D.value: dict(
+     ConfigType.EKUT_RAW_CNN1.value: dict(
         features="raw",
         dropout_prob = 0.5,
         n_labels = 4,
@@ -188,7 +192,7 @@ configs= {
         dnn1_size = 256,
     ),
     
-    ConfigType.EKUT_RAW_CNN3_1D.value: dict(
+    ConfigType.EKUT_RAW_CNN2.value: dict(
         features="raw",
         dropout_prob = 0.5,
         n_labels = 4,
@@ -211,8 +215,78 @@ configs= {
         dnn1_size = 256,
     ),
 
-    ConfigType.EKUT_RAW_CNN3_1D_NARROW.value: dict(
+    ConfigType.EKUT_RAW_CNN3.value: dict(
         features="raw",
+        dropout_prob = 0.5,
+        n_labels = 4,
+        n_feature_maps_1 = 1,
+        conv1_size = 5,
+        conv1_stride = 1,
+        pool1_size = 4,
+        pool1_stride = 4, 
+        n_feature_maps_2 = 8,
+        conv2_size = 5,
+        conv2_stride = 1,
+        pool2_size = 4,
+        pool2_stride = 4,
+        n_feature_maps_3 = 16,
+        conv3_size = 5,
+        conv3_stride = 1,
+        pool3_size = 4,
+        pool3_stride = 4, 
+        n_feature_maps_4 = 32,
+        dnn1_size = 128,
+    ),
+
+    ConfigType.EKUT_RAW_CNN1_RELU.value: dict(
+        features="raw",
+        act="relu",
+        dropout_prob = 0.5,
+        n_labels = 4,
+        n_feature_maps_1 = 1,
+        conv1_size = 21,
+        conv1_stride = 5,
+        pool1_size = 4,
+        pool1_stride = 4, 
+        n_feature_maps_2 = 16,
+        conv2_size = 5,
+        conv2_stride = 1,
+        pool2_size = 4,
+        pool2_stride = 4,
+        n_feature_maps_3 = 32,
+        conv3_size = 3,
+        conv3_stride = 1,
+        n_feature_maps_4 = 5,
+        dnn1_size = 256,
+    ),
+    
+    ConfigType.EKUT_RAW_CNN2_RELU.value: dict(
+        features="raw",
+        act="relu",
+        dropout_prob = 0.5,
+        n_labels = 4,
+        n_feature_maps_1 = 1,
+        conv1_size = 21,
+        conv1_stride = 5,
+        pool1_size = 4,
+        pool1_stride = 4, 
+        n_feature_maps_2 = 16,
+        conv2_size = 5,
+        conv2_stride = 1,
+        pool2_size = 4,
+        pool2_stride = 4,
+        n_feature_maps_3 = 32,
+        conv3_size = 5,
+        conv3_stride = 1,
+        pool3_size = 4,
+        pool3_stride = 4, 
+        n_feature_maps_4 = 64,
+        dnn1_size = 256,
+    ),
+
+    ConfigType.EKUT_RAW_CNN3_RELU.value: dict(
+        features="raw",
+        act="relu",
         dropout_prob = 0.5,
         n_labels = 4,
         n_feature_maps_1 = 1,
