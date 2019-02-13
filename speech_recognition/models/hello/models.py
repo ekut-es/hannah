@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from ..utils import ConfigType, SerializableModule
 
-class DSConvLayer(nn.Module):
+class DSConv2d(nn.Module):
     def __init__(self, n_maps_in, n_maps_out, shape, strides=1, dropout_prob=0.5):
         super().__init__()
 
@@ -99,7 +99,7 @@ class DSCNNSpeechModel(SerializableModule):
             conv_size = config["ds_conv{}_size".format(count)]
             conv_stride = config["ds_conv{}_stride".format(count)]
 
-            conv = DSConvLayer(n_maps, n_maps, conv_size, conv_stride)
+            conv = DSConv2d(n_maps, n_maps, conv_size, conv_stride, config["dropout_prob"])
 
             self.ds_convs.append(conv)
             x = conv(x)
@@ -244,6 +244,40 @@ configs = {
         ds_conv3_stride   = (1,1),
         ds_conv4_size     = (3,3),
         ds_conv4_stride   = (1,1),
-    )
+    ),
+
+    ConfigType.HELLO_DS_CNN_MEDIUM.value : dict(
+        dropout_prob=0.5,
+        n_labels=12,
+        n_feature_maps    = 172,
+        conv1_size        = (10, 4),
+        conv1_stride      = (2, 2),
+        ds_conv1_size     = (3,3),
+        ds_conv1_stride   = (2,2),
+        ds_conv2_size     = (3,3),
+        ds_conv2_stride   = (1,1),
+        ds_conv3_size     = (3,3),
+        ds_conv3_stride   = (1,1),
+        ds_conv4_size     = (3,3),
+        ds_conv4_stride   = (1,1),
+    ),
+
+    ConfigType.HELLO_DS_CNN_LARGE.value : dict(
+        dropout_prob=0.5,
+        n_labels=12,
+        n_feature_maps    = 276,
+        conv1_size        = (10, 4),
+        conv1_stride      = (2, 2),
+        ds_conv1_size     = (3,3),
+        ds_conv1_stride   = (2,2),
+        ds_conv2_size     = (3,3),
+        ds_conv2_stride   = (1,1),
+        ds_conv3_size     = (3,3),
+        ds_conv3_stride   = (1,1),
+        ds_conv4_size     = (3,3),
+        ds_conv4_stride   = (1,1),
+        ds_conv5_size     = (3,3),
+        ds_conv5_stride   = (1,1),
+    ),
 
 }
