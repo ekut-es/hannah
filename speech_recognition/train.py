@@ -4,6 +4,7 @@ import argparse
 import os
 import random
 import sys
+import json
 
 from torch.autograd import Variable
 import numpy as np
@@ -39,7 +40,7 @@ def set_seed(config):
         torch.cuda.manual_seed(seed)
     random.seed(seed)
 
-def evaluate(config, model=None, test_loader=None):
+def evaluate(model_name, config, model=None, test_loader=None):
     print("Evaluating network")
     if not test_loader:
         _, _, test_set = dataset.SpeechDataset.splits(config)
@@ -69,23 +70,35 @@ def evaluate(config, model=None, test_loader=None):
         loss = criterion(scores, labels)
         results.append(print_eval("test", scores, labels, loss) * model_in.size(0))
         total += model_in.size(0)
+        
     print("final test accuracy: {}".format(sum(results) / total))
 
-def train(config):
+def train(model_name, config):
+    output_dir = os.path.join(config["output_dir"], model_name)
+    print("All information will be saved to: ", output_dir)
+    
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
+        
     with SummaryWriter() as summary_writer:
         train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
-         
+
         config["width"] = train_set.width
         config["height"] = train_set.height
-         
+
+        with open(os.path.join(output_dir, 'config.json'), "w") as o:
+                  s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
+                  o.write(s)
+        
         model = config["model_class"](config)
         if config["input_file"]:
             model.load(config["input_file"])
         if not config["no_cuda"]:
             torch.cuda.set_device(config["gpu_no"])
             model.cuda()
-        optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][0], nesterov=config["use_nesterov"], weight_decay=config["weight_decay"], momentum=config["momentum"])
+        optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][0], nesterov=config["use_nesterov"],
+                                    weight_decay=config["weight_decay"], momentum=config["momentum"])
         schedule_steps = config["schedule"]
         schedule_steps.append(np.inf)
         sched_idx = 0
@@ -157,16 +170,16 @@ def train(config):
                 if avg_acc > max_acc:
                     print("saving best model...")
                     max_acc = avg_acc
-                    model.save(os.path.join(config["output_dir"], "model.pt"))
+                    model.save(os.path.join(output_dir, "model.pt"))
                     print("saving onnx...")
                     print(dir(dev_loader))
                     model_in, label = next(iter(test_loader), (None, None))
                     if not config["no_cuda"]:
                         model_in = model_in.cuda()
-                    model.save_onnx(os.path.join(config["output_dir"], "model.onnx"), model_in)
+                    model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
          
-        model.load(os.path.join(config["output_dir"], "model.pt"))
-        evaluate(config, model, test_loader)
+        model.load(os.path.join(output_dir, "model.pt"))
+        evaluate(model_name, config, model, test_loader)
         
 def main():
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
@@ -174,6 +187,8 @@ def main():
     parser.add_argument("--model", choices=[x.value for x in list(mod.ConfigType)], default="honk-cnn-trad-pool2", type=str)
     config, _ = parser.parse_known_args()
 
+    model_name = config.model
+    
     global_config = dict(no_cuda=False, n_epochs=500, lr=[0.001], schedule=[np.inf], batch_size=64, dev_every=10, seed=0,
         use_nesterov=False, input_file="", output_dir=output_dir, gpu_no=1, cache_size=32768, momentum=0.9, weight_decay=0.00001)
     mod_cls = mod.find_model(config.model)
@@ -187,9 +202,9 @@ def main():
     config["model_class"] = mod_cls
     set_seed(config)
     if config["type"] == "train":
-        train(config)
+        train(model_name, config)
     elif config["type"] == "eval":
-        evaluate(config)
+        evaluate(model_name, config)
 
 if __name__ == "__main__":
     main()
