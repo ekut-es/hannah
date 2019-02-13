@@ -20,7 +20,7 @@ class DSConvLayer(nn.Module):
         self.conv1 = nn.Conv2d(n_maps_in, n_maps_in, shape, strides, groups=n_maps_in, padding=pads)
         self.batch_norm1 = nn.BatchNorm2d(n_maps_in)
 
-        self.conv2 = nn.Conv2d(n_maps_in, n_maps_out, 1, 1, padding=1)
+        self.conv2 = nn.Conv2d(n_maps_in, n_maps_out, 1, 1)
         self.batch_norm2 = nn.BatchNorm2d(n_maps_out)
 
 
