@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from ..utils import ConfigType, SerializableModule
 
 class DSConvLayer(nn.Module):
-    def __init__(self, n_maps_in, n_maps_out, shape, strides=1):
+    def __init__(self, n_maps_in, n_maps_out, shape, strides=1, dropout_prob=0.5):
         super().__init__()
 
         # Depthwise separable convolutions need multiples of input as output
@@ -19,20 +19,22 @@ class DSConvLayer(nn.Module):
         
         self.conv1 = nn.Conv2d(n_maps_in, n_maps_in, shape, strides, groups=n_maps_in, padding=pads)
         self.batch_norm1 = nn.BatchNorm2d(n_maps_in)
-
+        self.dropout1 = nn.Dropout(dropout_prob)    
+        
         self.conv2 = nn.Conv2d(n_maps_in, n_maps_out, 1, 1)
         self.batch_norm2 = nn.BatchNorm2d(n_maps_out)
-
-
+        self.dropout2 = nn.Dropout(dropout_prob)
 
     def forward(self, x):
         x = self.conv1(x)
         x = F.relu(x)
         x = self.batch_norm1(x)
+        x = self.dropout1(x)
         x = self.conv2(x)
         x = F.relu(x)
         x = self.batch_norm2(x)
-
+        x = self.dropout2(x)
+        
         return x
 
         
@@ -47,9 +49,9 @@ class DSCNNSpeechModel(SerializableModule):
         n_maps = config["n_feature_maps"]
 
         dropout_prob = config["dropout_prob"]
-        
+
         x = Variable(torch.zeros(1,1,height,width))
-        
+
 
         self.convs = nn.ModuleList()
         self.ds_convs = nn.ModuleList()
@@ -57,7 +59,7 @@ class DSCNNSpeechModel(SerializableModule):
         current_shape = x.shape
 
         print("x:", x.shape)
-        
+
         count = 1
         while "conv{}_size".format(count) in config:
             print("generating conv{}".format(count))
@@ -103,9 +105,6 @@ class DSCNNSpeechModel(SerializableModule):
             x = conv(x)
             print("x:", x.shape)
 
-            dropout = nn.Dropout(config["dropout_prob"]) 
-            self.ds_convs.append(dropout)
-            
             count += 1
 
         print("x:", x.shape)
