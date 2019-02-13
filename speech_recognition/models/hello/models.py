@@ -15,7 +15,9 @@ class DSConvLayer(nn.Module):
         # Depthwise separable convolutions need multiples of input as output
         assert n_maps_out % n_maps_in == 0
 
-        self.conv1 = nn.Conv2d(n_maps_in, n_maps_out, shape, strides, groups=n_maps_in)
+        pads = tuple(x // 2 for x in shape)
+        
+        self.conv1 = nn.Conv2d(n_maps_in, n_maps_out, shape, strides, groups=n_maps_in, padding=pads)
         self.batch_norm1 = nn.BatchNorm2d(n_maps_out)
 
 
@@ -37,6 +39,8 @@ class DSCNNSpeechModel(SerializableModule):
         height = config["height"]
         n_labels = config["n_labels"]
         n_maps = config["n_feature_maps"]
+
+        dropout_prob = config["dropout_prob"]
         
         x = Variable(torch.zeros(1,1,height,width))
         
@@ -54,21 +58,27 @@ class DSCNNSpeechModel(SerializableModule):
             conv_size = config["conv{}_size".format(count)]
             conv_stride = (1,) * len(conv_size)
 
-            if "conv_stride{}".format(count) in config:
+            if "conv{}_stride".format(count) in config:
                 conv_stride = config["conv{}_stride".format(count)]
 
+            pads = tuple(x//2 for x in conv_size)
+            
             conv_dilation = (1,)*len(conv_size)
 
             conv = nn.Conv2d(current_shape[1],
                              n_maps,
                              conv_size,
                              stride=conv_stride,
-                             dilation=conv_dilation)
+                             dilation=conv_dilation,
+                             padding = pads)
 
             self.convs.append(conv)
             x = conv(x)
             current_shape = x.shape
             print("x:", x.shape)
+
+            batch_norm = nn.BatchNorm2d(n_maps)
+            self.convs.append(batch_norm)
             
             count += 1
 
@@ -88,7 +98,7 @@ class DSCNNSpeechModel(SerializableModule):
 
         print("x:", x.shape)
             
-        self.avg_pool = nn.AvgPool2d(3)
+        self.avg_pool = nn.AvgPool2d((x.size(2), x.size(3)), stride=0)
         x = self.avg_pool(x)
         print("x:", x.shape)
 
