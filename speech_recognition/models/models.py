@@ -15,6 +15,8 @@ def find_model(conf):
         return ekut.RawSpeechModel
     elif conf.startswith("hello-dnn"):
         return hello.DNNSpeechModel
+    elif conf.startswith("hello-ds-cnn"):
+        return hello.DSCNNSpeechModel
     
     raise Exception("Could not find model for {}".format(str(conf)))
     

@@ -187,6 +187,7 @@ configs= {
         n_feature_maps_4 = 5,
         dnn1_size = 256,
     ),
+    
     ConfigType.EKUT_RAW_CNN3_1D.value: dict(
         features="raw",
         dropout_prob = 0.5,
@@ -211,7 +212,7 @@ configs= {
     ),
 
     ConfigType.EKUT_RAW_CNN3_1D_NARROW.value: dict(
-        preprocessing="raw",
+        features="raw",
         dropout_prob = 0.5,
         n_labels = 4,
         n_feature_maps_1 = 1,

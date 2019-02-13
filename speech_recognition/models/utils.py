@@ -47,3 +47,6 @@ class ConfigType(Enum):
     HELLO_DNN_SMALL = "hello-dnn-small"
     HELLO_DNN_MEDIUM = "hello-dnn-medium"
     HELLO_DNN_LARGE = "hello-dnn-large"
+    HELLO_DS_CNN_SMALL = "hello-ds-cnn-small"
+    HELLO_DS_CNN_MEDIUM = "hello-ds-cnn-medium"
+    HELLO_DS_CNN_LARGE = "hello-ds-cnn-large"
