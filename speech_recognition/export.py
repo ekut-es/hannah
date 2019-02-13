@@ -457,7 +457,7 @@ def export_model(config):
             if res.shape != shape:
                 print("Warning: Shapes do not match: ", var, res.shape, shape)
                 graph.shape_dict[var] = res.shape
-        elif shape is not None:
+        elif res.shape is not None:
             graph.shape_dict[var] = res.shape
                 
                 
