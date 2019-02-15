@@ -58,7 +58,7 @@ def evaluate(model_name, config, model=None, test_loader=None, logfile=None):
     model.eval()
     criterion = nn.CrossEntropyLoss()
     accs = []
-    losses. = []
+    losses = []
     for model_in, labels in test_loader:
         model_in = Variable(model_in, requires_grad=False)
         if not config["no_cuda"]:
@@ -119,7 +119,7 @@ def train(model_name, config):
             gamma = config["lr_gamma"]
             stepsize = config["lr_stepsize"]
             if stepsize == 0:
-                stepsize = max(10, n_epochs / 5)
+                stepsize = max(10, n_epochs // 5)
             
             scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=stepsize, gamma=gamma)
             
@@ -127,7 +127,7 @@ def train(model_name, config):
             gamma = config["lr_gamma"]
             steps = config["lr_steps"]
             if steps == [0]:
-                steps = itertools.count(n_epochs/10, n_epochs/10)
+                steps = itertools.count(max(1, n_epochs//10), max(1, n_epochs//10))
 
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
                                                              steps,
