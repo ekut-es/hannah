@@ -25,6 +25,7 @@ To export the trained model use:
     python3.6 -m speech_recognition.export --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --features raw --input_file trained_models/model.onnx
 
 
+
 # TODO:
   Training:
     - Implement Depthwise Separable Convolutions
@@ -32,5 +33,10 @@ To export the trained model use:
     - Experiment with dilations
   
   Export:
+    - 2D Convolutions
+	- Average Pooling
+	- Dilations
+	- Depthwise separable convolutions
+	- Remove batch normalization
     - Add Memory Allocator
     - Add Quantization

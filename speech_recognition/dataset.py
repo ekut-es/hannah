@@ -72,7 +72,7 @@ class SpeechDataset(data.Dataset):
         
         #Input Description
         config["wanted_words"] = ["command", "random"]
-        config["data_folder"] = "/data/speech_dataset"
+        config["data_folder"] = "datasets/speech_commands_v0.02/"
         config["samplingrate"] = 16000
         config["input_length"] = 16000
         config["timeshift_ms"] = 100
@@ -94,8 +94,6 @@ class SpeechDataset(data.Dataset):
         config["window_ms"] = 30
         config["freq_min"] = 20
         config["freq_max"] = 4000
-
-      
 
         return config
 
