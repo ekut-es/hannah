@@ -49,13 +49,13 @@ class SpeechDataset(data.Dataset):
         self.noise_prob = config["noise_prob"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
-        self.dct_filters = librosa.filters.dct(config["n_dct_filters"], config["n_mels"])
+        self.dct_filters = librosa.filters.dct(config["n_dct"], config["n_mels"])
         self._audio_cache = SimpleCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
         n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
         self.features = config['features']
-        self.n_dct_filters = config["n_dct_filters"]
+        self.n_dct_filters = config["n_dct"]
         self.n_mels = config["n_mels"]
         self.stride_ms = config["stride_ms"] 
         self.window_ms = config["window_ms"]
@@ -71,7 +71,8 @@ class SpeechDataset(data.Dataset):
         config = {}
         
         #Input Description
-        config["wanted_words"] = ["command", "random"]
+        config["wanted_words"] = ["yes", "no", "up", "down", "left",
+                                  "right", "on", "off", "stop", "go"]
         config["data_folder"] = "datasets/speech_commands_v0.02/"
         config["samplingrate"] = 16000
         config["input_length"] = 16000
@@ -88,7 +89,7 @@ class SpeechDataset(data.Dataset):
 
         # Feature extraction
         config["features"] = "mel"
-        config["n_dct_filters"] = 40
+        config["n_dct"] = 40
         config["n_mels"] = 40
         config["stride_ms"] = 10
         config["window_ms"] = 30
