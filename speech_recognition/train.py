@@ -40,8 +40,9 @@ def set_seed(config):
         torch.cuda.manual_seed(seed)
     random.seed(seed)
 
-def evaluate(model_name, config, model=None, test_loader=None):
+def evaluate(model_name, config, model=None, test_loader=None, logfile=None):
     print("Evaluating network")
+    
     if not test_loader:
         _, _, test_set = dataset.SpeechDataset.splits(config)
         test_loader = data.DataLoader(test_set, batch_size=1)
@@ -72,6 +73,7 @@ def evaluate(model_name, config, model=None, test_loader=None):
         total += model_in.size(0)
         
     print("final test accuracy: {}".format(sum(results) / total))
+    return sum(results) / total
 
 def train(model_name, config):
     output_dir = os.path.join(config["output_dir"], model_name)
@@ -80,7 +82,7 @@ def train(model_name, config):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-        
+    train_log = open(os.path.join(output_dir, "train.csv"), "w")
     with SummaryWriter() as summary_writer:
         train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
 
@@ -97,8 +99,11 @@ def train(model_name, config):
         if not config["no_cuda"]:
             torch.cuda.set_device(config["gpu_no"])
             model.cuda()
-        optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"][0], nesterov=config["use_nesterov"],
-                                    weight_decay=config["weight_decay"], momentum=config["momentum"])
+        optimizer = torch.optim.SGD(model.parameters(), 
+                                    lr=config["lr"][0], 
+                                    nesterov=config["use_nesterov"],
+                                    weight_decay=config["weight_decay"], 
+                                    momentum=config["momentum"])
         schedule_steps = config["schedule"]
         schedule_steps.append(np.inf)
         sched_idx = 0
@@ -112,7 +117,7 @@ def train(model_name, config):
 
         dummy_input, dummy_label = next(iter(test_loader))
         if not config["no_cuda"]:
-            model_in = model_in.cuda()
+            dummy_input = dummy_input.cuda()
        
         model.eval()
                     
@@ -137,10 +142,11 @@ def train(model_name, config):
                 step_no += 1
 
                 scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
+
                 summary_writer.add_scalars('training', {'accuracy': scalar_accuracy,
                                                         'loss': scalar_loss},
                                            step_no)
-
+                train_log.write("train,"+str(step_no)+","+str(scalar_accuracy)+","+str(scalar_loss)+"\n")
                 
                 if step_no > schedule_steps[sched_idx]:
                     sched_idx += 1
@@ -167,7 +173,8 @@ def train(model_name, config):
                     accs.append(print_eval("dev", scores, labels, loss))
                 avg_acc = np.mean(accs)
                 print("final dev accuracy: {}".format(avg_acc))
-
+                train_log.write("val,"+str(step_no)+","+str(avg_acc)+"\n")
+                
                 summary_writer.add_scalars('validation', {'accuracy': avg_acc},
                                            step_no)
                 
@@ -183,7 +190,9 @@ def train(model_name, config):
                     model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
          
         model.load(os.path.join(output_dir, "model.pt"))
-        evaluate(model_name, config, model, test_loader)
+        test_accuracy = evaluate(model_name, config, model, test_loader)
+        train_log.write("test,"+str(step_no)+","+str(test_accuracy)+"\n")
+        train_log.close()
         
 def main():
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
