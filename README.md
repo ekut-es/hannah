@@ -18,7 +18,7 @@ Installing dataset:
 
 Training can be invoked by using:
 
-    python3.6 -m speech_recognition.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500 --weight_decay 0.00001 --lr 0.1 0.01 0.001  --gpu_no 0  --model ekut-raw-cnn3-1d
+    python3.6 -m speech_recognition.train  --n_epochs 500 --weight_decay 0.00001 --lr 0.1 0.01 0.001  --gpu_no 0  --model ekut-raw-cnn3-1d
 	
 To export the trained model use:
 
