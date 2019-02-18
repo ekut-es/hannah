@@ -7,3 +7,6 @@
 [submodule "orig/honk"]
 	path = orig/honk
 	url = https://github.com/castorini/honk.git
+[submodule "speech_recognition/distiller"]
+	path = speech_recognition/distiller
+	url = https://github.com/NervanaSystems/distiller.git
