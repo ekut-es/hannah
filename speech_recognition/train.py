@@ -186,8 +186,7 @@ def train(model_name, config):
 
     # iteration counters 
     step_no = 0
-
-    batches_per_epoch = math.ceil(len(train_loader) / train_batch_size)
+    batches_per_epoch = len(train_loader)
     
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
