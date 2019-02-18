@@ -4,3 +4,6 @@
 [submodule "orig/ML-KWS-for-MCU"]
 	path = orig/ML-KWS-for-MCU
 	url = https://github.com/ARM-software/ML-KWS-for-MCU.git
+[submodule "orig/honk"]
+	path = orig/honk
+	url = https://github.com/castorini/honk.git
