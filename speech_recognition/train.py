@@ -13,7 +13,6 @@ import torch.nn as nn
 import torch.utils.data as data
 import itertools
 
-from tensorboardX import SummaryWriter
 
 from . import models as mod
 from . import dataset
@@ -91,7 +90,7 @@ def train(model_name, config):
 
     train_log = open(os.path.join(output_dir, "train.csv"), "w")
     
-    with SummaryWriter() as summary_writer:
+    
         train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
 
         config["width"] = train_set.width
@@ -160,7 +159,6 @@ def train(model_name, config):
             raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
         
         # setup datasets
-        
         train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
         dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
         test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
@@ -193,7 +191,7 @@ def train(model_name, config):
         step_no = 0
 
         for epoch_idx in range(n_epochs):
-            msglogger.info("Training epoch", epoch_idx, "of", config["n_epochs"])
+            msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
             if compression_scheduler is not None:
                 compression_scheduler.on_epoch_begin(epoch_idx)
             
