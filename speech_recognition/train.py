@@ -18,7 +18,11 @@ from tensorboardX import SummaryWriter
 from . import models as mod
 from . import dataset
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
+import distiller
+from distiller.data_loggers import TensorBoardLogger, PythonLogger
+import apputils
 
 def get_eval(scores, labels, loss):
     batch_size = labels.size(0)
@@ -85,6 +89,7 @@ def train(model_name, config):
         os.makedirs(output_dir)
 
     train_log = open(os.path.join(output_dir, "train.csv"), "w")
+    
     with SummaryWriter() as summary_writer:
         train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
 
@@ -153,10 +158,24 @@ def train(model_name, config):
             raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
         
         # setup datasets
+        
         train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
         dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
         test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
-        
+
+
+        # Setup distiller for model minimization
+        msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
+        tflogger = TensorBoardLogger(msglogger.logdir)
+        tflogger.log_gradients = True
+        pylogger = PythonLogger(msglogger)
+
+        compression_scheduler = None
+        if config["compress"]:
+            device = torch.device("cuda")
+            if config["no_cuda"]:
+                device = torch.device("cpu")
+            compression_scheduler = distiller.CompressionScheduler(model, device)
 
         # Export model
         dummy_input, dummy_label = next(iter(test_loader))
@@ -168,10 +187,17 @@ def train(model_name, config):
 
         # iteration counters 
         step_no = 0
+
         for epoch_idx in range(n_epochs):
             print("Training epoch", epoch_idx, "of", config["n_epochs"])
+            if compression_scheduler is not None:
+                compression_scheduler.on_epoch_begin(epoch_idx)
+            
             for batch_idx, (model_in, labels) in enumerate(train_loader):
                 model.train()
+                if compression_scheduler is not None:
+                    compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, len(train_loader))
+                    
                 optimizer.zero_grad()
                 if not config["no_cuda"]:
                     model_in = model_in.cuda()
@@ -181,8 +207,12 @@ def train(model_name, config):
                 labels = Variable(labels, requires_grad=False)
                 loss = criterion(scores, labels)
 
+                if compression_scheduler is not None:
+                    compression_scheduler.before_backward_pass(epoch_idx, batch_idx, len(train_loader), loss)
                 loss.backward()
                 optimizer.step()
+                if compression_scheduler is not None:
+                    compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, len(train_loader))
 
                 step_no += 1
 
@@ -239,6 +269,9 @@ def train(model_name, config):
                     lr_scheduler.step(avg_loss)
                 else:
                     lr_scheduler.step()
+                    
+            if compression_scheduler is not None:
+                compression_scheduler.on_epoch_begin(epoch_idx)
                 
         model.load(os.path.join(output_dir, "model.pt"))
         test_accuracy = evaluate(model_name, config, model, test_loader)
@@ -258,6 +291,7 @@ def main():
                          lr_stepsize = 0, lr_steps = [0], lr_patience = 10, 
                          batch_size=64, seed=0, use_nesterov=False,
                          input_file="", output_dir=output_dir, gpu_no=0,
+                         compress="", 
                          cache_size=32768, momentum=0.9, weight_decay=0.00001)
     
     mod_cls = mod.find_model(config.model)

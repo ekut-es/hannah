@@ -58,3 +58,16 @@ python3.6 -m pip install --user SpeechRecognition
 python3.6 -m pip install --user git+https://github.com/daemon/pytorch-pcen
 python3.6 -m pip install --user tensorboardX
 python3.6 -m pip install --user onnx
+python3.6 -m pip install --user pyyaml
+python3.6 -m pip install --user scipy
+python3.6 -m pip install --user torchnet
+python3.6 -m pip install --user pydot
+python3.6 -m pip install --user tabulate
+python3.6 -m pip install --user pandas
+python3.6 -m pip install --user jupyter
+python3.6 -m pip install --user matplotlib
+python3.6 -m pip install --user ipywidgets
+python3.6 -m pip install --user bqplot
+python3.6 -m pip install --user pytest
+python3.6 -m pip install --user xlsxwriter
+python3.6 -m pip install --user gitpython

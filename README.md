@@ -39,4 +39,4 @@ To export the trained model use:
 	- Depthwise separable convolutions
 	- Remove batch normalization
     - Add Memory Allocator
-    - Add Quantization
+    - Add Quantization awareness
