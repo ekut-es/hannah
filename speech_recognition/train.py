@@ -31,9 +31,12 @@ def get_eval(scores, labels, loss):
 
     return accuracy.item(), loss
 
-def print_eval(name, scores, labels, loss, end="\n"):
+def print_eval(name, scores, labels, loss, end="\n", logger=None):
     accuracy, loss = get_eval(scores, labels, loss) 
-    print("{} accuracy: {:>5}, loss: {:<25}".format(name, accuracy, loss), end=end)
+    if logger:
+        logger.info("{} accuracy: {:>5}, loss: {:<25}".format(name, accuracy, loss))
+    else:
+        print("{} accuracy: {:>5}, loss: {:<25}".format(name, accuracy, loss), end=end)
     return accuracy, loss
 
 
@@ -173,11 +176,10 @@ def train(model_name, config):
         if config["compress"]:
             print("Activating compression scheduler")
 
-            device = torch.device("cuda")
-            if config["no_cuda"]:
-                device = torch.device("cpu")
 
             compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
+            if not config["no_cuda"]:
+                model.cuda()
 
         # Export model
         dummy_input, dummy_label = next(iter(test_loader))
@@ -191,7 +193,7 @@ def train(model_name, config):
         step_no = 0
 
         for epoch_idx in range(n_epochs):
-            print("Training epoch", epoch_idx, "of", config["n_epochs"])
+            msglogger.info("Training epoch", epoch_idx, "of", config["n_epochs"])
             if compression_scheduler is not None:
                 compression_scheduler.on_epoch_begin(epoch_idx)
             
@@ -225,8 +227,7 @@ def train(model_name, config):
                                            step_no)
                 train_log.write("train,"+str(step_no)+","+str(scalar_accuracy)+","+str(scalar_loss)+"\n")
                 
-                if step_no % 100 == 0:
-                    print_eval("train step #{}".format(step_no), scores, labels, loss)
+                print_eval("train step #{}".format(step_no), scores, labels, loss, logger=msglogger)
 
                 
                 #for module in model.children():
@@ -254,7 +255,7 @@ def train(model_name, config):
             
             avg_acc = np.mean(accs)
             avg_loss = np.mean(losses) 
-            print("validation accuracy: {}, loss: {}".format(avg_acc, avg_loss))
+            msglogger.info("validation accuracy: {}, loss: {}".format(avg_acc, avg_loss))
             train_log.write("val,"+str(step_no)+","+str(avg_acc)+","+str(avg_loss)+"\n")
 
             summary_writer.add_scalars('validation', {'accuracy': avg_acc,
@@ -262,19 +263,19 @@ def train(model_name, config):
                                        step_no)
             
             if avg_acc > max_acc:
-                print("saving best model...")
+                msglogger.info("saving best model...")
                 max_acc = avg_acc
                 model.save(os.path.join(output_dir, "model.pt"))
 
 
-                print("saving onnx...")
+                msglogger.info("saving onnx...")
                 try:
                     model_in, label = next(iter(test_loader), (None, None))
                     if not config["no_cuda"]:
                         model_in = model_in.cuda()
                     model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
                 except Exception as e:
-                    print("Could not export onnx model ...", str(e))
+                    msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
                     
             if scheduler is not None:
                 if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
