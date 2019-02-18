@@ -235,7 +235,7 @@ def train(model_name, config):
             distiller.log_training_progress(stats,
                                             params,
                                             epoch_idx,
-                                            step_no,
+                                            batch_idx,
                                             batches_per_epoch,
                                             1,
                                             [tflogger,pylogger])
