@@ -14,7 +14,8 @@ class SerializableModule(nn.Module):
         self.load_state_dict(torch.load(filename, map_location=lambda storage, loc: storage))
 
     def save_onnx(self, filename, dummy_input):
-        torch.onnx.export(self, dummy_input, filename) 
+        with torch.onnx.set_training(self, False):
+            torch.onnx.export(self, dummy_input, filename) 
 
 
 class ConfigType(Enum):

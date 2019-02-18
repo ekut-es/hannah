@@ -68,10 +68,8 @@ def evaluate(model_name, config, model=None, test_loader=None, logfile=None):
         if not config["no_cuda"]:
             model_in = model_in.cuda()
             labels = labels.cuda()
-        if total == 0:
-            scores = model(model_in, export=True)
-        else:
-            scores = model(model_in, export=False)
+        
+        scores = model(model_in)
         labels = Variable(labels, requires_grad=False)
         loss = criterion(scores, labels)
         acc, loss = get_eval(scores, labels, loss)
@@ -120,6 +118,7 @@ def train(model_name, config):
         
         # Setup learning rate optimizer
         lr_scheduler = config["lr_scheduler"]
+        scheduler = None
         if lr_scheduler == "step":
             gamma = config["lr_gamma"]
             stepsize = config["lr_stepsize"]
@@ -172,10 +171,13 @@ def train(model_name, config):
 
         compression_scheduler = None
         if config["compress"]:
+            print("Activating compression scheduler")
+
             device = torch.device("cuda")
             if config["no_cuda"]:
                 device = torch.device("cpu")
-            compression_scheduler = distiller.CompressionScheduler(model, device)
+
+            compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
 
         # Export model
         dummy_input, dummy_label = next(iter(test_loader))
@@ -225,6 +227,12 @@ def train(model_name, config):
                 
                 if step_no % 100 == 0:
                     print_eval("train step #{}".format(step_no), scores, labels, loss)
+
+                
+                #for module in model.children():
+                #    print(module)
+                #    for parameter in module.parameters():
+                #        print(parameter)
                         
 
             # Validate
@@ -257,18 +265,22 @@ def train(model_name, config):
                 print("saving best model...")
                 max_acc = avg_acc
                 model.save(os.path.join(output_dir, "model.pt"))
-                print("saving onnx...")
-                print(dir(dev_loader))
-                model_in, label = next(iter(test_loader), (None, None))
-                if not config["no_cuda"]:
-                    model_in = model_in.cuda()
-                model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
 
-            if lr_scheduler is not None:
+
+                print("saving onnx...")
+                try:
+                    model_in, label = next(iter(test_loader), (None, None))
+                    if not config["no_cuda"]:
+                        model_in = model_in.cuda()
+                    model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
+                except Exception as e:
+                    print("Could not export onnx model ...", str(e))
+                    
+            if scheduler is not None:
                 if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
-                    lr_scheduler.step(avg_loss)
+                    scheduler.step(avg_loss)
                 else:
-                    lr_scheduler.step()
+                    scheduler.step()
                     
             if compression_scheduler is not None:
                 compression_scheduler.on_epoch_begin(epoch_idx)
