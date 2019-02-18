@@ -1,10 +1,11 @@
-from collections import ChainMap
+from collections import ChainMap, OrderedDict
 from .config import ConfigBuilder
 import argparse
 import os
 import random
 import sys
 import json
+import time
 
 from torch.autograd import Variable
 import numpy as np
@@ -13,15 +14,15 @@ import torch.nn as nn
 import torch.utils.data as data
 import itertools
 
-
 from . import models as mod
 from . import dataset
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
 import distiller
-from distiller.data_loggers import TensorBoardLogger, PythonLogger
+from distiller.data_loggers import *
 import apputils
+import torchnet.meter as tnt
 
 def get_eval(scores, labels, loss):
     batch_size = labels.size(0)
@@ -91,203 +92,206 @@ def train(model_name, config):
     train_log = open(os.path.join(output_dir, "train.csv"), "w")
     
     
-        train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
+    train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
 
-        config["width"] = train_set.width
-        config["height"] = train_set.height
+    config["width"] = train_set.width
+    config["height"] = train_set.height
 
-        with open(os.path.join(output_dir, 'config.json'), "w") as o:
-                  s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
-                  o.write(s)
+    with open(os.path.join(output_dir, 'config.json'), "w") as o:
+              s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
+              o.write(s)
 
-        # Setip optimizers
-        model = config["model_class"](config)
-        if config["input_file"]:
-            model.load(config["input_file"])
+    # Setip optimizers
+    model = config["model_class"](config)
+    if config["input_file"]:
+        model.load(config["input_file"])
+    if not config["no_cuda"]:
+        torch.cuda.set_device(config["gpu_no"])
+        model.cuda()
+    optimizer = torch.optim.SGD(model.parameters(), 
+                                lr=config["lr"], 
+                                nesterov=config["use_nesterov"],
+                                weight_decay=config["weight_decay"], 
+                                momentum=config["momentum"])
+    sched_idx = 0
+    criterion = nn.CrossEntropyLoss()
+    max_acc = 0
+
+    n_epochs = config["n_epochs"]
+    
+    # Setup learning rate optimizer
+    lr_scheduler = config["lr_scheduler"]
+    scheduler = None
+    if lr_scheduler == "step":
+        gamma = config["lr_gamma"]
+        stepsize = config["lr_stepsize"]
+        if stepsize == 0:
+            stepsize = max(10, n_epochs // 5)
+        
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=stepsize, gamma=gamma)
+        
+    elif lr_scheduler == "multistep":
+        gamma = config["lr_gamma"]
+        steps = config["lr_steps"]
+        if steps == [0]:
+            steps = itertools.count(max(1, n_epochs//10), max(1, n_epochs//10))
+
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                         steps,
+                                                         gamma=gamma)
+            
+    elif lr_scheduler == "exponential":
+        gamma = config["lr_gamma"]
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma)  
+    elif lr_scheduler == "plateau":
+        gamma = config["lr_gamma"]
+        patience = config["lr_patience"]
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                               mode='min',
+                                                               factor=gamma,
+                                                               patience=patience,
+                                                               threshold=0.0001,
+                                                               threshold_mode='rel',
+                                                               cooldown=0,
+                                                               min_lr=0,
+                                                               eps=1e-08)
+
+    else:
+        raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
+    
+    # setup datasets
+    train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
+    dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
+    test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
+
+
+    # Setup distiller for model minimization
+    msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
+    tflogger = TensorBoardLogger(msglogger.logdir)
+    tflogger.log_gradients = True
+    pylogger = PythonLogger(msglogger)
+
+    
+    compression_scheduler = None
+    if config["compress"]:
+        print("Activating compression scheduler")
+
+
+        compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
         if not config["no_cuda"]:
-            torch.cuda.set_device(config["gpu_no"])
             model.cuda()
-        optimizer = torch.optim.SGD(model.parameters(), 
-                                    lr=config["lr"], 
-                                    nesterov=config["use_nesterov"],
-                                    weight_decay=config["weight_decay"], 
-                                    momentum=config["momentum"])
-        sched_idx = 0
-        criterion = nn.CrossEntropyLoss()
-        max_acc = 0
 
-        n_epochs = config["n_epochs"]
+
+    # iteration counters 
+    step_no = 0
+
+    for epoch_idx in range(n_epochs):
+        msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
         
-        # Setup learning rate optimizer
-        lr_scheduler = config["lr_scheduler"]
-        scheduler = None
-        if lr_scheduler == "step":
-            gamma = config["lr_gamma"]
-            stepsize = config["lr_stepsize"]
-            if stepsize == 0:
-                stepsize = max(10, n_epochs // 5)
-            
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=stepsize, gamma=gamma)
-            
-        elif lr_scheduler == "multistep":
-            gamma = config["lr_gamma"]
-            steps = config["lr_steps"]
-            if steps == [0]:
-                steps = itertools.count(max(1, n_epochs//10), max(1, n_epochs//10))
+        if compression_scheduler is not None:
+            compression_scheduler.on_epoch_begin(epoch_idx)
 
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                             steps,
-                                                             gamma=gamma)
+        batch_time = tnt.AverageValueMeter()
+        end = time.time()
+        for batch_idx, (model_in, labels) in enumerate(train_loader):
+            model.train()
+            if compression_scheduler is not None:
+                compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, len(train_loader))
                 
-        elif lr_scheduler == "exponential":
-            gamma = config["lr_gamma"]
-            scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma)  
-        elif lr_scheduler == "plateau":
-            gamma = config["lr_gamma"]
-            patience = config["lr_patience"]
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                                   mode='min',
-                                                                   factor=gamma,
-                                                                   patience=patience,
-                                                                   threshold=0.0001,
-                                                                   threshold_mode='rel',
-                                                                   cooldown=0,
-                                                                   min_lr=0,
-                                                                   eps=1e-08)
-
-        else:
-            raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
-        
-        # setup datasets
-        train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
-        dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
-        test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
-
-
-        # Setup distiller for model minimization
-        msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
-        tflogger = TensorBoardLogger(msglogger.logdir)
-        tflogger.log_gradients = True
-        pylogger = PythonLogger(msglogger)
-
-        compression_scheduler = None
-        if config["compress"]:
-            print("Activating compression scheduler")
-
-
-            compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
+            optimizer.zero_grad()
             if not config["no_cuda"]:
-                model.cuda()
+                model_in = model_in.cuda()
+                labels = labels.cuda()
+            model_in = Variable(model_in, requires_grad=False)
+            scores = model(model_in)
+            labels = Variable(labels, requires_grad=False)
+            loss = criterion(scores, labels)
+         
+            if compression_scheduler is not None:
+                compression_scheduler.before_backward_pass(epoch_idx, batch_idx, len(train_loader), loss)
+            loss.backward()
+            optimizer.step()
+            if compression_scheduler is not None:
+                compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, len(train_loader))
 
-        # Export model
-        dummy_input, dummy_label = next(iter(test_loader))
-        if not config["no_cuda"]:
-            dummy_input = dummy_input.cuda()
-       
+            #Log statistics
+            stats_dict = OrderedDict()
+            
+            batch_time.add(time.time() - end)
+            
+            step_no += 1
+         
+            scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
+
+            stats_dict["Accuracy"] = scalar_accuracy
+            stats_dict["Loss"] = scalar_loss
+            stats_dict["Time"] = batch_time.mean
+            stats_dict['LR'] = optimizer.param_groups[0]['lr']
+            stats = ('Peformance/Training/', stats_dict)
+            params = model.named_parameters()
+            distiller.log_training_progress(stats,
+                                            params,
+                                            epoch_idx,
+                                            step_no,
+                                            len(train_set),
+                                            1,
+                                            [tflogger,pylogger])
+            
+         
+            end = time.time()
+
+        # Validate
         model.eval()
-        summary_writer.add_graph(model, dummy_input)
+        accs = []
+        losses = []
+        for model_in, labels in dev_loader:
+            model_in = Variable(model_in, requires_grad=False)
+            if not config["no_cuda"]:
+                model_in = model_in.cuda()
+                labels = labels.cuda()
+            scores = model(model_in)
+            labels = Variable(labels, requires_grad=False)
+            loss = criterion(scores, labels)
+            loss_numeric = loss.item()
+            acc, loss = get_eval(scores, labels, loss)
+            accs.append(acc)
+            losses.append(loss)
+        
+        avg_acc = np.mean(accs)
+        avg_loss = np.mean(losses) 
+        msglogger.info("validation accuracy: {}, loss: {}".format(avg_acc, avg_loss))
+        train_log.write("val,"+str(step_no)+","+str(avg_acc)+","+str(avg_loss)+"\n")
 
-        # iteration counters 
-        step_no = 0
+        
 
-        for epoch_idx in range(n_epochs):
-            msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
-            if compression_scheduler is not None:
-                compression_scheduler.on_epoch_begin(epoch_idx)
-            
-            for batch_idx, (model_in, labels) in enumerate(train_loader):
-                model.train()
-                if compression_scheduler is not None:
-                    compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, len(train_loader))
-                    
-                optimizer.zero_grad()
+        if avg_acc > max_acc:
+            msglogger.info("saving best model...")
+            max_acc = avg_acc
+            model.save(os.path.join(output_dir, "model.pt"))
+
+
+            msglogger.info("saving onnx...")
+            try:
+                model_in, label = next(iter(test_loader), (None, None))
                 if not config["no_cuda"]:
                     model_in = model_in.cuda()
-                    labels = labels.cuda()
-                model_in = Variable(model_in, requires_grad=False)
-                scores = model(model_in)
-                labels = Variable(labels, requires_grad=False)
-                loss = criterion(scores, labels)
-
-                if compression_scheduler is not None:
-                    compression_scheduler.before_backward_pass(epoch_idx, batch_idx, len(train_loader), loss)
-                loss.backward()
-                optimizer.step()
-                if compression_scheduler is not None:
-                    compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, len(train_loader))
-
-                step_no += 1
-
-                scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
-
-                summary_writer.add_scalars('training', {'accuracy': scalar_accuracy,
-                                                        'loss': scalar_loss},
-                                           step_no)
-                train_log.write("train,"+str(step_no)+","+str(scalar_accuracy)+","+str(scalar_loss)+"\n")
+                model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
+            except Exception as e:
+                msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
                 
-                print_eval("train step #{}".format(step_no), scores, labels, loss, logger=msglogger)
-
+        if scheduler is not None:
+            if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
+                scheduler.step(avg_loss)
+            else:
+                scheduler.step()
                 
-                #for module in model.children():
-                #    print(module)
-                #    for parameter in module.parameters():
-                #        print(parameter)
-                        
-
-            # Validate
-            model.eval()
-            accs = []
-            losses = []
-            for model_in, labels in dev_loader:
-                model_in = Variable(model_in, requires_grad=False)
-                if not config["no_cuda"]:
-                    model_in = model_in.cuda()
-                    labels = labels.cuda()
-                scores = model(model_in)
-                labels = Variable(labels, requires_grad=False)
-                loss = criterion(scores, labels)
-                loss_numeric = loss.item()
-                acc, loss = get_eval(scores, labels, loss)
-                accs.append(acc)
-                losses.append(loss)
+        if compression_scheduler is not None:
+            compression_scheduler.on_epoch_begin(epoch_idx)
             
-            avg_acc = np.mean(accs)
-            avg_loss = np.mean(losses) 
-            msglogger.info("validation accuracy: {}, loss: {}".format(avg_acc, avg_loss))
-            train_log.write("val,"+str(step_no)+","+str(avg_acc)+","+str(avg_loss)+"\n")
-
-            summary_writer.add_scalars('validation', {'accuracy': avg_acc,
-                                                      'loss': avg_loss},
-                                       step_no)
-            
-            if avg_acc > max_acc:
-                msglogger.info("saving best model...")
-                max_acc = avg_acc
-                model.save(os.path.join(output_dir, "model.pt"))
-
-
-                msglogger.info("saving onnx...")
-                try:
-                    model_in, label = next(iter(test_loader), (None, None))
-                    if not config["no_cuda"]:
-                        model_in = model_in.cuda()
-                    model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
-                except Exception as e:
-                    msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
-                    
-            if scheduler is not None:
-                if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
-                    scheduler.step(avg_loss)
-                else:
-                    scheduler.step()
-                    
-            if compression_scheduler is not None:
-                compression_scheduler.on_epoch_begin(epoch_idx)
-                
-        model.load(os.path.join(output_dir, "model.pt"))
-        test_accuracy = evaluate(model_name, config, model, test_loader)
-        train_log.write("test,"+str(step_no)+","+str(test_accuracy)+"\n")
-        train_log.close()
+    model.load(os.path.join(output_dir, "model.pt"))
+    test_accuracy = evaluate(model_name, config, model, test_loader)
+    train_log.write("test,"+str(step_no)+","+str(test_accuracy)+"\n")
+    train_log.close()
         
 def main():
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
