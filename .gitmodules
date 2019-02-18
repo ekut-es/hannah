@@ -1,0 +1,6 @@
+[submodule "orig/ML-KWS-for-MC"]
+	path = orig/ML-KWS-for-MC
+	url = https://github.com/ARM-software/ML-KWS-for-MCU.git
+[submodule "orig/ML-KWS-for-MCU"]
+	path = orig/ML-KWS-for-MCU
+	url = https://github.com/ARM-software/ML-KWS-for-MCU.git
