@@ -187,6 +187,8 @@ def train(model_name, config):
     # iteration counters 
     step_no = 0
     batches_per_epoch = len(train_loader)
+    log_every = 0
+    last_log = 0
     
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
@@ -226,20 +228,24 @@ def train(model_name, config):
          
             scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
 
-            stats_dict["Accuracy"] = scalar_accuracy
-            stats_dict["Loss"] = scalar_loss
-            stats_dict["Time"] = batch_time.mean
-            stats_dict['LR'] = optimizer.param_groups[0]['lr']
-            stats = ('Peformance/Training/', stats_dict)
-            params = model.named_parameters()
-            distiller.log_training_progress(stats,
-                                            params,
-                                            epoch_idx,
-                                            batch_idx,
-                                            batches_per_epoch,
-                                            1,
-                                            [tflogger,pylogger])
-            
+            if log_every == 0:
+                log_every = max(1, math.ceil(1 / batch_time.mean))
+            if last_log + log_every <= step_no:
+                last_log = step_no
+                stats_dict["Accuracy"] = scalar_accuracy
+                stats_dict["Loss"] = scalar_loss
+                stats_dict["Time"] = batch_time.mean
+                stats_dict['LR'] = optimizer.param_groups[0]['lr']
+                stats = ('Peformance/Training/', stats_dict)
+                params = model.named_parameters()
+                distiller.log_training_progress(stats,
+                                                params,
+                                                epoch_idx,
+                                                batch_idx,
+                                                batches_per_epoch,
+                                                log_every,
+                                                [tflogger,pylogger])
+                 
          
             end = time.time()
 
