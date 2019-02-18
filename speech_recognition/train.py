@@ -160,7 +160,8 @@ def train(model_name, config):
         raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
     
     # setup datasets
-    train_loader = data.DataLoader(train_set, batch_size=config["batch_size"], shuffle=True, drop_last=True)
+    train_batch_size = config["batch_size"]
+    train_loader = data.DataLoader(train_set, batch_size=train_batch_size, shuffle=True, drop_last=True)
     dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
     test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
 
@@ -185,6 +186,8 @@ def train(model_name, config):
     # iteration counters 
     step_no = 0
 
+    batches_per_epoch = math.ceil(len(train_loader) / train_batch_size)
+    
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
         
@@ -196,7 +199,7 @@ def train(model_name, config):
         for batch_idx, (model_in, labels) in enumerate(train_loader):
             model.train()
             if compression_scheduler is not None:
-                compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, len(train_loader))
+                compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, batches_per_epoch)
                 
             optimizer.zero_grad()
             if not config["no_cuda"]:
@@ -208,11 +211,11 @@ def train(model_name, config):
             loss = criterion(scores, labels)
          
             if compression_scheduler is not None:
-                compression_scheduler.before_backward_pass(epoch_idx, batch_idx, len(train_loader), loss)
+                compression_scheduler.before_backward_pass(epoch_idx, batch_idx, batches_per_epoch, loss)
             loss.backward()
             optimizer.step()
             if compression_scheduler is not None:
-                compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, len(train_loader))
+                compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, batches_per_epoch)
 
             #Log statistics
             stats_dict = OrderedDict()
@@ -233,7 +236,7 @@ def train(model_name, config):
                                             params,
                                             epoch_idx,
                                             step_no,
-                                            len(train_set),
+                                            batches_per_epoch,
                                             1,
                                             [tflogger,pylogger])
             
