@@ -25,6 +25,8 @@ from distiller.data_loggers import *
 import apputils
 import torchnet.meter as tnt
 
+msglogger = None
+
 def get_eval(scores, labels, loss):
     batch_size = labels.size(0)
     accuracy = (torch.max(scores, 1)[1].view(batch_size).data == labels.data).float().sum() / batch_size
@@ -48,6 +50,57 @@ def set_seed(config):
     if not config["no_cuda"]:
         torch.cuda.manual_seed(seed)
     random.seed(seed)
+
+def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
+    losses = {'objective_loss': tnt.AverageValueMeter()}
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+    batch_time = tnt.AverageValueMeter()
+    total_samples = len(data_loader.sampler)
+    batch_size = data_loader.batch_size
+    confusion = tnt.ConfusionMeter(config["n_labels"])
+
+    total_steps = total_samples // batch_size
+    log_every = total_steps // 10
+
+    msglogger.info('%d samples (%d per mini-batch)', total_samples, batch_size)
+
+    model.eval()
+
+    end = time.time()
+
+    for validation_step, (inputs, target) in enumerate(data_loader):
+        with torch.no_grad():
+            if not config["no_cuda"]:
+                inputs, target = inputs.cuda(), target.cuda()
+            # compute output from model
+            output = model(inputs)
+
+            loss = criterion(output, target)
+            # measure accuracy and record loss
+            losses['objective_loss'].add(loss.item())
+            classerr.add(output.data, target)
+            confusion.add(output.data, target)
+
+        batch_time.add(time.time() - end)
+        end = time.time()
+        
+        steps_completed = (validation_step+1)
+    
+        stats = ('Performance/Validation/',
+                 OrderedDict([('Loss', losses['objective_loss'].mean),
+                              ('Top1', classerr.value(1)),
+                              ('Top5', classerr.value(5))]))
+
+        if steps_completed % log_every == 0:
+            distiller.log_training_progress(stats, None, epoch, steps_completed,
+                                            total_steps, log_every, loggers)
+
+    msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
+                   classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
+
+    msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
+
+    return classerr.value(1), losses['objective_loss'].mean
 
 def evaluate(model_name, config, model=None, test_loader=None, logfile=None):
     print("Evaluating network")
@@ -84,6 +137,8 @@ def evaluate(model_name, config, model=None, test_loader=None, logfile=None):
     return np.mean(accs), np.mean(losses)
 
 def train(model_name, config):
+    global msglogger
+
     output_dir = os.path.join(config["output_dir"], model_name)
 
     if config["compress"]:
@@ -257,28 +312,7 @@ def train(model_name, config):
          
             end = time.time()
 
-        # Validate
-        model.eval()
-        accs = []
-        losses = []
-        for model_in, labels in dev_loader:
-            model_in = Variable(model_in, requires_grad=False)
-            if not config["no_cuda"]:
-                model_in = model_in.cuda()
-                labels = labels.cuda()
-            scores = model(model_in)
-            labels = Variable(labels, requires_grad=False)
-            loss = criterion(scores, labels)
-            loss_numeric = loss.item()
-            acc, loss = get_eval(scores, labels, loss)
-            accs.append(acc)
-            losses.append(loss)
-        
-        avg_acc = np.mean(accs)
-        avg_loss = np.mean(losses) 
-        msglogger.info("validation accuracy: {}, loss: {}".format(avg_acc, avg_loss))
-        train_log.write("val,"+str(step_no)+","+str(avg_acc)+","+str(avg_loss)+"\n")
-
+        avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=[tflogger,pylogger], epoch=epoch_idx)    
         
 
         if avg_acc > max_acc:
