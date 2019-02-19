@@ -85,13 +85,19 @@ def evaluate(model_name, config, model=None, test_loader=None, logfile=None):
 
 def train(model_name, config):
     output_dir = os.path.join(config["output_dir"], model_name)
+
+    if config["compress"]:
+        compressed_name = config["compress"]
+        compressed_name = os.path.splitext(os.path.basename(compressed_name))[0]
+        output_dir = os.path.join(output_dir, compressed_name)
+        
+    
     print("All information will be saved to: ", output_dir)
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     train_log = open(os.path.join(output_dir, "train.csv"), "w")
-    
     
     train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
 
@@ -209,6 +215,7 @@ def train(model_name, config):
                 labels = labels.cuda()
             model_in = Variable(model_in, requires_grad=False)
             scores = model(model_in)
+            
             labels = Variable(labels, requires_grad=False)
             loss = criterion(scores, labels)
          
@@ -228,6 +235,7 @@ def train(model_name, config):
          
             scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
 
+            
             if log_every == 0:
                 log_every = max(1, math.ceil(1 / batch_time.mean))
             if last_log + log_every <= step_no:
