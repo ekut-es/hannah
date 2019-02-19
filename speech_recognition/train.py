@@ -86,7 +86,7 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
         
         steps_completed = (validation_step+1)
     
-        stats = ('Performance/Validattion/',
+        stats = ('Performance/Validation/',
                  OrderedDict([('Loss', losses['objective_loss'].mean),
                               ('Top1', classerr.value(1)),
                               ('Top5', classerr.value(5))]))
