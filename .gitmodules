@@ -9,4 +9,6 @@
 	url = https://github.com/castorini/honk.git
 [submodule "speech_recognition/distiller"]
 	path = speech_recognition/distiller
-	url = https://github.com/NervanaSystems/distiller.git
+	url = https://github.com/ekut-es/distiller.git
+	branch = ekut_master
+
