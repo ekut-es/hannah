@@ -272,10 +272,10 @@ class RawSpeechModelInvertedResidual(nn.Module):
         self.features = nn.Sequential(*self.features)
  
         # building classifier
-#        self.classifier = nn.Sequential(
-#            nn.Dropout(0.2),
-#            nn.Linear(self.last_channel, n_class),
-#        )
+        self.classifier = nn.Sequential(
+            nn.Dropout(0.2),
+            nn.Linear(self.last_channel, n_class),
+        )
  
         self._initialize_weights()
 
@@ -283,7 +283,6 @@ class RawSpeechModelInvertedResidual(nn.Module):
         x = self.features(x)
         x = x.mean(2)
         x = self.classifier(x)
-        print(x)
         return x
 
     def _initialize_weights(self):

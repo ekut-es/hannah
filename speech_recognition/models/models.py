@@ -11,7 +11,7 @@ def find_model(conf):
         return honk.SpeechResModel
     elif conf.startswith("honk-cnn"):
         return honk.SpeechModel
-    elif conf.startswith("ekut-raw-inverted-res"):
+    elif conf.startswith("ekut-raw-inv-res"):
         return ekut.RawSpeechModelInvertedResidual
     elif conf.startswith("ekut-raw-cnn"):
         return ekut.RawSpeechModel
