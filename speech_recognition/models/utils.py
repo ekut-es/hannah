@@ -42,10 +42,12 @@ class ConfigType(Enum):
     EKUT_RAW_CNN1          = "ekut-raw-cnn1"
     EKUT_RAW_CNN2          = "ekut-raw-cnn2"
     EKUT_RAW_CNN3          = "ekut-raw-cnn3"
+    EKUT_RAW_CNN4          = "ekut-raw-cnn4"
     EKUT_RAW_CNN1_RELU     = "ekut-raw-cnn1-relu"
     EKUT_RAW_CNN2_RELU     = "ekut-raw-cnn2-relu"
     EKUT_RAW_CNN3_RELU     = "ekut-raw-cnn3-relu"
-
+    EKUT_RAW_CNN4_RELU     = "ekut-raw-cnn4-relu"
+    EKUT_RAW_CNN5_RELU     = "ekut-raw-cnn5-relu"
 
     # Models for Hello Edge
     HELLO_DNN_SMALL = "hello-dnn-small"
