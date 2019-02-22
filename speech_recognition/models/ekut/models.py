@@ -1,4 +1,5 @@
 from enum import Enum
+import math
 
 import torch
 import torch.nn as nn
@@ -62,7 +63,7 @@ class InvertedResidual(nn.Module):
         if self.use_res_connect:
             return x + self.conv(x)
         else:
-    return self.conv(x)
+            return self.conv(x)
 
 class RawSpeechModel(SerializableModule):
     """Speech Recognition on RAW Data using Wolfgang Fuhls Networks"""
@@ -229,12 +230,12 @@ class RawSpeechModel(SerializableModule):
 
 class RawSpeechModelInvertedResidual(nn.Module):
     def __init__(self, config):
-
+        super().__init__()
+        
         n_class = config["n_labels"]
         input_size = config["input_length"]
         width_mult = config["width_mult"]
         
-        super(MobileNetV2, self).__init__()
         block = InvertedResidual
         input_channel = 32
         last_channel = 1280
@@ -253,7 +254,7 @@ class RawSpeechModelInvertedResidual(nn.Module):
         assert input_size % 32 == 0
         input_channel = int(input_channel * width_mult)
         self.last_channel = int(last_channel * width_mult) if width_mult > 1.0 else last_channel
-        self.features = [conv_bn(3, input_channel, 2)]
+        self.features = [conv_bn(1, input_channel, 2)]
 
         # building inverted residual blocks
         for t, c, n, s in interverted_residual_setting:
@@ -264,24 +265,25 @@ class RawSpeechModelInvertedResidual(nn.Module):
                 else:
                     self.features.append(block(input_channel, output_channel, 1, expand_ratio=t))
                 input_channel = output_channel
-
+ 
         # building last several layers
         self.features.append(conv_1x1_bn(input_channel, self.last_channel))
         # make it nn.Sequential
         self.features = nn.Sequential(*self.features)
-
+ 
         # building classifier
-        self.classifier = nn.Sequential(
-            nn.Dropout(0.2),
-            nn.Linear(self.last_channel, n_class),
-        )
-
+#        self.classifier = nn.Sequential(
+#            nn.Dropout(0.2),
+#            nn.Linear(self.last_channel, n_class),
+#        )
+ 
         self._initialize_weights()
 
     def forward(self, x):
         x = self.features(x)
         x = x.mean(2)
         x = self.classifier(x)
+        print(x)
         return x
 
     def _initialize_weights(self):
@@ -542,5 +544,12 @@ configs= {
         pool5_stride = 4, 
         n_feature_maps_6 = 32,
         dnn1_size = 128,
+    ),
+
+    ConfigType.EKUT_RAW_INVERTED_RES1.value : dict(
+        features="raw",
+        dropout_prob=0.5,
+        n_labels=12,
+        width_mult=1.0
     )
 }
