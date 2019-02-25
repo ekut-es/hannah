@@ -357,10 +357,10 @@ def train(model_name, config):
             if not config["no_cuda"]:
                 model_in = model_in.cuda()
                 labels = labels.cuda()
-            model_in = Variable(model_in, requires_grad=False)
+            model_in = Variable(model_in)
             scores = model(model_in)
             
-            labels = Variable(labels, requires_grad=False)
+            labels = Variable(labels)
             loss = criterion(scores, labels)
          
             if compression_scheduler is not None:
