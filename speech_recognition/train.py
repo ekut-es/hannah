@@ -160,9 +160,10 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     for test_step, (model_in, target) in enumerate(test_loader):
         with torch.no_grad():
             model_in = Variable(model_in)
+            target = Variable(target)
             if not config["no_cuda"]:
                 model_in = model_in.cuda()
-                labels = target.cuda()
+                target = target.cuda()
              
             output = model(model_in)
             
