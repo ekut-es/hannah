@@ -15,7 +15,11 @@ def set_speech_format(f):
     f.setsampwidth(2)
     f.setframerate(16000)
 
-def calculate_feature_shape(input_length, features="mel", samplingrate=1600, n_dct_filters=40, stride_ms=10):
+def calculate_feature_shape(input_length,
+                            features="mel",
+                            samplingrate=1600,
+                            n_dct_filters=40,
+                            stride_ms=10):
     if features == "mel":
         hop_length = (samplingrate * stride_ms)  // 1000
         height = math.floor(input_length / hop_length) + 1

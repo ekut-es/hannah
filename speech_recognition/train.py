@@ -243,7 +243,6 @@ def train(model_name, config):
     if config["compress"]:
         print("Activating compression scheduler")
 
-
         compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
         if not config["no_cuda"]:
             model.cuda()
@@ -255,9 +254,8 @@ def train(model_name, config):
     draw_classifier_to_file(model,
                             os.path.join(output_dir, 'model.png'),
                             dummy_input)
-
-    sys.exit(-1)
-            
+    
+    
     # iteration counters 
     step_no = 0
     batches_per_epoch = len(train_loader)
