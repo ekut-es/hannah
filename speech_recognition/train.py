@@ -199,6 +199,9 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
                    classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
 
+    msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
+
+
     global_output_dir = config["output_dir"]
     test_summary_file = os.path.join(global_output_dir, "test_summary.xlsx")
 
@@ -206,8 +209,6 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     
     if os.path.exists(test_summary_file):
         df = pd.read_excel(test_summary_file, sheet_name="Network Performance", index_col=[0])
-
-    print(df)
         
     new_row = pd.Series(summary)
     
@@ -424,8 +425,6 @@ def train(model_name, config):
             
     model.load(os.path.join(output_dir, "model.pt"))
     test_accuracy = evaluate(model_name, config, model, test_loader)
-    train_log.write("test,"+str(step_no)+","+str(test_accuracy)+"\n")
-    train_log.close()
         
 def main():
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
