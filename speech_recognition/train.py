@@ -138,7 +138,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     confusion = tnt.ConfusionMeter(config["n_labels"])
 
     total_steps = total_samples // batch_size
-    log_every = 2 # total_steps // 10
+    log_every = total_steps // 10
 
     msglogger.info('%d samples (%d per mini-batch)', total_samples, batch_size)
         
@@ -183,7 +183,6 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
                               ('Top5', classerr.value(5))]))
 
         if steps_completed % log_every == 0:
-            break
             distiller.log_training_progress(stats, None, 0, steps_completed,
                                             total_steps, log_every, loggers)
 
