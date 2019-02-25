@@ -18,12 +18,16 @@ import itertools
 from . import models as mod
 from . import dataset
 
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
 import distiller
 from distiller.data_loggers import *
 import apputils
 import torchnet.meter as tnt
+
+from .summaries import *
+
 
 msglogger = None
 
@@ -245,6 +249,15 @@ def train(model_name, config):
             model.cuda()
 
 
+    # Print network statistics
+    dummy_input, _ = next(iter(test_loader))
+    model.eval()
+    draw_classifier_to_file(model,
+                            os.path.join(output_dir, 'model.png'),
+                            dummy_input)
+
+    sys.exit(-1)
+            
     # iteration counters 
     step_no = 0
     batches_per_epoch = len(train_loader)

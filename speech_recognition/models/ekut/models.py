@@ -124,8 +124,6 @@ class RawSpeechModel(SerializableModule):
                 x = dropout(x)
                 
             last_size = x.view(1,-1).size(1)
-            print("Last size:", "conv{}".format(count), last_size, x.size())
-
                 
             if  pool_size_name in config:
                 pool_size = config[pool_size_name]
@@ -134,9 +132,7 @@ class RawSpeechModel(SerializableModule):
                 x = pool(x)
                 self.convolutions.append(pool)
 
-
             last_size = x.view(1,-1).size(1)
-            print("Last size:", "pool{}".format(count), last_size, x.size())
 
             count += 1
 
@@ -152,7 +148,6 @@ class RawSpeechModel(SerializableModule):
 
             x = dnn(x)
             last_size = x.view(1,-1).size(1)
-            print("Last size:", "dnn{}".format(count), last_size, x.size())
 
             count += 1
 
@@ -165,65 +160,23 @@ class RawSpeechModel(SerializableModule):
             dropout = nn.Dropout(config["dropout_prob"])
             self.dense.append(dropout)
             x = dropout(x)
-                
 
         self.output = nn.Linear(last_size, n_labels)
         x = self.output(x)
         last_size = x.view(1,-1).size(1)
-        print("Last size:", "dnn{}".format(count), last_size, x.size())
 
-        sum = 0
-        for param in self.parameters():
-            sum += param.view(-1).size(0)
-    
-        print("total_paramters:", sum)
-        
-    def forward(self, x, export=False):
-        
-
-        if export:
-            f = open("layer_outputs.h", "w")
-
-
-        if export:
-            data = x.detach().numpy().flatten()
-            f.write("static fp_t input[] = {" + ",".join((str(x) for x in data)) + "};\n\n")
-
-            
+    def forward(self, x):            
         num = 0
         for layer in self.convolutions:
-
-            if type(layer) == nn.modules.dropout.Dropout:
-                continue
-            
             x = layer(x)
-
-            if export:
-                data = x.detach().numpy().flatten()
-                f.write("static fp_t output_layer" + str(num) + "[] = {" + ",".join((str(x) for x in data)) + "};\n\n")
-
-            
             num += 1
-            
+
         x = x.view(x.size(0),-1)
         for layer in self.dense:            
             x = layer(x)
-
-            if type(layer) == nn.modules.dropout.Dropout:
-                continue
-            
-            if export:
-                data = x.detach().numpy().flatten()
-                f.write("static fp_t output_layer" + str(num) + "[] = {" + ",".join((str(x) for x in data)) + "};\n\n")
-
             num += 1
             
-        x = self.output(x)
-
-        if export:
-            data = x.detach().numpy().flatten()
-            f.write("static fp_t output_layer" + str(num) + "[] = {" + ",".join((str(x) for x in data)) + "};\n\n")
-        
+        x = self.output(x)        
         return x
 
 
@@ -235,6 +188,7 @@ class RawSpeechModelInvertedResidual(nn.Module):
         n_class = config["n_labels"]
         input_size = config["input_length"]
         width_mult = config["width_mult"]
+        dropout_prob = config["dropout_prob"]
         
         block = InvertedResidual
         input_channel = 32
@@ -273,7 +227,7 @@ class RawSpeechModelInvertedResidual(nn.Module):
  
         # building classifier
         self.classifier = nn.Sequential(
-            nn.Dropout(0.2),
+            nn.Dropout(dropout_prob),
             nn.Linear(self.last_channel, n_class),
         )
  
