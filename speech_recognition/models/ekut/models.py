@@ -236,17 +236,17 @@ class RawSpeechModelInvertedResidual(SerializableModule):
         width_mult = config["width_mult"]
         
         block = InvertedResidual
-        input_channel = 32
-        last_channel = 1280
+        input_channel = config["input_channel"]
+        last_channel = config["last_channel"]
         interverted_residual_setting = [
             # t, c, n, s
             [1, 16, 1, 1],
             [6, 24, 2, 2],
             [6, 32, 3, 2],
             [6, 64, 4, 2],
-            [6, 96, 3, 1],
-            [6, 160, 3, 2],
-            [6, 320, 1, 1],
+            [6, 64, 3, 1],
+            [6, 64, 3, 2],
+            [6, 64, 1, 1],
         ]
 
         # building first layer
@@ -267,6 +267,7 @@ class RawSpeechModelInvertedResidual(SerializableModule):
  
         # building last several layers
         self.features.append(conv_1x1_bn(input_channel, self.last_channel))
+
         # make it nn.Sequential
         self.features = nn.Sequential(*self.features)
  
@@ -548,6 +549,8 @@ configs= {
         features="raw",
         dropout_prob=0.5,
         n_labels=12,
-        width_mult=1.0
+        width_mult=1.0,
+        input_channel=8,
+        last_channel=64,
     )
 }
