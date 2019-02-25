@@ -301,7 +301,6 @@ def train(model_name, config):
     dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
     test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
 
-
     # Setup distiller for model minimization
     msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
     tflogger = TensorBoardLogger(msglogger.logdir)
@@ -452,7 +451,7 @@ def main():
     config = builder.config_from_argparse(parser)
     config["model_class"] = mod_cls
 
-    #TODO: Check if results are actually reproducible when seedds are set
+    #TODO: Check if results are actually reproducible when seeds are set
     set_seed(config)
 
     if config["type"] == "train":
