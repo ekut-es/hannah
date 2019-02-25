@@ -1,15 +1,22 @@
 import distiller
+from distiller.data_loggers import PythonLogger, CsvLogger
 import apputils
+import logging
+import pandas as pd
+import torch
+from functools import partial
+from tabulate import tabulate
 
+msglogger = logging.getLogger()
 
-def draw_classifier_to_file(model, png_fname, input, display_param_nodes=False, rankdir='TB', styles=None):
+def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=False, rankdir='TB', styles=None):
     """Draw a PyTorch classifier to a PNG file.  This a helper function that
     simplifies the interface of draw_model_to_file().
 
     Args:
         model: PyTorch model instance
         png_fname (string): PNG file name
-        input (tensor): one batch of input_data
+        dummy_input (tensor): one batch of input_data
         display_param_nodes (boolean): if True, draw the parameter nodes
         rankdir: diagram direction.  'TB'/'BT' is Top-to-Bottom/Bottom-to-Top
                  'LR'/'R/L' is Left-to-Rt/Rt-to-Left
@@ -22,7 +29,8 @@ def draw_classifier_to_file(model, png_fname, input, display_param_nodes=False, 
 
     try:
         model = distiller.make_non_parallel_copy(model)
-        g = apputils.SummaryGraph(model, input)
+        dummy_input = dummy_input.to(distiller.model_device(model))
+        g = apputils.SummaryGraph(model, dummy_input)
         apputils.draw_model_to_file(g, png_fname, display_param_nodes, rankdir, styles)
         print("Network PNG image generation completed")
     except FileNotFoundError:
@@ -30,4 +38,19 @@ def draw_classifier_to_file(model, png_fname, input, display_param_nodes=False, 
         print("Please check that you have graphviz installed.")
         print("\t$ sudo apt-get install graphviz or")
         print("\t$ sudo yum install graphviz")
+
+
+def model_summary(model, dummy_input, what):
+    if what == 'sparsity':
+        pylogger = PythonLogger(msglogger)
+        csvlogger = CsvLogger('weights.csv')
+
+        distiller.log_weights_sparsity(model, -1, loggers=[pylogger, csvlogger])
+
+    elif what == 'performance':
+        df = distiller.model_performance_summary(model, dummy_input, dummy_input.shape[0])
+        t = tabulate(df, headers='keys', tablefmt='psql', floatfmt=".5f")
+        total_macs = df['MACs'].sum()
+        print(t)
+        print("Total MACs: " + "{:,}".format(total_macs))
 

@@ -17,7 +17,7 @@ import itertools
 
 from . import models as mod
 from . import dataset
-
+from .utils import set_seed
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
@@ -47,13 +47,6 @@ def print_eval(name, scores, labels, loss, end="\n", logger=None):
     return accuracy, loss
 
 
-def set_seed(config):
-    seed = config["seed"]
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    if not config["no_cuda"]:
-        torch.cuda.manual_seed(seed)
-    random.seed(seed)
 
 def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
     losses = {'objective_loss': tnt.AverageValueMeter()}
@@ -149,8 +142,7 @@ def train(model_name, config):
         compressed_name = config["compress"]
         compressed_name = os.path.splitext(os.path.basename(compressed_name))[0]
         output_dir = os.path.join(output_dir, compressed_name)
-        
-    
+            
     print("All information will be saved to: ", output_dir)
     
     if not os.path.exists(output_dir):
@@ -253,10 +245,18 @@ def train(model_name, config):
     model.eval()
     if not config["no_cuda"]:
         dummy_input.cuda()
+        model.cuda()
+
+    print(dummy_input)
     draw_classifier_to_file(model,
                             os.path.join(output_dir, 'model.png'),
                             dummy_input)
 
+    model_summary(model, dummy_input, 'sparsity')
+    model_summary(model, dummy_input, 'performance')
+
+    
+    
     # iteration counters 
     step_no = 0
     batches_per_epoch = len(train_loader)
@@ -295,9 +295,7 @@ def train(model_name, config):
 
             #Log statistics
             stats_dict = OrderedDict()
-            
             batch_time.add(time.time() - end)
-            
             step_no += 1
          
             scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
@@ -378,7 +376,10 @@ def main():
     parser.add_argument("--type", choices=["train", "eval"], default="train", type=str)
     config = builder.config_from_argparse(parser)
     config["model_class"] = mod_cls
+
+    #TODO: Check if results are actually reproducible when seedds are set
     set_seed(config)
+
     if config["type"] == "train":
         train(model_name, config)
     elif config["type"] == "eval":

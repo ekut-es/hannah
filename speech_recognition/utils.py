@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import numpy as np
+import random
 
 class SerializableModule(nn.Module):
     def __init__(self):
@@ -13,3 +15,12 @@ class SerializableModule(nn.Module):
 
     def export_onnx(self, filename):
         torch.onnx.export(self, dummy_input,filename, verbose=True) 
+
+
+def set_seed(config):
+    seed = config["seed"]
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    if not config["no_cuda"]:
+        torch.cuda.manual_seed(seed)
+    random.seed(seed)
