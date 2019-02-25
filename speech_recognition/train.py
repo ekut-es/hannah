@@ -252,7 +252,7 @@ def train(model_name, config):
                             os.path.join(output_dir, 'model.png'),
                             dummy_input)
 
-    model_summary(model, dummy_input, 'sparsity')
+    #model_summary(model, dummy_input, 'sparsity')
     model_summary(model, dummy_input, 'performance')
 
     
