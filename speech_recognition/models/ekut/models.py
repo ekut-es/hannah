@@ -192,19 +192,33 @@ class RawSpeechModelInvertedResidual(SerializableModule):
         block = InvertedResidual
         input_channel = config["input_channel"]
         last_channel = config["last_channel"]
+#        interverted_residual_setting = [
+#            # t, c, n, s
+#            [1, 16, 1, 1],
+#            [6, 24, 2, 2],
+#            [6, 32, 3, 2],
+#            [6, 64, 4, 2],
+#            [6, 64, 3, 1],
+#            [6, 64, 3, 2],
+#            [6, 64, 1, 1],
+#        ]
+ 
         interverted_residual_setting = [
             # t, c, n, s
-            [1, 16, 1, 1],
-            [6, 24, 2, 2],
-            [6, 32, 3, 2],
-            [6, 64, 4, 2],
-            [6, 64, 3, 1],
-            [6, 64, 3, 2],
-            [6, 64, 1, 1],
+            [1, 16, 1, 2],
+            [1, 24, 1, 2],
+            [1, 32, 1, 2],
+            [1, 64, 1, 2],
+            [1, 64, 1, 2],
+            [1, 64, 1, 2],
+            [1, 64, 1, 2],
+            [1, 64, 1, 2],
+            [1, 64, 1, 2],
+            [1, 64, 1, 2],
+            [1, 64, 1, 2],
         ]
 
         # building first layer
-        assert input_size % 32 == 0
         input_channel = int(input_channel * width_mult)
         self.last_channel = int(last_channel * width_mult) if width_mult > 1.0 else last_channel
         self.features = [conv_bn(1, input_channel, 2)]
@@ -505,6 +519,6 @@ configs= {
         n_labels=12,
         width_mult=1.0,
         input_channel=8,
-        last_channel=64,
+        last_channel=24,
     )
 }
