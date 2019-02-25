@@ -31,22 +31,23 @@ from .summaries import *
 
 msglogger = None
 
+def get_output_dir(model_name, config):
+    
+    output_dir = os.path.join(config["output_dir"], model_name)
+
+    if config["compress"]:
+        compressed_name = config["compress"]
+        compressed_name = os.path.splitext(os.path.basename(compressed_name))[0]
+        output_dir = os.path.join(output_dir, compressed_name)
+
+    return output_dir
+
 def get_eval(scores, labels, loss):
     batch_size = labels.size(0)
     accuracy = (torch.max(scores, 1)[1].view(batch_size).data == labels.data).float().sum() / batch_size
     loss = loss.item()
 
     return accuracy.item(), loss
-
-def print_eval(name, scores, labels, loss, end="\n", logger=None):
-    accuracy, loss = get_eval(scores, labels, loss) 
-    if logger:
-        logger.info("{} accuracy: {:>5}, loss: {:<25}".format(name, accuracy, loss))
-    else:
-        print("{} accuracy: {:>5}, loss: {:<25}".format(name, accuracy, loss), end=end)
-    return accuracy, loss
-
-
 
 def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
     losses = {'objective_loss': tnt.AverageValueMeter()}
@@ -58,6 +59,7 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
 
     total_steps = total_samples // batch_size
     log_every = total_steps // 10
+
 
     msglogger.info('%d samples (%d per mini-batch)', total_samples, batch_size)
 
@@ -99,56 +101,93 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
 
     return classerr.value(1), losses['objective_loss'].mean
 
-def evaluate(model_name, config, model=None, test_loader=None, logfile=None):
-    print("Evaluating network")
+def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
+    global msglogger
+    if not msglogger:
+        output_dir = get_output_dir(model_name, config)
+        msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
+
+    if not loggers:
+        loggers = [PythonLogger(msglogger)]
+        
+    msglogger.info("Evaluating network")
     
     if not test_loader:
         _, _, test_set = dataset.SpeechDataset.splits(config)
         test_loader = data.DataLoader(test_set, batch_size=1)
+        
     if not config["no_cuda"]:
         torch.cuda.set_device(config["gpu_no"])
+        
     if not model:
         model = config["model_class"](config)
-        model.load(config["input_file"])
+        if config["input_file"]:
+            model.load(config["input_file"])
+        
     if not config["no_cuda"]:
         torch.cuda.set_device(config["gpu_no"])
         model.cuda()
-    model.eval()
+
     criterion = nn.CrossEntropyLoss()
-    accs = []
-    losses = []
-    for model_in, labels in test_loader:
-        model_in = Variable(model_in, requires_grad=False)
-        if not config["no_cuda"]:
-            model_in = model_in.cuda()
-            labels = labels.cuda()
+
+    losses = {'objective_loss': tnt.AverageValueMeter()}
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+    batch_time = tnt.AverageValueMeter()
+    total_samples = len(test_loader.sampler)
+    batch_size = test_loader.batch_size
+    confusion = tnt.ConfusionMeter(config["n_labels"])
+
+    total_steps = total_samples // batch_size
+    log_every = total_steps // 10
+
+    msglogger.info('%d samples (%d per mini-batch)', total_samples, batch_size)
         
-        scores = model(model_in)
-        labels = Variable(labels, requires_grad=False)
-        loss = criterion(scores, labels)
-        acc, loss = get_eval(scores, labels, loss)
-        accs.append(acc)
-        losses.append(loss)
+    model.eval()
+    
+
+    end = time.time()
+    
+    for test_step, (model_in, target) in enumerate(test_loader):
+        with torch.no_grad():
+            model_in = Variable(model_in)
+            if not config["no_cuda"]:
+                model_in = model_in.cuda()
+                labels = target.cuda()
+             
+            output = model(model_in)
+            
+            loss = criterion(output, target)
+            # measure accuracy and record loss
+            losses['objective_loss'].add(loss.item())
+            classerr.add(output.data, target)
+            confusion.add(output.data, target)
+
+        batch_time.add(time.time() - end)
+        end = time.time()
         
-    print("final test accuracy: {}, loss: {}".format(np.mean(accs), np.mean(losses)))
+        steps_completed = (test_step+1)
+    
+        stats = ('Performance/Test/',
+                 OrderedDict([('Loss', losses['objective_loss'].mean),
+                              ('Top1', classerr.value(1)),
+                              ('Top5', classerr.value(5))]))
+
+        if steps_completed % log_every == 0:
+            distiller.log_training_progress(stats, None, 0, steps_completed,
+                                            total_steps, log_every, loggers)
+        
+    msglogger.info("test accuracy: {}, loss: {}".format(np.mean(accs), np.mean(losses)))
     return np.mean(accs), np.mean(losses)
 
 def train(model_name, config):
     global msglogger
 
-    output_dir = os.path.join(config["output_dir"], model_name)
-
-    if config["compress"]:
-        compressed_name = config["compress"]
-        compressed_name = os.path.splitext(os.path.basename(compressed_name))[0]
-        output_dir = os.path.join(output_dir, compressed_name)
-            
+    output_dir = get_output_dir(model_name, config)
+    
     print("All information will be saved to: ", output_dir)
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
-    train_log = open(os.path.join(output_dir, "train.csv"), "w")
     
     train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
 
@@ -255,7 +294,6 @@ def train(model_name, config):
     #model_summary(model, dummy_input, 'sparsity')
     model_summary(model, dummy_input, 'performance')
 
-    
     
     # iteration counters 
     step_no = 0
