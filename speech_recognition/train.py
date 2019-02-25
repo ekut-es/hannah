@@ -251,11 +251,12 @@ def train(model_name, config):
     # Print network statistics
     dummy_input, _ = next(iter(test_loader))
     model.eval()
+    if not config["no_cuda"]:
+        dummy_input.cuda()
     draw_classifier_to_file(model,
                             os.path.join(output_dir, 'model.png'),
                             dummy_input)
-    
-    
+
     # iteration counters 
     step_no = 0
     batches_per_epoch = len(train_loader)
