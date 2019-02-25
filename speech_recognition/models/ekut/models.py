@@ -161,7 +161,6 @@ class RawSpeechModel(SerializableModule):
                 self.dense.append(activation)
                 x = activation(x)
 
-
             dropout = nn.Dropout(config["dropout_prob"])
             self.dense.append(dropout)
             x = dropout(x)
@@ -228,7 +227,7 @@ class RawSpeechModel(SerializableModule):
 
 
 
-class RawSpeechModelInvertedResidual(nn.Module):
+class RawSpeechModelInvertedResidual(SerializableModule):
     def __init__(self, config):
         super().__init__()
         
