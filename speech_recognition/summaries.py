@@ -6,6 +6,7 @@ import pandas as pd
 import torch
 from functools import partial
 from tabulate import tabulate
+from collections import OrderedDict
 
 msglogger = logging.getLogger()
 
@@ -60,3 +61,10 @@ def model_summary(model, dummy_input, what):
         msglogger.info("Total Activations: " + "{:,}".format(total_acts))
         msglogger.info("Estimated Activations: " + "{:,}".format(estimated_acts))
 
+        res = OrderedDict()
+        res["Total MACs"] = total_macs
+        res["Total Weights"] = total_weights
+        res["Total Activations"] = total_acts
+        res["Estimated Activations"] = estimated_acts
+
+        return res

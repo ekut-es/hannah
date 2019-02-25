@@ -138,7 +138,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     confusion = tnt.ConfusionMeter(config["n_labels"])
 
     total_steps = total_samples // batch_size
-    log_every = total_steps // 10
+    log_every = 2 # total_steps // 10
 
     msglogger.info('%d samples (%d per mini-batch)', total_samples, batch_size)
         
@@ -146,6 +146,16 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     
 
     end = time.time()
+
+    # Print network statistics
+    dummy_input, _ = next(iter(test_loader))
+    model.eval()
+    if not config["no_cuda"]:
+        dummy_input.cuda()
+        model.cuda()
+        
+    performance_summary = model_summary(model, dummy_input, 'performance')
+
     
     for test_step, (model_in, target) in enumerate(test_loader):
         with torch.no_grad():
@@ -173,11 +183,39 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
                               ('Top5', classerr.value(5))]))
 
         if steps_completed % log_every == 0:
+            break
             distiller.log_training_progress(stats, None, 0, steps_completed,
                                             total_steps, log_every, loggers)
+
+    summary = OrderedDict()
+    summary["Model Name"] = model_name
+    summary["Accuracy Top1"] = classerr.value()[0]
+    summary["Accuracy Top5"] = classerr.value()[1]
+    summary["Loss"] = losses['objective_loss'].mean 
+
+    for key, val in performance_summary.items():
+        summary[key] = val
+    
+    msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
+                   classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
+
+    global_output_dir = config["output_dir"]
+    test_summary_file = os.path.join(global_output_dir, "test_summary.xlsx")
+
+    df = pd.DataFrame(columns=[k for k in summary.keys() if k != "Model Name"], index=["Model Name"])
+    
+    if os.path.exists(test_summary_file):
+        df = pd.read_excel(test_summary_file, sheet_name="Network Performance", index_col=[0])
+
+    print(df)
         
-    msglogger.info("test accuracy: {}, loss: {}".format(np.mean(accs), np.mean(losses)))
-    return np.mean(accs), np.mean(losses)
+    new_row = pd.Series(summary)
+    
+    df.loc[new_row["Model Name"]] = new_row
+    
+    df.to_excel(test_summary_file, sheet_name="Network Performance")
+    
+    return summary
 
 def train(model_name, config):
     global msglogger
@@ -292,7 +330,7 @@ def train(model_name, config):
                             dummy_input)
 
     #model_summary(model, dummy_input, 'sparsity')
-    model_summary(model, dummy_input, 'performance')
+    performance_summary = model_summary(model, dummy_input, 'performance')
 
     
     # iteration counters 

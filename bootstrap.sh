@@ -70,4 +70,5 @@ python3.6 -m pip install --user ipywidgets
 python3.6 -m pip install --user bqplot
 python3.6 -m pip install --user pytest
 python3.6 -m pip install --user xlsxwriter
+python3.6 -m pip install --user xlrd
 python3.6 -m pip install --user gitpython
