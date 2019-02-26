@@ -301,7 +301,6 @@ def train(model_name, config):
     dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
     test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
 
-
     # Setup distiller for model minimization
     msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
     tflogger = TensorBoardLogger(msglogger.logdir)
@@ -357,10 +356,10 @@ def train(model_name, config):
             if not config["no_cuda"]:
                 model_in = model_in.cuda()
                 labels = labels.cuda()
-            model_in = Variable(model_in, requires_grad=False)
+            model_in = Variable(model_in)
             scores = model(model_in)
             
-            labels = Variable(labels, requires_grad=False)
+            labels = Variable(labels)
             loss = criterion(scores, labels)
          
             if compression_scheduler is not None:
@@ -452,7 +451,7 @@ def main():
     config = builder.config_from_argparse(parser)
     config["model_class"] = mod_cls
 
-    #TODO: Check if results are actually reproducible when seedds are set
+    #TODO: Check if results are actually reproducible when seeds are set
     set_seed(config)
 
     if config["type"] == "train":
