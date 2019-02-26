@@ -48,9 +48,12 @@ class ConfigType(Enum):
     EKUT_RAW_CNN3_RELU     = "ekut-raw-cnn3-relu"
     EKUT_RAW_CNN4_RELU     = "ekut-raw-cnn4-relu"
     EKUT_RAW_CNN5_RELU     = "ekut-raw-cnn5-relu"
+    EKUT_RAW_CNN6_RELU     = "ekut-raw-cnn6-relu"
     EKUT_RAW_INVERTED_RES1 = "ekut-raw-inv-res1"
-    
+    EKUT_RAW_DEEP_CNN1     = "ekut-raw-deep-cnn1"
+
     # Models for Hello Edge
+    # These models use mel features
     HELLO_DNN_SMALL = "hello-dnn-small"
     HELLO_DNN_MEDIUM = "hello-dnn-medium"
     HELLO_DNN_LARGE = "hello-dnn-large"
