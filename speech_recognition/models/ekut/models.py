@@ -121,9 +121,9 @@ class RawSpeechModel(SerializableModule):
                     x = activation(x)
 
 
-                dropout = nn.Dropout(config["dropout_prob"])
-                self.convolutions.append(dropout)
-                x = dropout(x)
+                #dropout = nn.Dropout(config["dropout_prob"])
+                #self.convolutions.append(dropout)
+                #x = dropout(x)
                 
             last_size = x.view(1,-1).size(1)
                 
