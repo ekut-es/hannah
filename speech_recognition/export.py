@@ -408,6 +408,74 @@ def is_output(name : Text, graph : ComputeGraph) -> bool:
     return False
 
 
+class MemoryManager():
+    def __init__(self):
+        self.max_memory = 0
+        self.free_list = []
+
+        self.current_allocation_id = 1
+
+    def allocate_memory(self, buffer_size):
+        print("allocatiing", buffer_size)
+        print(self.free_list)
+        for block in self.free_list:
+            if buffer_size <= block["size"]:
+                if block["size"] != buffer_size:
+                    new_block = dict(id = self.current_allocation_id,
+                                     start = copy(block["start"]),
+                                     size = buffer_size)
+                    block["size"] -= buffer_size
+                    block["start"] += buffer_size
+                    print("block:", block)
+                    print("new_block: ", new_block)
+                    self.current_allocation_id += 1
+                    return new_block
+                else:
+                    return block
+
+        new_block = dict(id = self.current_allocation_id,
+                         start = self.max_memory,
+                         size = buffer_size)
+        self.max_memory += buffer_size
+        self.current_allocation_id += 1
+
+        print("freshly allocated block", new_block)
+        
+        return new_block
+        
+    def free_memory(self, buffer):
+        print("deallocating", buffer)
+        def find_buffer(start, size):
+            end = start + size
+            for buffer in self.free_list:
+                buffer_start = buffer["start"]
+                buffer_end = buffer["start"] + buffer["size"]
+
+                max_start = max(start, buffer_start)
+                min_end = min(end, buffer_end)
+
+                if max_start <= min_end:
+                    return buffer
+
+            return None
+
+        overlapping_buffer = find_buffer(buffer ["start"], buffer["size"])
+        while(overlapping_buffer):
+            self.free_list.remove(overlapping_buffer)
+
+            start = min(buffer["start"], overlapping_buffer["start"])
+            end = max(buffer["start"]+buffer["size"], overlapping_buffer["start"]+overlapping_buffer["size"])
+
+            buffer["start"] = start
+            buffer["size"] = end - start
+
+            overlapping_buffer = find_buffer(buffer["start"], buffer["size"])
+            
+        self.free_list.append(buffer)
+        self.free_list.sort(key = lambda x : x["start"])
+
+        print("Free list", self.free_list)
+        
 def reduce_mult(data : Iterable[int]) -> int:
     return reduce(lambda x, y: x * y, data, 1)
 
@@ -423,8 +491,6 @@ def export_model(config):
     for op_id, op in enumerate(onnx_model.graph.node):
         if op.op_type == "Dropout":
             op.attribute[0].f = 0.0
-
-    #TODO: remove BatchNorm
         
     print("Running model optimization")
     optimized_model = optimizer.optimize(onnx_model, ["eliminate_nop_dropout"])
@@ -449,7 +515,7 @@ def export_model(config):
                 
         if is_constant:
             remove_node(graph, node)
-
+            
     # Add shape information form constant propagation:
     for var, res in constant_states.items():
         if var in graph.shape_dict:
@@ -460,7 +526,27 @@ def export_model(config):
         elif res.shape is not None:
             graph.shape_dict[var] = res.shape
                 
+
+    # Remove nop nodes
+    removed_nops = []
+    for node in graph.nodes:
+        if node.op_type == "Reshape":
+            reshape_state = constant_states[node.inputs[1]]
+            if (reshape_state.value == [1, -1]).all():
+                removed_input = node.inputs[0]
+                output = node.outputs[0]
+                removed_nops.append(node)
                 
+                for node in graph.nodes:
+                    for num, input in enumerate(node.inputs):
+                        if input == output:
+                            print("node", node.name, "replacing input", input, "with", removed_input)
+                            node.inputs[num] = removed_input
+
+    for node in removed_nops:
+        print("Removing node:", node.name)
+        graph.nodes.remove(node)
+
     # Generate Node Parameters
     parameter_header = "#ifndef NETWORK_PARAMETERS_H\n";
     parameter_header += "#define NETWORK_PARAMETERS_H\n";
@@ -524,6 +610,10 @@ def export_model(config):
     implementation_code = ""
     buffer_code = ""
     buffer_code_end = ""
+
+    memory_manager = None
+    #memory_manager = MemoryManager()
+    allocated_buffers = {}
     
     for num, node in enumerate(graph.nodes):
         implementation_code += "  //Layer " + str(num) + " " +  node.name + " " +   node.op_type + "\n"
@@ -538,7 +628,6 @@ def export_model(config):
             attrs = node.attrs
 
             input_tensor = ""
-            
             # Get Input Size
             input_id = node.inputs[0]
             input_shape = get_shape(input_id, graph, node)
@@ -567,10 +656,23 @@ def export_model(config):
 
             dilation_size = attrs["dilations"][0]
 
+            #Allocate output
+            if not is_output(node.outputs[0], graph):
+                if memory_manager:
+                    output_buffer = memory_manager.allocate_memory(reduce_mult(output_shape))
+                    allocated_buffers[node.outputs[0]] = output_buffer
+
+                    output_buffer = "(&global_buffer[{}])".format(output_buffer["start"])
+                    
             input_buffer_size = reduce_mult(input_shape)
             if not is_input(input_id, graph):
-                buffer_code += "  static fp_t {buffer_name}[{buffer_size}];\n".format(buffer_size=input_buffer_size, buffer_name=input_buffer)
-
+                if memory_manager:
+                    input_buffer = allocated_buffers[node.inputs[0]]
+                    memory_manager.free_memory(input_buffer)
+                    input_buffer = "(&global_buffer[{}])".format(input_buffer["start"])
+                else:
+                    buffer_code += "  static fp_t {buffer_name}[{buffer_size}];\n".format(buffer_size=input_buffer_size, buffer_name=input_buffer)
+                
             
             implementation_code += """
   for(int i = 0; i < {output_channels}; i++){{
@@ -607,9 +709,6 @@ def export_model(config):
            bias_buffer=bias_buffer,
            dilation_size=dilation_size)
 
-
-            
-            
         elif node.op_type == "Gemm":
             print("generating fully connected layer")
 
@@ -634,11 +733,23 @@ def export_model(config):
 
             input_buffer_size = reduce_mult(input_shape)
             if not is_input(input_id, graph):
-                buffer_code += "  static fp_t {buffer_name}[{buffer_size}];\n".format(buffer_size=input_buffer_size, buffer_name=input_buffer)
-            
-            
+                if not memory_manager:
+                    buffer_code += "  static fp_t {buffer_name}[{buffer_size}];\n".format(buffer_size=input_buffer_size, buffer_name=input_buffer)
+
             coef_buffer = node.name + "_coef"
             bias_buffer = node.name + "_bias"
+
+            if memory_manager:
+                if not is_output(node.outputs[0], graph):
+                    output_buffer = memory_manager.allocate_memory(reduce_mult(output_shape))
+                    allocated_buffers[node.outputs[0]] = output_buffer
+                    output_buffer = "(&global_buffer[{}])".format(output_buffer["start"])
+     
+                if not is_input(node.inputs[0], graph):
+                    input_buffer = allocated_buffers[node.inputs[0]]
+                    memory_manager.free_memory(input_buffer)
+                    del allocated_buffers[node.inputs[0]]
+                    input_buffer = "(&global_buffer[{}])".format(input_buffer["start"])
             
             implementation_code += """
   fully_connected_naive({input_buffer}, {input_size}, 
@@ -674,8 +785,21 @@ def export_model(config):
 
             input_buffer_size = reduce_mult(input_shape)
             if not is_input(input_id, graph):
-                buffer_code += "  static fp_t {buffer_name}[{buffer_size}];\n".format(buffer_size=input_buffer_size, buffer_name=input_buffer)
-            
+                if not memory_manager:
+                    buffer_code += "  static fp_t {buffer_name}[{buffer_size}];\n".format(buffer_size=input_buffer_size, buffer_name=input_buffer)
+
+            if memory_manager:
+                output_shape = get_shape(node.outputs[0], graph, node)
+                if not is_output(node.outputs[0], graph):
+                    output_buffer = memory_manager.allocate_memory(reduce_mult(output_shape))
+                    allocated_buffers[node.outputs[0]] = output_buffer
+                    output_buffer = "(&global_buffer[{}])".format(output_buffer["start"])
+                 
+                if not is_input(node.inputs[0], graph):
+                    input_buffer = allocated_buffers[node.inputs[0]]
+                    memory_manager.free_memory(input_buffer)
+                    del allocated_buffers[node.inputs[0]]
+                    input_buffer = "(&global_buffer[{}])".format(input_buffer["start"])
             
             implementation_code += """
   for(int i = 0; i < {input_channels}; i++){{
@@ -708,9 +832,23 @@ def export_model(config):
 
             input_buffer_size = reduce_mult(input_shape)
             if not is_input(input_id, graph):
-                buffer_code += "  static fp_t {buffer_name}[{buffer_size}];\n".format(buffer_size=input_buffer_size, buffer_name=input_buffer)
+                if not memory_manager:
+                    buffer_code += "  static fp_t {buffer_name}[{buffer_size}];\n".format(buffer_size=input_buffer_size, buffer_name=input_buffer)
             
-            
+
+            if memory_manager:
+                output_shape = get_shape(node.outputs[0], graph, node)
+                if not is_output(node.outputs[0], graph):
+                    output_buffer = memory_manager.allocate_memory(reduce_mult(output_shape))
+                    allocated_buffers[node.outputs[0]] = output_buffer
+                    output_buffer = "(&global_buffer[{}])".format(output_buffer["start"])
+                 
+                if not is_input(node.inputs[0], graph):
+                    input_buffer = allocated_buffers[node.inputs[0]]
+                    memory_manager.free_memory(input_buffer)
+                    del allocated_buffers[node.inputs[0]]
+                    input_buffer = "(&global_buffer[{}])".format(input_buffer["start"])
+                
             implementation_code += """
   relu_naive({input_buffer}, {input_height}, {input_width}, {output_buffer});
 """.format(input_buffer = input_buffer, output_buffer=output_buffer,
@@ -718,23 +856,14 @@ def export_model(config):
             
         else:
             print("Unhandled node type:", node.op_type)
-            print("Assuming NOP")
+            print("Doing nothing")
 
-
-            input_id = node.inputs[0]
-            input_shape = get_shape(input_id, graph, node)
-            input_buffer = "buffer" + input_id
-            if is_input(input_id, graph):
-                input_buffer = "input" + input_id
             
-            output_buffer = "buffer" + node.outputs[0]
-            if is_output(node.outputs[0], graph):
-                output_buffer = "output" + node.outputs[0]
-
-            buffer_code_end += "  static fp_t *{input_name} = {output_name};\n".format(input_name=input_buffer, output_name=output_buffer)
-        
         implementation_code += "\n"
 
+    if memory_manager:
+        buffer_code += "  fp_t global_buffer[{}];\n".format(memory_manager.max_memory)
+        
     buffer_code += buffer_code_end
         
     network_code += buffer_code

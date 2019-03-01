@@ -324,7 +324,6 @@ def train(model_name, config):
         dummy_input.cuda()
         model.cuda()
 
-    print(dummy_input)
     draw_classifier_to_file(model,
                             os.path.join(output_dir, 'model.png'),
                             dummy_input)
