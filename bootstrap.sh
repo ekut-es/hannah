@@ -19,6 +19,11 @@ do
 	    user_arg=""
 	    shift
 	    ;;
+	--global)
+	    create_pyenv=0
+	    user_arg=""
+	    shift
+	    ;;
 	*)    # unknown option
 	    echo "Found unknown option: $key"
 	    exit 1
