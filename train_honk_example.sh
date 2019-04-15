@@ -1,0 +1,1 @@
+python3.6 -m models.honk.utils.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 26 --weight_decay 0.00001 --lr 0.1 0.01 0.001 --model res8-narrow --gpu_no 0
