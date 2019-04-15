@@ -1,3 +1,4 @@
+*.simg
 *~
 *.pyc
 .DS_Store
