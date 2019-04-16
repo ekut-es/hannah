@@ -40,6 +40,8 @@ def get_output_dir(model_name, config):
         compressed_name = os.path.splitext(os.path.basename(compressed_name))[0]
         output_dir = os.path.join(output_dir, compressed_name)
 
+    output_dir = os.path.abspath(output_dir)
+        
     return output_dir
 
 def get_eval(scores, labels, loss):
@@ -101,6 +103,14 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
 
     return classerr.value(1), losses['objective_loss'].mean
 
+def get_model(config, model=None):
+    if not model:
+        model = config["model_class"](config)
+        if config["input_file"]:
+            model.load(config["input_file"])
+        
+    return model
+
 def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     global msglogger
     if not msglogger:
@@ -116,13 +126,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
         _, _, test_set = dataset.SpeechDataset.splits(config)
         test_loader = data.DataLoader(test_set, batch_size=1)
         
-    if not config["no_cuda"]:
-        torch.cuda.set_device(config["gpu_no"])
-        
-    if not model:
-        model = config["model_class"](config)
-        if config["input_file"]:
-            model.load(config["input_file"])
+    model = get_model(config, model)
         
     if not config["no_cuda"]:
         torch.cuda.set_device(config["gpu_no"])
@@ -218,6 +222,11 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     
     return summary
 
+def dump_config(output_dir, config):
+    with open(os.path.join(output_dir, 'config.json'), "w") as o:
+              s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
+              o.write(s)
+
 def train(model_name, config):
     global msglogger
 
@@ -233,22 +242,44 @@ def train(model_name, config):
     config["width"] = train_set.width
     config["height"] = train_set.height
 
-    with open(os.path.join(output_dir, 'config.json'), "w") as o:
-              s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
-              o.write(s)
+    dump_config(output_dir, config)
 
-    # Setip optimizers
-    model = config["model_class"](config)
-    if config["input_file"]:
-        model.load(config["input_file"])
+    model = get_model(config)
+    
     if not config["no_cuda"]:
         torch.cuda.set_device(config["gpu_no"])
         model.cuda()
-    optimizer = torch.optim.SGD(model.parameters(), 
-                                lr=config["lr"], 
-                                nesterov=config["use_nesterov"],
-                                weight_decay=config["weight_decay"], 
-                                momentum=config["momentum"])
+
+    # Setup optimizers
+    optimizer = None
+    if config["optimizer"] == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), 
+                                    lr=config["lr"], 
+                                    nesterov=config["use_nesterov"],
+                                    weight_decay=config["weight_decay"], 
+                                    momentum=config["momentum"])
+    elif config["optimizer"] == "adadelta":
+        optimizer = torch.optim.Adadelta(model.parameters(),
+                                         lr=config["lr"],
+                                         rho=config["opt_rho"],
+                                         eps=config["opt_eps"],
+                                         weight_decay=config["weight_decay"])
+    elif config["optimizer"] == "adagrad":
+        optimizer = torch.optim.Adagrad(model.parameters(),
+                                        lr=config["lr"],
+                                        lr_decay=config["lr_decay"],
+                                        weight_decay=config["weight_decay"])
+
+    elif config["optimizer"] == "adam":
+        optimizer = torch.optim.Adam(model.parameters(),
+                                     lr=config["lr"],
+                                     betas=config["opt_betas"],
+                                     eps=config["opt_eps"],
+                                     weight_decay=config["weight_decay"],
+                                     amsgrad=config["use_amsgrad"])
+    else:
+        raise Exception("Unknown Optimizer: {}".format(config["optimizer"]))
+        
     sched_idx = 0
     criterion = nn.CrossEntropyLoss()
     max_acc = 0
@@ -328,10 +359,8 @@ def train(model_name, config):
                             os.path.join(output_dir, 'model.png'),
                             dummy_input)
 
-    #model_summary(model, dummy_input, 'sparsity')
     performance_summary = model_summary(model, dummy_input, 'performance')
 
-    
     # iteration counters 
     step_no = 0
     batches_per_epoch = len(train_loader)
@@ -423,33 +452,54 @@ def train(model_name, config):
             
     model.load(os.path.join(output_dir, "model.pt"))
     test_accuracy = evaluate(model_name, config, model, test_loader)
-        
-def main():
+
+def build_config():
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", choices=[x.value for x in list(mod.ConfigType)], default="ekut-raw-cnn3", type=str)
+    parser.add_argument("--config", default="")
     config, _ = parser.parse_known_args()
 
     model_name = config.model
-    
+
+    default_config = {}
+    if config.config:
+        with open(config.config, 'r') as f:  
+            default_config = json.load(f)
+            model_name = default_config["model_name"]
+
+            #Delete model from config for now to avoid showing
+            #them as commandline otions
+            del default_config["model_name"]
+            del default_config["model_cls"]
+            
     global_config = dict(no_cuda=False, n_epochs=500,
+                         opt_rho = 0.9, opt_eps = 1e-06, lr_decay = 0,
+                         use_amsgrad=False, opt_betas=[0.9, 0.999],
                          lr=0.1, lr_scheduler="step", lr_gamma=0.1,
                          lr_stepsize = 0, lr_steps = [0], lr_patience = 10, 
                          batch_size=64, seed=0, use_nesterov=False,
                          input_file="", output_dir=output_dir, gpu_no=0,
-                         compress="", 
+                         compress="", optimizer="sgd",
                          cache_size=32768, momentum=0.9, weight_decay=0.00001)
     
-    mod_cls = mod.find_model(config.model)
+    mod_cls = mod.find_model(model_name)
     builder = ConfigBuilder(
-        mod.find_config(config.model),
+        mod.find_config(model_name),
         dataset.SpeechDataset.default_config(),
-        global_config)
+        global_config,
+        default_config)
     parser = builder.build_argparse()
     parser.add_argument("--type", choices=["train", "eval"], default="train", type=str)
     config = builder.config_from_argparse(parser)
     config["model_class"] = mod_cls
-
+    config["model_name"] = model_name
+    
+    return (model_name, config)
+    
+def main():
+    model_name, config = build_config()
+    
     #TODO: Check if results are actually reproducible when seeds are set
     set_seed(config)
 

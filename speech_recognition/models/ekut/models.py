@@ -121,9 +121,9 @@ class RawSpeechModel(SerializableModule):
                     x = activation(x)
 
 
-                #dropout = nn.Dropout(config["dropout_prob"])
-                #self.convolutions.append(dropout)
-                #x = dropout(x)
+                dropout = nn.Dropout(config["dropout_prob"])
+                self.convolutions.append(dropout)
+                x = dropout(x)
                 
             last_size = x.view(1,-1).size(1)
                 
@@ -271,7 +271,7 @@ class RawSpeechModelInvertedResidual(SerializableModule):
 configs= {
      ConfigType.EKUT_RAW_CNN1.value: dict(
         features="raw",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 21,
@@ -292,7 +292,7 @@ configs= {
     
     ConfigType.EKUT_RAW_CNN2.value: dict(
         features="raw",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 21,
@@ -315,7 +315,7 @@ configs= {
 
     ConfigType.EKUT_RAW_CNN3.value: dict(
         features="raw",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 5,
@@ -338,7 +338,7 @@ configs= {
     
     ConfigType.EKUT_RAW_CNN4.value: dict(
         features="raw",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 21,
@@ -363,7 +363,7 @@ configs= {
     ConfigType.EKUT_RAW_CNN1_RELU.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 21,
@@ -385,7 +385,7 @@ configs= {
     ConfigType.EKUT_RAW_CNN2_RELU.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 21,
@@ -409,7 +409,7 @@ configs= {
     ConfigType.EKUT_RAW_CNN3_RELU.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 5,
@@ -433,7 +433,7 @@ configs= {
     ConfigType.EKUT_RAW_CNN4_RELU.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 5,
@@ -457,7 +457,7 @@ configs= {
     ConfigType.EKUT_RAW_CNN3_RELU.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 5,
@@ -481,7 +481,7 @@ configs= {
     ConfigType.EKUT_RAW_CNN4_RELU.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 5,
@@ -515,7 +515,7 @@ configs= {
     ConfigType.EKUT_RAW_CNN5_RELU.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 21,
@@ -549,7 +549,7 @@ configs= {
     ConfigType.EKUT_RAW_CNN6_RELU.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 21,
@@ -583,7 +583,7 @@ configs= {
     ConfigType.EKUT_RAW_DEEP_CNN1.value: dict(
         features="raw",
         act="relu",
-        dropout_prob = 0.5,
+        dropout_prob = 0.1,
         n_labels = 12,
         n_feature_maps_1 = 1,
         conv1_size = 7,
@@ -685,7 +685,7 @@ configs= {
 
     ConfigType.EKUT_RAW_INVERTED_RES1.value : dict(
         features="raw",
-        dropout_prob=0.5,
+        dropout_prob=0.1,
         n_labels=12,
         width_mult=1.0,
         input_channel=8,
