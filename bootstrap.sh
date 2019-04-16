@@ -102,6 +102,7 @@ $python_cmd -m pip install $user_arg pytest
 $python_cmd -m pip install $user_arg xlsxwriter
 $python_cmd -m pip install $user_arg xlrd
 $python_cmd -m pip install $user_arg gitpython
+$python_cmd -m pip install $user_arg spur
 
 echo "\nInstallation finished!\n"
 
