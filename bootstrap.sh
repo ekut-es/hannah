@@ -70,7 +70,7 @@ $python_cmd -m pip install torchvision $user_arg
 if [ $enable_gpu == 0 ]; then
     $python_cmd -m pip install tensorflow $user_arg
 else
-    $python_cmd -m pip install tensorflow-gpu $user_arg
+    $python_cmd -m pip install tensorflow-gpu==1.12.0 $user_arg
 fi
 
 $python_cmd -m pip install $user_arg chainmap
