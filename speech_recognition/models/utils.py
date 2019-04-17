@@ -60,3 +60,10 @@ class ConfigType(Enum):
     HELLO_DS_CNN_SMALL = "hello-ds-cnn-small"
     HELLO_DS_CNN_MEDIUM = "hello-ds-cnn-medium"
     HELLO_DS_CNN_LARGE = "hello-ds-cnn-large"
+    
+    
+    #Models from Temporal Convolution for Real-Time Keyword Spotting on Mobile Devices
+    TC_RES_8 = "tc-res8"
+    TC_RES_14 = "tc-res14"
+    TC_RES_8_15 = "tc-res8-15"
+    TC_RES_14_15 = "tc-res14-15"

@@ -1,6 +1,7 @@
 from . import honk
 from . import ekut
 from . import hello
+from . import tc
 
 from .utils import ConfigType
     
@@ -19,6 +20,8 @@ def find_model(conf):
         return hello.DNNSpeechModel
     elif conf.startswith("hello-ds-cnn"):
         return hello.DSCNNSpeechModel
+    elif conf.startswith("tc-res"):
+        return tc.TCResNetModel
     
     raise Exception("Could not find model for {}".format(str(conf)))
     
@@ -32,5 +35,7 @@ def find_config(conf):
         return ekut.configs[conf]
     elif conf.startswith("hello"):
         return hello.configs[conf]
+    elif conf.startswith("tc"):
+        return tc.configs[conf]
     
     raise Exception("Could not find config for {}".format(str(conf)))
