@@ -470,8 +470,16 @@ def build_config(extra_config={}):
 
             #Delete model from config for now to avoid showing
             #them as commandline otions
-            del default_config["model_name"]
-            del default_config["model_class"]
+            if "model_name" in default_config:
+                del default_config["model_name"]
+            else:
+                print("Your model config does not include a model_name")
+                print(" these configurations are not loadable")
+                sys.exit(-1)
+            if "model_class" in default_config:
+                del default_config["model_class"]
+            if "type" in default_config:
+                del default_config["type"]
             
     global_config = dict(no_cuda=False, n_epochs=500,
                          opt_rho = 0.9, opt_eps = 1e-06, lr_decay = 0,
