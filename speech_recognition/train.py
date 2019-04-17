@@ -453,7 +453,7 @@ def train(model_name, config):
     model.load(os.path.join(output_dir, "model.pt"))
     test_accuracy = evaluate(model_name, config, model, test_loader)
 
-def build_config():
+def build_config(extra_config={}):
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", choices=[x.value for x in list(mod.ConfigType)], default="ekut-raw-cnn3", type=str)
@@ -471,7 +471,7 @@ def build_config():
             #Delete model from config for now to avoid showing
             #them as commandline otions
             del default_config["model_name"]
-            del default_config["model_cls"]
+            del default_config["model_class"]
             
     global_config = dict(no_cuda=False, n_epochs=500,
                          opt_rho = 0.9, opt_eps = 1e-06, lr_decay = 0,
@@ -481,13 +481,15 @@ def build_config():
                          batch_size=64, seed=0, use_nesterov=False,
                          input_file="", output_dir=output_dir, gpu_no=0,
                          compress="", optimizer="sgd",
-                         cache_size=32768, momentum=0.9, weight_decay=0.00001)
+                         cache_size=32768, momentum=0.9, weight_decay=0.00001,
+                         max_runtime="")
     
     mod_cls = mod.find_model(model_name)
     builder = ConfigBuilder(
         mod.find_config(model_name),
         dataset.SpeechDataset.default_config(),
         global_config,
+        extra_config,
         default_config)
     parser = builder.build_argparse()
     parser.add_argument("--type", choices=["train", "eval"], default="train", type=str)
@@ -505,6 +507,8 @@ def main():
 
     if config["type"] == "train":
         train(model_name, config)
+    elif config["type"] == "check_sanity":
+        print("TODO: Implement sanity check")
     elif config["type"] == "eval":
         evaluate(model_name, config)
 
