@@ -688,7 +688,7 @@ def export_data(config):
         f.write(data_code)
     
 def main():
-    global_config = dict(seed=0, input_file="", output_dir=".", cache_size=31288)
+    global_config = dict(seed=0, input_file="", output_dir=".")
     builder = ConfigBuilder(
         dataset.SpeechDataset.default_config(),
         global_config)

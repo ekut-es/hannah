@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-from .manage_audio import preprocess_audio, calculate_feature_shape
+from .process_audio import preprocess_audio, calculate_feature_shape
 
 
 class SimpleCache(dict):
@@ -52,6 +52,7 @@ class SpeechDataset(data.Dataset):
         self.dct_filters = librosa.filters.dct(config["n_dct"], config["n_mels"])
         self._audio_cache = SimpleCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
+        self.cache_prob = config["cache_prob"]
         n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
         self.features = config['features']
@@ -95,6 +96,10 @@ class SpeechDataset(data.Dataset):
         config["window_ms"] = 30
         config["freq_min"] = 20
         config["freq_max"] = 4000
+    
+        # Cache config
+        config["cache_size"] = 200000
+        config["cache_prob"] = 0.7
 
         return config
 
@@ -109,7 +114,7 @@ class SpeechDataset(data.Dataset):
     def preprocess(self, example, silence=False):
         if silence:
             example = "__silence__"
-        if random.random() < 0.7:
+        if random.random() <= self.cache_prob:
             try:
                 return self._audio_cache[example]
             except KeyError:
