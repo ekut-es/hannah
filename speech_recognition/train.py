@@ -489,8 +489,7 @@ def build_config(extra_config={}):
                          batch_size=64, seed=0, use_nesterov=False,
                          input_file="", output_dir=output_dir, gpu_no=0,
                          compress="", optimizer="sgd",
-                         momentum=0.9, weight_decay=0.00001,
-                         max_runtime="")
+                         momentum=0.9, weight_decay=0.00001)
     
     mod_cls = mod.find_model(model_name)
     builder = ConfigBuilder(

@@ -44,10 +44,14 @@ mkdir -p /scratch/$SLURM_JOB_ID/$tcml_output_dir
 mkdir -p /scratch/$SLURM_JOB_ID/$tcml_data_dir
 
 
-cp -R $tcml_wd/$tcml_data_dir /scratch/$SLURM_JOB_ID/
+cp -R $tcml_wd/$tcml_data_dir/* /scratch/$SLURM_JOB_ID/$tcml_data_dir
+
+ls -lh /scratch/$SLURM_JOB_ID/
+ls -lh /scratch/$SLURM_JOB_ID/$tcml_data_dir
 
 echo "Running training"
-singularity exec --nv tcml-cluster/Speech-Recognition.simg  python3.6 -m speech_recognition.train --config $tcml_wd/runs/config.$tcml_job_id.json --data_folder /scratch/$SLURM_JOB_ID/$tcml_data_dir --output_dir /scratch/$SLURM_JOB_ID/$tcml_output_dir --max_runtime $tcml_estimated_runtime 
+
+singularity exec --nv tcml-cluster/Speech-Recognition.simg  python3.6 -m speech_recognition.train --config $tcml_wd/runs/config.$tcml_job_id.json --data_folder /scratch/$SLURM_JOB_ID/$tcml_data_dir --output_dir /scratch/$SLURM_JOB_ID/$tcml_output_dir 
 
 echo "Copy back output"
 cp -R /scratch/$SLURM_JOB_ID/$tcml_output_dir/* $tcml_wd/$tcml_output_dir
