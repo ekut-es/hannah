@@ -69,8 +69,13 @@ Training on 1st GPU can be invoked by:
 
     python3.6 -m speech_recognition.train  --gpu_no 0  --model ekut-raw-cnn3-relu
 
+Trained models are saved under trained_models/model_name .
+
 ## Evaluation
 
+To run only the evalution of a model use:
+
+python3.6 -m speech_recognition.train --no_cuda 0 --model ekut-raw-cnn3-relu --batch_size 256 --input_file trained_models/ekut-raw-cnn3-relu/model.pt --type eval
 
 
 
