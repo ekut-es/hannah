@@ -19,7 +19,7 @@ do
 	    user_arg=""
 	    shift
 	    ;;
-	--global)
+	--global) # Install dependencies in global python path
 	    create_pyenv=0
 	    user_arg=""
 	    shift

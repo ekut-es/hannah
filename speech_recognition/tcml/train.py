@@ -163,7 +163,7 @@ def main():
     model_name, config = build_config(extra_config=tcml_config)
     output_dir = get_output_dir(model_name, config)
 
-    
+    config["tcml_estimated_time_with_buffer"] =  config["tcml_estimated_time"] 
     
     #Estimate runtime
     runtime = estimate_duration(config)
