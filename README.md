@@ -53,10 +53,7 @@ Training on 1st GPU can be invoked by:
 
 # Exporting Models for RISC-V
 	
-
-To export the trained model use:
-
-    python3.6 -m speech_recognition.export --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --features raw --input_file trained_models/model.onnx
+The export is currently not available. 
 
 
 # TODO:
@@ -66,7 +63,7 @@ Training:
 - Experiment with dilations
   
 Export:
-  
+- Use relay IR
 - 2D Convolutions
 - Average Pooling
 - Dilations
