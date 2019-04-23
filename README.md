@@ -28,7 +28,7 @@ Installing dataset:
 
 Training on CPU can be invoked by:
    
-    python3.6 -m speech_recognition.train  --gpu_no 0  --model ekut-raw-cnn3-1d-relu
+    python3.6 -m speech_recognition.train  --no_cuda  --model ekut-raw-cnn3-1d-relu
 
 Training on 1st GPU can be invoked by:
 
