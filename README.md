@@ -35,7 +35,7 @@ Training on 1st GPU can be invoked by:
     python3.6 -m speech_recognition.train  --gpu_no 0  --model ekut-raw-cnn3-1d-relu
 
 
-#Exporting Models for RISC-V
+# Exporting Models for RISC-V
 	
 
 	
