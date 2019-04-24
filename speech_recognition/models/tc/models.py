@@ -52,9 +52,9 @@ class TCResNetModel(SerializableModule):
         
         self.layers = nn.ModuleList()
   
-        input_channels = width
+        input_channels = height
   
-        x = Variable(torch.zeros(1,width,height, 1))      
+        x = Variable(torch.zeros(1,height,width, 1))      
   
         count = 1
         while "conv{}_size".format(count) in config:
@@ -107,7 +107,7 @@ class TCResNetModel(SerializableModule):
         
     def forward(self, x):
         x = x.unsqueeze(1)
-        x = x.permute(0,3,2,1)
+        x = x.permute(0,2,3,1)
         for layer in self.layers:
             x = layer(x)
         

@@ -49,23 +49,25 @@ class SpeechDataset(data.Dataset):
         self.noise_prob = config["noise_prob"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
-        self.dct_filters = librosa.filters.dct(config["n_dct"], config["n_mels"])
+        self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
         self._audio_cache = SimpleCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
         self.cache_prob = config["cache_prob"]
         n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
         self.features = config['features']
-        self.n_dct_filters = config["n_dct"]
+        self.n_mfcc = config["n_mfcc"]
         self.n_mels = config["n_mels"]
         self.stride_ms = config["stride_ms"] 
         self.window_ms = config["window_ms"]
         self.freq_min = config["freq_min"]
         self.freq_max = config["freq_max"]
         
-        self.height, self.width = calculate_feature_shape(self.input_length, self.features, 
-                                                          self.samplingrate, self.n_dct_filters, 
-                                                          self.stride_ms)
+        self.height, self.width = calculate_feature_shape(self.input_length,
+                                                          features=self.features, 
+                                                          samplingrate=self.samplingrate,
+                                                          n_mfcc=self.n_mfcc, 
+                                                          stride_ms=self.stride_ms)
         
     @staticmethod
     def default_config():
@@ -90,7 +92,7 @@ class SpeechDataset(data.Dataset):
 
         # Feature extraction
         config["features"] = "mel"
-        config["n_dct"] = 40
+        config["n_mfcc"] = 40
         config["n_mels"] = 40
         config["stride_ms"] = 10
         config["window_ms"] = 30
@@ -146,13 +148,14 @@ class SpeechDataset(data.Dataset):
                                                  features = self.features,
                                                  samplingrate = self.samplingrate,
                                                  n_mels = self.n_mels,
+                                                 n_mfcc = self.n_mfcc,
                                                  dct_filters = self.dct_filters,
                                                  freq_min = self.freq_min,
                                                  freq_max = self.freq_max,
                                                  window_ms = self.window_ms,
                                                  stride_ms = self.stride_ms))
 
-        assert data.shape[0]  == self.height
+        assert data.shape[0] == self.height
         assert data.shape[1] == self.width
 
         self._audio_cache[example] = data
