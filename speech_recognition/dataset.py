@@ -66,8 +66,10 @@ class SpeechDataset(data.Dataset):
         self.height, self.width = calculate_feature_shape(self.input_length,
                                                           features=self.features, 
                                                           samplingrate=self.samplingrate,
+                                                          n_mels=self.n_mels,
                                                           n_mfcc=self.n_mfcc, 
-                                                          stride_ms=self.stride_ms)
+                                                          stride_ms=self.stride_ms,
+                                                          window_ms=self.window_ms)
         
     @staticmethod
     def default_config():

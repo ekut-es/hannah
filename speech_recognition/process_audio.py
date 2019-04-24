@@ -5,15 +5,29 @@ import numpy as np
 def calculate_feature_shape(input_length,
                             features="mel",
                             samplingrate=1600,
+                            n_mels=40,
                             n_mfcc=40,
-                            stride_ms=10):
+                            stride_ms=10,
+                            window_ms=10):
+    n_fft = (samplingrate * window_ms) // 1000
+    hop_length = (samplingrate * stride_ms)  // 1000
+        
     if features == "mel" or features == "mfcc":
-        hop_length = (samplingrate * stride_ms)  // 1000
         width  = math.floor(input_length / hop_length) + 1
         height = n_mfcc
 
         return (height, width)
-        
+
+    if features == "melspec":
+        width  = math.floor(input_length / hop_length) + 1
+        height = n_mels
+        return (height, width)
+
+    if features == "spectrogram":
+        width  = math.floor(input_length / hop_length) + 1
+        height = 1 + n_fft // 2
+        return (height, width)
+    
     else:
         return (1, input_length)
     
@@ -50,6 +64,15 @@ def preprocess_audio(data, features='mel',
                                     fmax=freq_max)
         data = data.astype(np.float32)
 
+    elif features == "melspec":
+        data = librosa.feature.melspectrogram(data, sr=samplingrate,
+                                              n_mels=n_mels, hop_length=hop_length,
+                                              n_fft=n_fft, fmin=freq_min, fmax=freq_max)
+        data = data.astype(np.float32)
+    elif features == "spectrogram":
+        data = librosa.core.stft(data, hop_length=hop_length,
+                                 n_fft=n_fft)
+        data = data.astype(np.float32)
         
     elif features == "raw":
         data = np.array(data)
