@@ -6,6 +6,25 @@
 ## Installing dependencies
 
 Dependencies can either be installed to your Home-Directory or to a seperate python virtual environment.
+On RedHat 7 based distros (Scientific Linux 7, CentOS 7) all required dependencies should be installed by bootstrap.sh 
+
+On other distros we need the following packages:
+
+- python3.6 and development headers
+- portaudio and development headers
+- freeglut and development headers
+
+On Ubuntu 16.04 these are installable with the following commands:
+
+    sudo apt-get update
+    sudo apt-get -y install software-properties-common python-software-properties
+    sudo add-apt-repository -y ppa:jonathonf/python-3.6
+    sudo apt-get update
+    
+    sudo apt-get -y install python3.6-dev freeglut3-dev portaudio19-dev
+    sudo apt-get -y install git curl wget
+    curl https://bootstrap.pypa.io/get-pip.py | sudo python3.6
+
 
 ### Setup of virtual environment (recommended)
 
@@ -44,11 +63,20 @@ Installing dataset:
 
 Training on CPU can be invoked by:
    
-    python3.6 -m speech_recognition.train  --no_cuda  --model ekut-raw-cnn3-1d-relu
+    python3.6 -m speech_recognition.train  --no_cuda  --model ekut-raw-cnn3-relu
 
 Training on 1st GPU can be invoked by:
 
-    python3.6 -m speech_recognition.train  --gpu_no 0  --model ekut-raw-cnn3-1d-relu
+    python3.6 -m speech_recognition.train  --gpu_no 0  --model ekut-raw-cnn3-relu
+
+Trained models are saved under trained_models/model_name .
+
+## Evaluation
+
+To run only the evalution of a model use:
+
+python3.6 -m speech_recognition.train --no_cuda 0 --model ekut-raw-cnn3-relu --batch_size 256 --input_file trained_models/ekut-raw-cnn3-relu/model.pt --type eval
+
 
 
 # Exporting Models for RISC-V
@@ -61,9 +89,12 @@ Training:
   
 - Implement Wavenet
 - Experiment with dilations
-  
-Export:
-- Use relay IR
+- Add design space exploration tool (WIP)
+- Add estimation of non functional properties on algorithmic level (WIP)
+
+Export ISA / RT-Level:
+- Make usable again
+- Use relay IR / TVM
 - 2D Convolutions
 - Average Pooling
 - Dilations
