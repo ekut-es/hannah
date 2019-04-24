@@ -44,6 +44,8 @@ def preprocess_audio(data, features='mel',
     hop_length = (samplingrate * stride_ms)  // 1000
     n_fft = (samplingrate * window_ms) // 1000
     if features == "mel":
+        if not dct_filters:
+            dct_filters =  librosa.filters.dct(n_mfcc, n_mels)
         data = librosa.feature.melspectrogram(data, sr=samplingrate,
                                               n_mels=n_mels, hop_length=hop_length,
                                               n_fft=n_fft, fmin=freq_min, fmax=freq_max)
@@ -72,6 +74,7 @@ def preprocess_audio(data, features='mel',
     elif features == "spectrogram":
         data = librosa.core.stft(data, hop_length=hop_length,
                                  n_fft=n_fft)
+        data = np.abs(data)
         data = data.astype(np.float32)
         
     elif features == "raw":
@@ -83,3 +86,36 @@ def preprocess_audio(data, features='mel',
     
     return data
 
+
+
+def main():
+    import sys
+    from matplotlib import pyplot as plt
+    import librosa.display
+    
+    audio_file  = sys.argv[1]
+    sampling_rate = 16000
+    audio_data = librosa.core.load(audio_file, sr=sampling_rate)[0]
+
+    feature_set = ["raw", "spectrogram", "melspec", "mfcc", "mel"]
+    plt.figure()
+    
+    for num, feature in enumerate(feature_set):
+        data = preprocess_audio(audio_data, features=feature, samplingrate=sampling_rate)
+
+        
+        plt.subplot(len(feature_set), 1, num+1)
+        if feature == "raw":
+            librosa.display.waveplot(data[0], sr=sampling_rate)
+        else:
+            librosa.display.specshow(data, y_axis='mel', x_axis='time', sr=sampling_rate)
+           
+
+        plt.title(feature)
+            
+    plt.show()
+        
+
+
+if __name__ == "__main__":
+    main()

@@ -223,7 +223,7 @@ class SpeechDataset(data.Dataset):
             a = b
 
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
-        test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files, noise_prob=0), config)
+        test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg),
                     cls(sets[1], DatasetType.DEV, test_cfg),
                     cls(sets[2], DatasetType.TEST, test_cfg))
@@ -236,3 +236,4 @@ class SpeechDataset(data.Dataset):
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
+
