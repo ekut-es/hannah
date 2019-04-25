@@ -39,12 +39,12 @@ def preprocess_audio(data, features='mel',
                      dct_filters=None, 
                      freq_min=20,
                      freq_max=4000,
-                     window_ms = 10,
+                     window_ms = 40,
                      stride_ms = 10):
     hop_length = (samplingrate * stride_ms)  // 1000
     n_fft = (samplingrate * window_ms) // 1000
     if features == "mel":
-        if not dct_filters:
+        if dct_filters is None:
             dct_filters =  librosa.filters.dct(n_mfcc, n_mels)
         data = librosa.feature.melspectrogram(data, sr=samplingrate,
                                               n_mels=n_mels, hop_length=hop_length,
@@ -98,21 +98,28 @@ def main():
     audio_data = librosa.core.load(audio_file, sr=sampling_rate)[0]
 
     feature_set = ["raw", "spectrogram", "melspec", "mfcc", "mel"]
+    features = {}
     plt.figure()
     
     for num, feature in enumerate(feature_set):
         data = preprocess_audio(audio_data, features=feature, samplingrate=sampling_rate)
 
+        features[feature] = data
         
         plt.subplot(len(feature_set), 1, num+1)
         if feature == "raw":
             librosa.display.waveplot(data[0], sr=sampling_rate)
         else:
-            librosa.display.specshow(data, y_axis='mel', x_axis='time', sr=sampling_rate)
+            librosa.display.specshow(data,
+                                     y_axis='log',
+                                     x_axis='time',
+                                     sr=sampling_rate)
            
 
         plt.title(feature)
-            
+
+    print(features["mel"] - features["mfcc"])
+        
     plt.show()
         
 
