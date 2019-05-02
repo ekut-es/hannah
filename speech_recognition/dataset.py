@@ -4,6 +4,7 @@ import math
 import os
 import random
 import re
+import json
 
 from chainmap import ChainMap
 import librosa
@@ -41,6 +42,7 @@ class SpeechDataset(data.Dataset):
         self.audio_files = list(data.keys())
         self.set_type = set_type
         self.audio_labels = list(data.values())
+
         config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
         self.samplingrate = config["samplingrate"]
         self.bg_noise_audio = [librosa.core.load(file, sr=self.samplingrate)[0] for file in config["bg_noise_files"]]
@@ -49,6 +51,7 @@ class SpeechDataset(data.Dataset):
         self.noise_prob = config["noise_prob"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
+        self.extract_loudest = config["extract_loudest"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
         self._audio_cache = SimpleCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
@@ -81,9 +84,9 @@ class SpeechDataset(data.Dataset):
         config["data_folder"] = "datasets/speech_commands_v0.02/"
         config["samplingrate"] = 16000
         config["input_length"] = 16000
+        config["extract_loudest"] = True
         config["timeshift_ms"] = 100
-
-        # Input Enhancement
+        config["use_default_split"] = False
         config["group_speakers_by_id"] = True
         config["silence_prob"] = 0.1
         config["noise_prob"] = 0.8
@@ -115,6 +118,25 @@ class SpeechDataset(data.Dataset):
         data = np.pad(data, (a, b), "constant")
         return data[:len(data) - a] if a else data[b:]
 
+    def _extract_loudest_range(self, data):
+        """Extract the loudest part of the sample with length self.input_lenght"""
+
+        in_len = self.input_length
+
+        if len(data) <= in_len:
+            return (0, len(data))
+        
+        amps = np.abs(data)
+        f = np.ones(in_len)
+
+        correlation = np.correlate(amps, f)
+        
+        window_start = np.argmax(correlation)
+        window_start = max(0, window_start)
+
+        return (window_start, window_start+in_len)
+        
+        
     def preprocess(self, example, silence=False):
         if silence:
             example = "__silence__"
@@ -134,15 +156,24 @@ class SpeechDataset(data.Dataset):
         if silence:
             data = np.zeros(in_len, dtype=np.float32)
         else:
-            file_data = self._file_cache.get(example)
-            data = librosa.core.load(example, sr=self.samplingrate)[0] if file_data is None else file_data
-            self._file_cache[example] = data
-        data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
-        data = data[0:in_len]
-        
-        if self.set_type == DatasetType.TRAIN:
-            data = self._timeshift_audio(data)
+            data = self._file_cache.get(example)
 
+            if not data:
+                data = librosa.core.load(example, sr=self.samplingrate)[0]
+
+                extract_index = (0, len(data))
+                if self.extract_loudest:
+                    extract_index = self._extract_loudest_range(data)
+
+                data = self._timeshift_audio(data)
+                data = data[extract_index[0]:extract_index[1]]
+                
+                data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
+                data = data[0:in_len]
+                
+            self._file_cache[example] = data
+
+            
         if random.random() < self.noise_prob or silence:
             a = random.random() * 0.1
             data = np.clip(a * bg_noise + data, -1, 1)
@@ -163,6 +194,21 @@ class SpeechDataset(data.Dataset):
         self._audio_cache[example] = data
         return data
 
+
+    def __getitem__(self, index):
+        if index >= len(self.audio_labels):
+            return self.preprocess(None, silence=True), 0
+        return self.preprocess(self.audio_files[index]), self.audio_labels[index]
+
+    def __len__(self):
+        return len(self.audio_labels) + self.n_silence
+
+
+class SpeechCommandsDataset(SpeechDataset):
+
+    def __init__(self, data, set_type, config):
+        super().__init__(data, set_type, config)
+    
     @classmethod
     def splits(cls, config):
         folder = config["data_folder"]
@@ -171,6 +217,7 @@ class SpeechDataset(data.Dataset):
         train_pct = config["train_pct"]
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
+        use_default_split = config["use_default_split"]
 
         words = {word: i + 2 for i, word in enumerate(wanted_words)}
         words.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1})
@@ -179,6 +226,22 @@ class SpeechDataset(data.Dataset):
         bg_noise_files = []
         unknown_files = []
 
+        test_files = set()
+        dev_files = set()
+        if use_default_split:
+            with open(os.path.join(folder, "testing_list.txt")) as testing_list:
+                for line in testing_list.readlines():
+                    line = line.strip()
+                    test_files.add(os.path.join(folder, line))
+
+            
+                    
+            with open(os.path.join(folder, "validation_list.txt")) as validation_list:
+                for line in validation_list.readlines():
+                    line = line.strip()
+                    dev_files.add(os.path.join(folder, line))
+
+                    
         for folder_name in os.listdir(folder):
             path_name = os.path.join(folder, folder_name)
             is_bg_noise = False
@@ -199,17 +262,28 @@ class SpeechDataset(data.Dataset):
                 elif label == words[cls.LABEL_UNKNOWN]:
                     unknown_files.append(wav_name)
                     continue
-                if config["group_speakers_by_id"]:
-                    hashname = re.sub(r"_nohash_.*$", "", filename)
-                max_no_wavs = 2**27 - 1
-                bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
-                bucket = (bucket % (max_no_wavs + 1)) * (100. / max_no_wavs)
-                if bucket < dev_pct:
-                    tag = DatasetType.DEV
-                elif bucket < test_pct + dev_pct:
-                    tag = DatasetType.TEST
+
+                if use_default_split:
+                    if wav_name in dev_files:
+                        tag = DatasetType.DEV
+                    elif wav_name in test_files:
+                        tag = DatasetType.TEST
+                    else:
+                        tag = DatasetType.TRAIN
                 else:
-                    tag = DatasetType.TRAIN
+                    if config["group_speakers_by_id"]:
+                        hashname = re.sub(r"_nohash_.*$", "", filename)
+                    else:
+                        hashname = filename
+                    max_no_wavs = 2**27 - 1
+                    bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
+                    bucket = (bucket % (max_no_wavs + 1)) * (100. / max_no_wavs)
+                    if bucket < dev_pct:
+                        tag = DatasetType.DEV
+                    elif bucket < test_pct + dev_pct:
+                        tag = DatasetType.TEST
+                    else:
+                        tag = DatasetType.TRAIN
                 sets[tag.value][wav_name] = label
                 
         for tag in range(len(sets)):
@@ -222,6 +296,12 @@ class SpeechDataset(data.Dataset):
             dataset.update(unk_dict)
             a = b
 
+        print("Dataset config:")
+        print("  train: ", len(sets[0]),
+              "\n  dev:   ", len(sets[1]),
+              "\n  test:  ", len(sets[2]),
+              "\n  total: ", len(sets[0])+len(sets[1])+len(sets[2]))
+            
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg),
@@ -229,11 +309,46 @@ class SpeechDataset(data.Dataset):
                     cls(sets[2], DatasetType.TEST, test_cfg))
         return datasets
 
-    def __getitem__(self, index):
-        if index >= len(self.audio_labels):
-            return self.preprocess(None, silence=True), 0
-        return self.preprocess(self.audio_files[index]), self.audio_labels[index]
 
-    def __len__(self):
-        return len(self.audio_labels) + self.n_silence
+class SpeechHotwordDataset(SpeechDataset):
 
+    def __init__(self, data, set_type, config):
+        super().__init__(data, set_type, config)
+    
+    
+    @classmethod
+    def splits(cls, config):
+        folder = config["data_folder"]
+
+        descriptions = ["train.json", "dev.json", "test.json"]
+        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
+        datasets=[{}, {}, {}]
+
+        for num, desc in enumerate(descriptions):
+            descs = os.path.join(folder, desc)
+            with open(descs) as f:
+                descs = json.load(f)
+
+                for desc in descs:
+                    is_hotword = desc["is_hotword"]
+                    wav_file = os.path.join(folder, desc["audio_file_path"])
+
+                    label = 2 if is_hotword else 1
+                    
+                    datasets[num][wav_file] = label
+                    
+                    
+        res_datasets = (cls(datasets[0], DatasetType.TRAIN, config),
+                        cls(datasets[1], DatasetType.DEV, config),
+                        cls(datasets[2], DatasetType.TEST, config))
+
+        return res_datasets
+
+
+def find_dataset(name):
+    if name == "keywords":
+        return SpeechCommandsDataset
+    elif name == "hotword":
+        return SpeechHotwordDataset
+
+    raise Exception("Could not find dataset type: {}".format(name))

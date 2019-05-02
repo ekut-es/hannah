@@ -10,15 +10,20 @@ class ConfigBuilder(object):
         parser = argparse.ArgumentParser()
         parser.add_argument("--full-help", action="store_true")
         for key, value in self.default_config.items():
-            key = "--{}".format(key)
+            flag = "--{}".format(key)
             if isinstance(value, tuple):
-                parser.add_argument(key, default=list(value), nargs=len(value), type=type(value[0]))
+                parser.add_argument(flag, default=list(value), nargs=len(value), type=type(value[0]))
             elif isinstance(value, list):
-                parser.add_argument(key, default=value, nargs="+", type=type(value[0]))
-            elif isinstance(value, bool) and not value:
-                parser.add_argument(key, action="store_true")
+                parser.add_argument(flag, default=value, nargs="+", type=type(value[0]))
+            elif isinstance(value, bool):
+                if not value:
+                    parser.add_argument(flag, action="store_true")
+                else:
+                    print("Add default true flat", key)
+                    flag = "--no_{}".format(key)
+                    parser.add_argument(flag, dest=str(key), action="store_false", default=True)
             else:
-                parser.add_argument(key, default=value, type=type(value))
+                parser.add_argument(flag, default=value, type=type(value))
         return parser
 
     def config_from_argparse(self, parser=None):

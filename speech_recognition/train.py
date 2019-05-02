@@ -123,7 +123,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     msglogger.info("Evaluating network")
     
     if not test_loader:
-        _, _, test_set = dataset.SpeechDataset.splits(config)
+        _, _, test_set = config["dataset_cls"].splits(config)
         test_loader = data.DataLoader(test_set, batch_size=1)
         
     model = get_model(config, model)
@@ -237,7 +237,7 @@ def train(model_name, config):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    train_set, dev_set, test_set = dataset.SpeechDataset.splits(config)
+    train_set, dev_set, test_set = config["dataset_cls"].splits(config)
 
     config["width"] = train_set.width
     config["height"] = train_set.height
@@ -457,11 +457,13 @@ def build_config(extra_config={}):
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", choices=[x.value for x in list(mod.ConfigType)], default="ekut-raw-cnn3", type=str)
-    parser.add_argument("--config", default="")
+    parser.add_argument("--config", default="", type=str)
+    parser.add_argument("--dataset", choices=["keywords", "hotword"], default="keywords", type=str)
     config, _ = parser.parse_known_args()
 
     model_name = config.model
-
+    dataset_name = config.dataset
+    
     default_config = {}
     if config.config:
         with open(config.config, 'r') as f:  
@@ -480,6 +482,11 @@ def build_config(extra_config={}):
                 del default_config["model_class"]
             if "type" in default_config:
                 del default_config["type"]
+            if "dataset" in default_config:
+                dataset_name = config["dataset"]
+                del default_config["dataset"]
+            if "dataset_cls" in default_config:
+                del default_config["dataset_cls"]
             
     global_config = dict(no_cuda=False, n_epochs=500,
                          opt_rho = 0.9, opt_eps = 1e-06, lr_decay = 0,
@@ -492,9 +499,10 @@ def build_config(extra_config={}):
                          momentum=0.9, weight_decay=0.00001)
     
     mod_cls = mod.find_model(model_name)
+    dataset_cls = dataset.find_dataset(dataset_name)
     builder = ConfigBuilder(
         mod.find_config(model_name),
-        dataset.SpeechDataset.default_config(),
+        dataset_cls.default_config(),
         global_config,
         extra_config,
         default_config)
@@ -503,6 +511,8 @@ def build_config(extra_config={}):
     config = builder.config_from_argparse(parser)
     config["model_class"] = mod_cls
     config["model_name"] = model_name
+    config["dataset"] = dataset_name
+    config["dataset_cls"] = dataset_cls 
     
     return (model_name, config)
     
@@ -515,7 +525,7 @@ def main():
     if config["type"] == "train":
         train(model_name, config)
     elif config["type"] == "check_sanity":
-        print("TODO: Implement sanity check")
+        raise Exception("TODO: Implement sanity check")
     elif config["type"] == "eval":
         evaluate(model_name, config)
 
