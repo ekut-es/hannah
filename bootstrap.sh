@@ -60,7 +60,7 @@ fi
 if [ $enable_gpu == 0 ]; then
     $python_cmd -m pip install https://download.pytorch.org/whl/cpu/torch-1.0.0-cp36-cp36m-linux_x86_64.whl $user_arg
 else
-    $python_cmd -m pip install torch $user_arg
+    $python_cmd -m pip install torch==1.0.1 $user_arg
 fi
 
 $python_cmd -m pip install torchvision $user_arg
