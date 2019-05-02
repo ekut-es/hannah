@@ -3,6 +3,7 @@
 enable_gpu=0
 user_arg="--user"
 create_pyenv=0
+using_gpu_cluster=0
 python_cmd=python3.6
 
 while [[ $# -gt 0 ]]
@@ -23,6 +24,13 @@ do
 	    create_pyenv=0
 	    user_arg=""
 	    shift
+	    ;;
+	--gpu_cluster) # Install for Lensch's gpu cluster
+            create_pyenv=1
+            enable_gpu=1
+            using_gpu_cluster=1
+            user_arg=""
+            shift
 	    ;;
 	*)    # unknown option
 	    echo "Found unknown option: $key"
@@ -46,8 +54,14 @@ fi
 
 if [ $create_pyenv == 1 ]; then
     if [ ! -d venv ]; then
-	echo "Installing Virtual environment"
-	virtualenv venv -p python3.6
+	    echo "Installing Virtual environment"
+
+        if [ $using_gpu_cluster == 0 ]; then
+	        virtualenv venv -p python3.6
+        else
+            /usr/bin/python3.6 -m pip install virtualenv
+            /usr/bin/python3.6 -m virtualenv venv -p python3.6
+        fi
     fi
     source venv/bin/activate
 else
@@ -79,7 +93,9 @@ $python_cmd -m pip install $user_arg librosa
 $python_cmd -m pip install $user_arg Flask
 $python_cmd -m pip install $user_arg numpy
 $python_cmd -m pip install $user_arg Pillow
-$python_cmd -m pip install $user_arg PyAudio
+if [ $using_gpu_cluster == 0 ]; then
+    $python_cmd -m pip install $user_arg PyAudio
+fi
 $python_cmd -m pip install $user_arg PyOpenGL
 $python_cmd -m pip install $user_arg PyOpenGL_accelerate
 $python_cmd -m pip install $user_arg pyttsx3

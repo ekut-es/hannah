@@ -36,11 +36,18 @@ or for training on gpus:
 
     ./bootstrap.sh --venv --gpu
 
+or for training on cluster-gpu0x:
+
+    ./bootstrap.sh --gpu_clusters
+
 And activate the venv using:
 
     source venv/bin/activate
-    
-    
+
+Export LD\_LIBRARY\_PATH when training on cluster-gpu0x:
+
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/graphics/opt/opt_Ubuntu18.04/cuda/toolkit_9.0/cuda/lib64/:/graphics/opt/opt_Ubuntu18.04/cuda/cudnn/7.1.4_for_9.0/cuda/lib64
+
 ### Setup with installation to home directory
 
 Dependencies can be installed by invoking:
@@ -75,7 +82,7 @@ Trained models are saved under trained_models/model_name .
 
 To run only the evalution of a model use:
 
-python3.6 -m speech_recognition.train --no_cuda 0 --model ekut-raw-cnn3-relu --batch_size 256 --input_file trained_models/ekut-raw-cnn3-relu/model.pt --type eval
+    python3.6 -m speech_recognition.train --no_cuda 0 --model ekut-raw-cnn3-relu --batch_size 256 --input_file trained_models/ekut-raw-cnn3-relu/model.pt --type eval
 
 
 
