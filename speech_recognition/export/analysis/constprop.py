@@ -1,5 +1,5 @@
 import numpy as np
-from collections import DefaultDict
+from collections import defaultdict
 
 class ConstPropState(object):
     def __init__ (self, value = None, shape = None):

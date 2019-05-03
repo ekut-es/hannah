@@ -147,7 +147,7 @@ class SpeechDataset(data.Dataset):
                 pass
 
         if self.loss_function == "ctc":
-            in_len = 16000 * 8
+            in_len = 16000 * 4
         else:
             in_len = self.input_length
 

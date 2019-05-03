@@ -368,11 +368,11 @@ def train(model_name, config):
         dummy_input.cuda()
         model.cuda()
 
-    draw_classifier_to_file(model,
-                            os.path.join(output_dir, 'model.png'),
-                            dummy_input)
+    #draw_classifier_to_file(model,
+    #                        os.path.join(output_dir, 'model.png'),
+    #                        dummy_input)
 
-    performance_summary = model_summary(model, dummy_input, 'performance')
+    #performance_summary = model_summary(model, dummy_input, 'performance')
 
     # iteration counters 
     step_no = 0
@@ -403,11 +403,14 @@ def train(model_name, config):
             labels = Variable(labels)
             if config["loss"] == "ctc":
                 scores = scores.view(scores.size(0), scores.size(1), -1)
-                scores = scores.permute(1,0,2)
+                scores = scores.permute(2,0,1)
+                scores = scores.view(scores.size(0), scores.size(1), -1)
 
-                input_lengths = Variable(torch.Tensor([scores.size(0)] * scores.size(1)).int())
-                label_lengths = Variable(torch.Tensor([1] * scores.size(1)).int()) 
+                input_lengths = torch.Tensor([scores.size(0)] * scores.size(1)).long()
+                label_lengths = torch.Tensor([1] * scores.size(1)).long()
+                scores = torch.nn.functional.log_softmax(scores, dim=2)
                 labels = labels.unsqueeze(1)
+                
                 loss = criterion(scores, labels, input_lengths, label_lengths)
             else:
                 scores = scores.view(scores.size(0), -1)
@@ -416,9 +419,8 @@ def train(model_name, config):
             
             if compression_scheduler is not None:
                 compression_scheduler.before_backward_pass(epoch_idx, batch_idx, batches_per_epoch, loss)
-            print(loss)
-            #loss.backward()
-            #optimizer.step()
+            loss.backward()
+            optimizer.step()
             if compression_scheduler is not None:
                 compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, batches_per_epoch)
 
@@ -427,26 +429,26 @@ def train(model_name, config):
             batch_time.add(time.time() - end)
             step_no += 1
 
-            print("loss: ", loss)
+            print("loss: ", float(loss))
             
-            #scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
-            scalar_accuracy, scalar_loss = 0.0, 0.0
             
-            #if last_log + log_every <= step_no:
-            #    last_log = step_no
-            #    stats_dict["Accuracy"] = scalar_accuracy
-            #    stats_dict["Loss"] = scalar_loss
-            #    stats_dict["Time"] = batch_time.mean
-            #    stats_dict['LR'] = optimizer.param_groups[0]['lr']
-            #    stats = ('Peformance/Training/', stats_dict)
-            #    params = model.named_parameters()
-            #    distiller.log_training_progress(stats,
-            #                                    params,
-            #                                    epoch_idx,
-            #                                    batch_idx,
-            #                                    batches_per_epoch,
-            #                                    log_every,
-            #                                    [tflogger,pylogger])
+            if last_log + log_every <= step_no:
+                scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
+        
+                last_log = step_no
+                stats_dict["Accuracy"] = scalar_accuracy
+                stats_dict["Loss"] = scalar_loss
+                stats_dict["Time"] = batch_time.mean
+                stats_dict['LR'] = optimizer.param_groups[0]['lr']
+                stats = ('Peformance/Training/', stats_dict)
+                params = model.named_parameters()
+                distiller.log_training_progress(stats,
+                                                params,
+                                                epoch_idx,
+                                                batch_idx,
+                                                batches_per_epoch,
+                                                log_every,
+                                                [tflogger,pylogger])
                  
          
             end = time.time()

@@ -15,8 +15,10 @@ import numpy as np
 from copy import deepcopy, copy
 from itertools import product
 
-from .config import ConfigBuilder
-from . import dataset
+from .analysis import constant_propagation 
+
+from ..config import ConfigBuilder
+from .. import dataset
 
 def _convertAttributeProto(onnx_arg): 
     """
