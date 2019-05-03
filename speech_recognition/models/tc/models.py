@@ -10,14 +10,15 @@ import torch.nn.functional as F
 from ..utils import ConfigType, SerializableModule
 
 class TCResidualBlock(nn.Module):
-    def __init__(self, input_channels, output_channels, size, stride):
+    def __init__(self, input_channels, output_channels, size, stride, clipping_value):
         super().__init__()
         self.stride = stride
+        self.clipping_value = clipping_value
         if stride > 1:
             self.downsample = nn.Sequential(
                 nn.Conv2d(input_channels, output_channels, 1, stride, bias=False),
                 nn.BatchNorm2d(output_channels),
-                nn.ReLU())
+                nn.Hardtanh(0.0, self.clipping_value))
         
         pad_x = size[0] // 2
         pad_y = size[1] // 2
@@ -25,11 +26,11 @@ class TCResidualBlock(nn.Module):
         self.convs = nn.Sequential(
             nn.Conv2d(input_channels, output_channels, size, stride, padding=(pad_x,pad_y), bias=False),
             nn.BatchNorm2d(output_channels),
-            nn.ReLU(),
+            nn.Hardtanh(0.0, self.clipping_value),
             nn.Conv2d(output_channels, output_channels, size, 1, padding=(pad_x,pad_y), bias=False),
             nn.BatchNorm2d(output_channels))
             
-        self.relu = nn.ReLU()
+        self.relu = nn.Hardtanh(0.0, self.clipping_value)
             
     def forward(self, x):
         y = self.convs(x)
@@ -49,6 +50,7 @@ class TCResNetModel(SerializableModule):
         height = config["height"]
         dropout_prob = config["dropout_prob"]
         width_multiplier = config["width_multiplier"]
+        clipping_value = config["clipping_value"]
         
         self.layers = nn.ModuleList()
   
@@ -82,7 +84,7 @@ class TCResNetModel(SerializableModule):
                 size = config[size_name]
                 stride = config[stride_name] 
                 
-                block = TCResidualBlock(input_channels, output_channels, size, stride)
+                block = TCResidualBlock(input_channels, output_channels, size, stride, clipping_value)
                 self.layers.append(block)
                 
                 input_channels = output_channels
@@ -124,6 +126,7 @@ configs= {
         dropout_prob = 0.5,
         n_labels = 12,
         width_multiplier = 1,
+        clipping_value = 100000,
         conv1_size = (3,1),
         conv1_stride = 1,
         conv1_output_channels = 16,
@@ -142,6 +145,7 @@ configs= {
         dropout_prob = 0.5,
         n_labels = 12,
         width_multiplier = 1,
+        clipping_value = 100000,
         conv1_size = (3,1),
         conv1_stride = 1,
         conv1_output_channels = 16,
@@ -169,6 +173,7 @@ configs= {
         dropout_prob = 0.5,
         n_labels = 12,
         width_multiplier = 1.5,
+        clipping_value = 100000,
         conv1_size = (3,1),
         conv1_stride = 1,
         conv1_output_channels = 16,
@@ -187,6 +192,7 @@ configs= {
         dropout_prob = 0.5,
         n_labels = 12,
         width_multiplier = 1.5,
+        clipping_value = 100000,
         conv1_size = (3,1),
         conv1_stride = 1,
         conv1_output_channels = 16,
