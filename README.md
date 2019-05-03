@@ -38,7 +38,7 @@ or for training on gpus:
 
 or for training on cluster-gpu0x:
 
-    ./bootstrap.sh --gpu_clusters
+    ./bootstrap.sh --gpu_cluster
 
 And activate the venv using:
 
