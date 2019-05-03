@@ -23,7 +23,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
 import distiller
 from distiller.data_loggers import *
-import apputils
+import distiller.apputils as apputils
 import torchnet.meter as tnt
 
 from .summaries import *
@@ -172,7 +172,6 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
         model.cuda()
         
     performance_summary = model_summary(model, dummy_input, 'performance')
-
     
     for test_step, (model_in, target) in enumerate(test_loader):
         with torch.no_grad():
@@ -428,9 +427,6 @@ def train(model_name, config):
             stats_dict = OrderedDict()
             batch_time.add(time.time() - end)
             step_no += 1
-
-            print("loss: ", float(loss))
-            
             
             if last_log + log_every <= step_no:
                 scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
@@ -513,7 +509,7 @@ def build_config(extra_config={}):
             if "type" in default_config:
                 del default_config["type"]
             if "dataset" in default_config:
-                dataset_name = config["dataset"]
+                dataset_name = default_config["dataset"]
                 del default_config["dataset"]
             if "dataset_cls" in default_config:
                 del default_config["dataset_cls"]

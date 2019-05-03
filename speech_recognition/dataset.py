@@ -211,8 +211,8 @@ class SpeechDataset(data.Dataset):
             a = 1
         
         if index >= len(self.audio_labels):
-            return self.preprocess(None, silence=True), 0 + 1
-        return self.preprocess(self.audio_files[index]), self.audio_labels[index] + 1
+            return self.preprocess(None, silence=True), 0 + a
+        return self.preprocess(self.audio_files[index]), self.audio_labels[index] + a
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
