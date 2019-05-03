@@ -527,11 +527,11 @@ def build_config(extra_config={}):
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
     builder = ConfigBuilder(
+        default_config,
         mod.find_config(model_name),
         dataset_cls.default_config(),
         global_config,
-        extra_config,
-        default_config)
+        extra_config)
     parser = builder.build_argparse()
     parser.add_argument("--type", choices=["train", "eval"], default="train", type=str)
     config = builder.config_from_argparse(parser)
