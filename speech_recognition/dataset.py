@@ -94,7 +94,9 @@ class SpeechDataset(data.Dataset):
         config["train_pct"] = 80
         config["dev_pct"] = 10
         config["test_pct"] = 10
-
+        config["trim"] = True
+        config["loss"] = "cross_entropy"
+        
         # Feature extraction
         config["features"] = "mel"
         config["n_mfcc"] = 40
@@ -106,7 +108,7 @@ class SpeechDataset(data.Dataset):
     
         # Cache config
         config["cache_size"] = 200000
-        config["cache_prob"] = 0.7
+        config["cache_prob"] = 0.8
 
         return config
 
@@ -158,7 +160,7 @@ class SpeechDataset(data.Dataset):
         else:
             data = self._file_cache.get(example)
 
-            if not data:
+            if data is None:
                 data = librosa.core.load(example, sr=self.samplingrate)[0]
 
                 extract_index = (0, len(data))

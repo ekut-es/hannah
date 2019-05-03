@@ -103,7 +103,6 @@ class TCResNetModel(SerializableModule):
         self.dropout = nn.Dropout(dropout_prob)
         
         self.fc = nn.Linear(shape[1], n_labels, bias=False)
-        self.softmax = nn.Softmax(dim=1)
         
     def forward(self, x):
         x = x.unsqueeze(1)
@@ -114,7 +113,6 @@ class TCResNetModel(SerializableModule):
         x = x.view(x.size(0), -1)
         x = self.dropout(x)
         x = self.fc(x)
-        x = self.softmax(x)
         
         return x
                         

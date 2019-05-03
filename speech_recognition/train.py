@@ -31,6 +31,19 @@ from .summaries import *
 
 msglogger = None
 
+def get_loss_function(config):
+     
+    criterion = nn.CrossEntropyLoss()
+    if "loss" in config:
+        if config["loss"] == "cross_entropy":
+            criterion == nn.CrossEntropyLoss()
+        elif config["loss"] == "ctc":
+            criterion == nn.CTCLoss()
+        else:
+            raise Exception("Loss function not supported {}".format(config["loss"]))
+            
+    return criterion
+            
 def get_output_dir(model_name, config):
     
     output_dir = os.path.join(config["output_dir"], model_name)
@@ -132,8 +145,8 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
         torch.cuda.set_device(config["gpu_no"])
         model.cuda()
 
-    criterion = nn.CrossEntropyLoss()
-
+    criterion = get_loss_function(config)
+    
     losses = {'objective_loss': tnt.AverageValueMeter()}
     classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
     batch_time = tnt.AverageValueMeter()
@@ -281,7 +294,7 @@ def train(model_name, config):
         raise Exception("Unknown Optimizer: {}".format(config["optimizer"]))
         
     sched_idx = 0
-    criterion = nn.CrossEntropyLoss()
+    criterion = get_loss_function(config)
     max_acc = 0
 
     n_epochs = config["n_epochs"]
