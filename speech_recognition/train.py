@@ -36,9 +36,9 @@ def get_loss_function(config):
     criterion = nn.CrossEntropyLoss()
     if "loss" in config:
         if config["loss"] == "cross_entropy":
-            criterion == nn.CrossEntropyLoss()
+            criterion = nn.CrossEntropyLoss()
         elif config["loss"] == "ctc":
-            criterion == nn.CTCLoss()
+            criterion = nn.CTCLoss()
         else:
             raise Exception("Loss function not supported {}".format(config["loss"]))
             
@@ -401,12 +401,24 @@ def train(model_name, config):
             scores = model(model_in)
             
             labels = Variable(labels)
-            loss = criterion(scores, labels)
-         
+            if config["loss"] == "ctc":
+                scores = scores.view(scores.size(0), scores.size(1), -1)
+                scores = scores.permute(1,0,2)
+
+                input_lengths = Variable(torch.Tensor([scores.size(0)] * scores.size(1)).int())
+                label_lengths = Variable(torch.Tensor([1] * scores.size(1)).int()) 
+                labels = labels.unsqueeze(1)
+                loss = criterion(scores, labels, input_lengths, label_lengths)
+            else:
+                scores = scores.view(scores.size(0), -1)
+                loss = criterion(scores, labels)
+
+            
             if compression_scheduler is not None:
                 compression_scheduler.before_backward_pass(epoch_idx, batch_idx, batches_per_epoch, loss)
-            loss.backward()
-            optimizer.step()
+            print(loss)
+            #loss.backward()
+            #optimizer.step()
             if compression_scheduler is not None:
                 compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, batches_per_epoch)
 
@@ -414,24 +426,27 @@ def train(model_name, config):
             stats_dict = OrderedDict()
             batch_time.add(time.time() - end)
             step_no += 1
-         
-            scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
 
-            if last_log + log_every <= step_no:
-                last_log = step_no
-                stats_dict["Accuracy"] = scalar_accuracy
-                stats_dict["Loss"] = scalar_loss
-                stats_dict["Time"] = batch_time.mean
-                stats_dict['LR'] = optimizer.param_groups[0]['lr']
-                stats = ('Peformance/Training/', stats_dict)
-                params = model.named_parameters()
-                distiller.log_training_progress(stats,
-                                                params,
-                                                epoch_idx,
-                                                batch_idx,
-                                                batches_per_epoch,
-                                                log_every,
-                                                [tflogger,pylogger])
+            print("loss: ", loss)
+            
+            #scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
+            scalar_accuracy, scalar_loss = 0.0, 0.0
+            
+            #if last_log + log_every <= step_no:
+            #    last_log = step_no
+            #    stats_dict["Accuracy"] = scalar_accuracy
+            #    stats_dict["Loss"] = scalar_loss
+            #    stats_dict["Time"] = batch_time.mean
+            #    stats_dict['LR'] = optimizer.param_groups[0]['lr']
+            #    stats = ('Peformance/Training/', stats_dict)
+            #    params = model.named_parameters()
+            #    distiller.log_training_progress(stats,
+            #                                    params,
+            #                                    epoch_idx,
+            #                                    batch_idx,
+            #                                    batches_per_epoch,
+            #                                    log_every,
+            #                                    [tflogger,pylogger])
                  
          
             end = time.time()

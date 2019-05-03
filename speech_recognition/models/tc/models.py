@@ -49,6 +49,7 @@ class TCResNetModel(SerializableModule):
         height = config["height"]
         dropout_prob = config["dropout_prob"]
         width_multiplier = config["width_multiplier"]
+        self.fully_convolutional = config["fully_convolutional"]
         
         self.layers = nn.ModuleList()
   
@@ -96,13 +97,17 @@ class TCResNetModel(SerializableModule):
         self.layers.append(average_pooling)
         
         x = average_pooling(x)
-        
-        x = x.view(1,-1)
+
+        if not self.fully_convolutional:
+            x = x.view(1,-1)
+            
         shape = x.shape
-        
         self.dropout = nn.Dropout(dropout_prob)
-        
-        self.fc = nn.Linear(shape[1], n_labels, bias=False)
+
+        if self.fully_convolutional:
+            self.fc = nn.Conv2d(shape[1], n_labels, 1, bias = False)
+        else:
+            self.fc = nn.Linear(shape[1], n_labels, bias=False)
         
     def forward(self, x):
         x = x.unsqueeze(1)
@@ -110,9 +115,12 @@ class TCResNetModel(SerializableModule):
         for layer in self.layers:
             x = layer(x)
         
-        x = x.view(x.size(0), -1)
         x = self.dropout(x)
+        if not self.fully_convolutional:
+            x = x.view(x.size(0), -1)
         x = self.fc(x)
+
+        print(x.shape)
         
         return x
                         
@@ -121,6 +129,7 @@ class TCResNetModel(SerializableModule):
 configs= {
      ConfigType.TC_RES_8.value: dict(
         features="mel",
+        fully_convolutional=False,
         dropout_prob = 0.5,
         n_labels = 12,
         width_multiplier = 1,
@@ -141,6 +150,7 @@ configs= {
         features="mel",
         dropout_prob = 0.5,
         n_labels = 12,
+        fully_convolutional=False,
         width_multiplier = 1,
         conv1_size = (3,1),
         conv1_stride = 1,
@@ -168,6 +178,7 @@ configs= {
         features="mel",
         dropout_prob = 0.5,
         n_labels = 12,
+        fully_convolutional=False,
         width_multiplier = 1.5,
         conv1_size = (3,1),
         conv1_stride = 1,
@@ -185,6 +196,7 @@ configs= {
     ConfigType.TC_RES_14_15.value: dict(
         features="mel",
         dropout_prob = 0.5,
+        fully_convolutional=False,
         n_labels = 12,
         width_multiplier = 1.5,
         conv1_size = (3,1),
