@@ -346,9 +346,13 @@ def train(model_name, config):
 
     # Setup distiller for model minimization
     msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
-    tflogger = TensorBoardLogger(msglogger.logdir)
-    tflogger.log_gradients = True
     pylogger = PythonLogger(msglogger)
+    loggers  = [pylogger]  
+
+    if config["tblogger"]:
+        tblogger = TensorBoardLogger(msglogger.logdir)
+        tblogger.log_gradients = True
+        loggers.append(tblogger)
 
     
     compression_scheduler = None
@@ -444,12 +448,12 @@ def train(model_name, config):
                                                 batch_idx,
                                                 batches_per_epoch,
                                                 log_every,
-                                                [tflogger,pylogger])
+                                                loggers)
                  
          
             end = time.time()
 
-        avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=[tflogger,pylogger], epoch=epoch_idx)    
+        avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)    
         
 
         if avg_acc > max_acc:
@@ -522,7 +526,7 @@ def build_config(extra_config={}):
                          batch_size=64, seed=0, use_nesterov=False,
                          input_file="", output_dir=output_dir, gpu_no=0,
                          compress="", optimizer="sgd",
-                         momentum=0.9, weight_decay=0.00001)
+                         momentum=0.9, weight_decay=0.00001, tblogger=False)
     
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
