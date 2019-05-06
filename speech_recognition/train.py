@@ -371,11 +371,11 @@ def train(model_name, config):
         dummy_input.cuda()
         model.cuda()
 
-    #draw_classifier_to_file(model,
-    #                        os.path.join(output_dir, 'model.png'),
-    #                        dummy_input)
+    draw_classifier_to_file(model,
+                            os.path.join(output_dir, 'model.png'),
+                            dummy_input)
 
-    #performance_summary = model_summary(model, dummy_input, 'performance')
+    performance_summary = model_summary(model, dummy_input, 'performance')
 
     # iteration counters 
     step_no = 0
