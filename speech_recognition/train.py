@@ -455,6 +455,7 @@ def train(model_name, config):
          
             end = time.time()
 
+        msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
         avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)    
         
 
@@ -481,7 +482,8 @@ def train(model_name, config):
                 
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
-            
+
+    msglogger.info("Running final test")
     model.load(os.path.join(output_dir, "model.pt"))
     test_accuracy = evaluate(model_name, config, model, test_loader)
 
