@@ -17,7 +17,6 @@ tcml_config = dict(
     tcml_partition = 'test',
     tcml_mem = '3G',
     tcml_ngpus = '1',
-    tcml_estimated_time_with_buffer = "14:00",
     tcml_estimated_time = "8:00",
     tcml_user = "gerum",
     tcml_user_mail =  "christoph.gerum@uni-tuebingen.de",
@@ -34,7 +33,7 @@ tcml_config = dict(
 
 
 def estimate_duration(config):
-    model = get_model(config)
+    #model = get_model(config)
 
     estimated_time = timedelta(hours=16)
 
@@ -161,14 +160,12 @@ def enqueue_job(sbatch, config, shell):
 # Run training on tcml machine learning cluster
 def main():
     model_name, config = build_config(extra_config=tcml_config)
+    print(config["lr"])
     output_dir = get_output_dir(model_name, config)
 
-    config["tcml_estimated_time_with_buffer"] =  config["tcml_estimated_time"] 
-    
     #Estimate runtime
     runtime = estimate_duration(config)
     partition = get_partion_name(runtime)
-
     
     shell = spur.SshShell(
         hostname=config["tcml_master_node"],

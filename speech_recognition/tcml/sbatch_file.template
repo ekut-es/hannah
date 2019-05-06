@@ -20,7 +20,7 @@
 #SBATCH --gres=gpu:$tcml_ngpus
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node)
 
-#SBATCH --time=$tcml_estimated_time_with_buffer
+#SBATCH --time=$tcml_estimated_time
 # the maximum time the scripts needs to run
 
 #SBATCH --error=runs/job.$tcml_job_id.err

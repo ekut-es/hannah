@@ -52,6 +52,7 @@ class SpeechDataset(data.Dataset):
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
         self.extract_loudest = config["extract_loudest"]
+        self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
         self._audio_cache = SimpleCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
@@ -120,11 +121,8 @@ class SpeechDataset(data.Dataset):
         data = np.pad(data, (a, b), "constant")
         return data[:len(data) - a] if a else data[b:]
 
-    def _extract_loudest_range(self, data):
+    def _extract_loudest_range(self, data, in_len):
         """Extract the loudest part of the sample with length self.input_lenght"""
-
-        in_len = self.input_length
-
         if len(data) <= in_len:
             return (0, len(data))
         
@@ -147,13 +145,11 @@ class SpeechDataset(data.Dataset):
                 return self._audio_cache[example]
             except KeyError:
                 pass
-        in_len = self.input_length
-        if self.bg_noise_audio:
-            bg_noise = random.choice(self.bg_noise_audio)
-            a = random.randint(0, len(bg_noise) - in_len - 1)
-            bg_noise = bg_noise[a:a + in_len]
+
+        if self.loss_function == "ctc":
+            in_len = 16000 * 4
         else:
-            bg_noise = np.zeros(in_len)
+            in_len = self.input_length
 
         if silence:
             data = np.zeros(in_len, dtype=np.float32)
@@ -164,20 +160,29 @@ class SpeechDataset(data.Dataset):
                 data = librosa.core.load(example, sr=self.samplingrate)[0]
 
                 extract_index = (0, len(data))
+                
                 if self.extract_loudest:
-                    extract_index = self._extract_loudest_range(data)
-
+                    extract_index = self._extract_loudest_range(data, in_len)
+                 
                 data = self._timeshift_audio(data)
                 data = data[extract_index[0]:extract_index[1]]
-                
+                 
                 data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
                 data = data[0:in_len]
-                
+
+                    
             self._file_cache[example] = data
+
+        if self.bg_noise_audio:
+            bg_noise = random.choice(self.bg_noise_audio)
+            a = random.randint(0, len(bg_noise) - data.shape[0] - 1)
+            bg_noise = bg_noise[a:a + data.shape[0]]
+        else:
+            bg_noise = np.zeros(data.shape[0])
 
             
         if random.random() < self.noise_prob or silence:
-            a = random.random() * 0.1
+            a = random.random() * 0.1 
             data = np.clip(a * bg_noise + data, -1, 1)
         data = torch.from_numpy(preprocess_audio(data,
                                                  features = self.features,
@@ -189,18 +194,25 @@ class SpeechDataset(data.Dataset):
                                                  freq_max = self.freq_max,
                                                  window_ms = self.window_ms,
                                                  stride_ms = self.stride_ms))
-
-        assert data.shape[0] == self.height
-        assert data.shape[1] == self.width
+        
+        if self.loss_function != "ctc":
+            assert data.shape[0] == self.height
+            assert data.shape[1] == self.width
 
         self._audio_cache[example] = data
+
         return data
 
 
     def __getitem__(self, index):
+
+        a = 0
+        if self.loss_function == "ctc":
+            a = 1
+        
         if index >= len(self.audio_labels):
-            return self.preprocess(None, silence=True), 0
-        return self.preprocess(self.audio_files[index]), self.audio_labels[index]
+            return self.preprocess(None, silence=True), 0 + a
+        return self.preprocess(self.audio_files[index]), self.audio_labels[index] + a
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence

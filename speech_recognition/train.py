@@ -23,7 +23,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
 import distiller
 from distiller.data_loggers import *
-import apputils
+import distiller.apputils as apputils
 import torchnet.meter as tnt
 
 from .summaries import *
@@ -36,9 +36,9 @@ def get_loss_function(config):
     criterion = nn.CrossEntropyLoss()
     if "loss" in config:
         if config["loss"] == "cross_entropy":
-            criterion == nn.CrossEntropyLoss()
+            criterion = nn.CrossEntropyLoss()
         elif config["loss"] == "ctc":
-            criterion == nn.CTCLoss()
+            criterion = nn.CTCLoss()
         else:
             raise Exception("Loss function not supported {}".format(config["loss"]))
             
@@ -172,7 +172,6 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
         model.cuda()
         
     performance_summary = model_summary(model, dummy_input, 'performance')
-
     
     for test_step, (model_in, target) in enumerate(test_loader):
         with torch.no_grad():
@@ -368,11 +367,11 @@ def train(model_name, config):
         dummy_input.cuda()
         model.cuda()
 
-    draw_classifier_to_file(model,
-                            os.path.join(output_dir, 'model.png'),
-                            dummy_input)
+    #draw_classifier_to_file(model,
+    #                        os.path.join(output_dir, 'model.png'),
+    #                        dummy_input)
 
-    performance_summary = model_summary(model, dummy_input, 'performance')
+    #performance_summary = model_summary(model, dummy_input, 'performance')
 
     # iteration counters 
     step_no = 0
@@ -401,8 +400,22 @@ def train(model_name, config):
             scores = model(model_in)
             
             labels = Variable(labels)
-            loss = criterion(scores, labels)
-         
+            if config["loss"] == "ctc":
+                scores = scores.view(scores.size(0), scores.size(1), -1)
+                scores = scores.permute(2,0,1)
+                scores = scores.view(scores.size(0), scores.size(1), -1)
+
+                input_lengths = torch.Tensor([scores.size(0)] * scores.size(1)).long()
+                label_lengths = torch.Tensor([1] * scores.size(1)).long()
+                scores = torch.nn.functional.log_softmax(scores, dim=2)
+                labels = labels.unsqueeze(1)
+                
+                loss = criterion(scores, labels, input_lengths, label_lengths)
+            else:
+                scores = scores.view(scores.size(0), -1)
+                loss = criterion(scores, labels)
+
+            
             if compression_scheduler is not None:
                 compression_scheduler.before_backward_pass(epoch_idx, batch_idx, batches_per_epoch, loss)
             loss.backward()
@@ -414,10 +427,10 @@ def train(model_name, config):
             stats_dict = OrderedDict()
             batch_time.add(time.time() - end)
             step_no += 1
-         
-            scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
-
+            
             if last_log + log_every <= step_no:
+                scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
+        
                 last_log = step_no
                 stats_dict["Accuracy"] = scalar_accuracy
                 stats_dict["Loss"] = scalar_loss
@@ -496,7 +509,7 @@ def build_config(extra_config={}):
             if "type" in default_config:
                 del default_config["type"]
             if "dataset" in default_config:
-                dataset_name = config["dataset"]
+                dataset_name = default_config["dataset"]
                 del default_config["dataset"]
             if "dataset_cls" in default_config:
                 del default_config["dataset_cls"]
@@ -514,11 +527,11 @@ def build_config(extra_config={}):
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
     builder = ConfigBuilder(
+        default_config,
         mod.find_config(model_name),
         dataset_cls.default_config(),
         global_config,
-        extra_config,
-        default_config)
+        extra_config)
     parser = builder.build_argparse()
     parser.add_argument("--type", choices=["train", "eval"], default="train", type=str)
     config = builder.config_from_argparse(parser)

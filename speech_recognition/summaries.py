@@ -1,6 +1,6 @@
 import distiller
 from distiller.data_loggers import PythonLogger, CsvLogger
-import apputils
+import distiller.apputils as apputils
 import logging
 import pandas as pd
 import torch
