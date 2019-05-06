@@ -17,7 +17,7 @@ import itertools
 
 from . import models as mod
 from . import dataset
-from .utils import set_seed
+from .utils import set_seed, config_pylogger, log_execution_env_state
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
@@ -46,7 +46,7 @@ def get_loss_function(config):
             
 def get_output_dir(model_name, config):
     
-    output_dir = os.path.join(config["output_dir"], model_name)
+    output_dir = os.path.join(config["output_dir"], config["experiment_id"], model_name)
 
     if config["compress"]:
         compressed_name = config["compress"]
@@ -128,7 +128,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     global msglogger
     if not msglogger:
         output_dir = get_output_dir(model_name, config)
-        msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
+        msglogger = config_pylogger('logging.conf', "eval", output_dir)
 
     if not loggers:
         loggers = [PythonLogger(msglogger)]
@@ -244,6 +244,18 @@ def train(model_name, config):
 
     output_dir = get_output_dir(model_name, config)
     
+    #Configure logging
+    msglogger = config_pylogger('logging.conf', "train", output_dir)
+    pylogger = PythonLogger(msglogger)
+    loggers  = [pylogger]  
+    if config["tblogger"]:
+        tblogger = TensorBoardLogger(msglogger.logdir)
+        tblogger.log_gradients = True
+        loggers.append(tblogger)
+
+    log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))    
+
+    
     print("All information will be saved to: ", output_dir)
     
     if not os.path.exists(output_dir):
@@ -345,16 +357,6 @@ def train(model_name, config):
     test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
 
     # Setup distiller for model minimization
-    msglogger = apputils.config_pylogger('logging.conf', None, os.path.join(output_dir, "logs"))
-    pylogger = PythonLogger(msglogger)
-    loggers  = [pylogger]  
-
-    if config["tblogger"]:
-        tblogger = TensorBoardLogger(msglogger.logdir)
-        tblogger.log_gradients = True
-        loggers.append(tblogger)
-
-    
     compression_scheduler = None
     if config["compress"]:
         print("Activating compression scheduler")
@@ -526,7 +528,7 @@ def build_config(extra_config={}):
                          batch_size=64, seed=0, use_nesterov=False,
                          input_file="", output_dir=output_dir, gpu_no=0,
                          compress="", optimizer="sgd",
-                         momentum=0.9, weight_decay=0.00001, tblogger=False)
+                         momentum=0.9, weight_decay=0.00001, tblogger=False, experiment_id="test")
     
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)

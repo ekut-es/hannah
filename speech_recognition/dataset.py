@@ -5,6 +5,7 @@ import os
 import random
 import re
 import json
+import logging
 
 from chainmap import ChainMap
 import librosa
@@ -225,6 +226,8 @@ class SpeechCommandsDataset(SpeechDataset):
     
     @classmethod
     def splits(cls, config):
+        msglogger = logging.getLogger()
+
         folder = config["data_folder"]
         wanted_words = config["wanted_words"]
         unknown_prob = config["unknown_prob"]
@@ -309,12 +312,13 @@ class SpeechCommandsDataset(SpeechDataset):
             unk_dict = {u: words[cls.LABEL_UNKNOWN] for u in unknown_files[a:b]}
             dataset.update(unk_dict)
             a = b
-
-        print("Dataset config:")
-        print("  train: ", len(sets[0]),
-              "\n  dev:   ", len(sets[1]),
-              "\n  test:  ", len(sets[2]),
-              "\n  total: ", len(sets[0])+len(sets[1])+len(sets[2]))
+    
+        msglogger.info("Dataset config:")
+        msglogger.info("  train: %d", len(sets[0]))
+        msglogger.info("  dev:   %d", len(sets[1]))
+        msglogger.info("  test:  %d", len(sets[2]))
+        msglogger.info("  total: %d", len(sets[0])+len(sets[1])+len(sets[2]))
+        msglogger.info("")
             
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)

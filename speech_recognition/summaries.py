@@ -8,7 +8,6 @@ from functools import partial
 from tabulate import tabulate
 from collections import OrderedDict
 
-msglogger = logging.getLogger()
 
 def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=False, rankdir='TB', styles=None):
     """Draw a PyTorch classifier to a PNG file.  This a helper function that
@@ -28,11 +27,13 @@ def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=F
                                    'style': 'rounded, filled'}
     """
 
+    msglogger = logging.getLogger()
+    
     try:
         model = distiller.make_non_parallel_copy(model)
         dummy_input = dummy_input.to(distiller.model_device(model))
-        g = apputils.SummaryGraph(model, dummy_input)
-        apputils.draw_model_to_file(g, png_fname, display_param_nodes, rankdir, styles)
+        g = distiller.SummaryGraph(model, dummy_input)
+        distiller.draw_model_to_file(g, png_fname, display_param_nodes, rankdir, styles)
         print("Network PNG image generation completed")
     except FileNotFoundError:
         print("An error has occured while generating the network PNG image.")
@@ -42,6 +43,9 @@ def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=F
 
 
 def model_summary(model, dummy_input, what):
+    msglogger = logging.getLogger()
+
+    
     if what == 'sparsity':
         pylogger = PythonLogger(msglogger)
         csvlogger = CsvLogger('weights.csv')
