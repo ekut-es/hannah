@@ -47,7 +47,15 @@ class ConfigOption(object):
             else:
                 res["action"] = 'store_true'
                 res["default"] = False
-        
+
+        elif self.dtype == list:
+            res["nargs"] = "+"
+            res["type"] = type(self.default[0])
+
+        elif self.dtype == tuple:
+            res["nargs"] = len(self.default)
+            res["type"] = type(self.default[0])
+                
         return res
 
     def get_args(self, name):

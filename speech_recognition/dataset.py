@@ -83,15 +83,19 @@ class SpeechDataset(data.Dataset):
         
         #Input Description
         config["wanted_words"]         = ConfigOption(category="Input Config",
-                                                      default=["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]),
+                                                      default=["yes", "no", "up",
+                                                               "down", "left",
+                                                               "right", "on",
+                                                               "off", "stop",
+                                                               "go"])
         config["data_folder"]          = ConfigOption(category="Input Config",
                                                       default="datasets/speech_commands_v0.02/")
         config["samplingrate"]         = ConfigOption(category="Input Config",
-                                                      default=16000),
+                                                      default=16000)
         config["input_length"]         = ConfigOption(category="Input Config",
-                                                      default=16000),
+                                                      default=16000)
         config["extract_loudest"]      = ConfigOption(category="Input Config",
-                                                      default=True),
+                                                      default=True)
         config["timeshift_ms"]         = ConfigOption(category="Input Config",
                                                       default=100)
         config["use_default_split"]    = ConfigOption(category="Input Config",
@@ -113,6 +117,8 @@ class SpeechDataset(data.Dataset):
         config["trim"]                 = ConfigOption(category="Input Config",
                                                       default=True)
         config["loss"]                 = ConfigOption(category="Input Config",
+                                                      desc="Loss function that should be used with this dataset",
+                                                      choices=["cross_entropy", "ctc"],
                                                       default="cross_entropy")
         
         # Feature extraction
