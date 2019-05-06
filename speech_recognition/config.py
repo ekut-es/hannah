@@ -2,6 +2,68 @@ from collections import ChainMap
 import argparse
 import sys
 
+class ConfigOption(object):
+    def __init__(self, nargs=None,
+                 const=None, default=None,
+                 dtype=None, choices=None,
+                 required=False, desc="",
+                 category="Global Options", visible=True):
+
+        if default is None and dtype is None:
+            raise Exception("Either default or dtype need to be given for a config option.")
+        
+        self.nargs = nargs
+        self.const = const
+        self.default = default
+        if dtype:
+            self.dtype = dtype
+        else:
+            self.dtype = type(default)
+        self.choices = choices
+        self.required = required
+        self.desc = desc
+        self.category = category
+        self.visible = visible
+
+    def get_dict(self, name):
+        res = {}
+        if self.dtype != bool:
+            res["type"] = self.dtype
+        if self.default is not None:
+            res["default"] = self.default
+        if self.desc is not None:
+            help = str(self.desc)
+            if self.default is not None:
+                help += " DEFAULT: " + str(self.default)
+            res["help"] = help
+
+        if self.choices is not None:
+            res["choices"] = self.choices
+            
+        if self.dtype == bool:
+            if self.default == True:
+                res["action"] = 'store_false'
+                res["dest"] = name
+            else:
+                res["action"] = 'store_true'
+                res["default"] = False
+        
+        return res
+
+    def get_args(self, name):
+
+        args = self.get_dict(name)
+        
+        if self.dtype == bool and self.default == True:
+            name = "no_" + name
+            
+        flags = []
+        if "_" in name:
+            flags.append("--{}".format(name.replace("_", "-")))
+        flags.append("--{}".format(name))
+
+        return flags, args
+        
 class ConfigBuilder(object):
     def __init__(self, *default_configs):
         self.default_config = ChainMap(*default_configs)
@@ -9,9 +71,37 @@ class ConfigBuilder(object):
     def build_argparse(self):
         parser = argparse.ArgumentParser()
         parser.add_argument("--full-help", action="store_true")
+        categories = {}
         for key, value in self.default_config.items():
+
+            #Allow overiding of default options
+            if not isinstance(value, ConfigOption):
+                for map in self.default_config.maps:
+                    if key == "cache_size":
+                        print("map:")
+                        from pprint import pprint
+                        pprint(map)
+                    if key in map:
+                        obj = map[key]
+                        if isinstance(obj, ConfigOption):
+                            assert type(value) == obj.dtype
+                            obj.default = value
+                            value = obj
+                            break
+                
+            
             flag = "--{}".format(key)
-            if isinstance(value, tuple):
+            if isinstance(value, ConfigOption):
+                flags, args = value.get_args(key)
+                category = parser
+                if value.category is not None:
+                    if value.category not in categories:
+                        category = parser.add_argument_group(title=value.category)
+                        categories[value.category] = category
+                    category = categories[value.category]
+                
+                category.add_argument(*flags, **args) 
+            elif isinstance(value, tuple):
                 parser.add_argument(flag, default=list(value), nargs=len(value), type=type(value[0]))
             elif isinstance(value, list):
                 parser.add_argument(flag, default=value, nargs="+", type=type(value[0]))
@@ -19,7 +109,6 @@ class ConfigBuilder(object):
                 if not value:
                     parser.add_argument(flag, action="store_true")
                 else:
-                    print("Add default true flat", key)
                     flag = "--no_{}".format(key)
                     parser.add_argument(flag, dest=str(key), action="store_false", default=True)
             else:

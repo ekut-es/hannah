@@ -32,7 +32,7 @@ def set_seed(config):
     seed = config["seed"]
     torch.manual_seed(seed)
     np.random.seed(seed)
-    if not config["no_cuda"]:
+    if config["cuda"]:
         torch.cuda.manual_seed(seed)
     random.seed(seed)
 

@@ -13,6 +13,7 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
+from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
 
 
@@ -81,36 +82,62 @@ class SpeechDataset(data.Dataset):
         config = {}
         
         #Input Description
-        config["wanted_words"] = ["yes", "no", "up", "down", "left",
-                                  "right", "on", "off", "stop", "go"]
-        config["data_folder"] = "datasets/speech_commands_v0.02/"
-        config["samplingrate"] = 16000
-        config["input_length"] = 16000
-        config["extract_loudest"] = True
-        config["timeshift_ms"] = 100
-        config["use_default_split"] = False
-        config["group_speakers_by_id"] = True
-        config["silence_prob"] = 0.1
-        config["noise_prob"] = 0.8
-        config["unknown_prob"] = 0.1
-        config["train_pct"] = 80
-        config["dev_pct"] = 10
-        config["test_pct"] = 10
-        config["trim"] = True
-        config["loss"] = "cross_entropy"
+        config["wanted_words"]         = ConfigOption(category="Input Config",
+                                                      default=["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]),
+        config["data_folder"]          = ConfigOption(category="Input Config",
+                                                      default="datasets/speech_commands_v0.02/")
+        config["samplingrate"]         = ConfigOption(category="Input Config",
+                                                      default=16000),
+        config["input_length"]         = ConfigOption(category="Input Config",
+                                                      default=16000),
+        config["extract_loudest"]      = ConfigOption(category="Input Config",
+                                                      default=True),
+        config["timeshift_ms"]         = ConfigOption(category="Input Config",
+                                                      default=100)
+        config["use_default_split"]    = ConfigOption(category="Input Config",
+                                                      default=False)
+        config["group_speakers_by_id"] = ConfigOption(category="Input Config",
+                                                      default=True)
+        config["silence_prob"]         = ConfigOption(category="Input Config",
+                                                      default=0.1)
+        config["noise_prob"]           = ConfigOption(category="Input Config",
+                                                      default=0.8)
+        config["unknown_prob"]         = ConfigOption(category="Input Config",
+                                                      default=0.1)
+        config["train_pct"]            = ConfigOption(category="Input Config",
+                                                      default=80)
+        config["dev_pct"]              = ConfigOption(category="Input Config",
+                                                      default=10)
+        config["test_pct"]             = ConfigOption(category="Input Config",
+                                                      default=10)
+        config["trim"]                 = ConfigOption(category="Input Config",
+                                                      default=True)
+        config["loss"]                 = ConfigOption(category="Input Config",
+                                                      default="cross_entropy")
         
         # Feature extraction
-        config["features"] = "mel"
-        config["n_mfcc"] = 40
-        config["n_mels"] = 40
-        config["stride_ms"] = 10
-        config["window_ms"] = 30
-        config["freq_min"] = 20
-        config["freq_max"] = 4000
+        config["features"]  = ConfigOption(category="Feature Config",
+                                           default="mel")
+        config["n_mfcc"]    = ConfigOption(category="Feature Config",
+                                           default=40)
+        config["n_mels"]    = ConfigOption(category="Feature Config",
+                                           default=40)
+        config["stride_ms"] = ConfigOption(category="Feature Config",
+                                           default=10)
+        config["window_ms"] = ConfigOption(category="Feature Config",
+                                           default=30)
+        config["freq_min"]  = ConfigOption(category="Feature Config",
+                                           default=20)
+        config["freq_max"]  = ConfigOption(category="Feature Config",
+                                           default=4000)
     
         # Cache config
-        config["cache_size"] = 200000
-        config["cache_prob"] = 0.8
+        config["cache_size"] = ConfigOption(category="Cache Config",
+                                            default=200000,
+                                            desc="Size of the caches for preprocessed and raw data")
+        config["cache_prob"] = ConfigOption(category="Cache Config",
+                                            default=0.8,
+                                            desc="Probabilty of using a cached sample during training")
 
         return config
 

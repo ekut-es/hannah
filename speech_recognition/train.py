@@ -1,5 +1,5 @@
 from collections import ChainMap, OrderedDict
-from .config import ConfigBuilder
+from .config import ConfigBuilder, ConfigOption
 import argparse
 import os
 import random
@@ -84,7 +84,7 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
 
     for validation_step, (inputs, target) in enumerate(data_loader):
         with torch.no_grad():
-            if not config["no_cuda"]:
+            if config["cuda"]:
                 inputs, target = inputs.cuda(), target.cuda()
             # compute output from model
             output = model(inputs)
@@ -141,7 +141,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
         
     model = get_model(config, model)
         
-    if not config["no_cuda"]:
+    if config["cuda"]:
         torch.cuda.set_device(config["gpu_no"])
         model.cuda()
 
@@ -167,7 +167,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     # Print network statistics
     dummy_input, _ = next(iter(test_loader))
     model.eval()
-    if not config["no_cuda"]:
+    if config["cuda"]:
         dummy_input.cuda()
         model.cuda()
         
@@ -177,7 +177,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
         with torch.no_grad():
             model_in = Variable(model_in)
             target = Variable(target)
-            if not config["no_cuda"]:
+            if config["cuda"]:
                 model_in = model_in.cuda()
                 target = target.cuda()
              
@@ -270,7 +270,7 @@ def train(model_name, config):
 
     model = get_model(config)
     
-    if not config["no_cuda"]:
+    if config["cuda"]:
         torch.cuda.set_device(config["gpu_no"])
         model.cuda()
 
@@ -362,14 +362,14 @@ def train(model_name, config):
         print("Activating compression scheduler")
 
         compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
-        if not config["no_cuda"]:
+        if config["cuda"]:
             model.cuda()
 
 
     # Print network statistics
     dummy_input, _ = next(iter(test_loader))
     model.eval()
-    if not config["no_cuda"]:
+    if config["cuda"]:
         dummy_input.cuda()
         model.cuda()
 
@@ -399,7 +399,7 @@ def train(model_name, config):
                 compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, batches_per_epoch)
                 
             optimizer.zero_grad()
-            if not config["no_cuda"]:
+            if config["cuda"]:
                 model_in = model_in.cuda()
                 labels = labels.cuda()
             model_in = Variable(model_in)
@@ -468,7 +468,7 @@ def train(model_name, config):
             msglogger.info("saving onnx...")
             try:
                 model_in, label = next(iter(test_loader), (None, None))
-                if not config["no_cuda"]:
+                if config["cuda"]:
                     model_in = model_in.cuda()
                 model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
             except Exception as e:
@@ -522,15 +522,29 @@ def build_config(extra_config={}):
             if "dataset_cls" in default_config:
                 del default_config["dataset_cls"]
             
-    global_config = dict(no_cuda=False, n_epochs=500,
+    global_config = dict(cuda=ConfigOption(default=True,
+                                           desc="Disable cuda"),
+                         n_epochs=ConfigOption(default=500,
+                                               desc="Number of epochs for training"),
+
+                         optimizer=ConfigOption(default="sgd",
+                                                desc="Optimizer to choose",
+                                                category="Optimizer Config", 
+                                                choices=["sgd",
+                                                         "adadelta",
+                                                         "adagrad",
+                                                         "adam"]),
+                         
                          opt_rho = 0.9, opt_eps = 1e-06, lr_decay = 0,
                          use_amsgrad=False, opt_betas=[0.9, 0.999],
                          lr=0.1, lr_scheduler="step", lr_gamma=0.1,
                          lr_stepsize = 0, lr_steps = [0], lr_patience = 10, 
                          batch_size=64, seed=0, use_nesterov=False,
                          input_file="", output_dir=output_dir, gpu_no=0,
-                         compress="", optimizer="sgd",
-                         momentum=0.9, weight_decay=0.00001, tblogger=False, experiment_id="test")
+                         compress="", 
+                         momentum=0.9, weight_decay=0.00001, tblogger=False,
+                         experiment_id=ConfigOption(default="test",
+                                                    desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name"))
     
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
