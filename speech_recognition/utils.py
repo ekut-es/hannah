@@ -107,7 +107,7 @@ def log_execution_env_state(distiller_gitroot='.'):
     logger.info("  Kernel: %s", platform.release())
     if HAVE_LSB:
         logger.info("  OS: %s", lsb_release.get_lsb_information()['DESCRIPTION'])
-    logger.info("  Python: %s", sys.version.replace("\n", ""))
+    logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Numpy: %s", np.__version__)
     logger.info("  Distiller Info:")
