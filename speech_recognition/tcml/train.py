@@ -198,6 +198,9 @@ def enqueue_job(sbatch, config, shell):
 def main():
     model_name, config = build_config(extra_config=tcml_config)
 
+    if not config["tcml_job_id"]:
+        config["tcml_job_id"] = str(uuid.uuid4())
+
     #Prefix ids with model name
     config["tcml_name"] =  config["model_name"] + "_" + config["tcml_name"]
     config["tcml_job_id"] =  config["model_name"] + "_" + config["tcml_job_id"]
@@ -213,10 +216,6 @@ def main():
         username=config["tcml_user"],
         private_key_file=os.path.expanduser("~/.ssh/id_rsa")
     )
-
-    if not config["tcml_job_id"]:
-        config["tcml_job_id"] = str(uuid.uuid4())
-
 
         
     create_wd(config, shell)
