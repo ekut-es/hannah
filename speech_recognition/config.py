@@ -25,13 +25,16 @@ class ConfigOption(object):
         self.category = category
         self.visible = visible
 
-    def get_dict(self, name):
+    def _get_dict(self, name):
         res = {}
         if self.dtype != bool:
             res["type"] = self.dtype
         if self.default is not None:
             res["default"] = self.default
-        if self.desc is not None:
+
+        if not self.visible: 
+            help = argparse.SUPPRESS
+        elif self.desc is not None:
             help = str(self.desc)
             if self.default is not None:
                 help += " DEFAULT: " + str(self.default)
@@ -60,7 +63,7 @@ class ConfigOption(object):
 
     def get_args(self, name):
 
-        args = self.get_dict(name)
+        args = self._get_dict(name)
         
         if self.dtype == bool and self.default == True:
             name = "no_" + name

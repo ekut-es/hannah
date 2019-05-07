@@ -44,7 +44,6 @@ def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=F
 
 def model_summary(model, dummy_input, what):
     msglogger = logging.getLogger()
-
     
     if what == 'sparsity':
         pylogger = PythonLogger(msglogger)

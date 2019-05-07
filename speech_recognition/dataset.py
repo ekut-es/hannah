@@ -123,6 +123,7 @@ class SpeechDataset(data.Dataset):
         
         # Feature extraction
         config["features"]  = ConfigOption(category="Feature Config",
+                                           choices=["mel", "mfcc", "melspec", "spectrogram", "raw"],
                                            default="mel")
         config["n_mfcc"]    = ConfigOption(category="Feature Config",
                                            default=40)
