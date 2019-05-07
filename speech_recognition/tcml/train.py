@@ -100,6 +100,9 @@ def build_sbatch(config):
         if key.startswith("tcml"):
             tcml_config[key] = str(value) 
 
+    tcml_config["tcml_name"] =  config["model_name"] + "_" + tcml_config["tcml_name"]
+    tcml_config["tcml_job_id"] =  config["model_name"] + "_" + tcml_config["tcml_job_id"]
+            
     sbatch = sbatch_template.safe_substitute(tcml_config)
     return sbatch
 
@@ -197,7 +200,6 @@ def enqueue_job(sbatch, config, shell):
 # Run training on tcml machine learning cluster
 def main():
     model_name, config = build_config(extra_config=tcml_config)
-    print(config["lr"])
     output_dir = get_output_dir(model_name, config)
 
     #Estimate runtime
