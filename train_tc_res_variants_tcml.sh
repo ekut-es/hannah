@@ -1,0 +1,47 @@
+#!/bin/bash
+
+id=mfcc
+feature=mfcc
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res8 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res8-15 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res14 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res14-15 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id
+ 
+id=spectrogram
+feature=spectrogram
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res8 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --tcml-mem=6G
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res8-15 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --tcml-mem=6G
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res14 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --tcml-mem=6G
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res14-15 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --tcml-mem=6G
+ 
+ 
+id=melspec
+feature=melspec
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res8 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --tcml-mem=6G
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res8-15 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --tcml-mem=6G
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res14 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --tcml-mem=6G
+ 
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res14-15 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --tcml-mem=6G
+
+
+id=fully_convolutional
+feature=mel
+
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res8 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --fully-convolutional
+
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res8-15 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --fully-convolutional
+
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res14 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --fully-convolutional
+
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500  --gpu_no 0  --lr 0.1 --seed 1234 --model tc-res14-15 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --features $feature --experiment-id $id --fully-convolutional
