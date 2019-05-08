@@ -44,7 +44,7 @@ tcml_config = dict(
                                        default="trained_models"),
     tcml_data_dir       = ConfigOption(category="TCML Options",
                                        desc="Directory for dataset on Cluster",
-                                       default="datasets/speech_commands_v0.02/"),
+                                       default="datasets/"),
     tcml_skip_data      = ConfigOption(category="TCML Options",
                                        desc="Skip synchronization of dataset to cluster",
                                        default=False),
@@ -201,6 +201,10 @@ def main():
     if not config["tcml_job_id"]:
         config["tcml_job_id"] = str(uuid.uuid4())
 
+    data_folder_name = os.path.basename(os.path.normpath(config["data_folder"]))
+    config["tcml_data_dir"] = os.path.join(config["tcml_data_dir"], data_folder_name)
+    
+        
     #Prefix ids with model name
     config["tcml_name"] =  config["model_name"] + "_" + config["tcml_name"]
     config["tcml_job_id"] =  config["model_name"] + "_" + config["tcml_job_id"]
