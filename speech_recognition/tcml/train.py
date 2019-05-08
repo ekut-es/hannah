@@ -243,10 +243,8 @@ def main():
         sync_code_job.wait()
 
     print("Finished synchronization jobs")
-
     sbatch = build_sbatch(config)
     enqueue_job(sbatch, config, shell)
-
     
     
 if __name__ == "__main__":

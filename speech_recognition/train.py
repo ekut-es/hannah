@@ -66,7 +66,7 @@ def get_eval(scores, labels, loss):
 
 def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
     losses = {'objective_loss': tnt.AverageValueMeter()}
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,1))
     batch_time = tnt.AverageValueMeter()
     total_samples = len(data_loader.sampler)
     batch_size = data_loader.batch_size
@@ -102,15 +102,14 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
     
         stats = ('Performance/Validation/',
                  OrderedDict([('Loss', losses['objective_loss'].mean),
-                              ('Top1', classerr.value(1)),
-                              ('Top5', classerr.value(5))]))
+                              ('Top1', classerr.value(1))]))
 
         if steps_completed % log_every == 0:
             distiller.log_training_progress(stats, None, epoch, steps_completed,
                                             total_steps, log_every, loggers)
 
-    msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
-                   classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
+    msglogger.info('==> Top1: %.3f      Loss: %.3f\n',
+                   classerr.value()[0], losses['objective_loss'].mean)
 
     msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
 
@@ -629,3 +628,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

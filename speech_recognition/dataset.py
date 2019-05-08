@@ -10,6 +10,7 @@ import logging
 from chainmap import ChainMap
 import librosa
 import numpy as np
+import scipy.signal as signal
 import torch
 import torch.utils.data as data
 
@@ -164,7 +165,7 @@ class SpeechDataset(data.Dataset):
         amps = np.abs(data)
         f = np.ones(in_len)
 
-        correlation = np.correlate(amps, f)
+        correlation = signal.correlate(amps, f)
         
         window_start = np.argmax(correlation)
         window_start = max(0, window_start)
