@@ -3,6 +3,7 @@ from ..config import ConfigOption
 
 from datetime import timedelta
 from string import Template
+from collections import ChainMap
 import os.path
 import subprocess
 import uuid
@@ -65,7 +66,10 @@ tcml_config = dict(
                                        default="tcml-master01.uni-tuebingen.de"),
     tcml_job_id         = ConfigOption(category="TCML Options",
                                        desc="Unique ID of the job if none is given we will automatically generate one",
-                                       default="")
+                                       default=""),
+    tcml_ssh_key        =ConfigOption(category="TCML Options",
+                                      default="~/.ssh/id_rsa",
+                                      desc="Path to the ssh Keyfile used to log in to the tcml-master node")
 )
 
 
@@ -196,13 +200,21 @@ def enqueue_job(sbatch, config, shell):
     
 # Run training on tcml machine learning cluster
 def main():
-    model_name, config = build_config(extra_config=tcml_config)
+    user_config_name = os.path.join(top_dir, "tcml_config.json")
+    user_config = {}
+    if os.path.exists(user_config_name):
+        with open(user_config_name) as config_file:
+            user_config = json.load(config_file)
+        
+    
+    model_name, config = build_config(extra_config=ChainMap(user_config, tcml_config))
 
     if not config["tcml_job_id"]:
         config["tcml_job_id"] = str(uuid.uuid4())
 
     data_folder_name = os.path.basename(os.path.normpath(config["data_folder"]))
-    config["tcml_data_dir"] = os.path.join(config["tcml_data_dir"], data_folder_name)
+    config["tcml_data_dir"] = os.path.join(config["tcml_data_dir"],
+                                           data_folder_name)
     
         
     #Prefix ids with model name
@@ -218,7 +230,7 @@ def main():
     shell = spur.SshShell(
         hostname=config["tcml_master_node"],
         username=config["tcml_user"],
-        private_key_file=os.path.expanduser("~/.ssh/id_rsa")
+        private_key_file=os.path.expanduser(config["tcml_ssh_key"])
     )
 
         
