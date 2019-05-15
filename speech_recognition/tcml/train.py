@@ -195,7 +195,7 @@ def enqueue_job(sbatch, config, shell):
         with shell.open(job_compress_path, "w") as target:
             with open(compress_file, "r") as source:
                 shutil.copyfileobj(source, target)
-        config["compress"] = job_compress_path
+        filtered_config["compress"] = job_compress_path
 
     with shell.open(job_config_path, "w") as f:
         s = json.dumps(dict(filtered_config), default=lambda x: str(x), indent=4, sort_keys = True)

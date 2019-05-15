@@ -66,7 +66,7 @@ def get_eval(scores, labels, loss):
 
 def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
     losses = {'objective_loss': tnt.AverageValueMeter()}
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,1))
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,))
     batch_time = tnt.AverageValueMeter()
     total_samples = len(data_loader.sampler)
     batch_size = data_loader.batch_size
@@ -109,7 +109,7 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
                                             total_steps, log_every, loggers)
 
     msglogger.info('==> Top1: %.3f      Loss: %.3f\n',
-                   classerr.value()[0], losses['objective_loss'].mean)
+                   classerr.value(1), losses['objective_loss'].mean)
 
     msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
 
@@ -147,7 +147,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     criterion = get_loss_function(config)
     
     losses = {'objective_loss': tnt.AverageValueMeter()}
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,))
     batch_time = tnt.AverageValueMeter()
     total_samples = len(test_loader.sampler)
     batch_size = test_loader.batch_size
@@ -195,42 +195,12 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     
         stats = ('Performance/Test/',
                  OrderedDict([('Loss', losses['objective_loss'].mean),
-                              ('Top1', classerr.value(1)),
-                              ('Top5', classerr.value(5))]))
+                              ('Top1', classerr.value(1))]))
 
         if steps_completed % log_every == 0:
             distiller.log_training_progress(stats, None, 0, steps_completed,
                                             total_steps, log_every, loggers)
 
-    summary = OrderedDict()
-    summary["Model Name"] = model_name
-    summary["Accuracy Top1"] = classerr.value()[0]
-    summary["Accuracy Top5"] = classerr.value()[1]
-    summary["Loss"] = losses['objective_loss'].mean 
-
-    for key, val in performance_summary.items():
-        summary[key] = val
-    
-    msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
-                   classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
-
-    msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
-
-
-    global_output_dir = config["output_dir"]
-    test_summary_file = os.path.join(global_output_dir, "test_summary.xlsx")
-
-    df = pd.DataFrame(columns=[k for k in summary.keys() if k != "Model Name"], index=["Model Name"])
-    
-    if os.path.exists(test_summary_file):
-        df = pd.read_excel(test_summary_file, sheet_name="Network Performance", index_col=[0])
-        
-    new_row = pd.Series(summary)
-    
-    df.loc[new_row["Model Name"]] = new_row
-    
-    df.to_excel(test_summary_file, sheet_name="Network Performance")
-    
     return summary
 
 def dump_config(output_dir, config):
