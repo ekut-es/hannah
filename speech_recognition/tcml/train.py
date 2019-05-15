@@ -9,6 +9,7 @@ import subprocess
 import uuid
 import spur
 import json
+import shutil
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 top_dir = os.path.abspath(os.path.join(file_dir, "..", ".."))
@@ -171,11 +172,15 @@ def enqueue_job(sbatch, config, shell):
 
     job_config_name = "config." + job_id + ".json"
     job_sbatch_name = "job." + job_id + ".sbatch"
+    job_compress_name = "compress." + job_id + ".yaml"
 
     filtered_config = {}
     for key, value in config.items():
         if not key.startswith("tcml"):
             filtered_config[key] = value
+
+    compress_file = config['compress']
+    
 
     rundir = os.path.join(config["tcml_wd"], "runs")
     result = shell.run(["mkdir", "-p", rundir])
@@ -184,6 +189,13 @@ def enqueue_job(sbatch, config, shell):
 
     job_config_path = os.path.join(rundir, job_config_name)
     job_sbatch_path = os.path.join(rundir, job_sbatch_name)
+    job_compress_path = os.path.join(rundir, job_compress_name)    
+	
+    if compress_file:
+        with shell.open(job_compress_path, "w") as target:
+            with open(compress_file, "r") as source:
+                shutil.copyfileobj(source, target)
+        config["compress"] = job_compress_path
 
     with shell.open(job_config_path, "w") as f:
         s = json.dumps(dict(filtered_config), default=lambda x: str(x), indent=4, sort_keys = True)
