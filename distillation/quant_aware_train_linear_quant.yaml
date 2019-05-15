@@ -31,7 +31,6 @@ quantizers:
     bits_activations: 8
     bits_weights: 8
     bits_bias: 8
-    quantize_bias: True
     mode: 'SYMMETRIC'  # Can try "SYMMETRIC" as well
     ema_decay: 0.999   # Decay value for exponential moving average tracking of activation ranges
     per_channel_wts: True

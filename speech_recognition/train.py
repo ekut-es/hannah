@@ -355,16 +355,6 @@ def train(model_name, config):
     dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
     test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
 
-    # Setup distiller for model minimization
-    compression_scheduler = None
-    if config["compress"]:
-        print("Activating compression scheduler")
-
-        compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
-        if config["cuda"]:
-            model.cuda()
-
-
     # Print network statistics
     dummy_input, _ = next(iter(test_loader))
     model.eval()
@@ -378,6 +368,16 @@ def train(model_name, config):
 
     performance_summary = model_summary(model, dummy_input, 'performance')
 
+    # Setup distiller for model minimization
+    compression_scheduler = None
+    if config["compress"]:
+        print("Activating compression scheduler")
+
+        compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
+    if config["cuda"]:
+        model.cuda()
+
+    
     # iteration counters 
     step_no = 0
     batches_per_epoch = len(train_loader)
