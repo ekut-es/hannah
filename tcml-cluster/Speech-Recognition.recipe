@@ -12,7 +12,7 @@ From: nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
     apt-get update
     
     apt-get -y install python3.6-dev freeglut3-dev portaudio19-dev
-    apt-get -y install git curl wget
+    apt-get -y install git curl wget libav-tools
     curl https://bootstrap.pypa.io/get-pip.py | python3.6
     apt-get clean
     cd /opt
