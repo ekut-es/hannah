@@ -201,7 +201,12 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
             distiller.log_training_progress(stats, None, 0, steps_completed,
                                             total_steps, log_every, loggers)
 
-    return summary
+    msglogger.info('==> Top1: %.3f      Loss: %.3f\n',
+                   classerr.value(1), losses['objective_loss'].mean)
+
+    msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
+    return classerr.value(1)
+
 
 def dump_config(output_dir, config):
     with open(os.path.join(output_dir, 'config.json'), "w") as o:
