@@ -1,3 +1,5 @@
+""" This module implements feature extraction from raw audio data """
+
 import math
 import librosa
 import numpy as np
@@ -9,6 +11,7 @@ def calculate_feature_shape(input_length,
                             n_mfcc=40,
                             stride_ms=10,
                             window_ms=10):
+    """Calculates the shape of the given features"""
     n_fft = (samplingrate * window_ms) // 1000
     hop_length = (samplingrate * stride_ms)  // 1000
         
@@ -41,6 +44,8 @@ def preprocess_audio(data, features='mel',
                      freq_max=4000,
                      window_ms = 40,
                      stride_ms = 10):
+    """Calculates the features for a given audio"""
+    
     hop_length = (samplingrate * stride_ms)  // 1000
     n_fft = (samplingrate * window_ms) // 1000
     if features == "mel":

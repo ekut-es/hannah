@@ -19,12 +19,15 @@ from .process_audio import preprocess_audio, calculate_feature_shape
 
 
 class SimpleCache(dict):
+    """ A simple in memory cache used for audio files and preprocessed features"""
     def __init__(self, limit):
+        """ Initializes the cache with a maximum size of limit """
         super().__init__()
         self.limit = limit
         self.n_keys = 0
 
     def __setitem__(self, key, value):
+        """ Adds an item with key to the cache if size limit is reached no item will be added """
         if key in self.keys():
             super().__setitem__(key, value)
         elif self.n_keys < self.limit:
@@ -33,11 +36,13 @@ class SimpleCache(dict):
         return value
 
 class DatasetType(Enum):
+    """ The type of a dataset partition e.g. train, dev, test """
     TRAIN = 0
     DEV = 1
     TEST = 2
 
 class SpeechDataset(data.Dataset):
+    """ Base Class for speech datasets """
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
     def __init__(self, data, set_type, config):
@@ -80,6 +85,8 @@ class SpeechDataset(data.Dataset):
         
     @staticmethod
     def default_config():
+        """ Returns the default configuration for the Dataset and 
+        Feature extraction"""
         config = {}
         
         #Input Description
@@ -115,8 +122,6 @@ class SpeechDataset(data.Dataset):
                                                       default=10)
         config["test_pct"]             = ConfigOption(category="Input Config",
                                                       default=10)
-        config["trim"]                 = ConfigOption(category="Input Config",
-                                                      default=True)
         config["loss"]                 = ConfigOption(category="Input Config",
                                                       desc="Loss function that should be used with this dataset",
                                                       choices=["cross_entropy", "ctc"],
@@ -150,6 +155,7 @@ class SpeechDataset(data.Dataset):
         return config
 
     def _timeshift_audio(self, data):
+        """Shifts data by a random amount of ms given by parameter timeshift_ms"""
         shift = (self.samplingrate * self.timeshift_ms) // 1000
         shift = random.randint(-shift, shift)
         a = -min(0, shift)
@@ -174,6 +180,7 @@ class SpeechDataset(data.Dataset):
         
         
     def preprocess(self, example, silence=False):
+        """ Run preprocessing and feature extraction """
         if silence:
             example = "__silence__"
         if random.random() <= self.cache_prob:
@@ -247,7 +254,7 @@ class SpeechDataset(data.Dataset):
             a = 1
         
         if index >= len(self.audio_labels):
-            return self.preprocess(None, silence=True), 0 + a
+            return self.preprocess(None, silence=True), a
         return self.preprocess(self.audio_files[index]), self.audio_labels[index] + a
 
     def __len__(self):
@@ -255,7 +262,8 @@ class SpeechDataset(data.Dataset):
 
 
 class SpeechCommandsDataset(SpeechDataset):
-
+    """This class implements reading and preprocessing of speech commands like 
+    dataset"""
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
     
@@ -364,13 +372,17 @@ class SpeechCommandsDataset(SpeechDataset):
 
 
 class SpeechHotwordDataset(SpeechDataset):
-
+    """Dataset Class for Hotword dataset e.g. Hey Snips!"""
+    
+    
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
     
     
     @classmethod
     def splits(cls, config):
+        """Splits the dataset in training, devlopment and test set and returns
+        the three sets as List"""
         folder = config["data_folder"]
 
         descriptions = ["train.json", "dev.json", "test.json"]
@@ -399,6 +411,9 @@ class SpeechHotwordDataset(SpeechDataset):
 
 
 def find_dataset(name):
+    """Returns the appropriate class for reading a dataset of type name:
+       - keywords = Google Speech Commands Type Dataset
+       - hotword = Hey Snips! like dataset"""
     if name == "keywords":
         return SpeechCommandsDataset
     elif name == "hotword":
