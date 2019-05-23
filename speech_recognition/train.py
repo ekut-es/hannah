@@ -17,7 +17,7 @@ import itertools
 
 from . import models as mod
 from . import dataset
-from .utils import set_seed, config_pylogger, log_execution_env_state
+from .utils import set_seed, config_pylogger, log_execution_env_state, EarlyStopping
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
@@ -30,6 +30,80 @@ from .summaries import *
 
 
 msglogger = None
+
+def get_lr_scheduler(config, optimizer):
+    n_epochs = config["n_epochs"]
+    lr_scheduler = config["lr_scheduler"]
+    scheduler = None
+    if lr_scheduler == "step":
+        gamma = config["lr_gamma"]
+        stepsize = config["lr_stepsize"]
+        if stepsize == 0:
+            stepsize = max(10, n_epochs // 3)
+        
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=stepsize, gamma=gamma)
+        
+    elif lr_scheduler == "multistep":
+        gamma = config["lr_gamma"]
+        steps = config["lr_steps"]
+        if steps == [0]:
+            steps = itertools.count(max(1, n_epochs//10), max(1, n_epochs//10))
+
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                         steps,
+                                                         gamma=gamma)
+            
+    elif lr_scheduler == "exponential":
+        gamma = config["lr_gamma"]
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma)  
+    elif lr_scheduler == "plateau":
+        gamma = config["lr_gamma"]
+        patience = config["lr_patience"]
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                               mode='min',
+                                                               factor=gamma,
+                                                               patience=patience,
+                                                               threshold=0.0001,
+                                                               threshold_mode='rel',
+                                                               cooldown=0,
+                                                               min_lr=0,
+                                                               eps=1e-08)
+
+    else:
+        raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
+
+    return scheduler
+
+def get_optimizer(config, model):
+    if config["optimizer"] == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), 
+                                    lr=config["lr"], 
+                                    nesterov=config["use_nesterov"],
+                                    weight_decay=config["weight_decay"], 
+                                    momentum=config["momentum"])
+    elif config["optimizer"] == "adadelta":
+        optimizer = torch.optim.Adadelta(model.parameters(),
+                                         lr=config["lr"],
+                                         rho=config["opt_rho"],
+                                         eps=config["opt_eps"],
+                                         weight_decay=config["weight_decay"])
+    elif config["optimizer"] == "adagrad":
+        optimizer = torch.optim.Adagrad(model.parameters(),
+                                        lr=config["lr"],
+                                        lr_decay=config["lr_decay"],
+                                        weight_decay=config["weight_decay"])
+
+    elif config["optimizer"] == "adam":
+        optimizer = torch.optim.Adam(model.parameters(),
+                                     lr=config["lr"],
+                                     betas=config["opt_betas"],
+                                     eps=config["opt_eps"],
+                                     weight_decay=config["weight_decay"],
+                                     amsgrad=config["use_amsgrad"])
+    else:
+        raise Exception("Unknown Optimizer: {}".format(config["optimizer"]))
+
+    return optimizer
 
 def get_loss_function(config):
      
@@ -137,71 +211,28 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     if not test_loader:
         _, _, test_set = config["dataset_cls"].splits(config)
         test_loader = data.DataLoader(test_set, batch_size=1)
-        
-    model = get_model(config, model)
-        
-    if config["cuda"]:
-        torch.cuda.set_device(config["gpu_no"])
-        model.cuda()
+    if model is None:
+        config["width"] = test_set.width
+        config["height"] = test_set.height
+
+        model = get_model(config, model)
+
 
     criterion = get_loss_function(config)
     
-    losses = {'objective_loss': tnt.AverageValueMeter()}
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,))
-    batch_time = tnt.AverageValueMeter()
-    total_samples = len(test_loader.sampler)
-    batch_size = test_loader.batch_size
-    confusion = tnt.ConfusionMeter(config["n_labels"])
-
-    total_steps = total_samples // batch_size
-    log_every = total_steps // 10
-
-    msglogger.info('%d samples (%d per mini-batch)', total_samples, batch_size)
-        
-    model.eval()
-    
-
-    end = time.time()
-
     # Print network statistics
     dummy_input, _ = next(iter(test_loader))
     model.eval()
+
     if config["cuda"]:
         dummy_input.cuda()
         model.cuda()
         
     performance_summary = model_summary(model, dummy_input, 'performance')
+
+    accuracy, loss = validate(test_loader, model, criterion, config, loggers)
     
-    for test_step, (model_in, target) in enumerate(test_loader):
-        with torch.no_grad():
-            model_in = Variable(model_in)
-            target = Variable(target)
-            if config["cuda"]:
-                model_in = model_in.cuda()
-                target = target.cuda()
-             
-            output = model(model_in)
-            
-            loss = criterion(output, target)
-            # measure accuracy and record loss
-            losses['objective_loss'].add(loss.item())
-            classerr.add(output.data, target)
-            confusion.add(output.data, target)
-
-        batch_time.add(time.time() - end)
-        end = time.time()
-        
-        steps_completed = (test_step+1)
-    
-        stats = ('Performance/Test/',
-                 OrderedDict([('Loss', losses['objective_loss'].mean),
-                              ('Top1', classerr.value(1))]))
-
-        if steps_completed % log_every == 0:
-            distiller.log_training_progress(stats, None, 0, steps_completed,
-                                            total_steps, log_every, loggers)
-
-    return summary
+    return  accuracy, loss
 
 def dump_config(output_dir, config):
     with open(os.path.join(output_dir, 'config.json'), "w") as o:
@@ -244,34 +275,7 @@ def train(model_name, config):
         model.cuda()
 
     # Setup optimizers
-    optimizer = None
-    if config["optimizer"] == "sgd":
-        optimizer = torch.optim.SGD(model.parameters(), 
-                                    lr=config["lr"], 
-                                    nesterov=config["use_nesterov"],
-                                    weight_decay=config["weight_decay"], 
-                                    momentum=config["momentum"])
-    elif config["optimizer"] == "adadelta":
-        optimizer = torch.optim.Adadelta(model.parameters(),
-                                         lr=config["lr"],
-                                         rho=config["opt_rho"],
-                                         eps=config["opt_eps"],
-                                         weight_decay=config["weight_decay"])
-    elif config["optimizer"] == "adagrad":
-        optimizer = torch.optim.Adagrad(model.parameters(),
-                                        lr=config["lr"],
-                                        lr_decay=config["lr_decay"],
-                                        weight_decay=config["weight_decay"])
-
-    elif config["optimizer"] == "adam":
-        optimizer = torch.optim.Adam(model.parameters(),
-                                     lr=config["lr"],
-                                     betas=config["opt_betas"],
-                                     eps=config["opt_eps"],
-                                     weight_decay=config["weight_decay"],
-                                     amsgrad=config["use_amsgrad"])
-    else:
-        raise Exception("Unknown Optimizer: {}".format(config["optimizer"]))
+    optimizer = get_optimizer(config, model)
         
     sched_idx = 0
     criterion = get_loss_function(config)
@@ -280,44 +284,10 @@ def train(model_name, config):
     n_epochs = config["n_epochs"]
     
     # Setup learning rate optimizer
-    lr_scheduler = config["lr_scheduler"]
-    scheduler = None
-    if lr_scheduler == "step":
-        gamma = config["lr_gamma"]
-        stepsize = config["lr_stepsize"]
-        if stepsize == 0:
-            stepsize = max(10, n_epochs // 3)
-        
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=stepsize, gamma=gamma)
-        
-    elif lr_scheduler == "multistep":
-        gamma = config["lr_gamma"]
-        steps = config["lr_steps"]
-        if steps == [0]:
-            steps = itertools.count(max(1, n_epochs//10), max(1, n_epochs//10))
+    scheduler = get_lr_scheduler(config, optimizer)
 
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                         steps,
-                                                         gamma=gamma)
-            
-    elif lr_scheduler == "exponential":
-        gamma = config["lr_gamma"]
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma)  
-    elif lr_scheduler == "plateau":
-        gamma = config["lr_gamma"]
-        patience = config["lr_patience"]
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                               mode='min',
-                                                               factor=gamma,
-                                                               patience=patience,
-                                                               threshold=0.0001,
-                                                               threshold_mode='rel',
-                                                               cooldown=0,
-                                                               min_lr=0,
-                                                               eps=1e-08)
-
-    else:
-        raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
+    # Setup early stopping
+    early_stopping = EarlyStopping(config["early_stopping"])
     
     # setup datasets
     train_batch_size = config["batch_size"]
@@ -368,6 +338,7 @@ def train(model_name, config):
                 compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, batches_per_epoch)
                 
             optimizer.zero_grad()
+            
             if config["cuda"]:
                 model_in = model_in.cuda()
                 labels = labels.cuda()
@@ -425,8 +396,7 @@ def train(model_name, config):
             end = time.time()
 
         msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
-        avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)    
-        
+        avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)
 
         if avg_acc > max_acc:
             msglogger.info("saving best model...")
@@ -442,6 +412,10 @@ def train(model_name, config):
                 model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
             except Exception as e:
                 msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
+
+        es = early_stopping(avg_loss)
+        if(es):
+            break
                 
         if scheduler is not None:
             if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
@@ -454,8 +428,10 @@ def train(model_name, config):
 
     msglogger.info("Running final test")
     model.load(os.path.join(output_dir, "model.pt"))
-    test_accuracy = evaluate(model_name, config, model, test_loader)
+    test_accuracy, test_loss = evaluate(model_name, config, model, test_loader)
 
+    
+    
 def build_config(extra_config={}):
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
     parser = argparse.ArgumentParser()
@@ -547,6 +523,8 @@ def build_config(extra_config={}):
                          lr_patience  = ConfigOption(category="Learning Rate Config",
                                                      desc="Parameter patience for plateau scheduler",
                                                      default=10),
+                         early_stopping = ConfigOption(default=20,
+                                                       desc="Stops the training if the validation loss has not improved for the last EARLY_STOPPING epochs"),
                          
                          batch_size=ConfigOption(default=128,
                                                  desc="Default minibatch size for training"),
