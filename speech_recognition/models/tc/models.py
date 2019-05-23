@@ -10,11 +10,12 @@ import torch.nn.functional as F
 from ..utils import ConfigType, SerializableModule
 
 class TCResidualBlock(nn.Module):
-    def __init__(self, input_channels, output_channels, size, stride, clipping_value):
+    def __init__(self, input_channels, output_channels, size, stride, dilation, clipping_value):
         super().__init__()
         self.stride = stride
         self.clipping_value = clipping_value
         if stride > 1:
+            # No dilation needed: 1x1 kernel
             self.downsample = nn.Sequential(
                 nn.Conv2d(input_channels, output_channels, 1, stride, bias=False),
                 nn.BatchNorm2d(output_channels),
@@ -24,10 +25,10 @@ class TCResidualBlock(nn.Module):
         pad_y = size[1] // 2
         
         self.convs = nn.Sequential(
-            nn.Conv2d(input_channels, output_channels, size, stride, padding=(pad_x,pad_y), bias=False),
+            nn.Conv2d(input_channels, output_channels, size, stride, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False),
             nn.BatchNorm2d(output_channels),
             nn.Hardtanh(0.0, self.clipping_value),
-            nn.Conv2d(output_channels, output_channels, size, 1, padding=(pad_x,pad_y), bias=False),
+            nn.Conv2d(output_channels, output_channels, size, 1, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False),
             nn.BatchNorm2d(output_channels))
             
         self.relu = nn.Hardtanh(0.0, self.clipping_value)
@@ -51,6 +52,7 @@ class TCResNetModel(SerializableModule):
         dropout_prob = config["dropout_prob"]
         width_multiplier = config["width_multiplier"]
         self.fully_convolutional = config["fully_convolutional"]
+        dilation = config["dilation"]        
         clipping_value = config["clipping_value"]
 
         self.layers = nn.ModuleList()
@@ -69,7 +71,9 @@ class TCResNetModel(SerializableModule):
                 size = config[size_name]
                 stride = config[stride_name] 
                 
-                conv = nn.Conv2d(input_channels, output_channels, size, stride, bias = False)
+                pad_x = size[0] // 2 if dilation > 1 else 0
+                pad_y = size[1] // 2 if dilation > 1 else 0
+                conv = nn.Conv2d(input_channels, output_channels, size, stride, padding=(pad_x,pad_y), dilation=dilation, bias = False)
                 self.layers.append(conv)
                 
                 input_channels = output_channels
@@ -85,7 +89,7 @@ class TCResNetModel(SerializableModule):
                 size = config[size_name]
                 stride = config[stride_name] 
                 
-                block = TCResidualBlock(input_channels, output_channels, size, stride, clipping_value)
+                block = TCResidualBlock(input_channels, output_channels, size, stride, dilation, clipping_value)
                 self.layers.append(block)
                 
                 input_channels = output_channels
@@ -134,6 +138,7 @@ configs= {
         dropout_prob = 0.5,
         n_labels = 12,
         width_multiplier = 1,
+        dilation = 1,
         clipping_value = 100000,
         conv1_size = (3,1),
         conv1_stride = 1,
@@ -154,6 +159,7 @@ configs= {
         n_labels = 12,
         fully_convolutional=False,
         width_multiplier = 1,
+        dilation = 1,
         clipping_value = 100000,
         conv1_size = (3,1),
         conv1_stride = 1,
@@ -183,6 +189,7 @@ configs= {
         n_labels = 12,
         fully_convolutional=False,
         width_multiplier = 1.5,
+        dilation = 1,
         clipping_value = 100000,
         conv1_size = (3,1),
         conv1_stride = 1,
@@ -203,6 +210,7 @@ configs= {
         fully_convolutional=False,
         n_labels = 12,
         width_multiplier = 1.5,
+        dilation = 1,
         clipping_value = 100000,
         conv1_size = (3,1),
         conv1_stride = 1,
