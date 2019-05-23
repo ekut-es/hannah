@@ -217,7 +217,6 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
 
         model = get_model(config, model)
 
-
     criterion = get_loss_function(config)
     
     # Print network statistics
@@ -430,8 +429,7 @@ def train(model_name, config):
     model.load(os.path.join(output_dir, "model.pt"))
     test_accuracy, test_loss = evaluate(model_name, config, model, test_loader)
 
-    
-    
+
 def build_config(extra_config={}):
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
     parser = argparse.ArgumentParser()

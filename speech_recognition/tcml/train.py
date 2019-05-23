@@ -145,6 +145,8 @@ def sync_code(config):
     cmdline += ["--exclude", "trained_models",
                 "--exclude", ".git",
                 "--exclude", "orig",
+                "--exclude", "tcml-cluster",
+                "--exclude", "code",
                 "--exclude", ".mypy_cache/",
                 "--exclude", "datasets"]
 
