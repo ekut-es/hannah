@@ -71,9 +71,7 @@ class TCResNetModel(SerializableModule):
                 size = config[size_name]
                 stride = config[stride_name] 
                 
-                pad_x = size[0] // 2 if dilation > 1 else 0
-                pad_y = size[1] // 2 if dilation > 1 else 0
-                conv = nn.Conv2d(input_channels, output_channels, size, stride, padding=(pad_x,pad_y), dilation=dilation, bias = False)
+                conv = nn.Conv2d(input_channels, output_channels, size, stride, bias = False)
                 self.layers.append(conv)
                 
                 input_channels = output_channels
@@ -89,7 +87,7 @@ class TCResNetModel(SerializableModule):
                 size = config[size_name]
                 stride = config[stride_name] 
                 
-                block = TCResidualBlock(input_channels, output_channels, size, stride, dilation, clipping_value)
+                block = TCResidualBlock(input_channels, output_channels, size, stride, dilation ** count, clipping_value)
                 self.layers.append(block)
                 
                 input_channels = output_channels
