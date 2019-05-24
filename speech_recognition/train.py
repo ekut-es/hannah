@@ -100,6 +100,13 @@ def get_optimizer(config, model):
                                      eps=config["opt_eps"],
                                      weight_decay=config["weight_decay"],
                                      amsgrad=config["use_amsgrad"])
+    elif config["optimizer"] == "rmsprop":
+        optimizer = torch.optim.RMSprop(model.parameters(),
+                                        lr=config["lr"],
+                                        alpha=config["opt_alpha"],
+                                        eps=config["opt_eps"],
+                                        weight_decay=config["weight_decay"],
+                                        momentum=config["momentum"]) 
     else:
         raise Exception("Unknown Optimizer: {}".format(config["optimizer"]))
 
@@ -215,7 +222,7 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
         config["width"] = test_set.width
         config["height"] = test_set.height
 
-        model = get_model(config, model)
+        model = get_model(config)
 
     criterion = get_loss_function(config)
     
@@ -226,9 +233,12 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     if config["cuda"]:
         dummy_input.cuda()
         model.cuda()
-        
-    performance_summary = model_summary(model, dummy_input, 'performance')
 
+    try:
+        performance_summary = model_summary(model, dummy_input, 'performance')
+    except RuntimeError as e:
+        print("Cannot do performance summary on distilled model")
+        
     accuracy, loss = validate(test_loader, model, criterion, config, loggers)
     
     return  accuracy, loss
@@ -238,13 +248,40 @@ def dump_config(output_dir, config):
               s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
               o.write(s)
 
-def train(model_name, config):
+def save_model(output_dir, model, test_loader):
+    msglogger.info("saving best model...")
+    model.save(os.path.join(output_dir, "model.pt"))
+    
+    msglogger.info("saving weights to json...")
+    filename = os.path.join(output_dir, "model.json")
+    state_dict = model.state_dict()
+    with open(filename, "w") as f:
+        json.dump(state_dict, f, default=lambda x : x.tolist(), indent=2)
+        
+    
+    msglogger.info("saving onnx...")
+    try:
+        model_in, label = next(iter(test_loader), (None, None))
+        if model.is_cuda():
+            model_in = model_in.cuda()
+            
+        torch.onnx.export(model,
+                          model_in,
+                          filename,
+                          os.path.join(output_dir, "model.onnx"),
+                          verbose=False)
+            
+    except Exception as e:
+        msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
+              
+def train(model_name, config, check_sanity=False):
     global msglogger
 
     output_dir = get_output_dir(model_name, config)
     
     #Configure logging
-    msglogger = config_pylogger('logging.conf', "train", output_dir)
+    log_name = "train" if not check_sanity else "sanity_check"
+    msglogger = config_pylogger('logging.conf', log_name, output_dir)
     pylogger = PythonLogger(msglogger)
     loggers  = [pylogger]  
     if config["tblogger"]:
@@ -276,14 +313,10 @@ def train(model_name, config):
     # Setup optimizers
     optimizer = get_optimizer(config, model)
         
-    sched_idx = 0
     criterion = get_loss_function(config)
-    max_acc = 0
-
-    n_epochs = config["n_epochs"]
     
     # Setup learning rate optimizer
-    scheduler = get_lr_scheduler(config, optimizer)
+    lr_scheduler = get_lr_scheduler(config, optimizer)
 
     # Setup early stopping
     early_stopping = EarlyStopping(config["early_stopping"])
@@ -291,8 +324,12 @@ def train(model_name, config):
     # setup datasets
     train_batch_size = config["batch_size"]
     train_loader = data.DataLoader(train_set, batch_size=train_batch_size, shuffle=True, drop_last=True)
-    dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=True)
-    test_loader = data.DataLoader(test_set, batch_size=1, shuffle=True)
+    if check_sanity:
+        indices = (np.random.random(train_batch_size*5)*len(train_set)).astype(int)
+        train_loader = data.DataLoader(train_set, batch_size=train_batch_size, sampler=torch.utils.data.SubsetRandomSampler(indices), drop_last=True)
+    
+    dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=False)
+    test_loader = data.DataLoader(test_set, batch_size=1, shuffle=False)
 
     # Print network statistics
     dummy_input, _ = next(iter(test_loader))
@@ -311,17 +348,24 @@ def train(model_name, config):
     compression_scheduler = None
     if config["compress"]:
         print("Activating compression scheduler")
-
         compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
+        
     if config["cuda"]:
         model.cuda()
 
+
+    sched_idx = 0
+    n_epochs = config["n_epochs"]
     
+        
     # iteration counters 
     step_no = 0
     batches_per_epoch = len(train_loader)
     log_every = max(1, batches_per_epoch // 15)
     last_log = 0
+
+    max_acc = 0
+
     
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
@@ -329,6 +373,8 @@ def train(model_name, config):
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
 
+        avg_training_loss = tnt.AverageValueMeter()
+    
         batch_time = tnt.AverageValueMeter()
         end = time.time()
         for batch_idx, (model_in, labels) in enumerate(train_loader):
@@ -360,11 +406,14 @@ def train(model_name, config):
                 scores = scores.view(scores.size(0), -1)
                 loss = criterion(scores, labels)
 
+            avg_training_loss.add(loss.item())    
             
             if compression_scheduler is not None:
                 compression_scheduler.before_backward_pass(epoch_idx, batch_idx, batches_per_epoch, loss)
+
             loss.backward()
             optimizer.step()
+            
             if compression_scheduler is not None:
                 compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, batches_per_epoch)
 
@@ -373,9 +422,9 @@ def train(model_name, config):
             batch_time.add(time.time() - end)
             step_no += 1
             
-            if last_log + log_every <= step_no:
+            if check_sanity or (last_log + log_every <= step_no):
                 scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
-        
+                
                 last_log = step_no
                 stats_dict["Accuracy"] = scalar_accuracy
                 stats_dict["Loss"] = scalar_loss
@@ -394,41 +443,45 @@ def train(model_name, config):
          
             end = time.time()
 
-        msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
-        avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)
+        if check_sanity:
+            if avg_training_loss.mean < 0.01:
+                print("Sanity check passed")
+                return
+        else:
+            msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
 
-        if avg_acc > max_acc:
-            msglogger.info("saving best model...")
-            max_acc = avg_acc
-            model.save(os.path.join(output_dir, "model.pt"))
-
-
-            msglogger.info("saving onnx...")
-            try:
-                model_in, label = next(iter(test_loader), (None, None))
-                if config["cuda"]:
-                    model_in = model_in.cuda()
-                model.save_onnx(os.path.join(output_dir, "model.onnx"), model_in)
-            except Exception as e:
-                msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
-
-        es = early_stopping(avg_loss)
-        if(es):
-            break
+            avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)
+             
+            avg_acc, avg_loss = 1.0, 0.0
+             
+            if avg_acc > max_acc:
+                save_model(output_dir, model, test_loader)
+                max_acc = avg_acc
                 
-        if scheduler is not None:
+            # Stop training if the validation loss has not improved for multiple iterations
+            es = early_stopping(avg_loss)
+            if(es):
+                break
+                
+        if lr_scheduler is not None:
             if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
-                scheduler.step(avg_loss)
+                lr_scheduler.step(avg_loss)
             else:
-                scheduler.step()
+                lr_scheduler.step()
                 
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
 
-    msglogger.info("Running final test")
-    model.load(os.path.join(output_dir, "model.pt"))
-    test_accuracy, test_loss = evaluate(model_name, config, model, test_loader)
+    if check_sanity:
+        print("Sanity check has not ended early remaining loss: ", avg_training_loss.mean)
+    else:
+        msglogger.info("Running final test")
+        model.load(os.path.join(output_dir, "model.pt"))
+    
+        test_accuracy, test_loss = evaluate(model_name, config, model, test_loader)
+        
 
+    return 
 
 def build_config(extra_config={}):
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
@@ -476,14 +529,18 @@ def build_config(extra_config={}):
                                                 choices=["sgd",
                                                          "adadelta",
                                                          "adagrad",
-                                                         "adam"]),
+                                                         "adam",
+                                                         "rmsprop"]),
                          
                          opt_rho     = ConfigOption(category="Optimizer Config",
                                                     desc="Parameter rho for Adadelta optimizer",
                                                     default=0.9),
                          opt_eps     = ConfigOption(category="Optimizer Config",
-                                                    desc="Paramter eps for Adadelta and Adam",
+                                                    desc="Paramter eps for Adadelta and Adam and SGD",
                                                     default=1e-06),
+                         opt_alpha   = ConfigOption(category="Optimizer Config",
+                                                    desc="Parameter alpha for RMSprop",
+                                                    default=0.99),
                          lr_decay    = ConfigOption(category="Optimizer Config",
                                                     desc="Parameter lr_decay for optimizers",
                                                     default=0),
@@ -550,7 +607,7 @@ def build_config(extra_config={}):
         global_config,
         extra_config)
     parser = builder.build_argparse()
-    parser.add_argument("--type", choices=["train", "eval"], default="train", type=str)
+    parser.add_argument("--type", choices=["train", "eval", "check_sanity"], default="train", type=str)
     config = builder.config_from_argparse(parser)
     config["model_class"] = mod_cls
     config["model_name"] = model_name
@@ -568,7 +625,7 @@ def main():
     if config["type"] == "train":
         train(model_name, config)
     elif config["type"] == "check_sanity":
-        raise Exception("TODO: Implement sanity check")
+        train(model_name, config, check_sanity=True)
     elif config["type"] == "eval":
         evaluate(model_name, config)
 

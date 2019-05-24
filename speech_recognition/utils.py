@@ -4,6 +4,7 @@ import numpy as np
 import random
 import logging
 import os
+import json
 
 import sys
 import platform
@@ -23,10 +24,7 @@ class SerializableModule(nn.Module):
 
     def load(self, filename):
         self.load_state_dict(torch.load(filename, map_location=lambda storage, loc: storage))
-
-    def export_onnx(self, filename):
-        torch.onnx.export(self, dummy_input,filename, verbose=True) 
-
+    
 
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
@@ -60,6 +58,8 @@ class EarlyStopping:
         else:
             self.best_score = score
             self.counter = 0
+
+        return self.early_stop
         
 
 def set_seed(config):
