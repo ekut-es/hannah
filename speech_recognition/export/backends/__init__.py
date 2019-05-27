@@ -1,1 +1,1 @@
-import .pico_cnn
+from . import embedded_c

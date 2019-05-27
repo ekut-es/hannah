@@ -511,6 +511,7 @@ def train(model_name, config, check_sanity=False):
                 scalar_loss = loss.item()
 
                 scalar_accuracy = (torch.max(scores, 1)[1].view(labels.size(0)).data == labels.data).float().sum() / labels.size(0)
+                scalar_accuracy = scalar_accuracy.item()
                    
             avg_training_loss.add(scalar_loss)    
             avg_training_accuracy.add(scalar_accuracy)    

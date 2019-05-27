@@ -32,7 +32,7 @@ class ConstPropState(object):
 
 def constant_propagation(graph):
     """Identifie constant values and shapes using constant propagation"""
-    state_dict = defaultdict(OutputState)
+    state_dict = defaultdict(ConstPropState)
     worklist = []
 
     for node in graph.nodes:
@@ -47,16 +47,16 @@ def constant_propagation(graph):
         if node.op_type == 'Shape':
             input = node.inputs[0]
             input_value, input_shape = state_dict[input]
-            out = OutputState(None, None)
+            out = ConstPropState(None, None)
             if input_shape is not None:
-                out = OutputState(np.array(input_shape), np.array(input_shape).shape)
+                out = ConstPropState(np.array(input_shape), np.array(input_shape).shape)
             output = node.outputs[0]
             if state_dict[output] != out:
                 changed=True
                 state_dict[output] = out
                 
         elif node.op_type == 'Constant':
-            out = OutputState(attrs['value'], attrs['value'].shape)
+            out = ConstPropState(attrs['value'], attrs['value'].shape)
             output = node.outputs[0]
             
             if out != state_dict[output]:
@@ -77,14 +77,14 @@ def constant_propagation(graph):
                 y = np.take(data, index, axis=axis)
                 return y
 
-            out = OutputState(None, None)
+            out = ConstPropState(None, None)
             if data_state is not None and index_state is not None:
                 res = calc(data_state, index_state)
-                out = OutputState(res, res.shape)
+                out = ConstPropState(res, res.shape)
             elif index_state is not None and data_shape is not None:
                 dummy_data = np.zeros(data_shape)
                 res = calc(dummy_data, index_state)
-                out = OutputState(None, res.shape)
+                out = ConstPropState(None, res.shape)
 
             o = node.outputs[0]
             if out != state_dict[o]:
@@ -94,7 +94,7 @@ def constant_propagation(graph):
         elif node.op_type == 'Unsqueeze':
             axes = attrs['axes']
  
-            out = OutputState(None, None)
+            out = ConstPropState(None, None)
             data_state, data_shape = state_dict[node.inputs[0]]
 
             
@@ -110,9 +110,9 @@ def constant_propagation(graph):
                 res = np.expand_dims(data, axis=axes)
 
                 if data_state is not None:
-                    out = OutputState(res, res.shape)
+                    out = ConstPropState(res, res.shape)
                 elif data_shape is not None:
-                    out = OutputState(None, res.shape)
+                    out = ConstPropState(None, res.shape)
                     
          
             if out != state_dict[node.outputs[0]]:
@@ -130,10 +130,10 @@ def constant_propagation(graph):
             
  
         
-            out = OutputState(None, input_shapes[0] if None not in input_shapes else None)
+            out = ConstPropState(None, input_shapes[0] if None not in input_shapes else None)
             if None not in input_states:
                 res = np.concatenate(input_states, axis=axis)
-                out = OutputState(res, res.shape)
+                out = ConstPropState(res, res.shape)
                 
             if state_dict[node.outputs[0]] != out:
                 state_dict[node.outputs[0]] = out
@@ -143,12 +143,12 @@ def constant_propagation(graph):
             input_shape = state_dict[node.inputs[0]].shape
             input_data = state_dict[node.inputs[1]].value
 
-            out = OutputState(None, None)
+            out = ConstPropState(None, None)
 
             if input_shape is not None and input_data is not None:
                 data = np.zeros(input_shape)
                 res = np.reshape(data, input_data)
-                out = OutputState(None, res.shape)
+                out = ConstPropState(None, res.shape)
             
             if state_dict[node.outputs[0]] != out:
                 state_dict[node.outputs[0]] = out
@@ -156,12 +156,12 @@ def constant_propagation(graph):
 
         elif node.op_type == 'Gemm':
             input_shape = state_dict[node.inputs[0]].shape
-            out = OutputState(None, None)
+            out = ConstPropState(None, None)
 
             matrix_shape = node.input_tensors[node.inputs[1]].shape
             
             if input_shape is not None:
-                out = OutputState(None, (input_shape[0], matrix_shape[0]))
+                out = ConstPropState(None, (input_shape[0], matrix_shape[0]))
 
             if state_dict[node.outputs[0]] != out:
                 state_dict[node.outputs[0]] = out
@@ -169,26 +169,41 @@ def constant_propagation(graph):
                 
         elif node.op_type == "Relu":
             input_shape = state_dict[node.inputs[0]].shape
-            out = OutputState(None, input_shape)
+            out = ConstPropState(None, input_shape)
 
             if state_dict[node.outputs[0]] != out:
                 state_dict[node.outputs[0]] = out
                 changed = True
+        elif node.op_type == "Transpose":
+            perm = attrs['perm']
+
+            
+            input_shape = state_dict[node.inputs[0]].shape
+            out = ConstPropState(None, None)
+            if input_shape is not None:
+                input = state_dict[node.inputs[0]].value
+                has_input = True
+                if input is None:
+                    has_input = false
+                    input = np.zeros(tuple(input_shape))
+
+            if state_dict[node.outputs[0]] != out:
+                state_dict[node.outputs[0]] = out
+                changed = True
+                    
         else:
-            raise Exception("ConstProp: Unhandled op {} using shape_dict"-format(node.op_type))
+            #raise Exception ("ConstProp: Unhandled op {}".format(node.op_type))
+            print("ConstProp: Unhandled op {} using shape information from onnx shape_dict".format(node.op_type))
+            
             changed = False
             for o in node.outputs:
-                out = OutputState(None, None)
-            
+                out = ConstPropState(None, None)
                 if o in graph.shape_dict:
-                    out = OutputState(None, graph.shape_dict[o])
-
-                
-                    
+                    out = ConstPropState(None, graph.shape_dict[o])
                 if out != state_dict[o]:
                     changed = True
                     state_dict[o] = out
-
+        
         if changed:
             for child in node.children:
                 if not child in worklist:
