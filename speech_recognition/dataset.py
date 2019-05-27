@@ -6,6 +6,7 @@ import random
 import re
 import json
 import logging
+from collections import defaultdict
 
 from chainmap import ChainMap
 import librosa
@@ -13,6 +14,7 @@ import numpy as np
 import scipy.signal as signal
 import torch
 import torch.utils.data as data
+
 
 from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
@@ -65,7 +67,9 @@ class SpeechDataset(data.Dataset):
         self._audio_cache = SimpleCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
         self.cache_prob = config["cache_prob"]
-        n_unk = len(list(filter(lambda x: x == 1, self.audio_labels)))
+        self.unknown_class = 2 if self.loss_function == "ctc" else 1
+        self.silence_class = 1 if self.loss_function == "ctc" else 0
+        n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
         self.features = config['features']
         self.n_mfcc = config["n_mfcc"]
@@ -189,10 +193,8 @@ class SpeechDataset(data.Dataset):
             except KeyError:
                 pass
 
-        if self.loss_function == "ctc":
-            in_len = 16000 * 4
-        else:
-            in_len = self.input_length
+        
+        in_len = self.input_length
 
         if silence:
             data = np.zeros(in_len, dtype=np.float32)
@@ -204,14 +206,15 @@ class SpeechDataset(data.Dataset):
 
                 extract_index = (0, len(data))
                 
-                if self.extract_loudest:
+                if self.extract_loudest and self.loss_function != "ctc":
                     extract_index = self._extract_loudest_range(data, in_len)
                  
                 data = self._timeshift_audio(data)
                 data = data[extract_index[0]:extract_index[1]]
-                 
-                data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
-                data = data[0:in_len]
+
+                if self.loss_function != "ctc":
+                    data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
+                    data = data[0:in_len]
 
                     
             self._file_cache[example] = data
@@ -246,16 +249,41 @@ class SpeechDataset(data.Dataset):
 
         return data
 
+    def get_class(self, index):
+        label = []
+        if index >= len(self.audio_labels):
+            label = [self.silence_class]
+        else:
+            label = [self.audio_labels[index]]
 
+        return label
+
+    def get_classes(self):
+        labels = []
+        for i in range(len(self)):
+            labels.append(self.get_class(i))
+
+        return labels
+
+    def get_class_nums(self):
+        classcounter = defaultdict(int)
+        for n in self.get_classes():
+            for c in n:
+                classcounter[c] += 1
+
+        return classcounter
+                
     def __getitem__(self, index):
-
-        a = 0
-        if self.loss_function == "ctc":
-            a = 1
+        
+        label = torch.Tensor(self.get_class(index))
+        label = label.long()
         
         if index >= len(self.audio_labels):
-            return self.preprocess(None, silence=True), a
-        return self.preprocess(self.audio_files[index]), self.audio_labels[index] + a
+            data = self.preprocess(None, silence=True)
+        else:
+            data = self.preprocess(self.audio_files[index])
+            
+        return data, data.shape[1], label, label.shape[0] 
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
@@ -266,7 +294,11 @@ class SpeechCommandsDataset(SpeechDataset):
     dataset"""
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
-    
+        
+        self.label_names = {0 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN}
+        for i, word in enumerate(config["wanted_words"]):
+            self.label_names[i+2] = word
+        
     @classmethod
     def splits(cls, config):
         msglogger = logging.getLogger()
@@ -293,8 +325,6 @@ class SpeechCommandsDataset(SpeechDataset):
                 for line in testing_list.readlines():
                     line = line.strip()
                     test_files.add(os.path.join(folder, line))
-
-            
                     
             with open(os.path.join(folder, "validation_list.txt")) as validation_list:
                 for line in validation_list.readlines():
@@ -355,14 +385,7 @@ class SpeechCommandsDataset(SpeechDataset):
             unk_dict = {u: words[cls.LABEL_UNKNOWN] for u in unknown_files[a:b]}
             dataset.update(unk_dict)
             a = b
-    
-        msglogger.info("Dataset config:")
-        msglogger.info("  train: %d", len(sets[0]))
-        msglogger.info("  dev:   %d", len(sets[1]))
-        msglogger.info("  test:  %d", len(sets[2]))
-        msglogger.info("  total: %d", len(sets[0])+len(sets[1])+len(sets[2]))
-        msglogger.info("")
-            
+         
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg),
@@ -373,50 +396,142 @@ class SpeechCommandsDataset(SpeechDataset):
 
 class SpeechHotwordDataset(SpeechDataset):
     """Dataset Class for Hotword dataset e.g. Hey Snips!"""
-    
+
+    LABEL_HOTWORD = "hotword"
+    LABEL_EPS = "eps"
     
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
-    
-    
+        if self.loss_function == "ctc":
+            self.label_names = {0 : self.LABEL_EPS, 1 : self.LABEL_SILENCE,  2 : self.LABEL_UNKNOWN, 3 : self.LABEL_HOTWORD}
+        else:
+            self.label_names = {0 : self.LABEL_SILENCE,
+                                1 : self.LABEL_UNKNOWN,
+                                2 : self.LABEL_HOTWORD}
+            
+            
+    @staticmethod
+    def default_config():
+        config = SpeechDataset.default_config()
+        config["loss"] = "cross_entropy"
+        config["n_labels"] = 3
+        # Splits the dataset in 1/3 
+        config["silence_prob"] = 1.0
+        config["unknown_prob"] = 1.0
+        
+        return config
+        
     @classmethod
     def splits(cls, config):
         """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
+
+        msglogger = logging.getLogger()
+        
         folder = config["data_folder"]
 
         descriptions = ["train.json", "dev.json", "test.json"]
         dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
         datasets=[{}, {}, {}]
 
+
         for num, desc in enumerate(descriptions):
             descs = os.path.join(folder, desc)
             with open(descs) as f:
                 descs = json.load(f)
 
+                unknown_files = []
+                hotword_files = []
+                
                 for desc in descs:
                     is_hotword = desc["is_hotword"]
                     wav_file = os.path.join(folder, desc["audio_file_path"])
 
-                    label = 2 if is_hotword else 1
-                    
-                    datasets[num][wav_file] = label
-                    
+                    if is_hotword:
+                        hotword_files.append(wav_file)
+                    else:
+                        unknown_files.append(wav_file)
+
+            unknown_prob = config["unknown_prob"]
+            num_hotwords = len(hotword_files)
+            num_unknowns = int(num_hotwords * unknown_prob)
+            random.shuffle(unknown_files)
+            label_unknown = 2 if config["loss"] == "ctc" else 1 
+            label_hotword = 3 if config["loss"] == "ctc" else 2 
+            
+            datasets[num].update({u : label_unknown for u in unknown_files[:num_unknowns]})
+            datasets[num].update({h : label_hotword for h in hotword_files})
+            
                     
         res_datasets = (cls(datasets[0], DatasetType.TRAIN, config),
                         cls(datasets[1], DatasetType.DEV, config),
                         cls(datasets[2], DatasetType.TEST, config))
-
+ 
         return res_datasets
 
 
 def find_dataset(name):
     """Returns the appropriate class for reading a dataset of type name:
-       - keywords = Google Speech Commands Type Dataset
-       - hotword = Hey Snips! like dataset"""
+
+       Parameters
+       ----------
+       name : str
+           The name of the dataset type
+       
+            - keywords = Google Speech Commands like  dataset
+            - hotword = Hey Snips! like dataset
+"""
     if name == "keywords":
         return SpeechCommandsDataset
     elif name == "hotword":
         return SpeechHotwordDataset
 
     raise Exception("Could not find dataset type: {}".format(name))
+
+
+
+def ctc_collate_fn(data):
+    """Creates mini-batch tensors from the list of tuples (src_seq, trg_seq).
+    We should build a custom collate_fn rather than using default collate_fn,
+    because merging sequences (including padding) is not supported in default.
+    Sequences are padded to the maximum length of mini-batch sequences (dynamic padding).
+    Args:
+        data: list of tuple (src_seq, src_length, trg_seq, trg_length).
+            - src_seq: torch tensor of shape (x,?); variable length.
+            - src length: torch tenso of shape 1x1
+            - trg_seq: torch tensor of shape (?); variable length.
+            - trg_length: torch_tensor of shape (1x1) 
+    Returns:
+        src_seqs: torch tensor of shape (batch_size, x, padded_length).
+        src_lengths: torch_tensor of shape (batch_size); valid length for each padded source sequence.
+        trg_seqs: torch tensor of shape (batch_size, x, padded_length).
+        trg_lengths: torch tensor of shape (batch_size); valid length for each padded target sequence.
+    """
+
+    
+    def merge(sequences):
+        temporal_dimension = 0
+        lengths = [seq.shape[-1] for seq in sequences]
+        max_length = max(lengths)
+
+        padded_seqs = []
+
+        for item in sequences:
+            padded = torch.nn.functional.pad(input=item,
+                                             pad=(0,max_length-item.shape[-1]),
+                                             mode='constant',
+                                             value=0)
+            padded_seqs.append(padded)
+        
+        return padded_seqs, lengths
+    
+    # seperate source and target sequences
+    src_seqs, src_lengths, trg_seqs, trg_lengths = zip(*data)
+
+    # merge sequences (from tuple of 1D tensor to 2D tensor)
+    src_seqs, src_lengths = merge(src_seqs)
+    trg_seqs, trg_lengths = merge(trg_seqs)
+
+
+    
+    return torch.stack(src_seqs), torch.Tensor(src_lengths), torch.stack(trg_seqs), torch.Tensor(trg_lengths)

@@ -211,28 +211,24 @@ class DNNSpeechModel(SerializableModule):
 configs = {
     ConfigType.HELLO_DNN_SMALL.value : dict(
         dropout_prob=0.5,
-        n_labels=12,
         dnn1_size = 144,
         dnn2_size = 144,
         dnn3_size = 144
     ),
     ConfigType.HELLO_DNN_MEDIUM.value : dict(
         dropout_prob=0.5,
-        n_labels=12,
         dnn1_size = 256,
         dnn2_size = 256,
         dnn3_size = 256
     ),
     ConfigType.HELLO_DNN_LARGE.value : dict(
         dropout_prob=0.5,
-        n_labels=12,
         dnn1_size = 436,
         dnn2_size = 436,
         dnn3_size = 436
     ),
     ConfigType.HELLO_DS_CNN_SMALL.value : dict(
         dropout_prob=0.5,
-        n_labels=12,
         n_feature_maps    = 64,
         conv1_size        = (10, 4),
         conv1_stride      = (2, 2),
@@ -248,7 +244,6 @@ configs = {
 
     ConfigType.HELLO_DS_CNN_MEDIUM.value : dict(
         dropout_prob=0.5,
-        n_labels=12,
         n_feature_maps    = 172,
         conv1_size        = (10, 4),
         conv1_stride      = (2, 2),
@@ -264,7 +259,6 @@ configs = {
 
     ConfigType.HELLO_DS_CNN_LARGE.value : dict(
         dropout_prob=0.5,
-        n_labels=12,
         n_feature_maps    = 276,
         conv1_size        = (10, 4),
         conv1_stride      = (2, 2),

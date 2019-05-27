@@ -1,4 +1,4 @@
-from collections import ChainMap, OrderedDict
+from collections import ChainMap, OrderedDict, defaultdict
 from .config import ConfigBuilder, ConfigOption
 import argparse
 import os
@@ -15,6 +15,7 @@ import torch.nn as nn
 import torch.utils.data as data
 import itertools
 
+from . decoder import Decoder
 from . import models as mod
 from . import dataset
 from .utils import set_seed, config_pylogger, log_execution_env_state, EarlyStopping
@@ -138,13 +139,6 @@ def get_output_dir(model_name, config):
         
     return output_dir
 
-def get_eval(scores, labels, loss):
-    batch_size = labels.size(0)
-    accuracy = (torch.max(scores, 1)[1].view(batch_size).data == labels.data).float().sum() / batch_size
-    loss = loss.item()
-
-    return accuracy.item(), loss
-
 def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
     losses = {'objective_loss': tnt.AverageValueMeter()}
     classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,))
@@ -163,18 +157,28 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
 
     end = time.time()
 
-    for validation_step, (inputs, target) in enumerate(data_loader):
+    for validation_step, (inputs, in_lengths, targets, target_lengths) in enumerate(data_loader):
         with torch.no_grad():
             if config["cuda"]:
-                inputs, target = inputs.cuda(), target.cuda()
+                inputs, targets = inputs.cuda(), targets.cuda()
             # compute output from model
             output = model(inputs)
 
-            loss = criterion(output, target)
+            if config["loss"] == "ctc":
+                loss = criterion(output, targets)
+            else:
+                targets=targets.view(-1)
+                output=output.view(output.size(0), -1)
+                loss = criterion(output, targets)
+
+                
+                
+                classerr.add(output.data, targets)
+                confusion.add(output.data, targets)
+
+                
             # measure accuracy and record loss
             losses['objective_loss'].add(loss.item())
-            classerr.add(output.data, target)
-            confusion.add(output.data, target)
 
         batch_time.add(time.time() - end)
         end = time.time()
@@ -183,13 +187,13 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
     
         stats = ('Performance/Validation/',
                  OrderedDict([('Loss', losses['objective_loss'].mean),
-                              ('Top1', classerr.value(1))]))
+                              ('Accuracy', classerr.value(1))]))
 
         if steps_completed % log_every == 0:
             distiller.log_training_progress(stats, None, epoch, steps_completed,
                                             total_steps, log_every, loggers)
 
-    msglogger.info('==> Top1: %.3f      Loss: %.3f\n',
+    msglogger.info('==> Accuracy: %.3f      Loss: %.3f\n',
                    classerr.value(1), losses['objective_loss'].mean)
 
     msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
@@ -204,7 +208,7 @@ def get_model(config, model=None):
         
     return model
 
-def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
+def evaluate(model_name, config, model=None, test_set=None, loggers=[]):
     global msglogger
     if not msglogger:
         output_dir = get_output_dir(model_name, config)
@@ -215,9 +219,11 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
         
     msglogger.info("Evaluating network")
     
-    if not test_loader:
+    if not test_set:
         _, _, test_set = config["dataset_cls"].splits(config)
-        test_loader = data.DataLoader(test_set, batch_size=1)
+
+    test_loader = data.DataLoader(test_set, batch_size=1)
+    
     if model is None:
         config["width"] = test_set.width
         config["height"] = test_set.height
@@ -227,7 +233,8 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     criterion = get_loss_function(config)
     
     # Print network statistics
-    dummy_input, _ = next(iter(test_loader))
+    dummy_width, dummy_height = test_set.width, test_set.height
+    dummy_input = torch.randn((1, dummy_height, dummy_width))
     model.eval()
 
     if config["cuda"]:
@@ -244,11 +251,42 @@ def evaluate(model_name, config, model=None, test_loader=None, loggers=[]):
     return  accuracy, loss
 
 def dump_config(output_dir, config):
+    """ Dumps the configuration to json format
+
+    Creates file config.json in output_dir
+
+    Parameters
+    ----------
+    output_dir : str
+       Output directory
+    config  : dict
+       Configuration to dump
+    """
+    
     with open(os.path.join(output_dir, 'config.json'), "w") as o:
               s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
               o.write(s)
 
-def save_model(output_dir, model, test_loader):
+def save_model(output_dir, model, test_set=None, config=None):
+    """ Creates serialization of the model for later inference, evaluation 
+    
+    Creates the following files:
+    
+    - model.pt: Serialized version of network parameters in pytorch 
+    - model.json: Serialized version of network parameters in json format
+    - model.onnx: full model including paramters in onnx format    
+
+    Parameters
+    ----------
+
+    output_dir : str 
+        Directory to put serialized models
+    model : torch.nn.Module 
+        Model to serialize
+    test_set : dataset.SpeechDataset
+        DataSet used to derive dummy input to use for onnx export. 
+        If None no onnx will be generated
+"""
     msglogger.info("saving best model...")
     model.save(os.path.join(output_dir, "model.pt"))
     
@@ -261,12 +299,15 @@ def save_model(output_dir, model, test_loader):
     
     msglogger.info("saving onnx...")
     try:
-        model_in, label = next(iter(test_loader), (None, None))
-        if model.is_cuda():
-            model_in = model_in.cuda()
+        
+        dummy_width, dummy_height = test_set.width, test_set.height
+        dummy_input = torch.randn((1, dummy_height, dummy_width))
+        
+        if config["cuda"]:
+            dummy_input = dummy_input.cuda()
             
         torch.onnx.export(model,
-                          model_in,
+                          dummy_input,
                           filename,
                           os.path.join(output_dir, "model.onnx"),
                           verbose=False)
@@ -299,6 +340,26 @@ def train(model_name, config, check_sanity=False):
     
     train_set, dev_set, test_set = config["dataset_cls"].splits(config)
 
+    msglogger.info("Dataset config:")
+    msglogger.info("  train: %d", len(train_set))
+    class_nums = train_set.get_class_nums()
+    for k in sorted(class_nums.keys()):
+        msglogger.info("     {}: {}".format(train_set.label_names[k], class_nums[k]))
+        
+    msglogger.info("  dev:   %d", len(dev_set))
+    class_nums = dev_set.get_class_nums()
+    for k in sorted(class_nums.keys()):
+        msglogger.info("     {}: {}".format(dev_set.label_names[k], class_nums[k]))
+    
+    msglogger.info("  test:  %d", len(test_set))
+    class_nums = test_set.get_class_nums()
+    for k in sorted(class_nums.keys()):
+        msglogger.info("     {}: {}".format(test_set.label_names[k], class_nums[k]))
+    
+    msglogger.info("  total: %d", len(train_set)+len(dev_set)+len(test_set))
+    msglogger.info("")
+       
+    
     config["width"] = train_set.width
     config["height"] = train_set.height
 
@@ -322,17 +383,41 @@ def train(model_name, config, check_sanity=False):
     early_stopping = EarlyStopping(config["early_stopping"])
     
     # setup datasets
-    train_batch_size = config["batch_size"]
-    train_loader = data.DataLoader(train_set, batch_size=train_batch_size, shuffle=True, drop_last=True)
-    if check_sanity:
-        indices = (np.random.random(train_batch_size*5)*len(train_set)).astype(int)
-        train_loader = data.DataLoader(train_set, batch_size=train_batch_size, sampler=torch.utils.data.SubsetRandomSampler(indices), drop_last=True)
     
-    dev_loader = data.DataLoader(dev_set, batch_size=min(len(dev_set), 16), shuffle=False)
-    test_loader = data.DataLoader(test_set, batch_size=1, shuffle=False)
+    collate_fn = dataset.ctc_collate_fn #if train_set.loss_function == "ctc" else None
+    train_batch_size = config["batch_size"]
+    train_loader = data.DataLoader(train_set,
+                                   batch_size=train_batch_size,
+                                   shuffle=True,
+                                   drop_last=True,
+                                   collate_fn=collate_fn)
 
+    
+    if check_sanity:
+        indices = (np.random.random(20)*len(train_set)).astype(int)
+        train_loader = data.DataLoader(train_set,
+                                       batch_size=20,
+                                       sampler=torch.utils.data.SubsetRandomSampler(indices),
+                                       drop_last=True,
+                                       collate_fn=collate_fn)
+    
+    dev_loader = data.DataLoader(dev_set,
+                                 batch_size=min(len(dev_set), 16),
+                                 shuffle=False,
+                                 collate_fn=collate_fn)
+    
+    test_loader = data.DataLoader(test_set,
+                                  batch_size=1,
+                                  shuffle=False,
+                                  collate_fn=collate_fn)
+
+    # Setup Decoder
+    print("label_names", train_set.label_names)
+    decoder = Decoder(train_set.label_names)
+    
     # Print network statistics
-    dummy_input, _ = next(iter(test_loader))
+    dummy_width, dummy_height = test_set.width, test_set.height
+    dummy_input = torch.randn((1, dummy_height, dummy_width))
     model.eval()
     if config["cuda"]:
         dummy_input.cuda()
@@ -341,18 +426,19 @@ def train(model_name, config, check_sanity=False):
     draw_classifier_to_file(model,
                             os.path.join(output_dir, 'model.png'),
                             dummy_input)
-
+     
     performance_summary = model_summary(model, dummy_input, 'performance')
 
     # Setup distiller for model minimization
     compression_scheduler = None
     if config["compress"]:
         print("Activating compression scheduler")
-        compression_scheduler = distiller.file_config(model, optimizer, config["compress"])
+        compression_scheduler = distiller.file_config(model,
+                                                      optimizer,
+                                                      config["compress"])
         
     if config["cuda"]:
         model.cuda()
-
 
     sched_idx = 0
     n_epochs = config["n_epochs"]
@@ -374,15 +460,17 @@ def train(model_name, config, check_sanity=False):
             compression_scheduler.on_epoch_begin(epoch_idx)
 
         avg_training_loss = tnt.AverageValueMeter()
+        avg_training_accuracy = tnt.AverageValueMeter()
     
         batch_time = tnt.AverageValueMeter()
         end = time.time()
-        for batch_idx, (model_in, labels) in enumerate(train_loader):
+        for batch_idx, (model_in, in_lengths, labels, label_lengths) in enumerate(train_loader):
             model.train()
             if compression_scheduler is not None:
                 compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, batches_per_epoch)
                 
             optimizer.zero_grad()
+
             
             if config["cuda"]:
                 model_in = model_in.cuda()
@@ -392,21 +480,40 @@ def train(model_name, config, check_sanity=False):
             
             labels = Variable(labels)
             if config["loss"] == "ctc":
+                scores = scores.permute(2,0,1,3)
                 scores = scores.view(scores.size(0), scores.size(1), -1)
-                scores = scores.permute(2,0,1)
-                scores = scores.view(scores.size(0), scores.size(1), -1)
-
-                input_lengths = torch.Tensor([scores.size(0)] * scores.size(1)).long()
-                label_lengths = torch.Tensor([1] * scores.size(1)).long()
-                scores = torch.nn.functional.log_softmax(scores, dim=2)
-                labels = labels.unsqueeze(1)
+                scores = scores.log_softmax(2)
                 
-                loss = criterion(scores, labels, input_lengths, label_lengths)
+                in_lengths = in_lengths / max(in_lengths) * scores.size(0)
+                in_lengths = in_lengths.round()
+                in_lengths = in_lengths.int()
+
+                print("\nLoss inputs:")
+                print(scores)
+                print(labels)
+                print(in_lengths)
+                print(label_lengths)
+
+                
+                loss = criterion(scores, labels, in_lengths, label_lengths)
+
+                print("loss:", loss.item())
+                
+                scalar_loss = loss.item()
+                error, cer = decoder.calculate_error(scores, in_lengths,
+                                                     labels, label_lengths)
+                scalar_accuracy = 1.0 - error
             else:
                 scores = scores.view(scores.size(0), -1)
-                loss = criterion(scores, labels)
+                labels = labels.view(-1)
 
-            avg_training_loss.add(loss.item())    
+                loss = criterion(scores, labels)
+                scalar_loss = loss.item()
+
+                scalar_accuracy = (torch.max(scores, 1)[1].view(labels.size(0)).data == labels.data).float().sum() / labels.size(0)
+                   
+            avg_training_loss.add(scalar_loss)    
+            avg_training_accuracy.add(scalar_accuracy)    
             
             if compression_scheduler is not None:
                 compression_scheduler.before_backward_pass(epoch_idx, batch_idx, batches_per_epoch, loss)
@@ -423,8 +530,6 @@ def train(model_name, config, check_sanity=False):
             step_no += 1
             
             if check_sanity or (last_log + log_every <= step_no):
-                scalar_accuracy, scalar_loss = get_eval(scores, labels, loss)
-                
                 last_log = step_no
                 stats_dict["Accuracy"] = scalar_accuracy
                 stats_dict["Loss"] = scalar_loss
@@ -444,8 +549,8 @@ def train(model_name, config, check_sanity=False):
             end = time.time()
 
         if check_sanity:
-            if avg_training_loss.mean < 0.01:
-                print("Sanity check passed")
+            if avg_training_accuracy.mean > 0.95:
+                msglogger.info("Sanity check passed accuracy: {} loss: {}".format(avg_training_accuracy.mean, avg_training_loss.mean))
                 return
         else:
             msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
@@ -455,7 +560,7 @@ def train(model_name, config, check_sanity=False):
             avg_acc, avg_loss = 1.0, 0.0
              
             if avg_acc > max_acc:
-                save_model(output_dir, model, test_loader)
+                save_model(output_dir, model, test_set, config=config)
                 max_acc = avg_acc
                 
             # Stop training if the validation loss has not improved for multiple iterations
@@ -473,12 +578,13 @@ def train(model_name, config, check_sanity=False):
             compression_scheduler.on_epoch_begin(epoch_idx)
 
     if check_sanity:
-        print("Sanity check has not ended early remaining loss: ", avg_training_loss.mean)
+        msglogger.info("Sanity check has not ended early accuracy: {} loss: {}".format(avg_training_accuracy.mean,
+                                                                                       avg_training_loss.mean))
     else:
         msglogger.info("Running final test")
         model.load(os.path.join(output_dir, "model.pt"))
     
-        test_accuracy, test_loss = evaluate(model_name, config, model, test_loader)
+        test_accuracy, test_loss = evaluate(model_name, config, model, test_set)
         
 
     return 
