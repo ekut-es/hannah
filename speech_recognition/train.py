@@ -558,8 +558,6 @@ def train(model_name, config, check_sanity=False):
 
             avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)
              
-            avg_acc, avg_loss = 1.0, 0.0
-             
             if avg_acc > max_acc:
                 save_model(output_dir, model, test_set, config=config)
                 max_acc = avg_acc

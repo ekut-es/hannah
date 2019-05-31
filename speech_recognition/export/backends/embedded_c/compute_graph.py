@@ -138,7 +138,7 @@ class ComputeGraph(object):
 
 
     def remove_node(self, node):
-        print("Removing node", node.name)
+        #print("Removing node", node.name)
         if not node in self.nodes:
             return
      
@@ -149,12 +149,12 @@ class ComputeGraph(object):
         for parent in node.parents:
             parent.children.remove(node)
             if not parent.children:
-                remove_node(graph, parent)
+                self.remove_node(parent)
      
         for child in node.children:
             child.parents.remove(node)
 
-    def get_shape(self, name : Text, node : ComputeNode) -> Iterable[int]:
+    def get_shape(self, name : Text) -> Iterable[int]:
         for input in self.inputs:
             if input.name == name:
                 return input.shape
@@ -162,9 +162,11 @@ class ComputeGraph(object):
         for output in self.outputs:
             if output.name == name:
                 return output.shape
-        
-        if name in node.input_tensors:
-            return node.input_tensors[name].shape
+
+
+        for node in self.nodes:
+            if name in node.input_tensors:
+                return node.input_tensors[name].shape
         
         if name in self.shape_dict:
             return self.shape_dict[name]
@@ -183,4 +185,10 @@ class ComputeGraph(object):
             if output.name == name:
                 return True
      
+        return False
+
+    def is_tensor(self, name : Text) -> bool:
+        for node in self.nodes:
+            if name in node.input_tensors:
+                return True
         return False

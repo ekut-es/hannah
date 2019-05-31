@@ -1,8 +1,66 @@
+from .utils import reduce_mult
+import numpy as np
+
+
+class Buffer(object):
+    def __init__(self, id, name, shape, size, dt, dtsize, alignment, is_managed):
+        self.id = id
+        self.name = name
+        self.shape = shape
+        self.size = size
+        self.dt = dt
+        self.typed_size = size // dtsize
+        self.dtsize = dtsize
+        self.alignment = alignment
+        self.is_managed = 0
+        self.offset = 0
+
+    @property
+    def start_ptr(self):
+        if self.offset != 0:
+            return "((float*)("+self.name+"+"+str(self.offset)+"))"
+        
+        return "((float*)"+self.name+")"
+
+    @property
+    def static_decl(self):
+        return "static float " + self.name + "[" + str(self.typed_size) + "]" + ";"
+    
+    @classmethod
+    def get(cls, graph, id : str, name="", alignment=None):
+        buffer_name = "buffer"
+        is_managed = True
+        if graph.is_input(id):
+            buffer_name = "input"
+            is_managed = False
+        elif graph.is_output(id):
+            buffer_name = "output"
+            is_managed = False
+            
+        if name != "":
+            buffer_name = name
+            is_managed = False
+            
+        buffer_name += id        
+        shape = graph.get_shape(id)
+
+        #TODO infer datatypes
+        dt = np.float
+        dtsize = 4
+
+        size = reduce_mult(shape)*dtsize
+        if alignment is None:
+            alignment = dtsize
+        
+        
+        return cls(id, buffer_name, shape, size,
+                   dt, dtsize, alignment, is_managed)
+
 class MemoryManager():
     def __init__(self):
         self.max_memory = 0
         self.free_list = []
-
+        self.buffers = {}
         self.current_allocation_id = 1
 
     def allocate_memory(self, buffer_size):
@@ -64,4 +122,15 @@ class MemoryManager():
         self.free_list.append(buffer)
         self.free_list.sort(key = lambda x : x["start"])
 
-        print("Free list", self.free_list)
+
+    def allocate(self, schedule):
+        return
+        
+    def get_buffer(self, graph, id):
+        if id in self.buffers:
+            return self.buffers[id]
+        
+        buffer = Buffer.get(graph, id)
+        self.buffers[id] = buffer
+
+        return self.buffers[id]
