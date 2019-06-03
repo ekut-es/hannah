@@ -449,9 +449,8 @@ def train(model_name, config, check_sanity=False):
     batches_per_epoch = len(train_loader)
     log_every = max(1, batches_per_epoch // 15)
     last_log = 0
-
     max_acc = 0
-
+    last_lr = config["lr"]
     
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
@@ -506,7 +505,7 @@ def train(model_name, config, check_sanity=False):
             else:
                 scores = scores.view(scores.size(0), -1)
                 labels = labels.view(-1)
-
+                
                 loss = criterion(scores, labels)
                 scalar_loss = loss.item()
 
@@ -563,6 +562,7 @@ def train(model_name, config, check_sanity=False):
                 max_acc = avg_acc
                 
             # Stop training if the validation loss has not improved for multiple iterations
+            # and early stopping is configured 
             es = early_stopping(avg_loss)
             if(es and config["early_stopping"] > 0):
                 break 
@@ -572,9 +572,17 @@ def train(model_name, config, check_sanity=False):
                 lr_scheduler.step(avg_loss)
             else:
                 lr_scheduler.step()
-                
+
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
+                
+        # Reload best model at learning rate changes
+        new_lr = optimizer.param_groups[0]['lr']
+        if new_lr != last_lr:
+            last_lr = new_lr
+            model.load(os.path.join(output_dir, "model.pt"))
+            
+       
 
     if check_sanity:
         msglogger.info("Sanity check has not ended early accuracy: {} loss: {}".format(avg_training_accuracy.mean,

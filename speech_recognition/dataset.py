@@ -100,6 +100,8 @@ class SpeechDataset(data.Dataset):
                                                                "right", "on",
                                                                "off", "stop",
                                                                "go"])
+        config["n_labels"]             = ConfigOption(category="Input Config",
+                                                      default=12)
         config["data_folder"]          = ConfigOption(category="Input Config",
                                                       default="datasets/speech_commands_v0.02/")
         config["samplingrate"]         = ConfigOption(category="Input Config",
