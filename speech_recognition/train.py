@@ -564,8 +564,8 @@ def train(model_name, config, check_sanity=False):
                 
             # Stop training if the validation loss has not improved for multiple iterations
             es = early_stopping(avg_loss)
-            if(es):
-                break
+            if(es and config["early_stopping"] > 0):
+                break 
                 
         if lr_scheduler is not None:
             if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
@@ -683,7 +683,7 @@ def build_config(extra_config={}):
                          lr_patience  = ConfigOption(category="Learning Rate Config",
                                                      desc="Parameter patience for plateau scheduler",
                                                      default=10),
-                         early_stopping = ConfigOption(default=20,
+                         early_stopping = ConfigOption(default=0,
                                                        desc="Stops the training if the validation loss has not improved for the last EARLY_STOPPING epochs"),
                          
                          batch_size=ConfigOption(default=128,
