@@ -23,7 +23,9 @@ class SerializableModule(nn.Module):
         torch.save(self.state_dict(), filename)
 
     def load(self, filename):
-        self.load_state_dict(torch.load(filename, map_location=lambda storage, loc: storage))
+        self.load_state_dict(torch.load(filename,
+                                        map_location=lambda storage, loc: storage),
+                             strict=False)
     
 
 class EarlyStopping:

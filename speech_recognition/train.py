@@ -593,7 +593,6 @@ def train(model_name, config, check_sanity=False):
     
         test_accuracy, test_loss = evaluate(model_name, config, model, test_set)
         
-
     return 
 
 def build_config(extra_config={}):
