@@ -3,7 +3,7 @@ Installation
 
 
 Installing dependencies
-=======================
+-----------------------
 
 Dependencies can either be installed to your Home-Directory or to a seperate python virtual environment.
 On RedHat 7 based distros (Scientific Linux 7, CentOS 7) all required dependencies should be installed by bootstrap.sh 
@@ -31,7 +31,7 @@ On Ubuntu 16.04 these are installable with the following commands:
 
 
 Setup of virtual environment (recommended)
-==========================================
+------------------------------------------
 
 To install in a python virtual environment use for training on cpus:
 
@@ -65,7 +65,7 @@ Export LD\_LIBRARY\_PATH when training on cluster-gpu0x:
 
 
 Installing the datasets
-=======================
+-----------------------
 
 Google Speech Recognition Dataset can be installed using:
 
@@ -75,5 +75,5 @@ Google Speech Recognition Dataset can be installed using:
     ./get_datasets.sh
 
 Hey Snips dataset can not be automatically installed as it needs,
-confirmation of their license. Please follow https://github.com/snipsco/keyword-spotting-research-datasets/blob/master/README.md to obtain a Download Link and
+confirmation of their license. Please follow https://github.com/snipsco/keyword-spotting-research-datasets/blob/master/README.md to obtain a download link and
 make sure you can agree to the licensing terms.
