@@ -1,0 +1,618 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>speech_recognition.dataset &#8212; Speech Recognition 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Speech Recognition 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for speech_recognition.dataset</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+
+<span class="kn">from</span> <span class="nn">chainmap</span> <span class="k">import</span> <span class="n">ChainMap</span>
+<span class="kn">import</span> <span class="nn">librosa</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.signal</span> <span class="k">as</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.utils.data</span> <span class="k">as</span> <span class="nn">data</span>
+
+
+<span class="kn">from</span> <span class="nn">.config</span> <span class="k">import</span> <span class="n">ConfigOption</span>
+<span class="kn">from</span> <span class="nn">.process_audio</span> <span class="k">import</span> <span class="n">preprocess_audio</span><span class="p">,</span> <span class="n">calculate_feature_shape</span>
+
+
+<div class="viewcode-block" id="SimpleCache"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.SimpleCache">[docs]</a><span class="k">class</span> <span class="nc">SimpleCache</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A simple in memory cache used for audio files and preprocessed features&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Initializes the cache with a maximum size of limit &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_keys</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds an item with key to the cache if size limit is reached no item will be added &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_keys</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_keys</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span></div>
+
+<div class="viewcode-block" id="DatasetType"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.DatasetType">[docs]</a><span class="k">class</span> <span class="nc">DatasetType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The type of a dataset partition e.g. train, dev, test &quot;&quot;&quot;</span>
+    <span class="n">TRAIN</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">DEV</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">TEST</span> <span class="o">=</span> <span class="mi">2</span></div>
+
+<div class="viewcode-block" id="SpeechDataset"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.SpeechDataset">[docs]</a><span class="k">class</span> <span class="nc">SpeechDataset</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Base Class for speech datasets &quot;&quot;&quot;</span>
+    <span class="n">LABEL_SILENCE</span> <span class="o">=</span> <span class="s2">&quot;__silence__&quot;</span>
+    <span class="n">LABEL_UNKNOWN</span> <span class="o">=</span> <span class="s2">&quot;__unknown__&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">set_type</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">audio_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_type</span> <span class="o">=</span> <span class="n">set_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">audio_labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;bg_noise_files&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;wav&quot;</span><span class="p">),</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bg_noise_files&quot;</span><span class="p">,</span> <span class="p">[])))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samplingrate</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;samplingrate&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bg_noise_audio</span> <span class="o">=</span> <span class="p">[</span><span class="n">librosa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">sr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">samplingrate</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;bg_noise_files&quot;</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unknown_prob</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;unknown_prob&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">silence_prob</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;silence_prob&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">noise_prob</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;noise_prob&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_length</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;input_length&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeshift_ms</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;timeshift_ms&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_loudest</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;extract_loudest&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss_function</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dct_filters</span> <span class="o">=</span> <span class="n">librosa</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">dct</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;n_mfcc&quot;</span><span class="p">],</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;n_mels&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_audio_cache</span> <span class="o">=</span> <span class="n">SimpleCache</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;cache_size&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file_cache</span> <span class="o">=</span> <span class="n">SimpleCache</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;cache_size&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_prob</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;cache_prob&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unknown_class</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_function</span> <span class="o">==</span> <span class="s2">&quot;ctc&quot;</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">silence_class</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_function</span> <span class="o">==</span> <span class="s2">&quot;ctc&quot;</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">n_unk</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">unknown_class</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">audio_labels</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_silence</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">silence_prob</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">audio_labels</span><span class="p">)</span> <span class="o">-</span> <span class="n">n_unk</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_mfcc</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;n_mfcc&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_mels</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;n_mels&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stride_ms</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;stride_ms&quot;</span><span class="p">]</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">window_ms</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;window_ms&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq_min</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;freq_min&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq_max</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;freq_max&quot;</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">calculate_feature_shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">,</span>
+                                                          <span class="n">features</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">,</span> 
+                                                          <span class="n">samplingrate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">samplingrate</span><span class="p">,</span>
+                                                          <span class="n">n_mels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_mels</span><span class="p">,</span>
+                                                          <span class="n">n_mfcc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_mfcc</span><span class="p">,</span> 
+                                                          <span class="n">stride_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stride_ms</span><span class="p">,</span>
+                                                          <span class="n">window_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">window_ms</span><span class="p">)</span>
+        
+<div class="viewcode-block" id="SpeechDataset.default_config"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.SpeechDataset.default_config">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">default_config</span><span class="p">():</span>
+        <span class="sd">&quot;&quot;&quot; Returns the default configuration for the Dataset and </span>
+<span class="sd">        Feature extraction&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="c1">#Input Description</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;wanted_words&quot;</span><span class="p">]</span>         <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
+                                                               <span class="s2">&quot;down&quot;</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">,</span>
+                                                               <span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="s2">&quot;on&quot;</span><span class="p">,</span>
+                                                               <span class="s2">&quot;off&quot;</span><span class="p">,</span> <span class="s2">&quot;stop&quot;</span><span class="p">,</span>
+                                                               <span class="s2">&quot;go&quot;</span><span class="p">])</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;n_labels&quot;</span><span class="p">]</span>             <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;data_folder&quot;</span><span class="p">]</span>          <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="s2">&quot;datasets/speech_commands_v0.02/&quot;</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;samplingrate&quot;</span><span class="p">]</span>         <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mi">16000</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;input_length&quot;</span><span class="p">]</span>         <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mi">16000</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;extract_loudest&quot;</span><span class="p">]</span>      <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;timeshift_ms&quot;</span><span class="p">]</span>         <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;use_default_split&quot;</span><span class="p">]</span>    <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;group_speakers_by_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;silence_prob&quot;</span><span class="p">]</span>         <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;noise_prob&quot;</span><span class="p">]</span>           <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;unknown_prob&quot;</span><span class="p">]</span>         <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;train_pct&quot;</span><span class="p">]</span>            <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;dev_pct&quot;</span><span class="p">]</span>              <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;test_pct&quot;</span><span class="p">]</span>             <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span>                 <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Input Config&quot;</span><span class="p">,</span>
+                                                      <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Loss function that should be used with this dataset&quot;</span><span class="p">,</span>
+                                                      <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;cross_entropy&quot;</span><span class="p">,</span> <span class="s2">&quot;ctc&quot;</span><span class="p">],</span>
+                                                      <span class="n">default</span><span class="o">=</span><span class="s2">&quot;cross_entropy&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Feature extraction</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Feature Config&quot;</span><span class="p">,</span>
+                                           <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mel&quot;</span><span class="p">,</span> <span class="s2">&quot;mfcc&quot;</span><span class="p">,</span> <span class="s2">&quot;melspec&quot;</span><span class="p">,</span> <span class="s2">&quot;spectrogram&quot;</span><span class="p">,</span> <span class="s2">&quot;raw&quot;</span><span class="p">],</span>
+                                           <span class="n">default</span><span class="o">=</span><span class="s2">&quot;mel&quot;</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;n_mfcc&quot;</span><span class="p">]</span>    <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Feature Config&quot;</span><span class="p">,</span>
+                                           <span class="n">default</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;n_mels&quot;</span><span class="p">]</span>    <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Feature Config&quot;</span><span class="p">,</span>
+                                           <span class="n">default</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;stride_ms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Feature Config&quot;</span><span class="p">,</span>
+                                           <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;window_ms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Feature Config&quot;</span><span class="p">,</span>
+                                           <span class="n">default</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;freq_min&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Feature Config&quot;</span><span class="p">,</span>
+                                           <span class="n">default</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;freq_max&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Feature Config&quot;</span><span class="p">,</span>
+                                           <span class="n">default</span><span class="o">=</span><span class="mi">4000</span><span class="p">)</span>
+    
+        <span class="c1"># Cache config</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;cache_size&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Cache Config&quot;</span><span class="p">,</span>
+                                            <span class="n">default</span><span class="o">=</span><span class="mi">200000</span><span class="p">,</span>
+                                            <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Size of the caches for preprocessed and raw data&quot;</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;cache_prob&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;Cache Config&quot;</span><span class="p">,</span>
+                                            <span class="n">default</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+                                            <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Probabilty of using a cached sample during training&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">config</span></div>
+
+    <span class="k">def</span> <span class="nf">_timeshift_audio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Shifts data by a random amount of ms given by parameter timeshift_ms&quot;&quot;&quot;</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samplingrate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeshift_ms</span><span class="p">)</span> <span class="o">//</span> <span class="mi">1000</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="o">-</span><span class="n">shift</span><span class="p">,</span> <span class="n">shift</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="nb">min</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">shift</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">shift</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">),</span> <span class="s2">&quot;constant&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="n">a</span><span class="p">]</span> <span class="k">if</span> <span class="n">a</span> <span class="k">else</span> <span class="n">data</span><span class="p">[</span><span class="n">b</span><span class="p">:]</span>
+
+    <span class="k">def</span> <span class="nf">_extract_loudest_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">in_len</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Extract the loudest part of the sample with length self.input_lenght&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">in_len</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+        
+        <span class="n">amps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">in_len</span><span class="p">)</span>
+
+        <span class="n">correlation</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">correlate</span><span class="p">(</span><span class="n">amps</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        
+        <span class="n">window_start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">correlation</span><span class="p">)</span>
+        <span class="n">window_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">window_start</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">window_start</span><span class="p">,</span> <span class="n">window_start</span><span class="o">+</span><span class="n">in_len</span><span class="p">)</span>
+        
+        
+<div class="viewcode-block" id="SpeechDataset.preprocess"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.SpeechDataset.preprocess">[docs]</a>    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">example</span><span class="p">,</span> <span class="n">silence</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Run preprocessing and feature extraction &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">silence</span><span class="p">:</span>
+            <span class="n">example</span> <span class="o">=</span> <span class="s2">&quot;__silence__&quot;</span>
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_prob</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_audio_cache</span><span class="p">[</span><span class="n">example</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        
+        <span class="n">in_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_length</span>
+
+        <span class="k">if</span> <span class="n">silence</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">in_len</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">example</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">librosa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">example</span><span class="p">,</span> <span class="n">sr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">samplingrate</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+                <span class="n">extract_index</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+                
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_loudest</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_function</span> <span class="o">!=</span> <span class="s2">&quot;ctc&quot;</span><span class="p">:</span>
+                    <span class="n">extract_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_loudest_range</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">in_len</span><span class="p">)</span>
+                 
+                <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeshift_audio</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">extract_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">extract_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_function</span> <span class="o">!=</span> <span class="s2">&quot;ctc&quot;</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">in_len</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))),</span> <span class="s2">&quot;constant&quot;</span><span class="p">)</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">in_len</span><span class="p">]</span>
+
+                    
+            <span class="bp">self</span><span class="o">.</span><span class="n">_file_cache</span><span class="p">[</span><span class="n">example</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bg_noise_audio</span><span class="p">:</span>
+            <span class="n">bg_noise</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bg_noise_audio</span><span class="p">)</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bg_noise</span><span class="p">)</span> <span class="o">-</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">bg_noise</span> <span class="o">=</span> <span class="n">bg_noise</span><span class="p">[</span><span class="n">a</span><span class="p">:</span><span class="n">a</span> <span class="o">+</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bg_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+            
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_prob</span> <span class="ow">or</span> <span class="n">silence</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mf">0.1</span> 
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">bg_noise</span> <span class="o">+</span> <span class="n">data</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">preprocess_audio</span><span class="p">(</span><span class="n">data</span><span class="p">,</span>
+                                                 <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">,</span>
+                                                 <span class="n">samplingrate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">samplingrate</span><span class="p">,</span>
+                                                 <span class="n">n_mels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_mels</span><span class="p">,</span>
+                                                 <span class="n">n_mfcc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_mfcc</span><span class="p">,</span>
+                                                 <span class="n">dct_filters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_filters</span><span class="p">,</span>
+                                                 <span class="n">freq_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_min</span><span class="p">,</span>
+                                                 <span class="n">freq_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_max</span><span class="p">,</span>
+                                                 <span class="n">window_ms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_ms</span><span class="p">,</span>
+                                                 <span class="n">stride_ms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stride_ms</span><span class="p">))</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_function</span> <span class="o">!=</span> <span class="s2">&quot;ctc&quot;</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span>
+            <span class="k">assert</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_audio_cache</span><span class="p">[</span><span class="n">example</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+
+        <span class="k">return</span> <span class="n">data</span></div>
+
+    <span class="k">def</span> <span class="nf">get_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">audio_labels</span><span class="p">):</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">silence_class</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">audio_labels</span><span class="p">[</span><span class="n">index</span><span class="p">]]</span>
+
+        <span class="k">return</span> <span class="n">label</span>
+
+    <span class="k">def</span> <span class="nf">get_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)):</span>
+            <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">labels</span>
+
+    <span class="k">def</span> <span class="nf">get_class_nums</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">classcounter</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_classes</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">n</span><span class="p">:</span>
+                <span class="n">classcounter</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">classcounter</span>
+                
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        
+        <span class="n">label</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="n">index</span><span class="p">))</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">long</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">audio_labels</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">silence</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">audio_files</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+            
+        <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">label</span><span class="p">,</span> <span class="n">label</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> 
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">audio_labels</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_silence</span></div>
+
+
+<div class="viewcode-block" id="SpeechCommandsDataset"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.SpeechCommandsDataset">[docs]</a><span class="k">class</span> <span class="nc">SpeechCommandsDataset</span><span class="p">(</span><span class="n">SpeechDataset</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This class implements reading and preprocessing of speech commands like </span>
+<span class="sd">    dataset&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">set_type</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">set_type</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">label_names</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_SILENCE</span><span class="p">,</span> <span class="mi">1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_UNKNOWN</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">word</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;wanted_words&quot;</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">label_names</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">word</span>
+        
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">splits</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="n">msglogger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+
+        <span class="n">folder</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;data_folder&quot;</span><span class="p">]</span>
+        <span class="n">wanted_words</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;wanted_words&quot;</span><span class="p">]</span>
+        <span class="n">unknown_prob</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;unknown_prob&quot;</span><span class="p">]</span>
+        <span class="n">train_pct</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;train_pct&quot;</span><span class="p">]</span>
+        <span class="n">dev_pct</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;dev_pct&quot;</span><span class="p">]</span>
+        <span class="n">test_pct</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;test_pct&quot;</span><span class="p">]</span>
+        <span class="n">use_default_split</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;use_default_split&quot;</span><span class="p">]</span>
+
+        <span class="n">words</span> <span class="o">=</span> <span class="p">{</span><span class="n">word</span><span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">word</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">wanted_words</span><span class="p">)}</span>
+        <span class="n">words</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="bp">cls</span><span class="o">.</span><span class="n">LABEL_SILENCE</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">LABEL_UNKNOWN</span><span class="p">:</span><span class="mi">1</span><span class="p">})</span>
+        <span class="n">sets</span> <span class="o">=</span> <span class="p">[{},</span> <span class="p">{},</span> <span class="p">{}]</span>
+        <span class="n">unknowns</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span>
+        <span class="n">bg_noise_files</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">unknown_files</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">test_files</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">dev_files</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">use_default_split</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s2">&quot;testing_list.txt&quot;</span><span class="p">))</span> <span class="k">as</span> <span class="n">testing_list</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">testing_list</span><span class="o">.</span><span class="n">readlines</span><span class="p">():</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="n">test_files</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+                    
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s2">&quot;validation_list.txt&quot;</span><span class="p">))</span> <span class="k">as</span> <span class="n">validation_list</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">validation_list</span><span class="o">.</span><span class="n">readlines</span><span class="p">():</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="n">dev_files</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+                    
+        <span class="k">for</span> <span class="n">folder_name</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+            <span class="n">path_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">folder_name</span><span class="p">)</span>
+            <span class="n">is_bg_noise</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path_name</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">folder_name</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">words</span><span class="p">[</span><span class="n">folder_name</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">folder_name</span> <span class="o">==</span> <span class="s2">&quot;_background_noise_&quot;</span><span class="p">:</span>
+                <span class="n">is_bg_noise</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">words</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">LABEL_UNKNOWN</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">path_name</span><span class="p">):</span>
+                <span class="n">wav_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path_name</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">is_bg_noise</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">wav_name</span><span class="p">):</span>
+                    <span class="n">bg_noise_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wav_name</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="k">elif</span> <span class="n">label</span> <span class="o">==</span> <span class="n">words</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">LABEL_UNKNOWN</span><span class="p">]:</span>
+                    <span class="n">unknown_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wav_name</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="k">if</span> <span class="n">use_default_split</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">wav_name</span> <span class="ow">in</span> <span class="n">dev_files</span><span class="p">:</span>
+                        <span class="n">tag</span> <span class="o">=</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">DEV</span>
+                    <span class="k">elif</span> <span class="n">wav_name</span> <span class="ow">in</span> <span class="n">test_files</span><span class="p">:</span>
+                        <span class="n">tag</span> <span class="o">=</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TEST</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">tag</span> <span class="o">=</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TRAIN</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;group_speakers_by_id&quot;</span><span class="p">]:</span>
+                        <span class="n">hashname</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;_nohash_.*$&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">hashname</span> <span class="o">=</span> <span class="n">filename</span>
+                    <span class="n">max_no_wavs</span> <span class="o">=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">27</span> <span class="o">-</span> <span class="mi">1</span>
+                    <span class="n">bucket</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">hashname</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">(),</span> <span class="mi">16</span><span class="p">)</span>
+                    <span class="n">bucket</span> <span class="o">=</span> <span class="p">(</span><span class="n">bucket</span> <span class="o">%</span> <span class="p">(</span><span class="n">max_no_wavs</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mf">100.</span> <span class="o">/</span> <span class="n">max_no_wavs</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">bucket</span> <span class="o">&lt;</span> <span class="n">dev_pct</span><span class="p">:</span>
+                        <span class="n">tag</span> <span class="o">=</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">DEV</span>
+                    <span class="k">elif</span> <span class="n">bucket</span> <span class="o">&lt;</span> <span class="n">test_pct</span> <span class="o">+</span> <span class="n">dev_pct</span><span class="p">:</span>
+                        <span class="n">tag</span> <span class="o">=</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TEST</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">tag</span> <span class="o">=</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TRAIN</span>
+                <span class="n">sets</span><span class="p">[</span><span class="n">tag</span><span class="o">.</span><span class="n">value</span><span class="p">][</span><span class="n">wav_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+                
+        <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sets</span><span class="p">)):</span>
+            <span class="n">unknowns</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">unknown_prob</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">sets</span><span class="p">[</span><span class="n">tag</span><span class="p">]))</span>
+        <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">unknown_files</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sets</span><span class="p">):</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">unknowns</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">unk_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">u</span><span class="p">:</span> <span class="n">words</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">LABEL_UNKNOWN</span><span class="p">]</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unknown_files</span><span class="p">[</span><span class="n">a</span><span class="p">:</span><span class="n">b</span><span class="p">]}</span>
+            <span class="n">dataset</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">unk_dict</span><span class="p">)</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">b</span>
+         
+        <span class="n">train_cfg</span> <span class="o">=</span> <span class="n">ChainMap</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">bg_noise_files</span><span class="o">=</span><span class="n">bg_noise_files</span><span class="p">),</span> <span class="n">config</span><span class="p">)</span>
+        <span class="n">test_cfg</span> <span class="o">=</span> <span class="n">ChainMap</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">bg_noise_files</span><span class="o">=</span><span class="n">bg_noise_files</span><span class="p">),</span> <span class="n">config</span><span class="p">)</span>
+        <span class="n">datasets</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="p">(</span><span class="n">sets</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TRAIN</span><span class="p">,</span> <span class="n">train_cfg</span><span class="p">),</span>
+                    <span class="bp">cls</span><span class="p">(</span><span class="n">sets</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">DEV</span><span class="p">,</span> <span class="n">test_cfg</span><span class="p">),</span>
+                    <span class="bp">cls</span><span class="p">(</span><span class="n">sets</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TEST</span><span class="p">,</span> <span class="n">test_cfg</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">datasets</span></div>
+
+
+<div class="viewcode-block" id="SpeechHotwordDataset"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.SpeechHotwordDataset">[docs]</a><span class="k">class</span> <span class="nc">SpeechHotwordDataset</span><span class="p">(</span><span class="n">SpeechDataset</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Dataset Class for Hotword dataset e.g. Hey Snips!&quot;&quot;&quot;</span>
+
+    <span class="n">LABEL_HOTWORD</span> <span class="o">=</span> <span class="s2">&quot;hotword&quot;</span>
+    <span class="n">LABEL_EPS</span> <span class="o">=</span> <span class="s2">&quot;eps&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">set_type</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">set_type</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_function</span> <span class="o">==</span> <span class="s2">&quot;ctc&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">label_names</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_EPS</span><span class="p">,</span> <span class="mi">1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_SILENCE</span><span class="p">,</span>  <span class="mi">2</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_UNKNOWN</span><span class="p">,</span> <span class="mi">3</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_HOTWORD</span><span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">label_names</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_SILENCE</span><span class="p">,</span>
+                                <span class="mi">1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_UNKNOWN</span><span class="p">,</span>
+                                <span class="mi">2</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">LABEL_HOTWORD</span><span class="p">}</span>
+            
+            
+<div class="viewcode-block" id="SpeechHotwordDataset.default_config"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.SpeechHotwordDataset.default_config">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">default_config</span><span class="p">():</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">SpeechDataset</span><span class="o">.</span><span class="n">default_config</span><span class="p">()</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;cross_entropy&quot;</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;n_labels&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="c1"># Splits the dataset in 1/3 </span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;silence_prob&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;unknown_prob&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        
+        <span class="k">return</span> <span class="n">config</span></div>
+        
+<div class="viewcode-block" id="SpeechHotwordDataset.splits"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.SpeechHotwordDataset.splits">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">splits</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Splits the dataset in training, devlopment and test set and returns</span>
+<span class="sd">        the three sets as List&quot;&quot;&quot;</span>
+
+        <span class="n">msglogger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+        
+        <span class="n">folder</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;data_folder&quot;</span><span class="p">]</span>
+
+        <span class="n">descriptions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;train.json&quot;</span><span class="p">,</span> <span class="s2">&quot;dev.json&quot;</span><span class="p">,</span> <span class="s2">&quot;test.json&quot;</span><span class="p">]</span>
+        <span class="n">dataset_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">DatasetType</span><span class="o">.</span><span class="n">TRAIN</span><span class="p">,</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">DEV</span><span class="p">,</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TEST</span><span class="p">]</span>
+        <span class="n">datasets</span><span class="o">=</span><span class="p">[{},</span> <span class="p">{},</span> <span class="p">{}]</span>
+
+
+        <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">desc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">descriptions</span><span class="p">):</span>
+            <span class="n">descs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">desc</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">descs</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">descs</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+                <span class="n">unknown_files</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">hotword_files</span> <span class="o">=</span> <span class="p">[]</span>
+                
+                <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">descs</span><span class="p">:</span>
+                    <span class="n">is_hotword</span> <span class="o">=</span> <span class="n">desc</span><span class="p">[</span><span class="s2">&quot;is_hotword&quot;</span><span class="p">]</span>
+                    <span class="n">wav_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">desc</span><span class="p">[</span><span class="s2">&quot;audio_file_path&quot;</span><span class="p">])</span>
+
+                    <span class="k">if</span> <span class="n">is_hotword</span><span class="p">:</span>
+                        <span class="n">hotword_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wav_file</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">unknown_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wav_file</span><span class="p">)</span>
+
+            <span class="n">unknown_prob</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;unknown_prob&quot;</span><span class="p">]</span>
+            <span class="n">num_hotwords</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">hotword_files</span><span class="p">)</span>
+            <span class="n">num_unknowns</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_hotwords</span> <span class="o">*</span> <span class="n">unknown_prob</span><span class="p">)</span>
+            <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">unknown_files</span><span class="p">)</span>
+            <span class="n">label_unknown</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ctc&quot;</span> <span class="k">else</span> <span class="mi">1</span> 
+            <span class="n">label_hotword</span> <span class="o">=</span> <span class="mi">3</span> <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ctc&quot;</span> <span class="k">else</span> <span class="mi">2</span> 
+            
+            <span class="n">datasets</span><span class="p">[</span><span class="n">num</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">u</span> <span class="p">:</span> <span class="n">label_unknown</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unknown_files</span><span class="p">[:</span><span class="n">num_unknowns</span><span class="p">]})</span>
+            <span class="n">datasets</span><span class="p">[</span><span class="n">num</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">h</span> <span class="p">:</span> <span class="n">label_hotword</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hotword_files</span><span class="p">})</span>
+            
+                    
+        <span class="n">res_datasets</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TRAIN</span><span class="p">,</span> <span class="n">config</span><span class="p">),</span>
+                        <span class="bp">cls</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">DEV</span><span class="p">,</span> <span class="n">config</span><span class="p">),</span>
+                        <span class="bp">cls</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">DatasetType</span><span class="o">.</span><span class="n">TEST</span><span class="p">,</span> <span class="n">config</span><span class="p">))</span>
+ 
+        <span class="k">return</span> <span class="n">res_datasets</span></div></div>
+
+
+<div class="viewcode-block" id="find_dataset"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.find_dataset">[docs]</a><span class="k">def</span> <span class="nf">find_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns the appropriate class for reading a dataset of type name:</span>
+
+<span class="sd">       Parameters</span>
+<span class="sd">       ----------</span>
+<span class="sd">       name : str</span>
+<span class="sd">           The name of the dataset type</span>
+<span class="sd">       </span>
+<span class="sd">            - keywords = Google Speech Commands like  dataset</span>
+<span class="sd">            - hotword = Hey Snips! like dataset</span>
+<span class="sd">&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;keywords&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SpeechCommandsDataset</span>
+    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;hotword&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SpeechHotwordDataset</span>
+
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Could not find dataset type: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="ctc_collate_fn"><a class="viewcode-back" href="../../preprocessing.html#speech_recognition.dataset.ctc_collate_fn">[docs]</a><span class="k">def</span> <span class="nf">ctc_collate_fn</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates mini-batch tensors from the list of tuples (src_seq, trg_seq).</span>
+<span class="sd">    We should build a custom collate_fn rather than using default collate_fn,</span>
+<span class="sd">    because merging sequences (including padding) is not supported in default.</span>
+<span class="sd">    Sequences are padded to the maximum length of mini-batch sequences (dynamic padding).</span>
+<span class="sd">    Args:</span>
+<span class="sd">        data: list of tuple (src_seq, src_length, trg_seq, trg_length).</span>
+<span class="sd">            - src_seq: torch tensor of shape (x,?); variable length.</span>
+<span class="sd">            - src length: torch tenso of shape 1x1</span>
+<span class="sd">            - trg_seq: torch tensor of shape (?); variable length.</span>
+<span class="sd">            - trg_length: torch_tensor of shape (1x1) </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        src_seqs: torch tensor of shape (batch_size, x, padded_length).</span>
+<span class="sd">        src_lengths: torch_tensor of shape (batch_size); valid length for each padded source sequence.</span>
+<span class="sd">        trg_seqs: torch tensor of shape (batch_size, x, padded_length).</span>
+<span class="sd">        trg_lengths: torch tensor of shape (batch_size); valid length for each padded target sequence.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    
+    <span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="n">sequences</span><span class="p">):</span>
+        <span class="n">temporal_dimension</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">lengths</span> <span class="o">=</span> <span class="p">[</span><span class="n">seq</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">seq</span> <span class="ow">in</span> <span class="n">sequences</span><span class="p">]</span>
+        <span class="n">max_length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span>
+
+        <span class="n">padded_seqs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sequences</span><span class="p">:</span>
+            <span class="n">padded</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">item</span><span class="p">,</span>
+                                             <span class="n">pad</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">max_length</span><span class="o">-</span><span class="n">item</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+                                             <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span>
+                                             <span class="n">value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">padded_seqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">padded</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">padded_seqs</span><span class="p">,</span> <span class="n">lengths</span>
+    
+    <span class="c1"># seperate source and target sequences</span>
+    <span class="n">src_seqs</span><span class="p">,</span> <span class="n">src_lengths</span><span class="p">,</span> <span class="n">trg_seqs</span><span class="p">,</span> <span class="n">trg_lengths</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="c1"># merge sequences (from tuple of 1D tensor to 2D tensor)</span>
+    <span class="n">src_seqs</span><span class="p">,</span> <span class="n">src_lengths</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">src_seqs</span><span class="p">)</span>
+    <span class="n">trg_seqs</span><span class="p">,</span> <span class="n">trg_lengths</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">trg_seqs</span><span class="p">)</span>
+
+
+    
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">src_seqs</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="n">src_lengths</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">trg_seqs</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="n">trg_lengths</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Speech Recognition 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Christoph Gerum, Adrian Frischknecht.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.0.1.
+    </div>
+  </body>
+</html>
