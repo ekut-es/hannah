@@ -1,8 +1,8 @@
 #!/bin/bash
 
-experiment_id=early_termination
+experiment_id=default2
 
-python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500 --model ekut-raw-cnn1-relu --gpu_no 0 --seed 1234 --lr 0.01 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --experiment_id=$experiment_id
+python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500 --model ekut-raw-cnn1-relu --gpu_no 0 --seed 1234 --lr 0.01 --tcml_skip_data --tcml_skip_simage  --tcml_estimated_time 12:00:00 --tcml_partition day --experiment_id=$experiment_id
 
  python3.6 -m speech_recognition.tcml.train --data_folder datasets/speech_commands_v0.02/ --wanted_words yes no up down left right on off stop go --n_labels 12 --n_epochs 500 --model ekut-raw-cnn2-relu --gpu_no 0 --seed 1234 --lr 0.01 --tcml_skip_data --tcml_skip_simage --tcml_skip_code --tcml_estimated_time 12:00:00 --tcml_partition day --experiment_id=$experiment_id
 
