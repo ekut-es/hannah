@@ -96,6 +96,7 @@ $python_cmd -m pip install $user_arg Pillow
 if [ $using_gpu_cluster == 0 ]; then
     $python_cmd -m pip install $user_arg PyAudio
 fi
+$python_cmd -m pip install $user_arg python-Levenshtein
 $python_cmd -m pip install $user_arg PyOpenGL
 $python_cmd -m pip install $user_arg PyOpenGL_accelerate
 $python_cmd -m pip install $user_arg pyttsx3
