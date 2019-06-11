@@ -482,6 +482,8 @@ def find_dataset(name):
        
             - keywords = Google Speech Commands like  dataset
             - hotword = Hey Snips! like dataset
+
+       Returns
 """
     if name == "keywords":
         return SpeechCommandsDataset
@@ -503,7 +505,7 @@ def ctc_collate_fn(data):
             - src length: torch tenso of shape 1x1
             - trg_seq: torch tensor of shape (?); variable length.
             - trg_length: torch_tensor of shape (1x1) 
-    Returns:
+    Returns: tuple of four torch tensors
         src_seqs: torch tensor of shape (batch_size, x, padded_length).
         src_lengths: torch_tensor of shape (batch_size); valid length for each padded source sequence.
         trg_seqs: torch tensor of shape (batch_size, x, padded_length).

@@ -50,7 +50,30 @@
                             <span class="n">n_mfcc</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
                             <span class="n">stride_ms</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
                             <span class="n">window_ms</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Calculates the shape of the given features&quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot;Calculates the shape of the given features</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">      input_length : int</span>
+<span class="sd">        lenght of the input in samples</span>
+<span class="sd">      features : str</span>
+<span class="sd">        The selected feature to extract. Currently one of: </span>
+<span class="sd">        - raw: for RAW single channel audiodata</span>
+<span class="sd">        - mel: Mel Frequency Cepstral Coefficients</span>
+<span class="sd">        - mfcc: Alternative implementation of Mel Frequency Cepstral Coefficients</span>
+<span class="sd">        - melspec: Mel-scaled spectrogram</span>
+<span class="sd">        - spectrogram: Spectrogram</span>
+<span class="sd">      n_mels: int</span>
+<span class="sd">        Number of frequency bands in melspectrogram</span>
+<span class="sd">      n_mfcc: int</span>
+<span class="sd">        Number of mfcc/mel features after dct</span>
+<span class="sd">      stride_ms: int</span>
+<span class="sd">        Stride of the feature extractor in ms</span>
+<span class="sd">      window_ms: int</span>
+<span class="sd">        Size of the feature window in ms</span>
+
+<span class="sd">    Returns: (int, int)</span>
+<span class="sd">       Shape of the features (N,T). T is temporal dimension, N is number of channels.</span>
+<span class="sd">&quot;&quot;&quot;</span>
     <span class="n">n_fft</span> <span class="o">=</span> <span class="p">(</span><span class="n">samplingrate</span> <span class="o">*</span> <span class="n">window_ms</span><span class="p">)</span> <span class="o">//</span> <span class="mi">1000</span>
     <span class="n">hop_length</span> <span class="o">=</span> <span class="p">(</span><span class="n">samplingrate</span> <span class="o">*</span> <span class="n">stride_ms</span><span class="p">)</span>  <span class="o">//</span> <span class="mi">1000</span>
         
@@ -83,7 +106,33 @@
                      <span class="n">freq_max</span><span class="o">=</span><span class="mi">4000</span><span class="p">,</span>
                      <span class="n">window_ms</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span>
                      <span class="n">stride_ms</span> <span class="o">=</span> <span class="mi">10</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Calculates the features for a given audio&quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot;Calculates the features for a given audio</span>
+
+<span class="sd">     Args:</span>
+<span class="sd">      input_length : int</span>
+<span class="sd">        lenght of the input in samples</span>
+<span class="sd">      features : str</span>
+<span class="sd">        The selected feature to extract. Currently one of: </span>
+<span class="sd">        - raw: for RAW single channel audiodata</span>
+<span class="sd">        - mel: Mel Frequency Cepstral Coefficients</span>
+<span class="sd">        - mfcc: Alternative implementation of Mel Frequency Cepstral Coefficients</span>
+<span class="sd">        - melspec: Mel-scaled spectrogram</span>
+<span class="sd">        - spectrogram: Spectrogram</span>
+<span class="sd">      dct_filters: np.ndarray </span>
+<span class="sd">        Dct filter coefficients to transform mel scaled spectrograms into </span>
+<span class="sd">        MFCC features. </span>
+<span class="sd">      n_mels: int</span>
+<span class="sd">        Number of frequency bands in melspectrogram</span>
+<span class="sd">      n_mfcc: int</span>
+<span class="sd">        Number of mfcc/mel features after dct</span>
+<span class="sd">      stride_ms: int</span>
+<span class="sd">        Stride of the feature extractor in ms</span>
+<span class="sd">      window_ms: int</span>
+<span class="sd">        Size of the feature window in ms</span>
+
+<span class="sd">    Returns: np.ndarray (NxT)</span>
+<span class="sd">      Extracted features N is channel dimenstion, T is Temporal dimension</span>
+<span class="sd">&quot;&quot;&quot;</span>
     
     <span class="n">hop_length</span> <span class="o">=</span> <span class="p">(</span><span class="n">samplingrate</span> <span class="o">*</span> <span class="n">stride_ms</span><span class="p">)</span>  <span class="o">//</span> <span class="mi">1000</span>
     <span class="n">n_fft</span> <span class="o">=</span> <span class="p">(</span><span class="n">samplingrate</span> <span class="o">*</span> <span class="n">window_ms</span><span class="p">)</span> <span class="o">//</span> <span class="mi">1000</span>

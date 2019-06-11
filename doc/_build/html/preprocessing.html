@@ -275,12 +275,67 @@ trg_lengths: torch tensor of shape (batch_size); valid length for each padded ta
 <dt id="speech_recognition.process_audio.calculate_feature_shape">
 <code class="descclassname">speech_recognition.process_audio.</code><code class="descname">calculate_feature_shape</code><span class="sig-paren">(</span><em>input_length</em>, <em>features='mel'</em>, <em>samplingrate=1600</em>, <em>n_mels=40</em>, <em>n_mfcc=40</em>, <em>stride_ms=10</em>, <em>window_ms=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/speech_recognition/process_audio.html#calculate_feature_shape"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#speech_recognition.process_audio.calculate_feature_shape" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the shape of the given features</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>input_length<span class="classifier">int</span></dt><dd><p>lenght of the input in samples</p>
+</dd>
+<dt>features<span class="classifier">str</span></dt><dd><p>The selected feature to extract. Currently one of: 
+- raw: for RAW single channel audiodata
+- mel: Mel Frequency Cepstral Coefficients
+- mfcc: Alternative implementation of Mel Frequency Cepstral Coefficients
+- melspec: Mel-scaled spectrogram
+- spectrogram: Spectrogram</p>
+</dd>
+<dt>n_mels: int</dt><dd><p>Number of frequency bands in melspectrogram</p>
+</dd>
+<dt>n_mfcc: int</dt><dd><p>Number of mfcc/mel features after dct</p>
+</dd>
+<dt>stride_ms: int</dt><dd><p>Stride of the feature extractor in ms</p>
+</dd>
+<dt>window_ms: int</dt><dd><p>Size of the feature window in ms</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns: (int, int)</dt><dd><p>Shape of the features (N,T). T is temporal dimension, N is number of channels.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="speech_recognition.process_audio.preprocess_audio">
 <code class="descclassname">speech_recognition.process_audio.</code><code class="descname">preprocess_audio</code><span class="sig-paren">(</span><em>data</em>, <em>features='mel'</em>, <em>samplingrate=1600</em>, <em>n_mels=40</em>, <em>n_mfcc=40</em>, <em>dct_filters=None</em>, <em>freq_min=20</em>, <em>freq_max=4000</em>, <em>window_ms=40</em>, <em>stride_ms=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/speech_recognition/process_audio.html#preprocess_audio"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#speech_recognition.process_audio.preprocess_audio" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the features for a given audio</p>
+<blockquote>
+<div><dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>input_length<span class="classifier">int</span></dt><dd><p>lenght of the input in samples</p>
+</dd>
+<dt>features<span class="classifier">str</span></dt><dd><p>The selected feature to extract. Currently one of: 
+- raw: for RAW single channel audiodata
+- mel: Mel Frequency Cepstral Coefficients
+- mfcc: Alternative implementation of Mel Frequency Cepstral Coefficients
+- melspec: Mel-scaled spectrogram
+- spectrogram: Spectrogram</p>
+</dd>
+<dt>dct_filters: np.ndarray </dt><dd><p>Dct filter coefficients to transform mel scaled spectrograms into 
+MFCC features.</p>
+</dd>
+<dt>n_mels: int</dt><dd><p>Number of frequency bands in melspectrogram</p>
+</dd>
+<dt>n_mfcc: int</dt><dd><p>Number of mfcc/mel features after dct</p>
+</dd>
+<dt>stride_ms: int</dt><dd><p>Stride of the feature extractor in ms</p>
+</dd>
+<dt>window_ms: int</dt><dd><p>Size of the feature window in ms</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns: np.ndarray (NxT)</dt><dd><p>Extracted features N is channel dimenstion, T is Temporal dimension</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
