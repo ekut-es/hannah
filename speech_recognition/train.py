@@ -570,18 +570,20 @@ def train(model_name, config, check_sanity=False):
         if lr_scheduler is not None:
             if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
                 lr_scheduler.step(avg_loss)
+                
+                # Reload best model at learning rate changes
+                new_lr = optimizer.param_groups[0]['lr']
+                if new_lr != last_lr:
+                    last_lr = new_lr
+                    model.load(os.path.join(output_dir, "model.pt"))
+        
             else:
                 lr_scheduler.step()
 
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
                 
-        # Reload best model at learning rate changes
-        new_lr = optimizer.param_groups[0]['lr']
-        if new_lr != last_lr:
-            last_lr = new_lr
-            model.load(os.path.join(output_dir, "model.pt"))
-            
+             
        
 
     if check_sanity:
