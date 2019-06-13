@@ -13,7 +13,8 @@ def calculate_feature_shape(input_length,
                             window_ms=10):
     """Calculates the shape of the given features
     
-    Args:
+    Parameters
+    ----------
       input_length : int
         lenght of the input in samples
       features : str

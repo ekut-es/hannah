@@ -2,7 +2,7 @@ import torch
 try:
     import Levenshtein as Lev
 except:
-    print("Could not import Levenshtein distance")
+    print("Could not import Levenshtein distance, this is only problematic when using ctc losss function")
     pass
     
 class Decoder(object):
@@ -40,7 +40,7 @@ class Decoder(object):
         Decodes the given Tensor of predictions, for now uses greedy decoding.
       
         Predictions are shortend to lengths, empty label is removed 
-        and repeted predictions of the same class are removed.
+        and repeated predictions of the same class are removed.
 
         Arguments
         ---------
@@ -54,7 +54,18 @@ class Decoder(object):
         """
 
         max_scores = torch.max(scores.permute(1,0,2), 2)[1]
+        num_predictions = max_scores.size(0)
 
+        result_scores = []
+        
+        for i in range(num_predictions):
+            current_scores = max_scores[i].tolist()
+            current_scores = current_scores[:int(score_lengths[i].item())]
+
+             current_scores = self._decode_one(current_scores)
+             result_scores.append(current_scores)
+
+        return result_scores
         
     def calculate_error(self, scores, score_lengths, labels, label_lengths):
         """ Calculate error"""

@@ -412,7 +412,6 @@ def train(model_name, config, check_sanity=False):
                                   collate_fn=collate_fn)
 
     # Setup Decoder
-    print("label_names", train_set.label_names)
     decoder = Decoder(train_set.label_names)
     
     # Print network statistics
