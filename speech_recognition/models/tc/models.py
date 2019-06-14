@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from ..utils import ConfigType, SerializableModule
 
 class TCResidualBlock(nn.Module):
-    def __init__(self, input_channels, output_channels, size, stride, dilation, clipping_value):
+    def __init__(self, input_channels, output_channels, size, stride, dilation, clipping_value,  bottleneck, channel_division, separable):
         super().__init__()
         self.stride = stride
         self.clipping_value = clipping_value
@@ -23,13 +23,27 @@ class TCResidualBlock(nn.Module):
         
         pad_x = size[0] // 2
         pad_y = size[1] // 2
-        
-        self.convs = nn.Sequential(
-            nn.Conv2d(input_channels, output_channels, size, stride, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False),
-            nn.BatchNorm2d(output_channels),
-            nn.Hardtanh(0.0, self.clipping_value),
-            nn.Conv2d(output_channels, output_channels, size, 1, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False),
-            nn.BatchNorm2d(output_channels))
+
+        if bottleneck:
+            groups = output_channels//channel_division if separable else 1
+            self.convs = nn.Sequential(
+                nn.Conv2d(input_channels, output_channels//channel_division, (1,1), stride=1, dilation=dilation, bias=False),
+                nn.Conv2d(output_channels//channel_division, output_channels//channel_division, size, stride=stride, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False, groups=groups),
+                nn.Conv2d(output_channels//channel_division, output_channels, (1,1), stride=1, dilation=dilation, bias=False),
+                nn.BatchNorm2d(output_channels),
+                nn.Hardtanh(0.0, self.clipping_value),
+                nn.Conv2d(output_channels, output_channels//channel_division, (1,1), stride=1, dilation=dilation, bias=False),
+                nn.Conv2d(output_channels//channel_division, output_channels//channel_division, size, 1, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False, groups=groups),
+                nn.Conv2d(output_channels//channel_division, output_channels, (1,1), stride=1, dilation=dilation, bias=False),
+                nn.BatchNorm2d(output_channels))
+        else:
+            self.convs = nn.Sequential(
+                nn.Conv2d(input_channels, output_channels, size, stride, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False),
+                nn.BatchNorm2d(output_channels),
+                nn.Hardtanh(0.0, self.clipping_value),
+                nn.Conv2d(output_channels, output_channels, size, 1, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False),
+                nn.BatchNorm2d(output_channels))
+
             
         self.relu = nn.Hardtanh(0.0, self.clipping_value)
             
@@ -54,6 +68,9 @@ class TCResNetModel(SerializableModule):
         self.fully_convolutional = config["fully_convolutional"]
         dilation = config["dilation"]        
         clipping_value = config["clipping_value"]
+        bottleneck = config["bottleneck"]
+        channel_division = config["channel_division"]
+        separable = config["separable"]
 
         self.layers = nn.ModuleList()
   
@@ -69,10 +86,23 @@ class TCResNetModel(SerializableModule):
                 
                 output_channels = int(config[output_channels_name] * width_multiplier)
                 size = config[size_name]
-                stride = config[stride_name] 
-                
-                conv = nn.Conv2d(input_channels, output_channels, size, stride, bias = False)
-                self.layers.append(conv)
+                stride = config[stride_name]
+
+                # Change first convolution to bottleneck layer.
+                if bottleneck[0] == 1:
+                    channel_division_local = channel_division[0]
+                    # Change bottleneck layer to sepearable convolution
+                    groups =  output_channels//channel_division_local if separable[0] else 1
+            
+                    conv1 = nn.Conv2d(input_channels, output_channels//channel_division_local, (1,1), 1, bias = False)
+                    conv2 = nn.Conv2d(output_channels//channel_division_local, output_channels//channel_division_local, size, stride, bias = False, groups=groups)
+                    conv3 = nn.Conv2d(output_channels//channel_division_local, output_channels, (1,1), 1, bias = False)
+                    self.layers.append(conv1)
+                    self.layers.append(conv2)
+                    self.layers.append(conv3)
+                else:
+                    conv = nn.Conv2d(input_channels, output_channels, size, stride, bias = False)
+                    self.layers.append(conv)
                 
                 input_channels = output_channels
                 count += 1
@@ -87,7 +117,8 @@ class TCResNetModel(SerializableModule):
                 size = config[size_name]
                 stride = config[stride_name] 
                 
-                block = TCResidualBlock(input_channels, output_channels, size, stride, dilation ** count, clipping_value)
+                # Use same bottleneck, channel_division factor and separable configuration for all blocks
+                block = TCResidualBlock(input_channels, output_channels, size, stride, dilation ** count, clipping_value, bottleneck[1], channel_division[1], separable[1])
                 self.layers.append(block)
                 
                 input_channels = output_channels
@@ -137,6 +168,9 @@ configs= {
         width_multiplier = 1,
         dilation = 1,
         clipping_value = 100000,
+        bottleneck = (0,0),
+        channel_division = (2,4),
+        separable = (0,0),
         conv1_size = (3,1),
         conv1_stride = 1,
         conv1_output_channels = 16,
@@ -157,6 +191,9 @@ configs= {
         width_multiplier = 1,
         dilation = 1,
         clipping_value = 100000,
+        bottleneck = (0,0),
+        channel_division = (4,2),
+        separable = (0,0),
         conv1_size = (3,1),
         conv1_stride = 1,
         conv1_output_channels = 16,
@@ -186,6 +223,9 @@ configs= {
         width_multiplier = 1.5,
         dilation = 1,
         clipping_value = 100000,
+        bottleneck = (0,0),
+        channel_division = (4,2),
+        separable = (0,0),
         conv1_size = (3,1),
         conv1_stride = 1,
         conv1_output_channels = 16,
@@ -206,6 +246,9 @@ configs= {
         width_multiplier = 1.5,
         dilation = 1,
         clipping_value = 100000,
+        bottleneck = (0,0),
+        channel_division = (4,2),
+        separable = (0,0),
         conv1_size = (3,1),
         conv1_stride = 1,
         conv1_output_channels = 16,
