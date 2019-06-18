@@ -22,18 +22,17 @@ class TCResidualBlock(nn.Module):
                 nn.Hardtanh(0.0, self.clipping_value))
         
         pad_x = size // 2
-        pad_y = 0 #size[1] // 2
 
         if bottleneck:
             groups = output_channels//channel_division if separable else 1
             self.convs = nn.Sequential(
                 nn.Conv1d(input_channels, output_channels//channel_division, (1,1), stride=1, dilation=dilation, bias=False),
-                nn.Conv1d(output_channels//channel_division, output_channels//channel_division, size, stride=stride, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False, groups=groups),
+                nn.Conv1d(output_channels//channel_division, output_channels//channel_division, size, stride=stride, padding=dilation*pad_x, dilation=dilation, bias=False, groups=groups),
                 nn.Conv1d(output_channels//channel_division, output_channels, (1,1), stride=1, dilation=dilation, bias=False),
                 nn.BatchNorm1d(output_channels),
                 nn.Hardtanh(0.0, self.clipping_value),
                 nn.Conv1d(output_channels, output_channels//channel_division, (1,1), stride=1, dilation=dilation, bias=False),
-                nn.Conv1d(output_channels//channel_division, output_channels//channel_division, size, 1, padding=(dilation*pad_x,dilation*pad_y), dilation=dilation, bias=False, groups=groups),
+                nn.Conv1d(output_channels//channel_division, output_channels//channel_division, size, 1, padding=dilation*pad_x, dilation=dilation, bias=False, groups=groups),
                 nn.Conv1d(output_channels//channel_division, output_channels, (1,1), stride=1, dilation=dilation, bias=False),
                 nn.BatchNorm1d(output_channels))
         else:
