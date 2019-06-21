@@ -294,7 +294,7 @@ def save_model(output_dir, model, test_set=None, config=None):
     filename = os.path.join(output_dir, "model.json")
     state_dict = model.state_dict()
     with open(filename, "w") as f:
-        json.dump(state_dict, f, default=lambda x : x.tolist(), indent=2)
+        json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
         
     
     msglogger.info("saving onnx...")
@@ -308,7 +308,6 @@ def save_model(output_dir, model, test_set=None, config=None):
             
         torch.onnx.export(model,
                           dummy_input,
-                          filename,
                           os.path.join(output_dir, "model.onnx"),
                           verbose=False)
             
