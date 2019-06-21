@@ -74,12 +74,8 @@ class TCResNetModel(SerializableModule):
         self.layers = nn.ModuleList()
   
         input_channels = height
-        
-        print("Width ", width, "Height ", height)
   
         x = Variable(torch.zeros(1, height, width))
-        
-        print("Shape: ", x.shape)
   
         count = 1
         while "conv{}_size".format(count) in config:
@@ -131,7 +127,6 @@ class TCResNetModel(SerializableModule):
             x = layer(x)
         
         shape = x.shape
-        print("Shape: ", shape)
         average_pooling = nn.AvgPool1d((shape[2]))
         self.layers.append(average_pooling)
         
@@ -151,11 +146,6 @@ class TCResNetModel(SerializableModule):
 
 
     def forward(self, x):
-        #print("Original", x.shape)
-        #x = x.unsqueeze(1)
-        #print("Unsqueeze", x.shape)
-        #x = x.permute(0,2,3,1)
-        #print("Permute", x.shape)
         for layer in self.layers:
             x = layer(x)
         
