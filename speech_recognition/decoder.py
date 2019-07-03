@@ -62,8 +62,8 @@ class Decoder(object):
             current_scores = max_scores[i].tolist()
             current_scores = current_scores[:int(score_lengths[i].item())]
 
-             current_scores = self._decode_one(current_scores)
-             result_scores.append(current_scores)
+            current_scores = self._decode_one(current_scores)
+            result_scores.append(current_scores)
 
         return result_scores
         
