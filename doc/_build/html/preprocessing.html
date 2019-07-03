@@ -199,7 +199,7 @@ Args:</p>
 </dl>
 </div></blockquote>
 <dl class="simple">
-<dt>Returns:</dt><dd><p>src_seqs: torch tensor of shape (batch_size, x, padded_length).
+<dt>Returns: tuple of four torch tensors</dt><dd><p>src_seqs: torch tensor of shape (batch_size, x, padded_length).
 src_lengths: torch_tensor of shape (batch_size); valid length for each padded source sequence.
 trg_seqs: torch tensor of shape (batch_size, x, padded_length).
 trg_lengths: torch tensor of shape (batch_size); valid length for each padded target sequence.</p>
@@ -221,6 +221,7 @@ trg_lengths: torch tensor of shape (batch_size); valid length for each padded ta
 </div></blockquote>
 </dd>
 </dl>
+<p>Returns</p>
 </dd></dl>
 
 </div>
@@ -275,8 +276,8 @@ trg_lengths: torch tensor of shape (batch_size); valid length for each padded ta
 <dt id="speech_recognition.process_audio.calculate_feature_shape">
 <code class="descclassname">speech_recognition.process_audio.</code><code class="descname">calculate_feature_shape</code><span class="sig-paren">(</span><em>input_length</em>, <em>features='mel'</em>, <em>samplingrate=1600</em>, <em>n_mels=40</em>, <em>n_mfcc=40</em>, <em>stride_ms=10</em>, <em>window_ms=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/speech_recognition/process_audio.html#calculate_feature_shape"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#speech_recognition.process_audio.calculate_feature_shape" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the shape of the given features</p>
-<dl class="simple">
-<dt>Args:</dt><dd><dl class="simple">
+<blockquote>
+<div><dl class="simple">
 <dt>input_length<span class="classifier">int</span></dt><dd><p>lenght of the input in samples</p>
 </dd>
 <dt>features<span class="classifier">str</span></dt><dd><p>The selected feature to extract. Currently one of: 
@@ -295,7 +296,8 @@ trg_lengths: torch tensor of shape (batch_size); valid length for each padded ta
 <dt>window_ms: int</dt><dd><p>Size of the feature window in ms</p>
 </dd>
 </dl>
-</dd>
+</div></blockquote>
+<dl class="simple">
 <dt>Returns: (int, int)</dt><dd><p>Shape of the features (N,T). T is temporal dimension, N is number of channels.</p>
 </dd>
 </dl>

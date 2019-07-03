@@ -138,7 +138,7 @@ class BackendRep(backend_base.BackendRep):
 
     def _get_schedule(self, graph, implementations):
         # This is not a real scheduler, for now, just assume
-        # the onnx defines a valid schedule
+        # the onnx file defines a valid schedule
         
         SchedulerTask = namedtuple("SchedulerTask", ["time", "node", "implementation"])
         schedule = []

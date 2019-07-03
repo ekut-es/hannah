@@ -105,9 +105,26 @@ def preprocess_audio(data, features='mel',
                                               n_mels=n_mels, hop_length=hop_length,
                                               n_fft=n_fft, fmin=freq_min, fmax=freq_max)
         data[data > 0] = np.log(data[data > 0])
-        data = [np.matmul(dct_filters, x) for x in np.split(data, data.shape[1], axis=1)]
-        data = np.array(data, order="F").squeeze(2).astype(np.float32)
-        data = data.transpose()
+
+        #print(dct_filters.shape)
+        #print(dct_filters)
+        #print(data.shape)
+        #print(data)
+        
+        #data = [np.matmul(dct_filters, x) for x in np.split(data, data.shape[1], axis=1)]
+        #data = np.array(data, order="F").squeeze(2).astype(np.float32)
+
+        #data1 = [np.matmul(dct_filters, x) for x in np.split(data, data.shape[1], axis=1)] 
+        #data1 = np.array(data1, order="F").squeeze(2).astype(np.float32)
+
+        data2 = np.matmul(dct_filters, data)
+
+        #print("Diff:")
+        #print(data1-data2)
+                 
+        data = data2.astype(np.float32)
+        
+        #data = data.transpose()
 
         
     elif features == "mfcc":
