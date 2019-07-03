@@ -103,7 +103,7 @@ def preprocess_audio(data, features='mel',
             dct_filters =  librosa.filters.dct(n_mfcc, n_mels)
         data = librosa.feature.melspectrogram(data, sr=samplingrate,
                                               n_mels=n_mels, hop_length=hop_length,
-                                              n_fft=n_fft, fmin=freq_min, fmax=freq_max, center=False)
+                                              n_fft=n_fft, fmin=freq_min, fmax=freq_max)
         data[data > 0] = np.log(data[data > 0])
 
         data = np.matmul(dct_filters, data)         
@@ -119,14 +119,13 @@ def preprocess_audio(data, features='mel',
                                     hop_length=hop_length,
                                     n_fft=n_fft,
                                     fmin=freq_min,
-                                    fmax=freq_max,
-                                    center=False)
+                                    fmax=freq_max)
         data = data.astype(np.float32)
 
     elif features == "melspec":
         data = librosa.feature.melspectrogram(data, sr=samplingrate,
                                               n_mels=n_mels, hop_length=hop_length,
-                                              n_fft=n_fft, fmin=freq_min, fmax=freq_max, center=False)
+                                              n_fft=n_fft, fmin=freq_min, fmax=freq_max)
         data = data.astype(np.float32)
     elif features == "spectrogram":
         data = librosa.core.stft(data, hop_length=hop_length,
