@@ -731,9 +731,13 @@ def build_config(extra_config={}):
 def main():
     model_name, config = build_config()
     
-    #TODO: Check if results are actually reproducible when seeds are set
     set_seed(config)
-
+    # Set deterministic mode for CUDNN backend
+    # Check if the performance penalty might be too high
+    if config["cuda"]:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    
     if config["type"] == "train":
         train(model_name, config)
     elif config["type"] == "check_sanity":
