@@ -101,14 +101,17 @@ def preprocess_audio(data, features='mel',
     if features == "mel":
         if dct_filters is None:
             dct_filters =  librosa.filters.dct(n_mfcc, n_mels)
-        data = librosa.feature.melspectrogram(data, sr=samplingrate,
-                                              n_mels=n_mels, hop_length=hop_length,
-                                              n_fft=n_fft, fmin=freq_min, fmax=freq_max)
+        data = librosa.feature.melspectrogram(data,
+                                              sr=samplingrate,
+                                              n_mels=n_mels,
+                                              hop_length=hop_length,
+                                              n_fft=n_fft,
+                                              fmin=freq_min,
+                                              fmax=freq_max)
         data[data > 0] = np.log(data[data > 0])
 
         data = np.matmul(dct_filters, data)         
         data = data.astype(np.float32)
-        
 
         
     elif features == "mfcc":
@@ -127,6 +130,7 @@ def preprocess_audio(data, features='mel',
                                               n_mels=n_mels, hop_length=hop_length,
                                               n_fft=n_fft, fmin=freq_min, fmax=freq_max)
         data = data.astype(np.float32)
+        
     elif features == "spectrogram":
         data = librosa.core.stft(data, hop_length=hop_length,
                                  n_fft=n_fft)
@@ -137,6 +141,7 @@ def preprocess_audio(data, features='mel',
         data = np.array(data)
         data = np.expand_dims(data, axis=0)
         data = data.astype(np.float32)
+        
     else:
         raise Exception("Unknown feature extractor: {}".format(features))
     
@@ -158,9 +163,15 @@ def main():
     plt.figure()
     
     for num, feature in enumerate(feature_set):
-        data = preprocess_audio(audio_data, features=feature, samplingrate=sampling_rate)
+        data = preprocess_audio(audio_data,
+                                features=feature,
+                                samplingrate=sampling_rate,
+                                n_mfcc=20,
+                                n_mels=10)
 
         features[feature] = data
+
+        print(feature, data.shape)
         
         plt.subplot(len(feature_set), 1, num+1)
         if feature == "raw":
@@ -173,8 +184,6 @@ def main():
            
 
         plt.title(feature)
-
-    print(features["mel"] - features["mfcc"])
         
     plt.show()
         
