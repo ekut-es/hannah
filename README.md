@@ -39,6 +39,8 @@ or for training on gpus:
 or for training on cluster-gpu0x:
 
     ./bootstrap.sh --gpu_cluster
+    
+*Audioread 2.1.8 increases training time dramatically. Version 2.1.6 is recommended.*
 
 And activate the venv using:
 
