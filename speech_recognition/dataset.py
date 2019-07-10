@@ -16,8 +16,9 @@ import torch
 import torch.utils.data as data
 
 
-from .config import ConfigOption
-from .process_audio import preprocess_audio, calculate_feature_shape
+from config import ConfigOption
+from process_audio import preprocess_audio, calculate_feature_shape
+
 
 
 class SimpleCache(dict):
@@ -74,25 +75,25 @@ class SpeechDataset(data.Dataset):
         self.features = config['features']
         self.n_mfcc = config["n_mfcc"]
         self.n_mels = config["n_mels"]
-        self.stride_ms = config["stride_ms"] 
+        self.stride_ms = config["stride_ms"]
         self.window_ms = config["window_ms"]
         self.freq_min = config["freq_min"]
         self.freq_max = config["freq_max"]
-        
+
         self.height, self.width = calculate_feature_shape(self.input_length,
-                                                          features=self.features, 
+                                                          features=self.features,
                                                           samplingrate=self.samplingrate,
                                                           n_mels=self.n_mels,
-                                                          n_mfcc=self.n_mfcc, 
+                                                          n_mfcc=self.n_mfcc,
                                                           stride_ms=self.stride_ms,
                                                           window_ms=self.window_ms)
-        
+
     @staticmethod
     def default_config():
-        """ Returns the default configuration for the Dataset and 
+        """ Returns the default configuration for the Dataset and
         Feature extraction"""
         config = {}
-        
+
         #Input Description
         config["wanted_words"]         = ConfigOption(category="Input Config",
                                                       default=["yes", "no", "up",
@@ -132,7 +133,7 @@ class SpeechDataset(data.Dataset):
                                                       desc="Loss function that should be used with this dataset",
                                                       choices=["cross_entropy", "ctc"],
                                                       default="cross_entropy")
-        
+
         # Feature extraction
         config["features"]  = ConfigOption(category="Feature Config",
                                            choices=["mel", "mfcc", "melspec", "spectrogram", "raw"],
@@ -149,7 +150,7 @@ class SpeechDataset(data.Dataset):
                                            default=20)
         config["freq_max"]  = ConfigOption(category="Feature Config",
                                            default=4000)
-    
+
         # Cache config
         config["cache_size"] = ConfigOption(category="Cache Config",
                                             default=200000,
@@ -173,18 +174,18 @@ class SpeechDataset(data.Dataset):
         """Extract the loudest part of the sample with length self.input_lenght"""
         if len(data) <= in_len:
             return (0, len(data))
-        
+
         amps = np.abs(data)
         f = np.ones(in_len)
 
         correlation = signal.correlate(amps, f)
-        
+
         window_start = np.argmax(correlation)
         window_start = max(0, window_start)
 
         return (window_start, window_start+in_len)
-        
-        
+
+
     def preprocess(self, example, silence=False):
         """ Run preprocessing and feature extraction """
         if silence:
@@ -195,7 +196,7 @@ class SpeechDataset(data.Dataset):
             except KeyError:
                 pass
 
-        
+
         in_len = self.input_length
 
         if silence:
@@ -203,14 +204,15 @@ class SpeechDataset(data.Dataset):
         else:
             data = self._file_cache.get(example)
 
+
             if data is None:
                 data = librosa.core.load(example, sr=self.samplingrate)[0]
 
                 extract_index = (0, len(data))
-                
+
                 if self.extract_loudest and self.loss_function != "ctc":
                     extract_index = self._extract_loudest_range(data, in_len)
-                 
+
                 data = self._timeshift_audio(data)
                 data = data[extract_index[0]:extract_index[1]]
 
@@ -218,7 +220,7 @@ class SpeechDataset(data.Dataset):
                     data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
                     data = data[0:in_len]
 
-                    
+
             self._file_cache[example] = data
 
         if self.bg_noise_audio:
@@ -228,11 +230,10 @@ class SpeechDataset(data.Dataset):
         else:
             bg_noise = np.zeros(data.shape[0])
 
-            
+
         if random.random() < self.noise_prob or silence:
-            a = random.random() * 0.1 
+            a = random.random() * 0.1
             data = np.clip(a * bg_noise + data, -1, 1)
-    
         data = torch.from_numpy(preprocess_audio(data,
                                                  features = self.features,
                                                  samplingrate = self.samplingrate,
@@ -243,7 +244,7 @@ class SpeechDataset(data.Dataset):
                                                  freq_max = self.freq_max,
                                                  window_ms = self.window_ms,
                                                  stride_ms = self.stride_ms))
-        
+
         if self.loss_function != "ctc":
             assert data.shape[0] == self.height
             assert data.shape[1] == self.width
@@ -275,33 +276,33 @@ class SpeechDataset(data.Dataset):
                 classcounter[c] += 1
 
         return classcounter
-                
+
     def __getitem__(self, index):
-        
+
         label = torch.Tensor(self.get_class(index))
         label = label.long()
-        
+
         if index >= len(self.audio_labels):
             data = self.preprocess(None, silence=True)
         else:
             data = self.preprocess(self.audio_files[index])
-            
-        return data, data.shape[1], label, label.shape[0] 
+
+        return data, data.shape[1], label, label.shape[0]
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
 
 
 class SpeechCommandsDataset(SpeechDataset):
-    """This class implements reading and preprocessing of speech commands like 
+    """This class implements reading and preprocessing of speech commands like
     dataset"""
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
-        
+
         self.label_names = {0 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN}
         for i, word in enumerate(config["wanted_words"]):
             self.label_names[i+2] = word
-        
+
     @classmethod
     def splits(cls, config):
         msglogger = logging.getLogger()
@@ -328,13 +329,13 @@ class SpeechCommandsDataset(SpeechDataset):
                 for line in testing_list.readlines():
                     line = line.strip()
                     test_files.add(os.path.join(folder, line))
-                    
+
             with open(os.path.join(folder, "validation_list.txt")) as validation_list:
                 for line in validation_list.readlines():
                     line = line.strip()
                     dev_files.add(os.path.join(folder, line))
 
-                    
+
         for folder_name in os.listdir(folder):
             path_name = os.path.join(folder, folder_name)
             is_bg_noise = False
@@ -378,7 +379,7 @@ class SpeechCommandsDataset(SpeechDataset):
                     else:
                         tag = DatasetType.TRAIN
                 sets[tag.value][wav_name] = label
-                
+
         for tag in range(len(sets)):
             unknowns[tag] = int(unknown_prob * len(sets[tag]))
         random.shuffle(unknown_files)
@@ -388,7 +389,7 @@ class SpeechCommandsDataset(SpeechDataset):
             unk_dict = {u: words[cls.LABEL_UNKNOWN] for u in unknown_files[a:b]}
             dataset.update(unk_dict)
             a = b
-         
+
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg),
@@ -402,7 +403,7 @@ class SpeechHotwordDataset(SpeechDataset):
 
     LABEL_HOTWORD = "hotword"
     LABEL_EPS = "eps"
-    
+
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
         if self.loss_function == "ctc":
@@ -411,26 +412,26 @@ class SpeechHotwordDataset(SpeechDataset):
             self.label_names = {0 : self.LABEL_SILENCE,
                                 1 : self.LABEL_UNKNOWN,
                                 2 : self.LABEL_HOTWORD}
-            
-            
+
+
     @staticmethod
     def default_config():
         config = SpeechDataset.default_config()
         config["loss"] = "cross_entropy"
         config["n_labels"] = 3
-        # Splits the dataset in 1/3 
+        # Splits the dataset in 1/3
         config["silence_prob"] = 1.0
         config["unknown_prob"] = 1.0
-        
+
         return config
-        
+
     @classmethod
     def splits(cls, config):
         """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
 
         msglogger = logging.getLogger()
-        
+
         folder = config["data_folder"]
 
         descriptions = ["train.json", "dev.json", "test.json"]
@@ -445,7 +446,7 @@ class SpeechHotwordDataset(SpeechDataset):
 
                 unknown_files = []
                 hotword_files = []
-                
+
                 for desc in descs:
                     is_hotword = desc["is_hotword"]
                     wav_file = os.path.join(folder, desc["audio_file_path"])
@@ -459,18 +460,109 @@ class SpeechHotwordDataset(SpeechDataset):
             num_hotwords = len(hotword_files)
             num_unknowns = int(num_hotwords * unknown_prob)
             random.shuffle(unknown_files)
-            label_unknown = 2 if config["loss"] == "ctc" else 1 
-            label_hotword = 3 if config["loss"] == "ctc" else 2 
-            
+            label_unknown = 2 if config["loss"] == "ctc" else 1
+            label_hotword = 3 if config["loss"] == "ctc" else 2
+
             datasets[num].update({u : label_unknown for u in unknown_files[:num_unknowns]})
             datasets[num].update({h : label_hotword for h in hotword_files})
-            
-                    
+
+
         res_datasets = (cls(datasets[0], DatasetType.TRAIN, config),
                         cls(datasets[1], DatasetType.DEV, config),
                         cls(datasets[2], DatasetType.TEST, config))
- 
+
         return res_datasets
+
+class VadDataset(SpeechDataset):
+    """This class implements reading and preprocessing of speech commands like
+    dataset"""
+    def __init__(self, data, set_type, config):
+        super().__init__(data, set_type, config)
+
+        self.label_names = {0 : "noise", 1 : "speech"}
+
+    @classmethod
+    def splits(cls, config):
+            """Splits the dataset in training, devlopment and test set and returns
+            the three sets as List"""
+
+            msglogger = logging.getLogger()
+
+            folder = config["data_folder"]
+
+            descriptions = ["train", "dev", "test"]
+            dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
+            datasets=[{}, {}, {}]
+
+
+            for num, desc in enumerate(descriptions):
+
+                descs_noise = os.path.join(folder, desc, "noise")
+                descs_speech = os.path.join(folder, desc, "speech")
+
+                noise_files = [os.path.join(descs_noise,f) for f in os.listdir(descs_noise) if os.path.isfile(os.path.join(descs_noise, f))]
+                speech_files = [os.path.join(descs_speech,f) for f in os.listdir(descs_speech) if os.path.isfile(os.path.join(descs_speech, f))]
+
+                random.shuffle(noise_files)
+                random.shuffle(speech_files)
+                label_noise =  0
+                label_speech = 1
+
+                datasets[num].update({n : label_noise for n in noise_files})
+                datasets[num].update({s : label_speech for s in speech_files})
+
+
+            res_datasets = (cls(datasets[0], DatasetType.TRAIN, config),
+                            cls(datasets[1], DatasetType.DEV, config),
+                            cls(datasets[2], DatasetType.TEST, config))
+
+            return res_datasets
+
+class VadDatasetMixed(SpeechDataset):
+    """This class implements reading and preprocessing of speech commands like
+    dataset"""
+    def __init__(self, data, set_type, config):
+        super().__init__(data, set_type, config)
+
+        self.label_names = {0 : "noise", 1 : "speech"}
+
+    @classmethod
+    def splits(cls, config):
+            """Splits the dataset in training, devlopment and test set and returns
+            the three sets as List"""
+
+            msglogger = logging.getLogger()
+
+            folder = config["data_folder"]
+
+            descriptions = ["train", "dev", "test"]
+            dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
+            datasets=[{}, {}, {}]
+
+
+            for num, desc in enumerate(descriptions):
+
+                descs_noise = os.path.join(folder, desc, "noise")
+                descs_speech = os.path.join(folder, desc, "mixed")
+
+                noise_files = [os.path.join(descs_noise,f) for f in os.listdir(descs_noise) if os.path.isfile(os.path.join(descs_noise, f))]
+                speech_files = [os.path.join(descs_speech,f) for f in os.listdir(descs_speech) if os.path.isfile(os.path.join(descs_speech, f))]
+
+                random.shuffle(noise_files)
+                random.shuffle(speech_files)
+                label_noise =  0
+                label_speech = 1
+
+                datasets[num].update({n : label_noise for n in noise_files})
+                datasets[num].update({s : label_speech for s in speech_files})
+
+
+            res_datasets = (cls(datasets[0], DatasetType.TRAIN, config),
+                            cls(datasets[1], DatasetType.DEV, config),
+                            cls(datasets[2], DatasetType.TEST, config))
+
+            return res_datasets
+
 
 
 def find_dataset(name):
@@ -480,7 +572,7 @@ def find_dataset(name):
        ----------
        name : str
            The name of the dataset type
-       
+
             - keywords = Google Speech Commands like  dataset
             - hotword = Hey Snips! like dataset
 
@@ -490,6 +582,10 @@ def find_dataset(name):
         return SpeechCommandsDataset
     elif name == "hotword":
         return SpeechHotwordDataset
+    elif name == "vad":
+        return VadDataset
+    elif name == "vad-mixed":
+        return VadDatasetMixed
 
     raise Exception("Could not find dataset type: {}".format(name))
 
@@ -505,7 +601,7 @@ def ctc_collate_fn(data):
             - src_seq: torch tensor of shape (x,?); variable length.
             - src length: torch tenso of shape 1x1
             - trg_seq: torch tensor of shape (?); variable length.
-            - trg_length: torch_tensor of shape (1x1) 
+            - trg_length: torch_tensor of shape (1x1)
     Returns: tuple of four torch tensors
         src_seqs: torch tensor of shape (batch_size, x, padded_length).
         src_lengths: torch_tensor of shape (batch_size); valid length for each padded source sequence.
@@ -513,7 +609,7 @@ def ctc_collate_fn(data):
         trg_lengths: torch tensor of shape (batch_size); valid length for each padded target sequence.
     """
 
-    
+
     def merge(sequences):
         temporal_dimension = 0
         lengths = [seq.shape[-1] for seq in sequences]
@@ -527,9 +623,9 @@ def ctc_collate_fn(data):
                                              mode='constant',
                                              value=0)
             padded_seqs.append(padded)
-        
+
         return padded_seqs, lengths
-    
+
     # seperate source and target sequences
     src_seqs, src_lengths, trg_seqs, trg_lengths = zip(*data)
 
@@ -538,5 +634,5 @@ def ctc_collate_fn(data):
     trg_seqs, trg_lengths = merge(trg_seqs)
 
 
-    
+
     return torch.stack(src_seqs), torch.Tensor(src_lengths), torch.stack(trg_seqs), torch.Tensor(trg_lengths)

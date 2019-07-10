@@ -2,9 +2,10 @@ from . import honk
 from . import ekut
 from . import hello
 from . import tc
+from . import vad
 
 from .utils import ConfigType
-    
+
 def find_model(conf):
     if isinstance(conf, ConfigType):
         conf = conf.value
@@ -22,9 +23,11 @@ def find_model(conf):
         return hello.DSCNNSpeechModel
     elif conf.startswith("tc-res"):
         return tc.TCResNetModel
-    
+    elif conf.startswith("simple-vad"):
+        return vad.SimpleVadModel
+
     raise Exception("Could not find model for {}".format(str(conf)))
-    
+
 
 def find_config(conf):
     if isinstance(conf, ConfigType):
@@ -37,5 +40,7 @@ def find_config(conf):
         return hello.configs[conf]
     elif conf.startswith("tc"):
         return tc.configs[conf]
-    
+    elif conf.startswith("simple-vad"):
+        return vad.configs[conf]
+
     raise Exception("Could not find config for {}".format(str(conf)))
