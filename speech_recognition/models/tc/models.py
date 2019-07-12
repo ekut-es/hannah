@@ -26,14 +26,14 @@ class TCResidualBlock(nn.Module):
         if bottleneck:
             groups = output_channels//channel_division if separable else 1
             self.convs = nn.Sequential(
-                nn.Conv1d(input_channels, output_channels//channel_division, (1,1), stride=1, dilation=dilation, bias=False),
+                nn.Conv1d(input_channels, output_channels//channel_division, 1, stride=1, dilation=dilation, bias=False),
                 nn.Conv1d(output_channels//channel_division, output_channels//channel_division, size, stride=stride, padding=dilation*pad_x, dilation=dilation, bias=False, groups=groups),
-                nn.Conv1d(output_channels//channel_division, output_channels, (1,1), stride=1, dilation=dilation, bias=False),
+                nn.Conv1d(output_channels//channel_division, output_channels, 1, stride=1, dilation=dilation, bias=False),
                 nn.BatchNorm1d(output_channels),
                 nn.Hardtanh(0.0, self.clipping_value),
-                nn.Conv1d(output_channels, output_channels//channel_division, (1,1), stride=1, dilation=dilation, bias=False),
+                nn.Conv1d(output_channels, output_channels//channel_division, 1, stride=1, dilation=dilation, bias=False),
                 nn.Conv1d(output_channels//channel_division, output_channels//channel_division, size, 1, padding=dilation*pad_x, dilation=dilation, bias=False, groups=groups),
-                nn.Conv1d(output_channels//channel_division, output_channels, (1,1), stride=1, dilation=dilation, bias=False),
+                nn.Conv1d(output_channels//channel_division, output_channels, 1, stride=1, dilation=dilation, bias=False),
                 nn.BatchNorm1d(output_channels))
         else:
             self.convs = nn.Sequential(
@@ -93,9 +93,9 @@ class TCResNetModel(SerializableModule):
                     # Change bottleneck layer to sepearable convolution
                     groups =  output_channels//channel_division_local if separable[0] else 1
             
-                    conv1 = nn.Conv1d(input_channels, output_channels//channel_division_local, (1,1), 1, bias = False)
+                    conv1 = nn.Conv1d(input_channels, output_channels//channel_division_local, 1, 1, bias = False)
                     conv2 = nn.Conv1d(output_channels//channel_division_local, output_channels//channel_division_local, size, stride, bias = False, groups=groups)
-                    conv3 = nn.Conv1d(output_channels//channel_division_local, output_channels, (1,1), 1, bias = False)
+                    conv3 = nn.Conv1d(output_channels//channel_division_local, output_channels, 1, 1, bias = False)
                     self.layers.append(conv1)
                     self.layers.append(conv2)
                     self.layers.append(conv3)
