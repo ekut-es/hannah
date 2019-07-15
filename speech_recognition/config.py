@@ -1,5 +1,6 @@
 from collections import ChainMap
 import argparse
+import hashlib
 import sys
 
 class ConfigOption(object):
@@ -76,6 +77,9 @@ class ConfigOption(object):
         return flags, args
         
 class ConfigBuilder(object):
+    
+    unhashed_options = set(["config", "dataset_cls", "model_class", "type", "cuda", "gpu_no", "output_dir", "config_hash"])
+    
     def __init__(self, *default_configs):
         self.default_config = ChainMap(*default_configs)
 
@@ -132,4 +136,13 @@ class ConfigBuilder(object):
         if args["full_help"]:
             parser.print_help()
             sys.exit(0)
-        return ChainMap(args, self.default_config)
+            
+        config = ChainMap(args, self.default_config)
+        config_string = str([item for item in sorted(config.items()) if item[0] not in self.unhashed_options])
+            
+            
+        m = hashlib.sha256()
+        m.update(config_string.encode('utf-8'))
+        config["config_hash"] = m.hexdigest()
+            
+        return config

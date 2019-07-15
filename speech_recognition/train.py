@@ -7,6 +7,7 @@ import sys
 import json
 import time
 import math
+import hashlib
 
 from torch.autograd import Variable
 import numpy as np
@@ -126,6 +127,7 @@ def get_loss_function(config):
             
     return criterion
             
+            
 def get_output_dir(model_name, config):
     
     output_dir = os.path.join(config["output_dir"], config["experiment_id"], model_name)
@@ -138,6 +140,10 @@ def get_output_dir(model_name, config):
     output_dir = os.path.abspath(output_dir)
         
     return output_dir
+
+def get_config_logdir(model_name, config):
+    return os.path.join(get_output_dir(model_name, config), "configs", config["config_hash"])
+
 
 def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
     losses = {'objective_loss': tnt.AverageValueMeter()}
@@ -211,8 +217,14 @@ def get_model(config, model=None):
 def evaluate(model_name, config, model=None, test_set=None, loggers=[]):
     global msglogger
     if not msglogger:
+        log_dir = get_config_logdir(model_name, config)
         output_dir = get_output_dir(model_name, config)
-        msglogger = config_pylogger('logging.conf', "eval", output_dir)
+        msglogger = config_pylogger('logging.conf', "eval", log_dir)
+        
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        reset_symlink(os.path.join(log_dir, "eval.log"), os.path.join(output_dir, "eval.log"))    
+    
 
     if not loggers:
         loggers = [PythonLogger(msglogger)]
@@ -249,6 +261,11 @@ def evaluate(model_name, config, model=None, test_set=None, loggers=[]):
     accuracy, loss = validate(test_loader, model, criterion, config, loggers)
     
     return  accuracy, loss
+
+def reset_symlink(src, dest):
+    if os.path.exists(dest):
+        os.unlink(dest)
+    os.symlink(src, dest)
 
 def dump_config(output_dir, config):
     """ Dumps the configuration to json format
@@ -318,10 +335,11 @@ def train(model_name, config, check_sanity=False):
     global msglogger
 
     output_dir = get_output_dir(model_name, config)
+    log_dir = get_config_logdir(model_name, config)
     
     #Configure logging
     log_name = "train" if not check_sanity else "sanity_check"
-    msglogger = config_pylogger('logging.conf', log_name, output_dir)
+    msglogger = config_pylogger('logging.conf', log_name, log_dir)
     pylogger = PythonLogger(msglogger)
     loggers  = [pylogger]  
     if config["tblogger"]:
@@ -332,10 +350,20 @@ def train(model_name, config, check_sanity=False):
     log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))    
 
     
-    print("All information will be saved to: ", output_dir)
+    print("All information will be saved to: ", output_dir, "logdir:", log_dir)
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+        
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+        
+    reset_symlink(os.path.join(log_dir, "train.log"), os.path.join(output_dir, "train.log"))
+    
+        
+    dump_config(log_dir, config)
+    reset_symlink(os.path.join(log_dir, "config.json"), os.path.join(output_dir, "config.json"))
+        
     
     train_set, dev_set, test_set = config["dataset_cls"].splits(config)
 
@@ -362,7 +390,6 @@ def train(model_name, config, check_sanity=False):
     config["width"] = train_set.width
     config["height"] = train_set.height
 
-    dump_config(output_dir, config)
 
     model = get_model(config)
     
@@ -733,6 +760,8 @@ def build_config(extra_config={}):
     
 def main():
     model_name, config = build_config()
+    
+
     
     set_seed(config)
     # Set deterministic mode for CUDNN backend
