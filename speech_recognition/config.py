@@ -127,7 +127,8 @@ class ConfigBuilder(object):
     def config_from_argparse(self, parser=None):
         if not parser:
             parser = self.build_argparse()
-        args = vars(parser.parse_known_args()[0])
+        args = parser.parse_args()
+        args = vars(args)
         if args["full_help"]:
             parser.print_help()
             sys.exit(0)
