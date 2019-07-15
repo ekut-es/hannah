@@ -79,8 +79,9 @@ class ConfigBuilder(object):
     def __init__(self, *default_configs):
         self.default_config = ChainMap(*default_configs)
 
-    def build_argparse(self):
-        parser = argparse.ArgumentParser()
+    def build_argparse(self, parser=None):
+        if not parser:
+            parser = argparse.ArgumentParser()
         parser.add_argument("--full-help", action="store_true")
         categories = {}
         for key, value in self.default_config.items():
@@ -108,7 +109,6 @@ class ConfigBuilder(object):
                         category = parser.add_argument_group(title=value.category)
                         categories[value.category] = category
                     category = categories[value.category]
-                
                 category.add_argument(*flags, **args) 
             elif isinstance(value, tuple):
                 parser.add_argument(flag, default=list(value), nargs=len(value), type=type(value[0]))

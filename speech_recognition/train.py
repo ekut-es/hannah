@@ -718,9 +718,12 @@ def build_config(extra_config={}):
         dataset_cls.default_config(),
         global_config,
         extra_config)
-    parser = builder.build_argparse()
+    
+    parser = builder.build_argparse(parser)
+
     parser.add_argument("--type", choices=["train", "eval", "check_sanity"], default="train", type=str)
     config = builder.config_from_argparse(parser)
+    
     config["model_class"] = mod_cls
     config["model_name"] = model_name
     config["dataset"] = dataset_name
