@@ -84,7 +84,6 @@ class ConfigBuilder(object):
         parser.add_argument("--full-help", action="store_true")
         categories = {}
         for key, value in self.default_config.items():
-
             #Allow overiding of default options
             if not isinstance(value, ConfigOption):
                 for map in self.default_config.maps:
@@ -99,8 +98,7 @@ class ConfigBuilder(object):
                             obj.default = value
                             value = obj
                             break
-                
-            
+
             flag = "--{}".format(key)
             if isinstance(value, ConfigOption):
                 flags, args = value.get_args(key)
