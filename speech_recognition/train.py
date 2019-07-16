@@ -8,6 +8,8 @@ import json
 import time
 import math
 import hashlib
+import csv
+import fcntl
 
 from torch.autograd import Variable
 import numpy as np
@@ -364,6 +366,11 @@ def train(model_name, config, check_sanity=False):
     dump_config(log_dir, config)
     reset_symlink(os.path.join(log_dir, "config.json"), os.path.join(output_dir, "config.json"))
         
+    csv_log_name = os.path.join(log_dir, "train.csv")
+    csv_log_file = open(csv_log_name, "w")
+    csv_log_writer = csv.DictWriter(csv_log_file, fieldnames=["Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
+    csv_log_writer.writeheader()
+    reset_symlink(csv_log_name, os.path.join(output_dir, "train.csv"))
     
     train_set, dev_set, test_set = config["dataset_cls"].splits(config)
 
@@ -543,6 +550,7 @@ def train(model_name, config, check_sanity=False):
             if compression_scheduler is not None:
                 compression_scheduler.before_backward_pass(epoch_idx, batch_idx, batches_per_epoch, loss)
 
+
             loss.backward()
             optimizer.step()
             
@@ -573,6 +581,12 @@ def train(model_name, config, check_sanity=False):
          
             end = time.time()
 
+        msglogger.info('==> Accuracy: %.3f      Loss: %.3f\n',
+                   avg_training_accuracy.mean, avg_training_loss.mean)
+
+        performance_summary = model_summary(model, dummy_input, 'performance')
+        csv_log_writer.writerow({"Phase" : "Train", "Epoch" : epoch_idx, "Accuracy" : avg_training_accuracy.mean, "Loss" : avg_training_loss.mean, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
+
         if check_sanity:
             if avg_training_accuracy.mean > 0.95:
                 msglogger.info("Sanity check passed accuracy: {} loss: {}".format(avg_training_accuracy.mean, avg_training_loss.mean))
@@ -581,7 +595,8 @@ def train(model_name, config, check_sanity=False):
             msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
 
             avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)
-             
+            csv_log_writer.writerow({"Phase" : "Val", "Epoch" : epoch_idx, "Accuracy" : avg_acc, "Loss" : avg_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
+            
             if avg_acc > max_acc:
                 save_model(output_dir, model, test_set, config=config)
                 max_acc = avg_acc
@@ -619,6 +634,19 @@ def train(model_name, config, check_sanity=False):
         model.load(os.path.join(output_dir, "model.pt"))
     
         test_accuracy, test_loss = evaluate(model_name, config, model, test_set)
+        csv_log_writer.writerow({"Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
+        
+        csv_eval_log_name = os.path.join(output_dir, "eval.csv")
+        exists_eval_file = os.path.isfile(csv_eval_log_name)
+        
+        csv_eval_file = open(csv_eval_log_name, "a")
+        csv_eval_writer = csv.DictWriter(csv_eval_file, fieldnames=["Hash","Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
+        fcntl.flock(csv_eval_file, fcntl.LOCK_EX)
+        if not exists_eval_file:
+            csv_eval_writer.writeheader()
+        
+        csv_eval_writer.writerow({"Hash": config["config_hash"], "Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
+        fcntl.flock(csv_eval_file, fcntl.LOCK_UN)
         
     return 
 
