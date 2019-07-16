@@ -25,6 +25,10 @@ def find_model(conf):
         return tc.TCResNetModel
     elif conf.startswith("simple-vad"):
         return vad.SimpleVadModel
+    elif conf.startswith("bottleneck-vad"):
+        return vad.BottleneckVadModel
+    elif conf.startswith("small-vad"):
+        return vad.SmallVadModel
 
     raise Exception("Could not find model for {}".format(str(conf)))
 
@@ -41,6 +45,10 @@ def find_config(conf):
     elif conf.startswith("tc"):
         return tc.configs[conf]
     elif conf.startswith("simple-vad"):
+        return vad.configs[conf]
+    elif conf.startswith("bottleneck-vad"):
+        return vad.configs[conf]
+    elif conf.startswith("small-vad"):
         return vad.configs[conf]
 
     raise Exception("Could not find config for {}".format(str(conf)))

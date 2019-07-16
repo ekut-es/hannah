@@ -23,8 +23,8 @@ from utils import set_seed, config_pylogger, log_execution_env_state, EarlyStopp
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
 import distiller
-#from distiller.data_loggers import *
-#import distiller.apputils as apputils
+from distiller.data_loggers import *
+import distiller.apputils as apputils
 import torchnet.meter as tnt
 
 from summaries import *
@@ -329,8 +329,8 @@ def train(model_name, config, check_sanity=False):
     #Configure logging
     log_name = "train" if not check_sanity else "sanity_check"
     msglogger = config_pylogger('logging.conf', log_name, output_dir)
-    #pylogger = PythonLogger(msglogger)
-    #loggers  = [pylogger]
+    pylogger = PythonLogger(msglogger)
+    loggers  = [pylogger]
     if config["tblogger"]:
         tblogger = TensorBoardLogger(msglogger.logdir)
         tblogger.log_gradients = True
