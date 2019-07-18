@@ -10,7 +10,10 @@ cache:
     - venv/
 
 before_script:
-  - sudo yum install python3.6
+  - yum install epel-release -y
+  - yum install git sudo python36 -y
+  - yum groupinstall 'Development Tools' -y
+  - python3.6 -m ensurepip
   - python3.6 -V # Print out python version for debugging
   - python3.6 -m pip install virtualenv
   - ./bootstrap.sh --venv
