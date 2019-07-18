@@ -10,8 +10,9 @@ cache:
     - venv/
 
 before_script:
-  - python -V # Print out python version for debugging
-  - pip install virtualenv
+  - sudo yum install python3.6
+  - python3.6 -V # Print out python version for debugging
+  - python3.6 -m pip install virtualenv
   - ./bootstrap.sh --venv
 
 test:
