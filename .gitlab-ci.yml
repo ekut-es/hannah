@@ -1,0 +1,22 @@
+image: centos:7
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+before_script:
+  - python -V # Print out python version for debugging
+  - pip install virtualenv
+  - virtualenv venv
+  - ./bootstrap.sh --venv
+
+test:
+  script:
+  - echo "Run test"
+
+
