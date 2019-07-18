@@ -12,11 +12,12 @@ cache:
 before_script:
   - python -V # Print out python version for debugging
   - pip install virtualenv
-  - virtualenv venv
   - ./bootstrap.sh --venv
 
 test:
   script:
     - echo "Run test"
+  tags:
+    - docker
 
 
