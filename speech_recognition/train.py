@@ -629,6 +629,7 @@ def train(model_name, config, check_sanity=False):
     if check_sanity:
         msglogger.info("Sanity check has not ended early accuracy: {} loss: {}".format(avg_training_accuracy.mean,
                                                                                        avg_training_loss.mean))
+
     else:
         msglogger.info("Running final test")
         model.load(os.path.join(output_dir, "model.pt"))
@@ -637,18 +638,17 @@ def train(model_name, config, check_sanity=False):
         csv_log_writer.writerow({"Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
         
         csv_eval_log_name = os.path.join(output_dir, "eval.csv")
-        exists_eval_file = os.path.isfile(csv_eval_log_name)
         
-        csv_eval_file = open(csv_eval_log_name, "a")
-        csv_eval_writer = csv.DictWriter(csv_eval_file, fieldnames=["Hash","Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
-        fcntl.flock(csv_eval_file, fcntl.LOCK_EX)
-        if not exists_eval_file:
-            csv_eval_writer.writeheader()
-        
-        csv_eval_writer.writerow({"Hash": config["config_hash"], "Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
-        fcntl.flock(csv_eval_file, fcntl.LOCK_UN)
-        
-    return 
+        with open(csv_eval_log_name, 'a') as csv_eval_file:
+            fcntl.lockf(csv_eval_file, fcntl.LOCK_EX)
+            csv_eval_writer = csv.DictWriter(csv_eval_file, fieldnames=["Hash","Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
+            if os.stat(csv_eval_log_name).st_size == 0:
+                csv_eval_writer.writeheader()
+            csv_eval_writer.writerow({"Hash": config["config_hash"], "Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
+            fcntl.lockf(csv_eval_file, fcntl.LOCK_UN)
+            csv_eval_file.close()
+
+        return
 
 def build_config(extra_config={}):
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
