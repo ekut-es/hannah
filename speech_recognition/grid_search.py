@@ -36,7 +36,7 @@ def main():
                               '--model {} '
                               '--experiment-id {} '
                               '--n_epochs {} '
-                              '--early-stopping {}'
+                              '--early-stopping {} '
                               '--feature {} '
                               '--gpu_no {} '
                               '--n_mels {} '
