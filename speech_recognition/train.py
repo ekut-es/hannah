@@ -29,6 +29,7 @@ import distiller
 from distiller.data_loggers import *
 import distiller.apputils as apputils
 import torchnet.meter as tnt
+from tabulate import tabulate
 
 from .summaries import *
 
@@ -206,7 +207,7 @@ def validate(data_loader, model, criterion, config, loggers=[], epoch=-1):
 
     msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
 
-    return classerr.value(1), losses['objective_loss'].mean
+    return classerr.value(1), losses['objective_loss'].mean, confusion.value()
 
 def get_model(config, model=None):
     if not model:
@@ -236,8 +237,9 @@ def evaluate(model_name, config, model=None, test_set=None, loggers=[]):
     if not test_set:
         _, _, test_set = config["dataset_cls"].splits(config)
 
-    test_loader = data.DataLoader(test_set, batch_size=1)
+    test_loader = data.DataLoader(test_set, batch_size=1) 
     
+
     if model is None:
         config["width"] = test_set.width
         config["height"] = test_set.height
@@ -260,9 +262,48 @@ def evaluate(model_name, config, model=None, test_set=None, loggers=[]):
     except RuntimeError as e:
         print("Cannot do performance summary on distilled model")
         
-    accuracy, loss = validate(test_loader, model, criterion, config, loggers)
+    accuracy, loss, confusion_matrix = validate(test_loader, model, criterion, config, loggers)
+
+    msglogger.info('==> Per class accuracy metrics')
     
-    return  accuracy, loss
+    FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)  
+    FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
+    TP = np.diag(confusion_matrix)
+    TN = confusion_matrix.sum() - (FP + FN + TP)
+     
+    # Sensitivity, hit rate, recall, or true positive rate
+    TPR = TP/(TP+FN)
+    # Specificity or true negative rate
+    TNR = TN/(TN+FP) 
+    # Precision or positive predictive value
+    PPV = TP/(TP+FP)
+    # Negative predictive value
+    NPV = TN/(TN+FN)
+    # Fall out or false positive rate
+    FPR = FP/(FP+TN)
+    # False negative rate
+    FNR = FN/(TP+FN)
+    # False discovery rate
+    FDR = FP/(TP+FP)
+     
+    # Overall accuracy
+    ACC = (TP+TN)/(TP+FP+FN+TN)
+    
+    accuracy_table = []
+    for num in range(len(TPR)):
+        accuracy_table.append([test_set.label_names[num],
+                               TPR[num], TNR[num], PPV[num],
+                               NPV[num], FPR[num], FNR[num],
+                               FDR[num], ACC[num]])
+    
+    msglogger.info(tabulate(accuracy_table, headers=["Class", "TPR",
+                                                     "TNR", "PPV",
+                                                     "NPV", "FPR",
+                                                     "FNR", "FDR",
+                                                     "ACC"]))
+    
+    
+    return  accuracy, loss, confusion_matrix
 
 def reset_symlink(src, dest):
     if os.path.exists(dest):
@@ -594,7 +635,7 @@ def train(model_name, config, check_sanity=False):
         else:
             msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
 
-            avg_acc, avg_loss = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)
+            avg_acc, avg_loss, confusion_matrix = validate(dev_loader, model, criterion, config, loggers=loggers, epoch=epoch_idx)
             csv_log_writer.writerow({"Phase" : "Val", "Epoch" : epoch_idx, "Accuracy" : avg_acc, "Loss" : avg_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
             
             if avg_acc > max_acc:
@@ -634,7 +675,7 @@ def train(model_name, config, check_sanity=False):
         msglogger.info("Running final test")
         model.load(os.path.join(output_dir, "model.pt"))
     
-        test_accuracy, test_loss = evaluate(model_name, config, model, test_set)
+        test_accuracy, test_loss, confusion_matrix = evaluate(model_name, config, model, test_set)
         csv_log_writer.writerow({"Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
         
         csv_eval_log_name = os.path.join(output_dir, "eval.csv")
@@ -646,7 +687,6 @@ def train(model_name, config, check_sanity=False):
                 csv_eval_writer.writeheader()
             csv_eval_writer.writerow({"Hash": config["config_hash"], "Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
             fcntl.lockf(csv_eval_file, fcntl.LOCK_UN)
-            csv_eval_file.close()
 
         return
 
