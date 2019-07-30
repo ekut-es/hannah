@@ -416,11 +416,11 @@ class SpeechHotwordDataset(SpeechDataset):
     @staticmethod
     def default_config():
         config = SpeechDataset.default_config()
-        config["loss"].value = "cross_entropy"
-        config["n_labels"].value = 3
+        config["loss"].default = "cross_entropy"
+        config["n_labels"].default = 3
         # Splits the dataset in 1/3 
-        config["silence_prob"].value = 1.0
-        config["unknown_prob"].value = 1.0
+        config["silence_prob"].default = 1.0
+        config["unknown_prob"].default = 1.0
         
         return config
         
