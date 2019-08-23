@@ -52,17 +52,28 @@ def model_summary(model, dummy_input, what):
         distiller.log_weights_sparsity(model, -1, loggers=[pylogger, csvlogger])
 
     elif what == 'performance':
-        df = distiller.model_performance_summary(model, dummy_input, dummy_input.shape[0])
-        t = tabulate(df, headers='keys', tablefmt='psql', floatfmt=".5f")
-        total_macs = df['MACs'].sum()
-        total_acts = df['IFM volume'][0] + df['OFM volume'].sum()
-        total_weights = df['Weights volume'].sum()
-        estimated_acts = 2 * max(df['IFM volume'].max(), df['OFM volume'].max()) 
-        msglogger.info("\n"+str(t))
-        msglogger.info("Total MACs: " + "{:,}".format(total_macs))
-        msglogger.info("Total Weights: " + "{:,}".format(total_weights))
-        msglogger.info("Total Activations: " + "{:,}".format(total_acts))
-        msglogger.info("Estimated Activations: " + "{:,}".format(estimated_acts))
+
+        total_macs     = float('nan')
+        total_weights  = float('nan')
+        total_acts     = float('nan')
+        estimated_acts = float('nan')
+
+        try:
+            df = distiller.model_performance_summary(model, dummy_input, dummy_input.shape[0])
+            t = tabulate(df, headers='keys', tablefmt='psql', floatfmt=".5f")
+            total_macs = df['MACs'].sum()
+            total_acts = df['IFM volume'][0] + df['OFM volume'].sum()
+            total_weights = df['Weights volume'].sum()
+            estimated_acts = 2 * max(df['IFM volume'].max(), df['OFM volume'].max())
+
+            msglogger.info("\n"+str(t))
+            msglogger.info("Total MACs: " + "{:,}".format(total_macs))
+            msglogger.info("Total Weights: " + "{:,}".format(total_weights))
+            msglogger.info("Total Activations: " + "{:,}".format(total_acts))
+            msglogger.info("Estimated Activations: " + "{:,}".format(estimated_acts))
+        except RuntimeError as e:
+            print("Could not create performance summary", str(e))
+
 
         res = OrderedDict()
         res["Total MACs"] = total_macs

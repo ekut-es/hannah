@@ -257,10 +257,7 @@ def evaluate(model_name, config, model=None, test_set=None, loggers=[]):
         dummy_input.cuda()
         model.cuda()
 
-    try:
-        performance_summary = model_summary(model, dummy_input, 'performance')
-    except RuntimeError as e:
-        print("Cannot do performance summary on distilled model")
+    performance_summary = model_summary(model, dummy_input, 'performance')
         
     accuracy, loss, confusion_matrix = validate(test_loader, model, criterion, config, loggers)
 
@@ -359,7 +356,6 @@ def save_model(output_dir, model, test_set=None, config=None):
     
     msglogger.info("saving onnx...")
     try:
-        
         dummy_width, dummy_height = test_set.width, test_set.height
         dummy_input = torch.randn((1, dummy_height, dummy_width))
         
@@ -370,7 +366,6 @@ def save_model(output_dir, model, test_set=None, config=None):
                           dummy_input,
                           os.path.join(output_dir, "model.onnx"),
                           verbose=False)
-            
     except Exception as e:
         msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
               
