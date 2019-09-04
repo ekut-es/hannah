@@ -48,6 +48,7 @@ class SpeechDataset(data.Dataset):
     """ Base Class for speech datasets """
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
+    LABEL_NOISE = "__noise__"
     def __init__(self, data, set_type, config):
         super().__init__()
         self.audio_files = list(data.keys())
@@ -234,6 +235,7 @@ class SpeechDataset(data.Dataset):
         if random.random() < self.noise_prob or silence:
             a = random.random() * 0.1
             data = np.clip(a * bg_noise + data, -1, 1)
+
         data = torch.from_numpy(preprocess_audio(data,
                                                  features = self.features,
                                                  samplingrate = self.samplingrate,
@@ -417,11 +419,11 @@ class SpeechHotwordDataset(SpeechDataset):
     @staticmethod
     def default_config():
         config = SpeechDataset.default_config()
-        config["loss"] = "cross_entropy"
-        config["n_labels"] = 3
+        config["loss"].default = "cross_entropy"
+        config["n_labels"].default = 3
         # Splits the dataset in 1/3
-        config["silence_prob"] = 1.0
-        config["unknown_prob"] = 1.0
+        config["silence_prob"].default = 1.0
+        config["unknown_prob"].default = 1.0
 
         return config
 
@@ -474,8 +476,7 @@ class SpeechHotwordDataset(SpeechDataset):
         return res_datasets
 
 class VadDataset(SpeechDataset):
-    """This class implements reading and preprocessing of speech commands like
-    dataset"""
+
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
 
@@ -518,50 +519,105 @@ class VadDataset(SpeechDataset):
 
             return res_datasets
 
-class VadDatasetMixed(SpeechDataset):
-    """This class implements reading and preprocessing of speech commands like
-    dataset"""
+class KeyWordDataset(SpeechDataset):
+
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
 
-        self.label_names = {0 : "noise", 1 : "speech"}
+        self.label_names = {2 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN, 0: self.LABEL_NOISE}
+        for i, word in enumerate(config["wanted_words"]):
+            self.label_names[i+3] = word
 
     @classmethod
     def splits(cls, config):
-            """Splits the dataset in training, devlopment and test set and returns
-            the three sets as List"""
+        msglogger = logging.getLogger()
 
-            msglogger = logging.getLogger()
+        folder = config["data_folder"]
+        wanted_words = config["wanted_words"]
+        unknown_prob = config["unknown_prob"]
+        train_pct = config["train_pct"]
+        dev_pct = config["dev_pct"]
+        test_pct = config["test_pct"]
+        use_default_split = config["use_default_split"]
 
-            folder = config["data_folder"]
+        words = {word: i + 3 for i, word in enumerate(wanted_words)}
+        words.update({cls.LABEL_SILENCE:2, cls.LABEL_UNKNOWN:1, cls.LABEL_NOISE:0})
+        sets = [{}, {}, {}]
+        unknowns = [0] * 3
+        bg_noise_files = []
+        unknown_files = []
 
-            descriptions = ["train", "dev", "test"]
-            dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
-            datasets=[{}, {}, {}]
+        test_files = set()
+        dev_files = set()
+        if use_default_split:
+            with open(os.path.join(folder, "testing_list.txt")) as testing_list:
+                for line in testing_list.readlines():
+                    line = line.strip()
+                    test_files.add(os.path.join(folder, line))
 
-
-            for num, desc in enumerate(descriptions):
-
-                descs_noise = os.path.join(folder, desc, "noise")
-                descs_speech = os.path.join(folder, desc, "mixed")
-
-                noise_files = [os.path.join(descs_noise,f) for f in os.listdir(descs_noise) if os.path.isfile(os.path.join(descs_noise, f))]
-                speech_files = [os.path.join(descs_speech,f) for f in os.listdir(descs_speech) if os.path.isfile(os.path.join(descs_speech, f))]
-
-                random.shuffle(noise_files)
-                random.shuffle(speech_files)
-                label_noise =  0
-                label_speech = 1
-
-                datasets[num].update({n : label_noise for n in noise_files})
-                datasets[num].update({s : label_speech for s in speech_files})
+            with open(os.path.join(folder, "validation_list.txt")) as validation_list:
+                for line in validation_list.readlines():
+                    line = line.strip()
+                    dev_files.add(os.path.join(folder, line))
 
 
-            res_datasets = (cls(datasets[0], DatasetType.TRAIN, config),
-                            cls(datasets[1], DatasetType.DEV, config),
-                            cls(datasets[2], DatasetType.TEST, config))
+        for folder_name in os.listdir(folder):
+            path_name = os.path.join(folder, folder_name)
+            if os.path.isfile(path_name):
+                continue
+            if folder_name in words:
+                label = words[folder_name]
+            elif folder_name == "_background_noise_chunks":
+                label = words[cls.LABEL_NOISE]
+            else:
+                label = words[cls.LABEL_UNKNOWN]
 
-            return res_datasets
+            for filename in os.listdir(path_name):
+                wav_name = os.path.join(path_name, filename)
+                if label == words[cls.LABEL_UNKNOWN]:
+                    unknown_files.append(wav_name)
+                    continue
+
+                if use_default_split:
+                    if wav_name in dev_files:
+                        tag = DatasetType.DEV
+                    elif wav_name in test_files:
+                        tag = DatasetType.TEST
+                    else:
+                        tag = DatasetType.TRAIN
+                else:
+                    if config["group_speakers_by_id"]:
+                        hashname = re.sub(r"_nohash_.*$", "", filename)
+                    else:
+                        hashname = filename
+                    max_no_wavs = 2**27 - 1
+                    bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
+                    bucket = (bucket % (max_no_wavs + 1)) * (100. / max_no_wavs)
+                    if bucket < dev_pct:
+                        tag = DatasetType.DEV
+                    elif bucket < test_pct + dev_pct:
+                        tag = DatasetType.TEST
+                    else:
+                        tag = DatasetType.TRAIN
+                sets[tag.value][wav_name] = label
+
+
+        for tag in range(len(sets)):
+            unknowns[tag] = int(unknown_prob * len(sets[tag]))
+        random.shuffle(unknown_files)
+        a = 0
+        for i, dataset in enumerate(sets):
+            b = a + unknowns[i]
+            unk_dict = {u: words[cls.LABEL_UNKNOWN] for u in unknown_files[a:b]}
+            dataset.update(unk_dict)
+            a = b
+
+        datasets = (cls(sets[0], DatasetType.TRAIN, config),
+                    cls(sets[1], DatasetType.DEV, config),
+                    cls(sets[2], DatasetType.TEST, config))
+        return datasets
+
+
 
 
 
@@ -584,8 +640,8 @@ def find_dataset(name):
         return SpeechHotwordDataset
     elif name == "vad":
         return VadDataset
-    elif name == "vad-mixed":
-        return VadDatasetMixed
+    elif name == "keywords_and_noise":
+        return KeyWordDataset
 
     raise Exception("Could not find dataset type: {}".format(name))
 

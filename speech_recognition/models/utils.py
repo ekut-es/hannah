@@ -68,7 +68,7 @@ class ConfigType(Enum):
     TC_RES_8_15 = "tc-res8-15"
     TC_RES_14_15 = "tc-res14-15"
 
-    #Models from VAD with Log Filterbank Energy features
+    #Models for Voice Activity Detection
     SIMPLE_VAD = "simple-vad"
     BOTTLENECK_VAD = "bottleneck-vad"
     SMALL_VAD = "small-vad"
