@@ -16,9 +16,8 @@ import torch
 import torch.utils.data as data
 
 
-from config import ConfigOption
-from process_audio import preprocess_audio, calculate_feature_shape
-
+from .config import ConfigOption
+from .process_audio import preprocess_audio, calculate_feature_shape
 
 
 class SimpleCache(dict):
@@ -204,7 +203,6 @@ class SpeechDataset(data.Dataset):
             data = np.zeros(in_len, dtype=np.float32)
         else:
             data = self._file_cache.get(example)
-
 
             if data is None:
                 data = librosa.core.load(example, sr=self.samplingrate)[0]
