@@ -1,5 +1,5 @@
 from collections import ChainMap, OrderedDict, defaultdict
-from config import ConfigBuilder, ConfigOption
+from .config import ConfigBuilder, ConfigOption
 import argparse
 import os
 import random
@@ -7,6 +7,9 @@ import sys
 import json
 import time
 import math
+import hashlib
+import csv
+import fcntl
 
 from torch.autograd import Variable
 import numpy as np
@@ -15,10 +18,10 @@ import torch.nn as nn
 import torch.utils.data as data
 import itertools
 
-from  decoder import Decoder
-import models as mod
-import dataset
-from utils import set_seed, config_pylogger, log_execution_env_state, EarlyStopping
+from . decoder import Decoder
+from . import models as mod
+from . import dataset
+from .utils import set_seed, config_pylogger, log_execution_env_state, EarlyStopping
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
@@ -26,8 +29,9 @@ import distiller
 from distiller.data_loggers import *
 import distiller.apputils as apputils
 import torchnet.meter as tnt
+from tabulate import tabulate
 
-from summaries import *
+from .summaries import *
 
 
 msglogger = None
@@ -280,11 +284,7 @@ def validate(data_loader, model, model2, criterion, config, config_vad, config_k
 
 
                 classerr.add(output.data, targets)
-                print("output.data", output.data)
-                print("output.data", torch.argmax(output.data,1))
-                print("target", targets)
-                confusion.add(torch.argmax(output.data,1),targets)
-
+                confusion.add(output.data, targets)
 
 
             # measure accuracy and record loss
@@ -308,7 +308,7 @@ def validate(data_loader, model, model2, criterion, config, config_vad, config_k
 
     msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
 
-    return classerr.value(1), losses['objective_loss'].mean
+    return classerr.value(1), losses['objective_loss'].mean, confusion.value()
 
 def evaluate(model_name, config, config_vad=None, config_keyword=None, model=None, test_set=None, loggers=[]):
 
@@ -319,6 +319,7 @@ def evaluate(model_name, config, config_vad=None, config_keyword=None, model=Non
 
     global msglogger
     if not msglogger:
+        log_dir = get_config_logdir(model_name, config)
         output_dir = get_output_dir(model_name, config)
         msglogger = config_pylogger('logging.conf', "eval", log_dir)
 
@@ -430,7 +431,7 @@ def train(model_name, config, check_sanity=False):
 
     #Configure logging
     log_name = "train" if not check_sanity else "sanity_check"
-    msglogger = config_pylogger('logging.conf', log_name, output_dir)
+    msglogger = config_pylogger('logging.conf', log_name, log_dir)
     pylogger = PythonLogger(msglogger)
     loggers  = [pylogger]
     if config["tblogger"]:
@@ -486,7 +487,6 @@ def train(model_name, config, check_sanity=False):
     config["width"] = train_set.width
     config["height"] = train_set.height
 
-    dump_config(output_dir, config)
 
     model = get_model(config)
 
@@ -585,7 +585,6 @@ def train(model_name, config, check_sanity=False):
 
         batch_time = tnt.AverageValueMeter()
         end = time.time()
-        optimizer.zero_grad()
         for batch_idx, (model_in, in_lengths, labels, label_lengths) in enumerate(train_loader):
             model.train()
             if compression_scheduler is not None:
@@ -598,7 +597,6 @@ def train(model_name, config, check_sanity=False):
                 model_in = model_in.cuda()
                 labels = labels.cuda()
             model_in = Variable(model_in)
-
             scores = model(model_in)
 
             labels = Variable(labels)
@@ -628,7 +626,6 @@ def train(model_name, config, check_sanity=False):
                 scalar_accuracy = 1.0 - error
             else:
                 scores = scores.view(scores.size(0), -1)
-
                 labels = labels.view(-1)
 
                 loss = criterion(scores, labels)
@@ -642,6 +639,7 @@ def train(model_name, config, check_sanity=False):
 
             if compression_scheduler is not None:
                 compression_scheduler.before_backward_pass(epoch_idx, batch_idx, batches_per_epoch, loss)
+
 
             loss.backward()
             optimizer.step()
@@ -673,6 +671,11 @@ def train(model_name, config, check_sanity=False):
 
             end = time.time()
 
+        msglogger.info('==> Accuracy: %.3f      Loss: %.3f\n',
+                   avg_training_accuracy.mean, avg_training_loss.mean)
+
+        performance_summary = model_summary(model, dummy_input, 'performance')
+        csv_log_writer.writerow({"Phase" : "Train", "Epoch" : epoch_idx, "Accuracy" : avg_training_accuracy.mean, "Loss" : avg_training_loss.mean, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
 
         if check_sanity:
             if avg_training_accuracy.mean > 0.95:
@@ -685,7 +688,6 @@ def train(model_name, config, check_sanity=False):
             csv_log_writer.writerow({"Phase" : "Val", "Epoch" : epoch_idx, "Accuracy" : avg_acc, "Loss" : avg_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
 
             if avg_acc > max_acc:
-                print("I am saving the model")
                 save_model(output_dir, model, test_set, config=config)
                 max_acc = avg_acc
 
@@ -717,6 +719,7 @@ def train(model_name, config, check_sanity=False):
     if check_sanity:
         msglogger.info("Sanity check has not ended early accuracy: {} loss: {}".format(avg_training_accuracy.mean,
                                                                                        avg_training_loss.mean))
+
     else:
         msglogger.info("Running final test")
         model.load(os.path.join(output_dir, "model.pt"))
