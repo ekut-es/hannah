@@ -1,5 +1,6 @@
 from collections import ChainMap
 import argparse
+import hashlib
 import sys
 
 class ConfigOption(object):
@@ -76,15 +77,18 @@ class ConfigOption(object):
         return flags, args
         
 class ConfigBuilder(object):
+    
+    unhashed_options = set(["config", "dataset_cls", "model_class", "type", "cuda", "gpu_no", "output_dir", "config_hash"])
+    
     def __init__(self, *default_configs):
         self.default_config = ChainMap(*default_configs)
 
-    def build_argparse(self):
-        parser = argparse.ArgumentParser()
+    def build_argparse(self, parser=None):
+        if not parser:
+            parser = argparse.ArgumentParser()
         parser.add_argument("--full-help", action="store_true")
         categories = {}
         for key, value in self.default_config.items():
-
             #Allow overiding of default options
             if not isinstance(value, ConfigOption):
                 for map in self.default_config.maps:
@@ -99,8 +103,7 @@ class ConfigBuilder(object):
                             obj.default = value
                             value = obj
                             break
-                
-            
+
             flag = "--{}".format(key)
             if isinstance(value, ConfigOption):
                 flags, args = value.get_args(key)
@@ -110,7 +113,6 @@ class ConfigBuilder(object):
                         category = parser.add_argument_group(title=value.category)
                         categories[value.category] = category
                     category = categories[value.category]
-                
                 category.add_argument(*flags, **args) 
             elif isinstance(value, tuple):
                 parser.add_argument(flag, default=list(value), nargs=len(value), type=type(value[0]))
@@ -129,8 +131,18 @@ class ConfigBuilder(object):
     def config_from_argparse(self, parser=None):
         if not parser:
             parser = self.build_argparse()
-        args = vars(parser.parse_known_args()[0])
+        args = parser.parse_args()
+        args = vars(args)
         if args["full_help"]:
             parser.print_help()
             sys.exit(0)
-        return ChainMap(args, self.default_config)
+            
+        config = ChainMap(args, self.default_config)
+        config_string = str([item for item in sorted(config.items()) if item[0] not in self.unhashed_options])
+            
+            
+        m = hashlib.sha256()
+        m.update(config_string.encode('utf-8'))
+        config["config_hash"] = m.hexdigest()
+            
+        return config
