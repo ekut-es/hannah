@@ -301,12 +301,19 @@ def main():
                 if(isinstance(setting, list)):
                     settingstring = str(setting).translate(str.maketrans("", "", ",[]"))
                     f.write(f"--{key} {settingstring} ")
+                elif(isinstance(setting, bool)):
+                    if(key == "extract_loudest"):
+                        if(setting == False):
+                            f.write("--no_extract_loudest ")
+                    else:
+                        if(setting == True):
+                            f.write(f"--{key} ")
                 else:
                     f.write(f"--{key} {setting} ")
             f.write(f"--gpu_no {gpus[counter % len(gpus)]} ")
             f.write(extract_value_by_key(gsettings_file_lines, "pipestring"))
             f.write("\n")
-            if(counter % len(gpus) == 0):
+            if((counter - 1) % len(gpus) == 0):
                 f.write("wait\n")
     
 if __name__ == "__main__":
