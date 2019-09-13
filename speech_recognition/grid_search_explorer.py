@@ -122,15 +122,18 @@ def ask_values_first_time(modelname, key, default):
     result = None
     if(isinstance(default, bool)):
         result = f"{key};bool;{str(int(ask_bool(default=default)))}"
-    if(isinstance(default, str)):
-        a = TailClass()
-        a = CombinatorString(a)
-        a.set_modelname(modelname)
-        a.set_key(key)
-        _, values = a.generate_variants()[0]
-        if(values == []):
-            values = [""]
-        result = f"{key};str;{ask_str(default=values[0])}"
+    elif(isinstance(default, str)):
+        path = os.path.join(CLASSES_DIRECTORY, key + CLASS_EXTENSION)
+        presetting = ""
+        if(os.path.isdir(path)):
+            entries = [x for x in sorted(os.listdir(path))]
+            presetting = entries[0]
+        elif(os.path.isfile(path)):
+            entries = []
+            with open(path, "r") as f:
+                entries = [x.rstrip("\n") for x in f]
+            presetting = entries[0]
+        result = f"{key};str;{ask_str(default=presetting)}"
     elif(isinstance(default, int)):
         start = ask_int("Start", default)
         stop = ask_int("Stop", default)
@@ -268,7 +271,11 @@ def main():
     
     gsettings_file_existing, gsettings_file_lines = open_config_file(gsettings_file_path)
     
-    gpus_string = input("Please enter the indices of gpus wanted for training (comma-separated) : ")
+    gpus_string = ""
+    
+    while gpus_string == "":
+        gpus_string = input("\nPlease enter the indices of gpus wanted for training (comma-separated) : ")
+        
     gpus = gpus_string.split(",")
 
     print("Now generating batch file...")
@@ -291,11 +298,16 @@ def main():
             f.write(extract_value_by_key(gsettings_file_lines, "experiment_id"))
             f.write(" ")
             for key, setting in variant:
-                f.write(f"--{key} {setting} ")
+                if(isinstance(setting, list)):
+                    settingstring = str(setting).translate(str.maketrans("", "", ",[]"))
+                    f.write(f"--{key} {settingstring} ")
+                else:
+                    f.write(f"--{key} {setting} ")
             f.write(f"--gpu_no {gpus[counter % len(gpus)]} ")
             f.write(extract_value_by_key(gsettings_file_lines, "pipestring"))
             f.write("\n")
-    
+            if(counter % len(gpus) == 0):
+                f.write("wait\n")
     
 if __name__ == "__main__":
     main()
