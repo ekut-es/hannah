@@ -1,0 +1,5 @@
+lr
+opt_alpha
+opt_eps
+weight_decay
+momentum
