@@ -81,25 +81,71 @@ def ask_float(message, default):
     else:
         return float(result)
         
-  
+def ask_list_of(datatype, values):
+    last_input = ""
+    iterations = 0
+    return_values = []
+    while True:
+        if(iterations < len(values)):
+            if(iterations > 0):
+                last_input = input(f"Enter a value (or 'q' for quit) [default with ENTER={values[iterations]}]: ")
+                if(last_input == "q"):
+                    break
+            else:
+                last_input = input(f"Enter a value [default with ENTER={values[iterations]}]: ")
+            if(last_input == ""):
+                return_values += [values[iterations]]
+                iterations += 1
+                continue
+        else:
+            if(iterations > 0):
+                last_input = input(f"Enter a value (or 'q' for quit) [default with ENTER=q]: ")
+                if(last_input == "q" or last_input == ""):
+                    break
+            else:
+                last_input = input(f"Enter a value: ")
+        try:
+            return_values += [datatype(last_input)]
+        except ValueError:
+            raise Exception("Couldnt parse value!")
+        iterations += 1
+    return return_values
                  
 def ask_values_again(modelname, key, default):
-    _, entries = load_csv(modelname, key, payload=-1)
+    entrytype, entries = load_csv(modelname, key, payload=-1)
     result = None
     if(isinstance(default, bool)):
         result = f"{key};bool;{str(int(ask_bool(default=entries[0])))}"
     elif(isinstance(default, str)):
         result = f"{key};str;{ask_str(default=entries[0])}"
     elif(isinstance(default, int)):
-        start = ask_int("Start", int(entries[0]))
-        stop = ask_int("Stop", int(entries[1]))
-        steps = ask_int("Steps", int(entries[2]))
-        result = f"{key};int;{start};{stop};{steps}"
+        want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = (entrytype == "int"))
+        if(want_start_stop_step != (entrytype == "int")):
+            return ask_values_first_time(modelname, key, default)
+        if(want_start_stop_step):
+            start = ask_int("Start", int(entries[0]))
+            stop = ask_int("Stop", int(entries[1]))
+            steps = ask_int("Steps", int(entries[2]))
+            result = f"{key};int;{start};{stop};{steps}"
+        else:
+            results = ask_list_of(int, values=entries)
+            result = f"{key};predefined_int"
+            for value in results:
+                result += f";{str(value)}"
     elif(isinstance(default, float)):
-        start = ask_float("Start", float(entries[0]))
-        stop = ask_float("Stop", float(entries[1]))
-        steps = ask_int("Steps", int(entries[2]))
-        result = f"{key};float;{start};{stop};{steps}"
+        want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = (entrytype == "float"))
+        if(want_start_stop_step != (entrytype == "float")):
+            return ask_values_first_time(modelname, key, default)
+        if(want_start_stop_step):
+            start = ask_float("Start", float(entries[0]))
+            stop = ask_float("Stop", float(entries[1]))
+            steps = ask_int("Steps", int(entries[2]))
+            result = f"{key};float;{start};{stop};{steps}"
+        else:
+            results = ask_list_of(float, values=entries)
+            result = f"{key};predefined_float"
+            for value in results:
+                result += f";{str(value)}"
     elif(isinstance(default, list)):
         result = f"{key};list"
         for i in range(0, len(entries) // 3):
@@ -135,15 +181,29 @@ def ask_values_first_time(modelname, key, default):
             presetting = entries[0]
         result = f"{key};str;{ask_str(default=presetting)}"
     elif(isinstance(default, int)):
-        start = ask_int("Start", default)
-        stop = ask_int("Stop", default)
-        steps = ask_int("Steps", 0)
-        result = f"{key};int;{start};{stop};{steps}"
+        want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = True)
+        if(want_start_stop_step):
+            start = ask_int("Start", default)
+            stop = ask_int("Stop", default)
+            steps = ask_int("Steps", 0)
+            result = f"{key};int;{start};{stop};{steps}"
+        else:
+            results = ask_list_of(int, values=[])
+            result = f"{key};predefined_int"
+            for value in results:
+                result += f";{str(value)}"          
     elif(isinstance(default, float)):
-        start = ask_float("Start", default)
-        stop = ask_float("Stop", default)
-        steps = ask_int("Steps", 0)
-        result = f"{key};float;{start};{stop};{steps}"
+        want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = True)
+        if(want_start_stop_step):
+            start = ask_float("Start", default)
+            stop = ask_float("Stop", default)
+            steps = ask_int("Steps", 0)
+            result = f"{key};float;{start};{stop};{steps}"
+        else:
+            results = ask_list_of(float, values=[])
+            result = f"{key};predefined_float"
+            for value in results:
+                result += f";{str(value)}"
     elif(isinstance(default, list)):
         result = f"{key};list"
         for i in range(len(default)):
@@ -184,6 +244,8 @@ def main():
     exclude_file_existing, exclude_file_lines = open_config_file(exclude_file_path)
     
     shall_skip = False
+
+    exclude_file_lines_to_write = exclude_file_lines
     
     if(exclude_file_existing):
         print("... FOUND!")
@@ -192,19 +254,25 @@ def main():
         print("... NOT FOUND!")
         
     if(not shall_skip):
+    
+        exclude_file_lines_to_write = []
         
         print(f" You have to choose from {len(config.items()) - len(general_exclude_file_lines)} possible hyperparameters to be variable...")
         
-        with open(exclude_file_path, "w") as f:
-            for key, value in sorted(config.items()):
-                if(not key + "\n" in general_exclude_file_lines):
-                    default_exclude = (key + "\n" in exclude_file_lines)
-                    shall_exclude = (not ask_yes_no(f"-> Include key={key}, defaultvalue={value} ", default_yes = (not default_exclude)))
-                    if(shall_exclude):
-                        f.write(key + "\n")
+        for key, value in sorted(config.items()):
+            if(not key + "\n" in general_exclude_file_lines):
+                default_exclude = (key + "\n" in exclude_file_lines)
+                shall_exclude = (not ask_yes_no(f"-> Include key={key}, defaultvalue={value} ", default_yes = (not default_exclude)))
+                if(shall_exclude):
+                    exclude_file_lines_to_write += [key + "\n"]
                     
+    print("(Re-)Writing exclude file...")
                     
-                    
+    with open(exclude_file_path, "w") as f:
+        for line in exclude_file_lines_to_write:
+            f.write(line)                
+    
+    exclude_file_lines = exclude_file_lines_to_write                 
                     
     print("Checking for existing value file...")
     value_file_path = os.path.join(CONF_DIR, model_name + VALUE_FILE_SUFFIX)
