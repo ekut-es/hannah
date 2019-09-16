@@ -64,6 +64,10 @@ class Decorator(Combinator, metaclass=abc.ABCMeta):
             result = CombinatorInteger(chain)
         if(datatype == "float"):
             result = CombinatorFloat(chain)
+        if(datatype == "predefined_int"):
+            result = CombinatorPredefinedInteger(chain)
+        if(datatype == "predefined_float"):
+            result = CombinatorPredefinedFloat(chain)
         if(datatype == "str"):
             result = CombinatorString(chain) 
         if(datatype == "list"):
@@ -125,7 +129,6 @@ class CombinatorList(Decorator):
         try:
             entries[0] = int(entries[0])
         except ValueError:
-            #print("Conversion to int didnt work...")
             conversion_worked = False
             
         if(not conversion_worked):
@@ -172,21 +175,31 @@ class CombinatorString(Decorator):
                 with open(path, "r") as f:
                     entries = [x.rstrip("\n") for x in f]
                 return self._chain_object.generate_variants() + [(self._key, entries)]
-    #        else:
-    #            for subpath in os.listdir(CLASSES_DIRECTORY):
-    #                search_path = os.path.join(CLASSES_DIRECTORY, subpath)
-    #                if(os.path.isdir(search_path)):
-    #                    for subsubpath in os.listdir(search_path):
-    #                        if(subsubpath == self._key + CLASS_EXTENSION):
-    #                            with open(os.path.join(search_path, subsubpath), "r") as f:
-    #                                entries = [x.rstrip("\n") for x in f]
-    #                                return self._chain_object.generate_variants() + [(self._key, entries)]
 
             raise Exception(f"Could not find values for string-key: {self._key}")
             
     def load_csv_string(self):
         _, entries = load_csv(self._modelname, self._key, payload=1)
-        return entries[0]        
+        return entries[0]
+
+class CombinatorPredefined(Decorator):
+    def get_variants_with_type(self, conversionFunction):
+        if self.check_whether_excluded(self._modelname, self._key):
+            return [conversionFunction(x) for x in self.load_csv_predefined()[0:0]]
+        else:
+            return [conversionFunction(x) for x in self.load_csv_predefined()]
+    def load_csv_predefined(self):
+        _, entries = load_csv(self._modelname, self._key, payload=-1)
+        return entries
+
+class CombinatorPredefinedInteger(CombinatorPredefined):
+    def generate_variants(self):
+        return self._chain_object.generate_variants() + [(self._key, self.get_variants_with_type(int))]
+            
+
+class CombinatorPredefinedFloat(CombinatorPredefined):
+    def generate_variants(self):
+        return self._chain_object.generate_variants() + [(self._key, self.get_variants_with_type(float))]      
         
 def get_key(pair):
     key, _ = pair

@@ -19,7 +19,7 @@ def main():
     early_stopping = 25
     num_gpu = 3
 
- #   print('Model name: ', model_name, ' Config: ', config)
+    print('Model name: ', model_name, ' Config: ', config)
 
     with open('grid_search.sh', mode='w+') as f:
         print('#!/bin/bash', file=f)
