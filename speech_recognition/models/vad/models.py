@@ -12,27 +12,34 @@ class BottleneckVad(nn.Module):
                  conv2_size,
                  conv3_features,
                  conv3_size,
-                 fc_size):
+                 fc_size,
+                 stride, 
+                 batch_norm):
             super().__init__()
+            self.batch_norm = batch_norm
             self.norm1 = nn.BatchNorm2d(1)
-            self.conv1 = nn.Conv2d(1, conv1_features, conv1_size)
+            self.conv1 = nn.Conv2d(1, conv1_features, conv1_size, stride)
             self.norm2 = nn.BatchNorm2d(conv1_features)
             self.conv2a = nn.Conv2d(conv1_features,4,1) # Bottleneck layer
             self.conv2b = nn.Conv2d(4,4,conv2_size)  # Bottleneck layer
             self.conv2c = nn.Conv2d(4,conv2_features,1) # Bottleneck layer
             self.norm3 = nn.BatchNorm2d(conv2_features)
-            self.conv3 = nn.Conv2d(conv2_features, conv3_features, conv3_size)
+            self.conv3 = nn.Conv2d(conv2_features, conv3_features, conv3_size, stride)
             self.fc1 = nn.Linear(fc_size, 2)
 
     def forward(self, x):
             x = x.unsqueeze(1)
-            x = self.norm1(x)
+            if self.batch_norm:
+               x = self.norm1(x)
             x = F.leaky_relu(self.conv1(x))
-            x = self.norm2(x)
+            if self.batch_norm:
+               x = self.norm2(x)
             x = F.leaky_relu(self.conv2a(x))
             x = F.leaky_relu(self.conv2b(x))
             x = F.leaky_relu(self.conv2c(x))
-            x = self.norm3(x)
+            if self.batch_norm:
+               x = self.norm3(x)
+            x = F.leaky_relu(self.conv3(x))
             x = x.view(-1, self.num_flat_features(x))
             x = self.fc1(x)
             return x
@@ -46,15 +53,17 @@ class BottleneckVad(nn.Module):
 
 class SmallVad(nn.Module):
 
-    def __init__(self, conv1_features, conv1_size, fc_size):
+    def __init__(self, conv1_features, conv1_size, fc_size, stride, batch_norm):
         super().__init__()
+        self.batch_norm = batch_norm
         self.norm1 = nn.BatchNorm2d(1)
-        self.conv1 = nn.Conv2d(1, conv1_features, conv1_size)
+        self.conv1 = nn.Conv2d(1, conv1_features, conv1_size, stride = stride)
         self.fc1 = nn.Linear(fc_size, 2)
 
     def forward(self, x):
         x = x.unsqueeze(1)
-        x = self.norm1(x)
+        if self.batch_norm:
+           x = self.norm1(x)
         x = F.leaky_relu(self.conv1(x))
         x = x.view(-1, self.num_flat_features(x))
         x = self.fc1(x)
@@ -76,23 +85,30 @@ class SimpleVad(nn.Module):
                  conv2_size,
                  conv3_features,
                  conv3_size,
-                 fc_size):
+                 fc_size,
+                 stride,
+                 batch_norm):
         super().__init__()
+        self.batch_norm = batch_norm
         self.norm1 = nn.BatchNorm2d(1)
-        self.conv1 = nn.Conv2d(1, conv1_features, conv1_size)
+        self.conv1 = nn.Conv2d(1, conv1_features, conv1_size, stride = stride)
         self.norm2 = nn.BatchNorm2d(conv1_features)
-        self.conv2 = nn.Conv2d(conv1_features, conv2_features, conv2_size)
+        self.conv2 = nn.Conv2d(conv1_features, conv2_features, conv2_size, stride = stride)
         self.norm3 = nn.BatchNorm2d(conv2_features)
-        self.conv3 = nn.Conv2d(conv2_features, conv3_features, conv3_size)
+        self.conv3 = nn.Conv2d(conv2_features, conv3_features, conv3_size, stride= stride)
         self.fc1 = nn.Linear(fc_size, 2)
 
     def forward(self, x):
         x = x.unsqueeze(1)
-        x = self.norm1(x)
+        if self.batch_norm:
+           x = self.norm1(x)
         x = F.leaky_relu(self.conv1(x))
-        x = self.norm2(x)
+        if self.batch_norm:
+           x = self.norm2(x)
         x = F.leaky_relu(self.conv2(x))
-        x = self.norm3(x)
+        if self.batch_norm:
+           x = self.norm3(x)
+        x = F.leaky_relu(self.conv3(x))
         x = x.view(-1, self.num_flat_features(x))
         x = self.fc1(x)
         return x
@@ -115,6 +131,8 @@ class BottleneckVadModel(SerializableModule):
         conv3_features = config["conv3_features"]
         conv3_size = config["conv3_size"]
         fc_size = config["fc_size"]
+        stride = config["stride"]
+        batch_norm  = config["batch_norm"]
 
         self.net = BottleneckVad(conv1_features,
                                  conv1_size,
@@ -122,7 +140,9 @@ class BottleneckVadModel(SerializableModule):
                                  conv2_size,
                                  conv3_features,
                                  conv3_size,
-                                 fc_size)
+                                 fc_size,
+                                 stride,
+                                 batch_norm)
 
     def forward(self, x):
         x = self.net.forward(x)
@@ -141,6 +161,8 @@ class SimpleVadModel(SerializableModule):
         conv3_features = config["conv3_features"]
         conv3_size = config["conv3_size"]
         fc_size = config["fc_size"]
+        stride = config["stride"]
+        batch_norm = config["batch_norm"]
 
         self.net = SimpleVad(conv1_features,
                              conv1_size,
@@ -148,7 +170,9 @@ class SimpleVadModel(SerializableModule):
                              conv2_size,
                              conv3_features,
                              conv3_size,
-                             fc_size)
+                             fc_size,
+                             stride,
+                             batch_norm)
 
     def forward(self, x):
         x = self.net.forward(x)
@@ -165,8 +189,10 @@ class SmallVadModel(SerializableModule):
         conv1_features = config["conv1_features"]
         conv1_size = config["conv1_size"]
         fc_size = config["fc_size"]
+        stride = config["stride"]
+        batch_norm = config["batch_norm"]
 
-        self.net = SmallVad(conv1_features, conv1_size, fc_size)
+        self.net = SmallVad(conv1_features, conv1_size, fc_size, stride, batch_norm)
 
     def forward(self, x):
         x = self.net.forward(x)
@@ -181,7 +207,9 @@ configs= {
      conv2_size = 2,
      conv3_features =3,
      conv3_size = 2,
-     fc_size = 11286
+     fc_size = 11286, 
+     stride = 2, 
+     batch_norm  = False,
      ),
      ConfigType.BOTTLENECK_VAD.value: dict(
      conv1_features = 3,
@@ -190,11 +218,16 @@ configs= {
      conv2_size = 2,
      conv3_features = 3,
      conv3_size = 2,
-     fc_size = 11286
+     fc_size = 11286,
+     stride = 2, 
+     batch_norm = False, 
      ),
      ConfigType.SMALL_VAD.value: dict(
      conv1_features = 3,
      conv1_size = 2,
-     fc_size =  11700
+     fc_size =  11700,
+     stride = 2, 
+     batch_norm = False,
      )
+
 }

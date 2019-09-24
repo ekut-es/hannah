@@ -266,11 +266,13 @@ def validate(data_loader, model, model2, criterion, config, config_vad, config_k
             if combined_evaluation:
                 output_vad = model(inputs)
                 if output_vad.max(1)[1] == 0:
+                    print("classified as noise", targets)
                     output = torch.zeros(1, config["n_labels"]+1)
-                    output[0,0] = 1
+                    output[0,config["n_labels"]] = 1
                 else:
+                    print("not classified as noise", targets)
                     output_keyword = model2(inputs)
-                    output = torch.cat((torch.zeros(1,1), output_keyword), dim=1)
+                    output = torch.cat((output_keyword,torch.zeros(1,1)), dim=1)
             else:
                 output = model(inputs)
 
@@ -378,7 +380,7 @@ def evaluate(model_name, config, config_vad=None, config_keyword=None, model=Non
             dummy_input.cuda()
             model.cuda()
 
-        performance_summary = model_summary(model, dummy_input, 'performance')
+#        performance_summary = model_summary(model, dummy_input, 'performance')
 
         accuracy, loss, confusion_matrix = validate(test_loader, model, None, criterion, config, None, None, loggers)
 

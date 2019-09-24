@@ -186,7 +186,7 @@ class SpeechDataset(data.Dataset):
         return (window_start, window_start+in_len)
 
 
-    def preprocess(self, example, silence=False):
+    def preprocess(self, example, silence=False, label = 0):
         """ Run preprocessing and feature extraction """
         if silence:
             example = "__silence__"
@@ -205,6 +205,7 @@ class SpeechDataset(data.Dataset):
             data = self._file_cache.get(example)
 
             if data is None:
+              
                 data = librosa.core.load(example, sr=self.samplingrate)[0]
 
                 extract_index = (0, len(data))
@@ -226,12 +227,15 @@ class SpeechDataset(data.Dataset):
             bg_noise = random.choice(self.bg_noise_audio)
             a = random.randint(0, len(bg_noise) - data.shape[0] - 1)
             bg_noise = bg_noise[a:a + data.shape[0]]
+          
         else:
             bg_noise = np.zeros(data.shape[0])
 
-
+#        if label == 0:
+ #           bg_noise = np.zeros(data.shape[0])
+  #          print("label is 0")
         if random.random() < self.noise_prob or silence:
-            a = random.random() * 0.1
+            a = random.random()# * 0.1
             data = np.clip(a * bg_noise + data, -1, 1)
 
         data = torch.from_numpy(preprocess_audio(data,
@@ -283,9 +287,9 @@ class SpeechDataset(data.Dataset):
         label = label.long()
 
         if index >= len(self.audio_labels):
-            data = self.preprocess(None, silence=True)
+            data = self.preprocess(None, silence=True, label = label)
         else:
-            data = self.preprocess(self.audio_files[index])
+            data = self.preprocess(self.audio_files[index], label = label)
 
         return data, data.shape[1], label, label.shape[0]
 
@@ -492,15 +496,18 @@ class VadDataset(SpeechDataset):
             descriptions = ["train", "dev", "test"]
             dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
             datasets=[{}, {}, {}]
+            configs = [{}, {}, {}]
 
 
             for num, desc in enumerate(descriptions):
 
                 descs_noise = os.path.join(folder, desc, "noise")
                 descs_speech = os.path.join(folder, desc, "speech")
+                descs_bg = os.path.join(folder, desc, "background_noise")
 
                 noise_files = [os.path.join(descs_noise,f) for f in os.listdir(descs_noise) if os.path.isfile(os.path.join(descs_noise, f))]
                 speech_files = [os.path.join(descs_speech,f) for f in os.listdir(descs_speech) if os.path.isfile(os.path.join(descs_speech, f))]
+                bg_noise_files = [os.path.join(descs_bg, f) for f in os.listdir(descs_bg) if os.path.isfile(os.path.join(descs_bg, f))]
 
                 random.shuffle(noise_files)
                 random.shuffle(speech_files)
@@ -509,11 +516,11 @@ class VadDataset(SpeechDataset):
 
                 datasets[num].update({n : label_noise for n in noise_files})
                 datasets[num].update({s : label_speech for s in speech_files})
-
-
-            res_datasets = (cls(datasets[0], DatasetType.TRAIN, config),
-                            cls(datasets[1], DatasetType.DEV, config),
-                            cls(datasets[2], DatasetType.TEST, config))
+                configs[num].update(ChainMap(dict(bg_noise_files=bg_noise_files), config))               
+            
+            res_datasets = (cls(datasets[0], DatasetType.TRAIN, configs[0]),
+                            cls(datasets[1], DatasetType.DEV, configs[1]),
+                            cls(datasets[2], DatasetType.TEST,configs[2]))
 
             return res_datasets
 
@@ -522,9 +529,12 @@ class KeyWordDataset(SpeechDataset):
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
 
-        self.label_names = {2 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN, 0: self.LABEL_NOISE}
+        self.label_names = {0 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN}
+        l_noise = 2
         for i, word in enumerate(config["wanted_words"]):
-            self.label_names[i+3] = word
+            self.label_names[i+2] = word
+            l_noise = l_noise +1
+        self.label_names[l_noise] = self.LABEL_NOISE
 
     @classmethod
     def splits(cls, config):
@@ -538,8 +548,12 @@ class KeyWordDataset(SpeechDataset):
         test_pct = config["test_pct"]
         use_default_split = config["use_default_split"]
 
-        words = {word: i + 3 for i, word in enumerate(wanted_words)}
-        words.update({cls.LABEL_SILENCE:2, cls.LABEL_UNKNOWN:1, cls.LABEL_NOISE:0})
+        words = {}
+        l_noise = 2
+        for i, word in enumerate(wanted_words):
+            words.update({word:i+2})
+            l_noise = l_noise +1
+        words.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1, cls.LABEL_NOISE:l_noise})
         sets = [{}, {}, {}]
         unknowns = [0] * 3
         bg_noise_files = []
@@ -565,7 +579,7 @@ class KeyWordDataset(SpeechDataset):
                 continue
             if folder_name in words:
                 label = words[folder_name]
-            elif folder_name == "_background_noise_chunks":
+            elif folder_name == "_background_noise_chunks_":
                 label = words[cls.LABEL_NOISE]
             else:
                 label = words[cls.LABEL_UNKNOWN]

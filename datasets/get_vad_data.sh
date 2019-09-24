@@ -3,7 +3,7 @@
 mkdir -p noise_files
 
 pushd noise_files
-wget https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio.\{1,2,3,4,5,6,7,8,9,10\}.zip
+wget https://download.zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio.\{1,2,3,4,5,6,7,8,9,10\}.zip
 
 unzip  -P pass '*.zip'
 
@@ -24,7 +24,7 @@ mkdir -p speech_files
 
 pushd speech_files
 
-wget http://zeos.ling.washington.edu/corpora/UWNU/uwnu-v2.tar.gz
+wget http://download.zeos.ling.washington.edu/corpora/UWNU/uwnu-v2.tar.gz
 
 tar xvzf  uwnu-v2.tar.gz
 rm -f uwnu-v2.tar.gz
