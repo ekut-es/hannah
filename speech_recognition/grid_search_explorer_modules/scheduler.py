@@ -9,7 +9,9 @@ class Scheduler():
     allowed_cpus = range(1, 152)
     available_gpus = [0, 1, 2, 3]
     allowed_gpus = []
-    gpu_memory_load_threshold_pct = 0.8
+    gpu_memory_load_threshold_pct = 0.4
+    main_memory_load_threshold_pct = 0.5
+    max_count_running_jobs = 10
     _gsettings = []
     _model_name = ""
     
@@ -32,18 +34,23 @@ class Scheduler():
         for GPU in GPUs:
             if(GPU.id == gpu_no):
                 return GPU.memoryUtil
-        raise Exception(f"GPU No. {gpu_no} not found")
+        return 1
+#        raise Exception(f"GPU No. {gpu_no} not found")
         
     def get_gpu_core_usage_pct(self, gpu_no):
         GPUs = GPUtil.getGPUs()
         for GPU in GPUs:
             if(GPU.id == gpu_no):
                 return GPU.load
-        raise Exception(f"GPU No. {gpu_no} not found")
+        return 1
+#        raise Exception(f"GPU No. {gpu_no} not found")
         
     def get_cpu_usage(self, cpu_no):
         cpu_usages = psutil.cpu_percent(interval=None, percpu=True)
         return cpu_usages[cpu_no]
+
+    def get_main_memory_usage_pct(self):
+        return psutil.virtual_memory().percent / 100
         
     def _add_job_to_gpu(self, variant, gpu_no): 
         cmd = ""
@@ -89,11 +96,12 @@ class Scheduler():
         
     def print_resource_status(self):
         print("===== Resource status=======")
+        print(f"Main Memory Load: {round(self.get_main_memory_usage_pct() * 100)}%")
         avg_allowed_cpu = 0
         for cpu_no in self.allowed_cpus:
             avg_allowed_cpu += self.get_cpu_usage(cpu_no)
         avg_allowed_cpu /= len(self.allowed_cpus)
-        print(f"average usage of allowed CPUs: {round(avg_allowed_cpu*100)}%")
+        print(f"Average usage of allowed CPUs: {round(avg_allowed_cpu*100)}%")
         
         for gpu_core_pct, gpu_mem_pct, gpu_no in [(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.allowed_gpus]:
             print(f"GPU No.{gpu_no}:\tcore={gpu_core_pct*100}%\tmem={gpu_mem_pct*100}%")
@@ -117,14 +125,15 @@ class Scheduler():
             return False
         
     def schedule(self):
-        if(len(self.jobs_queue) > 0):
+        if(len(self.jobs_queue) > 0 and self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct):
             self.task_list = [x for x in filter(self.filtermethod_process, self.task_list)]
             gpus_with_usage = sorted([(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.allowed_gpus])
-            for gpu_core_pct, gpu_mem_pct, gpu_no in gpus_with_usage:
-                if(gpu_mem_pct < self.gpu_memory_load_threshold_pct):
-                    self._add_job_to_gpu(self.jobs_queue.pop(), gpu_no)
-                    print(f"Added job to gpu No.{gpu_no}")
-                    break
+            if(self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct and len(self.task_list) < self.max_count_running_jobs):
+                for gpu_core_pct, gpu_mem_pct, gpu_no in gpus_with_usage:
+                    if(gpu_mem_pct < self.gpu_memory_load_threshold_pct):
+                        self._add_job_to_gpu(self.jobs_queue.pop(), gpu_no)
+                        print(f"Added job to gpu No.{gpu_no}")
+                        break
                     
     def has_finished(self):
         return (len(self.task_list) == 0 and len(self.jobs_queue) == 0)
