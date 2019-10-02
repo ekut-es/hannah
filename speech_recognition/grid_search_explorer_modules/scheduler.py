@@ -125,8 +125,8 @@ class Scheduler():
             return False
         
     def schedule(self):
-        if(len(self.jobs_queue) > 0 and self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct):
-            self.task_list = [x for x in filter(self.filtermethod_process, self.task_list)]
+	self.task_list = [x for x in filter(self.filtermethod_process, self.task_list)]
+        if(len(self.jobs_queue) > 0 and self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct): 
             gpus_with_usage = sorted([(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.allowed_gpus])
             if(self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct and len(self.task_list) < self.max_count_running_jobs):
                 for gpu_core_pct, gpu_mem_pct, gpu_no in gpus_with_usage:
