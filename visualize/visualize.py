@@ -74,7 +74,6 @@ with open(eval_csv_path, "r") as f:
                         for position, element in enumerate(value):
                             config[key + f"*{position}"] = float(element)
                     elif(isinstance(value, str)):
-                        #config[key], _ = find_index_mapping_for_string_key(key, value)
                         config[key] = value
                     else:        
                         config[key] = float(value)
@@ -90,18 +89,6 @@ pd_dataframe = pd_dataframe.drop(cols_to_drop, axis=1)
 
 print(pd_dataframe)
 
-#fig = px.parallel_coordinates(dataframe, color="accuracy", labels={"species_id": "Species",
-#                "sepal_width": "Sepal Width", "sepal_length": "Sepal Length",
-#                "petal_width": "Petal Width", "petal_length": "Petal Length", },
-#                             color_continuous_scale=px.colors.diverging.Tealrose,
-#                             color_continuous_midpoint=2)
-
-#fig = px.parallel_coordinates(pd_dataframe, color="accuracy",
-#                             color_continuous_scale=px.colors.diverging.Tealrose,
-#                             color_continuous_midpoint=50)
-
-#ig.show()
-
 dimensions = list()
 
 
@@ -110,6 +97,7 @@ for column in pd_dataframe:
     value = pd_dataframe[column][0]
     if(isinstance(value, str)):
         _, iteratelist = find_index_mapping_for_string_key(key=column, value=value)
+        valrange = [0, len(iteratelist) - 1]
         tickvals = [x for x in range(len(iteratelist))]
         ticktext = [x for _, x in iteratelist]
         values = list()
@@ -117,7 +105,7 @@ for column in pd_dataframe:
             for index, value in iteratelist:
                 if(value == value_dataframe):
                     values += [index]
-        dimension = dict(label=column, values=values, tickvals = tickvals, ticktext = ticktext)
+        dimension = dict(range=valrange, label=column, values=values, tickvals = tickvals, ticktext = ticktext)
             
     else:
         dimension = dict(label=column, values=pd_dataframe[column])
