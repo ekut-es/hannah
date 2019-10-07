@@ -123,7 +123,7 @@ def ask_values_again(modelname, key, default):
     elif(isinstance(default, int)):
         want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = (entrytype == "int"))
         if(want_start_stop_step != (entrytype == "int")):
-            return ask_values_first_time(modelname, key, default)
+            return ask_values_first_time(modelname = modelname, key = key, default = default, skip_ask_whether_predefined = True, skip_ask_want_start_stop_step = want_start_stop_step)
         if(want_start_stop_step):
             start = ask_int("Start", int(entries[0]))
             stop = ask_int("Stop", int(entries[1]))
@@ -137,7 +137,7 @@ def ask_values_again(modelname, key, default):
     elif(isinstance(default, float)):
         want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = (entrytype == "float"))
         if(want_start_stop_step != (entrytype == "float")):
-            return ask_values_first_time(modelname, key, default)
+            return ask_values_first_time(modelname = modelname, key = key, default = default, skip_ask_whether_predefined = True, skip_ask_want_start_stop_step = want_start_stop_step)
         if(want_start_stop_step):
             start = ask_float("Start", float(entries[0]))
             stop = ask_float("Stop", float(entries[1]))
@@ -166,7 +166,7 @@ def ask_values_again(modelname, key, default):
     assert result != None
     return result 
 
-def ask_values_first_time(modelname, key, default):
+def ask_values_first_time(modelname, key, default, skip_ask_whether_predefined = False, skip_ask_want_start_stop_step = True):
     result = None
     if(isinstance(default, bool)):
         result = f"{key};bool;{str(int(ask_bool(default=default)))}"
@@ -183,7 +183,9 @@ def ask_values_first_time(modelname, key, default):
             presetting = entries[0]
         result = f"{key};str;{ask_str(default=presetting)}"
     elif(isinstance(default, int)):
-        want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = True)
+        want_start_stop_step = skip_ask_want_start_stop_step
+        if(not skip_ask_whether_predefined):
+            want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = True)
         if(want_start_stop_step):
             start = ask_int("Start", default)
             stop = ask_int("Stop", default)
@@ -195,7 +197,8 @@ def ask_values_first_time(modelname, key, default):
             for value in results:
                 result += f";{str(value)}"          
     elif(isinstance(default, float)):
-        want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = True)
+        if(not skip_ask_whether_predefined):
+            want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = True)
         if(want_start_stop_step):
             start = ask_float("Start", default)
             stop = ask_float("Stop", default)

@@ -11,7 +11,7 @@ class Scheduler():
     allowed_gpus = []
     gpu_memory_load_threshold_pct = 0.4
     main_memory_load_threshold_pct = 0.5
-    max_count_running_jobs = 10
+    max_count_running_jobs = 20
     _gsettings = []
     _model_name = ""
     
@@ -47,7 +47,7 @@ class Scheduler():
         
     def get_cpu_usage(self, cpu_no):
         cpu_usages = psutil.cpu_percent(interval=None, percpu=True)
-        return cpu_usages[cpu_no]
+        return cpu_usages[cpu_no] / 100
 
     def get_main_memory_usage_pct(self):
         return psutil.virtual_memory().percent / 100
