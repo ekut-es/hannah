@@ -27,7 +27,7 @@ class SerializableModule(nn.Module):
         self.load_state_dict(torch.load(filename,
                                         map_location=lambda storage, loc: storage),
                              strict=False)
-    
+
 
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
@@ -36,7 +36,7 @@ class EarlyStopping:
         Args:
             patience (int): How long to wait after last time validation loss improved.
                             Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement. 
+            verbose (bool): If True, prints a message for each validation loss improvement.
                             Default: False
         """
         self.patience = patience
@@ -63,7 +63,7 @@ class EarlyStopping:
             self.counter = 0
 
         return self.early_stop
-        
+
 
 def set_seed(config):
     seed = config["seed"]
@@ -82,7 +82,7 @@ def config_pylogger(log_cfg_file, experiment_name, output_dir='logs'):
     directory with this name.  This can be useful when accessing experiment data from
     TensorBoard, for example.
     """
-    exp_full_name = "logfile" if experiment_name is None else str(experiment_name) 
+    exp_full_name = "logfile" if experiment_name is None else str(experiment_name)
     logdir = output_dir
 
     if not os.path.exists(logdir):
@@ -92,7 +92,7 @@ def config_pylogger(log_cfg_file, experiment_name, output_dir='logs'):
     if os.path.isfile(log_cfg_file):
         logging.config.fileConfig(log_cfg_file, defaults={'logfilename': log_filename})
 
-    
+
     msglogger = logging.getLogger()
     msglogger.logdir = logdir
     msglogger.log_filename = log_filename
@@ -116,7 +116,7 @@ def log_execution_env_state(distiller_gitroot='.'):
     logger = logging.getLogger()
 
     logger.info("Environment info:")
-    
+
     def log_git_state(gitroot):
         """Log the state of the git repository.
         It is useful to know what git tag we're using, and if we have outstanding code.
@@ -137,7 +137,7 @@ def log_execution_env_state(distiller_gitroot='.'):
         logger.info("    Active Git branch: %s", branch_name)
         logger.info("    Git commit: %s" % repo.head.commit.hexsha)
 
-    logger.info("  Number of CPUs: %d", len(os.sched_getaffinity(0)))
+    #logger.info("  Number of CPUs: %d", len(os.sched_getaffinity(0)))
     logger.info("  Number of GPUs: %d", torch.cuda.device_count())
     logger.info("  CUDA version: %s", torch.version.cuda)
     logger.info("  CUDNN version: %s", torch.backends.cudnn.version())

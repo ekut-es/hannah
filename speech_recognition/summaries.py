@@ -28,7 +28,7 @@ def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=F
     """
 
     msglogger = logging.getLogger()
-    
+
     try:
         model = distiller.make_non_parallel_copy(model)
         dummy_input = dummy_input.to(distiller.model_device(model))
@@ -44,7 +44,7 @@ def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=F
 
 def model_summary(model, dummy_input, what):
     msglogger = logging.getLogger()
-    
+
     if what == 'sparsity':
         pylogger = PythonLogger(msglogger)
         csvlogger = CsvLogger('weights.csv')
@@ -73,7 +73,6 @@ def model_summary(model, dummy_input, what):
             msglogger.info("Estimated Activations: " + "{:,}".format(estimated_acts))
         except RuntimeError as e:
             print("Could not create performance summary", str(e))
-
 
         res = OrderedDict()
         res["Total MACs"] = total_macs

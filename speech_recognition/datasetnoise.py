@@ -231,9 +231,9 @@ class SpeechDataset(data.Dataset):
         else:
             bg_noise = np.zeros(data.shape[0])
 
-#        if label == 0:
- #           bg_noise = np.zeros(data.shape[0])
-  #          print("label is 0")
+        if label == 0:
+            bg_noise = np.zeros(data.shape[0])
+            print("label is 0")
         if random.random() < self.noise_prob or silence:
             a = random.random()# * 0.1
             data = np.clip(a * bg_noise + data, -1, 1)
@@ -423,10 +423,10 @@ class SpeechHotwordDataset(SpeechDataset):
         config = SpeechDataset.default_config()
         config["loss"].default = "cross_entropy"
         config["n_labels"].default = 3
-        
-        # Splits the dataset in 1/3 
+        # Splits the dataset in 1/3
         config["silence_prob"].default = 1.0
         config["unknown_prob"].default = 1.0
+
         return config
 
     @classmethod
@@ -529,12 +529,9 @@ class KeyWordDataset(SpeechDataset):
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
 
-        self.label_names = {0 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN}
-        l_noise = 2
+        self.label_names = {2 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN, 0: self.LABEL_NOISE}
         for i, word in enumerate(config["wanted_words"]):
-            self.label_names[i+2] = word
-            l_noise = l_noise +1
-        self.label_names[l_noise] = self.LABEL_NOISE
+            self.label_names[i+3] = word
 
     @classmethod
     def splits(cls, config):
@@ -548,12 +545,8 @@ class KeyWordDataset(SpeechDataset):
         test_pct = config["test_pct"]
         use_default_split = config["use_default_split"]
 
-        words = {}
-        l_noise = 2
-        for i, word in enumerate(wanted_words):
-            words.update({word:i+2})
-            l_noise = l_noise +1
-        words.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1, cls.LABEL_NOISE:l_noise})
+        words = {word: i + 3 for i, word in enumerate(wanted_words)}
+        words.update({cls.LABEL_SILENCE:2, cls.LABEL_UNKNOWN:1, cls.LABEL_NOISE:0})
         sets = [{}, {}, {}]
         unknowns = [0] * 3
         bg_noise_files = []
@@ -579,7 +572,7 @@ class KeyWordDataset(SpeechDataset):
                 continue
             if folder_name in words:
                 label = words[folder_name]
-            elif folder_name == "_background_noise_chunks_":
+            elif folder_name == "_background_noise_chunks":
                 label = words[cls.LABEL_NOISE]
             else:
                 label = words[cls.LABEL_UNKNOWN]
