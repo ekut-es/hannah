@@ -226,7 +226,7 @@ def evaluate(model_name, config, model=None, test_set=None, loggers=[]):
         
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        reset_symlink(os.path.join(log_dir, "eval.log"), os.path.join(output_dir, "eval.log"))    
+        #reset_symlink(os.path.join(log_dir, "eval.log"), os.path.join(output_dir, "eval.log"))    
     
 
     if not loggers:
@@ -396,17 +396,17 @@ def train(model_name, config, check_sanity=False):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
         
-    reset_symlink(os.path.join(log_dir, "train.log"), os.path.join(output_dir, "train.log"))
+    #reset_symlink(os.path.join(log_dir, "train.log"), os.path.join(output_dir, "train.log"))
     
         
     dump_config(log_dir, config)
-    reset_symlink(os.path.join(log_dir, "config.json"), os.path.join(output_dir, "config.json"))
+    #reset_symlink(os.path.join(log_dir, "config.json"), os.path.join(output_dir, "config.json"))
         
     csv_log_name = os.path.join(log_dir, "train.csv")
     csv_log_file = open(csv_log_name, "w")
     csv_log_writer = csv.DictWriter(csv_log_file, fieldnames=["Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
     csv_log_writer.writeheader()
-    reset_symlink(csv_log_name, os.path.join(output_dir, "train.csv"))
+    #reset_symlink(csv_log_name, os.path.join(output_dir, "train.csv"))
     
     train_set, dev_set, test_set = config["dataset_cls"].splits(config)
 
@@ -492,7 +492,7 @@ def train(model_name, config, check_sanity=False):
         model.cuda()
 
     draw_classifier_to_file(model,
-                            os.path.join(output_dir, 'model.png'),
+                            os.path.join(log_dir, 'model.png'),
                             dummy_input)
      
     performance_summary = model_summary(model, dummy_input, 'performance')
@@ -634,7 +634,7 @@ def train(model_name, config, check_sanity=False):
             csv_log_writer.writerow({"Phase" : "Val", "Epoch" : epoch_idx, "Accuracy" : avg_acc, "Loss" : avg_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
             
             if avg_acc > max_acc:
-                save_model(output_dir, model, test_set, config=config)
+                save_model(log_dir, model, test_set, config=config)
                 max_acc = avg_acc
                 
             # Stop training if the validation loss has not improved for multiple iterations
@@ -651,7 +651,7 @@ def train(model_name, config, check_sanity=False):
                 new_lr = optimizer.param_groups[0]['lr']
                 if new_lr != last_lr:
                     last_lr = new_lr
-                    model.load(os.path.join(output_dir, "model.pt"))
+                    model.load(os.path.join(log_dir, "model.pt"))
         
             else:
                 lr_scheduler.step()
@@ -668,13 +668,10 @@ def train(model_name, config, check_sanity=False):
 
     else:
         msglogger.info("Running final test")
-        model.load(os.path.join(output_dir, "model.pt"))
-    
+        model.load(os.path.join(log_dir, "model.pt"))
         test_accuracy, test_loss, confusion_matrix = evaluate(model_name, config, model, test_set)
         csv_log_writer.writerow({"Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
-        
         csv_eval_log_name = os.path.join(output_dir, "eval.csv")
-        
         with open(csv_eval_log_name, 'a') as csv_eval_file:
             fcntl.lockf(csv_eval_file, fcntl.LOCK_EX)
             csv_eval_writer = csv.DictWriter(csv_eval_file, fieldnames=["Hash","Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
