@@ -9,9 +9,9 @@ class Scheduler():
     allowed_cpus = range(1, 152)
     available_gpus = [0, 1, 2, 3]
     allowed_gpus = []
-    gpu_memory_load_threshold_pct = 0.4
+    gpu_memory_load_threshold_pct = 0.9
     main_memory_load_threshold_pct = 0.5
-    max_count_running_jobs = 20
+    max_count_running_jobs_per_gpu = 3
     _gsettings = []
     _model_name = ""
     
@@ -28,6 +28,13 @@ class Scheduler():
         
     def set_allowed_gpus(self, gpus):
         self.allowed_gpus = gpus
+
+    def get_count_processes_by_gpu(self, gpu_no):
+        counter = 0
+        for gpu_no_list, _ in self.task_list:
+            if(gpu_no_list == gpu_no):
+                counter += 1
+        return counter
     
     def get_gpu_memory_usage_pct(self, gpu_no):
         GPUs = GPUtil.getGPUs()
@@ -89,7 +96,7 @@ class Scheduler():
         
         with open("out.log","wb") as stdout, open("err.log","wb") as stderr:
             process = subprocess.Popen(args,stdout=stdout,stderr=stderr)
-        self.task_list.insert(0, process)
+        self.task_list.insert(0, (gpu_no, process))
         
     def add_job_to_queue(self, variant):
         self.jobs_queue.insert(0, variant)
@@ -117,7 +124,8 @@ class Scheduler():
         self.print_job_status()
         print()
         
-    def filtermethod_process(self, process):
+    def filtermethod_process(self, item):
+        _, process = item
         if(process.poll() == None):
             return True
         else:
@@ -128,9 +136,9 @@ class Scheduler():
         self.task_list = [x for x in filter(self.filtermethod_process, self.task_list)]
         if(len(self.jobs_queue) > 0 and self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct): 
             gpus_with_usage = sorted([(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.allowed_gpus])
-            if(self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct and len(self.task_list) < self.max_count_running_jobs):
+            if(self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct):
                 for gpu_core_pct, gpu_mem_pct, gpu_no in gpus_with_usage:
-                    if(gpu_mem_pct < self.gpu_memory_load_threshold_pct):
+                    if(gpu_mem_pct < self.gpu_memory_load_threshold_pct and self.get_count_processes_by_gpu(gpu_no) < self.max_count_running_jobs_per_gpu):
                         self._add_job_to_gpu(self.jobs_queue.pop(), gpu_no)
                         print(f"Added job to gpu No.{gpu_no}")
                         break
