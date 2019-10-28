@@ -94,6 +94,7 @@ To run only the evalution of a model use:
 ## Training - VAD
 
 Training for the simple-vad, bottleneck-vad and small-vad can be invoked by:
+
     python3 -m speech_recognition.train --model simple-vad      --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --lr 0.001 --silence_prob 0 --early_stopping 3 --input_length 6360 --stride 2 --conv1_size 5 --conv1_features 40 --conv2_size 5 --conv2_features 20 --conv3_size 5 --conv3_features 10 --fc_size 40
     python3 -m speech_recognition.train --model bottleneck-vad  --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --lr 0.001 --n-mfcc 40 --silence_prob 0 --early_stopping 3 --input_length 6360 --stride 2 --conv1_size 5 --conv1_features 40 --conv2_size 5 --conv2_features 20 --conv3_size 5 --conv3_features 10 --fc_size 250
     python3 -m speech_recognition.train --model small-vad       --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2
