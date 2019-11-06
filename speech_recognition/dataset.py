@@ -14,11 +14,13 @@ import numpy as np
 import scipy.signal as signal
 import torch
 import torch.utils.data as data
-
+import hashlib
+import redis
+import pickle
 
 from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
-
+import time
 
 class SimpleCache(dict):
     """ A simple in memory cache used for audio files and preprocessed features"""
@@ -36,6 +38,35 @@ class SimpleCache(dict):
             self.n_keys += 1
             super().__setitem__(key, value)
         return value
+
+class RedisCache(SimpleCache):
+    def __init__(self, limit):
+        super().__init__(limit)
+        self.__cacheclient = redis.Redis(host="localhost", port=6379, db=0)
+
+    def __getitem__(self, key):
+        retval = None
+        try:
+            retval = super().__getitem__(key)
+        except KeyError:
+            keydump = pickle.dumps(key)
+            m = hashlib.sha256()
+            m.update(keydump)
+            hashedkey = m.digest()
+            retval = self.__cacheclient.get(hashedkey)
+            if(retval == None):
+                raise KeyError()
+            else:
+                retval =  pickle.loads(retval)
+                super().__setitem__(key, retval)
+        return retval
+    def __setitem__(self, key, value):
+        if(not key in super().keys()):
+            m = hashlib.sha256()
+       	    m.update(pickle.dumps(key))
+            hashedkey = m.digest()
+            self.__cacheclient.set(hashedkey, pickle.dumps(value))
+        return super().__setitem__(key, value)
 
 class DatasetType(Enum):
     """ The type of a dataset partition e.g. train, dev, test """
@@ -64,8 +95,8 @@ class SpeechDataset(data.Dataset):
         self.extract_loudest = config["extract_loudest"]
         self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
-        self._audio_cache = SimpleCache(config["cache_size"])
-        self._file_cache = SimpleCache(config["cache_size"])
+        self._audio_cache = RedisCache(config["cache_size"])
+        self._file_cache = RedisCache(config["cache_size"])
         self.cache_prob = config["cache_prob"]
         self.unknown_class = 2 if self.loss_function == "ctc" else 1
         self.silence_class = 1 if self.loss_function == "ctc" else 0
