@@ -20,7 +20,6 @@ import pickle
 
 from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
-import time
 
 class SimpleCache(dict):
     """ A simple in memory cache used for audio files and preprocessed features"""
@@ -45,28 +44,25 @@ class RedisCache(SimpleCache):
         self.__cacheclient = redis.Redis(host="localhost", port=6379, db=0)
 
     def __getitem__(self, key):
-        retval = None
         try:
-            retval = super().__getitem__(key)
+            return super().__getitem__(key)
         except KeyError:
             keydump = pickle.dumps(key)
             m = hashlib.sha256()
             m.update(keydump)
             hashedkey = m.digest()
-            retval = self.__cacheclient.get(hashedkey)
-            if(retval == None):
-                raise KeyError()
-            else:
-                retval =  pickle.loads(retval)
-                super().__setitem__(key, retval)
-        return retval
+            data = pickle.loads(self.__cacheclient[hashedkey])
+            super().__setitem__(key, data)
+            return data
+
     def __setitem__(self, key, value):
         if(not key in super().keys()):
             m = hashlib.sha256()
        	    m.update(pickle.dumps(key))
             hashedkey = m.digest()
-            self.__cacheclient.set(hashedkey, pickle.dumps(value))
-        return super().__setitem__(key, value)
+            self.__cacheclient[hashedkey] = pickle.dumps(value)
+            super().__setitem__(key, value)
+        return value
 
 class DatasetType(Enum):
     """ The type of a dataset partition e.g. train, dev, test """
@@ -95,8 +91,10 @@ class SpeechDataset(data.Dataset):
         self.extract_loudest = config["extract_loudest"]
         self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
+        random.seed(12345)
+        self._random_last_state_preprocess = random.getstate()
         self._audio_cache = RedisCache(config["cache_size"])
-        self._file_cache = RedisCache(config["cache_size"])
+        self._file_cache = SimpleCache(config["cache_size"])
         self.cache_prob = config["cache_prob"]
         self.unknown_class = 2 if self.loss_function == "ctc" else 1
         self.silence_class = 1 if self.loss_function == "ctc" else 0
@@ -220,12 +218,22 @@ class SpeechDataset(data.Dataset):
         """ Run preprocessing and feature extraction """
         if silence:
             example = "__silence__"
-        if random.random() <= self.cache_prob:
-            try:
-                return self._audio_cache[example]
-            except KeyError:
-                pass
+        """ Backup random status """
+        random_backup_state = random.getstate()
+        randomstate = self._random_last_state_preprocess
+        random.setstate(self._random_last_state_preprocess)
+        random_number = random.random()
+        self._random_last_state_preprocess = random.getstate()
+        random.setstate(random_backup_state)
 
+        if random_number <= self.cache_prob:
+            randomstate = None
+
+        try:
+            return self._audio_cache[(randomstate, example)]
+        except KeyError:
+            pass
+       
         
         in_len = self.input_length
 
@@ -278,9 +286,8 @@ class SpeechDataset(data.Dataset):
         if self.loss_function != "ctc":
             assert data.shape[0] == self.height
             assert data.shape[1] == self.width
-
-        self._audio_cache[example] = data
-
+        
+        self._audio_cache[(randomstate, example)] = data
         return data
 
     def get_class(self, index):
@@ -316,7 +323,7 @@ class SpeechDataset(data.Dataset):
             data = self.preprocess(None, silence=True)
         else:
             data = self.preprocess(self.audio_files[index])
-            
+
         return data, data.shape[1], label, label.shape[0] 
 
     def __len__(self):
