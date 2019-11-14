@@ -57,10 +57,11 @@ class RedisCache(SimpleCache):
 
     def __setitem__(self, key, value):
         if(not key in super().keys()):
-            m = hashlib.sha256()
-       	    m.update(pickle.dumps(key))
-            hashedkey = m.digest()
-            self.__cacheclient[hashedkey] = pickle.dumps(value)
+            if(not key in self.__cacheclient):
+                m = hashlib.sha256()
+       	        m.update(pickle.dumps(key))
+                hashedkey = m.digest()
+                self.__cacheclient[hashedkey] = pickle.dumps(value)
             super().__setitem__(key, value)
         return value
 
@@ -91,12 +92,6 @@ class SpeechDataset(data.Dataset):
         self.extract_loudest = config["extract_loudest"]
         self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
-        random.seed(0)
-        torch.manual_seed(0)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-        np.random.seed(0)
-        self._random_last_state_preprocess = random.getstate()
         self._audio_cache = RedisCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
         self.cache_prob = config["cache_prob"]
@@ -222,21 +217,12 @@ class SpeechDataset(data.Dataset):
         """ Run preprocessing and feature extraction """
         if silence:
             example = "__silence__"
-        """ Backup random status """
-        random_backup_state = random.getstate()
-        randomstate = self._random_last_state_preprocess
-        random.setstate(self._random_last_state_preprocess)
-        random_number = random.random()
-        self._random_last_state_preprocess = random.getstate()
-        random.setstate(random_backup_state)
-
-        if random_number <= self.cache_prob:
-            randomstate = None
-
-        try:
-            return self._audio_cache[(randomstate, example)]
-        except KeyError:
-            pass
+        
+        if random.random() <= self.cache_prob: 
+            try:
+                return self._audio_cache[example]
+            except KeyError:
+                pass
        
         
         in_len = self.input_length
@@ -291,7 +277,7 @@ class SpeechDataset(data.Dataset):
             assert data.shape[0] == self.height
             assert data.shape[1] == self.width
         
-        self._audio_cache[(randomstate, example)] = data
+        self._audio_cache[example] = data
         return data
 
     def get_class(self, index):
