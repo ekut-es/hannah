@@ -91,7 +91,11 @@ class SpeechDataset(data.Dataset):
         self.extract_loudest = config["extract_loudest"]
         self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
-        random.seed(12345)
+        random.seed(0)
+        torch.manual_seed(0)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        np.random.seed(0)
         self._random_last_state_preprocess = random.getstate()
         self._audio_cache = RedisCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
