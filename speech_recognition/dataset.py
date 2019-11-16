@@ -57,10 +57,10 @@ class RedisCache(SimpleCache):
 
     def __setitem__(self, key, value):
         if(not key in super().keys()):
-            if(not key in self.__cacheclient):
-                m = hashlib.sha256()
-       	        m.update(pickle.dumps(key))
-                hashedkey = m.digest()
+            m = hashlib.sha256()
+            m.update(pickle.dumps(key))
+            hashedkey = m.digest()
+            if(not hashedkey in self.__cacheclient):
                 self.__cacheclient[hashedkey] = pickle.dumps(value)
             super().__setitem__(key, value)
         return value
@@ -92,7 +92,8 @@ class SpeechDataset(data.Dataset):
         self.extract_loudest = config["extract_loudest"]
         self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
-        self._audio_cache = RedisCache(config["cache_size"])
+        self.randomstates = dict()
+        self._features_cache = RedisCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
         self.cache_prob = config["cache_prob"]
         self.unknown_class = 2 if self.loss_function == "ctc" else 1
@@ -217,14 +218,7 @@ class SpeechDataset(data.Dataset):
         """ Run preprocessing and feature extraction """
         if silence:
             example = "__silence__"
-        
-        if random.random() <= self.cache_prob: 
-            try:
-                return self._audio_cache[example]
-            except KeyError:
-                pass
-       
-        
+
         in_len = self.input_length
 
         if silence:
@@ -277,7 +271,6 @@ class SpeechDataset(data.Dataset):
             assert data.shape[0] == self.height
             assert data.shape[1] == self.width
         
-        self._audio_cache[example] = data
         return data
 
     def get_class(self, index):
@@ -308,11 +301,43 @@ class SpeechDataset(data.Dataset):
         
         label = torch.Tensor(self.get_class(index))
         label = label.long()
-        
-        if index >= len(self.audio_labels):
-            data = self.preprocess(None, silence=True)
-        else:
-            data = self.preprocess(self.audio_files[index])
+
+        features_config = (self.features,
+                               self.samplingrate,
+                               self.n_mels,
+                               self.n_mfcc,
+#                               self.dct_filters,
+                               self.freq_min,
+                               self.freq_max,
+                               self.window_ms,
+                               self.stride_ms)
+        random_state_backup = random.getstate()
+        try:
+            random.setstate(self.randomstates[index])
+        except KeyError:
+            random.seed(0)
+
+        variant_nr = random.randint(1, 10)
+        self.randomstates[index] = random.getstate()
+        random.setstate(random_state_backup)
+
+        is_silence = (index >= len(self.audio_labels))
+        audio_file = None
+        if not is_silence:
+            audio_file = self.audio_files[index]
+        features_constellation = (audio_file, features_config, variant_nr, is_silence)
+
+        data = None
+
+#        print(f"fc={features_constellation}")
+        try:
+            data = self._features_cache[features_constellation]
+        except KeyError:
+            if is_silence:
+                data = self.preprocess(None, silence=True)
+            else:
+                data = self.preprocess(self.audio_files[index])
+            self._features_cache[features_constellation] = data
 
         return data, data.shape[1], label, label.shape[0] 
 
