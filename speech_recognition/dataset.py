@@ -95,7 +95,7 @@ class SpeechDataset(data.Dataset):
         self.randomstates = dict()
         self._features_cache = RedisCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
-        self.cache_prob = config["cache_prob"]
+        self.cache_variants = config["cache_variants"]
         self.unknown_class = 2 if self.loss_function == "ctc" else 1
         self.silence_class = 1 if self.loss_function == "ctc" else 0
         n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
@@ -183,9 +183,9 @@ class SpeechDataset(data.Dataset):
         config["cache_size"] = ConfigOption(category="Cache Config",
                                             default=200000,
                                             desc="Size of the caches for preprocessed and raw data")
-        config["cache_prob"] = ConfigOption(category="Cache Config",
-                                            default=0.8,
-                                            desc="Probabilty of using a cached sample during training")
+        config["cache_variants"] = ConfigOption(category="Cache Config",
+                                            default=10,
+                                            desc="Number of cached variants per sample")
 
         return config
 
@@ -296,9 +296,9 @@ class SpeechDataset(data.Dataset):
                 classcounter[c] += 1
 
         return classcounter
-                
+
     def __getitem__(self, index):
-        
+
         label = torch.Tensor(self.get_class(index))
         label = label.long()
 
@@ -306,18 +306,18 @@ class SpeechDataset(data.Dataset):
                                self.samplingrate,
                                self.n_mels,
                                self.n_mfcc,
-#                               self.dct_filters,
                                self.freq_min,
                                self.freq_max,
                                self.window_ms,
                                self.stride_ms)
+
         random_state_backup = random.getstate()
         try:
             random.setstate(self.randomstates[index])
         except KeyError:
             random.seed(0)
 
-        variant_nr = random.randint(1, 10)
+        variant_nr = random.randint(1, max(1,self.cache_variants))
         self.randomstates[index] = random.getstate()
         random.setstate(random_state_backup)
 
@@ -329,7 +329,6 @@ class SpeechDataset(data.Dataset):
 
         data = None
 
-#        print(f"fc={features_constellation}")
         try:
             data = self._features_cache[features_constellation]
         except KeyError:
@@ -339,7 +338,7 @@ class SpeechDataset(data.Dataset):
                 data = self.preprocess(self.audio_files[index])
             self._features_cache[features_constellation] = data
 
-        return data, data.shape[1], label, label.shape[0] 
+        return data, data.shape[1], label, label.shape[0]
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence

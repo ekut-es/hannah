@@ -372,7 +372,6 @@ def main():
         scheduler.add_job_to_queue(variant)
 
     while(not scheduler.has_finished()):
-        scheduler.print_status()
         scheduler.schedule()
         time.sleep(1)
 

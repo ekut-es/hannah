@@ -1,11 +1,12 @@
 import subprocess
+from subprocess import DEVNULL
 import psutil
 import GPUtil
 import shlex
+import datetime
 
 class Scheduler():
-    available_cpus = range(1, 152)
-    available_gpus = [0, 1, 2, 3]
+    available_cpus = [x for x in range(1, psutil.cpu_count(logical=True))]
     allowed_gpus = []
     gpu_memory_load_threshold_pct = 0.9
     main_memory_load_threshold_pct = 0.5
@@ -93,35 +94,42 @@ class Scheduler():
 
         args = shlex.split(cmd)
 
-        with open("out.log","wb") as stdout, open("err.log","wb") as stderr:
-            process = subprocess.Popen(args,stdout=stdout,stderr=stderr)
+        process = subprocess.Popen(args,stdout=DEVNULL,stderr=DEVNULL)
         self.task_list.insert(0, (gpu_no, process))
 
     def add_job_to_queue(self, variant):
         self.jobs_queue.insert(0, variant)
 
-    def print_resource_status(self):
-        print("===== Resource status=======")
-        print(f"Main Memory Load: {round(self.get_main_memory_usage_pct() * 100)}%")
+    def get_resource_status(self):
+        strings_to_print = []
+        datetime_str = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        strings_to_print += [f"Time: {datetime_str}"]
+        strings_to_print += ["======= Resource status ======="]
+        main_memory_usage_pct_str = "{0:.2f}%".format(self.get_main_memory_usage_pct() * 100)
+        strings_to_print += [f"Main Memory Load: {main_memory_usage_pct_str}"]
         avg_allowed_cpu = 0
         for cpu_no in self.available_cpus:
             avg_allowed_cpu += self.get_cpu_usage(cpu_no)
         avg_allowed_cpu /= len(self.available_cpus)
-        print(f"Average usage of allowed CPUs: {round(avg_allowed_cpu*100)}%")
+        avg_allowed_cpu_pct_str = "{0:.2f}%".format(avg_allowed_cpu * 100)
+        strings_to_print += [f"Average usage of allowed CPUs: {avg_allowed_cpu_pct_str}"]
 
         for gpu_core_pct, gpu_mem_pct, gpu_no in [(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.allowed_gpus]:
-            print(f"GPU No.{gpu_no}:\tcore={gpu_core_pct*100}%\tmem={gpu_mem_pct*100}%")
+            gpu_core_pct_str = "{0:.2f}%".format(gpu_core_pct * 100)
+            gpu_mem_pct_str = "{0:.2f}%".format(gpu_mem_pct * 100)
+            strings_to_print += [f"GPU No.{gpu_no}:\tcore={gpu_core_pct_str}\tmem={gpu_mem_pct_str}"]
 
-    def print_job_status(self):
-        print("===== Job status=======")
-        print(f"Jobs: remaining: {len(self.jobs_queue)}\tin-progress: {len(self.task_list)}\tfinished: {self.jobs_finished}")
+        return strings_to_print
 
-    def print_status(self):
-        print()
-        self.print_resource_status()
-        print()
-        self.print_job_status()
-        print()
+    def get_job_status(self):
+        strings_to_print = ["\n"]
+        strings_to_print += ["======= Job status ======="]
+        strings_to_print += [f"Jobs: remaining: {len(self.jobs_queue)}\tin-progress: {len(self.task_list)}\tfinished: {self.jobs_finished}"]
+        return strings_to_print
+
+    def get_status(self):
+        return self.get_resource_status() + self.get_job_status()
+
 
     def filtermethod_process(self, item):
         _, process = item
@@ -132,6 +140,7 @@ class Scheduler():
             return False
 
     def schedule(self):
+        strings_to_print = self.get_status()
         self.task_list = [x for x in filter(self.filtermethod_process, self.task_list)]
         if(len(self.jobs_queue) > 0 and self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct):
             gpus_with_usage = sorted([(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.allowed_gpus])
@@ -139,8 +148,12 @@ class Scheduler():
                 for gpu_core_pct, gpu_mem_pct, gpu_no in gpus_with_usage:
                     if(gpu_mem_pct < self.gpu_memory_load_threshold_pct and self.get_count_processes_by_gpu(gpu_no) < self.max_count_running_jobs_per_gpu):
                         self._add_job_to_gpu(self.jobs_queue.pop(), gpu_no)
-                        print(f"Added job to gpu No.{gpu_no}")
+                        strings_to_print += [f"--> Added job to gpu No.{gpu_no}"]
                         break
+        for string in strings_to_print:
+            print(string)
+        print()
+        print()
 
     def has_finished(self):
         return (len(self.task_list) == 0 and len(self.jobs_queue) == 0)
