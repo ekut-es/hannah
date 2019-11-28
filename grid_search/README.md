@@ -17,13 +17,17 @@ Beside the implemented features, the following optimizations come with Grid-Sear
 ## Prerequisites
 
 - ### Common Setup
-Follow the instructions in root README.md. Be sure you are in a proper Python environment.
+    Follow the instructions in root README.md. Be sure you are in a proper Python environment.
+
 - ### Python modules
-You have to install via pip
-   - GPUtil 1.4.0
-   - psutil 5.5.0
-   - redis  latest
-   - plotly 4.1.1 (Only for visualization)
+    You have to install via pip
+    - GPUtil 1.4.0
+    - psutil 5.5.0
+    - redis  latest
+    - plotly 4.1.1 (Only for visualization)
+
+
+
 - ### Redis
     - Determine the lastest Redis NoSQL Server version from https://redis.io/download
     - Compile Redis and run redis-server
@@ -35,6 +39,7 @@ You have to install via pip
       $ src/redis-server
       ```
       By default, Redis stores the database in certain intervals on disk. If this is not wanted, please pass a fitting configuration file to the server. 
+
     - To monitor Redis performance run
       ```console
       $ src/redis-cli --stat
