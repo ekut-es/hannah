@@ -221,7 +221,7 @@ def main():
             user_config = json.load(config_file)
         
     
-    model_name, config = build_config(extra_config=ChainMap(user_config, tcml_config))
+    model_name, config = build_config(extra_config=ChainMap(user_config, tcml_config))[0:2]
 
     if not config["tcml_job_id"]:
         config["tcml_job_id"] = str(uuid.uuid4())

@@ -768,6 +768,14 @@ def build_config(extra_config={}):
                 del default_config["dataset"]
             if "dataset_cls" in default_config:
                 del default_config["dataset_cls"]
+            if "config" in default_config:
+                del default_config["config"]
+            if "config_vad" in default_config:
+                del default_config["config_vad"]
+            if "config_keyword" in default_config:
+                del default_config["config_keyword"]
+            if "model" in default_config:
+                del default_config["model"]
 
     default_config_vad = {}
     if config.config_vad:
