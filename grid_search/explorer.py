@@ -362,12 +362,11 @@ def main():
         splitted_line = line.split(GENERAL_SETTINGS_FILE_DELIMITER)
         gsettings[splitted_line[0]] = splitted_line[1].rstrip("\n")
 
-    scheduler = Scheduler()
 
-    scheduler.set_model_name(model_name)
-    scheduler.set_allowed_gpus(gpus)
-    scheduler.set_general_settings(gsettings)
-    scheduler.set_experiment_id(experiment_id)
+    scheduler_config = Scheduler.Config(model_name, experiment_id, gsettings, gpus)
+
+    scheduler = Scheduler(scheduler_config)
+
     for variant in variants:
         scheduler.add_job_to_queue(variant)
 

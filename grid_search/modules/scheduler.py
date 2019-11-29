@@ -6,30 +6,23 @@ import shlex
 import datetime
 
 class Scheduler():
-    available_cpus = [x for x in range(1, psutil.cpu_count(logical=True))]
-    allowed_gpus = []
-    gpu_memory_load_threshold_pct = 0.9
-    main_memory_load_threshold_pct = 0.5
-    max_count_running_jobs_per_gpu = 3
-    _gsettings = []
-    _model_name = None
-    _experiment_id = None
-    jobs_finished = 0
 
-    task_list = []
-    jobs_queue = []
+    class Config():
+        def __init__(self, model_name, experiment_id, gsettings, allowed_gpus):
+            self.available_cpus = [x for x in range(1, psutil.cpu_count(logical=True))]
+            self.allowed_gpus = allowed_gpus
+            self.gsettings = gsettings
+            self.gpu_memory_load_threshold_pct = float(gsettings["gpu_memory_load_threshold_pct"])
+            self.main_memory_load_threshold_pct = float(gsettings["main_memory_load_threshold_pct"])
+            self.max_count_running_jobs_per_gpu = int(gsettings["max_count_running_jobs_per_gpu"])
+            self.model_name = model_name
+            self.experiment_id = experiment_id
 
-    def set_general_settings(self, gsettings):
-        self._gsettings = gsettings
-
-    def set_model_name(self, model_name):
-        self._model_name = model_name
-
-    def set_experiment_id(self, experiment_id):
-        self._experiment_id = experiment_id
-
-    def set_allowed_gpus(self, gpus):
-        self.allowed_gpus = gpus
+    def __init__(self, config):
+        self.jobs_finished = 0
+        self.task_list = []
+        self.jobs_queue = []
+        self.config = config
 
     def get_count_processes_by_gpu(self, gpu_no):
         counter = 0
@@ -62,19 +55,19 @@ class Scheduler():
 
     def _add_job_to_gpu(self, variant, gpu_no): 
         cmd = ""
-        cmd += self._gsettings["python"]
+        cmd += self.config.gsettings["python"]
         cmd += " "
         cmd += "-m"
         cmd += " "
-        cmd += self._gsettings["module"]
+        cmd += self.config.gsettings["module"]
         cmd += " "
         cmd += "--model"
         cmd += " "
-        cmd += self._model_name
+        cmd += self.config.model_name
         cmd += " "
         cmd += "--experiment-id"
         cmd += " "
-        cmd += self._experiment_id
+        cmd += self.config.experiment_id
         cmd += " "
         for key, setting in variant:
             if(isinstance(setting, list)):
@@ -108,13 +101,13 @@ class Scheduler():
         main_memory_usage_pct_str = "{0:.2f}%".format(self.get_main_memory_usage_pct() * 100)
         strings_to_print += [f"Main Memory Load: {main_memory_usage_pct_str}"]
         avg_allowed_cpu = 0
-        for cpu_no in self.available_cpus:
+        for cpu_no in self.config.available_cpus:
             avg_allowed_cpu += self.get_cpu_usage(cpu_no)
-        avg_allowed_cpu /= len(self.available_cpus)
+        avg_allowed_cpu /= len(self.config.available_cpus)
         avg_allowed_cpu_pct_str = "{0:.2f}%".format(avg_allowed_cpu * 100)
         strings_to_print += [f"Average usage of allowed CPUs: {avg_allowed_cpu_pct_str}"]
 
-        for gpu_core_pct, gpu_mem_pct, gpu_no in [(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.allowed_gpus]:
+        for gpu_core_pct, gpu_mem_pct, gpu_no in [(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.config.allowed_gpus]:
             gpu_core_pct_str = "{0:.2f}%".format(gpu_core_pct * 100)
             gpu_mem_pct_str = "{0:.2f}%".format(gpu_mem_pct * 100)
             strings_to_print += [f"GPU No.{gpu_no}:\tcore={gpu_core_pct_str}\tmem={gpu_mem_pct_str}"]
@@ -142,11 +135,11 @@ class Scheduler():
     def schedule(self):
         strings_to_print = self.get_status()
         self.task_list = [x for x in filter(self.filtermethod_process, self.task_list)]
-        if(len(self.jobs_queue) > 0 and self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct):
-            gpus_with_usage = sorted([(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.allowed_gpus])
-            if(self.get_main_memory_usage_pct() < self.main_memory_load_threshold_pct):
+        if(len(self.jobs_queue) > 0 and self.get_main_memory_usage_pct() < self.config.main_memory_load_threshold_pct):
+            gpus_with_usage = sorted([(self.get_gpu_core_usage_pct(gpu_no), self.get_gpu_memory_usage_pct(gpu_no), gpu_no) for gpu_no in self.config.allowed_gpus])
+            if(self.get_main_memory_usage_pct() < self.config.main_memory_load_threshold_pct):
                 for gpu_core_pct, gpu_mem_pct, gpu_no in gpus_with_usage:
-                    if(gpu_mem_pct < self.gpu_memory_load_threshold_pct and self.get_count_processes_by_gpu(gpu_no) < self.max_count_running_jobs_per_gpu):
+                    if(gpu_mem_pct < self.config.gpu_memory_load_threshold_pct and self.get_count_processes_by_gpu(gpu_no) < self.config.max_count_running_jobs_per_gpu):
                         self._add_job_to_gpu(self.jobs_queue.pop(), gpu_no)
                         strings_to_print += [f"--> Added job to gpu No.{gpu_no}"]
                         break
