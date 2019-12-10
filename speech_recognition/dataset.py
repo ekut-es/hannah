@@ -235,7 +235,7 @@ class SpeechDataset(data.Dataset):
  #           bg_noise = np.zeros(data.shape[0])
   #          print("label is 0")
         if random.random() < self.noise_prob or silence:
-            a = random.random()# * 0.1
+            a = random.random() * 0.1
             data = np.clip(a * bg_noise + data, -1, 1)
 
         data = torch.from_numpy(preprocess_audio(data,
