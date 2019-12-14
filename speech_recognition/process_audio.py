@@ -67,7 +67,8 @@ def preprocess_audio(data, features='mel',
                      freq_min=20,
                      freq_max=4000,
                      window_ms = 40,
-                     stride_ms = 10):
+                     stride_ms = 10,
+                     center=False):
     """Calculates the features for a given audio
 
      Args:
@@ -133,7 +134,8 @@ def preprocess_audio(data, features='mel',
         
     elif features == "spectrogram":
         data = librosa.core.stft(data, hop_length=hop_length,
-                                 n_fft=n_fft)
+                                 n_fft=n_fft,
+                                 center=center)
         data = np.abs(data)
         data = data.astype(np.float32)
         
@@ -151,28 +153,45 @@ def preprocess_audio(data, features='mel',
 
 def main():
     import sys
+    import os
     from matplotlib import pyplot as plt
     import librosa.display
     
     audio_file  = sys.argv[1]
+    output_directory = sys.argv[2] if len(sys.argv) >= 3 else ""
     sampling_rate = 16000
     audio_data = librosa.core.load(audio_file, sr=sampling_rate)[0]
 
     feature_set = ["raw", "spectrogram", "melspec", "mfcc", "mel"]
     features = {}
     plt.figure()
+
+    audio_data = audio_data[0:2048]
     
     for num, feature in enumerate(feature_set):
         data = preprocess_audio(audio_data,
                                 features=feature,
                                 samplingrate=sampling_rate,
+                                window_ms=2,
+                                stride_ms=1,
                                 n_mfcc=20,
-                                n_mels=10)
+                                n_mels=10,
+                                center=False)
 
         features[feature] = data
 
-        print(feature, data.shape)
-        
+        if output_directory:
+            with open(os.path.join(output_directory,
+                                    feature+".csv"), "w") as out_file:
+                
+                for line in features[feature]:
+                    for item in line:
+                        out_file.write(str(item))
+                        out_file.write(", ")
+                    out_file.write("\n")
+
+        print(feature, "shape:", data.shape)
+                    
         plt.subplot(len(feature_set), 1, num+1)
         if feature == "raw":
             librosa.display.waveplot(data[0], sr=sampling_rate)
