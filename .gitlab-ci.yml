@@ -17,10 +17,15 @@ before_script:
   - python3.6 -V # Print out python version for debugging
   - python3.6 -m pip install virtualenv
   - ./bootstrap.sh --venv
+  - cd datasets
+  - ./get_datasets.sh
+  - cd ..
+  
 
 test:
   script:
     - echo "Run test"
+    - python3.6 -m speech_recognition.train --seed 1234 --model tc-res8  --experiment-id ci
   tags:
     - docker
 
