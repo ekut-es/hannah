@@ -11,8 +11,8 @@ CONFIGS_DIR = "configs"
 EVAL_CSV_NAME = "eval.csv"
 CONFIG_JSON_NAME = "config.json"
 GENERAL_EXCLUDE_FILE = "general_exclude.lst"
-GENERAL_EXCLUDE_DIR = "speech_recognition/grid_search_explorer_config"
-CLASSES_DIR = "speech_recognition/grid_search_explorer_config/classes"
+GENERAL_EXCLUDE_DIR = "grid_search/config"
+CLASSES_DIR = "grid_search/config/classes"
 CLASSES_EXTENSION = ".opt"
 
 def find_index_mapping_for_string_key(key, value):
