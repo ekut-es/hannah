@@ -88,7 +88,7 @@ else
     $python_cmd -m pip install $user_arg numpy
     $python_cmd -m pip install $user_arg Pillow
     if [ -f /etc/redhat-release ]; then
-        $python_cmd -m pip install $user_arg PyAudio
+        $python_cmd -m pip install $user_arg PyAudio==0.2.11 #install fixed version as newer versions have severe performance regressions
     fi
     $python_cmd -m pip install $user_arg python-Levenshtein
     $python_cmd -m pip install $user_arg PyOpenGL
