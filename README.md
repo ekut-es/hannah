@@ -100,13 +100,14 @@ Training for the simple-vad, bottleneck-vad and small-vad can be invoked by:
     python3 -m speech_recognition.train --model small-vad       --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2
 
 # Showing graphical results
-    - To show visual results as a multi-axis plot, execute the following command in speech recognition's root path:
-      ```console
-      $ python -m visualize.visualize --model <model> --experiment_id <experiment_id> (--top_n_accuracy <top_n_accuracy>)
-      ```
-      Please note, that an axis, that has equal values for all variations, is dropped from the graph for the sake of clarity.
+    
+To show visual results as a multi-axis plot, execute the following command in speech recognition's root path:
 
-    - You have to have a browser installed on your system to see the results. If you have a non-graphical system, please copy the experiment folder from `<speech_recognition_root>/trained_models/<experiment_id>` to the `trained_models` folder of another machine with graphical support.
+    python3.6 -m visualize.visualize --model <model> --experiment_id <experiment_id> (--top_n_accuracy <top_n_accuracy>)
+
+Please note, that an axis, that has equal values for all variations, is dropped from the graph for the sake of clarity.
+
+You have to have a browser installed on your system to see the results. If you have a non-graphical system, please copy the experiment folder from `<speech_recognition_root>/trained_models/<experiment_id>` to the `trained_models` folder of another machine with graphical support.
 
 
 
