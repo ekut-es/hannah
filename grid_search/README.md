@@ -92,7 +92,7 @@ Beside the implemented features, the following optimizations come with Grid-Sear
 
         - ##### Default value for string-based settings
             Syntax:
-            `<hyperparameter name>;str;<default_value>`
+            `<hyperparameter name>;str;<value #1>;...;<value #n>`
 
         - ##### Default value for boolean-based settings
             Syntax:
