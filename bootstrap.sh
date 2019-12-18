@@ -83,7 +83,7 @@ else
     
     $python_cmd -m pip install $user_arg chainmap
     $python_cmd -m pip install $user_arg cherrypy
-    $python_cmd -m pip install $user_arg librosa
+    $python_cmd -m pip install $user_arg librosa==0.6.3
     $python_cmd -m pip install $user_arg Flask
     $python_cmd -m pip install $user_arg numpy
     $python_cmd -m pip install $user_arg Pillow
@@ -114,6 +114,7 @@ else
     $python_cmd -m pip install $user_arg xlrd
     $python_cmd -m pip install $user_arg gitpython
     $python_cmd -m pip install $user_arg spur
+    $python_cmd -m pip install $user_arg plotly
     
     echo "\nInstallation finished!\n"
     
