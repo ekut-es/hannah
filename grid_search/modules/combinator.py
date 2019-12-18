@@ -162,25 +162,25 @@ class CombinatorList(Decorator):
         
 class CombinatorString(Decorator):
     def generate_variants(self):
-        setting = self.load_csv_string()
+        settings = self.load_csv_string()
         path = os.path.join(CLASSES_DIRECTORY, self._key + CLASS_EXTENSION)
         if self.check_whether_excluded(self._modelname, self._key):
-            return self._chain_object.generate_variants() + [(self._key, [setting])]
+            return self._chain_object.generate_variants() + [(self._key, [settings[0]])]
         else:
             if(os.path.isdir(path)):
                 entries = [x for x in sorted(os.listdir(path))]
-                return self._chain_object.generate_variants() + [(self._key, entries)]
+                return self._chain_object.generate_variants() + [(self._key, list(set(entries) & set(settings)))]
             elif(os.path.isfile(path)):
                 entries = []
                 with open(path, "r") as f:
                     entries = [x.rstrip("\n") for x in f]
-                return self._chain_object.generate_variants() + [(self._key, entries)]
-
-            raise Exception(f"Could not find values for string-key: {self._key}")
+                return self._chain_object.generate_variants() + [(self._key, list(set(entries) & set(settings)))]
+            else:
+                raise Exception(f"Could not find values for string-key: {self._key}")
             
     def load_csv_string(self):
-        _, entries = load_csv(self._modelname, self._key, payload=1)
-        return entries[0]
+        _, settings = load_csv(self._modelname, self._key, payload=-1)
+        return settings
 
 class CombinatorPredefined(Decorator):
     def get_variants_with_type(self, conversionFunction):

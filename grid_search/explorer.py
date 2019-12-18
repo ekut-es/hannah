@@ -63,7 +63,9 @@ def ask_bool(default):
         return result
 
 def ask_str(default):
-    result = input(f"default={default} ?: ")
+    if(isinstance(default, list)):
+        default = VALUE_FILE_DELIMITER.join(default)
+    result = input(f"default={default} (Semicolon-Separated) ?: ")
     if(result == ""):
         return default
     else:
@@ -119,7 +121,7 @@ def ask_values_again(modelname, key, default):
     if(isinstance(default, bool)):
         result = f"{key};bool;{str(int(ask_bool(default=entries[0])))}"
     elif(isinstance(default, str)):
-        result = f"{key};str;{ask_str(default=entries[0])}"
+        result = f"{key};str;{ask_str(default=entries)}"
     elif(isinstance(default, int)):
         want_start_stop_step = ask_yes_no("Do you want start-stop-step (alternative: predefined)", default_yes = (entrytype == "int"))
         if(want_start_stop_step != (entrytype == "int")):
