@@ -9,6 +9,8 @@ VALUE_FILE_EXTENSION = ".val"
 CLASSES_DIRECTORY = os.path.join(CONF_DIR, "classes")
 CLASS_EXTENSION = ".opt"
 EXCLUDE_FILE_SUFFIX = "_exclude.lst"
+MARKERFILE_CUSTOMSTRINGS = "customstrings.marker"
+
 
 def load_csv(modelname, key, payload):
     filename = os.path.join(VALUE_FILE_DIRECTORY, modelname + VALUE_FILE_EXTENSION)
@@ -167,7 +169,9 @@ class CombinatorString(Decorator):
         if self.check_whether_excluded(self._modelname, self._key):
             return self._chain_object.generate_variants() + [(self._key, [settings[0]])]
         else:
-            if(os.path.isdir(path)):
+            if(os.path.isdir(path) and os.path.isfile(os.path.join(path, MARKERFILE_CUSTOMSTRINGS))):
+                return self._chain_object.generate_variants() + [(self._key, settings)]
+            elif(os.path.isdir(path)):
                 entries = [x for x in sorted(os.listdir(path))]
                 return self._chain_object.generate_variants() + [(self._key, list(set(entries) & set(settings)))]
             elif(os.path.isfile(path)):
@@ -221,7 +225,7 @@ def reduce_element(variant):
     for key, entry in variant:
         settings_to_remove = set()
         folder_path = os.path.join(CLASSES_DIRECTORY, key + CLASS_EXTENSION)
-        if(isinstance(entry, str) and os.path.isdir(folder_path)):
+        if(isinstance(entry, str) and os.path.isdir(folder_path) and not os.path.isfile(os.path.join(folder_path, MARKERFILE_CUSTOMSTRINGS))):
             for subfile in os.listdir(folder_path):
                 file_path = os.path.join(folder_path, subfile)
                 with open(file_path, "r") as f:
