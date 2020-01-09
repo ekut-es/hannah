@@ -93,6 +93,7 @@ Beside the implemented features, the following optimizations come with Grid-Sear
         - ##### Default value for string-based settings
             Syntax:
             `<hyperparameter name>;str;<value #1>;...;<value #n>`
+            Please note, that possible values for these settings are represented in the according config structure in the classes directory. If an option isnt constrained to a set of predefined values, there is a file called "customstrings.marker" in the belonging classes directory. This indicates that the values can be freely chosen. E.g., this can be used to pass YAML config files for the option "compress".
 
         - ##### Default value for boolean-based settings
             Syntax:
