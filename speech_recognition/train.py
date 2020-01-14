@@ -819,6 +819,9 @@ def build_config(extra_config={}):
                          n_epochs=ConfigOption(default=500,
                                                desc="Number of epochs for training"),
 
+                         profile=ConfigOption(default=False,
+                                              desc="Enable profiling"),
+                         
                          optimizer=ConfigOption(default="sgd",
                                                 desc="Optimizer to choose",
                                                 category="Optimizer Config",
@@ -931,7 +934,12 @@ def main():
         torch.backends.cudnn.benchmark = False
 
     if config["type"] == "train":
-        train(model_name, config)
+        if config["profile"]:
+            import cProfile
+            profiler = cProfile.Profile()
+            profiler.runcall(train, model_name, config)
+        else:
+            train(model_name, config)
     elif config["type"] == "check_sanity":
         train(model_name, config, check_sanity=True)
     elif config["type"] == "eval":
