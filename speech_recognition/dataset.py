@@ -92,10 +92,15 @@ class SpeechDataset(data.Dataset):
         self.extract_loudest = config["extract_loudest"]
         self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
-        self.randomstates = dict()
-        self._features_cache = RedisCache(config["cache_size"])
         self._file_cache = SimpleCache(config["cache_size"])
-        self.cache_variants = config["cache_variants"]
+        self.cache_prob = config["cache_prob"]
+        self.randomstates = dict()
+        self.use_redis_cache = config["use_redis_cache"]
+        if(self.use_redis_cache == True):
+            self._features_cache = RedisCache(config["redis_cache_size"])
+            self.cache_variants = config["cache_variants"]
+        else:
+            self._audio_cache = SimpleCache(config["cache_size"])
         self.unknown_class = 2 if self.loss_function == "ctc" else 1
         self.silence_class = 1 if self.loss_function == "ctc" else 0
         n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
@@ -180,9 +185,18 @@ class SpeechDataset(data.Dataset):
                                            default=4000)
     
         # Cache config
+        config["use_redis_cache"] = ConfigOption(category="Cache Config",
+                                            default=False,
+                                            desc="Use redis cache (true) for shared access of multiple instances or a simple cache for a private cache per process")
         config["cache_size"] = ConfigOption(category="Cache Config",
                                             default=200000,
                                             desc="Size of the caches for preprocessed and raw data")
+        config["cache_prob"] = ConfigOption(category="Cache Config",
+                                            default=0.8,
+                                            desc="Probabilty of using a cached sample during training")
+        config["redis_cache_size"] = ConfigOption(category="Redis Cache Config",
+                                            default=200000,
+                                            desc="Size of the redis cache for feature samples")
         config["cache_variants"] = ConfigOption(category="Cache Config",
                                             default=10,
                                             desc="Number of cached variants per sample")
@@ -218,6 +232,12 @@ class SpeechDataset(data.Dataset):
         """ Run preprocessing and feature extraction """
         if silence:
             example = "__silence__"
+        if ((self.use_redis_cache == False) & (random.random() <= self.cache_prob)):
+            try:
+                return self._audio_cache[example]
+            except KeyError:
+                pass
+
 
         in_len = self.input_length
 
@@ -271,6 +291,9 @@ class SpeechDataset(data.Dataset):
             assert data.shape[0] == self.height
             assert data.shape[1] == self.width
         
+        if self.use_redis_cache == False:
+            self._audio_cache[example] = data
+        
         return data
 
     def get_class(self, index):
@@ -301,42 +324,48 @@ class SpeechDataset(data.Dataset):
 
         label = torch.Tensor(self.get_class(index))
         label = label.long()
-
-        features_config = (self.features,
-                               self.samplingrate,
-                               self.n_mels,
-                               self.n_mfcc,
-                               self.freq_min,
-                               self.freq_max,
-                               self.window_ms,
-                               self.stride_ms)
-
-        random_state_backup = random.getstate()
-        try:
-            random.setstate(self.randomstates[index])
-        except KeyError:
-            random.seed(0)
-
-        variant_nr = random.randint(1, max(1,self.cache_variants))
-        self.randomstates[index] = random.getstate()
-        random.setstate(random_state_backup)
-
-        is_silence = (index >= len(self.audio_labels))
-        audio_file = None
-        if not is_silence:
-            audio_file = self.audio_files[index]
-        features_constellation = (audio_file, features_config, variant_nr, is_silence)
-
-        data = None
-
-        try:
-            data = self._features_cache[features_constellation]
-        except KeyError:
-            if is_silence:
+        
+        if self.use_redis_cache == False:
+            if index >= len(self.audio_labels):
                 data = self.preprocess(None, silence=True)
             else:
                 data = self.preprocess(self.audio_files[index])
-            self._features_cache[features_constellation] = data
+        else:
+            features_config = (self.features,
+                                   self.samplingrate,
+                                   self.n_mels,
+                                   self.n_mfcc,
+                                   self.freq_min,
+                                   self.freq_max,
+                                   self.window_ms,
+                                   self.stride_ms)
+
+            random_state_backup = random.getstate()
+            try:
+                random.setstate(self.randomstates[index])
+            except KeyError:
+                random.seed(0)
+
+            variant_nr = random.randint(1, max(1,self.cache_variants))
+            self.randomstates[index] = random.getstate()
+            random.setstate(random_state_backup)
+
+            is_silence = (index >= len(self.audio_labels))
+            audio_file = None
+            if not is_silence:
+                audio_file = self.audio_files[index]
+            features_constellation = (audio_file, features_config, variant_nr, is_silence)
+
+            data = None
+
+            try:
+                data = self._features_cache[features_constellation]
+            except KeyError:
+                if is_silence:
+                    data = self.preprocess(None, silence=True)
+                else:
+                    data = self.preprocess(self.audio_files[index])
+                self._features_cache[features_constellation] = data
 
         return data, data.shape[1], label, label.shape[0]
 
