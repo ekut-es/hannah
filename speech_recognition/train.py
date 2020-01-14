@@ -938,6 +938,7 @@ def main():
             import cProfile
             profiler = cProfile.Profile()
             profiler.runcall(train, model_name, config)
+            profiler.dump_stats()
         else:
             train(model_name, config)
     elif config["type"] == "check_sanity":
