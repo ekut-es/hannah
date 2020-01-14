@@ -81,6 +81,7 @@ else
     #install tensorflow
     $python_cmd -m pip install tensorflow==1.12.0 $user_arg
     
+    $python_cmd -m pip install $user_arg redis
     $python_cmd -m pip install $user_arg chainmap
     $python_cmd -m pip install $user_arg cherrypy
     $python_cmd -m pip install $user_arg librosa==0.6.3
