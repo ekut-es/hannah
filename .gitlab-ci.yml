@@ -7,7 +7,6 @@ variables:
 cache:
   paths:
     - .cache/pip
-    - venv/
 
 before_script:
   - yum install epel-release -y
