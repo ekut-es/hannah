@@ -87,8 +87,8 @@ else
     $python_cmd -m pip install $user_arg librosa==0.6.3
     $python_cmd -m pip install $user_arg Flask
     $python_cmd -m pip install $user_arg numpy
-    $python_cmd -m pip install $user_arg Pillow
-    if [ -f /etc/redhat-release ]; then
+    $python_cmd -m pip install $user_arg Pillow==6.0.0
+     if [ -f /etc/redhat-release ]; then
         $python_cmd -m pip install $user_arg PyAudio==0.2.11 #install fixed version as newer versions have severe performance regressions
     fi
     $python_cmd -m pip install $user_arg python-Levenshtein
