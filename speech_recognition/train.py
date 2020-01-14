@@ -715,7 +715,7 @@ def train(model_name, config, check_sanity=False):
     else:
         msglogger.info("Running final test")
         model.load(os.path.join(log_dir, "model.pt"))
-        test_accuracy, test_loss, confusion_matrix = evaluate(model_name, config, model, test_set)
+        test_accuracy, test_loss, confusion_matrix = evaluate(model_name, config, None, None, model, test_set)
         csv_log_writer.writerow({"Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
         csv_eval_log_name = os.path.join(output_dir, "eval.csv")
         
