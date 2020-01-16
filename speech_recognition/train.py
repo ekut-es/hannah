@@ -33,7 +33,6 @@ from tabulate import tabulate
 
 from .summaries import *
 
-
 msglogger = None
 
 def get_lr_scheduler(config, optimizer):
@@ -530,6 +529,7 @@ def train(model_name, config, check_sanity=False):
     # Setup Decoder
     decoder = Decoder(train_set.label_names)
 
+    
     # Print network statistics
     dummy_width, dummy_height = test_set.width, test_set.height
     dummy_input = torch.randn((1, dummy_height, dummy_width))
@@ -545,9 +545,13 @@ def train(model_name, config, check_sanity=False):
     performance_summary = model_summary(model, dummy_input, 'performance')
 
     # Setup distiller for model minimization
+    distiller.utils.set_model_input_shape_attr(model, input_shape=(1, test_set.height, test_set.width))
     compression_scheduler = None
+    if True:
+        model = distiller.model_transforms.fold_batch_norms(model, dummy_input=dummy_input, inference=False)
+    
     if config["compress"]:
-        print("Activating compression scheduler")
+        msglogger.info("Activating compression scheduler")
         compression_scheduler = distiller.file_config(model,
                                                       optimizer,
                                                       config["compress"])
@@ -570,6 +574,8 @@ def train(model_name, config, check_sanity=False):
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
 
+        optimizer.zero_grad()
+        
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
 
@@ -579,6 +585,7 @@ def train(model_name, config, check_sanity=False):
         batch_time = tnt.AverageValueMeter()
         end = time.time()
         for batch_idx, (model_in, in_lengths, labels, label_lengths) in enumerate(train_loader):
+            
             model.train()
             if compression_scheduler is not None:
                 compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, batches_per_epoch)
