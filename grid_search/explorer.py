@@ -230,7 +230,7 @@ def ask_values_first_time(modelname, key, default, skip_ask_whether_predefined =
     return result
 
 def main():
-    model_name, config = build_config()
+    model_name, config, _, _ = build_config()
 
     experiment_id = config["experiment_id"]
 

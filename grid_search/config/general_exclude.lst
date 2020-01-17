@@ -4,6 +4,12 @@ data_folder
 dataset
 experiment_id
 input_file
+input_file_vad
+input_file_keyword
+config_vad
+config_keyword
+fully_convolutional
+profile
 model
 model_class
 model_name
