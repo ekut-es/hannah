@@ -44,7 +44,7 @@ def get_lr_scheduler(config, optimizer):
         gamma = config["lr_gamma"]
         stepsize = config["lr_stepsize"]
         if stepsize == 0:
-            stepsize = max(10, n_epochs // 3)
+            stepsize = max(10, n_epochs // 4)
 
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=stepsize, gamma=gamma)
 
@@ -705,7 +705,7 @@ def train(model_name, config, check_sanity=False):
                 msglogger.info("Model after freezing")
                 msglogger.info(model)
                 save_model(log_dir, model, test_set, config=config)
-                max_acc = avg_acc
+                max_acc = 0
 
                 
             # Stop training if the validation loss has not improved for multiple iterations
