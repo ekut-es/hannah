@@ -80,6 +80,7 @@ else
 
     #install tensorflow
     $python_cmd -m pip install tensorflow==1.12.0 $user_arg
+    $python_cmd -m pip install audioread==2.1.6 $user_arg
     
     $python_cmd -m pip install $user_arg redis
     $python_cmd -m pip install $user_arg chainmap
@@ -92,8 +93,6 @@ else
         $python_cmd -m pip install $user_arg PyAudio==0.2.11 #install fixed version as newer versions have severe performance regressions
     fi
     $python_cmd -m pip install $user_arg python-Levenshtein
-    $python_cmd -m pip install $user_arg PyOpenGL
-    $python_cmd -m pip install $user_arg PyOpenGL_accelerate
     $python_cmd -m pip install $user_arg pyttsx3
     $python_cmd -m pip install $user_arg requests
     $python_cmd -m pip install $user_arg SpeechRecognition

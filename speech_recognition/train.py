@@ -26,6 +26,7 @@ from .utils import set_seed, config_pylogger, log_execution_env_state, EarlyStop
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
 
 import distiller
+import distiller.model_transforms
 from distiller.data_loggers import *
 import distiller.apputils as apputils
 import torchnet.meter as tnt
@@ -545,11 +546,14 @@ def train(model_name, config, check_sanity=False):
     performance_summary = model_summary(model, dummy_input, 'performance')
 
     # Setup distiller for model minimization
-    distiller.utils.set_model_input_shape_attr(model, input_shape=(1, test_set.height, test_set.width))
+    #distiller.utils.set_model_input_shape_attr(model, input_shape=(1, test_set.height, test_set.width))
     compression_scheduler = None
-    if True:
+    if config["fold_bn"] >= 0:
+        msglogger.info("Applying batch norm folding")
         model = distiller.model_transforms.fold_batch_norms(model, dummy_input=dummy_input, inference=False)
-    
+        msglogger.info("Folded model")
+        msglogger.info(model)
+        
     if config["compress"]:
         msglogger.info("Activating compression scheduler")
         compression_scheduler = distiller.file_config(model,
@@ -573,9 +577,8 @@ def train(model_name, config, check_sanity=False):
 
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
-
-        optimizer.zero_grad()
-        
+        optimizer.zero_grad()  
+            
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
 
@@ -691,6 +694,20 @@ def train(model_name, config, check_sanity=False):
                 save_model(log_dir, model, test_set, config=config)
                 max_acc = avg_acc
 
+            if config["fold_bn"] == epoch_idx:
+                msglogger.info("Freezing batch norms")
+                def freeze_func(model):
+                    import distiller.quantization.sim_bn_fold
+                    if isinstance(model, distiller.quantization.sim_bn_fold.SimulatedFoldedBatchNorm):
+                        model.freeze()
+                        
+                model.apply(freeze_func)
+                msglogger.info("Model after freezing")
+                msglogger.info(model)
+                save_model(log_dir, model, test_set, config=config)
+                max_acc = avg_acc
+
+                
             # Stop training if the validation loss has not improved for multiple iterations
             # and early stopping is configured
             es = early_stopping(avg_loss)
@@ -711,8 +728,6 @@ def train(model_name, config, check_sanity=False):
 
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
-
-
 
 
     if check_sanity:
@@ -825,10 +840,10 @@ def build_config(extra_config={}):
                                            desc="Disable cuda"),
                          n_epochs=ConfigOption(default=500,
                                                desc="Number of epochs for training"),
-
                          profile=ConfigOption(default=False,
                                               desc="Enable profiling"),
-                         
+                         fold_bn=ConfigOption(default = -1,
+                                              desc = "Do BatchNorm folding at freeze at the given epoch"),
                          optimizer=ConfigOption(default="sgd",
                                                 desc="Optimizer to choose",
                                                 category="Optimizer Config",
@@ -944,8 +959,10 @@ def main():
         if config["profile"]:
             import cProfile
             profiler = cProfile.Profile()
-            profiler.runcall(train, model_name, config)
-            profiler.dump_stats()
+            try:
+                profiler.runcall(train, model_name, config)
+            finally:
+                profiler.print_stats(sort=('tottime'))
         else:
             train(model_name, config)
     elif config["type"] == "check_sanity":
