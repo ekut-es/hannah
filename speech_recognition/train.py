@@ -184,7 +184,7 @@ def dump_config(output_dir, config):
               s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
               o.write(s)
 
-def save_model(output_dir, model, test_set=None, config=None):
+def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
     """ Creates serialization of the model for later inference, evaluation
 
     Creates the following files:
@@ -205,10 +205,10 @@ def save_model(output_dir, model, test_set=None, config=None):
         If None no onnx will be generated
 """
     msglogger.info("saving best model...")
-    model.save(os.path.join(output_dir, "model.pt"))
+    model.save(os.path.join(output_dir, model_prefix+"model.pt"))
 
     msglogger.info("saving weights to json...")
-    filename = os.path.join(output_dir, "model.json")
+    filename = os.path.join(output_dir, model_prefix+"model.json")
     state_dict = model.state_dict()
     with open(filename, "w") as f:
         json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
@@ -224,7 +224,7 @@ def save_model(output_dir, model, test_set=None, config=None):
 
         torch.onnx.export(model,
                           dummy_input,
-                          os.path.join(output_dir, "model.onnx"),
+                          os.path.join(output_dir, model_prefix+"model.onnx"),
                           verbose=False)
     except Exception as e:
         msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
@@ -559,7 +559,7 @@ def train(model_name, config, check_sanity=False):
         compression_scheduler = distiller.file_config(model,
                                                       optimizer,
                                                       config["compress"])
-
+        
     if config["cuda"]:
         model.cuda()
 
@@ -647,6 +647,23 @@ def train(model_name, config, check_sanity=False):
             loss.backward()
             optimizer.step()
 
+            if config["fold_bn"] == epoch_idx and batch_idx == batches_per_epoch:
+                msglogger.info("Freezing batch norms")
+                save_model(log_dir, model, test_set, config=config, model_prefix="before_freeze_")
+                
+        
+                def freeze_func(model):
+                    import distiller.quantization.sim_bn_fold
+                    if isinstance(model, distiller.quantization.sim_bn_fold.SimulatedFoldedBatchNorm):
+                        model.freeze()
+
+                model.apply(freeze_func)
+                msglogger.info("Model after freezing")
+                msglogger.info(model)
+                save_model(log_dir, model, test_set, config=config, model_prefix="after_freeze_")
+                max_acc = 0
+
+            
             if compression_scheduler is not None:
                 compression_scheduler.on_minibatch_end(epoch_idx, batch_idx, batches_per_epoch)
 
@@ -693,19 +710,6 @@ def train(model_name, config, check_sanity=False):
             if avg_acc > max_acc:
                 save_model(log_dir, model, test_set, config=config)
                 max_acc = avg_acc
-
-            if config["fold_bn"] == epoch_idx:
-                msglogger.info("Freezing batch norms")
-                def freeze_func(model):
-                    import distiller.quantization.sim_bn_fold
-                    if isinstance(model, distiller.quantization.sim_bn_fold.SimulatedFoldedBatchNorm):
-                        model.freeze()
-                        
-                model.apply(freeze_func)
-                msglogger.info("Model after freezing")
-                msglogger.info(model)
-                save_model(log_dir, model, test_set, config=config)
-                max_acc = 0
 
                 
             # Stop training if the validation loss has not improved for multiple iterations
