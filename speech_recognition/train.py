@@ -304,7 +304,7 @@ def validate(data_loader, model, model2, criterion, config, config_vad, config_k
             distiller.log_training_progress(stats, None, epoch, steps_completed,
                                             total_steps, log_every, loggers)
 
-    msglogger.info('==> Accuracy: %.3f      Loss: %.3f\n',
+    msglogger.info('==> Accuracy: %.3f %      Loss: %.3f\n',
                    classerr.value(1), losses['objective_loss'].mean)
 
     msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
@@ -627,6 +627,7 @@ def train(model_name, config, check_sanity=False):
                 error, cer = decoder.calculate_error(scores, in_lengths,
                                                      labels, label_lengths)
                 scalar_accuracy = 1.0 - error
+                scalar_accuracy *= 100
             else:
                 scores = scores.view(scores.size(0), -1)
                 labels = labels.view(-1)
@@ -636,7 +637,8 @@ def train(model_name, config, check_sanity=False):
 
                 scalar_accuracy = (torch.max(scores, 1)[1].view(labels.size(0)).data == labels.data).float().sum() / labels.size(0)
                 scalar_accuracy = scalar_accuracy.item()
-
+                scalar_accuracy *= 100
+                
             avg_training_loss.add(scalar_loss)
             avg_training_accuracy.add(scalar_accuracy)
 
@@ -691,7 +693,7 @@ def train(model_name, config, check_sanity=False):
 
             end = time.time()
 
-        msglogger.info('==> Accuracy: %.3f      Loss: %.3f\n',
+        msglogger.info('==> Accuracy: %.3f %      Loss: %.3f\n',
                    avg_training_accuracy.mean, avg_training_loss.mean)
 
         performance_summary = model_summary(model, dummy_input, 'performance')
