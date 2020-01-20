@@ -647,7 +647,7 @@ def train(model_name, config, check_sanity=False):
             loss.backward()
             optimizer.step()
 
-            if config["fold_bn"] == epoch_idx and batch_idx == batches_per_epoch:
+            if config["fold_bn"] == epoch_idx and batch_idx == batches_per_epoch-1:
                 msglogger.info("Freezing batch norms")
                 save_model(log_dir, model, test_set, config=config, model_prefix="before_freeze_")
                 
