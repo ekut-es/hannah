@@ -627,6 +627,7 @@ def train(model_name, config, check_sanity=False):
                 error, cer = decoder.calculate_error(scores, in_lengths,
                                                      labels, label_lengths)
                 scalar_accuracy = 1.0 - error
+                scalar_accuracy *= 100
             else:
                 scores = scores.view(scores.size(0), -1)
                 labels = labels.view(-1)
@@ -636,7 +637,8 @@ def train(model_name, config, check_sanity=False):
 
                 scalar_accuracy = (torch.max(scores, 1)[1].view(labels.size(0)).data == labels.data).float().sum() / labels.size(0)
                 scalar_accuracy = scalar_accuracy.item()
-
+                scalar_accuracy *= 100
+                
             avg_training_loss.add(scalar_loss)
             avg_training_accuracy.add(scalar_accuracy)
 
