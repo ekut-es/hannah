@@ -416,14 +416,14 @@ def evaluate(model_name, config, config_vad=None, config_keyword=None, model=Non
     
     return  accuracy, loss, confusion_matrix
 
-def train(model_name, config, check_sanity=False):
+def train(model_name, config):
     global msglogger
 
     output_dir = get_output_dir(model_name, config)
     log_dir = get_config_logdir(model_name, config)
     
     #Configure logging
-    log_name = "train" if not check_sanity else "sanity_check"
+    log_name = "train"
     msglogger = config_pylogger('logging.conf', log_name, log_dir)
     pylogger = PythonLogger(msglogger)
     loggers  = [pylogger]
@@ -509,13 +509,7 @@ def train(model_name, config, check_sanity=False):
                                    collate_fn=collate_fn)
 
 
-    if check_sanity:
-        indices = (np.random.random(20)*len(train_set)).astype(int)
-        train_loader = data.DataLoader(train_set,
-                                       batch_size=20,
-                                       sampler=torch.utils.data.SubsetRandomSampler(indices),
-                                       drop_last=True,
-                                       collate_fn=collate_fn)
+    
 
     dev_loader = data.DataLoader(dev_set,
                                  batch_size=min(len(dev_set), 16),
@@ -674,7 +668,7 @@ def train(model_name, config, check_sanity=False):
             batch_time.add(time.time() - end)
             step_no += 1
 
-            if check_sanity or (last_log + log_every <= step_no):
+            if last_log + log_every <= step_no:
                 last_log = step_no
                 stats_dict["Accuracy"] = scalar_accuracy
                 stats_dict["Loss"] = scalar_loss
@@ -699,26 +693,22 @@ def train(model_name, config, check_sanity=False):
         performance_summary = model_summary(model, dummy_input, 'performance')
         csv_log_writer.writerow({"Phase" : "Train", "Epoch" : epoch_idx, "Accuracy" : avg_training_accuracy.mean, "Loss" : avg_training_loss.mean, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
 
-        if check_sanity:
-            if avg_training_accuracy.mean > 0.95:
-                msglogger.info("Sanity check passed accuracy: {} loss: {}".format(avg_training_accuracy.mean, avg_training_loss.mean))
-                return
-        else:
-            msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
+        
+        msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
 
-            avg_acc, avg_loss, confusion_matrix = validate(dev_loader, model,None, criterion, config,None, None, loggers=loggers, epoch=epoch_idx)
-            csv_log_writer.writerow({"Phase" : "Val", "Epoch" : epoch_idx, "Accuracy" : avg_acc, "Loss" : avg_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
+        avg_acc, avg_loss, confusion_matrix = validate(dev_loader, model,None, criterion, config,None, None, loggers=loggers, epoch=epoch_idx)
+        csv_log_writer.writerow({"Phase" : "Val", "Epoch" : epoch_idx, "Accuracy" : avg_acc, "Loss" : avg_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
 
-            if avg_acc > max_acc:
-                save_model(log_dir, model, test_set, config=config)
-                max_acc = avg_acc
+        if avg_acc > max_acc:
+            save_model(log_dir, model, test_set, config=config)
+            max_acc = avg_acc
 
-                
-            # Stop training if the validation loss has not improved for multiple iterations
-            # and early stopping is configured
-            es = early_stopping(avg_loss)
-            if(es and config["early_stopping"] > 0):
-                break
+            
+        # Stop training if the validation loss has not improved for multiple iterations
+        # and early stopping is configured
+        es = early_stopping(avg_loss)
+        if(es and config["early_stopping"] > 0):
+            break
 
         if lr_scheduler is not None:
             if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
@@ -736,26 +726,21 @@ def train(model_name, config, check_sanity=False):
             compression_scheduler.on_epoch_begin(epoch_idx)
 
 
-    if check_sanity:
-        msglogger.info("Sanity check has not ended early accuracy: {} loss: {}".format(avg_training_accuracy.mean,
-                                                                                       avg_training_loss.mean))
+    msglogger.info("Running final test")
+    model.load(os.path.join(log_dir, "model.pt"))
+    test_accuracy, test_loss, confusion_matrix = evaluate(model_name, config, None, None, model, test_set)
+    csv_log_writer.writerow({"Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
+    csv_eval_log_name = os.path.join(output_dir, "eval.csv")
+    
+    with open(csv_eval_log_name, 'a') as csv_eval_file:
+        fcntl.lockf(csv_eval_file, fcntl.LOCK_EX)
+        csv_eval_writer = csv.DictWriter(csv_eval_file, fieldnames=["Hash","Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
+        if os.stat(csv_eval_log_name).st_size == 0:
+            csv_eval_writer.writeheader()
+        csv_eval_writer.writerow({"Hash": config["config_hash"], "Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
+        fcntl.lockf(csv_eval_file, fcntl.LOCK_UN)
 
-    else:
-        msglogger.info("Running final test")
-        model.load(os.path.join(log_dir, "model.pt"))
-        test_accuracy, test_loss, confusion_matrix = evaluate(model_name, config, None, None, model, test_set)
-        csv_log_writer.writerow({"Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
-        csv_eval_log_name = os.path.join(output_dir, "eval.csv")
-        
-        with open(csv_eval_log_name, 'a') as csv_eval_file:
-            fcntl.lockf(csv_eval_file, fcntl.LOCK_EX)
-            csv_eval_writer = csv.DictWriter(csv_eval_file, fieldnames=["Hash","Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
-            if os.stat(csv_eval_log_name).st_size == 0:
-                csv_eval_writer.writeheader()
-            csv_eval_writer.writerow({"Hash": config["config_hash"], "Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
-            fcntl.lockf(csv_eval_file, fcntl.LOCK_UN)
-
-        return
+    return
 
 def build_config(extra_config={}):
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "trained_models")
@@ -940,7 +925,7 @@ def build_config(extra_config={}):
 
     parser = builder.build_argparse(parser)
 
-    parser.add_argument("--type", choices=["train", "eval", "check_sanity", "eval_vad_keyword"], default="train", type=str)
+    parser.add_argument("--type", choices=["train", "eval", "eval_vad_keyword"], default="train", type=str)
     config = builder.config_from_argparse(parser)
 
     config["model_class"] = mod_cls
@@ -971,8 +956,6 @@ def main():
                 profiler.print_stats(sort=('tottime'))
         else:
             train(model_name, config)
-    elif config["type"] == "check_sanity":
-        train(model_name, config, check_sanity=True)
     elif config["type"] == "eval":
         accuracy, _ , _= evaluate(model_name, config)
         print("final accuracy is", accuracy)

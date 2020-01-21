@@ -312,7 +312,7 @@ class SpeechDataset(data.Dataset):
             data = data / self.max_feature * 128.0
             data = data.round()
             data = data / 128.0
-            data = data.clamp(-1.0, 1.0)
+            data = data.clamp(-1.0, 1.0 - 1.0/2.0**7)
             
         if self.use_redis_cache == False:
             self._audio_cache[example] = data

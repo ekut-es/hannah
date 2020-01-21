@@ -166,7 +166,7 @@ def main():
     features = {}
     plt.figure()
 
-    audio_data = audio_data[0:2048]
+    #audio_data = audio_data[0:2048]
     
     for num, feature in enumerate(feature_set):
         data = preprocess_audio(audio_data,
@@ -200,6 +200,7 @@ def main():
                                      y_axis='log',
                                      x_axis='time',
                                      sr=sampling_rate)
+            plt.colorbar(format="%2.f")
            
 
         plt.title(feature)
