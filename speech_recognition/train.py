@@ -506,6 +506,7 @@ def train(model_name, config):
                                    batch_size=train_batch_size,
                                    shuffle=True,
                                    drop_last=True,
+                                   num_workers=config["num_workers"], 
                                    collate_fn=collate_fn)
 
 
@@ -514,11 +515,13 @@ def train(model_name, config):
     dev_loader = data.DataLoader(dev_set,
                                  batch_size=min(len(dev_set), 16),
                                  shuffle=False,
+                                 num_workers=config["num_workers"],
                                  collate_fn=collate_fn)
 
     test_loader = data.DataLoader(test_set,
                                   batch_size=1,
                                   shuffle=False,
+                                  num_workers=config["num_workers"],
                                   collate_fn=collate_fn)
 
     # Setup Decoder
@@ -833,6 +836,9 @@ def build_config(extra_config={}):
                                                desc="Number of epochs for training"),
                          profile=ConfigOption(default=False,
                                               desc="Enable profiling"),
+                         num_workers=ConfigOption(desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
+                                                  default=0),
+                         
                          fold_bn=ConfigOption(default = -1,
                                               desc = "Do BatchNorm folding at freeze at the given epoch"),
                          optimizer=ConfigOption(default="sgd",
@@ -913,6 +919,7 @@ def build_config(extra_config={}):
                                                desc="Enable logging of learning progress and network parameter statistics to Tensorboard"),
                          experiment_id=ConfigOption(default="test",
                                                     desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name"))
+    
 
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
