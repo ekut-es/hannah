@@ -3,7 +3,7 @@ quantizers:
     class: SignedFixpointQuantizer
     bits_activations: 8
     bits_weights: 6
-    bits_bias: 8
+    bits_bias: 6
     
 policies:
     - quantizer:

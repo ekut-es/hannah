@@ -113,7 +113,8 @@ class SpeechDataset(data.Dataset):
         self.window_ms = config["window_ms"]
         self.freq_min = config["freq_min"]
         self.freq_max = config["freq_max"]
-        self.normalize = config["normalize"]
+        self.normalize = config["normalize_bits"]
+        self.normalize_max = config["normalize_max"]
         self.max_feature = 0
         
         self.height, self.width = calculate_feature_shape(self.input_length,
@@ -189,8 +190,12 @@ class SpeechDataset(data.Dataset):
         config["freq_max"]  = ConfigOption(category="Feature Config",
                                            default=4000)
 
-        config["normalize"] = ConfigOption(category="Feature Config",
-                                           default=False)
+        config["normalize_bits"] = ConfigOption(category="Feature Config",
+                                                desc="Normalize features to n bits 0 means no normalization"
+                                                default=0)
+        config["normalize_max"] = ConfigOption(category="Feature Config",
+                                                desc="Divide features by this value before normalization"
+                                                default=256)
         
         # Cache config
         config["use_redis_cache"] = ConfigOption(category="Cache Config",
@@ -305,14 +310,13 @@ class SpeechDataset(data.Dataset):
             assert data.shape[0] == self.height
             assert data.shape[1] == self.width
 
-        if self.normalize:
-            maximum_value  = abs(data.max().item())
-            minimum_value  = abs(data.min().item())
-            self.max_feature = max(maximum_value, minimum_value, self.max_feature)
-            data = data / self.max_feature * 128.0
+        if self.normalize_bits > 0:
+            normalize_factor = 2.0**(self.normalize_bits-1)
+            
+            data = data / self.normalize_max * normalize_factor
             data = data.round()
-            data = data / 128.0
-            data = data.clamp(-1.0, 1.0 - 1.0/2.0**7)
+            data = data / normalize_factor
+            data = data.clamp(-1.0, 1.0-1.0/normalize_factor)
             
         if self.use_redis_cache == False:
             self._audio_cache[example] = data
