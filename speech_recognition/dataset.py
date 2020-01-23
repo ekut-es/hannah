@@ -113,7 +113,7 @@ class SpeechDataset(data.Dataset):
         self.window_ms = config["window_ms"]
         self.freq_min = config["freq_min"]
         self.freq_max = config["freq_max"]
-        self.normalize = config["normalize_bits"]
+        self.normalize_bits = config["normalize_bits"]
         self.normalize_max = config["normalize_max"]
         self.max_feature = 0
         
@@ -191,10 +191,10 @@ class SpeechDataset(data.Dataset):
                                            default=4000)
 
         config["normalize_bits"] = ConfigOption(category="Feature Config",
-                                                desc="Normalize features to n bits 0 means no normalization"
+                                                desc="Normalize features to n bits 0 means no normalization",
                                                 default=0)
         config["normalize_max"] = ConfigOption(category="Feature Config",
-                                                desc="Divide features by this value before normalization"
+                                                desc="Divide features by this value before normalization",
                                                 default=256)
         
         # Cache config
