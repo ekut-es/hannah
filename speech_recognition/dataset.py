@@ -306,13 +306,16 @@ class SpeechDataset(data.Dataset):
             assert data.shape[1] == self.width
 
         if self.normalize:
-            maximum_value  = abs(data.max().item())
-            minimum_value  = abs(data.min().item())
-            self.max_feature = max(maximum_value, minimum_value, self.max_feature)
-            data = data / self.max_feature * 128.0
+            normalize_bits = 8
+            normalize_factor = 2.0**(normalize_bits-1)
+            #maximum_value  = abs(data.max().item())
+            #minimum_value  = abs(data.min().item())
+            #self.max_feature = max(maximum_value, minimum_value, self.max_feature)
+            self.max_feature = 256
+            data = data / self.max_feature * normalize_factor
             data = data.round()
-            data = data / 128.0
-            data = data.clamp(-1.0, 1.0)
+            data = data / normalize_factor
+            data = data.clamp(-1.0, 1.0-1.0/normalize_factor)
             
         if self.use_redis_cache == False:
             self._audio_cache[example] = data
