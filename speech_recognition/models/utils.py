@@ -63,8 +63,16 @@ class ConfigType(Enum):
 
 
     #Models from Temporal Convolution for Real-Time Keyword Spotting on Mobile Devices
+    TC_RES_2 = "tc-res2"
+    TC_RES_4 = "tc-res4"
+    TC_RES_6 = "tc-res6"
     TC_RES_8 = "tc-res8"
+    TC_RES_10 = "tc-res8"
+    TC_RES_12 = "tc-res10"
     TC_RES_14 = "tc-res14"
+    TC_RES_16 = "tc-res16"
+    TC_RES_18 = "tc-res18"
+    TC_RES_20 = "tc-res20"
     TC_RES_8_15 = "tc-res8-15"
     TC_RES_14_15 = "tc-res14-15"
 
