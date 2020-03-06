@@ -170,12 +170,26 @@ configs= {
         separable = (0,0),
         conv1_size = 3,
         conv1_stride = 1,
+        conv1_output_channels = 16, 
+    ),
+    ConfigType.TC_RES_4.value: dict(
+        features="mel",
+        fully_convolutional=False,
+        dropout_prob = 0.5,
+        width_multiplier = 1.0,
+        dilation = 1,
+        clipping_value = 100000,
+        bottleneck = (0,0),
+        channel_division = (2,4),
+        separable = (0,0),
+        conv1_size = 3,
+        conv1_stride = 1,
         conv1_output_channels = 16,
         block1_conv_size = 9,
         block1_stride = 2,
         block1_output_channels = 24, 
     ),
-    ConfigType.TC_RES_4.value: dict(
+    ConfigType.TC_RES_6.value: dict(
         features="mel",
         fully_convolutional=False,
         dropout_prob = 0.5,
@@ -244,7 +258,7 @@ configs= {
         block4_stride = 2,
         block4_output_channels = 64 
     ),
-    ConfigType.TC_RES_10.value: dict(
+    ConfigType.TC_RES_12.value: dict(
         features="mel",
         dropout_prob = 0.5,
         fully_convolutional=False,
