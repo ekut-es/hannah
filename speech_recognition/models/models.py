@@ -23,6 +23,8 @@ def find_model(conf):
         return hello.DSCNNSpeechModel
     elif conf.startswith("tc-res"):
         return tc.TCResNetModel
+    elif conf.startswith("branchy-tc-res"):
+        return tc.BranchyTCResNetModel
     elif conf.startswith("simple-vad"):
         return vad.SimpleVadModel
     elif conf.startswith("bottleneck-vad"):
@@ -43,6 +45,8 @@ def find_config(conf):
     elif conf.startswith("hello"):
         return hello.configs[conf]
     elif conf.startswith("tc"):
+        return tc.configs[conf]
+    elif conf.startswith("branchy-tc-res"):
         return tc.configs[conf]
     elif conf.startswith("simple-vad"):
         return vad.configs[conf]

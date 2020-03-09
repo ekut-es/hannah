@@ -117,16 +117,27 @@ def get_optimizer(config, model):
 
     return optimizer
 
-def get_loss_function(config):
+def get_loss_function(model, config):
 
-    criterion = nn.CrossEntropyLoss()
-    if "loss" in config:
-        if config["loss"] == "cross_entropy":
-            criterion = nn.CrossEntropyLoss()
-        elif config["loss"] == "ctc":
-            criterion = nn.CTCLoss()
-        else:
-            raise Exception("Loss function not supported {}".format(config["loss"]))
+    ce = nn.CrossEntropyLoss()
+   
+    def ce_loss_func(scores, labels):
+        scores = scores.view(scores.size(0), -1)
+        return ce(loss_func)
+
+    criterion = ce_loss_func
+    
+    try:
+        criterion = model.get_loss_function()
+    except Exception as e:
+        print(str(e))
+        if "loss" in config:
+            if config["loss"] == "cross_entropy":
+                criterion = nn.CrossEntropyLoss()
+            elif config["loss"] == "ctc":
+                criterion = ce_loss_func 
+            else:
+                raise Exception("Loss function not supported: {}".format(config["loss"]))
 
     return criterion
 
@@ -303,16 +314,13 @@ def validate(data_loader, model, model2, criterion, config, config_vad, config_k
                 
             if config["loss"] == "ctc":
                 loss = criterion(output, targets)
-            else:
+            else:    
                 targets=targets.view(-1)
-                output=output.view(output.size(0), -1)
                 loss = criterion(output, targets)
-
 
                 classerr.add(output.data, targets)
                 confusion.add(output.data, targets)
-
-
+                
             # measure accuracy and record loss
             losses['objective_loss'].add(loss.item())
 
@@ -374,7 +382,7 @@ def evaluate(model_name, config, config_vad=None, config_keyword=None, model=Non
         else:
             model = get_model(config)
 
-    criterion = get_loss_function(config)
+    criterion = get_loss_function(model, config)
 
     # Print network statistics
     dummy_width, dummy_height = test_set.width, test_set.height
@@ -516,7 +524,7 @@ def train(model_name, config):
     # Setup optimizers
     optimizer = get_optimizer(config, model)
 
-    criterion = get_loss_function(config)
+    criterion = get_loss_function(model, config)
 
     # Setup learning rate optimizer
     lr_scheduler = get_lr_scheduler(config, optimizer)
@@ -635,13 +643,6 @@ def train(model_name, config):
                 in_lengths = in_lengths.round()
                 in_lengths = in_lengths.int()
 
-                print("\nLoss inputs:")
-                print(scores)
-                print(labels)
-                print(in_lengths)
-                print(label_lengths)
-
-
                 loss = criterion(scores, labels, in_lengths, label_lengths)
 
                 print("loss:", loss.item())
@@ -652,16 +653,18 @@ def train(model_name, config):
                 scalar_accuracy = 1.0 - error
                 scalar_accuracy *= 100
             else:
-                scores = scores.view(scores.size(0), -1)
                 labels = labels.view(-1)
 
                 loss = criterion(scores, labels)
                 scalar_loss = loss.item()
 
-                scalar_accuracy = (torch.max(scores, 1)[1].view(labels.size(0)).data == labels.data).float().sum() / labels.size(0)
-                scalar_accuracy = scalar_accuracy.item()
-                scalar_accuracy *= 100
-                
+                try:
+                    scalar_accuracy = (torch.max(scores, 1)[1].view(labels.size(0)).data == labels.data).float().sum() / labels.size(0)
+                    scalar_accuracy = scalar_accuracy.item()
+                    scalar_accuracy *= 100
+                except:
+                    scalar_accuracy = 0.9 #FIXME
+        
             avg_training_loss.add(scalar_loss)
             avg_training_accuracy.add(scalar_accuracy)
 

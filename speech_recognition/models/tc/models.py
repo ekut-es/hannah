@@ -1,5 +1,6 @@
 from enum import Enum
 import math
+from typing import Dict, Any
 
 import torch
 import torch.nn as nn
@@ -140,7 +141,7 @@ class TCResNetModel(SerializableModule):
         self.dropout = nn.Dropout(dropout_prob)
 
         if self.fully_convolutional:
-            self.fc = nn.Conv2d(shape[1], n_labels, 1, bias = False)
+            self.fc = nn.Conv1d(shape[1], n_labels, 1, bias = False)
         else:
             self.fc = nn.Linear(shape[1], n_labels, bias=False)
 
@@ -155,7 +156,147 @@ class TCResNetModel(SerializableModule):
         x = self.fc(x)
         
         return x
-                        
+
+class ExitWrapperBlock(nn.Module):
+    def __init__(self,
+                 wrapped_block : nn.Module,
+                 exit_branch : nn.Module, 
+                 threshold : float,
+                 lossweight : float):
+
+        super().__init__()
+        
+        self.wrapped_block =  wrapped_block
+        self.threshold = threshold
+        self.lossweight = lossweight
+        self.exit_branch = exit_branch
+        self.exit_result = torch.Tensor()
+
+    def forward(self, x):
+        x = self.wrapped_block.forward(x)
+
+        x_exit = self.exit_branch.forward(x)
+        self.exit_result = x_exit
+        
+        return x
+        
+class BranchyTCResNetModel(TCResNetModel):
+    def __init__(self, config : Dict[str, Any]):
+        super().__init__(config)
+
+        dropout_prob = config["dropout_prob"]
+        n_labels = config["n_labels"]
+        
+        self.earlyexit_thresholds = config["earlyexit_thresholds"]
+        self.earlyexit_lossweights = config["earlyexit_lossweights"]
+
+        assert len(self.earlyexit_thresholds) == len(self.earlyexit_lossweights)
+        assert sum(self.earlyexit_lossweights) < 1.0
+
+        
+        
+        exit_candidate = TCResidualBlock
+
+        new_layers = nn.ModuleList()
+
+        x = Variable(torch.zeros(1, config["height"], config["width"]))
+        
+        exit_count = 0
+        for layer in self.layers:
+            x = layer.forward(x)
+            if isinstance(layer, exit_candidate) and exit_count < len(self.earlyexit_thresholds):
+                # Simplified exit branch
+                exit_branch = nn.Sequential(
+                    nn.AvgPool1d(x.shape[2]),
+                    nn.Dropout(dropout_prob),
+                    nn.Conv1d(x.shape[1], n_labels, 1, bias = False)
+                )
+                
+                exit_wrapper = ExitWrapperBlock(layer,
+                                                exit_branch,
+                                                self.earlyexit_thresholds[exit_count],
+                                                self.earlyexit_lossweights[exit_count])
+                
+                new_layers.append(exit_wrapper)
+                exit_count += 1
+            else:
+                new_layers.append(layer)
+
+            
+        self.layers = new_layers
+
+    def forward(self, x):
+        x = super().forward(x)
+
+        if self.training:
+            results = []
+            for layer in self.layers:
+                if isinstance(layer, ExitWrapperBlock):
+                    results.append(layer.exit_result)
+             
+            results.append(x)
+        
+            return results
+
+        #Forward in eval mode returns only first exit with estimated loss < thresholds
+        exit_number = 0
+    
+        zeros = torch.zeros(x.shape, device=x.device)
+        ones = torch.ones(x.shape, device=x.device)
+        
+        current_mask = torch.ones(x.shape, device=x.device)
+        global_result = torch.zeros(x.shape, device=x.device)
+
+        for layer in self.layers:
+            if isinstance(layer, ExitWrapperBlock):
+                threshold = layer.threshold
+                result = layer.exit_result
+                result = result.view(global_result.shape)
+                estimated_labels = result.argmax(dim=1)
+                estimated_losses = torch.nn.functional.cross_entropy(result, estimated_labels, reduce=False)
+                estimated_losses = estimated_losses.reshape(-1, 1).expand(global_result.shape)
+                
+
+                #print("shapes:", estimated_losses.shape, result.shape, zeros.shape, global_result.shape)
+                
+                masked_result = torch.where(estimated_losses < threshold, result, zeros)
+                masked_result = torch.where(current_mask > 0, masked_result, zeros)
+                current_mask = torch.where(estimated_losses < threshold, zeros, current_mask)
+                
+                #print("result:", result)
+                #print("Masked result:", masked_result)
+                #print("x:", x)
+                
+                global_result += masked_result
+
+                #print("global_result:", global_result)
+
+                
+                exit_number += 1
+
+        global_result += torch.where(current_mask > 0, x, global_result)
+        #print("final_result", global_result)
+        return global_result
+                
+
+    def get_loss_function(self):
+        multipliers = list(self.earlyexit_lossweights)
+        multipliers.append(1.0 - sum(multipliers))
+        criterion = nn.CrossEntropyLoss()
+        def loss_function(scores, labels):
+            if isinstance(scores, list):
+                loss = torch.zeros([1], device=scores[0].device)
+                for multiplier, current_scores in zip(multipliers, scores):
+                    current_scores = current_scores.view(current_scores.size(0), -1)
+                    current_loss = multiplier * criterion(current_scores, labels)
+                    loss += current_loss
+                return loss
+            else:
+                scores = scores.view(scores.size(0), -1)
+                return criterion(scores, labels)
+            
+        return loss_function
+
         
 configs= {
     ConfigType.TC_RES_2.value: dict(
@@ -488,5 +629,30 @@ configs= {
         block6_conv_size = 9,
         block6_stride = 1,
         block6_output_channels = 48 
-    )
+    ),
+    ConfigType.BRANCHY_TC_RES_8.value: dict(
+        features="mel",
+        dropout_prob = 0.5,
+        earlyexit_thresholds = [0.5],
+        earlyexit_lossweights = [0.5],
+        fully_convolutional=False,
+        width_multiplier = 1.5,
+        dilation = 1,
+        clipping_value = 100000,
+        bottleneck = (0,0),
+        channel_division = (4,2),
+        separable = (0,0),
+        conv1_size = 3,
+        conv1_stride = 1,
+        conv1_output_channels = 16,
+        block1_conv_size = 9,
+        block1_stride = 2,
+        block1_output_channels = 24,
+        block2_conv_size = 9,
+        block2_stride = 2,
+        block2_output_channels = 32,
+        block3_conv_size = 9,
+        block3_stride = 2,
+        block3_output_channels = 48 
+    ),
 }

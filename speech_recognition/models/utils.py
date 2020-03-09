@@ -75,6 +75,9 @@ class ConfigType(Enum):
     TC_RES_8_15 = "tc-res8-15"
     TC_RES_14_15 = "tc-res14-15"
 
+    # Branchy TC-RES are tc res models with early exit branches
+    BRANCHY_TC_RES_8 = "branchy-tc-res8"
+    
     #Models for Voice Activity Detection
     SIMPLE_VAD = "simple-vad"
     BOTTLENECK_VAD = "bottleneck-vad"
