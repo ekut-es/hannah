@@ -78,7 +78,7 @@ class ConfigOption(object):
         
 class ConfigBuilder(object):
     
-    unhashed_options = set(["config", "dataset_cls", "model_class", "type", "cuda", "gpu_no", "output_dir", "config_hash"])
+    unhashed_options = set(["config", "dataset_cls", "model_class", "type", "cuda", "gpu_no", "output_dir", "config_hash", "dump_test"])
     
     def __init__(self, *default_configs):
         self.default_config = ChainMap(*default_configs)

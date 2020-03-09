@@ -229,8 +229,23 @@ def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
     except Exception as e:
         msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
 
-def validate(data_loader, model, model2, criterion, config, config_vad, config_keywords, loggers=[], epoch=-1):
+def validate(data_loader, model, model2, criterion, config, config_vad, config_keywords, loggers=[], epoch=-1, dump=False, output_dir=""):
 
+    if dump:
+        assert output_dir != ""
+
+        try:
+            os.makedirs(f"{output_dir}/test_data/input")
+        except:
+            pass
+        
+        try:
+            os.makedirs(f"{output_dir}/test_data/output")
+        except Exception as e:
+            print(e)
+            pass
+
+        
     combined_evaluation = True
     if model2 is None:
         combined_evaluation = False
@@ -259,6 +274,11 @@ def validate(data_loader, model, model2, criterion, config, config_vad, config_k
 
     for validation_step, (inputs, in_lengths, targets, target_lengths) in enumerate(data_loader):
         with torch.no_grad():
+            if dump:
+                x_copy = inputs.cpu().tolist()
+                with open("{}/test_data/input/input_{}.json".format(output_dir,validation_step), "w") as f:
+                    f.write(json.dumps(x_copy))
+                    
             if config["cuda"]:
                 inputs, targets = inputs.cuda(), targets.cuda()
             # compute output from model
@@ -275,13 +295,18 @@ def validate(data_loader, model, model2, criterion, config, config_vad, config_k
             else:
                 output = model(inputs)
 
+            if dump:
+                x_copy = output.cpu().tolist()
+                with open("{}/test_data/output/output_{}.json".format(output_dir, validation_step), "w") as f:
+                    f.write(json.dumps(x_copy))
+                    
+                
             if config["loss"] == "ctc":
                 loss = criterion(output, targets)
             else:
                 targets=targets.view(-1)
                 output=output.view(output.size(0), -1)
                 loss = criterion(output, targets)
-
 
 
                 classerr.add(output.data, targets)
@@ -318,10 +343,11 @@ def evaluate(model_name, config, config_vad=None, config_keyword=None, model=Non
     if config_vad is None:
         combined_evaluation = False
 
+    output_dir = get_output_dir(model_name, config)
+    log_dir = get_config_logdir(model_name, config)
     global msglogger
     if not msglogger:
         log_dir = get_config_logdir(model_name, config)
-        output_dir = get_output_dir(model_name, config)
         msglogger = config_pylogger('logging.conf', "eval", log_dir)
         
         if not os.path.exists(log_dir):
@@ -365,7 +391,7 @@ def evaluate(model_name, config, config_vad=None, config_keyword=None, model=Non
 
         performance_summary_vad = model_summary(model_vad, dummy_input, 'performance')
         performance_summary_keyword = model_summary(model_keyword, dummy_input, 'performance')
-        accuracy, loss, confusion_matrix = validate(test_loader, model_vad, model_keyword, criterion, config, config_vad, config_keyword, loggers)
+        accuracy, loss, confusion_matrix = validate(test_loader, model_vad, model_keyword, criterion, config, config_vad, config_keyword, loggers, output_dir=log_dir, dump=config['dump_test'])
     else:
         model.eval()
         if config["cuda"]:
@@ -373,7 +399,7 @@ def evaluate(model_name, config, config_vad=None, config_keyword=None, model=Non
             model.cuda()
 
         performance_summary = model_summary(model, dummy_input, 'performance')
-        accuracy, loss, confusion_matrix = validate(test_loader, model, None, criterion, config, None, None, loggers)
+        accuracy, loss, confusion_matrix = validate(test_loader, model, None, criterion, config, None, None, loggers, output_dir=log_dir, dump=config['dump_test'])
 
     msglogger.info('==> Per class accuracy metrics')
     
@@ -836,6 +862,8 @@ def build_config(extra_config={}):
                                                desc="Number of epochs for training"),
                          profile=ConfigOption(default=False,
                                               desc="Enable profiling"),
+                         dump_test=ConfigOption(default=False,
+                                                desc="Dump test set to <output_directory>/test_data"),
                          num_workers=ConfigOption(desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
                                                   default=0),
                          
