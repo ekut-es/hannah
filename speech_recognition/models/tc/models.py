@@ -10,6 +10,21 @@ import torch.nn.functional as F
 
 from ..utils import ConfigType, SerializableModule
 
+class ApproximateGlobalAveragePooling1D(nn.Module):
+    def __init__(self, size):
+        super().__init__()
+        def next_power_of2(x):
+            return 1<<(x-1).bit_length()
+
+        self.size = size
+        self.divisor = next_power_of2(size)
+
+    def forward(self, x):
+        x = torch.sum(x, dim=2, keepdim=True)
+        x = x / self.divisor
+
+        return x
+        
 class TCResidualBlock(nn.Module):
     def __init__(self, input_channels, output_channels, size, stride, dilation, clipping_value,  bottleneck, channel_division, separable):
         super().__init__()
@@ -128,7 +143,7 @@ class TCResNetModel(SerializableModule):
             x = layer(x)
         
         shape = x.shape
-        average_pooling = nn.AvgPool1d((shape[2]))
+        average_pooling = ApproximateGlobalAveragePooling1D(x.shape[2]) #nn.AvgPool1d((shape[2]))
         self.layers.append(average_pooling)
         
         x = average_pooling(x)
@@ -207,9 +222,14 @@ class BranchyTCResNetModel(TCResNetModel):
             if isinstance(layer, exit_candidate) and exit_count < len(self.earlyexit_thresholds):
                 # Simplified exit branch
                 exit_branch = nn.Sequential(
-                    nn.AvgPool1d(x.shape[2]),
+                    nn.Conv1d(x.shape[1], n_labels, 1, bias = False),
+                    nn.BatchNorm1d(n_labels),
+                    nn.ReLU(),
+                    ApproximateGlobalAveragePooling1D(x.shape[2]),
                     nn.Dropout(dropout_prob),
-                    nn.Conv1d(x.shape[1], n_labels, 1, bias = False)
+                    nn.Conv1d(n_labels, n_labels, 1, bias = False),
+                    #nn.BatchNorm1d(n_labels),
+                    #nn.ReLU()
                 )
                 
                 exit_wrapper = ExitWrapperBlock(layer,
@@ -222,8 +242,17 @@ class BranchyTCResNetModel(TCResNetModel):
             else:
                 new_layers.append(layer)
 
-            
+        self.exit_count = exit_count
+        self.exits_taken = [0] * (exit_count+1)
         self.layers = new_layers
+
+
+    def reset_stats(self):
+        self.exits_taken = [0] * (self.exit_count+1)
+
+    def print_stats(self):
+        for num, taken in enumerate(self.exits_taken):
+            print("Exit {} taken: {}".format(num, taken))
 
     def forward(self, x):
         x = super().forward(x)
@@ -247,17 +276,45 @@ class BranchyTCResNetModel(TCResNetModel):
         current_mask = torch.ones(x.shape, device=x.device)
         global_result = torch.zeros(x.shape, device=x.device)
 
+        batch_taken = [0] * (self.exit_count)
+        
         for layer in self.layers:
             if isinstance(layer, ExitWrapperBlock):
                 threshold = layer.threshold
                 result = layer.exit_result
                 result = result.view(global_result.shape)
                 estimated_labels = result.argmax(dim=1)
-                estimated_losses = torch.nn.functional.cross_entropy(result, estimated_labels, reduce=False)
+                thresholded_result = torch.clamp(result, -1.0, 0.9925)
+                #print(result)
+
+                # Cross Entropy Loss function
+                #estimated_losses = torch.nn.functional.cross_entropy(thresholded_result, estimated_labels, reduce=False)
+                #print(exit_number, "True losses:", estimated_losses)
+
+                # Approximated Entropy Loss
+                
+                #print(thresholded_result)
+                expected_result = torch.zeros(thresholded_result.shape, device=x.device)
+                for row, column in enumerate(estimated_labels):
+                    for column2 in range(expected_result.shape[1]):
+                        expected_result[row, column2] = thresholded_result[row, column]
+
+                #print(estimated_labels)
+                #print(expected_result)
+                diff = thresholded_result-expected_result
+                #estimated_losses = torch.sum(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/6 + torch.pow(diff, 4)/24+torch.pow(diff, 5)/120, dim=1) 
+
+                estimated_losses = torch.sum(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/8, dim=1)
+                #estimated_losses_3 = torch.sum(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/6, dim=1)
+
+                
+                #print(exit_number, "Estimated losses:", -torch.log(estimated_losses**(-1)))
+                #print(exit_number, "Estimated losses:", -torch.log(estimated_losses_3**(-1)))
+                threshold = math.exp(threshold)
+                
+                batch_taken[exit_number] = torch.sum(estimated_losses < threshold).item()
                 estimated_losses = estimated_losses.reshape(-1, 1).expand(global_result.shape)
                 
-
-                #print("shapes:", estimated_losses.shape, result.shape, zeros.shape, global_result.shape)
                 
                 masked_result = torch.where(estimated_losses < threshold, result, zeros)
                 masked_result = torch.where(current_mask > 0, masked_result, zeros)
@@ -271,11 +328,12 @@ class BranchyTCResNetModel(TCResNetModel):
 
                 #print("global_result:", global_result)
 
-                
                 exit_number += 1
 
         global_result += torch.where(current_mask > 0, x, global_result)
-        #print("final_result", global_result)
+        batch_taken.append(x.shape[0]-sum(batch_taken))
+        print("Batch taken: ", batch_taken)
+        
         return global_result
                 
 
@@ -633,8 +691,8 @@ configs= {
     ConfigType.BRANCHY_TC_RES_8.value: dict(
         features="mel",
         dropout_prob = 0.5,
-        earlyexit_thresholds = [0.5],
-        earlyexit_lossweights = [0.5],
+        earlyexit_thresholds = [1.2, 1.2],
+        earlyexit_lossweights = [0.3, 0.3],
         fully_convolutional=False,
         width_multiplier = 1.5,
         dilation = 1,
