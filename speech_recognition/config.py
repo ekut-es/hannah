@@ -26,9 +26,6 @@ class ConfigOption(object):
         self.category = category
         self.visible = visible
 
-    def _get_dest(self, name):
-        return name
-
     def _get_dict(self, name):
         res = {}
         if self.dtype != bool:
@@ -48,12 +45,9 @@ class ConfigOption(object):
             res["choices"] = self.choices
             
         if self.dtype == bool:
-            if self.default == True:
-                res["action"] = 'store_false'
-                res["dest"] = name
-            else:
-                res["action"] = 'store_true'
-                res["default"] = False
+            res["dest"] = name
+            res["action"] = 'store_true'
+            res["default"] = self.default
 
         elif self.dtype == list:
             res["nargs"] = "+"
@@ -65,19 +59,31 @@ class ConfigOption(object):
                 
         return res
 
-    def get_args(self, name):
-
-        args = self._get_dict(name)
+    def _gen_flags(self, name):
         
-        if self.dtype == bool and self.default == True:
-            name = "no_" + name
-            
         flags = []
         if "_" in name:
             flags.append("--{}".format(name.replace("_", "-")))
         flags.append("--{}".format(name))
 
-        return flags, args
+        return flags 
+    
+    def get_args(self, name):
+
+        args = self._get_dict(name)
+        flags = self._gen_flags(name)
+
+        res = [(flags, args)]
+        
+        if self.dtype == bool:
+            no_name = "no_" + name
+            no_flags=self._gen_flags(no_name)
+            no_args = self._get_dict(name)
+            no_args['action'] = 'store_false'
+
+            res.append((no_flags, no_args))
+
+        return res
         
 class ConfigBuilder(object):
     
@@ -109,14 +115,14 @@ class ConfigBuilder(object):
 
             flag = "--{}".format(key)
             if isinstance(value, ConfigOption):
-                flags, args = value.get_args(key)
-                category = parser
-                if value.category is not None:
-                    if value.category not in categories:
-                        category = parser.add_argument_group(title=value.category)
-                        categories[value.category] = category
-                    category = categories[value.category]
-                category.add_argument(*flags, **args) 
+                for flags, args in value.get_args(key):
+                    category = parser
+                    if value.category is not None:
+                        if value.category not in categories:
+                            category = parser.add_argument_group(title=value.category)
+                            categories[value.category] = category
+                        category = categories[value.category]
+                    category.add_argument(*flags, **args) 
             elif isinstance(value, tuple):
                 parser.add_argument(flag, default=list(value), nargs=len(value), type=type(value[0]))
             elif isinstance(value, list):
