@@ -32,6 +32,11 @@ do
             user_arg=""
             shift
 	    ;;
+	--python-cmd)
+	    shift
+	    python_cmd=$1
+	    shift
+	    ;;
 	*)    # unknown option
 	    echo "Found unknown option: $key"
 	    exit 1
@@ -42,7 +47,7 @@ done
 git submodule update --init --recursive
 
 if [ -f /etc/redhat-release ]; then
-    sudo yum install python36 python36-devel -y 
+    sudo yum install python36 python36-devel -y || true
     sudo yum install freeglut-devel -y 
     sudo yum install portaudio-devel -y
 else
@@ -68,18 +73,18 @@ else
     $python_cmd -m ensurepip $user_arg
 fi
 
-if [ $using_gpu_cluster == 1 ] || [$enable_gpu == 1]; then
+if [ $using_gpu_cluster == 1 ] || [ $enable_gpu == 1 ]; then
 	$python_cmd -m pip install -r requirements.txt
     if [ -f /etc/redhat-release ]; then
         $python_cmd -m pip install $user_arg PyAudio==0.2.11
     fi
 else
     #install torch
-    $python_cmd -m pip install https://download.pytorch.org/whl/cpu/torch-1.0.1-cp36-cp36m-linux_x86_64.whl $user_arg
-    $python_cmd -m pip install torchvision==0.2.2.post3 $user_arg
+    $python_cmd -m pip install torch==1.1.0 $user_arg
+    $python_cmd -m pip install torchvision==0.2.2 $user_arg
 
     #install tensorflow
-    $python_cmd -m pip install tensorflow==1.12.0 $user_arg
+    $python_cmd -m pip install tensorflow==1.13.1 $user_arg
     $python_cmd -m pip install audioread==2.1.6 $user_arg
     
     $python_cmd -m pip install $user_arg redis
