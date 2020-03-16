@@ -19,6 +19,15 @@ class SerializableModule(nn.Module):
     def __init__(self):
         super().__init__()
 
+
+    
+    def reset_stats(self):
+        pass
+
+    def print_stats(self):
+        pass
+
+        
     def save(self, filename):
         torch.save(self.state_dict(), filename)
 
