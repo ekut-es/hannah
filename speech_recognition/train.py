@@ -908,8 +908,8 @@ def build_config(extra_config={}):
                     del default_config_keyword["type"]
 
 
-    global_config = dict(cuda=ConfigOption(default=True,
-                                           desc="Disable cuda"),
+    global_config = dict(cuda=ConfigOption(default=torch.cuda.is_available(),
+                                           desc="Enable / disable cuda"),
                          n_epochs=ConfigOption(default=500,
                                                desc="Number of epochs for training"),
                          profile=ConfigOption(default=False,
