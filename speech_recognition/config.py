@@ -26,6 +26,9 @@ class ConfigOption(object):
         self.category = category
         self.visible = visible
 
+    def _get_dest(self, name):
+        return name
+
     def _get_dict(self, name):
         res = {}
         if self.dtype != bool:
