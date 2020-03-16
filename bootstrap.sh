@@ -93,7 +93,6 @@ else
         $python_cmd -m pip install $user_arg PyAudio==0.2.11 #install fixed version as newer versions have severe performance regressions
     fi
     $python_cmd -m pip install $user_arg python-Levenshtein
-    $python_cmd -m pip install $user_arg pyttsx3
     $python_cmd -m pip install $user_arg requests
     $python_cmd -m pip install $user_arg SpeechRecognition
     $python_cmd -m pip install $user_arg git+https://github.com/daemon/pytorch-pcen
