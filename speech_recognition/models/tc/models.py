@@ -1,12 +1,19 @@
 from enum import Enum
 import math
+import sys
+import os
+
 from typing import Dict, Any
+
 
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "distiller"))
+print(sys.path)
+import distiller
 
 from ..utils import ConfigType, SerializableModule
 
@@ -15,7 +22,7 @@ class ApproximateGlobalAveragePooling1D(nn.Module):
         super().__init__()
         def next_power_of2(x):
             return 1<<(x-1).bit_length()
-
+        
         self.size = size
         self.divisor = next_power_of2(size)
 
@@ -118,7 +125,8 @@ class TCResNetModel(SerializableModule):
                 else:
                     conv = nn.Conv1d(input_channels, output_channels, size, stride, bias = False)
                     self.layers.append(conv)
-                
+                    self.layers.append(distiller.quantization.ClippedLinearQuantization(num_bits=7, clip_val=0.9921875))
+                    
                 input_channels = output_channels
                 count += 1
                 
@@ -246,14 +254,13 @@ class BranchyTCResNetModel(TCResNetModel):
         self.exits_taken = [0] * (exit_count+1)
         self.layers = new_layers
 
-
     def reset_stats(self):
         self.exits_taken = [0] * (self.exit_count+1)
 
     def print_stats(self):
         for num, taken in enumerate(self.exits_taken):
             print("Exit {} taken: {}".format(num, taken))
-
+            
     def forward(self, x):
         x = super().forward(x)
 
@@ -284,12 +291,12 @@ class BranchyTCResNetModel(TCResNetModel):
                 result = layer.exit_result
                 result = result.view(global_result.shape)
                 estimated_labels = result.argmax(dim=1)
-                thresholded_result = torch.clamp(result, -1.0, 0.9925)
+                thresholded_result = torch.clamp(result, -64.0, 63.9999389611)
                 #print(result)
 
                 # Cross Entropy Loss function
-                #estimated_losses = torch.nn.functional.cross_entropy(thresholded_result, estimated_labels, reduce=False)
-                #print(exit_number, "True losses:", estimated_losses)
+                estimated_losses = torch.nn.functional.cross_entropy(thresholded_result, estimated_labels, reduce=False)
+                print(exit_number, "True losses:", estimated_losses)
 
                 # Approximated Entropy Loss
                 
@@ -304,11 +311,11 @@ class BranchyTCResNetModel(TCResNetModel):
                 diff = thresholded_result-expected_result
                 #estimated_losses = torch.sum(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/6 + torch.pow(diff, 4)/24+torch.pow(diff, 5)/120, dim=1) 
 
-                estimated_losses = torch.sum(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/8, dim=1)
+                estimated_losses = torch.sum(torch.clamp(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/8, 0, 64), dim=1)
                 #estimated_losses_3 = torch.sum(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/6, dim=1)
 
                 
-                #print(exit_number, "Estimated losses:", -torch.log(estimated_losses**(-1)))
+                print(exit_number, "Estimated losses:", -torch.log(estimated_losses**(-1)))
                 #print(exit_number, "Estimated losses:", -torch.log(estimated_losses_3**(-1)))
                 threshold = math.exp(threshold)
                 
@@ -691,10 +698,10 @@ configs= {
     ConfigType.BRANCHY_TC_RES_8.value: dict(
         features="mel",
         dropout_prob = 0.5,
-        earlyexit_thresholds = [1.2, 1.2],
+        earlyexit_thresholds = [1.4, 1.4],
         earlyexit_lossweights = [0.3, 0.3],
         fully_convolutional=False,
-        width_multiplier = 1.5,
+        width_multiplier = 1,
         dilation = 1,
         clipping_value = 100000,
         bottleneck = (0,0),
