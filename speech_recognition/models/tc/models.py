@@ -113,7 +113,7 @@ class TCResNetModel(SerializableModule):
                 # Change first convolution to bottleneck layer.
                 if bottleneck[0] == 1:
                     channel_division_local = channel_division[0]
-                    # Change bottleneck layer to sepearable convolution
+                    # Change bottleneck layer to separable convolution
                     groups =  output_channels//channel_division_local if separable[0] else 1
             
                     conv1 = nn.Conv1d(input_channels, output_channels//channel_division_local, 1, 1, bias = False)
@@ -125,7 +125,7 @@ class TCResNetModel(SerializableModule):
                 else:
                     conv = nn.Conv1d(input_channels, output_channels, size, stride, bias = False)
                     self.layers.append(conv)
-                    self.layers.append(distiller.quantization.ClippedLinearQuantization(num_bits=7, clip_val=0.9921875))
+                    self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
                     
                 input_channels = output_channels
                 count += 1
