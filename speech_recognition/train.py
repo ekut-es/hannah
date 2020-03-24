@@ -728,9 +728,13 @@ def train(model_name, config):
         
         msglogger.info("Validation epoch {} of {}".format(epoch_idx, config["n_epochs"]))
 
+        model.on_val()
+        
         avg_acc, avg_loss, confusion_matrix = validate(dev_loader, model,None, criterion, config,None, None, loggers=loggers, epoch=epoch_idx)
         csv_log_writer.writerow({"Phase" : "Val", "Epoch" : epoch_idx, "Accuracy" : avg_acc, "Loss" : avg_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
 
+        model.on_val_end()
+        
         if avg_acc > max_acc:
             save_model(log_dir, model, test_set, config=config)
             max_acc = avg_acc
@@ -809,10 +813,13 @@ def train(model_name, config):
     #except:
     #    pass
 
+    model.on_test()
     test_accuracy, test_loss, confusion_matrix = evaluate(model_name, config, None, None, model, test_set)
     csv_log_writer.writerow({"Phase" : "Test", "Epoch" : epoch_idx, "Accuracy" : test_accuracy, "Loss" : test_loss, "Macs" : performance_summary["Total MACs"], "Weights" : performance_summary["Total Weights"], "LR" : optimizer.param_groups[0]['lr']})
-    csv_eval_log_name = os.path.join(output_dir, "eval.csv")
+    model.on_test_end()
+
     
+    csv_eval_log_name = os.path.join(output_dir, "eval.csv")
     with open(csv_eval_log_name, 'a') as csv_eval_file:
         fcntl.lockf(csv_eval_file, fcntl.LOCK_EX)
         csv_eval_writer = csv.DictWriter(csv_eval_file, fieldnames=["Hash","Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])

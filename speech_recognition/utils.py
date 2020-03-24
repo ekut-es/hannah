@@ -21,10 +21,16 @@ class SerializableModule(nn.Module):
 
 
     
-    def reset_stats(self):
+    def on_val(self):
         pass
 
-    def print_stats(self):
+    def on_val_end(self):
+        pass
+
+    def on_test(self):
+        pass
+
+    def on_test_end(self):
         pass
 
         

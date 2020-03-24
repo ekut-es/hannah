@@ -11,17 +11,26 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
+import logging
+msglogger = logging.getLogger()
+
+
+import pwlf
+import numpy as np
+import matplotlib.pyplot as plt
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "distiller"))
 print(sys.path)
 import distiller
 
-from ..utils import ConfigType, SerializableModule
+
+from ..utils import ConfigType, SerializableModule, next_power_of2
+
+    
 
 class ApproximateGlobalAveragePooling1D(nn.Module):
     def __init__(self, size):
         super().__init__()
-        def next_power_of2(x):
-            return 1<<(x-1).bit_length()
         
         self.size = size
         self.divisor = next_power_of2(size)
@@ -58,13 +67,17 @@ class TCResidualBlock(nn.Module):
                 nn.Conv1d(output_channels//channel_division, output_channels//channel_division, size, 1, padding=dilation*pad_x, dilation=dilation, bias=False, groups=groups),
                 nn.Conv1d(output_channels//channel_division, output_channels, 1, stride=1, dilation=dilation, bias=False),
                 nn.BatchNorm1d(output_channels))
+                    
         else:
             self.convs = nn.Sequential(
                 nn.Conv1d(input_channels, output_channels, size, stride, padding=dilation*pad_x, dilation=dilation, bias=False),
                 nn.BatchNorm1d(output_channels),
                 nn.Hardtanh(0.0, self.clipping_value),
                 nn.Conv1d(output_channels, output_channels, size, 1, padding=dilation*pad_x, dilation=dilation, bias=False),
-                nn.BatchNorm1d(output_channels))
+                nn.BatchNorm1d(output_channels),
+                distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
+            )
+                    
 
             
         self.relu = nn.Hardtanh(0.0, self.clipping_value)
@@ -209,6 +222,16 @@ class BranchyTCResNetModel(TCResNetModel):
 
         dropout_prob = config["dropout_prob"]
         n_labels = config["n_labels"]
+
+        self.n_pieces = config.get("exit_n_pieces", 3)
+        self.taylor_degree = config.get("exit_taylor_degree", 3)
+        
+        self.n_bits = config.get("exit_bits", 20)
+        self.f_bits = config.get("exit_f_bits", 14)
+        
+        self.exit_max = 2**(self.n_bits-self.f_bits-1)-1/(2**self.f_bits)
+        self.exit_min = -2**(self.n_bits-self.f_bits-1)
+        self.exit_divider = 2**(self.f_bits)
         
         self.earlyexit_thresholds = config["earlyexit_thresholds"]
         self.earlyexit_lossweights = config["earlyexit_lossweights"]
@@ -217,6 +240,26 @@ class BranchyTCResNetModel(TCResNetModel):
         assert sum(self.earlyexit_lossweights) < 1.0
 
         
+
+        #Generate piecewisefunction
+        x = np.linspace(-2.0, 2.0)
+        y = np.exp(x)
+        my_pwlf = pwlf.PiecewiseLinFit(x, y)
+        self.piecewise_func = my_pwlf
+        my_pwlf.fit(self.n_pieces)
+
+        msglogger.info("Initial piecewise paramters:")
+        msglogger.info("Slopes: {}".format(my_pwlf.slopes))
+        msglogger.info("Intercepts: {}".format(my_pwlf.intercepts))
+        msglogger.info("Breaks: {}".format(my_pwlf.fit_breaks))
+        msglogger.info("Beta: {}".format(my_pwlf.beta))
+
+        y_pred = my_pwlf.predict(x)
+        
+        #plt.plot(x, y, 'r')
+        #plt.plot(x, y_pred, 'b')
+        #plt.show()
+        #sys.exit(-1)
         
         exit_candidate = TCResidualBlock
 
@@ -254,13 +297,105 @@ class BranchyTCResNetModel(TCResNetModel):
         self.exits_taken = [0] * (exit_count+1)
         self.layers = new_layers
 
+        self.test = False
+
+        #Piecewise linear intermediate values
+        self.x = []
+        self.y = []
+
+        
+        
+    def on_val(self):
+        self.reset_stats()
+        
+        self.x = []
+        self.y = []
+        
+        
+    def on_val_end(self):
+        self.print_stats()
+
+        x = np.concatenate(self.x)
+        y = np.concatenate(self.y)
+        
+        #self.piecewise_func = pwlf.PiecewiseLinFit(x, y)
+        #self.piecewise_func.fit(self.n_pieces)
+
+        msglogger.info("Piecewise Parameters")
+        msglogger.info("Slopes: {}".format(self.piecewise_func.slopes))
+        msglogger.info("Intercepts: {}".format(self.piecewise_func.intercepts))
+        msglogger.info("Breaks: {}".format(self.piecewise_func.fit_breaks))
+        msglogger.info("Beta: {}".format(self.piecewise_func.beta))
+
+        
+    def on_test(self):
+        self.reset_stats()
+        self.test = True
+
+    def on_test_end(self):
+        self.print_stats()
+        self.test = False
+        
     def reset_stats(self):
         self.exits_taken = [0] * (self.exit_count+1)
 
     def print_stats(self):
+        msglogger.info("")
+        msglogger.info("Early exit statistics")
         for num, taken in enumerate(self.exits_taken):
-            print("Exit {} taken: {}".format(num, taken))
-            
+            msglogger.info("Exit {} taken: {}".format(num, taken))
+
+    def _estimate_losses_real(self,thresholded_result, estimated_labels):
+        estimated_losses = torch.nn.functional.cross_entropy(thresholded_result, estimated_labels, reduce=False)
+
+        return estimated_losses
+        
+    def _estimate_losses_taylor(self, thresholded_result, estimated_labels):
+        expected_result = torch.zeros(thresholded_result.shape, device=thresholded_result.device)
+        for row, column in enumerate(estimated_labels):
+            for column2 in range(expected_result.shape[1]):
+                expected_result[row, column2] = thresholded_result[row, column]
+                
+        diff = thresholded_result-expected_result
+        estimated_losses = torch.sum(torch.clamp(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/6, 0, 64), dim=1)
+
+        return  torch.log(estimated_losses)
+        
+    def _estimate_losses_taylor_approximate(self, thresholded_result, estimated_labels):
+        expected_result = torch.zeros(thresholded_result.shape, device=thresholded_result.device)
+        for row, column in enumerate(estimated_labels):
+            for column2 in range(expected_result.shape[1]):
+                expected_result[row, column2] = thresholded_result[row, column]
+                
+        diff = thresholded_result-expected_result
+        estimated_losses = torch.sum(torch.clamp(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/8, 0, 64), dim=1)
+
+        return torch.log(estimated_losses)
+
+
+    def _estimate_losses_piecewise_linear(self, thresholded_result, estimated_labels):
+
+        
+        expected_result = torch.zeros(thresholded_result.shape, device=x.device)
+        for row, column in enumerate(estimated_labels):
+            for column2 in range(expected_result.shape[1]):
+                expected_result[row, column2] = thresholded_result[row, column]
+                
+        diff = thresholded_result-expected_result
+        
+        return  torch.log(estimated_losses)
+
+    def update_piecewise_data(self, thresholded_result):
+        tmp_result  = thresholded_result.detach().cpu().numpy()
+        tmp_data = np.expand_dims(np.max(tmp_result, axis=1), axis=1)
+        
+        x = tmp_result - tmp_data
+        y = np.exp(x)
+        
+        self.x.append(x.flatten())
+        self.y.append(y.flatten())
+
+    
     def forward(self, x):
         x = super().forward(x)
 
@@ -291,55 +426,37 @@ class BranchyTCResNetModel(TCResNetModel):
                 result = layer.exit_result
                 result = result.view(global_result.shape)
                 estimated_labels = result.argmax(dim=1)
-                thresholded_result = torch.clamp(result, -64.0, 63.9999389611)
-                #print(result)
+                thresholded_result = torch.clamp(result, -32.0, 31.9999389611)
 
-                # Cross Entropy Loss function
-                estimated_losses = torch.nn.functional.cross_entropy(thresholded_result, estimated_labels, reduce=False)
-                print(exit_number, "True losses:", estimated_losses)
+                estimated_losses_real = self._estimate_losses_real(thresholded_result, estimated_labels)
+                estimated_losses_taylor = self._estimate_losses_taylor(thresholded_result, estimated_labels)
+                estimated_losses_taylor_approximate = self._estimate_losses_taylor_approximate(thresholded_result, estimated_labels)
 
-                # Approximated Entropy Loss
+#                print("real:", estimated_losses_real)
+#                print("taylor:", estimated_losses_taylor)
+#                print("taylor_approx:", estimated_losses_taylor_approximate)
+
+                estimated_losses = estimated_losses_taylor_approximate
                 
-                #print(thresholded_result)
-                expected_result = torch.zeros(thresholded_result.shape, device=x.device)
-                for row, column in enumerate(estimated_labels):
-                    for column2 in range(expected_result.shape[1]):
-                        expected_result[row, column2] = thresholded_result[row, column]
-
-                #print(estimated_labels)
-                #print(expected_result)
-                diff = thresholded_result-expected_result
-                #estimated_losses = torch.sum(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/6 + torch.pow(diff, 4)/24+torch.pow(diff, 5)/120, dim=1) 
-
-                estimated_losses = torch.sum(torch.clamp(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/8, 0, 64), dim=1)
-                #estimated_losses_3 = torch.sum(1 + diff + torch.pow(diff, 2)/2 + torch.pow(diff, 3)/6, dim=1)
-
-                
-                print(exit_number, "Estimated losses:", -torch.log(estimated_losses**(-1)))
-                #print(exit_number, "Estimated losses:", -torch.log(estimated_losses_3**(-1)))
-                threshold = math.exp(threshold)
+                self.update_piecewise_data(thresholded_result)
                 
                 batch_taken[exit_number] = torch.sum(estimated_losses < threshold).item()
+
+                
                 estimated_losses = estimated_losses.reshape(-1, 1).expand(global_result.shape)
-                
-                
+                                
                 masked_result = torch.where(estimated_losses < threshold, result, zeros)
                 masked_result = torch.where(current_mask > 0, masked_result, zeros)
                 current_mask = torch.where(estimated_losses < threshold, zeros, current_mask)
                 
-                #print("result:", result)
-                #print("Masked result:", masked_result)
-                #print("x:", x)
-                
                 global_result += masked_result
-
-                #print("global_result:", global_result)
 
                 exit_number += 1
 
         global_result += torch.where(current_mask > 0, x, global_result)
-        batch_taken.append(x.shape[0]-sum(batch_taken))
-        print("Batch taken: ", batch_taken)
+        batch_taken.append(x.shape[0])
+        for i, taken in enumerate(batch_taken):
+            self.exits_taken[i] += taken
         
         return global_result
                 

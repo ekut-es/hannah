@@ -3,6 +3,9 @@ from enum import Enum
 import torch
 import torch.nn as nn
 
+def next_power_of2(x):
+    return 1<<(x-1).bit_length()
+
 class SerializableModule(nn.Module):
     def __init__(self):
         super().__init__()
