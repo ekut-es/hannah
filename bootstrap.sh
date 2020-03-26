@@ -119,6 +119,7 @@ else
     $python_cmd -m pip install $user_arg gitpython
     $python_cmd -m pip install $user_arg spur
     $python_cmd -m pip install $user_arg plotly
+    $python_cmd -m pip install $user_arg pwlf
     
     echo "\nInstallation finished!\n"
     
