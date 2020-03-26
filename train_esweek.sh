@@ -39,9 +39,14 @@ BASE_MODELS="tc-res2 tc-res4 tc-res6 tc-res8 tc-res10  tc-res12  tc-res14 tc-res
 #done
 
 
-for threshold in 0.4 0.6 0.8 0.9 1.0 1.2 1.4; do
-    python3.6 -m speech_recognition.train --dump-test --experiment-id branchy_search-2exits --num-workers $NUM_WORKERS --normalize-bits 8 --fold-bn 400 --model branchy-tc-res8 --gpu-no $GPU  --compress distillation/quant_aware_train_fp/quant_aware_train_fixpoint_quant.yaml --earlyexit_thresholds ${threshold} ${threshold}  --earlyexit_lossweights 0.3 0.3 &
+for threshold in 0.3 0.4 0.5 0.6 0.7 0.8; do
+    python3.6 -m speech_recognition.train --dump-test --experiment-id branchy_search-2exits --num-workers $NUM_WORKERS --normalize-bits 8 --fold-bn 450 --model branchy-tc-res8 --gpu-no $GPU  --compress distillation/quant_aware_train_fp/quant_aware_train_fixpoint_quant.yaml --earlyexit_thresholds ${threshold} ${threshold}  --earlyexit_lossweights 0.3 0.3 &
 done
+
+for threshold in 0.3 0.4 0.5 0.6 0.7 0.8; do
+    python3.6 -m speech_recognition.train --dump-test --experiment-id branchy_search-2exits_8_6 --num-workers $NUM_WORKERS --normalize-bits 8 --fold-bn 450 --model branchy-tc-res8 --gpu-no $GPU  --compress distillation/quant_aware_train_fp/quant_aware_train_fixpoint_quant_8_6.yaml --earlyexit_thresholds ${threshold} ${threshold}  --earlyexit_lossweights 0.3 0.3 &
+done
+
 
 wait
 
