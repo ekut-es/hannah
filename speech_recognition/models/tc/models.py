@@ -75,7 +75,7 @@ class TCResidualBlock(nn.Module):
                 nn.Hardtanh(0.0, self.clipping_value),
                 nn.Conv1d(output_channels, output_channels, size, 1, padding=dilation*pad_x, dilation=dilation, bias=False),
                 nn.BatchNorm1d(output_channels),
-                distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
+                #distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
                     
 
@@ -138,7 +138,7 @@ class TCResNetModel(SerializableModule):
                 else:
                     conv = nn.Conv1d(input_channels, output_channels, size, stride, bias = False)
                     self.layers.append(conv)
-                    self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
+                    #self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
                     
                 input_channels = output_channels
                 count += 1
