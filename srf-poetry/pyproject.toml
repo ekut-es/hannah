@@ -14,6 +14,10 @@ chainmap = "^1.0.3"
 librosa = "0.6.3"
 redis = "^3.4.1"
 
+# due to bug with audioread==2.1.8
+# which causes excessive runtimes
+audioread = "2.1.6"
+
 [tool.poetry.dev-dependencies]
 pytest = "4.6.1"
 
