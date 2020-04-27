@@ -17,7 +17,9 @@ msglogger = logging.getLogger()
 
 import pwlf
 import numpy as np
-import matplotlib.pyplot as plt
+
+# was unused therefore commented out:
+# import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "distiller"))
 print(sys.path)

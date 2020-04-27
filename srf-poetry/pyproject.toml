@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "srf-poetry"
+version = "0.1.0"
+description = ""
+authors = ["Felix Lorenz <felix.lorenz@student.uni-tuebingen.de>"]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+pwlf = "^2.0.0"
+distiller = {path = "../speech_recognition/distiller"}
+gitdb2 = "2.0.6"
+tensorflow-estimator = "2.1.0"
+chainmap = "^1.0.3"
+librosa = "0.6.3"
+redis = "^3.4.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "4.6.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

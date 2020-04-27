@@ -24,7 +24,7 @@ from . import dataset
 from .utils import set_seed, config_pylogger, log_execution_env_state, EarlyStopping
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
-
+print("__file__" + __file__)
 import distiller
 import distiller.model_transforms
 from distiller.data_loggers import *

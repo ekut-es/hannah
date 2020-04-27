@@ -7,3 +7,18 @@ datasets/speech_commands_v0.02/
 trained_models
 \#*
 tcml_config.json
+.project
+.pydevproject
+
+venv/
+
+distillation/lorenzfe/
+
+# eclipse
+.settings/
+
+# poetry
+srf-poetry/README.rst
+srf-poetry/srf_poetry/
+srf-poetry/tests/
+
