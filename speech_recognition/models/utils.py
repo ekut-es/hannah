@@ -78,6 +78,9 @@ class ConfigType(Enum):
     TC_RES_8_15 = "tc-res8-15"
     TC_RES_14_15 = "tc-res14-15"
 
+    # SincNet for kws
+    SINC="sinc"
+
     # Branchy TC-RES are tc res models with early exit branches
     BRANCHY_TC_RES_8 = "branchy-tc-res8"
     
