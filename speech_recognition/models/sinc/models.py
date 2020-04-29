@@ -240,7 +240,7 @@ configs= {
 		num_classes=12,
 		cnn_N_filt=40,
 		cnn_filt_len=101,
-		cnn_bn_len=,
+		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		SR=16000,
 		cnn_stride=8,
@@ -250,7 +250,7 @@ configs= {
 		dsconv_stride=(2,1,1,1,1),
 		dsconv_groups=(1,2,3,2,3),
 		dsconv_avg_pool_len=(2,2,2,2,2),
-		dsconv_bn_len=(),
+		dsconv_bn_len=(160,160,160,160,160),
 		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1),
 	),
 
