@@ -236,7 +236,7 @@ class FinalBlock(SerializableModule):
 
 configs= {
 	
-	ConfigType.Sinc.value: dict(
+	ConfigType.SINC.value: dict(
 		num_classes=12,
 		cnn_N_filt=40,
 		cnn_filt_len=101,
