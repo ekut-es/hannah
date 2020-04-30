@@ -44,6 +44,7 @@ class SincConv(nn.Module):
     def to_mel(hz):
         return 2595*np.log10(1+hz/700)
 
+    @staticmethod
     def to_hz(mel):
         return 700*(10**(mel/2595)-1)
     
@@ -79,8 +80,8 @@ class SincConv(nn.Module):
         mel=np.linspace(self.to_mel(low_hz),self.to_mel(high_hz),self.out_channels+1)
         hz=self.to_hz(mel)
         
-        self.low_freq_=nn.Parameter(torch.Tensor(hz[:-1].view(-1,1))/self.SR)
-        self.band_freq_=nn.Parameter(torch.Tensor(np.diff(hz).view(-1,1))/self.SR)
+        self.low_freq_=nn.Parameter(torch.Tensor(hz[:-1]).view(-1,1)/self.SR)
+        self.band_freq_=nn.Parameter(torch.Tensor(np.diff(hz)).view(-1,1)/self.SR)
         
         #hamming window         
         N=(self.kernel_size-1)/2.0
@@ -135,8 +136,8 @@ class SincConvBlock(nn.Module):
         #config will be the configuration file containing info about the architecture
         
         self.layer=nn.Sequential(
-            nn.SincConv(N_filt,filt_len,SR,stride=stride),
-            nn.my_act(),
+            SincConv(N_filt,filt_len,SR,stride=stride),
+            my_act(),
             nn.BatchNorm1d(bn_len),
             nn.AvgPool1d(avgpool_len)
             )
@@ -172,7 +173,7 @@ class GDSConvBlock(nn.Module):
         super(GDSConvBlock,self).__init__()
         
         self.layer=nn.Sequential(
-            nn.GDSConv(in_channels,out_channels,kernel_size,stride,groups),
+            GDSConv(in_channels,out_channels,kernel_size,stride,groups),
             nn.ReLU(),
             nn.BatchNorm1d(bn_len),
             nn.AvgPool1d(avg_pool_len),
@@ -188,9 +189,10 @@ class GDSConvBlock(nn.Module):
 
 class FinalBlock(SerializableModule):
     def __init__(self,config):
-                
+        super(FinalBlock,self).__init__()	
+
         self.num_classes=config['num_classes']
-        
+		        
         self.cnn_N_filt=config['cnn_N_filt']
         self.cnn_filt_len=config['cnn_filt_len']
         self.cnn_bn_len=config['cnn_bn_len']
@@ -207,15 +209,15 @@ class FinalBlock(SerializableModule):
         self.dsconv_spatDrop=config['dsconv_spatDrop']
         self.dsconv_num=len(config['dsconv_N_filt'])
         
-        self.SincNet=nn.SincConvBlock(self.cnn_N_filt,self.cnn_filt_len,self.cnn_bn_len,self.cnn_avgpool_len,self.SR,self.cnn_stride)
+        self.SincNet=SincConvBlock(self.cnn_N_filt,self.cnn_filt_len,self.cnn_bn_len,self.cnn_avgpool_len,self.SR,self.cnn_stride)
         self.GDSBlocks=nn.ModuleList([])
         
         for i in range(self.dsconv_num):
             if i==0:
-                self.GDSBlocks.append(nn.GDSConvBlock(self.cnn_N_filt,self.dsconv_N_filt[i],self.dsconv_filt_len[i],self.dsconv_stride[i],self.dsconv_groups,self.dsconv_avg_pool_len[i],self.dsconv_bn_len[i],self.dsconv_spatDrop[i]))
+                self.GDSBlocks.append(GDSConvBlock(self.cnn_N_filt,self.dsconv_N_filt[i],self.dsconv_filt_len[i],self.dsconv_stride[i],self.dsconv_groups[i],self.dsconv_avg_pool_len[i],self.dsconv_bn_len[i],self.dsconv_spatDrop[i]))
                 
             else:
-                self.GDSBlocks.append(nn.GDSConvBlock(self.dsconv_N_filt[i-1],self.dsconv_N_filt[i],self.dsconv_filt_len[i],self.dsconv_stride[i],self.dsconv_groups,self.dsconv_avg_pool_len[i],self.dsconv_bn_len[i],self.dsconv_spatDrop[i]))
+                self.GDSBlocks.append(GDSConvBlock(self.dsconv_N_filt[i-1],self.dsconv_N_filt[i],self.dsconv_filt_len[i],self.dsconv_stride[i],self.dsconv_groups[i],self.dsconv_avg_pool_len[i],self.dsconv_bn_len[i],self.dsconv_spatDrop[i]))
                 
         self.Global_avg_pool=nn.AdaptiveAvgPool2d((1,1))
         self.softmax_layer=nn.Softmax(self.num_classes)
@@ -248,7 +250,7 @@ configs= {
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,9),
 		dsconv_stride=(2,1,1,1,1),
-		dsconv_groups=(1,2,3,2,3),
+		dsconv_groups=(1,2,4,2,4),
 		dsconv_avg_pool_len=(2,2,2,2,2),
 		dsconv_bn_len=(160,160,160,160,160),
 		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1),
