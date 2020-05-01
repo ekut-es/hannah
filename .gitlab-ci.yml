@@ -16,7 +16,14 @@ before_script:
   - python3.6 -m ensurepip
   - python3.6 -V # Print out python version for debugging
   - python3.6 -m pip install virtualenv
-  - ./bootstrap.sh --venv
+    # init submodules of project
+  - git submodule update --init --recursive
+    # create virtual environment for python
+  - virtualenv venv -p python3.6
+  - source venv/bin/activate
+  - pip -V    
+    # install and manage dependencies with poetry
+    # - cd srf-poetry; poetry install; cd ..
   - cd datasets
   - ./get_datasets.sh
   - cd ..

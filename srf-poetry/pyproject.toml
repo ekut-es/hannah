@@ -13,7 +13,6 @@ tensorflow-estimator = "2.1.0"
 chainmap = "^1.0.3"
 librosa = "0.6.3"
 redis = "^3.4.1"
-
 # due to bug with audioread==2.1.8
 # which causes excessive runtimes
 audioread = "2.1.6"
