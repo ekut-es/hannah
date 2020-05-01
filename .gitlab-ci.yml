@@ -23,7 +23,7 @@ before_script:
   - source venv/bin/activate
   - pip -V    
     # install and manage dependencies with poetry
-    # - cd srf-poetry; poetry install; cd ..
+  - cd srf-poetry; poetry install; cd ..
   - cd datasets
   - ./get_datasets.sh
   - cd ..
