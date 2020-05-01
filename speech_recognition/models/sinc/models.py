@@ -89,29 +89,29 @@ class SincConv(nn.Module):
         #self.window_=0.54-0.46*torch.cos(2*math.pi*torch.linspace(1,N,steps=N)/self.kernel_size)
         self.n_=2*math.pi*torch.arange(-N,0).view(1,-1)
         
-        def forward(self, waveforms):
+    def forward(self, waveforms):
             
-            self.n_=self.n_.to(waveforms.device)
-            self.window_=self.window_.to(waveforms.device)
+        self.n_=self.n_.to(waveforms.device)
+        self.window_=self.window_.to(waveforms.device)
             
-            f_low=torch.abs(self.low_freq_)+min_low_hz
-            f_high=f_low+min_band_hz+torch.abs(self.band_freq_)
-            f_band=(f_high-f_low)[:0]
+        f_low=torch.abs(self.low_freq_)+min_low_hz
+        f_high=f_low+min_band_hz+torch.abs(self.band_freq_)
+        f_band=(f_high-f_low)[:,0]
             
-            f_n_low=torch.matmul(f_low,self.n_)
-            f_n_high=torch.matmul(f_high,self.n_)
+        f_n_low=torch.matmul(f_low,self.n_)
+        f_n_high=torch.matmul(f_high,self.n_)
             
-            bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))
-            bpr=torch.flip(bpl,dims=[1])
-            bpc=2*f_band.view(-1,1)
+        bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))
+        bpr=torch.flip(bpl,dims=[1])
+        bpc=2*f_band.view(-1,1)
             
-            band=torch.cat([bpl,bpc,bpr],dim=1)
-            band=band/(2*f_band[:,None])
-            band=band*self.window_[None,]
+        band=torch.cat([bpl,bpc,bpr],dim=1)
+        band=band/(2*f_band[:,None])
+        band=band*self.window_[None,]
+        
+        self.filters=band.view(self.out_channels,1,self.kernel_size)
             
-            self.filters=band.view(self.out_channels,1,self.kernel_size)
-            
-            return F.conv1d(waveforms,self.filters,stride=self.stride,padding=self.padding,dilation=self.dilation,bias=None,groups=1)
+        return F.conv1d(waveforms,self.filters,stride=self.stride,padding=self.padding,dilation=self.dilation,bias=None,groups=1)
         
 ########################## Activation Function ################################
 
