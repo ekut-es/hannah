@@ -219,8 +219,9 @@ class FinalBlock(SerializableModule):
             else:
                 self.GDSBlocks.append(GDSConvBlock(self.dsconv_N_filt[i-1],self.dsconv_N_filt[i],self.dsconv_filt_len[i],self.dsconv_stride[i],self.dsconv_groups[i],self.dsconv_avg_pool_len[i],self.dsconv_bn_len[i],self.dsconv_spatDrop[i]))
                 
-        self.Global_avg_pool=nn.AdaptiveAvgPool2d((1,1))
-        self.softmax_layer=nn.Softmax(self.num_classes)
+        self.Global_avg_pool=nn.AdaptiveAvgPool1d(1)
+        self.fc=nn.Linear(self.dsconv_N_filt[self.dsconv_num-1],self.num_classes)
+        self.softmax_layer=nn.Softmax()
     
     def forward(self,x):
         x=x.view(1,1,len(x))
@@ -230,6 +231,8 @@ class FinalBlock(SerializableModule):
             x=self.GDSBlocks[i](x)
             
         x=self.Global_avg_pool(x)
+        x=x.view(-1)
+        x=self.fc(x)
         x=self.softmax_layer(x)
         
         return x
