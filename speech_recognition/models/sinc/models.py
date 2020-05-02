@@ -223,6 +223,7 @@ class FinalBlock(SerializableModule):
         self.softmax_layer=nn.Softmax(self.num_classes)
     
     def forward(self,x):
+        x=x.view(1,1,len(x))
         x=self.SincNet(x)
         
         for i in range(self.dsconv_num):
