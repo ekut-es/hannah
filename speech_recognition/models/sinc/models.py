@@ -143,9 +143,9 @@ class SincConvBlock(nn.Module):
             )
         
     def forward(self,x):
-        batch=x.shape[0]
-        seq_len=x.shape[1]
-        x=x.view(batch,1,seq_len)
+        #batch=x.shape[0]
+        #seq_len=x.shape[1]
+        #x=x.view(batch,1,seq_len)
         
         out=self.layer(x)
         #out=out.view(batch,-1) Not very sure about this
