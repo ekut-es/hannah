@@ -94,8 +94,8 @@ class SincConv(nn.Module):
         self.n_=self.n_.to(waveforms.device)
         self.window_=self.window_.to(waveforms.device)
             
-        f_low=torch.abs(self.low_freq_)+min_low_hz
-        f_high=f_low+min_band_hz+torch.abs(self.band_freq_)
+        f_low=torch.abs(self.low_freq_)+self.min_low_hz
+        f_high=f_low+self.min_band_hz+torch.abs(self.band_freq_)
         f_band=(f_high-f_low)[:,0]
             
         f_n_low=torch.matmul(f_low,self.n_)
@@ -224,14 +224,18 @@ class FinalBlock(SerializableModule):
         self.softmax_layer=nn.Softmax()
     
     def forward(self,x):
-        x=x.view(1,1,len(x))
+        #print(x.shape)
+        #x=x.view(1,1,16000)
+        batch=x.shape[0]
+        x=x.view(x.shape[0],1,x.shape[2])
         x=self.SincNet(x)
         
         for i in range(self.dsconv_num):
             x=self.GDSBlocks[i](x)
             
         x=self.Global_avg_pool(x)
-        x=x.view(-1)
+        #print(x.shape)
+        x=x.view(batch,-1)
         x=self.fc(x)
         x=self.softmax_layer(x)
         
@@ -243,6 +247,7 @@ class FinalBlock(SerializableModule):
 configs= {
 	
 	ConfigType.SINC.value: dict(
+		features="raw",
 		num_classes=12,
 		cnn_N_filt=40,
 		cnn_filt_len=101,
