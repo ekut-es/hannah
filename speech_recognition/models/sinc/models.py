@@ -89,29 +89,29 @@ class SincConv(nn.Module):
         #self.window_=0.54-0.46*torch.cos(2*math.pi*torch.linspace(1,N,steps=N)/self.kernel_size)
         self.n_=2*math.pi*torch.arange(-N,0).view(1,-1)
         
-        def forward(self, waveforms):
+    def forward(self, waveforms):
             
-            self.n_=self.n_.to(waveforms.device)
-            self.window_=self.window_.to(waveforms.device)
+        self.n_=self.n_.to(waveforms.device)
+        self.window_=self.window_.to(waveforms.device)
             
-            f_low=torch.abs(self.low_freq_)+min_low_hz
-            f_high=f_low+min_band_hz+torch.abs(self.band_freq_)
-            f_band=(f_high-f_low)[:0]
+        f_low=torch.abs(self.low_freq_)+self.min_low_hz
+        f_high=f_low+self.min_band_hz+torch.abs(self.band_freq_)
+        f_band=(f_high-f_low)[:,0]
             
-            f_n_low=torch.matmul(f_low,self.n_)
-            f_n_high=torch.matmul(f_high,self.n_)
+        f_n_low=torch.matmul(f_low,self.n_)
+        f_n_high=torch.matmul(f_high,self.n_)
             
-            bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))
-            bpr=torch.flip(bpl,dims=[1])
-            bpc=2*f_band.view(-1,1)
+        bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))
+        bpr=torch.flip(bpl,dims=[1])
+        bpc=2*f_band.view(-1,1)
             
-            band=torch.cat([bpl,bpc,bpr],dim=1)
-            band=band/(2*f_band[:,None])
-            band=band*self.window_[None,]
+        band=torch.cat([bpl,bpc,bpr],dim=1)
+        band=band/(2*f_band[:,None])
+        band=band*self.window_[None,]
+        
+        self.filters=band.view(self.out_channels,1,self.kernel_size)
             
-            self.filters=band.view(self.out_channels,1,self.kernel_size)
-            
-            return F.conv1d(waveforms,self.filters,stride=self.stride,padding=self.padding,dilation=self.dilation,bias=None,groups=1)
+        return F.conv1d(waveforms,self.filters,stride=self.stride,padding=self.padding,dilation=self.dilation,bias=None,groups=1)
         
 ########################## Activation Function ################################
 
@@ -143,9 +143,9 @@ class SincConvBlock(nn.Module):
             )
         
     def forward(self,x):
-        batch=x.shape[0]
-        seq_len=x.shape[1]
-        x=x.view(batch,1,seq_len)
+        #batch=x.shape[0]
+        #seq_len=x.shape[1]
+        #x=x.view(batch,1,seq_len)
         
         out=self.layer(x)
         #out=out.view(batch,-1) Not very sure about this
@@ -159,7 +159,7 @@ class GDSConv(nn.Module):
         super(GDSConv,self).__init__()
         
         self.layer1=nn.Conv1d(in_channels,in_channels,kernel_size,stride,padding,dilation,groups=in_channels,bias=bias) #depthwise convolution with k*1 filters
-        self.layer2=nn.Conv2d(in_channels,out_channels,1,1,0,1,groups=groups,bias=bias)
+        self.layer2=nn.Conv1d(in_channels,out_channels,1,1,0,1,groups=groups,bias=bias)
         #pointwise convolutions with 1*c/g filters
         
     def forward(self,x):
@@ -219,16 +219,24 @@ class FinalBlock(SerializableModule):
             else:
                 self.GDSBlocks.append(GDSConvBlock(self.dsconv_N_filt[i-1],self.dsconv_N_filt[i],self.dsconv_filt_len[i],self.dsconv_stride[i],self.dsconv_groups[i],self.dsconv_avg_pool_len[i],self.dsconv_bn_len[i],self.dsconv_spatDrop[i]))
                 
-        self.Global_avg_pool=nn.AdaptiveAvgPool2d((1,1))
-        self.softmax_layer=nn.Softmax(self.num_classes)
+        self.Global_avg_pool=nn.AdaptiveAvgPool1d(1)
+        self.fc=nn.Linear(self.dsconv_N_filt[self.dsconv_num-1],self.num_classes)
+        self.softmax_layer=nn.Softmax()
     
     def forward(self,x):
+        #print(x.shape)
+        #x=x.view(1,1,16000)
+        batch=x.shape[0]
+        x=x.view(x.shape[0],1,x.shape[2])
         x=self.SincNet(x)
         
         for i in range(self.dsconv_num):
             x=self.GDSBlocks[i](x)
             
         x=self.Global_avg_pool(x)
+        #print(x.shape)
+        x=x.view(batch,-1)
+        x=self.fc(x)
         x=self.softmax_layer(x)
         
         return x
@@ -239,6 +247,7 @@ class FinalBlock(SerializableModule):
 configs= {
 	
 	ConfigType.SINC.value: dict(
+		features="raw",
 		num_classes=12,
 		cnn_N_filt=40,
 		cnn_filt_len=101,
