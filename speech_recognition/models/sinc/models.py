@@ -86,7 +86,7 @@ class SincConv(nn.Module):
         #hamming window         
         N=(self.kernel_size-1)/2.0
         self.window_=torch.hamming_window(self.kernel_size)
-        #self.window_=0.54-0.46*torch.cos(2*math.pi*torch.linspace(1,N,steps=N)/self.kernel_size)
+        #self.window_=0.54-0.46*torch.cos(2*math.pi*torch.linspace(1,N,steps=int(N))/self.kernel_size)
         self.n_=2*math.pi*torch.arange(-N,0).view(1,-1)
         
     def forward(self, waveforms):
@@ -101,7 +101,7 @@ class SincConv(nn.Module):
         f_n_low=torch.matmul(f_low,self.n_)
         f_n_high=torch.matmul(f_high,self.n_)
             
-        bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))
+        bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))#*self.window_
         bpr=torch.flip(bpl,dims=[1])
         bpc=2*f_band.view(-1,1)
             
@@ -221,7 +221,7 @@ class FinalBlock(SerializableModule):
                 
         self.Global_avg_pool=nn.AdaptiveAvgPool1d(1)
         self.fc=nn.Linear(self.dsconv_N_filt[self.dsconv_num-1],self.num_classes)
-        self.softmax_layer=nn.Softmax()
+        #self.softmax_layer=nn.Softmax()
     
     def forward(self,x):
         #print(x.shape)
@@ -235,9 +235,11 @@ class FinalBlock(SerializableModule):
             
         x=self.Global_avg_pool(x)
         #print(x.shape)
+        #print(x.shape)
         x=x.view(batch,-1)
         x=self.fc(x)
-        x=self.softmax_layer(x)
+        #x=self.softmax_layer(x)
+        #print(x.shape)
         
         return x
 
