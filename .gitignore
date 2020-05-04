@@ -11,6 +11,7 @@ tcml_config.json
 .pydevproject
 
 venv/
+srf-venv/
 
 distillation/lorenzfe/
 
