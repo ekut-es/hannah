@@ -9,17 +9,16 @@ python = "^3.6"
 pwlf = "^2.0.0"
 distiller = {path = "../speech_recognition/distiller"}
 gitdb2 = "2.0.6"
-#tensorflow-estimator = "2.1.0"
+tensorflow-estimator = "2.1.0"
 chainmap = "^1.0.3"
 librosa = "0.6.3"
 redis = "^3.4.1"
 # due to bug with audioread==2.1.8
 # which causes excessive runtimes
 audioread = "2.1.6"
-#setuptools = "39.0.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "4.6.1"
+pytest = "3.5.1"
 
 [build-system]
 requires = ["poetry>=0.12"]
