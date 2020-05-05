@@ -74,20 +74,20 @@ class SincConv(nn.Module):
             kernel_size=kernel_size+1 #odd length so that filter is symmetric
         
         #initializing filter banks in audible frequency range
-        low_hz=30
+        low_hz=self.min_low_hz
         high_hz=SR/2-(self.min_band_hz+self.min_low_hz)
         
         mel=np.linspace(self.to_mel(low_hz),self.to_mel(high_hz),self.out_channels+1)
         hz=self.to_hz(mel)
         
-        self.low_freq_=nn.Parameter(torch.Tensor(hz[:-1]).view(-1,1)/self.SR)
-        self.band_freq_=nn.Parameter(torch.Tensor(np.diff(hz)).view(-1,1)/self.SR)
+        self.low_freq_=nn.Parameter(torch.Tensor(hz[:-1]).view(-1,1))
+        self.band_freq_=nn.Parameter(torch.Tensor(np.diff(hz)).view(-1,1))
         
         #hamming window         
         N=(self.kernel_size-1)/2.0
         self.window_=torch.hamming_window(self.kernel_size)
         #self.window_=0.54-0.46*torch.cos(2*math.pi*torch.linspace(1,N,steps=int(N))/self.kernel_size)
-        self.n_=2*math.pi*torch.arange(-N,0).view(1,-1)
+        self.n_=2*math.pi*torch.arange(-N,0).view(1,-1)/self.SR
         
     def forward(self, waveforms):
             
@@ -95,7 +95,7 @@ class SincConv(nn.Module):
         self.window_=self.window_.to(waveforms.device)
             
         f_low=torch.abs(self.low_freq_)+self.min_low_hz
-        f_high=f_low+self.min_band_hz+torch.abs(self.band_freq_)
+        f_high=torch.clamp(f_low+self.min_band_hz+torch.abs(self.band_freq_),self.min_low_hz,self.SR/2)
         f_band=(f_high-f_low)[:,0]
             
         f_n_low=torch.matmul(f_low,self.n_)
