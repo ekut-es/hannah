@@ -8,14 +8,13 @@ from typing import Dict, Any
 
 import torch
 import torch.nn as nn
+from torch.nn.modules.utils import _single
 from torch.autograd import Variable
 import torch.nn.functional as F
 
 import logging
 msglogger = logging.getLogger()
 
-
-import pwlf
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -60,18 +59,21 @@ class SincConv(nn.Module):
         
         if groups>1:
             raise ValueError('SincConv only supports one group.')
-        
+       
+
         self.out_channels=out_channels
-        self.kernel_size=kernel_size
-        self.stride=stride
-        self.padding=padding
-        self.dilation=dilation
+        self.kernel_size=_single(kernel_size)
+        self.stride=_single(stride)
+        self.padding=_single(padding)
+        self.dilation=_single(dilation)
         self.SR=SR
+        self.in_channels = in_channels
+        self.groups = groups
         self.min_low_hz=min_low_hz
         self.min_band_hz=min_band_hz
         
-        if kernel_size%2==0:
-            kernel_size=kernel_size+1 #odd length so that filter is symmetric
+        if self.kernel_size[0]%2==0:
+            self.kernel_size[0]=self.kernel_size[0]+1 #odd length so that filter is symmetric
         
         #initializing filter banks in audible frequency range
         low_hz=self.min_low_hz
@@ -84,8 +86,8 @@ class SincConv(nn.Module):
         self.band_freq_=nn.Parameter(torch.Tensor(np.diff(hz)).view(-1,1))
         
         #hamming window         
-        N=(self.kernel_size-1)/2.0
-        self.window_=torch.hamming_window(self.kernel_size)
+        N=(self.kernel_size[0]-1)/2.0
+        self.window_=torch.hamming_window(self.kernel_size[0])
         #self.window_=0.54-0.46*torch.cos(2*math.pi*torch.linspace(1,N,steps=int(N))/self.kernel_size)
         self.n_=2*math.pi*torch.arange(-N,0).view(1,-1)/self.SR
         
@@ -109,7 +111,7 @@ class SincConv(nn.Module):
         band=band/(2*f_band[:,None])
         band=band*self.window_[None,]
         
-        self.filters=band.view(self.out_channels,1,self.kernel_size)
+        self.filters=band.view(self.out_channels,1,self.kernel_size[0])
             
         return F.conv1d(waveforms,self.filters,stride=self.stride,padding=self.padding,dilation=self.dilation,bias=None,groups=1)
         
