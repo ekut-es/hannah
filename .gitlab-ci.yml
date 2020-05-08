@@ -27,7 +27,7 @@ before_script:
     # make poetry command available
   - source $HOME/.poetry/env
     # install and manage dependencies with poetry
-  - cd srf-poetry; poetry install; cd ..
+  - poetry install
   - cd datasets
   - ./get_datasets.sh
   - cd ..
