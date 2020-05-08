@@ -23,8 +23,9 @@ from . import models as mod
 from . import dataset
 from .utils import set_seed, config_pylogger, log_execution_env_state, EarlyStopping
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
-print("__file__" + __file__)
+# sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
+# print("__file__" + __file__)
+
 import distiller
 import distiller.model_transforms
 from distiller.data_loggers import *
@@ -466,7 +467,7 @@ def train(model_name, config):
         tblogger.log_gradients = True
         loggers.append(tblogger)
 
-    log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
+#     log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
 
 
     print("All information will be saved to: ", output_dir, "logdir:", log_dir)
