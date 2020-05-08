@@ -7,7 +7,7 @@ authors = ["Felix Lorenz <felix.lorenz@student.uni-tuebingen.de>"]
 [tool.poetry.dependencies]
 python = "^3.6"
 pwlf = "^2.0.0"
-distiller = {path = "../speech_recognition/distiller"}
+distiller = {path = "./speech_recognition/distiller"}
 gitdb2 = "2.0.6"
 
 # Poetry importiert tensorflow-estimator==2.2.0rc0
