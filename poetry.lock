@@ -187,7 +187,7 @@ xlsxwriter = ">=1.1.1"
 [package.source]
 reference = ""
 type = "directory"
-url = "../speech_recognition/distiller"
+url = "external/distiller"
 
 [[package]]
 category = "main"
@@ -1619,7 +1619,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "f89b69466fc792050ced201c684e03f72e57731b2d6f665a2b7b71ab8f010c51"
+content-hash = "d07ae62eb5ee474cd5cb58977567d2dd07066c83cba9519ed6b4b037040b5489"
 python-versions = "^3.6"
 
 [metadata.files]
