@@ -161,7 +161,7 @@ class GDSConv(nn.Module):
         super(GDSConv,self).__init__()
         
         self.layer1=nn.Conv1d(in_channels,in_channels,kernel_size,stride,padding,dilation,groups=in_channels,bias=bias) #depthwise convolution with k*1 filters
-        self.layer2=nn.Conv1d(in_channels,out_channels,1,1,0,1,groups=groups,bias=bias)
+        self.layer2=nn.Conv1d(in_channels,out_channels,1,2,0,1,groups=groups,bias=bias)
         #pointwise convolutions with 1*c/g filters
         
     def forward(self,x):
