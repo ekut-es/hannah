@@ -7,7 +7,7 @@
 [submodule "orig/honk"]
 	path = orig/honk
 	url = https://github.com/castorini/honk.git
-[submodule "speech_recognition/distiller"]
+[submodule "external/distiller"]
 	path = external/distiller
 	url = https://github.com/ekut-es/distiller.git
 	branch = ekut_master
