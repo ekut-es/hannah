@@ -10,11 +10,12 @@ Dependencies and virtual environments are managed using [poetry](https://python-
 - python3.6 and development headers
 - portaudio and development headers
 - freeglut and development headers
+- a blas implementation and development headers
 
 ### Ubuntu 18.04+
 
     sudo apt update
-    sudo apt -y install python3-dev freeglut3-dev portaudio19-dev 
+    sudo apt -y install python3-dev freeglut3-dev portaudio19-dev libblas-dev liblapack-dev
 
 ### Centos / RHEL / Scientific Linux: 7+
 
