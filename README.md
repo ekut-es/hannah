@@ -5,62 +5,50 @@
 
 ## Installing dependencies
 
-Dependencies can either be installed to your Home-Directory or to a seperate python virtual environment.
-On RedHat 7 based distros (Scientific Linux 7, CentOS 7) all required dependencies should be installed by bootstrap.sh 
-
-On other distros we need the following packages:
+Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
 
 - python3.6 and development headers
 - portaudio and development headers
 - freeglut and development headers
 
-On Ubuntu 16.04 these are installable with the following commands:
+### Ubuntu 18.04+
 
-    sudo apt-get update
-    sudo apt-get -y install software-properties-common python-software-properties
-    sudo add-apt-repository -y ppa:jonathonf/python-3.6
-    sudo apt-get update
-    
-    sudo apt-get -y install python3.6-dev freeglut3-dev portaudio19-dev
-    sudo apt-get -y install git curl wget
-    curl https://bootstrap.pypa.io/get-pip.py | sudo python3.6
+    sudo apt update
+    sudo apt -y install python3-dev freeglut3-dev portaudio19-dev 
+
+### Centos / RHEL / Scientific Linux: 7+
+
+    sudo yum install python36 python36-devel -y || true
+    sudo yum install freeglut-devel -y 
+    sudo yum install portaudio-devel -y
 
 
-### Setup of virtual environment (recommended)
 
-To install in a python virtual environment use for training on cpus:
+### Install poetry
 
-    ./bootstrap.sh --venv
-    
-or for training on gpus:
+    pip install --user poetry
 
-    ./bootstrap.sh --venv --gpu
 
-or for training on cluster-gpu0x:
+**Caution**: this usually install poetry to ~/.local/bin it this folder is not in your path you might need to run poetry as:
 
-    ./bootstrap.sh --gpu_cluster
-    
-*Audioread 2.1.8 increases training time dramatically. Version 2.1.6 is recommended.*
 
-And activate the venv using:
+   ~/.local/bin/poetry
 
-    source venv/bin/activate
 
-Export LD\_LIBRARY\_PATH when training on cluster-gpu0x:
 
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/graphics/opt/opt_Ubuntu18.04/cuda/toolkit_9.0/cuda/lib64/:/graphics/opt/opt_Ubuntu18.04/cuda/cudnn/7.1.4_for_9.0/cuda/lib64
+## Software installation 
 
-### Setup with installation to home directory
+   In the root directory of the project run:
 
-Dependencies can be installed by invoking:
+   git submodule update --init --recursive
+   poetry install
 
-    ./bootstrap.sh
-	
-For training on GPUs use:
+   This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.
+   The environment can be activated using: 
 
-    ./bootstrap.sh --gpu
-    
-	
+   poetry shell
+  
+
 ## Installing the datasets
 	
 Installing dataset for KWS:
@@ -109,15 +97,7 @@ Please note, that an axis, that has equal values for all variations, is dropped 
 
 You have to have a browser installed on your system to see the results. If you have a non-graphical system, please copy the experiment folder from `<speech_recognition_root>/trained_models/<experiment_id>` to the `trained_models` folder of another machine with graphical support.
 
-
-
-
-
     
-# Exporting Models for RISC-V
-	
-The export is currently not available. 
-
 
 # TODO:
 Training:
@@ -127,13 +107,3 @@ Training:
 - Add design space exploration tool (WIP)
 - Add estimation of non functional properties on algorithmic level (WIP)
 
-Export ISA / RT-Level:
-- Make usable again
-- Use relay IR / TVM
-- 2D Convolutions
-- Average Pooling
-- Dilations
-- Depthwise separable convolutions
-- Batch normalization
-- Add Memory Allocator
-- Add Quantization support
