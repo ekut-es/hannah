@@ -18,7 +18,8 @@ before_script:
   # create virtual environment for python
   - virtualenv venv -p python3.6
   - source venv/bin/activate
-  
+  - pip install poetry
+
   # install and manage dependencies with poetry
   - poetry install
   - cd datasets
