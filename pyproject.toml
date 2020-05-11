@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "srf-poetry"
+name = "speech_recognition"
 version = "0.1.0"
 description = ""
 authors = ["Felix Lorenz <felix.lorenz@student.uni-tuebingen.de>"]
