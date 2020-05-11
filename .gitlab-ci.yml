@@ -4,6 +4,11 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   GIT_SUBMODULE_STRATEGY: recursive
 
+cache:
+  path:
+    - ./cache
+    - ./venv
+
 before_script:
   - yum install epel-release -y
   - yum install git sudo python36 -y
