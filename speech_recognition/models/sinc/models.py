@@ -161,7 +161,7 @@ class GDSConv(nn.Module):
         super(GDSConv,self).__init__()
         
         self.layer1=nn.Conv1d(in_channels,in_channels,kernel_size,stride,padding,dilation,groups=in_channels,bias=bias) #depthwise convolution with k*1 filters
-        self.layer2=nn.Conv1d(in_channels,out_channels,1,2,0,1,groups=groups,bias=bias)
+        self.layer2=nn.Conv1d(in_channels,out_channels,1,stride,0,1,groups=groups,bias=bias)
         #pointwise convolutions with 1*c/g filters
         
     def forward(self,x):
@@ -258,15 +258,15 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		SR=16000,
-		cnn_stride=8,
+		cnn_stride=9,
 
-		dsconv_N_filt=(162,162,162,162,162),
-		dsconv_filt_len=(25,9,9,9,9),
+		dsconv_N_filt=(160,160,160,160,160),
+		dsconv_filt_len=(25,9,9,9,4),
 		dsconv_stride=(2,1,1,1,1),
-		dsconv_groups=(1,2,3,2,3),
+		dsconv_groups=(1,2,4,2,4),
 		dsconv_avg_pool_len=(2,2,2,2,2),
-		dsconv_bn_len=(162,162,162,162,162),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1),
+		dsconv_bn_len=(160,160,160,160,160),
+		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
 	),
 
 }
