@@ -261,8 +261,8 @@ configs= {
 		cnn_stride=9,
 
 		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,9,4),
-		dsconv_stride=(2,1,1,1,1),
+		dsconv_filt_len=(25,9,9,6,1),
+		dsconv_stride=(3,1,1,1,1),
 		dsconv_groups=(1,2,4,2,4),
 		dsconv_avg_pool_len=(2,2,2,2,2),
 		dsconv_bn_len=(160,160,160,160,160),
