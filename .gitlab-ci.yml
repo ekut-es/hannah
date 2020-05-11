@@ -16,7 +16,18 @@ before_script:
   - python3.6 -m ensurepip
   - python3.6 -V # Print out python version for debugging
   - python3.6 -m pip install virtualenv
-  - ./bootstrap.sh --venv
+    # init submodules of project
+  - git submodule update --init --recursive
+    # create virtual environment for python
+  - virtualenv venv -p python3.6
+  - source venv/bin/activate
+  - pip -V    
+    # install poetry (with activated venv!)
+  -  curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+    # make poetry command available
+  - source $HOME/.poetry/env
+    # install and manage dependencies with poetry
+  - poetry install
   - cd datasets
   - ./get_datasets.sh
   - cd ..
