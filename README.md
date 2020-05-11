@@ -26,7 +26,10 @@ Dependencies and virtual environments are managed using [poetry](https://python-
 
 ### Install poetry
 
-    pip install --user poetry
+    curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+
+For alternative installation methods see:  https://python-poetry.org/docs/#installation 
+ 
 
 
 **Caution**: this usually install poetry to ~/.local/bin it this folder is not in your path you might need to run poetry as:
