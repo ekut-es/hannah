@@ -2,6 +2,7 @@ image: centos:7
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   GIT_SUBMODULE_STRATEGY: recursive
 
 cache:
@@ -11,18 +12,21 @@ cache:
 before_script:
   - yum install epel-release -y
   - yum install git sudo python36 -y
-  - yum install wget -y
+  - yum install wget curl -y
   - yum groupinstall 'Development Tools' -y
   - python3.6 -m ensurepip
   - python3.6 -V # Print out python version for debugging
   - python3.6 -m pip install virtualenv
-  # init submodules of project
-  - git submodule update --init --recursive
   
-  # create virtual environment for python
+  # Install poetry using recommended method
+  - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3.6
+  - export PATH=${POETRY_HOME}/bin:${PATH}
+  
+
+  # create virtual environment for tests 
   - virtualenv venv -p python3.6
   - source venv/bin/activate
-  - pip install poetry
+ 
 
   # install and manage dependencies with poetry
   - poetry install
