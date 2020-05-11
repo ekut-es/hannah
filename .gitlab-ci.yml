@@ -6,7 +6,6 @@ variables:
 
 cache:
   paths:
-    - ./cache
     - ./venv
 
 before_script:
