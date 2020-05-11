@@ -5,7 +5,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 cache:
-  path:
+  paths:
     - ./cache
     - ./venv
 
