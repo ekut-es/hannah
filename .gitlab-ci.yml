@@ -10,6 +10,7 @@ cache:
     - ./venv
 
 before_script:
+  - cat /etc/os-release
   - source /etc/os-release
   - if [ $ID == "debian" || $ID_LIKE == "debian" ]; then
   -   sudo apt update
