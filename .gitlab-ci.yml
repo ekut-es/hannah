@@ -11,7 +11,7 @@ cache:
 
 before_script:
   - source /etc/os-release
-  - if [ $ID_LIKE == "debian" ]; then
+  - if [ $ID == "debian" || $ID_LIKE == "debian" ]; then
   -   sudo apt update
   -   sudo apt -y install python3-dev freeglut3-dev portaudio19-dev libblas-dev liblapack-dev
   - else
