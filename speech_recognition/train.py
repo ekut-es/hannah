@@ -44,7 +44,7 @@ def get_lr_scheduler(config, optimizer):
         gamma = config["lr_gamma"]
         stepsize = config["lr_stepsize"]
         if stepsize == 0:
-            stepsize = max(10, n_epochs // 4)
+            stepsize = max(2, n_epochs // 15)
 
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=stepsize, gamma=gamma)
 
@@ -68,7 +68,7 @@ def get_lr_scheduler(config, optimizer):
                                                                mode='min',
                                                                factor=gamma,
                                                                patience=patience,
-                                                               threshold=0.0001,
+                                                               threshold=0.00000001,
                                                                threshold_mode='rel',
                                                                cooldown=0,
                                                                min_lr=0,
@@ -978,7 +978,7 @@ def build_config(extra_config={}):
                                                      default="step"),
                          lr_gamma     = ConfigOption(category="Learning Rate Config",
                                                      desc="Parameter gamma for lr scheduler",
-                                                     default=0.1),
+                                                     default=0.75),
                          lr_stepsize  = ConfigOption(category="Learning Rate Config",
                                                      desc="Stepsize for step scheduler",
                                                      default=0),
