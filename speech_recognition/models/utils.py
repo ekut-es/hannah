@@ -85,7 +85,9 @@ class ConfigType(Enum):
     SINC4="sinc4"
     SINC5="sinc5"
     SINC6="sinc6"
-
+    SINC7="sinc7"
+    SINC8="sinc8"
+    
     # Branchy TC-RES are tc res models with early exit branches
     BRANCHY_TC_RES_8 = "branchy-tc-res8"
     
