@@ -189,7 +189,7 @@ class GDSConvBlock(nn.Module):
 
 ############################ Combined Final Block *****************************
 
-class FinalBlock(SerializableModule):
+class SincNet(SerializableModule):
     def __init__(self,config):
         super(FinalBlock,self).__init__()	
 
@@ -199,7 +199,7 @@ class FinalBlock(SerializableModule):
         self.cnn_filt_len=config['cnn_filt_len']
         self.cnn_bn_len=config['cnn_bn_len']
         self.cnn_avgpool_len=config['cnn_avgpool_len']
-        self.SR=config['SR']
+        self.SR=config['sampling_rate']
         self.cnn_stride=config['cnn_stride']
         
         self.dsconv_N_filt=config['dsconv_N_filt']
@@ -258,7 +258,6 @@ configs= {
 		cnn_filt_len=101,
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
-		SR=16000,
 		cnn_stride=8,
          
 		dsconv_N_filt=(162,162,162,162,162),
@@ -278,7 +277,6 @@ configs= {
 		cnn_filt_len=101,
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
-		SR=16000,
 		cnn_stride=32,
          
 		dsconv_N_filt=(160,160,160,160,160),
@@ -298,7 +296,6 @@ configs= {
 		cnn_filt_len=101,
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
-		SR=16000,
 		cnn_stride=16,
          
 		dsconv_N_filt=(160,160,160,160,160),
@@ -318,7 +315,6 @@ configs= {
 		cnn_filt_len=101,
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
-		SR=16000,
 		cnn_stride=16,
          
 		dsconv_N_filt=(160,160,160,160,160),
@@ -338,7 +334,6 @@ configs= {
 		cnn_filt_len=101,
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
-		SR=16000,
 		cnn_stride=16,
          
 		dsconv_N_filt=(160,160,160,160,160),
@@ -378,7 +373,6 @@ configs= {
 		cnn_filt_len=101,
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
-		SR=16000,
 		cnn_stride=32,
          
 		dsconv_N_filt=(160,160,160,160,160),
@@ -398,7 +392,6 @@ configs= {
 		cnn_filt_len=101,
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
-		SR=16000,
 		cnn_stride=32,
          
 		dsconv_N_filt=(160,160,160,160,160),
