@@ -9,6 +9,6 @@
 	url = https://github.com/castorini/honk.git
 [submodule "external/distiller"]
 	path = external/distiller
-	url = https://github.com/ekut-es/distiller.git
-	branch = ekut_master
+	url = ../distiller.git
+	branch = master
 
