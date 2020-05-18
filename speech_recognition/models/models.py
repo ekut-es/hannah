@@ -33,7 +33,7 @@ def find_model(conf):
     elif conf.startswith("small-vad"):
         return vad.SmallVadModel
     elif conf.startswith("sinc"):
-        return sinc.FinalBlock
+        return sinc.SincNet
 
     raise Exception("Could not find model for {}".format(str(conf)))
 
