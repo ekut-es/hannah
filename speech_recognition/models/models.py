@@ -3,6 +3,7 @@ from . import ekut
 from . import hello
 from . import tc
 from . import vad
+from . import sinc
 
 from .utils import ConfigType
 
@@ -31,6 +32,8 @@ def find_model(conf):
         return vad.BottleneckVadModel
     elif conf.startswith("small-vad"):
         return vad.SmallVadModel
+    elif conf.startswith("sinc"):
+        return sinc.SincNet
 
     raise Exception("Could not find model for {}".format(str(conf)))
 
@@ -54,5 +57,7 @@ def find_config(conf):
         return vad.configs[conf]
     elif conf.startswith("small-vad"):
         return vad.configs[conf]
+    elif conf.startswith("sinc"):
+        return sinc.configs[conf]
 
     raise Exception("Could not find config for {}".format(str(conf)))
