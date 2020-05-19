@@ -21,6 +21,10 @@ import pickle
 from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
 
+def factor(snr,psig,pnoise):
+    y=10**(snr/10)
+    return np.sqrt(psig/(pnoise*y))
+
 class SimpleCache(dict):
     """ A simple in memory cache used for audio files and preprocessed features"""
     def __init__(self, limit):
@@ -289,9 +293,14 @@ class SpeechDataset(data.Dataset):
 #        if label == 0:
  #           bg_noise = np.zeros(data.shape[0])
   #          print("label is 0")
-        if random.random() < self.noise_prob or silence:
-            a = random.random() * 0.1
-            data = np.clip(a * bg_noise + data, -1, 1)
+#        if random.random() < self.noise_prob or silence:
+#            a = random.random() * 0.1
+#            data = np.clip(a * bg_noise + data, -1, 1)
+
+        psig=sum(data*data)/len(data)
+        pnoise=sum(bg_noise*bg_noise)/len(noise)
+        f=factor(10,psig,pnoise)
+        data=np.clip(sig+f*bg_noise,-1,1)
 
         data = torch.from_numpy(preprocess_audio(data,
                                                  features = self.features,
