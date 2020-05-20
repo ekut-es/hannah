@@ -5,9 +5,9 @@ variables:
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   GIT_SUBMODULE_STRATEGY: recursive
 
-cache:
-  paths:
-    - ./venv
+#cache:
+#  paths:
+#-  ./venv
 
 before_script:
   - cat /etc/os-release
