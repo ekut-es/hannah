@@ -103,9 +103,8 @@ class SincConv(nn.Module):
         f_n_low=torch.matmul(f_low,self.n_)
         f_n_high=torch.matmul(f_high,self.n_)
             
-        bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))
-        #bpr=bpl.flip(1)
-        bpr=bpl
+        bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))#*self.window_
+        bpr=torch.flip(bpl,dims=[1])
         bpc=2*f_band.view(-1,1)
             
         band=torch.cat([bpl,bpc,bpr],dim=1)
@@ -116,16 +115,20 @@ class SincConv(nn.Module):
             
         return F.conv1d(waveforms,self.filters,stride=self.stride,padding=self.padding,dilation=self.dilation,bias=None,groups=1)
         
-########################## Sinc Block Activation Function ################################
+########################## Activation Function ################################
 
-class SincAct(nn.Module):
+def act_fun(input):
+    # Returns the log compression value of the input
+    return torch.log10(torch.abs(input)+1)
+
+class my_act(nn.Module):
     
     def __init__(self):
         super().__init__()
         
     def forward(self, input):
         
-        return torch.log10(torch.abs(input)+1)
+        return act_fun(input)
     
 ############################### SincConv Block ################################
     
@@ -136,14 +139,19 @@ class SincConvBlock(nn.Module):
         
         self.layer=nn.Sequential(
             SincConv(N_filt,filt_len,SR,stride=stride),
-            SincAct(),
+            my_act(),
             nn.BatchNorm1d(bn_len),
             nn.AvgPool1d(avgpool_len)
             )
         
     def forward(self,x):
+        #batch=x.shape[0]
+        #seq_len=x.shape[1]
+        #x=x.view(batch,1,seq_len)
+        
         out=self.layer(x)
-
+        #out=out.view(batch,-1) Not very sure about this
+        
         return out
     
 ############################# DS Conv Block ###################################
@@ -179,7 +187,7 @@ class GDSConvBlock(nn.Module):
         
         return x
 
-############################ Combined Final SincNet *****************************
+############################ Combined Final Block *****************************
 
 class SincNet(SerializableModule):
     def __init__(self,config):
@@ -191,7 +199,7 @@ class SincNet(SerializableModule):
         self.cnn_filt_len=config['cnn_filt_len']
         self.cnn_bn_len=config['cnn_bn_len']
         self.cnn_avgpool_len=config['cnn_avgpool_len']
-        self.SR=config['samplingrate']
+        self.SR=config['sampling_rate']
         self.cnn_stride=config['cnn_stride']
         
         self.dsconv_N_filt=config['dsconv_N_filt']
@@ -216,9 +224,11 @@ class SincNet(SerializableModule):
                 
         self.Global_avg_pool=nn.AdaptiveAvgPool1d(1)
         self.fc=nn.Linear(self.dsconv_N_filt[self.dsconv_num-1],self.num_classes)
-        
+        #self.softmax_layer=nn.Softmax()
     
     def forward(self,x):
+        #print(x.shape)
+        #x=x.view(1,1,16000)
         batch=x.shape[0]
         x=x.view(x.shape[0],1,x.shape[2])
         x=self.SincNet(x)
@@ -227,8 +237,12 @@ class SincNet(SerializableModule):
             x=self.GDSBlocks[i](x)
             
         x=self.Global_avg_pool(x)
+        #print(x.shape)
+        #print(x.shape)
         x=x.view(batch,-1)
         x=self.fc(x)
+        #x=self.softmax_layer(x)
+        #print(x.shape)
         
         return x
 
@@ -245,6 +259,7 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=8,
+		sampling_rate=16000,
          
 		dsconv_N_filt=(162,162,162,162,162),
 		dsconv_filt_len=(25,9,9,9,9),
@@ -264,9 +279,10 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=32,
+		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,9,8),
+		dsconv_filt_len=(25,9,9,9,7),
 		dsconv_stride=(2,1,1,1,1), 
 		dsconv_pcstride=(1,1,1,1,1),        
 		dsconv_groups=(1,4,8,4,8),
@@ -283,9 +299,10 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=16,
+		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,9,7),
+		dsconv_filt_len=(25,9,9,9,6),
 		dsconv_stride=(2,1,1,1,1), 
 		dsconv_pcstride=(1,1,1,1,1),        
 		dsconv_groups=(1,4,4,4,4),
@@ -302,6 +319,7 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=16,
+		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,7),
@@ -321,6 +339,7 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=16,
+		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,7),
@@ -341,6 +360,7 @@ configs= {
 		cnn_avgpool_len=2,
 		SR=16000,
 		cnn_stride=32,
+		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,8,1),
@@ -360,6 +380,7 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=32,
+		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,8,1),
@@ -379,6 +400,7 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=32,
+		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,8),

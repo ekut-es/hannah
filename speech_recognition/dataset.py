@@ -298,9 +298,9 @@ class SpeechDataset(data.Dataset):
 #            data = np.clip(a * bg_noise + data, -1, 1)
 
         psig=sum(data*data)/len(data)
-        pnoise=sum(bg_noise*bg_noise)/len(noise)
+        pnoise=sum(bg_noise*bg_noise)/len(bg_noise)
         f=factor(10,psig,pnoise)
-        data=np.clip(sig+f*bg_noise,-1,1)
+        data=np.clip(data+f*bg_noise,-1,1)
 
         data = torch.from_numpy(preprocess_audio(data,
                                                  features = self.features,
