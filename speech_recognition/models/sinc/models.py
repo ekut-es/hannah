@@ -104,8 +104,7 @@ class SincConv(nn.Module):
         f_n_high=torch.matmul(f_high,self.n_)
             
         bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))
-        #bpr=bpl.flip(1)
-        bpr=bpl
+        bpr=bpl.flip(1)
         bpc=2*f_band.view(-1,1)
             
         band=torch.cat([bpl,bpc,bpr],dim=1)
