@@ -103,8 +103,8 @@ class SincConv(nn.Module):
         f_n_low=torch.matmul(f_low,self.n_)
         f_n_high=torch.matmul(f_high,self.n_)
             
-        bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))#*self.window_
-        bpr=torch.flip(bpl,dims=[1])
+        bpl=((torch.sin(f_n_high)-torch.sin(f_n_low))/(self.n_/2))
+        bpr=bpl.flip(1)
         bpc=2*f_band.view(-1,1)
             
         band=torch.cat([bpl,bpc,bpr],dim=1)
@@ -115,20 +115,16 @@ class SincConv(nn.Module):
             
         return F.conv1d(waveforms,self.filters,stride=self.stride,padding=self.padding,dilation=self.dilation,bias=None,groups=1)
         
-########################## Activation Function ################################
+########################## Sinc Block Activation Function ################################
 
-def act_fun(input):
-    # Returns the log compression value of the input
-    return torch.log10(torch.abs(input)+1)
-
-class my_act(nn.Module):
+class SincAct(nn.Module):
     
     def __init__(self):
         super().__init__()
         
     def forward(self, input):
         
-        return act_fun(input)
+        return torch.log10(torch.abs(input)+1)
     
 ############################### SincConv Block ################################
     
@@ -139,19 +135,14 @@ class SincConvBlock(nn.Module):
         
         self.layer=nn.Sequential(
             SincConv(N_filt,filt_len,SR,stride=stride),
-            my_act(),
+            SincAct(),
             nn.BatchNorm1d(bn_len),
             nn.AvgPool1d(avgpool_len)
             )
         
     def forward(self,x):
-        #batch=x.shape[0]
-        #seq_len=x.shape[1]
-        #x=x.view(batch,1,seq_len)
-        
         out=self.layer(x)
-        #out=out.view(batch,-1) Not very sure about this
-        
+
         return out
     
 ############################# DS Conv Block ###################################
@@ -187,7 +178,7 @@ class GDSConvBlock(nn.Module):
         
         return x
 
-############################ Combined Final Block *****************************
+############################ Combined Final SincNet *****************************
 
 class SincNet(SerializableModule):
     def __init__(self,config):
@@ -199,7 +190,7 @@ class SincNet(SerializableModule):
         self.cnn_filt_len=config['cnn_filt_len']
         self.cnn_bn_len=config['cnn_bn_len']
         self.cnn_avgpool_len=config['cnn_avgpool_len']
-        self.SR=config['sampling_rate']
+        self.SR=config['samplingrate']
         self.cnn_stride=config['cnn_stride']
         
         self.dsconv_N_filt=config['dsconv_N_filt']
@@ -224,11 +215,9 @@ class SincNet(SerializableModule):
                 
         self.Global_avg_pool=nn.AdaptiveAvgPool1d(1)
         self.fc=nn.Linear(self.dsconv_N_filt[self.dsconv_num-1],self.num_classes)
-        #self.softmax_layer=nn.Softmax()
+        
     
     def forward(self,x):
-        #print(x.shape)
-        #x=x.view(1,1,16000)
         batch=x.shape[0]
         x=x.view(x.shape[0],1,x.shape[2])
         x=self.SincNet(x)
@@ -237,12 +226,8 @@ class SincNet(SerializableModule):
             x=self.GDSBlocks[i](x)
             
         x=self.Global_avg_pool(x)
-        #print(x.shape)
-        #print(x.shape)
         x=x.view(batch,-1)
         x=self.fc(x)
-        #x=self.softmax_layer(x)
-        #print(x.shape)
         
         return x
 

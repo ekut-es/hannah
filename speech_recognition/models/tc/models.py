@@ -17,11 +17,8 @@ msglogger = logging.getLogger()
 
 import pwlf
 import numpy as np
-import matplotlib.pyplot as plt
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "distiller"))
-print(sys.path)
-import distiller
+import distiller #FIXME: distiller should not be needed here at all
 
 
 from ..utils import ConfigType, SerializableModule, next_power_of2
