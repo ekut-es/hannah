@@ -301,10 +301,8 @@ class SpeechDataset(data.Dataset):
 
         if self.set_type==DatasetType.TEST:
             snr=self.test_snr
-            print("false flag")
         else:
             snr=random.uniform(-5,20)
-            print("true flag")
 
         psig=sum(data*data)/len(data)
         pnoise=sum(bg_noise*bg_noise)/len(bg_noise)
