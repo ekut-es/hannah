@@ -120,6 +120,8 @@ class SpeechDataset(data.Dataset):
         self.normalize_bits = config["normalize_bits"]
         self.normalize_max = config["normalize_max"]
         self.max_feature = 0
+        self.flag=config["flag"]
+        self.test_snr=config["test_snr"]
         
         self.height, self.width = calculate_feature_shape(self.input_length,
                                                           features=self.features,
@@ -174,7 +176,10 @@ class SpeechDataset(data.Dataset):
                                                       desc="Loss function that should be used with this dataset",
                                                       choices=["cross_entropy", "ctc"],
                                                       default="cross_entropy")
-
+        config["flag"]             = ConfigOption(category="Input Config",
+                                                      default=TRUE)        
+        config["test_snr"]             = ConfigOption(category="Input Config",
+                                                      default=20)
         
         
         # Feature extraction
@@ -297,9 +302,13 @@ class SpeechDataset(data.Dataset):
 #            a = random.random() * 0.1
 #            data = np.clip(a * bg_noise + data, -1, 1)
 
+        if self.flag:
+            snr=random.uniform(-5,20)
+        else:
+            snr=self.test_snr
+
         psig=sum(data*data)/len(data)
         pnoise=sum(bg_noise*bg_noise)/len(bg_noise)
-        snr=random.uniform(-5,20)
         f=factor(snr,psig,pnoise)
         data=np.clip(data+f*bg_noise,-1,1)
 
