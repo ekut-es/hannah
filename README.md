@@ -42,16 +42,32 @@ For alternative installation methods see:  https://python-poetry.org/docs/#insta
 
 ## Software installation 
 
-   In the root directory of the project run:
+In the root directory of the project run:
 
    git submodule update --init --recursive
+   
    poetry install
 
-   This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.
-   The environment can be activated using: 
+This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.
+   
+The environment can be activated using: 
 
    poetry shell
   
+### Installation Tips
+
+1.) venv location
+
+poetry installs the dependencies to a virtual environment in ~/.cache/pypoetry/virtualenvs
+
+You can change the location of this directory using: 
+
+    oetry config virtualenvs.path  <desired virtual environment path>
+   
+Or move it to a subdirectory of the project directory using: 
+
+    poetry config virtualenvs.in-project true
+	
 
 ## Installing the datasets
 	
@@ -69,11 +85,11 @@ Installing dataset for VAD:
 
 Training on CPU can be invoked by:
    
-    python3.6 -m speech_recognition.train  --no_cuda  --model ekut-raw-cnn3-relu
+    python -m speech_recognition.train  --no_cuda  --model ekut-raw-cnn3-relu
 
 Training on 1st GPU can be invoked by:
 
-    python3.6 -m speech_recognition.train  --gpu_no 0  --model ekut-raw-cnn3-relu
+    python -m speech_recognition.train  --gpu_no 0  --model ekut-raw-cnn3-relu
 
 Trained models are saved under trained_models/model_name .
 
@@ -81,21 +97,21 @@ Trained models are saved under trained_models/model_name .
 
 To run only the evalution of a model use:
 
-    python3.6 -m speech_recognition.train --no_cuda 0 --model ekut-raw-cnn3-relu --batch_size 256 --input_file trained_models/ekut-raw-cnn3-relu/model.pt --type eval
+    python -m speech_recognition.train --no_cuda 0 --model ekut-raw-cnn3-relu --batch_size 256 --input_file trained_models/ekut-raw-cnn3-relu/model.pt --type eval
 
 ## Training - VAD
 
 Training for the simple-vad, bottleneck-vad and small-vad can be invoked by:
 
-    python3 -m speech_recognition.train --model simple-vad      --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --lr 0.001 --silence_prob 0 --early_stopping 3 --input_length 6360 --stride 2 --conv1_size 5 --conv1_features 40 --conv2_size 5 --conv2_features 20 --conv3_size 5 --conv3_features 10 --fc_size 40
-    python3 -m speech_recognition.train --model bottleneck-vad  --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --lr 0.001 --n-mfcc 40 --silence_prob 0 --early_stopping 3 --input_length 6360 --stride 2 --conv1_size 5 --conv1_features 40 --conv2_size 5 --conv2_features 20 --conv3_size 5 --conv3_features 10 --fc_size 250
-    python3 -m speech_recognition.train --model small-vad       --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2
+    python -m speech_recognition.train --model simple-vad      --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --lr 0.001 --silence_prob 0 --early_stopping 3 --input_length 6360 --stride 2 --conv1_size 5 --conv1_features 40 --conv2_size 5 --conv2_features 20 --conv3_size 5 --conv3_features 10 --fc_size 40
+    python -m speech_recognition.train --model bottleneck-vad  --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --lr 0.001 --n-mfcc 40 --silence_prob 0 --early_stopping 3 --input_length 6360 --stride 2 --conv1_size 5 --conv1_features 40 --conv2_size 5 --conv2_features 20 --conv3_size 5 --conv3_features 10 --fc_size 250
+    python -m speech_recognition.train --model small-vad       --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2
 
 # Showing graphical results
     
 To show visual results as a multi-axis plot, execute the following command in speech recognition's root path:
 
-    python3.6 -m visualize.visualize --model <model> --experiment_id <experiment_id> (--top_n_accuracy <top_n_accuracy>)
+    python -m visualize.visualize --model <model> --experiment_id <experiment_id> (--top_n_accuracy <top_n_accuracy>)
 
 Please note, that an axis, that has equal values for all variations, is dropped from the graph for the sake of clarity.
 
