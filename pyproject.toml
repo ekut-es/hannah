@@ -23,6 +23,7 @@ redis = "^3.4.1"
 # due to bug with audioread==2.1.8
 # which causes excessive runtimes
 audioread = "2.1.6"
+pytorch-lightning = "^0.7.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "4.6.1"
