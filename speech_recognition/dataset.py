@@ -85,7 +85,7 @@ class SpeechDataset(data.Dataset):
         self.audio_files = list(data.keys())
         self.set_type = set_type
         self.audio_labels = list(data.values())
-
+        print(set_type)
         config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
         self.samplingrate = config["samplingrate"]
         self.bg_noise_audio = [librosa.core.load(file, sr=self.samplingrate)[0] for file in config["bg_noise_files"]]
@@ -120,9 +120,8 @@ class SpeechDataset(data.Dataset):
         self.normalize_bits = config["normalize_bits"]
         self.normalize_max = config["normalize_max"]
         self.max_feature = 0
-        self.flag=config["flag"]
         self.test_snr=config["test_snr"]
-        
+
         self.height, self.width = calculate_feature_shape(self.input_length,
                                                           features=self.features,
                                                           samplingrate=self.samplingrate,
@@ -175,9 +174,7 @@ class SpeechDataset(data.Dataset):
         config["loss"]                 = ConfigOption(category="Input Config",
                                                       desc="Loss function that should be used with this dataset",
                                                       choices=["cross_entropy", "ctc"],
-                                                      default="cross_entropy")
-        config["flag"]             = ConfigOption(category="Input Config",
-                                                      default=TRUE)        
+                                                      default="cross_entropy")      
         config["test_snr"]             = ConfigOption(category="Input Config",
                                                       default=20)
         
@@ -302,10 +299,12 @@ class SpeechDataset(data.Dataset):
 #            a = random.random() * 0.1
 #            data = np.clip(a * bg_noise + data, -1, 1)
 
-        if self.flag:
-            snr=random.uniform(-5,20)
-        else:
+        if self.set_type==DatasetType.TEST:
             snr=self.test_snr
+            print("false flag")
+        else:
+            snr=random.uniform(-5,20)
+            print("true flag")
 
         psig=sum(data*data)/len(data)
         pnoise=sum(bg_noise*bg_noise)/len(bg_noise)
@@ -424,7 +423,7 @@ class SpeechCommandsDataset(SpeechDataset):
     dataset"""
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
-
+        #flag=True
         self.label_names = {0 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN}
         for i, word in enumerate(config["wanted_words"]):
             self.label_names[i+2] = word
