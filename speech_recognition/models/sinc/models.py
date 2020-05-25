@@ -157,10 +157,10 @@ class SincConvBlock(nn.Module):
 ############################# DS Conv Block ###################################
       
 class GDSConv(nn.Module):
-    def __init__(self,in_channels,out_channels,kernel_size,stride,pcstride,groups,padding=0,dilation=1,bias=False):
+    def __init__(self,in_channels,out_channels,kernel_size,stride,pcstride,groups, padding=0, dilation=1,bias=False):
         super(GDSConv,self).__init__()
         
-        self.layer1=nn.Conv1d(in_channels,in_channels,kernel_size,stride,padding,dilation,groups=in_channels,bias=bias) #depthwise convolution with k*1 filters
+        self.layer1=nn.Conv1d(in_channels,in_channels,kernel_size,stride=stride,dilation=dilation,groups=in_channels,bias=bias, padding=padding) #depthwise convolution with k*1 filters
         self.layer2=nn.Conv1d(in_channels,out_channels,1,pcstride,0,1,groups=groups,bias=bias)
         #pointwise convolutions with 1*c/g filters
         
@@ -171,14 +171,14 @@ class GDSConv(nn.Module):
         return x
 
 class GDSConvBlock(nn.Module):
-    def __init__(self,in_channels,out_channels,kernel_size,stride,pcstride,groups,avg_pool_len,bn_len,spatDrop,padding=0,dilation=1,bias=False):
+    def __init__(self,in_channels,out_channels,kernel_size,stride,pcstride,groups,avg_pool_len,bn_len,spatDrop):
         super(GDSConvBlock,self).__init__()
         
         self.layer=nn.Sequential(
-            GDSConv(in_channels,out_channels,kernel_size,stride,pcstride,groups),
+            GDSConv(in_channels,out_channels,kernel_size,stride,pcstride,groups, padding=kernel_size//2),
             nn.ReLU(),
             nn.BatchNorm1d(bn_len),
-            nn.AvgPool1d(avg_pool_len),
+            nn.AvgPool1d(avg_pool_len, padding=avg_pool_len//2),
             nn.Dropout(spatDrop)
             )
         
