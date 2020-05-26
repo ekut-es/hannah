@@ -199,7 +199,7 @@ class SincNet(SerializableModule):
         self.cnn_filt_len=config['cnn_filt_len']
         self.cnn_bn_len=config['cnn_bn_len']
         self.cnn_avgpool_len=config['cnn_avgpool_len']
-        self.SR=config['sampling_rate']
+        self.SR=config['samplingrate']
         self.cnn_stride=config['cnn_stride']
         
         self.dsconv_N_filt=config['dsconv_N_filt']
@@ -259,7 +259,6 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=8,
-		sampling_rate=16000,
          
 		dsconv_N_filt=(162,162,162,162,162),
 		dsconv_filt_len=(25,9,9,9,9),
@@ -279,7 +278,6 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=32,
-		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,7),
@@ -299,7 +297,6 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=16,
-		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,6),
@@ -319,7 +316,6 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=16,
-		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,7),
@@ -339,7 +335,6 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=16,
-		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,7),
@@ -360,7 +355,6 @@ configs= {
 		cnn_avgpool_len=2,
 		SR=16000,
 		cnn_stride=32,
-		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,8,1),
@@ -380,7 +374,6 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=32,
-		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,8,1),
@@ -400,7 +393,6 @@ configs= {
 		cnn_bn_len=40,
 		cnn_avgpool_len=2,
 		cnn_stride=32,
-		sampling_rate=16000,
          
 		dsconv_N_filt=(160,160,160,160,160),
 		dsconv_filt_len=(25,9,9,9,8),
