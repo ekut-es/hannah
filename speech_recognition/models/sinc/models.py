@@ -117,18 +117,14 @@ class SincConv(nn.Module):
         
 ########################## Activation Function ################################
 
-def act_fun(input):
-    # Returns the log compression value of the input
-    return torch.log10(torch.abs(input)+1)
-
-class my_act(nn.Module):
+class SincAct(nn.Module):
     
     def __init__(self):
         super().__init__()
         
     def forward(self, input):
         
-        return act_fun(input)
+        return torch.log10(torch.abs(input)+1)
     
 ############################### SincConv Block ################################
     
@@ -138,19 +134,15 @@ class SincConvBlock(nn.Module):
         #config will be the configuration file containing info about the architecture
         
         self.layer=nn.Sequential(
-            SincConv(N_filt,filt_len,SR,stride=stride),
-            my_act(),
+            SincConv(N_filt,filt_len,SR,stride=stride,,padding=filt_len//2),
+            Sinc_Act(),
             nn.BatchNorm1d(bn_len),
             nn.AvgPool1d(avgpool_len)
             )
         
     def forward(self,x):
-        #batch=x.shape[0]
-        #seq_len=x.shape[1]
-        #x=x.view(batch,1,seq_len)
         
         out=self.layer(x)
-        #out=out.view(batch,-1) Not very sure about this
         
         return out
     
@@ -187,7 +179,7 @@ class GDSConvBlock(nn.Module):
         
         return x
 
-############################ Combined Final Block *****************************
+############################ Combined Final SincNet *****************************
 
 class SincNet(SerializableModule):
     def __init__(self,config):
@@ -224,11 +216,9 @@ class SincNet(SerializableModule):
                 
         self.Global_avg_pool=nn.AdaptiveAvgPool1d(1)
         self.fc=nn.Linear(self.dsconv_N_filt[self.dsconv_num-1],self.num_classes)
-        #self.softmax_layer=nn.Softmax()
     
     def forward(self,x):
-        #print(x.shape)
-        #x=x.view(1,1,16000)
+        
         batch=x.shape[0]
         x=x.view(x.shape[0],1,x.shape[2])
         x=self.SincNet(x)
@@ -237,12 +227,9 @@ class SincNet(SerializableModule):
             x=self.GDSBlocks[i](x)
             
         x=self.Global_avg_pool(x)
-        #print(x.shape)
-        #print(x.shape)
+
         x=x.view(batch,-1)
         x=self.fc(x)
-        #x=self.softmax_layer(x)
-        #print(x.shape)
         
         return x
 
