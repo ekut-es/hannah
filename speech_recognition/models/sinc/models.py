@@ -237,13 +237,10 @@ class SincNet(SerializableModule):
             x=self.GDSBlocks[i](x)
             
         x=self.Global_avg_pool(x)
-        #print(x.shape)
-        #print(x.shape)
+
         x=x.view(batch,-1)
         x=self.fc(x)
-        #x=self.softmax_layer(x)
-        #print(x.shape)
-        
+
         return x
 
 ###############################################################################    
