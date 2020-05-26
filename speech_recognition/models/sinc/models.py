@@ -117,14 +117,18 @@ class SincConv(nn.Module):
         
 ########################## Activation Function ################################
 
-class SincAct(nn.Module):
+def act_fun(input):
+    # Returns the log compression value of the input
+    return torch.log10(torch.abs(input)+1)
+
+class my_act(nn.Module):
     
     def __init__(self):
         super().__init__()
         
     def forward(self, input):
         
-        return torch.log10(torch.abs(input)+1)
+        return act_fun(input)
     
 ############################### SincConv Block ################################
     
@@ -134,15 +138,19 @@ class SincConvBlock(nn.Module):
         #config will be the configuration file containing info about the architecture
         
         self.layer=nn.Sequential(
-            SincConv(N_filt,filt_len,SR,stride=stride,,padding=filt_len//2),
-            Sinc_Act(),
+            SincConv(N_filt,filt_len,SR,stride=stride),
+            my_act(),
             nn.BatchNorm1d(bn_len),
             nn.AvgPool1d(avgpool_len)
             )
         
     def forward(self,x):
+        #batch=x.shape[0]
+        #seq_len=x.shape[1]
+        #x=x.view(batch,1,seq_len)
         
         out=self.layer(x)
+        #out=out.view(batch,-1) Not very sure about this
         
         return out
     
@@ -179,14 +187,14 @@ class GDSConvBlock(nn.Module):
         
         return x
 
-############################ Combined Final SincNet *****************************
+############################ Combined Final Block *****************************
 
 class SincNet(SerializableModule):
     def __init__(self,config):
-        super(SincNet,self).__init__()	
+        super(SincNet,self).__init__()  
 
         self.num_classes=config['num_classes']
-		        
+                
         self.cnn_N_filt=config['cnn_N_filt']
         self.cnn_filt_len=config['cnn_filt_len']
         self.cnn_bn_len=config['cnn_bn_len']
@@ -216,9 +224,11 @@ class SincNet(SerializableModule):
                 
         self.Global_avg_pool=nn.AdaptiveAvgPool1d(1)
         self.fc=nn.Linear(self.dsconv_N_filt[self.dsconv_num-1],self.num_classes)
+        #self.softmax_layer=nn.Softmax()
     
     def forward(self,x):
-        
+        #print(x.shape)
+        #x=x.view(1,1,16000)
         batch=x.shape[0]
         x=x.view(x.shape[0],1,x.shape[2])
         x=self.SincNet(x)
@@ -230,165 +240,165 @@ class SincNet(SerializableModule):
 
         x=x.view(batch,-1)
         x=self.fc(x)
-        
+
         return x
 
 ###############################################################################    
 
 
 configs= {
-	
-	ConfigType.SINC1.value: dict(
-		features="raw",
-		num_classes=12,
-		cnn_N_filt=40,
-		cnn_filt_len=101,
-		cnn_bn_len=40,
-		cnn_avgpool_len=2,
-		cnn_stride=8,
+    
+    ConfigType.SINC1.value: dict(
+        features="raw",
+        num_classes=12,
+        cnn_N_filt=40,
+        cnn_filt_len=101,
+        cnn_bn_len=40,
+        cnn_avgpool_len=2,
+        cnn_stride=8,
          
-		dsconv_N_filt=(162,162,162,162,162),
-		dsconv_filt_len=(25,9,9,9,9),
-		dsconv_stride=(2,1,1,1,1), 
-		dsconv_pcstride=(1,1,1,1,1),        
-		dsconv_groups=(1,2,3,2,3),
-		dsconv_avg_pool_len=(2,2,2,2,2),
-		dsconv_bn_len=(162,162,162,162,162),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
-	),
+        dsconv_N_filt=(162,162,162,162,162),
+        dsconv_filt_len=(25,9,9,9,9),
+        dsconv_stride=(2,1,1,1,1), 
+        dsconv_pcstride=(1,1,1,1,1),        
+        dsconv_groups=(1,2,3,2,3),
+        dsconv_avg_pool_len=(2,2,2,2,2),
+        dsconv_bn_len=(162,162,162,162,162),
+        dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
+    ),
         
-	ConfigType.SINC2.value: dict(
-		features="raw",
-		num_classes=12,
-		cnn_N_filt=40,
-		cnn_filt_len=101,
-		cnn_bn_len=40,
-		cnn_avgpool_len=2,
-		cnn_stride=32,
+    ConfigType.SINC2.value: dict(
+        features="raw",
+        num_classes=12,
+        cnn_N_filt=40,
+        cnn_filt_len=101,
+        cnn_bn_len=40,
+        cnn_avgpool_len=2,
+        cnn_stride=32,
          
-		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,9,7),
-		dsconv_stride=(2,1,1,1,1), 
-		dsconv_pcstride=(1,1,1,1,1),        
-		dsconv_groups=(1,4,8,4,8),
-		dsconv_avg_pool_len=(2,2,1,1,1),
-		dsconv_bn_len=(160,160,160,160,160),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
-	),   
+        dsconv_N_filt=(160,160,160,160,160),
+        dsconv_filt_len=(25,9,9,9,7),
+        dsconv_stride=(2,1,1,1,1), 
+        dsconv_pcstride=(1,1,1,1,1),        
+        dsconv_groups=(1,4,8,4,8),
+        dsconv_avg_pool_len=(2,2,1,1,1),
+        dsconv_bn_len=(160,160,160,160,160),
+        dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
+    ),   
             
-	ConfigType.SINC3.value: dict(
-		features="raw",
-		num_classes=12,
-		cnn_N_filt=40,
-		cnn_filt_len=101,
-		cnn_bn_len=40,
-		cnn_avgpool_len=2,
-		cnn_stride=16,
+    ConfigType.SINC3.value: dict(
+        features="raw",
+        num_classes=12,
+        cnn_N_filt=40,
+        cnn_filt_len=101,
+        cnn_bn_len=40,
+        cnn_avgpool_len=2,
+        cnn_stride=16,
          
-		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,9,6),
-		dsconv_stride=(2,1,1,1,1), 
-		dsconv_pcstride=(1,1,1,1,1),        
-		dsconv_groups=(1,4,4,4,4),
-		dsconv_avg_pool_len=(2,2,2,2,2),
-		dsconv_bn_len=(160,160,160,160,160),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
-	),            
+        dsconv_N_filt=(160,160,160,160,160),
+        dsconv_filt_len=(25,9,9,9,6),
+        dsconv_stride=(2,1,1,1,1), 
+        dsconv_pcstride=(1,1,1,1,1),        
+        dsconv_groups=(1,4,4,4,4),
+        dsconv_avg_pool_len=(2,2,2,2,2),
+        dsconv_bn_len=(160,160,160,160,160),
+        dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
+    ),            
 
-	ConfigType.SINC4.value: dict(
-		features="raw",
-		num_classes=12,
-		cnn_N_filt=40,
-		cnn_filt_len=101,
-		cnn_bn_len=40,
-		cnn_avgpool_len=2,
-		cnn_stride=16,
+    ConfigType.SINC4.value: dict(
+        features="raw",
+        num_classes=12,
+        cnn_N_filt=40,
+        cnn_filt_len=101,
+        cnn_bn_len=40,
+        cnn_avgpool_len=2,
+        cnn_stride=16,
          
-		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,9,7),
-		dsconv_stride=(2,1,1,1,1), 
-		dsconv_pcstride=(1,1,1,1,1),        
-		dsconv_groups=(1,2,4,2,4),
-		dsconv_avg_pool_len=(2,2,2,2,2),
-		dsconv_bn_len=(160,160,160,160,160),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
-	),
+        dsconv_N_filt=(160,160,160,160,160),
+        dsconv_filt_len=(25,9,9,9,7),
+        dsconv_stride=(2,1,1,1,1), 
+        dsconv_pcstride=(1,1,1,1,1),        
+        dsconv_groups=(1,2,4,2,4),
+        dsconv_avg_pool_len=(2,2,2,2,2),
+        dsconv_bn_len=(160,160,160,160,160),
+        dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
+    ),
             
-	ConfigType.SINC5.value: dict(
-		features="raw",
-		num_classes=12,
-		cnn_N_filt=40,
-		cnn_filt_len=101,
-		cnn_bn_len=40,
-		cnn_avgpool_len=2,
-		cnn_stride=16,
+    ConfigType.SINC5.value: dict(
+        features="raw",
+        num_classes=12,
+        cnn_N_filt=40,
+        cnn_filt_len=101,
+        cnn_bn_len=40,
+        cnn_avgpool_len=2,
+        cnn_stride=16,
          
-		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,9,7),
-		dsconv_stride=(2,1,1,1,1), 
-		dsconv_pcstride=(1,1,1,1,1),        
-		dsconv_groups=(1,4,8,4,8),
-		dsconv_avg_pool_len=(2,2,2,2,2),
-		dsconv_bn_len=(160,160,160,160,160),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
-	),
+        dsconv_N_filt=(160,160,160,160,160),
+        dsconv_filt_len=(25,9,9,9,7),
+        dsconv_stride=(2,1,1,1,1), 
+        dsconv_pcstride=(1,1,1,1,1),        
+        dsconv_groups=(1,4,8,4,8),
+        dsconv_avg_pool_len=(2,2,2,2,2),
+        dsconv_bn_len=(160,160,160,160,160),
+        dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
+    ),
 
-	ConfigType.SINC6.value: dict(
-		features="raw",
-		num_classes=12,
-		cnn_N_filt=40,
-		cnn_filt_len=101,
-		cnn_bn_len=40,
-		cnn_avgpool_len=2,
-		SR=16000,
-		cnn_stride=32,
+    ConfigType.SINC6.value: dict(
+        features="raw",
+        num_classes=12,
+        cnn_N_filt=40,
+        cnn_filt_len=101,
+        cnn_bn_len=40,
+        cnn_avgpool_len=2,
+        SR=16000,
+        cnn_stride=32,
          
-		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,8,1),
-		dsconv_stride=(2,1,1,1,1), 
-		dsconv_pcstride=(1,1,1,1,1),        
-		dsconv_groups=(1,4,8,4,8),
-		dsconv_avg_pool_len=(2,2,2,2,2),
-		dsconv_bn_len=(160,160,160,160,160),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
-	),
+        dsconv_N_filt=(160,160,160,160,160),
+        dsconv_filt_len=(25,9,9,8,1),
+        dsconv_stride=(2,1,1,1,1), 
+        dsconv_pcstride=(1,1,1,1,1),        
+        dsconv_groups=(1,4,8,4,8),
+        dsconv_avg_pool_len=(2,2,2,2,2),
+        dsconv_bn_len=(160,160,160,160,160),
+        dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
+    ),
             
-	ConfigType.SINC7.value: dict(
-		features="raw",
-		num_classes=12,
-		cnn_N_filt=40,
-		cnn_filt_len=101,
-		cnn_bn_len=40,
-		cnn_avgpool_len=2,
-		cnn_stride=32,
+    ConfigType.SINC7.value: dict(
+        features="raw",
+        num_classes=12,
+        cnn_N_filt=40,
+        cnn_filt_len=101,
+        cnn_bn_len=40,
+        cnn_avgpool_len=2,
+        cnn_stride=32,
          
-		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,8,1),
-		dsconv_stride=(2,1,1,1,1), 
-		dsconv_pcstride=(1,1,1,1,1),        
-		dsconv_groups=(1,2,4,2,4),
-		dsconv_avg_pool_len=(2,2,1,1,1),
-		dsconv_bn_len=(160,160,160,160,160),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
-	),
+        dsconv_N_filt=(160,160,160,160,160),
+        dsconv_filt_len=(25,9,9,8,1),
+        dsconv_stride=(2,1,1,1,1), 
+        dsconv_pcstride=(1,1,1,1,1),        
+        dsconv_groups=(1,2,4,2,4),
+        dsconv_avg_pool_len=(2,2,1,1,1),
+        dsconv_bn_len=(160,160,160,160,160),
+        dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
+    ),
 
-	ConfigType.SINC8.value: dict(
-		features="raw",
-		num_classes=12,
-		cnn_N_filt=40,
-		cnn_filt_len=101,
-		cnn_bn_len=40,
-		cnn_avgpool_len=2,
-		cnn_stride=32,
+    ConfigType.SINC8.value: dict(
+        features="raw",
+        num_classes=12,
+        cnn_N_filt=40,
+        cnn_filt_len=101,
+        cnn_bn_len=40,
+        cnn_avgpool_len=2,
+        cnn_stride=32,
          
-		dsconv_N_filt=(160,160,160,160,160),
-		dsconv_filt_len=(25,9,9,9,8),
-		dsconv_stride=(2,1,1,1,1), 
-		dsconv_pcstride=(1,1,1,1,1),        
-		dsconv_groups=(1,4,4,4,4),
-		dsconv_avg_pool_len=(2,2,1,1,1),
-		dsconv_bn_len=(160,160,160,160,160),
-		dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
-	),
+        dsconv_N_filt=(160,160,160,160,160),
+        dsconv_filt_len=(25,9,9,9,8),
+        dsconv_stride=(2,1,1,1,1), 
+        dsconv_pcstride=(1,1,1,1,1),        
+        dsconv_groups=(1,4,4,4,4),
+        dsconv_avg_pool_len=(2,2,1,1,1),
+        dsconv_bn_len=(160,160,160,160,160),
+        dsconv_spatDrop=(0.1,0.1,0.1,0.1,0.1,0.1),
+    ),
 
 }
