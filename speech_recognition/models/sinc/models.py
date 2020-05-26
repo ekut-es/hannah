@@ -117,7 +117,7 @@ class SincConv(nn.Module):
         
 ########################## Activation Function ################################
 
-class SincAct(nn.Module):
+class Sinc_Act(nn.Module):
     
     def __init__(self):
         super().__init__()
