@@ -4,8 +4,10 @@ from . import hello
 from . import tc
 from . import vad
 from . import sinc
+from . import lstm
 
 from .utils import ConfigType
+
 
 def find_model(conf):
     if isinstance(conf, ConfigType):
@@ -34,6 +36,8 @@ def find_model(conf):
         return vad.SmallVadModel
     elif conf.startswith("sinc"):
         return sinc.SincNet
+    elif conf.startswith("lstm"):
+        return lstm.LSTMModel
 
     raise Exception("Could not find model for {}".format(str(conf)))
 
@@ -41,7 +45,7 @@ def find_model(conf):
 def find_config(conf):
     if isinstance(conf, ConfigType):
         conf = conf.value
-    if(conf.startswith("honk")):
+    if conf.startswith("honk"):
         return honk.configs[conf]
     elif conf.startswith("ekut"):
         return ekut.configs[conf]
@@ -59,5 +63,7 @@ def find_config(conf):
         return vad.configs[conf]
     elif conf.startswith("sinc"):
         return sinc.configs[conf]
+    elif conf.startswith("lstm"):
+        return lstm.configs[conf]
 
     raise Exception("Could not find config for {}".format(str(conf)))
