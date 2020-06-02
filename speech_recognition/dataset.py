@@ -175,11 +175,12 @@ class SpeechDataset(data.Dataset):
                                                       choices=["cross_entropy", "ctc"],
                                                       default="cross_entropy") 
         config["train_snr_low"]             = ConfigOption(category="Input Config",
-                                                      default=10)     
+                                                      default=0.0)     
         config["train_snr_high"]             = ConfigOption(category="Input Config",
-                                                      default=40)        
+                                                      default=20.0)        
         config["test_snr"]             = ConfigOption(category="Input Config",
-                                                      default=20)
+                                                      desc="SNR used during test",
+                                                      default=float('inf'))
         
         
         # Feature extraction
@@ -300,10 +301,11 @@ class SpeechDataset(data.Dataset):
         else:
             snr=random.uniform(self.train_snr_low,self.train_snr_high)
 
-        psig=np.sum(data*data)/len(data)
-        pnoise=np.sum(bg_noise*bg_noise)/len(bg_noise)
-        f=factor(snr,psig,pnoise)
-        data=np.clip(data+f*bg_noise,-1,1)
+        if snr != float('inf'):
+            psig=np.sum(data*data)/len(data)
+            pnoise=np.sum(bg_noise*bg_noise)/len(bg_noise)
+            f=factor(snr,psig,pnoise)
+            data=np.clip(data+f*bg_noise,-1,1)
 
         data = torch.from_numpy(preprocess_audio(data,
                                                  features = self.features,
