@@ -33,5 +33,9 @@ configs = {
         dropout=0,
         lr=0.001,
         optimizer="adam",
+        freq_min=80,
+        freq_max=7600,
+        n_mels=80,
+        n_mfcc=13,
     )
 }
