@@ -21,6 +21,10 @@ import pickle
 from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
 
+def factor(snr,psig,pnoise):
+    y=10**(snr/10)
+    return np.sqrt(psig/(pnoise*y))
+
 class SimpleCache(dict):
     """ A simple in memory cache used for audio files and preprocessed features"""
     def __init__(self, limit):
@@ -87,7 +91,6 @@ class SpeechDataset(data.Dataset):
         self.bg_noise_audio = [librosa.core.load(file, sr=self.samplingrate)[0] for file in config["bg_noise_files"]]
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
-        self.noise_prob = config["noise_prob"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
         self.extract_loudest = config["extract_loudest"]
@@ -116,7 +119,10 @@ class SpeechDataset(data.Dataset):
         self.normalize_bits = config["normalize_bits"]
         self.normalize_max = config["normalize_max"]
         self.max_feature = 0
-        
+        self.train_snr_low = config["train_snr_low"]
+        self.train_snr_high = config["train_snr_high"]
+        self.test_snr=config["test_snr"]
+
         self.height, self.width = calculate_feature_shape(self.input_length,
                                                           features=self.features,
                                                           samplingrate=self.samplingrate,
@@ -156,8 +162,6 @@ class SpeechDataset(data.Dataset):
                                                       default=True)
         config["silence_prob"]         = ConfigOption(category="Input Config",
                                                       default=0.1)
-        config["noise_prob"]           = ConfigOption(category="Input Config",
-                                                      default=0.8)
         config["unknown_prob"]         = ConfigOption(category="Input Config",
                                                       default=0.1)
         config["train_pct"]            = ConfigOption(category="Input Config",
@@ -169,8 +173,13 @@ class SpeechDataset(data.Dataset):
         config["loss"]                 = ConfigOption(category="Input Config",
                                                       desc="Loss function that should be used with this dataset",
                                                       choices=["cross_entropy", "ctc"],
-                                                      default="cross_entropy")
-
+                                                      default="cross_entropy") 
+        config["train_snr_low"]             = ConfigOption(category="Input Config",
+                                                      default=10)     
+        config["train_snr_high"]             = ConfigOption(category="Input Config",
+                                                      default=40)        
+        config["test_snr"]             = ConfigOption(category="Input Config",
+                                                      default=20)
         
         
         # Feature extraction
@@ -286,12 +295,15 @@ class SpeechDataset(data.Dataset):
         else:
             bg_noise = np.zeros(data.shape[0])
 
-#        if label == 0:
- #           bg_noise = np.zeros(data.shape[0])
-  #          print("label is 0")
-        if random.random() < self.noise_prob or silence:
-            a = random.random() * 0.1
-            data = np.clip(a * bg_noise + data, -1, 1)
+        if self.set_type==DatasetType.TEST:
+            snr=self.test_snr
+        else:
+            snr=random.uniform(self.train_snr_low,self.train_snr_high)
+
+        psig=np.sum(data*data)/len(data)
+        pnoise=np.sum(bg_noise*bg_noise)/len(bg_noise)
+        f=factor(snr,psig,pnoise)
+        data=np.clip(data+f*bg_noise,-1,1)
 
         data = torch.from_numpy(preprocess_audio(data,
                                                  features = self.features,
