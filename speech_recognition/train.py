@@ -10,6 +10,8 @@ import math
 import hashlib
 import csv
 import fcntl
+import inspect
+import importlib
 
 from torch.autograd import Variable
 import numpy as np
@@ -34,6 +36,7 @@ import torchnet.meter as tnt
 from tabulate import tabulate
 
 from .summaries import *
+from .utils import _locate, _fullname
 
 msglogger = None
 
@@ -171,15 +174,15 @@ def get_config_logdir(model_name, config):
 def get_model(config, config2=None, model=None, vad_keyword = 0):
     if not model:
         if vad_keyword == 0:
-            model = config["model_class"](config)
+            model = _locate(config["model_class"])(config)
             if config["input_file"]:
                 model.load(config["input_file"])
         elif vad_keyword == 1:
-            model = config2["model_class"](config2)
+            model = _locate(config2["model_class"])(config2)
             if config["input_file_vad"]:
                 model.load(config["input_file_vad"])
         else:
-            model = config2["model_class"](config2)
+            model = _locate(config2["model_class"])(config2)
             if config["input_file_keyword"]:
                 model.load(config["input_file_keyword"])
     return model
@@ -1038,12 +1041,12 @@ def build_config(extra_config={}):
     parser.add_argument("--type", choices=["train", "eval", "eval_vad_keyword"], default="train", type=str)
     config = builder.config_from_argparse(parser)
 
-    config["model_class"] = mod_cls
+    config["model_class"] = _fullname(mod_cls)
     default_config_vad["model_class"] = mod.find_model("small-vad") # als command line option umändern
     default_config_keyword["model_class"] = mod.find_model("honk-res15")
     config["model_name"] = model_name
     config["dataset"] = dataset_name
-    config["dataset_cls"] = dataset_cls
+    config["dataset_cls"] = _fullname(dataset_cls)
 
     return (model_name, config, default_config_vad, default_config_keyword)
 

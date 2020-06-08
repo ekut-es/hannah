@@ -5,6 +5,8 @@ from .train import get_model, get_optimizer, get_loss_function, get_compression
 import torch.utils.data as data
 from . import dataset
 
+from .utils import _locate
+
 class SpeechClassifierModule(LightningModule):
 
     def __init__(self, config):
@@ -14,7 +16,7 @@ class SpeechClassifierModule(LightningModule):
         self.hparams = config
 
         # trainset needed to set values in hparams
-        self.train_set, self.dev_set, self.test_set = self.hparams["dataset_cls"].splits(self.hparams) 
+        self.train_set, self.dev_set, self.test_set = _locate(config["dataset_cls"]).splits(config)
         self.hparams["width"] = self.train_set.width
         self.hparams["height"] = self.train_set.height
         
@@ -22,18 +24,28 @@ class SpeechClassifierModule(LightningModule):
         self.criterion = get_loss_function(self.model, self.hparams)
         self.optimizer = get_optimizer(self.hparams, self.model)
         self.compression_scheduler = get_compression(config,self.model,self.optimizer)
-        self.train_set, self.dev_set, self.test_set = config["dataset_cls"].splits(config)
-
+        
 
     def forward(self, x):
         return self.model(x)
         
     def training_step(self, batch, batch_idx):
         if self.compression_scheduler is not None:
-                self.compression_scheduler.on_minibatch_begin(self.current_epoch)
+            self.compression_scheduler.on_minibatch_begin(self.current_epoch)
+    
+        x, x_len, y, y_len = batch
+        y_hat = self(x)        
+        y = y.view(-1)
+        
+        loss = self.criterion(y_hat, y)
 
         if self.compression_scheduler is not None:
-                self.compression_scheduler.on_minibatch_end(self.current_epoch)
+            self.compression_scheduler.on_minibatch_end(self.current_epoch)
+
+        
+        tensorboard_logs = {'train_loss': loss}
+        return {'loss': loss, 'log': tensorboard_logs}
+
         
     def configure_optimizers(self):
         return self.optimizer
