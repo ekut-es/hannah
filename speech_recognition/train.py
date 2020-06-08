@@ -1071,7 +1071,7 @@ def main():
             finally:
                 profiler.print_stats(sort=('tottime'))
         else:
-            lit_module = SpeechClassifierModule(config)
+            lit_module = SpeechClassifierModule(dict(config))
             #lit_trainer = Trainer(log_save_interval=False, logger=False)
             #lit_trainer = Trainer.from_argparse_args(config)
             lit_trainer = Trainer()
