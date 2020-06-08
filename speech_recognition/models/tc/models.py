@@ -23,7 +23,7 @@ import distiller #FIXME: distiller should not be needed here at all
 
 from ..utils import ConfigType, SerializableModule, next_power_of2
 
-    
+from pytorch_lightning.core.lightning import LightningModule
 
 class ApproximateGlobalAveragePooling1D(nn.Module):
     def __init__(self, size):
@@ -88,7 +88,7 @@ class TCResidualBlock(nn.Module):
         
         return res
   
-class TCResNetModel(SerializableModule):
+class TCResNetModel(LightningModule):
     def __init__(self, config):
         super().__init__()
         
@@ -429,9 +429,9 @@ class BranchyTCResNetModel(TCResNetModel):
                 estimated_losses_taylor = self._estimate_losses_taylor(thresholded_result, estimated_labels)
                 estimated_losses_taylor_approximate = self._estimate_losses_taylor_approximate(thresholded_result, estimated_labels)
 
-#                print("real:", estimated_losses_real)
-#                print("taylor:", estimated_losses_taylor)
-#                print("taylor_approx:", estimated_losses_taylor_approximate)
+            #    print("real:", estimated_losses_real)
+            #    print("taylor:", estimated_losses_taylor)
+            #    print("taylor_approx:", estimated_losses_taylor_approximate)
 
                 estimated_losses = estimated_losses_taylor_approximate
                 

@@ -1,4 +1,4 @@
-from ..train import build_config, dump_config, get_output_dir, get_model
+from train_lightning import build_config, dump_config, get_output_dir, get_model
 from ..config import ConfigOption
 
 from datetime import timedelta

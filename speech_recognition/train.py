@@ -37,6 +37,16 @@ from .summaries import *
 
 msglogger = None
 
+def get_compression(config, model, optimizer):
+    if config["compress"]:
+        msglogger.info("Activating compression scheduler")
+        compression_scheduler = distiller.file_config(model,
+                                                      optimizer,
+                                                      config["compress"])
+        return compression_scheduler
+    else:
+        return None
+
 def get_lr_scheduler(config, optimizer):
     n_epochs = config["n_epochs"]
     lr_scheduler = config["lr_scheduler"]
@@ -215,7 +225,7 @@ def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
     test_set : dataset.SpeechDataset
         DataSet used to derive dummy input to use for onnx export.
         If None no onnx will be generated
-"""
+    """
     msglogger.info("saving best model...")
     model.save(os.path.join(output_dir, model_prefix+"model.pt"))
 
@@ -467,7 +477,7 @@ def train(model_name, config):
         tblogger.log_gradients = True
         loggers.append(tblogger)
 
-#     log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
+    # log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
 
 
     print("All information will be saved to: ", output_dir, "logdir:", log_dir)
@@ -1037,6 +1047,9 @@ def build_config(extra_config={}):
 
     return (model_name, config, default_config_vad, default_config_keyword)
 
+from pytorch_lightning.trainer import Trainer
+from .lightning_model import *
+
 def main():
     model_name, config, config_vad, config_keyword = build_config()
     set_seed(config)
@@ -1055,7 +1068,12 @@ def main():
             finally:
                 profiler.print_stats(sort=('tottime'))
         else:
-            train(model_name, config)
+            lit_module = SpeechClassifierModule(config)
+            #lit_trainer = Trainer(log_save_interval=False, logger=False)
+            #lit_trainer = Trainer.from_argparse_args(config)
+            lit_trainer = Trainer()
+            lit_trainer.fit(lit_module)
+            #train(model_name, config)
     elif config["type"] == "eval":
         accuracy, _ , _= evaluate(model_name, config)
         print("final accuracy is", accuracy)
