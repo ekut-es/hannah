@@ -1054,32 +1054,34 @@ def build_config(extra_config={}):
 
 from pytorch_lightning.trainer import Trainer
 from .lightning_model import *
+from pytorch_lightning.profiler import AdvancedProfiler
 
 def main():
     model_name, config, config_vad, config_keyword = build_config()
     set_seed(config)
     # Set deterministic mode for CUDNN backend
     # Check if the performance penalty might be too high
+    
+    n_epochs = config["n_epochs"]
+    lit_module = SpeechClassifierModule(model_name,dict(config))
+    
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
     if config["type"] == "train":
         if config["profile"]:
-            import cProfile
-            profiler = cProfile.Profile()
-            try:
-                profiler.runcall(train, model_name, config)
-            finally:
-                profiler.print_stats(sort=('tottime'))
+            # import cProfile
+            # profiler = cProfile.Profile()
+            # try:
+            #     profiler.runcall(train, model_name, config)
+            # finally:
+            #     profiler.print_stats(sort=('tottime'))
+            profiler = AdvancedProfiler()
+            trainer = Trainer(max_epochs=n_epochs, profiler=profiler)
         else:
-            lit_module = SpeechClassifierModule(model_name,dict(config))
-            #lit_trainer = Trainer(log_save_interval=False, logger=False)
-            #lit_trainer = Trainer.from_argparse_args(config)
-            n_epochs = config["n_epochs"]
             lit_trainer = Trainer(max_epochs=n_epochs)
             lit_trainer.fit(lit_module)
-            # run test set
             lit_trainer.test()
             #train(model_name, config)
     elif config["type"] == "eval":
