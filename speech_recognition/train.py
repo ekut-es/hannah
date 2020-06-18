@@ -42,7 +42,7 @@ msglogger = None
 
 def get_compression(config, model, optimizer):
     if config["compress"]:
-        msglogger.info("Activating compression scheduler")
+        #msglogger.info("Activating compression scheduler")
         compression_scheduler = distiller.file_config(model,
                                                       optimizer,
                                                       config["compress"])
@@ -209,7 +209,7 @@ def dump_config(output_dir, config):
               s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
               o.write(s)
 
-def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
+def save_model(output_dir, model, test_set=None, config=None, model_prefix="", msglogger=None):
     """ Creates serialization of the model for later inference, evaluation
 
     Creates the following files:
@@ -229,8 +229,10 @@ def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
         DataSet used to derive dummy input to use for onnx export.
         If None no onnx will be generated
     """
-    msglogger.info("saving best model...")
-    model.save(os.path.join(output_dir, model_prefix+"model.pt"))
+    
+    #TODO model save doesnt work "AttributeError: model has no attribute save" 
+    #msglogger.info("saving best model...")
+    #model.save(os.path.join(output_dir, model_prefix+"model.pt"))
 
     msglogger.info("saving weights to json...")
     filename = os.path.join(output_dir, model_prefix+"model.json")
@@ -1071,11 +1073,14 @@ def main():
             finally:
                 profiler.print_stats(sort=('tottime'))
         else:
-            lit_module = SpeechClassifierModule(dict(config))
+            lit_module = SpeechClassifierModule(model_name,dict(config))
             #lit_trainer = Trainer(log_save_interval=False, logger=False)
             #lit_trainer = Trainer.from_argparse_args(config)
-            lit_trainer = Trainer()
+            n_epochs = config["n_epochs"]
+            lit_trainer = Trainer(max_epochs=n_epochs)
             lit_trainer.fit(lit_module)
+            # run test set
+            lit_trainer.test()
             #train(model_name, config)
     elif config["type"] == "eval":
         accuracy, _ , _= evaluate(model_name, config)
