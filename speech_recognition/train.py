@@ -1078,12 +1078,16 @@ def main():
             # finally:
             #     profiler.print_stats(sort=('tottime'))
             profiler = AdvancedProfiler()
-            trainer = Trainer(max_epochs=n_epochs, profiler=profiler)
+            lit_trainer = Trainer(max_epochs=n_epochs, profiler=profiler)
+        
         else:
             lit_trainer = Trainer(max_epochs=n_epochs)
-            lit_trainer.fit(lit_module)
-            lit_trainer.test()
             #train(model_name, config)
+        
+        
+        lit_trainer.fit(lit_module)
+        lit_trainer.test()
+
     elif config["type"] == "eval":
         accuracy, _ , _= evaluate(model_name, config)
         print("final accuracy is", accuracy)
