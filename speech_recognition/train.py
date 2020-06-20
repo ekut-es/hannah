@@ -1055,6 +1055,7 @@ def build_config(extra_config={}):
 from pytorch_lightning.trainer import Trainer
 from .lightning_model import *
 from pytorch_lightning.profiler import AdvancedProfiler
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 def main():
     model_name, config, config_vad, config_keyword = build_config()
@@ -1062,14 +1063,18 @@ def main():
     # Set deterministic mode for CUDNN backend
     # Check if the performance penalty might be too high
     
-    n_epochs = config["n_epochs"]
-    lit_module = SpeechClassifierModule(model_name,dict(config))
+    
+    n_epochs = config["n_epochs"] # max epochs
+    log_dir = get_config_logdir(model_name, config) # path for logs and checkpoints
+    # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
+    lit_module = SpeechClassifierModule(model_name,dict(config),log_dir) # passing logdir for custom json save after training omit double fnccall
     
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
     if config["type"] == "train":
+        
         if config["profile"]:
             # import cProfile
             # profiler = cProfile.Profile()
@@ -1078,15 +1083,17 @@ def main():
             # finally:
             #     profiler.print_stats(sort=('tottime'))
             profiler = AdvancedProfiler()
-            lit_trainer = Trainer(max_epochs=n_epochs, profiler=profiler)
-        
+            lit_trainer = Trainer(max_epochs=n_epochs, profiler=profiler, default_root_dir=log_dir)
         else:
-            lit_trainer = Trainer(max_epochs=n_epochs)
+            lit_trainer = Trainer(max_epochs=n_epochs, default_root_dir=log_dir)
             #train(model_name, config)
-        
         
         lit_trainer.fit(lit_module)
         lit_trainer.test()
+        
+        if config["profile"]:
+            # TODO printing of profiler stats not working!
+            profiler.summary()
 
     elif config["type"] == "eval":
         accuracy, _ , _= evaluate(model_name, config)

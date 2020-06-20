@@ -1,7 +1,7 @@
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.trainer import Trainer
-from .train import get_loss_function, get_optimizer, get_config_logdir, get_model, get_compression, save_model
+from .train import get_loss_function, get_optimizer, get_model, get_compression, save_model
 import torch.utils.data as data
 import torch
 from . import dataset
@@ -10,7 +10,7 @@ from .utils import _locate, config_pylogger
 
 
 class SpeechClassifierModule(LightningModule):
-    def __init__(self, model_name, config):
+    def __init__(self, model_name, config, log_dir):
         super().__init__()
         
         # TODO lit logger to saves hparams (also outdated to use) which causes error TypeError: can't pickle int objects
@@ -25,7 +25,7 @@ class SpeechClassifierModule(LightningModule):
         self.criterion = get_loss_function(self.model, self.hparams)
         self.optimizer = get_optimizer(self.hparams, self.model)
         self.compression_scheduler = get_compression(config,self.model,self.optimizer)
-        self.log_dir = get_config_logdir(model_name, config)
+        self.log_dir = log_dir
         self.collate_fn = dataset.ctc_collate_fn #if train_set.loss_function == "ctc" else None
         self.msglogger = config_pylogger('logging.conf', "lightning-logger", self.log_dir)
         self.msglogger.info("speech classifier initialized")
@@ -135,11 +135,6 @@ class SpeechClassifierModule(LightningModule):
                                  collate_fn=self.collate_fn)
 
         return test_loader
-
-
-
-
-
 
     ### END TEST CODE ###
 
