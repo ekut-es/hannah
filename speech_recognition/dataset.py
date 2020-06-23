@@ -305,7 +305,10 @@ class SpeechDataset(data.Dataset):
             psig=np.sum(data*data)/len(data)
             pnoise=np.sum(bg_noise*bg_noise)/len(bg_noise)
             f=factor(snr,psig,pnoise)
-            data=np.clip(data+f*bg_noise,-1,1)
+            data=data+f*bg_noise
+            
+            if np.amax(np.absolute(data))>1:
+                data=data/np.amax(np.absolute(data))
 
         data = torch.from_numpy(preprocess_audio(data,
                                                  features = self.features,
