@@ -582,7 +582,7 @@ def train(model_name, config):
     compression_scheduler = None
     if config["fold_bn"] >= 0:
         msglogger.info("Applying batch norm folding")
-        model = distiller.model_transforms.fold_batch_norms(model, dummy_input=dummy_input, inference=False)
+        model = distiller.model_transforms.fold_batch_norms(model, dummy_input=dummy_input, inference=False, freeze_bn_delay=-1)
         msglogger.info("Folded model")
         msglogger.info(model)
         
