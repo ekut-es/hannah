@@ -773,49 +773,47 @@ def train(model_name, config):
     except:
         msglogger.warning("Could not load model")
         
-    #try:
-    print("Activating layer dumping")
-    def dump_layers(model, output_dir):
-        class DumpForwardHook:
-            def __init__(self, module, output_dir):
-                self.module = module
-                self.output_dir = output_dir
-                try:
-                    os.makedirs(self.output_dir)
-                except:
-                    pass
-                
-                self.count = 0
+    if config["dump_test"]:
+        print("Activating layer dumping")
+        def dump_layers(model, output_dir):
+            class DumpForwardHook:
+                def __init__(self, module, output_dir):
+                    self.module = module
+                    self.output_dir = output_dir
+                    try:
+                        os.makedirs(self.output_dir)
+                    except:
+                        pass
+                    
+                    self.count = 0
 
-            def __call__(self, module, input, output):
+                def __call__(self, module, input, output):
 
-                if self.count >= 100:
-                    return
-                
-                output_name = self.output_dir + "/output_" + str(self.count) + ".json"
+                    if self.count >= 100:
+                        return
+                    
+                    output_name = self.output_dir + "/output_" + str(self.count) + ".json"
 
-                output_copy = output.cpu().tolist()
-                
-                with open(output_name, "w") as f:
-                    f.write(json.dumps(output_copy))
-                
-                self.count += 1
-                
-        for num, module in enumerate(model.modules()):
+                    output_copy = output.cpu().tolist()
+                    
+                    with open(output_name, "w") as f:
+                        f.write(json.dumps(output_copy))
+                    
+                    self.count += 1
+                    
+            for num, module in enumerate(model.modules()):
 
-            module_name = distiller.model_find_module_name(model, module)
-            if type(module) in [distiller.quantization.ClippedLinearQuantization,
-                                nn.ReLU,
-                                nn.Hardtanh]:
-                
-                module.register_forward_hook(DumpForwardHook(module, log_dir + "/test_data/layers/"+module_name))
+                module_name = distiller.model_find_module_name(model, module)
+                if type(module) in [distiller.quantization.ClippedLinearQuantization,
+                                    nn.ReLU,
+                                    nn.Hardtanh]:
+                    
+                    module.register_forward_hook(DumpForwardHook(module, log_dir + "/test_data/layers/"+module_name))
 
-            if type(module) in [nn.Conv1d]:
-                module.register_forward_hook(DumpForwardHook(module, log_dir + "/test_data/layers/"+module_name))
-                
-    dump_layers(model, output_dir + "/layer_outputs")
-    #except:
-    #    pass
+                if type(module) in [nn.Conv1d]:
+                    module.register_forward_hook(DumpForwardHook(module, log_dir + "/test_data/layers/"+module_name))
+                    
+        dump_layers(model, output_dir + "/layer_outputs")
 
     if hasattr(model, 'on_test'):
         model.on_test()
