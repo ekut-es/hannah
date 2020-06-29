@@ -1055,7 +1055,7 @@ def build_config(extra_config={}):
 from pytorch_lightning.trainer import Trainer
 from .lightning_model import *
 from pytorch_lightning.profiler import AdvancedProfiler
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
 
 def main():
     model_name, config, config_vad, config_keyword = build_config()
@@ -1063,12 +1063,13 @@ def main():
     # Set deterministic mode for CUDNN backend
     # Check if the performance penalty might be too high
     
-    
+    gpu_no = config["gpu_no"]
     n_epochs = config["n_epochs"] # max epochs
     log_dir = get_config_logdir(model_name, config) # path for logs and checkpoints
     # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
     lit_module = SpeechClassifierModule(model_name,dict(config),log_dir) # passing logdir for custom json save after training omit double fnccall
-    
+    # logger = TensorBoardLogger(log_dir, name="my_model")
+
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -1083,13 +1084,16 @@ def main():
             # finally:
             #     profiler.print_stats(sort=('tottime'))
             profiler = AdvancedProfiler()
-            lit_trainer = Trainer(max_epochs=n_epochs, profiler=profiler, default_root_dir=log_dir)
+
+            # gpus = [gpu_no_i, gpu_no_j, ...] <- dont use on cluster
+            # gpus = no_of_gpus
+            lit_trainer = Trainer(max_epochs=n_epochs, profiler=profiler, default_root_dir=log_dir, gpus=[gpu_no])
         else:
-            lit_trainer = Trainer(max_epochs=n_epochs, default_root_dir=log_dir)
+            lit_trainer = Trainer(max_epochs=n_epochs, default_root_dir=log_dir, gpus=[gpu_no])
             #train(model_name, config)
         
         lit_trainer.fit(lit_module)
-        lit_trainer.test()
+        # lit_trainer.test()
         
         if config["profile"]:
             # TODO printing of profiler stats not working!

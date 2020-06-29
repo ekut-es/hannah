@@ -1,10 +1,13 @@
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.trainer import Trainer
+from pytorch_lightning.metrics.functional import accuracy, confusion_matrix, f1_score, recall
 from .train import get_loss_function, get_optimizer, get_model, get_compression, save_model
 import torch.utils.data as data
 import torch
 from . import dataset
+
+
 
 from .utils import _locate, config_pylogger
 
@@ -65,9 +68,63 @@ class SpeechClassifierModule(LightningModule):
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_minibatch_end(self.current_epoch, batch_idx, self.batches_per_epoch)
 
-        
-        tensorboard_logs = {'train_loss': self.loss}
-        return {'loss': self.loss, 'log': tensorboard_logs}
+        # calculates accuracy across all GPUs and all Nodes used in training
+        train_batch_acc = accuracy(y_hat, y)
+        #train_batch_confusion = confusion_matrix(y_hat, y)
+        train_batch_f1 = f1_score(y_hat, y)
+        train_batch_recall = recall(y_hat, y)
+
+
+        results = {
+            'loss': self.loss, # mandatory
+            'log': {
+                'train_loss': self.loss,
+                'train_batch_f1' : train_batch_f1,
+                'train_batch_recall' : train_batch_recall
+                #'train_batch_confusion':train_batch_confusion
+                },
+            'progress_bar': {'train_batch_acc': train_batch_acc}
+        }
+
+
+        return results
+    
+    def training_epoch_end(self, outputs):
+        n_outputs = len(outputs)
+        epoch_acc_mean = 0
+        epoch_f1_mean = 0
+        epoch_recall_mean = 0
+
+        for output in outputs:
+            epoch_acc_mean += output['train_batch_acc']
+            #epoch_confusion += output['train_batch_confusion']
+            epoch_f1_mean += output['train_batch_f1']
+            epoch_recall_mean += output['train_batch_recall']
+
+        epoch_acc_mean /= n_outputs
+        epoch_f1_mean /= n_outputs
+        epoch_recall_mean /= n_outputs
+
+
+        print(f"\n epoch {self.current_epoch}:")
+        print("accuracy: %0.3f" % (epoch_acc_mean))
+        print("f1: %0.3f" % (epoch_f1_mean))
+        print("recall: %0.3f" % (epoch_recall_mean))
+        #print(f"confusion: {epoch_confusion}")
+
+
+
+        # logs
+        results = {
+            'log': {
+                'epochs_acc_mean': epoch_acc_mean.item(),
+                'epochs_f1_mean' : epoch_f1_mean.item(),
+                'epochs_recall_mean' : epoch_recall_mean.item()
+            },
+        }
+
+        return results
+
 
     ### END TRAINING CODE ###
 
@@ -111,13 +168,16 @@ class SpeechClassifierModule(LightningModule):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
-        y_hats = self.model(x)
+        y_hat = self.model(x)
 
         if self.hparams["loss"] == "ctc":
-                loss = self.criterion(y_hats, y)
+                loss = self.criterion(y_hat, y)
         else:    
             y = y.view(-1)
-            loss = self.criterion(y_hats, y)
+            loss = self.criterion(y_hat, y)
+
+        # calculates accuracy across all GPUs and all Nodes used in training
+        self.msglogger.info(f"Accuracy: {accuracy(y_hat, y)}")
 
         return {'test_loss': loss}
     
@@ -137,6 +197,8 @@ class SpeechClassifierModule(LightningModule):
         return test_loader
 
     ### END TEST CODE ###
+
+    
 
     # FORWARD (overwrite to train instance of this class directly)
     def forward(self, x):
@@ -159,3 +221,4 @@ class SpeechClassifierModule(LightningModule):
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(self.log_dir, self.model, self.test_set, config=self.hparams, msglogger=self.msglogger)
+        

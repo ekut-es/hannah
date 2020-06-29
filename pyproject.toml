@@ -24,7 +24,7 @@ redis = "^3.4.1"
 # which causes excessive runtimes
 audioread = "2.1.6"
 
-pytorch-lightning = "^0.7.6"
+pytorch-lightning = "0.8.1"
 
 # solve "No module named 'numba.decorators'":
 numba = "0.48.0"
