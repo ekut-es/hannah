@@ -66,6 +66,17 @@ Or move it to a subdirectory of the project directory using:
 
     poetry config virtualenvs.in-project true
 
+2.) On lucille
+
+Put the following in `.config/pip/pip.conf` until  
+
+    [global]
+    timeout = 60
+    extra-index-url = https://atreus.informatik.uni-tuebingen.de/~gerum/dist/
+
+And you might need to deactivate your conda environement:
+
+    conda deactivate
 
 ## Installing the datasets
 
