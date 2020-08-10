@@ -6,7 +6,7 @@ from .train import get_loss_function, get_optimizer, get_model, get_compression,
 import torch.utils.data as data
 import torch
 from . import dataset
-
+import numpy as np
 
 
 from .utils import _locate, config_pylogger
@@ -32,7 +32,6 @@ class SpeechClassifierModule(LightningModule):
         self.collate_fn = dataset.ctc_collate_fn #if train_set.loss_function == "ctc" else None
         self.msglogger = config_pylogger('logging.conf', "lightning-logger", self.log_dir)
         self.msglogger.info("speech classifier initialized")
-
   
     # PREPARATION
     def configure_optimizers(self):
@@ -70,19 +69,30 @@ class SpeechClassifierModule(LightningModule):
 
         # calculates accuracy across all GPUs and all Nodes used in training
         train_batch_acc = accuracy(y_hat, y)
-        #train_batch_confusion = confusion_matrix(y_hat, y)
         train_batch_f1 = f1_score(y_hat, y)
         train_batch_recall = recall(y_hat, y)
 
+        # for confusion we need labels from estimations
+        _, predicted = torch.max(y_hat, 1)
+        train_batch_confusion = confusion_matrix(predicted, y)
+        
 
         results = {
+            # output directory
             'loss': self.loss, # mandatory
+            'train_batch_acc': train_batch_acc,
+            'train_batch_f1': train_batch_f1,
+            'train_batch_recall':train_batch_recall,
+            'train_batch_confusion': train_batch_confusion,
+            # log directory
             'log': {
                 'train_loss': self.loss,
+                'train_batch_acc': train_batch_acc,
                 'train_batch_f1' : train_batch_f1,
                 'train_batch_recall' : train_batch_recall
-                #'train_batch_confusion':train_batch_confusion
+                # 'train_batch_confusion': train_batch_confusion
                 },
+            # progress bar
             'progress_bar': {'train_batch_acc': train_batch_acc}
         }
 
@@ -95,9 +105,17 @@ class SpeechClassifierModule(LightningModule):
         epoch_f1_mean = 0
         epoch_recall_mean = 0
 
+        first_confusion = outputs[1]['train_batch_confusion']
+        is_cuda = first_confusion.is_cuda
+        if is_cuda:
+            cuda_device = first_confusion.get_device()
+            epoch_confusion = torch.zeros((self.hparams['n_labels'],self.hparams['n_labels']), device=cuda_device)
+        else:
+            epoch_confusion = torch.zeros((self.hparams['n_labels'],self.hparams['n_labels']))
+
         for output in outputs:
             epoch_acc_mean += output['train_batch_acc']
-            #epoch_confusion += output['train_batch_confusion']
+            epoch_confusion += output['train_batch_confusion']
             epoch_f1_mean += output['train_batch_f1']
             epoch_recall_mean += output['train_batch_recall']
 
@@ -105,14 +123,13 @@ class SpeechClassifierModule(LightningModule):
         epoch_f1_mean /= n_outputs
         epoch_recall_mean /= n_outputs
 
-
-        print(f"\n epoch {self.current_epoch}:")
-        print("accuracy: %0.3f" % (epoch_acc_mean))
-        print("f1: %0.3f" % (epoch_f1_mean))
-        print("recall: %0.3f" % (epoch_recall_mean))
-        #print(f"confusion: {epoch_confusion}")
-
-
+        np.set_printoptions(suppress=True)
+        print("\n")
+        print("Training:")
+        print("-- accuracy: %0.3f" % (epoch_acc_mean))
+        print("-- f1: %0.3f" % (epoch_f1_mean))
+        print("-- recall: %0.3f" % (epoch_recall_mean))
+        print(f"-- confusion:\n   {epoch_confusion.cpu().numpy()}")
 
         # logs
         results = {
@@ -134,20 +151,76 @@ class SpeechClassifierModule(LightningModule):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
-        y_hats = self.model(x)
+        # INFERENCE
+        y_hat = self.model(x)
 
+        # LOSS
         if self.hparams["loss"] == "ctc":
-                loss = self.criterion(y_hats, y)
+                loss = self.criterion(y_hat, y)
         else:    
             y = y.view(-1)
-            loss = self.criterion(y_hats, y)
+            loss = self.criterion(y_hat, y)
+        
 
-        return {'val_loss': loss}
+        # METRICS
+       
+        # calculates metrics across all GPUs and all Nodes used in validation
+        val_batch_acc = accuracy(y_hat, y, self.hparams['n_labels'])
+        val_batch_f1 = f1_score(y_hat, y)
+        val_batch_recall = recall(y_hat, y)
+
+
+        # RESULT DICT
+        results = {
+            # output directory
+            'val_loss': loss, # mandatory
+            'val_batch_acc': val_batch_acc,
+            'val_batch_f1': val_batch_f1,
+            'val_batch_recall':val_batch_recall,
+            # log directory
+            'log': {
+                'val_loss': loss,
+                'val_batch_acc': val_batch_acc,
+                'val_batch_f1' : val_batch_f1,
+                'val_batch_recall' : val_batch_recall
+            }
+        }
+        return results
     
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        tensorboard_logs = {'val_loss': avg_loss}
-        return {'val_loss': avg_loss, 'log': tensorboard_logs}
+        
+        n_outputs = len(outputs)
+        val_acc_mean = 0
+        val_f1_mean = 0
+        val_recall_mean = 0
+
+        for output in outputs:
+            val_acc_mean += output['val_batch_acc']
+            val_f1_mean += output['val_batch_f1']
+            val_recall_mean += output['val_batch_recall']
+
+        val_acc_mean /= n_outputs
+        val_f1_mean /= n_outputs
+        val_recall_mean /= n_outputs
+
+        print("\n")
+        print("Validation:")
+        print("-- accuracy: %0.3f" % (val_acc_mean))
+        print("-- f1: %0.3f" % (val_f1_mean))
+        print("-- recall: %0.3f" % (val_recall_mean))
+
+        results ={
+            'val_loss': avg_loss,
+            'log': {
+                'val_loss': avg_loss,
+                'val_acc_mean': val_acc_mean,
+                'val_f1_mean': val_f1_mean,
+                'val_recall_mean': val_recall_mean
+            }
+        }
+        return results
+
 
     def val_dataloader(self):
 
