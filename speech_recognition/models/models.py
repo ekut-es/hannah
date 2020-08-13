@@ -7,6 +7,7 @@ from . import sinc
 
 from .utils import ConfigType
 
+
 def find_model(conf):
     if isinstance(conf, ConfigType):
         conf = conf.value
