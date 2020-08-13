@@ -32,7 +32,8 @@ numba = "0.48.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "4.6.1"
-pylint = "^2.5.2"
+# pylint = "^2.5.2"
+flake8 = "^3.8.3"
 
 [build-system]
 requires = ["poetry>=0.12"]

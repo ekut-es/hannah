@@ -20,7 +20,7 @@ distillation/lorenzfe/
 .settings/
 
 # vs code
-.vscode/
+# .vscode/
 
 # lightning
 lightning_logs/
