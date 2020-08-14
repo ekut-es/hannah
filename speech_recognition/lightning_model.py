@@ -2,13 +2,13 @@ from pytorch_lightning.core.lightning import LightningModule
 # from pytorch_lightning.callbacks import Callback
 # from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.metrics.functional import accuracy, confusion_matrix, f1_score, recall
-from .train import get_loss_function, get_optimizer, get_model, get_compression, save_model
+from .train import get_loss_function, get_optimizer, get_model, save_model
 import torch.utils.data as data
 import torch
 from . import dataset
 import numpy as np
 from .utils import _locate, config_pylogger
-
+import distiller
 
 class SpeechClassifierModule(LightningModule):
     def __init__(self, model_name, config, log_dir):
@@ -26,7 +26,6 @@ class SpeechClassifierModule(LightningModule):
         self.model = get_model(self.hparams)
         self.criterion = get_loss_function(self.model, self.hparams)
         self.optimizer = get_optimizer(self.hparams, self.model)
-        self.compression_scheduler = get_compression(config, self.model, self.optimizer)
         self.log_dir = log_dir
         self.collate_fn = dataset.ctc_collate_fn  # if train_set.loss_function == "ctc" else None
         self.msglogger = config_pylogger('logging.conf', "lightning-logger", self.log_dir)
@@ -299,3 +298,12 @@ class SpeechClassifierModule(LightningModule):
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(self.log_dir, self.model, self.test_set, config=self.hparams, msglogger=self.msglogger)
+
+    def on_train_start(self):
+        if self.hparams["compress"]:
+            self.model.to(self.device)
+            # msglogger.info("Activating compression scheduler")
+            self.compression_scheduler = distiller.file_config(
+                                                        self.model,
+                                                        self.optimizer,
+                                                        self.hparams["compress"])

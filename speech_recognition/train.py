@@ -38,7 +38,13 @@ from tabulate import tabulate
 from .summaries import *
 from .utils import _locate, _fullname
 
+from pytorch_lightning.trainer import Trainer
+from .lightning_model import *
+from pytorch_lightning.profiler import AdvancedProfiler
+from pytorch_lightning.loggers import TensorBoardLogger
+
 msglogger = None
+
 
 def get_compression(config, model, optimizer):
     if config["compress"]:
@@ -1027,7 +1033,6 @@ def build_config(extra_config={}):
                                                desc="Enable logging of learning progress and network parameter statistics to Tensorboard"),
                          experiment_id=ConfigOption(default="test",
                                                     desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name"))
-    
 
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
@@ -1052,22 +1057,18 @@ def build_config(extra_config={}):
 
     return (model_name, config, default_config_vad, default_config_keyword)
 
-from pytorch_lightning.trainer import Trainer
-from .lightning_model import *
-from pytorch_lightning.profiler import AdvancedProfiler
-from pytorch_lightning.loggers import TensorBoardLogger
 
 def main():
     model_name, config, config_vad, config_keyword = build_config()
     set_seed(config)
     # Set deterministic mode for CUDNN backend
     # Check if the performance penalty might be too high
-    
+
     gpu_no = config["gpu_no"]
-    n_epochs = config["n_epochs"] # max epochs
-    log_dir = get_config_logdir(model_name, config) # path for logs and checkpoints
+    n_epochs = config["n_epochs"]  # max epochs
+    log_dir = get_config_logdir(model_name, config)  # path for logs and checkpoints
     # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
-    lit_module = SpeechClassifierModule(model_name,dict(config),log_dir) # passing logdir for custom json save after training omit double fnccall
+    lit_module = SpeechClassifierModule(model_name, dict(config), log_dir)  # passing logdir for custom json save after training omit double fnccall
     # logger = TensorBoardLogger(log_dir, name="my_model")
 
     if config["cuda"]:
@@ -1075,7 +1076,7 @@ def main():
         torch.backends.cudnn.benchmark = False
 
     if config["type"] == "train":
-        
+
         if config["profile"]:
             # import cProfile
             # profiler = cProfile.Profile()
@@ -1091,10 +1092,10 @@ def main():
         else:
             lit_trainer = Trainer(max_epochs=n_epochs, default_root_dir=log_dir, gpus=[gpu_no])
             #train(model_name, config)
-        
+
         lit_trainer.fit(lit_module)
         # lit_trainer.test()
-        
+
         if config["profile"]:
             # TODO printing of profiler stats not working!
             profiler.summary()

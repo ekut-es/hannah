@@ -9,13 +9,6 @@ python = "^3.6"
 pwlf = "^2.0.0"
 distiller = {path = "./external/distiller"}
 gitdb2 = "2.0.6"
-
-# Poetry importiert tensorflow-estimator==2.2.0rc0
-# trotz constraint von tensorflow-gpu:
-# tensorflow-estimator = ">=2.1.0rc0,<2.2.0"
-# workaround:
-#tensorflow-estimator = "2.1.0"
-
 chainmap = "^1.0.3"
 librosa = "0.6.3"
 redis = "^3.4.1"
@@ -29,10 +22,8 @@ pytorch-lightning = "^0.8.1"
 # solve "No module named 'numba.decorators'":
 numba = "0.48.0"
 
-
 [tool.poetry.dev-dependencies]
 pytest = "4.6.1"
-# pylint = "^2.5.2"
 flake8 = "^3.8.3"
 
 [build-system]
