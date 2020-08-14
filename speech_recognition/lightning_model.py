@@ -22,7 +22,7 @@ class SpeechClassifierModule(LightningModule):
         self.train_set, self.dev_set, self.test_set = _locate(config["dataset_cls"]).splits(config)
         self.hparams["width"] = self.train_set.width
         self.hparams["height"] = self.train_set.height
-
+        self.compression_scheduler = None  # initialize on train start
         self.model = get_model(self.hparams)
         self.criterion = get_loss_function(self.model, self.hparams)
         self.optimizer = get_optimizer(self.hparams, self.model)
