@@ -1070,10 +1070,12 @@ def main():
     # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
     lit_module = SpeechClassifierModule(model_name, dict(config), log_dir)  # passing logdir for custom json save after training omit double fnccall
     # logger = TensorBoardLogger(log_dir, name="my_model")
+    kwargs = {'max_epochs': n_epochs, 'default_root_dir': log_dir}
 
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+        kwargs.update({'gpus': [gpu_no]})
 
     if config["type"] == "train":
 
@@ -1085,16 +1087,13 @@ def main():
             # finally:
             #     profiler.print_stats(sort=('tottime'))
             profiler = AdvancedProfiler()
+            kwargs.update({'profiler': profiler})
+        # else:
+            # train(model_name, config)
 
-            # gpus = [gpu_no_i, gpu_no_j, ...] <- dont use on cluster
-            # gpus = no_of_gpus
-            lit_trainer = Trainer(max_epochs=n_epochs, profiler=profiler, default_root_dir=log_dir, gpus=[gpu_no])
-        else:
-            lit_trainer = Trainer(max_epochs=n_epochs, default_root_dir=log_dir, gpus=[gpu_no])
-            #train(model_name, config)
-
+        lit_trainer = Trainer(**kwargs)
         lit_trainer.fit(lit_module)
-        # lit_trainer.test()
+        lit_trainer.test()
 
         if config["profile"]:
             # TODO printing of profiler stats not working!
@@ -1106,6 +1105,7 @@ def main():
     elif config["type"] == "eval_vad_keyword":
         accuracy, _, _ = evaluate(model_name, config, config_vad, config_keyword)
         print("final accuracy is", accuracy)
+
 
 if __name__ == "__main__":
     main()
