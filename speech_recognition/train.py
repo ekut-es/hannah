@@ -495,22 +495,22 @@ def train(model_name, config):
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        
+
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-        
+
     #reset_symlink(os.path.join(log_dir, "train.log"), os.path.join(output_dir, "train.log"))
-    
-        
+
+
     dump_config(log_dir, config)
     #reset_symlink(os.path.join(log_dir, "config.json"), os.path.join(output_dir, "config.json"))
-        
+
     csv_log_name = os.path.join(log_dir, "train.csv")
     csv_log_file = open(csv_log_name, "w")
     csv_log_writer = csv.DictWriter(csv_log_file, fieldnames=["Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
     csv_log_writer.writeheader()
     #reset_symlink(csv_log_name, os.path.join(output_dir, "train.csv"))
-    
+
     train_set, dev_set, test_set = config["dataset_cls"].splits(config)
 
     msglogger.info("Dataset config:")
@@ -1091,7 +1091,14 @@ def main():
         # else:
             # train(model_name, config)
 
-        lit_trainer = Trainer(**kwargs)
+        lit_trainer = Trainer(
+                            **kwargs,
+                            # limits in percent, 1.0 means 'full' training
+                            # use for debugging
+                            limit_train_batches=0.1,
+                            limit_val_batches=0.2,
+                            limit_test_batches=0.3)
+
         lit_trainer.fit(lit_module)
         lit_trainer.test()
 
@@ -1100,7 +1107,7 @@ def main():
             profiler.summary()
 
     elif config["type"] == "eval":
-        accuracy, _ , _= evaluate(model_name, config)
+        accuracy, _, _ = evaluate(model_name, config)
         print("final accuracy is", accuracy)
     elif config["type"] == "eval_vad_keyword":
         accuracy, _, _ = evaluate(model_name, config, config_vad, config_keyword)
