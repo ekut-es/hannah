@@ -9,6 +9,8 @@ from . import dataset
 import numpy as np
 from .utils import _locate, config_pylogger
 import distiller
+import torchnet.meter as tnt
+
 
 class SpeechClassifierModule(LightningModule):
     def __init__(self, model_name, config, log_dir):
@@ -35,26 +37,22 @@ class SpeechClassifierModule(LightningModule):
     def configure_optimizers(self):
         return self.optimizer
 
-    def get_batch_metrics(self, y_hat, y):
+    def get_batch_metrics(self, output, y):
 
         # self.loss will always be the last loss computed
         # no matter if train, test or val
         # neccessary for availability in on_batch_end callback
         if self.hparams["loss"] == "ctc":
-            self.loss = self.criterion(y_hat, y)
+            self.loss = self.criterion(output, y)
         else:
             y = y.view(-1)
-            self.loss = self.criterion(y_hat, y)
+            self.loss = self.criterion(output, y)
 
-        batch_acc = accuracy(y_hat, y, self.hparams['n_labels'])
-        batch_f1 = f1_score(y_hat, y)
-        batch_recall = recall(y_hat, y)
+        batch_acc = accuracy(output, y, self.hparams['n_labels'])
+        batch_f1 = f1_score(output, y)
+        batch_recall = recall(output, y)
 
-        # for confusion we need labels from estimations
-        _, predicted = torch.max(y_hat, 1)
-        batch_confusion = confusion_matrix(predicted, y)
-
-        return batch_acc, batch_f1, batch_recall, batch_confusion
+        return batch_acc, batch_f1, batch_recall
 
     def get_epoch_metrics(self, outputs, phase):
 
@@ -71,22 +69,15 @@ class SpeechClassifierModule(LightningModule):
         f1_mean = 0
         recall_mean = 0
 
-        first_confusion = outputs[1][f'{phase}_batch_confusion']
-        is_cuda = first_confusion.is_cuda
-        if is_cuda:
-            cuda_device = first_confusion.get_device()
-            epoch_confusion = torch.zeros((self.hparams['n_labels'], self.hparams['n_labels']), device=cuda_device)
-        else:
-            epoch_confusion = torch.zeros((self.hparams['n_labels'], self.hparams['n_labels']))
-
-        # print(first_confusion)
-        # print(epoch_confusion)
+        confusion = tnt.ConfusionMeter(self.hparams["n_labels"])
 
         for output in outputs:
             acc_mean += output[f'{phase}_batch_acc']
             f1_mean += output[f'{phase}_batch_f1']
             recall_mean += output[f'{phase}_batch_recall']
-            # epoch_confusion += output[f'{phase}_batch_confusion']
+            curr_output = output[f'{phase}_output'].data
+            curr_labels = output[f'{phase}_y'].view(-1)
+            confusion.add(curr_output, curr_labels)
 
         acc_mean /= n_outputs
         f1_mean /= n_outputs
@@ -98,7 +89,7 @@ class SpeechClassifierModule(LightningModule):
         print("-- accuracy: %0.3f" % (acc_mean))
         print("-- f1: %0.3f" % (f1_mean))
         print("-- recall: %0.3f" % (recall_mean))
-        print(f"-- confusion:\n{epoch_confusion.cpu().numpy()}")
+        print(f"-- confusion:\n{confusion.value()}")
 
         return avg_loss, acc_mean, f1_mean, recall_mean
 
@@ -112,22 +103,23 @@ class SpeechClassifierModule(LightningModule):
             self.compression_scheduler.on_minibatch_begin(self.current_epoch, batch_idx, self.batches_per_epoch)
 
         x, x_len, y, y_len = batch
-        y_hat = self(x)
+        output = self(x)
         y = y.view(-1)
 
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_minibatch_end(self.current_epoch, batch_idx, self.batches_per_epoch)
 
         # METRICS
-        batch_acc, batch_f1, batch_recall, batch_confusion = self.get_batch_metrics(y_hat, y)
+        batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         results = {
             # output directory
             'loss': self.loss,  # naming specification of lightning
+            'train_output': output,
+            'train_y': y,
             'train_batch_acc': batch_acc,
             'train_batch_f1': batch_f1,
             'train_batch_recall': batch_recall,
-            'train_batch_confusion': batch_confusion,
             # log directory
             'log': {
                 'train_loss': self.loss,
@@ -181,19 +173,20 @@ class SpeechClassifierModule(LightningModule):
         x, x_length, y, y_length = batch
 
         # INFERENCE
-        y_hat = self.model(x)
+        output = self.model(x)
 
         # METRICS
-        batch_acc, batch_f1, batch_recall, batch_confusion = self.get_batch_metrics(y_hat, y)
+        batch_acc, batch_f1, batch_recall= self.get_batch_metrics(output, y)
 
         # RESULT DICT
         results = {
             # output directory
             'val_loss': self.loss,  # mandatory
+            'val_output': output,
+            'val_y': y,
             'val_batch_acc': batch_acc,
             'val_batch_f1': batch_f1,
             'val_batch_recall': batch_recall,
-            'val_batch_confusion': batch_confusion,
             # log directory
             'log': {
                 'val_loss': self.loss,
@@ -237,19 +230,20 @@ class SpeechClassifierModule(LightningModule):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
-        y_hat = self.model(x)
+        output = self.model(x)
 
         # METRICS
-        batch_acc, batch_f1, batch_recall, batch_confusion = self.get_batch_metrics(y_hat, y)
+        batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         # RESULT DICT
         results = {
             # output directory
             'test_loss': self.loss,  # mandatory
+            'test_output': output,
+            'test_y': y,
             'test_batch_acc': batch_acc,
             'test_batch_f1': batch_f1,
             'test_batch_recall': batch_recall,
-            'test_batch_confusion': batch_confusion,
             # log directory
             'log': {
                 'test_loss': self.loss,
