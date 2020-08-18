@@ -1,4 +1,4 @@
-from ..train import build_config, dump_config, get_output_dir, get_model
+# from train_lightning import build_config, dump_config, get_output_dir, get_model
 from ..config import ConfigOption
 
 from datetime import timedelta
@@ -81,9 +81,10 @@ def estimate_duration(config):
 
     return estimated_time
 
+
 def get_partion_name(estimated_time : timedelta) -> str:
 
-    if estimated_time < timedelta(minutes = 15):
+    if estimated_time < timedelta(minutes=15):
         return "test"
     elif estimated_time < timedelta(days=1):
         return "day"
@@ -94,6 +95,7 @@ def get_partion_name(estimated_time : timedelta) -> str:
     else:
         raise Exception("Jobs with an estimated runtime over one month are not supported on tcml-cluster")
 
+
 def build_sbatch(config):
     sbatch_template_file = os.path.join(file_dir, "sbatch_file.template")
     sbatch_template = None
@@ -103,10 +105,11 @@ def build_sbatch(config):
     tcml_config = {}
     for key, value in config.items():
         if key.startswith("tcml"):
-            tcml_config[key] = str(value) 
-            
+            tcml_config[key] = str(value)
+
     sbatch = sbatch_template.safe_substitute(tcml_config)
     return sbatch
+
 
 def create_wd(config, shell):
     print("Creating working directory")
@@ -126,17 +129,22 @@ def create_wd(config, shell):
     if result.return_code != 0:
         raise Exception("Could not create directory {}".format(config["tcml_wd"]))
 
-    
     print("   done")
-    
+
+
 def sync_data(config):
     print("Synchronizing data folder")
 
-    cmdline = ["rsync", "-rc", config["data_folder"],
-                         config["tcml_user"] + "@" + config["tcml_master_node"] + ":" +os.path.join(config["tcml_wd"], config["tcml_data_dir"])]
-    
+    cmdline = [
+            "rsync",
+            "-rc",
+            config["data_folder"],
+            config["tcml_user"] + "@" + config["tcml_master_node"] + ":" + os.path.join(config["tcml_wd"],
+            config["tcml_data_dir"])]
+
     p = subprocess.Popen(cmdline)
     return p
+
 
 def sync_code(config):
     print("Synchronizing code folder")
@@ -150,24 +158,26 @@ def sync_code(config):
                 "--exclude", ".mypy_cache/",
                 "--exclude", "datasets"]
 
-    cmdline +=  [top_dir + "/",
-                 config["tcml_user"] + "@" + config["tcml_master_node"] + ":" +config["tcml_wd"] + "/"]
-    
+    cmdline += [
+            top_dir + "/",
+            config["tcml_user"] + "@" + config["tcml_master_node"] + ":" + config["tcml_wd"] + "/"]
+
     print(" ".join(cmdline))
 
-    
     p = subprocess.Popen(cmdline)
     return p
 
-    
+
 def sync_simage(config):
     print("Synchronizing singularity image")
 
     cmdline = ["rsync", "-rc",
                os.path.join(top_dir, "tcml-cluster", "Speech-Recognition.simg"),
                config["tcml_user"] + "@" + config["tcml_master_node"] + ":" + os.path.join(config["tcml_wd"], config["tcml_simage_dir"])]
+
     p = subprocess.Popen(cmdline)
     return p
+
 
 def enqueue_job(sbatch, config, shell):
     job_id = config["tcml_job_id"]
@@ -182,7 +192,6 @@ def enqueue_job(sbatch, config, shell):
             filtered_config[key] = value
 
     compress_file = config['compress']
-    
 
     rundir = os.path.join(config["tcml_wd"], "runs")
     result = shell.run(["mkdir", "-p", rundir])
@@ -191,8 +200,8 @@ def enqueue_job(sbatch, config, shell):
 
     job_config_path = os.path.join(rundir, job_config_name)
     job_sbatch_path = os.path.join(rundir, job_sbatch_name)
-    job_compress_path = os.path.join(rundir, job_compress_name)    
-	
+    job_compress_path = os.path.join(rundir, job_compress_name)
+
     if compress_file:
         with shell.open(job_compress_path, "w") as target:
             with open(compress_file, "r") as source:
@@ -210,8 +219,8 @@ def enqueue_job(sbatch, config, shell):
     res = shell.run(["sbatch", job_sbatch_path], cwd=config["tcml_wd"])
     if result.return_code != 0:
         raise Exception("Could not start job: {}".format(job_sbatch_path))
-    
-    
+
+
 # Run training on tcml machine learning cluster
 def main():
     user_config_name = os.path.join(top_dir, "tcml_config.json")
@@ -219,8 +228,7 @@ def main():
     if os.path.exists(user_config_name):
         with open(user_config_name) as config_file:
             user_config = json.load(config_file)
-        
-    
+
     model_name, config = build_config(extra_config=ChainMap(user_config, tcml_config))[0:2]
 
     if not config["tcml_job_id"]:
@@ -229,8 +237,7 @@ def main():
     data_folder_name = os.path.basename(os.path.normpath(config["data_folder"]))
     config["tcml_data_dir"] = os.path.join(config["tcml_data_dir"],
                                            data_folder_name)
-    
-        
+
     #Prefix ids with model name
     config["tcml_name"] =  config["model_name"] + "_" + config["tcml_name"]
     config["tcml_job_id"] =  config["model_name"] + "_" + config["tcml_job_id"]
@@ -240,14 +247,13 @@ def main():
     #Estimate runtime
     runtime = estimate_duration(config)
     partition = get_partion_name(runtime)
-    
+
     shell = spur.SshShell(
         hostname=config["tcml_master_node"],
         username=config["tcml_user"],
         private_key_file=os.path.expanduser(config["tcml_ssh_key"])
     )
 
-        
     create_wd(config, shell)
 
     if not config["tcml_skip_data"]:
@@ -261,7 +267,7 @@ def main():
 
     if not config["tcml_skip_data"]:
         sync_data_job.wait()
-    
+
     if not config["tcml_skip_simage"]:
         sync_simage_job.wait()
 
@@ -271,7 +277,7 @@ def main():
     print("Finished synchronization jobs")
     sbatch = build_sbatch(config)
     enqueue_job(sbatch, config, shell)
-    
-    
+
+
 if __name__ == "__main__":
     main()

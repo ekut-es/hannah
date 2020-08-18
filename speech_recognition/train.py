@@ -10,6 +10,8 @@ import math
 import hashlib
 import csv
 import fcntl
+import inspect
+import importlib
 
 from torch.autograd import Variable
 import numpy as np
@@ -34,8 +36,25 @@ import torchnet.meter as tnt
 from tabulate import tabulate
 
 from .summaries import *
+from .utils import _locate, _fullname
+
+from pytorch_lightning.trainer import Trainer
+from .lightning_model import *
+from pytorch_lightning.profiler import AdvancedProfiler
+from pytorch_lightning.loggers import TensorBoardLogger
 
 msglogger = None
+
+
+def get_compression(config, model, optimizer):
+    if config["compress"]:
+        #msglogger.info("Activating compression scheduler")
+        compression_scheduler = distiller.file_config(model,
+                                                      optimizer,
+                                                      config["compress"])
+        return compression_scheduler
+    else:
+        return None
 
 def get_lr_scheduler(config, optimizer):
     n_epochs = config["n_epochs"]
@@ -161,15 +180,15 @@ def get_config_logdir(model_name, config):
 def get_model(config, config2=None, model=None, vad_keyword = 0):
     if not model:
         if vad_keyword == 0:
-            model = config["model_class"](config)
+            model = _locate(config["model_class"])(config)
             if config["input_file"]:
                 model.load(config["input_file"])
         elif vad_keyword == 1:
-            model = config2["model_class"](config2)
+            model = _locate(config2["model_class"])(config2)
             if config["input_file_vad"]:
                 model.load(config["input_file_vad"])
         else:
-            model = config2["model_class"](config2)
+            model = _locate(config2["model_class"])(config2)
             if config["input_file_keyword"]:
                 model.load(config["input_file_keyword"])
     return model
@@ -196,7 +215,7 @@ def dump_config(output_dir, config):
               s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
               o.write(s)
 
-def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
+def save_model(output_dir, model, test_set=None, config=None, model_prefix="", msglogger=None):
     """ Creates serialization of the model for later inference, evaluation
 
     Creates the following files:
@@ -215,9 +234,11 @@ def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
     test_set : dataset.SpeechDataset
         DataSet used to derive dummy input to use for onnx export.
         If None no onnx will be generated
-"""
-    msglogger.info("saving best model...")
-    model.save(os.path.join(output_dir, model_prefix+"model.pt"))
+    """
+    
+    #TODO model save doesnt work "AttributeError: model has no attribute save" 
+    #msglogger.info("saving best model...")
+    #model.save(os.path.join(output_dir, model_prefix+"model.pt"))
 
     msglogger.info("saving weights to json...")
     filename = os.path.join(output_dir, model_prefix+"model.json")
@@ -467,29 +488,29 @@ def train(model_name, config):
         tblogger.log_gradients = True
         loggers.append(tblogger)
 
-#     log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
+    # log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
 
 
     print("All information will be saved to: ", output_dir, "logdir:", log_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        
+
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-        
+
     #reset_symlink(os.path.join(log_dir, "train.log"), os.path.join(output_dir, "train.log"))
-    
-        
+
+
     dump_config(log_dir, config)
     #reset_symlink(os.path.join(log_dir, "config.json"), os.path.join(output_dir, "config.json"))
-        
+
     csv_log_name = os.path.join(log_dir, "train.csv")
     csv_log_file = open(csv_log_name, "w")
     csv_log_writer = csv.DictWriter(csv_log_file, fieldnames=["Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
     csv_log_writer.writeheader()
     #reset_symlink(csv_log_name, os.path.join(output_dir, "train.csv"))
-    
+
     train_set, dev_set, test_set = config["dataset_cls"].splits(config)
 
     msglogger.info("Dataset config:")
@@ -1010,7 +1031,6 @@ def build_config(extra_config={}):
                                                desc="Enable logging of learning progress and network parameter statistics to Tensorboard"),
                          experiment_id=ConfigOption(default="test",
                                                     desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name"))
-    
 
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
@@ -1026,40 +1046,71 @@ def build_config(extra_config={}):
     parser.add_argument("--type", choices=["train", "eval", "eval_vad_keyword"], default="train", type=str)
     config = builder.config_from_argparse(parser)
 
-    config["model_class"] = mod_cls
+    config["model_class"] = _fullname(mod_cls)
     default_config_vad["model_class"] = mod.find_model("small-vad") # als command line option umändern
     default_config_keyword["model_class"] = mod.find_model("honk-res15")
     config["model_name"] = model_name
     config["dataset"] = dataset_name
-    config["dataset_cls"] = dataset_cls
+    config["dataset_cls"] = _fullname(dataset_cls)
 
     return (model_name, config, default_config_vad, default_config_keyword)
+
 
 def main():
     model_name, config, config_vad, config_keyword = build_config()
     set_seed(config)
     # Set deterministic mode for CUDNN backend
     # Check if the performance penalty might be too high
+
+    gpu_no = config["gpu_no"]
+    n_epochs = config["n_epochs"]  # max epochs
+    log_dir = get_config_logdir(model_name, config)  # path for logs and checkpoints
+    # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
+    lit_module = SpeechClassifierModule(model_name, dict(config), log_dir)  # passing logdir for custom json save after training omit double fnccall
+    # logger = TensorBoardLogger(log_dir, name="my_model")
+    kwargs = {'max_epochs': n_epochs, 'default_root_dir': log_dir}
+
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+        kwargs.update({'gpus': [gpu_no]})
 
     if config["type"] == "train":
+
         if config["profile"]:
-            import cProfile
-            profiler = cProfile.Profile()
-            try:
-                profiler.runcall(train, model_name, config)
-            finally:
-                profiler.print_stats(sort=('tottime'))
-        else:
-            train(model_name, config)
+            # import cProfile
+            # profiler = cProfile.Profile()
+            # try:
+            #     profiler.runcall(train, model_name, config)
+            # finally:
+            #     profiler.print_stats(sort=('tottime'))
+            profiler = AdvancedProfiler()
+            kwargs.update({'profiler': profiler})
+        # else:
+            # train(model_name, config)
+
+        lit_trainer = Trainer(
+                            **kwargs,
+                            # limits in percent, 1.0 means 'full' training
+                            # use for debugging
+                            limit_train_batches=1.0,
+                            limit_val_batches=1.0,
+                            limit_test_batches=1.0)
+
+        lit_trainer.fit(lit_module)
+        lit_trainer.test()
+
+        if config["profile"]:
+            # TODO printing of profiler stats not working!
+            profiler.summary()
+
     elif config["type"] == "eval":
-        accuracy, _ , _= evaluate(model_name, config)
+        accuracy, _, _ = evaluate(model_name, config)
         print("final accuracy is", accuracy)
     elif config["type"] == "eval_vad_keyword":
         accuracy, _, _ = evaluate(model_name, config, config_vad, config_keyword)
         print("final accuracy is", accuracy)
+
 
 if __name__ == "__main__":
     main()
