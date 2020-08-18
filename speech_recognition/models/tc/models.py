@@ -1,25 +1,17 @@
-# from enum import Enum
-# import math
-# import sys
-# import os
-
 from typing import Dict, Any
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-# import torch.nn.functional as F
 
-# import logging
-# msglogger = logging.getLogger()
+import logging
+msglogger = logging.getLogger()
 
 import pwlf
 import numpy as np
-# import distiller #FIXME: distiller should not be needed here at all
 
 
 from ..utils import ConfigType, SerializableModule, next_power_of2
 
-# from pytorch_lightning.core.lightning import LightningModule
 
 
 class ApproximateGlobalAveragePooling1D(nn.Module):
