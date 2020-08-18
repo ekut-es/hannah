@@ -1,6 +1,4 @@
 from pytorch_lightning.core.lightning import LightningModule
-# from pytorch_lightning.callbacks import Callback
-# from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.metrics.functional import accuracy, confusion_matrix, f1_score, recall
 from .train import get_loss_function, get_optimizer, get_model, save_model
 import torch.utils.data as data
@@ -39,18 +37,13 @@ class SpeechClassifierModule(LightningModule):
 
     def get_batch_metrics(self, output, y):
 
-        # self.loss will always be the last loss computed
-        # no matter if train, test or val
-        # neccessary for availability in on_batch_end callback
-        if self.hparams["loss"] == "ctc":
-            self.loss = self.criterion(output, y)
-        else:
-            y = y.view(-1)
-            self.loss = self.criterion(output, y)
+        y = y.view(-1) 
+        self.loss = self.criterion(output, y)
 
-        batch_acc = accuracy(output, y, self.hparams['n_labels'])
-        batch_f1 = f1_score(output, y)
-        batch_recall = recall(output, y)
+        output_max =  output.argmax(dim=1)
+        batch_acc = accuracy(output_max, y, self.hparams['n_labels'])
+        batch_f1 = f1_score(output_max, y)
+        batch_recall = recall(output_max, y)
 
         return batch_acc, batch_f1, batch_recall
 
@@ -104,7 +97,7 @@ class SpeechClassifierModule(LightningModule):
 
         x, x_len, y, y_len = batch
         output = self(x)
-        y = y.view(-1)
+        y = y.view(-1) 
 
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_minibatch_end(self.current_epoch, batch_idx, self.batches_per_epoch)
