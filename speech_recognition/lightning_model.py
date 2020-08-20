@@ -151,6 +151,7 @@ class SpeechClassifierModule(LightningModule):
                                 batch_size=train_batch_size,
                                 shuffle=True,
                                 drop_last=True,
+                                pin_memory=True,
                                 num_workers=self.hparams["num_workers"],
                                 collate_fn=self.collate_fn)
 
