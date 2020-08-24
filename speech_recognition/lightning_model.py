@@ -11,6 +11,7 @@ import torchnet.meter as tnt
 
 
 class SpeechClassifierModule(LightningModule):
+
     def __init__(self, model_name, config, log_dir):
         super().__init__()
 
@@ -32,6 +33,7 @@ class SpeechClassifierModule(LightningModule):
         self.msglogger.info("speech classifier initialized")
 
     # PREPARATION
+
     def configure_optimizers(self):
         return self.optimizer
 
@@ -86,7 +88,7 @@ class SpeechClassifierModule(LightningModule):
 
         return avg_loss, acc_mean, f1_mean, recall_mean
 
-    ### TRAINING CODE ###
+    # TRAINING CODE
 
     def training_step(self, batch, batch_idx):
 
@@ -159,7 +161,7 @@ class SpeechClassifierModule(LightningModule):
 
         return train_loader
 
-    ### VALIDATION CODE ###
+    # VALIDATION CODE
 
     def validation_step(self, batch, batch_idx):
 
@@ -217,7 +219,7 @@ class SpeechClassifierModule(LightningModule):
 
         return dev_loader
 
-    ### TEST CODE ###
+    # TEST CODE
 
     def test_step(self, batch, batch_idx):
 
@@ -276,10 +278,12 @@ class SpeechClassifierModule(LightningModule):
         return test_loader
 
     # FORWARD (overwrite to train instance of this class directly)
+
     def forward(self, x):
         return self.model(x)
 
     # CALLBACKS
+
     def on_train_start(self):
         if self.hparams["compress"]:
             self.model.to(self.device)
