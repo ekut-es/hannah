@@ -1093,9 +1093,9 @@ def main():
                             **kwargs,
                             # limits in percent, 1.0 means 'full' training
                             # use for debugging
-                            limit_train_batches=1.0,
-                            limit_val_batches=1.0,
-                            limit_test_batches=1.0)
+                            limit_train_batches=0.1,
+                            limit_val_batches=0.2,
+                            limit_test_batches=0.3)
 
         lit_trainer.fit(lit_module)
         lit_trainer.test()
