@@ -8,7 +8,7 @@ import numpy as np
 from .utils import _locate, config_pylogger
 import distiller
 import torchnet.meter as tnt
-
+from pytorch_lightning import TrainResult, EvalResult
 
 class SpeechClassifierModule(LightningModule):
 
@@ -39,10 +39,10 @@ class SpeechClassifierModule(LightningModule):
 
     def get_batch_metrics(self, output, y):
 
-        y = y.view(-1) 
+        y = y.view(-1)
         self.loss = self.criterion(output, y)
 
-        output_max =  output.argmax(dim=1)
+        output_max = output.argmax(dim=1)
         batch_acc = accuracy(output_max, y, self.hparams['n_labels'])
         batch_f1 = f1_score(output_max, y)
         batch_recall = recall(output_max, y)
@@ -99,7 +99,7 @@ class SpeechClassifierModule(LightningModule):
 
         x, x_len, y, y_len = batch
         output = self(x)
-        y = y.view(-1) 
+        y = y.view(-1)
 
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_minibatch_end(self.current_epoch, batch_idx, self.batches_per_epoch)
@@ -107,43 +107,35 @@ class SpeechClassifierModule(LightningModule):
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
-        results = {
-            # output directory
-            'loss': self.loss,  # naming specification of lightning
-            'train_output': output,
-            'train_y': y,
-            'train_batch_acc': batch_acc,
-            'train_batch_f1': batch_f1,
-            'train_batch_recall': batch_recall,
-            # log directory
-            'log': {
-                'train_loss': self.loss,
-                'train_batch_acc': batch_acc,
-                'train_batch_f1': batch_f1,
-                'train_batch_recall': batch_recall
-                },
-            # progress bar
-            'progress_bar': {'train_batch_acc': batch_acc}
-        }
+        result = TrainResult(self.loss)
 
-        return results
+        log_vals = {
+            'train_loss': self.loss,
+            'train_acc': batch_acc,
+            'train_f1': batch_f1,
+            'train_recall': batch_recall}
 
-    def training_epoch_end(self, outputs):
-        print("\n")
-        print("Training:")
-        avg_loss, acc_mean, f1_mean, recall_mean = self.get_epoch_metrics(outputs, "train")
+        # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
+        result.log_dict(log_vals, on_step=True, on_epoch=True)
 
-        # logs
-        results = {
-            'log': {
-                'train_loss_mean': avg_loss.item(),
-                'train_acc_mean': acc_mean.item(),
-                'train_f1_mean': f1_mean.item(),
-                'train_recall_mean': recall_mean.item()
-            },
-        }
+        return result
 
-        return results
+    # def training_epoch_end(self, outputs):
+    #     print("\n")
+    #     print("Training:")
+    #     avg_loss, acc_mean, f1_mean, recall_mean = self.get_epoch_metrics(outputs, "train")
+
+    #     # logs
+    #     results = {
+    #         'log': {
+    #             'train_loss_mean': avg_loss.item(),
+    #             'train_acc_mean': acc_mean.item(),
+    #             'train_f1_mean': f1_mean.item(),
+    #             'train_recall_mean': recall_mean.item()
+    #         },
+    #     }
+
+    #     return results
 
     def train_dataloader(self):
 
@@ -174,39 +166,33 @@ class SpeechClassifierModule(LightningModule):
         # METRICS
         batch_acc, batch_f1, batch_recall= self.get_batch_metrics(output, y)
 
-        # RESULT DICT
-        results = {
-            # output directory
-            'val_loss': self.loss,  # mandatory
-            'val_output': output,
-            'val_y': y,
-            'val_batch_acc': batch_acc,
-            'val_batch_f1': batch_f1,
-            'val_batch_recall': batch_recall,
-            # log directory
-            'log': {
-                'val_loss': self.loss,
-                'val_batch_acc': batch_acc,
-                'val_batch_f1': batch_f1,
-                'val_batch_recall': batch_recall
-            }
-        }
-        return results
+        result = EvalResult(self.loss)
 
-    def validation_epoch_end(self, outputs):
-        print("\n")
-        print("Validation:")
-        avg_loss, acc_mean, f1_mean, recall_mean = self.get_epoch_metrics(outputs, "val")
+        log_vals = {
+            'val_loss': self.loss,
+            'val_acc': batch_acc,
+            'val_f1': batch_f1,
+            'val_recall': batch_recall}
 
-        results = {
-            'log': {
-                'val_loss_mean': avg_loss.item(),
-                'val_acc_mean': acc_mean,
-                'val_f1_mean': f1_mean,
-                'val_recall_mean': recall_mean
-            }
-        }
-        return results
+        # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
+        result.log_dict(log_vals)
+
+        return result
+
+    # def validation_epoch_end(self, outputs):
+    #     print("\n")
+    #     print("Validation:")
+    #     avg_loss, acc_mean, f1_mean, recall_mean = self.get_epoch_metrics(outputs, "val")
+
+    #     results = {
+    #         'log': {
+    #             'val_loss_mean': avg_loss.item(),
+    #             'val_acc_mean': acc_mean,
+    #             'val_f1_mean': f1_mean,
+    #             'val_recall_mean': recall_mean
+    #         }
+    #     }
+    #     return results
 
     def val_dataloader(self):
 
@@ -232,39 +218,34 @@ class SpeechClassifierModule(LightningModule):
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         # RESULT DICT
-        results = {
-            # output directory
-            'test_loss': self.loss,  # mandatory
-            'test_output': output,
-            'test_y': y,
-            'test_batch_acc': batch_acc,
-            'test_batch_f1': batch_f1,
-            'test_batch_recall': batch_recall,
-            # log directory
-            'log': {
-                'test_loss': self.loss,
-                'test_batch_acc': batch_acc,
-                'test_batch_f1': batch_f1,
-                'test_batch_recall': batch_recall
-            }
-        }
-        return results
+        result = EvalResult(self.loss)
 
-    def test_epoch_end(self, outputs):
+        log_vals = {
+            'test_loss': self.loss,
+            'test_acc': batch_acc,
+            'test_f1': batch_f1,
+            'test_recall': batch_recall}
 
-        print("\n")
-        print("Test:")
-        avg_loss, acc_mean, f1_mean, recall_mean = self.get_epoch_metrics(outputs, "test")
+        # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
+        result.log_dict(log_vals)
 
-        results = {
-            'log': {
-                'test_loss_mean': avg_loss.item(),
-                'test_acc_mean': acc_mean,
-                'test_f1_mean': f1_mean,
-                'test_recall_mean': recall_mean
-            }
-        }
-        return results
+        return result
+
+    # def test_epoch_end(self, outputs):
+
+    #     print("\n")
+    #     print("Test:")
+    #     avg_loss, acc_mean, f1_mean, recall_mean = self.get_epoch_metrics(outputs, "test")
+
+    #     results = {
+    #         'log': {
+    #             'test_loss_mean': avg_loss.item(),
+    #             'test_acc_mean': acc_mean,
+    #             'test_f1_mean': f1_mean,
+    #             'test_recall_mean': recall_mean
+    #         }
+    #     }
+    #     return results
 
     def test_dataloader(self):
 

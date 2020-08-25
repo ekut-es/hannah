@@ -1091,6 +1091,7 @@ def main():
 
         lit_trainer = Trainer(
                             **kwargs,
+                            row_log_interval=1,
                             # limits in percent, 1.0 means 'full' training
                             # use for debugging
                             limit_train_batches=0.1,
@@ -1098,7 +1099,7 @@ def main():
                             limit_test_batches=0.3)
 
         lit_trainer.fit(lit_module)
-        lit_trainer.test()
+        lit_trainer.test(ckpt_path=None)
 
         if config["profile"]:
             # TODO printing of profiler stats not working!
