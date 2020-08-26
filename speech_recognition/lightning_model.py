@@ -49,44 +49,44 @@ class SpeechClassifierModule(LightningModule):
 
         return batch_acc, batch_f1, batch_recall
 
-    def get_epoch_metrics(self, outputs, phase):
+    # def get_epoch_metrics(self, outputs, phase):
 
-        # respecting the naming specification of lightning
-        if phase == "train":
-            loss_key = "loss"
-        else:
-            loss_key = f'{phase}_loss'
+    #     # respecting the naming specification of lightning
+    #     if phase == "train":
+    #         loss_key = "loss"
+    #     else:
+    #         loss_key = f'{phase}_loss'
 
-        avg_loss = torch.stack([x[loss_key] for x in outputs]).mean()
+    #     avg_loss = torch.stack([x[loss_key] for x in outputs]).mean()
 
-        n_outputs = len(outputs)
-        acc_mean = 0
-        f1_mean = 0
-        recall_mean = 0
+    #     n_outputs = len(outputs)
+    #     acc_mean = 0
+    #     f1_mean = 0
+    #     recall_mean = 0
 
-        confusion = tnt.ConfusionMeter(self.hparams["n_labels"])
+    #     confusion = tnt.ConfusionMeter(self.hparams["n_labels"])
 
-        for output in outputs:
-            acc_mean += output[f'{phase}_batch_acc']
-            f1_mean += output[f'{phase}_batch_f1']
-            recall_mean += output[f'{phase}_batch_recall']
-            curr_output = output[f'{phase}_output'].data
-            curr_labels = output[f'{phase}_y'].view(-1)
-            confusion.add(curr_output, curr_labels)
+    #     for output in outputs:
+    #         acc_mean += output[f'{phase}_batch_acc']
+    #         f1_mean += output[f'{phase}_batch_f1']
+    #         recall_mean += output[f'{phase}_batch_recall']
+    #         curr_output = output[f'{phase}_output'].data
+    #         curr_labels = output[f'{phase}_y'].view(-1)
+    #         confusion.add(curr_output, curr_labels)
 
-        acc_mean /= n_outputs
-        f1_mean /= n_outputs
-        recall_mean /= n_outputs
+    #     acc_mean /= n_outputs
+    #     f1_mean /= n_outputs
+    #     recall_mean /= n_outputs
 
-        # 'prettier' printing
-        np.set_printoptions(suppress=True)
-        print("-- loss: %0.3f" % (avg_loss))
-        print("-- accuracy: %0.3f" % (acc_mean))
-        print("-- f1: %0.3f" % (f1_mean))
-        print("-- recall: %0.3f" % (recall_mean))
-        print(f"-- confusion:\n{confusion.value()}")
+    #     # 'prettier' printing
+    #     np.set_printoptions(suppress=True)
+    #     print("-- loss: %0.3f" % (avg_loss))
+    #     print("-- accuracy: %0.3f" % (acc_mean))
+    #     print("-- f1: %0.3f" % (f1_mean))
+    #     print("-- recall: %0.3f" % (recall_mean))
+    #     print(f"-- confusion:\n{confusion.value()}")
 
-        return avg_loss, acc_mean, f1_mean, recall_mean
+    #     return avg_loss, acc_mean, f1_mean, recall_mean
 
     # TRAINING CODE
 
@@ -164,7 +164,7 @@ class SpeechClassifierModule(LightningModule):
         output = self.model(x)
 
         # METRICS
-        batch_acc, batch_f1, batch_recall= self.get_batch_metrics(output, y)
+        batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         result = EvalResult(self.loss)
 
@@ -218,34 +218,40 @@ class SpeechClassifierModule(LightningModule):
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         # RESULT DICT
-        result = EvalResult(self.loss)
-
+        result = EvalResult()
         log_vals = {
             'test_loss': self.loss,
             'test_acc': batch_acc,
             'test_f1': batch_f1,
-            'test_recall': batch_recall}
+            'test_recall': batch_recall
+            }
+        result.y = y
+        result.output = output
 
         # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
         result.log_dict(log_vals)
 
         return result
 
-    # def test_epoch_end(self, outputs):
+    def test_epoch_end(self, test_step_result):
 
-    #     print("\n")
-    #     print("Test:")
-    #     avg_loss, acc_mean, f1_mean, recall_mean = self.get_epoch_metrics(outputs, "test")
+        # build confusion matrix
+        confusion = tnt.ConfusionMeter(self.hparams["n_labels"])
+        confusion.add(test_step_result.output, test_step_result.y.view(-1))
 
-    #     results = {
-    #         'log': {
-    #             'test_loss_mean': avg_loss.item(),
-    #             'test_acc_mean': acc_mean,
-    #             'test_f1_mean': f1_mean,
-    #             'test_recall_mean': recall_mean
-    #         }
-    #     }
-    #     return results
+        # 'prettier' printing
+        # np.set_printoptions(suppress=True)
+        print(f"Confusion:\n{confusion.value()}")
+
+        test_epoch_result = EvalResult()
+        # test_epoch_result = test_step_result
+        # test_epoch_result.y = torch.reshape(test_step_result.y, (-1,))
+        # test_epoch_result.output = torch.reshape(test_step_result.output, (-1,))
+        # del test_epoch_result["output"]
+        # del test_epoch_result["y"]
+        # print(test_epoch_result)
+
+        return test_epoch_result
 
     def test_dataloader(self):
 
