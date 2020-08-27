@@ -1101,7 +1101,6 @@ def main():
         lit_trainer.test()
 
         if config["profile"]:
-            # TODO printing of profiler stats not working!
             print(profiler.summary())
 
     elif config["type"] == "eval":
