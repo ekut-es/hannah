@@ -1095,12 +1095,7 @@ def main():
             # train(model_name, config)
 
         lit_trainer = Trainer(
-                            **kwargs,
-                            # limits in percent, 1.0 means 'full' training
-                            # use for debugging
-                            limit_train_batches=0.1,
-                            limit_val_batches=0.1,
-                            limit_test_batches=0.1)
+                            **kwargs)
 
         lit_trainer.fit(lit_module)
         lit_trainer.test(ckpt_path=None)
