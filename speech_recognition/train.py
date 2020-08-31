@@ -1068,7 +1068,12 @@ def main():
     # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
     lit_module = SpeechClassifierModule(model_name, dict(config), log_dir)  # passing logdir for custom json save after training omit double fnccall
     # logger = TensorBoardLogger(log_dir, name="my_model")
-    kwargs = {'max_epochs': n_epochs, 'default_root_dir': log_dir}
+
+    kwargs = {
+        'max_epochs': n_epochs,
+        'default_root_dir': log_dir,
+        "row_log_interval": 1  # enables logging of metrics per step/batch
+        }
 
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
@@ -1091,13 +1096,11 @@ def main():
 
         lit_trainer = Trainer(
                             **kwargs,
-                            # enables logging of metrics per step/batch
-                            row_log_interval=1,
                             # limits in percent, 1.0 means 'full' training
                             # use for debugging
-                            limit_train_batches=1.0,
-                            limit_val_batches=1.0,
-                            limit_test_batches=1.0)
+                            limit_train_batches=0.1,
+                            limit_val_batches=0.1,
+                            limit_test_batches=0.1)
 
         lit_trainer.fit(lit_module)
         lit_trainer.test(ckpt_path=None)
