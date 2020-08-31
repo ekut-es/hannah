@@ -939,98 +939,168 @@ def build_config(extra_config={}):
                 if "type" in default_config_keyword:
                     del default_config_keyword["type"]
 
+    global_config = dict(
+        cuda=ConfigOption(
+            default=torch.cuda.is_available(),
+            desc="Enable / disable cuda"),
 
-    global_config = dict(cuda=ConfigOption(default=torch.cuda.is_available(),
-                                           desc="Enable / disable cuda"),
-                         n_epochs=ConfigOption(default=500,
-                                               desc="Number of epochs for training"),
-                         profile=ConfigOption(default=False,
-                                              desc="Enable profiling"),
-                         dump_test=ConfigOption(default=False,
-                                                desc="Dump test set to <output_directory>/test_data"),
-                         num_workers=ConfigOption(desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
-                                                  default=0),
-                         
-                         fold_bn=ConfigOption(default = -1,
-                                              desc = "Do BatchNorm folding at freeze at the given epoch"),
-                         optimizer=ConfigOption(default="sgd",
-                                                desc="Optimizer to choose",
-                                                category="Optimizer Config",
-                                                choices=["sgd",
-                                                         "adadelta",
-                                                         "adagrad",
-                                                         "adam",
-                                                         "rmsprop"]),
+        n_epochs=ConfigOption(
+            default=500,
+            desc="Number of epochs for training"),
 
-                         opt_rho     = ConfigOption(category="Optimizer Config",
-                                                    desc="Parameter rho for Adadelta optimizer",
-                                                    default=0.9),
-                         opt_eps     = ConfigOption(category="Optimizer Config",
-                                                    desc="Paramter eps for Adadelta and Adam and SGD",
-                                                    default=1e-06),
-                         opt_alpha   = ConfigOption(category="Optimizer Config",
-                                                    desc="Parameter alpha for RMSprop",
-                                                    default=0.99),
-                         lr_decay    = ConfigOption(category="Optimizer Config",
-                                                    desc="Parameter lr_decay for optimizers",
-                                                    default=0),
-                         use_amsgrad = ConfigOption(category="Optimizer Config",
-                                                    desc="Use amsgrad with Adam optimzer",
-                                                    default=False),
-                         opt_betas   = ConfigOption(category="Optimizer Config",
-                                                    desc="Parameter betas for Adam optimizer",
-                                                    default=[0.9, 0.999]),
-                         momentum    = ConfigOption(category="Optimizer Config",
-                                                    desc="Momentum for SGD optimizer",
-                                                    default=0.9),
-                         weight_decay= ConfigOption(category="Optimizer Config",
-                                                    desc="Weight decay for optimizer",
-                                                    default=0.00001),
-                         use_nesterov= ConfigOption(category="Optimizer Config",
-                                                    desc="Use nesterov momentum with SGD optimizer",
-                                                    default=False),
-                         lr           = ConfigOption(category="Learning Rate Config",
-                                                     desc="Initial Learining Rate",
-                                                     default=0.1),
-                         lr_scheduler = ConfigOption(category="Learning Rate Config",
-                                                     desc="Learning Rate Scheduler to use",
-                                                     choices=["step", "multistep", "exponential", "plateau"],
-                                                     default="step"),
-                         lr_gamma     = ConfigOption(category="Learning Rate Config",
-                                                     desc="Parameter gamma for lr scheduler",
-                                                     default=0.75),
-                         lr_stepsize  = ConfigOption(category="Learning Rate Config",
-                                                     desc="Stepsize for step scheduler",
-                                                     default=0),
-                         lr_steps     = ConfigOption(category="Learning Rate Config",
-                                                     desc="List of steps for multistep scheduler",
-                                                     default=[0]),
-                         lr_patience  = ConfigOption(category="Learning Rate Config",
-                                                     desc="Parameter patience for plateau scheduler",
-                                                     default=10),
-                         early_stopping = ConfigOption(default=0,
-                                                       desc="Stops the training if the validation loss has not improved for the last EARLY_STOPPING epochs"),
+        profile=ConfigOption(
+            default=False,
+            desc="Enable profiling"),
 
-                         batch_size=ConfigOption(default=128,
-                                                 desc="Default minibatch size for training"),
-                         seed=ConfigOption(default=0,
-                                           desc="Seed for Random number generators"),
-                         input_file=ConfigOption(default="",
-                                                 desc="Input model file for finetuning (.pth) or code generation (.onnx)"),
-                         input_file_vad=ConfigOption(default="",
-                                                 desc="Input vad model file for combined evaluation of vad and keyword spotting"),
-                         input_file_keyword=ConfigOption(default="",
-                                                 desc="Input keyword model file for combined evaluation of vad and keyword spotting"),
-                         output_dir=ConfigOption(default=output_dir,
-                                                 desc="Toplevel directory for output of trained models and logs"),
-                         gpu_no=ConfigOption(default=0,
-                                             desc="Number of GPU to use for training"),
-                         compress=ConfigOption(default="",
-                                               desc="YAML config file for nervana distiller"),
-                         tblogger=ConfigOption(default=False,
-                                               desc="Enable logging of learning progress and network parameter statistics to Tensorboard"),
-                         experiment_id=ConfigOption(default="test",
-                                                    desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name"))
+        dump_test=ConfigOption(
+            default=False,
+            desc="Dump test set to <output_directory>/test_data"),
+
+        num_workers=ConfigOption(
+            desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
+            default=0),
+
+        fold_bn=ConfigOption(
+            default=-1,
+            desc="Do BatchNorm folding at freeze at the given epoch"),
+
+        optimizer=ConfigOption(
+            default="sgd",
+            desc="Optimizer to choose",
+            category="Optimizer Config",
+            choices=[
+                "sgd",
+                "adadelta",
+                "adagrad",
+                "adam",
+                "rmsprop"]),
+
+        opt_rho=ConfigOption(
+            category="Optimizer Config",
+            desc="Parameter rho for Adadelta optimizer",
+            default=0.9),
+
+        opt_eps=ConfigOption(
+            category="Optimizer Config",
+            desc="Paramter eps for Adadelta and Adam and SGD",
+            default=1e-06),
+
+        opt_alpha=ConfigOption(
+            category="Optimizer Config",
+            desc="Parameter alpha for RMSprop",
+            default=0.99),
+
+        lr_decay=ConfigOption(
+            category="Optimizer Config",
+            desc="Parameter lr_decay for optimizers",
+            default=0),
+
+        use_amsgrad=ConfigOption(
+            category="Optimizer Config",
+            desc="Use amsgrad with Adam optimzer",
+            default=False),
+
+        opt_betas=ConfigOption(
+            category="Optimizer Config",
+            desc="Parameter betas for Adam optimizer",
+            default=[0.9, 0.999]),
+
+        momentum=ConfigOption(
+            category="Optimizer Config",
+            desc="Momentum for SGD optimizer",
+            default=0.9),
+
+        weight_decay=ConfigOption(
+            category="Optimizer Config",
+            desc="Weight decay for optimizer",
+            default=0.00001),
+
+        use_nesterov=ConfigOption(
+            category="Optimizer Config",
+            desc="Use nesterov momentum with SGD optimizer",
+            default=False),
+
+        lr=ConfigOption(
+            category="Learning Rate Config",
+            desc="Initial Learining Rate",
+            default=0.1),
+        lr_scheduler=ConfigOption(
+            category="Learning Rate Config",
+            desc="Learning Rate Scheduler to use",
+            choices=[
+                "step",
+                "multistep",
+                "exponential",
+                "plateau"],
+            default="step"),
+
+        lr_gamma=ConfigOption(
+            category="Learning Rate Config",
+            desc="Parameter gamma for lr scheduler",
+            default=0.75),
+
+        lr_stepsize=ConfigOption(
+            category="Learning Rate Config",
+            desc="Stepsize for step scheduler",
+            default=0),
+
+        lr_steps=ConfigOption(
+            category="Learning Rate Config",
+            desc="List of steps for multistep scheduler",
+            default=[0]),
+
+        lr_patience=ConfigOption(
+            category="Learning Rate Config",
+            desc="Parameter patience for plateau scheduler",
+            default=10),
+
+        early_stopping=ConfigOption(
+            default=0,
+            desc="Stops the training if the validation loss has not improved for the last EARLY_STOPPING epochs"),
+
+        limits_datasets=ConfigOption(
+            default=[1.0, 1.0, 1.0],
+            desc="One value for train, validation and test dataset. Decimal number for percentage of dataset. Natural number for exact sample count."),
+
+        batch_size=ConfigOption(
+            default=128,
+            desc="Default minibatch size for training"),
+
+        seed=ConfigOption(
+            default=0,
+            desc="Seed for Random number generators"),
+
+        input_file=ConfigOption(
+            default="",
+            desc="Input model file for finetuning (.pth) or code generation (.onnx)"),
+
+        input_file_vad=ConfigOption(
+            default="",
+            desc="Input vad model file for combined evaluation of vad and keyword spotting"),
+
+        input_file_keyword=ConfigOption(
+            default="",
+            desc="Input keyword model file for combined evaluation of vad and keyword spotting"),
+
+        output_dir=ConfigOption(
+            default=output_dir,
+            desc="Toplevel directory for output of trained models and logs"),
+
+        gpu_no=ConfigOption(
+            default=0,
+            desc="Number of GPU to use for training"),
+
+        compress=ConfigOption(
+            default="",
+            desc="YAML config file for nervana distiller"),
+
+        tblogger=ConfigOption(
+            default=False,
+            desc="Enable logging of learning progress and network parameter statistics to Tensorboard"),
+
+        experiment_id=ConfigOption(
+            default="test",
+            desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name"))
 
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
@@ -1080,6 +1150,14 @@ def main():
         torch.backends.cudnn.benchmark = False
         kwargs.update({'gpus': [gpu_no]})
 
+    if "limits_datasets" in config:
+        limits = config["limits_datasets"]
+        kwargs.update({
+            'limit_train_batches': limits[0],
+            'limit_val_batches': limits[1],
+            'limit_test_batches': limits[2]
+        })
+
     if config["type"] == "train":
 
         if config["profile"]:
@@ -1094,9 +1172,7 @@ def main():
         # else:
             # train(model_name, config)
 
-        lit_trainer = Trainer(
-                            **kwargs)
-
+        lit_trainer = Trainer(**kwargs)
         lit_trainer.fit(lit_module)
         lit_trainer.test(ckpt_path=None)
 

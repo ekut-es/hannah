@@ -63,7 +63,7 @@ Or move it to a subdirectory of the project directory using:
 
 2.) On lucille
 
-Put the following in `.config/pip/pip.conf` until  
+Put the following in `.config/pip/pip.conf` until
 
     [global]
     timeout = 60
@@ -120,6 +120,13 @@ To show visual results as a multi-axis plot, execute the following command in sp
 Please note, that an axis, that has equal values for all variations, is dropped from the graph for the sake of clarity.
 
 You have to have a browser installed on your system to see the results. If you have a non-graphical system, please copy the experiment folder from `<speech_recognition_root>/trained_models/<experiment_id>` to the `trained_models` folder of another machine with graphical support.
+
+# Development
+
+This project uses pre commit hooks for auto formatting and static code analysis.
+To enable pre commit hooks run the following command in a `poetry shell`.
+
+    pre-commit install
 
 # TODO:
 
