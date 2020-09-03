@@ -1142,7 +1142,8 @@ def main():
     kwargs = {
         'max_epochs': n_epochs,
         'default_root_dir': log_dir,
-        "row_log_interval": 1  # enables logging of metrics per step/batch
+        'row_log_interval': 1,  # enables logging of metrics per step/batch
+        # 'auto_lr_find': True  # enables pytorch-lightning automated LR finder
         }
 
     if config["cuda"]:
@@ -1173,6 +1174,15 @@ def main():
             # train(model_name, config)
 
         lit_trainer = Trainer(**kwargs)
+        # Run lr finder
+        lr_finder = lit_trainer.lr_find(lit_module)
+        # Inspect results
+        fig = lr_finder.plot()
+        fig.savefig('demo.png')
+        suggested_lr = lr_finder.suggestion()
+        print(suggested_lr)
+        config["lr"] = suggested_lr
+        lit_module = SpeechClassifierModule(model_name, dict(config), log_dir)
         lit_trainer.fit(lit_module)
         lit_trainer.test(ckpt_path=None)
 
