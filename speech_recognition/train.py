@@ -583,7 +583,7 @@ def train(model_name, config):
     # Setup Decoder
     decoder = Decoder(train_set.label_names)
 
-    
+
     # Print network statistics
     dummy_width, dummy_height = test_set.width, test_set.height
     dummy_input = torch.randn((1, dummy_height, dummy_width))
@@ -606,13 +606,13 @@ def train(model_name, config):
         model = distiller.model_transforms.fold_batch_norms(model, dummy_input=dummy_input, inference=False, freeze_bn_delay=-1)
         msglogger.info("Folded model")
         msglogger.info(model)
-        
+
     if config["compress"]:
         msglogger.info("Activating compression scheduler")
         compression_scheduler = distiller.file_config(model,
                                                       optimizer,
                                                       config["compress"])
-        
+
     if config["cuda"]:
         model.cuda()
 
@@ -630,8 +630,8 @@ def train(model_name, config):
 
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
-        optimizer.zero_grad()  
-            
+        optimizer.zero_grad()
+
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
 
@@ -641,7 +641,7 @@ def train(model_name, config):
         batch_time = tnt.AverageValueMeter()
         end = time.time()
         for batch_idx, (model_in, in_lengths, labels, label_lengths) in enumerate(train_loader):
-            
+
             model.train()
             if compression_scheduler is not None:
                 compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, batches_per_epoch)
@@ -1125,6 +1125,7 @@ def build_config(extra_config={}):
 
     return (model_name, config, default_config_vad, default_config_keyword)
 
+from pytorch_lightning.core.lightning import ModelSummary
 
 def main():
     model_name, config, config_vad, config_keyword = build_config()
@@ -1142,7 +1143,8 @@ def main():
     kwargs = {
         'max_epochs': n_epochs,
         'default_root_dir': log_dir,
-        "row_log_interval": 1  # enables logging of metrics per step/batch
+        "row_log_interval": 1,  # enables logging of metrics per step/batch
+        'weights_summary': 'full'
         }
 
     if config["cuda"]:
