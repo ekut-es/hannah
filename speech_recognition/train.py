@@ -1144,7 +1144,7 @@ def main():
         'max_epochs': n_epochs,
         'default_root_dir': log_dir,
         "row_log_interval": 1,  # enables logging of metrics per step/batch
-        'weights_summary': 'full'
+        # 'weights_summary': 'full'
         }
 
     if config["cuda"]:
@@ -1175,6 +1175,7 @@ def main():
             # train(model_name, config)
 
         lit_trainer = Trainer(**kwargs)
+        print(ModelSummary(lit_module, 'full'))
         lit_trainer.fit(lit_module)
         lit_trainer.test(ckpt_path=None)
 
