@@ -1,5 +1,5 @@
 from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.metrics.functional import accuracy, confusion_matrix, f1_score, recall
+from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
 from .train import get_loss_function, get_optimizer, get_model, save_model
 import torch.utils.data as data
 import torch
@@ -9,6 +9,7 @@ from .utils import _locate, config_pylogger
 import distiller
 import torchnet.meter as tnt
 from pytorch_lightning import TrainResult, EvalResult
+
 
 class SpeechClassifierModule(LightningModule):
 
@@ -31,6 +32,11 @@ class SpeechClassifierModule(LightningModule):
         self.collate_fn = dataset.ctc_collate_fn  # if train_set.loss_function == "ctc" else None
         self.msglogger = config_pylogger('logging.conf', "lightning-logger", self.log_dir)
         self.msglogger.info("speech classifier initialized")
+
+        # summarize model architecture
+        dummy_width, dummy_height = self.train_set.width, self.train_set.height
+        dummy_input = torch.zeros(1, dummy_height, dummy_width)
+        self.example_input_array = dummy_input
 
     # PREPARATION
 
