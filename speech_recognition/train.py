@@ -1188,7 +1188,7 @@ def main():
 
             # inspect results
             fig = lr_finder.plot()
-            fig.savefig(f'{log_dir}/learing_rate.png')
+            # fig.savefig(f'{log_dir}/learing_rate.png')
 
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
