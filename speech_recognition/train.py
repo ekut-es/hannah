@@ -1182,12 +1182,13 @@ def main():
         lit_trainer = Trainer(**kwargs)
 
         if config["auto_lr"]:
+
             # run lr finder (counts as one epoch)
             lr_finder = lit_trainer.lr_find(lit_module)
 
             # inspect results
             fig = lr_finder.plot()
-            fig.savefig('learing_rate.png')
+            fig.savefig(f'{log_dir}/learing_rate.png')
 
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
