@@ -100,6 +100,7 @@ def get_lr_scheduler(config, optimizer):
     return scheduler
 
 def get_optimizer(config, model):
+
     if config["optimizer"] == "sgd":
         optimizer = torch.optim.SGD(model.parameters(),
                                     lr=config["lr"],
@@ -1020,10 +1021,16 @@ def build_config(extra_config={}):
             desc="Use nesterov momentum with SGD optimizer",
             default=False),
 
+        auto_lr=ConfigOption(
+            category="Learning Rate Config",
+            default=True,
+            desc="Determines the learning rate automatically"),
+
         lr=ConfigOption(
             category="Learning Rate Config",
             desc="Initial Learining Rate",
             default=0.1),
+
         lr_scheduler=ConfigOption(
             category="Learning Rate Config",
             desc="Learning Rate Scheduler to use",
@@ -1142,8 +1149,7 @@ def main():
     kwargs = {
         'max_epochs': n_epochs,
         'default_root_dir': log_dir,
-        'row_log_interval': 1,  # enables logging of metrics per step/batch
-        # 'auto_lr_find': True  # enables pytorch-lightning automated LR finder
+        'row_log_interval': 1  # enables logging of metrics per step/batch
         }
 
     if config["cuda"]:
@@ -1174,15 +1180,20 @@ def main():
             # train(model_name, config)
 
         lit_trainer = Trainer(**kwargs)
-        # Run lr finder
-        lr_finder = lit_trainer.lr_find(lit_module)
-        # Inspect results
-        fig = lr_finder.plot()
-        fig.savefig('demo.png')
-        suggested_lr = lr_finder.suggestion()
-        print(suggested_lr)
-        config["lr"] = suggested_lr
-        lit_module = SpeechClassifierModule(model_name, dict(config), log_dir)
+
+        if config["auto_lr"]:
+            # run lr finder (counts as one epoch)
+            lr_finder = lit_trainer.lr_find(lit_module)
+
+            # inspect results
+            fig = lr_finder.plot()
+            fig.savefig('learing_rate.png')
+
+            # recreate module with updated config
+            suggested_lr = lr_finder.suggestion()
+            config["lr"] = suggested_lr
+            lit_module = SpeechClassifierModule(model_name, dict(config), log_dir)
+
         lit_trainer.fit(lit_module)
         lit_trainer.test(ckpt_path=None)
 
