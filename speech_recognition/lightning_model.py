@@ -33,7 +33,6 @@ class SpeechClassifierModule(LightningModule):
         self.msglogger.info("speech classifier initialized")
 
     # PREPARATION
-
     def configure_optimizers(self):
         return self.optimizer
 
@@ -63,8 +62,11 @@ class SpeechClassifierModule(LightningModule):
         y = y.view(-1)
 
         if self.compression_scheduler is not None:
-            self.compression_scheduler.on_minibatch_end(self.current_epoch, batch_idx, self.batches_per_epoch)
-
+            self.compression_scheduler.before_backward_pass(
+                                                    self.current_epoch,
+                                                    self.batch_idx,
+                                                    self.batches_per_epoch,
+                                                    self.loss)
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
@@ -111,7 +113,6 @@ class SpeechClassifierModule(LightningModule):
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         result = EvalResult(self.loss)
-
         log_vals = {
             'val_loss': self.loss,
             'val_acc': batch_acc,
@@ -179,8 +180,7 @@ class SpeechClassifierModule(LightningModule):
         return self.model(x)
 
     # CALLBACKS
-
-    def on_train_start(self):
+    def on_init_end(self):
         if self.hparams["compress"]:
             self.model.to(self.device)
             # msglogger.info("Activating compression scheduler")
@@ -195,11 +195,7 @@ class SpeechClassifierModule(LightningModule):
 
     def on_batch_end(self):
         if self.compression_scheduler is not None:
-            self.compression_scheduler.before_backward_pass(
-                                                    self.current_epoch,
-                                                    self.batch_idx,
-                                                    self.batches_per_epoch,
-                                                    self.loss)
+            self.compression_scheduler.on_minibatch_end(self.current_epoch, self.batch_idx, self.batches_per_epoch)
 
     def on_epoch_end(self):
         if self.compression_scheduler is not None:
