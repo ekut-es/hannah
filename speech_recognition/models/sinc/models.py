@@ -88,7 +88,6 @@ class SincConv(nn.Module):
         #hamming window         
         N=(self.kernel_size[0]-1)/2.0
         self.window_=torch.hamming_window(self.kernel_size[0])
-        #self.window_=0.54-0.46*torch.cos(2*math.pi*torch.linspace(1,N,steps=int(N))/self.kernel_size)
         self.n_=2*math.pi*torch.arange(-N,0).view(1,-1)/self.SR
         
     def forward(self, waveforms):

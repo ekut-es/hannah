@@ -211,7 +211,8 @@ class SpeechClassifierModule(LightningModule):
             self.compression_scheduler.on_epoch_begin(self.current_epoch)
 
     def on_batch_end(self):
-        if self.hparams["fold_bn"] == self.current_epoch:
+        if self.hparams["fold_bn"] == self.current_epoch and not self.bn_frozen:
+            self.bn_frozen = True
             self.msglogger.info("Freezing batch norms")
             #save_model(log_dir, model, test_set, config=config, model_prefix="before_freeze_")
 
