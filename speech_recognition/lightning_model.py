@@ -15,7 +15,7 @@ class SpeechClassifierModule(LightningModule):
 
     def __init__(self, model_name, config, log_dir):
         super().__init__()
-
+        #torch.autograd.set_detect_anomaly(True)
         # TODO lit logger to saves hparams (also outdated to use)
         # which causes error TypeError: can't pickle int objects
         self.hparams = config
@@ -37,6 +37,7 @@ class SpeechClassifierModule(LightningModule):
         dummy_width, dummy_height = self.train_set.width, self.train_set.height
         dummy_input = torch.zeros(1, dummy_height, dummy_width)
         self.example_input_array = dummy_input
+        self.bn_frozen = False
 
     # PREPARATION
 
@@ -190,6 +191,13 @@ class SpeechClassifierModule(LightningModule):
     # CALLBACKS
 
     def on_train_start(self):
+        if self.hparams["fold_bn"] >= 0 and not self.bn_frozen:
+            self.bn_frozen = True
+            self.msglogger.info("Applying batch norm folding")
+            self.model = distiller.model_transforms.fold_batch_norms(self.model, dummy_input=self.example_input_array, inference=False)
+            self.msglogger.info("Folded model")
+            self.msglogger.info(self.model)
+
         if self.hparams["compress"]:
             self.model.to(self.device)
             # msglogger.info("Activating compression scheduler")
@@ -203,13 +211,28 @@ class SpeechClassifierModule(LightningModule):
             self.compression_scheduler.on_epoch_begin(self.current_epoch)
 
     def on_batch_end(self):
+        if self.hparams["fold_bn"] == self.current_epoch:
+            self.msglogger.info("Freezing batch norms")
+            #save_model(log_dir, model, test_set, config=config, model_prefix="before_freeze_")
+
+
+            def freeze_func(model):
+                import distiller.quantization.sim_bn_fold
+                if isinstance(model, distiller.quantization.sim_bn_fold.SimulatedFoldedBatchNorm):
+                    model.freeze()
+            with torch.no_grad():
+                self.model.apply(freeze_func)
+            self.msglogger.info("Model after freezing")
+            self.msglogger.info(self.model)
+            #save_model(log_dir, model, test_set, config=config, model_prefix="after_freeze_")
+
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_minibatch_end(self.current_epoch, self.batch_idx, self.batches_per_epoch)
     
     def on_epoch_end(self):
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_epoch_end(self.current_epoch)
-
+        
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(self.log_dir, self.model, self.test_set, config=self.hparams, msglogger=self.msglogger)
