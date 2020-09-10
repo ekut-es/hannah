@@ -56,7 +56,6 @@ class SpeechClassifierModule(LightningModule):
         return batch_acc, batch_f1, batch_recall
 
     # TRAINING CODE
-
     def training_step(self, batch, batch_idx):
 
         self.batch_idx = batch_idx
@@ -69,7 +68,11 @@ class SpeechClassifierModule(LightningModule):
         y = y.view(-1)
 
         if self.compression_scheduler is not None:
-            self.compression_scheduler.on_minibatch_end(self.current_epoch, batch_idx, self.batches_per_epoch)
+            self.compression_scheduler.before_backward_pass(
+                                                    self.current_epoch,
+                                                    self.batch_idx,
+                                                    self.batches_per_epoch,
+                                                    self.loss)
 
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
@@ -201,12 +204,8 @@ class SpeechClassifierModule(LightningModule):
 
     def on_batch_end(self):
         if self.compression_scheduler is not None:
-            self.compression_scheduler.before_backward_pass(
-                                                    self.current_epoch,
-                                                    self.batch_idx,
-                                                    self.batches_per_epoch,
-                                                    self.loss)
-
+            self.compression_scheduler.on_minibatch_end(self.current_epoch, self.batch_idx, self.batches_per_epoch)
+    
     def on_epoch_end(self):
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_epoch_end(self.current_epoch)
