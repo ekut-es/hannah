@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-PYTHON=python3.6
+PYTHON=python
 WORKDIR=$PWD/work
 DATADIR=$PWD/datasets/speech_commands_v0.02/
 

@@ -10,6 +10,8 @@ trained_models
 tcml_config.json
 .project
 .pydevproject
+speech_recognition.egg-info/
+
 
 venv/
 srf-venv/
@@ -18,6 +20,14 @@ distillation/lorenzfe/
 
 # eclipse
 .settings/
+
+# vs code
+# .vscode/
+
+# lightning
+lightning_logs/
+
+
 
 # poetry
 srf-poetry/README.rst

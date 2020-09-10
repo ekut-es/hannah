@@ -2,7 +2,6 @@
 
 # Getting Started
 
-
 ## Installing dependencies
 
 Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
@@ -24,17 +23,13 @@ Dependencies and virtual environments are managed using [poetry](https://python-
     sudo yum install portaudio-devel -y
 
 
-
 ### Install poetry
 
     curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
 
 For alternative installation methods see:  https://python-poetry.org/docs/#installation
 
-
-
 **Caution**: this usually install poetry to ~/.local/bin it this folder is not in your path you might need to run poetry as:
-
 
     ~/.local/bin/poetry
 
@@ -66,6 +61,17 @@ Or move it to a subdirectory of the project directory using:
 
     poetry config virtualenvs.in-project true
 
+2.) On lucille
+
+Put the following in `.config/pip/pip.conf` until
+
+    [global]
+    timeout = 60
+    extra-index-url = https://atreus.informatik.uni-tuebingen.de/~gerum/dist/
+
+And you might need to deactivate your conda environement:
+
+    conda deactivate
 
 ## Installing the datasets
 
@@ -115,9 +121,15 @@ Please note, that an axis, that has equal values for all variations, is dropped 
 
 You have to have a browser installed on your system to see the results. If you have a non-graphical system, please copy the experiment folder from `<speech_recognition_root>/trained_models/<experiment_id>` to the `trained_models` folder of another machine with graphical support.
 
+# Development
 
+This project uses pre commit hooks for auto formatting and static code analysis.
+To enable pre commit hooks run the following command in a `poetry shell`.
+
+    pre-commit install
 
 # TODO:
+
 Training:
 
 - Implement Wavenet

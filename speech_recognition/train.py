@@ -10,6 +10,8 @@ import math
 import hashlib
 import csv
 import fcntl
+import inspect
+import importlib
 
 from torch.autograd import Variable
 import numpy as np
@@ -34,8 +36,25 @@ import torchnet.meter as tnt
 from tabulate import tabulate
 
 from .summaries import *
+from .utils import _locate, _fullname
+
+from pytorch_lightning.trainer import Trainer
+from .lightning_model import *
+from pytorch_lightning.profiler import AdvancedProfiler
+from pytorch_lightning.loggers import TensorBoardLogger
 
 msglogger = None
+
+
+def get_compression(config, model, optimizer):
+    if config["compress"]:
+        #msglogger.info("Activating compression scheduler")
+        compression_scheduler = distiller.file_config(model,
+                                                      optimizer,
+                                                      config["compress"])
+        return compression_scheduler
+    else:
+        return None
 
 def get_lr_scheduler(config, optimizer):
     n_epochs = config["n_epochs"]
@@ -161,15 +180,15 @@ def get_config_logdir(model_name, config):
 def get_model(config, config2=None, model=None, vad_keyword = 0):
     if not model:
         if vad_keyword == 0:
-            model = config["model_class"](config)
+            model = _locate(config["model_class"])(config)
             if config["input_file"]:
                 model.load(config["input_file"])
         elif vad_keyword == 1:
-            model = config2["model_class"](config2)
+            model = _locate(config2["model_class"])(config2)
             if config["input_file_vad"]:
                 model.load(config["input_file_vad"])
         else:
-            model = config2["model_class"](config2)
+            model = _locate(config2["model_class"])(config2)
             if config["input_file_keyword"]:
                 model.load(config["input_file_keyword"])
     return model
@@ -196,7 +215,7 @@ def dump_config(output_dir, config):
               s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
               o.write(s)
 
-def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
+def save_model(output_dir, model, test_set=None, config=None, model_prefix="", msglogger=None):
     """ Creates serialization of the model for later inference, evaluation
 
     Creates the following files:
@@ -215,9 +234,11 @@ def save_model(output_dir, model, test_set=None, config=None, model_prefix=""):
     test_set : dataset.SpeechDataset
         DataSet used to derive dummy input to use for onnx export.
         If None no onnx will be generated
-"""
-    msglogger.info("saving best model...")
-    model.save(os.path.join(output_dir, model_prefix+"model.pt"))
+    """
+    
+    #TODO model save doesnt work "AttributeError: model has no attribute save" 
+    #msglogger.info("saving best model...")
+    #model.save(os.path.join(output_dir, model_prefix+"model.pt"))
 
     msglogger.info("saving weights to json...")
     filename = os.path.join(output_dir, model_prefix+"model.json")
@@ -467,29 +488,29 @@ def train(model_name, config):
         tblogger.log_gradients = True
         loggers.append(tblogger)
 
-#     log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
+    # log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
 
 
     print("All information will be saved to: ", output_dir, "logdir:", log_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        
+
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-        
+
     #reset_symlink(os.path.join(log_dir, "train.log"), os.path.join(output_dir, "train.log"))
-    
-        
+
+
     dump_config(log_dir, config)
     #reset_symlink(os.path.join(log_dir, "config.json"), os.path.join(output_dir, "config.json"))
-        
+
     csv_log_name = os.path.join(log_dir, "train.csv")
     csv_log_file = open(csv_log_name, "w")
     csv_log_writer = csv.DictWriter(csv_log_file, fieldnames=["Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"])
     csv_log_writer.writeheader()
     #reset_symlink(csv_log_name, os.path.join(output_dir, "train.csv"))
-    
+
     train_set, dev_set, test_set = config["dataset_cls"].splits(config)
 
     msglogger.info("Dataset config:")
@@ -562,7 +583,7 @@ def train(model_name, config):
     # Setup Decoder
     decoder = Decoder(train_set.label_names)
 
-    
+
     # Print network statistics
     dummy_width, dummy_height = test_set.width, test_set.height
     dummy_input = torch.randn((1, dummy_height, dummy_width))
@@ -585,13 +606,13 @@ def train(model_name, config):
         model = distiller.model_transforms.fold_batch_norms(model, dummy_input=dummy_input, inference=False, freeze_bn_delay=-1)
         msglogger.info("Folded model")
         msglogger.info(model)
-        
+
     if config["compress"]:
         msglogger.info("Activating compression scheduler")
         compression_scheduler = distiller.file_config(model,
                                                       optimizer,
                                                       config["compress"])
-        
+
     if config["cuda"]:
         model.cuda()
 
@@ -609,8 +630,8 @@ def train(model_name, config):
 
     for epoch_idx in range(n_epochs):
         msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
-        optimizer.zero_grad()  
-            
+        optimizer.zero_grad()
+
         if compression_scheduler is not None:
             compression_scheduler.on_epoch_begin(epoch_idx)
 
@@ -620,7 +641,7 @@ def train(model_name, config):
         batch_time = tnt.AverageValueMeter()
         end = time.time()
         for batch_idx, (model_in, in_lengths, labels, label_lengths) in enumerate(train_loader):
-            
+
             model.train()
             if compression_scheduler is not None:
                 compression_scheduler.on_minibatch_begin(epoch_idx, batch_idx, batches_per_epoch)
@@ -773,49 +794,47 @@ def train(model_name, config):
     except:
         msglogger.warning("Could not load model")
         
-    #try:
-    print("Activating layer dumping")
-    def dump_layers(model, output_dir):
-        class DumpForwardHook:
-            def __init__(self, module, output_dir):
-                self.module = module
-                self.output_dir = output_dir
-                try:
-                    os.makedirs(self.output_dir)
-                except:
-                    pass
-                
-                self.count = 0
+    if config["dump_test"]:
+        print("Activating layer dumping")
+        def dump_layers(model, output_dir):
+            class DumpForwardHook:
+                def __init__(self, module, output_dir):
+                    self.module = module
+                    self.output_dir = output_dir
+                    try:
+                        os.makedirs(self.output_dir)
+                    except:
+                        pass
+                    
+                    self.count = 0
 
-            def __call__(self, module, input, output):
+                def __call__(self, module, input, output):
 
-                if self.count >= 100:
-                    return
-                
-                output_name = self.output_dir + "/output_" + str(self.count) + ".json"
+                    if self.count >= 100:
+                        return
+                    
+                    output_name = self.output_dir + "/output_" + str(self.count) + ".json"
 
-                output_copy = output.cpu().tolist()
-                
-                with open(output_name, "w") as f:
-                    f.write(json.dumps(output_copy))
-                
-                self.count += 1
-                
-        for num, module in enumerate(model.modules()):
+                    output_copy = output.cpu().tolist()
+                    
+                    with open(output_name, "w") as f:
+                        f.write(json.dumps(output_copy))
+                    
+                    self.count += 1
+                    
+            for num, module in enumerate(model.modules()):
 
-            module_name = distiller.model_find_module_name(model, module)
-            if type(module) in [distiller.quantization.ClippedLinearQuantization,
-                                nn.ReLU,
-                                nn.Hardtanh]:
-                
-                module.register_forward_hook(DumpForwardHook(module, log_dir + "/test_data/layers/"+module_name))
+                module_name = distiller.model_find_module_name(model, module)
+                if type(module) in [distiller.quantization.ClippedLinearQuantization,
+                                    nn.ReLU,
+                                    nn.Hardtanh]:
+                    
+                    module.register_forward_hook(DumpForwardHook(module, log_dir + "/test_data/layers/"+module_name))
 
-            if type(module) in [nn.Conv1d]:
-                module.register_forward_hook(DumpForwardHook(module, log_dir + "/test_data/layers/"+module_name))
-                
-    dump_layers(model, output_dir + "/layer_outputs")
-    #except:
-    #    pass
+                if type(module) in [nn.Conv1d]:
+                    module.register_forward_hook(DumpForwardHook(module, log_dir + "/test_data/layers/"+module_name))
+                    
+        dump_layers(model, output_dir + "/layer_outputs")
 
     if hasattr(model, 'on_test'):
         model.on_test()
@@ -920,99 +939,168 @@ def build_config(extra_config={}):
                 if "type" in default_config_keyword:
                     del default_config_keyword["type"]
 
+    global_config = dict(
+        cuda=ConfigOption(
+            default=torch.cuda.is_available(),
+            desc="Enable / disable cuda"),
 
-    global_config = dict(cuda=ConfigOption(default=torch.cuda.is_available(),
-                                           desc="Enable / disable cuda"),
-                         n_epochs=ConfigOption(default=500,
-                                               desc="Number of epochs for training"),
-                         profile=ConfigOption(default=False,
-                                              desc="Enable profiling"),
-                         dump_test=ConfigOption(default=False,
-                                                desc="Dump test set to <output_directory>/test_data"),
-                         num_workers=ConfigOption(desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
-                                                  default=0),
-                         
-                         fold_bn=ConfigOption(default = -1,
-                                              desc = "Do BatchNorm folding at freeze at the given epoch"),
-                         optimizer=ConfigOption(default="sgd",
-                                                desc="Optimizer to choose",
-                                                category="Optimizer Config",
-                                                choices=["sgd",
-                                                         "adadelta",
-                                                         "adagrad",
-                                                         "adam",
-                                                         "rmsprop"]),
+        n_epochs=ConfigOption(
+            default=500,
+            desc="Number of epochs for training"),
 
-                         opt_rho     = ConfigOption(category="Optimizer Config",
-                                                    desc="Parameter rho for Adadelta optimizer",
-                                                    default=0.9),
-                         opt_eps     = ConfigOption(category="Optimizer Config",
-                                                    desc="Paramter eps for Adadelta and Adam and SGD",
-                                                    default=1e-06),
-                         opt_alpha   = ConfigOption(category="Optimizer Config",
-                                                    desc="Parameter alpha for RMSprop",
-                                                    default=0.99),
-                         lr_decay    = ConfigOption(category="Optimizer Config",
-                                                    desc="Parameter lr_decay for optimizers",
-                                                    default=0),
-                         use_amsgrad = ConfigOption(category="Optimizer Config",
-                                                    desc="Use amsgrad with Adam optimzer",
-                                                    default=False),
-                         opt_betas   = ConfigOption(category="Optimizer Config",
-                                                    desc="Parameter betas for Adam optimizer",
-                                                    default=[0.9, 0.999]),
-                         momentum    = ConfigOption(category="Optimizer Config",
-                                                    desc="Momentum for SGD optimizer",
-                                                    default=0.9),
-                         weight_decay= ConfigOption(category="Optimizer Config",
-                                                    desc="Weight decay for optimizer",
-                                                    default=0.00001),
-                         use_nesterov= ConfigOption(category="Optimizer Config",
-                                                    desc="Use nesterov momentum with SGD optimizer",
-                                                    default=False),
-                         lr           = ConfigOption(category="Learning Rate Config",
-                                                     desc="Initial Learining Rate",
-                                                     default=0.1),
-                         lr_scheduler = ConfigOption(category="Learning Rate Config",
-                                                     desc="Learning Rate Scheduler to use",
-                                                     choices=["step", "multistep", "exponential", "plateau"],
-                                                     default="step"),
-                         lr_gamma     = ConfigOption(category="Learning Rate Config",
-                                                     desc="Parameter gamma for lr scheduler",
-                                                     default=0.75),
-                         lr_stepsize  = ConfigOption(category="Learning Rate Config",
-                                                     desc="Stepsize for step scheduler",
-                                                     default=0),
-                         lr_steps     = ConfigOption(category="Learning Rate Config",
-                                                     desc="List of steps for multistep scheduler",
-                                                     default=[0]),
-                         lr_patience  = ConfigOption(category="Learning Rate Config",
-                                                     desc="Parameter patience for plateau scheduler",
-                                                     default=10),
-                         early_stopping = ConfigOption(default=0,
-                                                       desc="Stops the training if the validation loss has not improved for the last EARLY_STOPPING epochs"),
+        profile=ConfigOption(
+            default=False,
+            desc="Enable profiling"),
 
-                         batch_size=ConfigOption(default=128,
-                                                 desc="Default minibatch size for training"),
-                         seed=ConfigOption(default=0,
-                                           desc="Seed for Random number generators"),
-                         input_file=ConfigOption(default="",
-                                                 desc="Input model file for finetuning (.pth) or code generation (.onnx)"),
-                         input_file_vad=ConfigOption(default="",
-                                                 desc="Input vad model file for combined evaluation of vad and keyword spotting"),
-                         input_file_keyword=ConfigOption(default="",
-                                                 desc="Input keyword model file for combined evaluation of vad and keyword spotting"),
-                         output_dir=ConfigOption(default=output_dir,
-                                                 desc="Toplevel directory for output of trained models and logs"),
-                         gpu_no=ConfigOption(default=0,
-                                             desc="Number of GPU to use for training"),
-                         compress=ConfigOption(default="",
-                                               desc="YAML config file for nervana distiller"),
-                         tblogger=ConfigOption(default=False,
-                                               desc="Enable logging of learning progress and network parameter statistics to Tensorboard"),
-                         experiment_id=ConfigOption(default="test",
-                                                    desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name"))
-    
+        dump_test=ConfigOption(
+            default=False,
+            desc="Dump test set to <output_directory>/test_data"),
+
+        num_workers=ConfigOption(
+            desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
+            default=0),
+
+        fold_bn=ConfigOption(
+            default=-1,
+            desc="Do BatchNorm folding at freeze at the given epoch"),
+
+        optimizer=ConfigOption(
+            default="sgd",
+            desc="Optimizer to choose",
+            category="Optimizer Config",
+            choices=[
+                "sgd",
+                "adadelta",
+                "adagrad",
+                "adam",
+                "rmsprop"]),
+
+        opt_rho=ConfigOption(
+            category="Optimizer Config",
+            desc="Parameter rho for Adadelta optimizer",
+            default=0.9),
+
+        opt_eps=ConfigOption(
+            category="Optimizer Config",
+            desc="Paramter eps for Adadelta and Adam and SGD",
+            default=1e-06),
+
+        opt_alpha=ConfigOption(
+            category="Optimizer Config",
+            desc="Parameter alpha for RMSprop",
+            default=0.99),
+
+        lr_decay=ConfigOption(
+            category="Optimizer Config",
+            desc="Parameter lr_decay for optimizers",
+            default=0),
+
+        use_amsgrad=ConfigOption(
+            category="Optimizer Config",
+            desc="Use amsgrad with Adam optimzer",
+            default=False),
+
+        opt_betas=ConfigOption(
+            category="Optimizer Config",
+            desc="Parameter betas for Adam optimizer",
+            default=[0.9, 0.999]),
+
+        momentum=ConfigOption(
+            category="Optimizer Config",
+            desc="Momentum for SGD optimizer",
+            default=0.9),
+
+        weight_decay=ConfigOption(
+            category="Optimizer Config",
+            desc="Weight decay for optimizer",
+            default=0.00001),
+
+        use_nesterov=ConfigOption(
+            category="Optimizer Config",
+            desc="Use nesterov momentum with SGD optimizer",
+            default=False),
+
+        lr=ConfigOption(
+            category="Learning Rate Config",
+            desc="Initial Learining Rate",
+            default=0.1),
+        lr_scheduler=ConfigOption(
+            category="Learning Rate Config",
+            desc="Learning Rate Scheduler to use",
+            choices=[
+                "step",
+                "multistep",
+                "exponential",
+                "plateau"],
+            default="step"),
+
+        lr_gamma=ConfigOption(
+            category="Learning Rate Config",
+            desc="Parameter gamma for lr scheduler",
+            default=0.75),
+
+        lr_stepsize=ConfigOption(
+            category="Learning Rate Config",
+            desc="Stepsize for step scheduler",
+            default=0),
+
+        lr_steps=ConfigOption(
+            category="Learning Rate Config",
+            desc="List of steps for multistep scheduler",
+            default=[0]),
+
+        lr_patience=ConfigOption(
+            category="Learning Rate Config",
+            desc="Parameter patience for plateau scheduler",
+            default=10),
+
+        early_stopping=ConfigOption(
+            default=0,
+            desc="Stops the training if the validation loss has not improved for the last EARLY_STOPPING epochs"),
+
+        limits_datasets=ConfigOption(
+            default=[1.0, 1.0, 1.0],
+            desc="One value for train, validation and test dataset. Decimal number for percentage of dataset. Natural number for exact sample count."),
+
+        batch_size=ConfigOption(
+            default=128,
+            desc="Default minibatch size for training"),
+
+        seed=ConfigOption(
+            default=0,
+            desc="Seed for Random number generators"),
+
+        input_file=ConfigOption(
+            default="",
+            desc="Input model file for finetuning (.pth) or code generation (.onnx)"),
+
+        input_file_vad=ConfigOption(
+            default="",
+            desc="Input vad model file for combined evaluation of vad and keyword spotting"),
+
+        input_file_keyword=ConfigOption(
+            default="",
+            desc="Input keyword model file for combined evaluation of vad and keyword spotting"),
+
+        output_dir=ConfigOption(
+            default=output_dir,
+            desc="Toplevel directory for output of trained models and logs"),
+
+        gpu_no=ConfigOption(
+            default=0,
+            desc="Number of GPU to use for training"),
+
+        compress=ConfigOption(
+            default="",
+            desc="YAML config file for nervana distiller"),
+
+        tblogger=ConfigOption(
+            default=False,
+            desc="Enable logging of learning progress and network parameter statistics to Tensorboard"),
+
+        experiment_id=ConfigOption(
+            default="test",
+            desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name"))
 
     mod_cls = mod.find_model(model_name)
     dataset_cls = dataset.find_dataset(dataset_name)
@@ -1028,40 +1116,79 @@ def build_config(extra_config={}):
     parser.add_argument("--type", choices=["train", "eval", "eval_vad_keyword"], default="train", type=str)
     config = builder.config_from_argparse(parser)
 
-    config["model_class"] = mod_cls
+    config["model_class"] = _fullname(mod_cls)
     default_config_vad["model_class"] = mod.find_model("small-vad") # als command line option umändern
     default_config_keyword["model_class"] = mod.find_model("honk-res15")
     config["model_name"] = model_name
     config["dataset"] = dataset_name
-    config["dataset_cls"] = dataset_cls
+    config["dataset_cls"] = _fullname(dataset_cls)
 
     return (model_name, config, default_config_vad, default_config_keyword)
+
+from pytorch_lightning.core.lightning import ModelSummary
 
 def main():
     model_name, config, config_vad, config_keyword = build_config()
     set_seed(config)
     # Set deterministic mode for CUDNN backend
     # Check if the performance penalty might be too high
+
+    gpu_no = config["gpu_no"]
+    n_epochs = config["n_epochs"]  # max epochs
+    log_dir = get_config_logdir(model_name, config)  # path for logs and checkpoints
+    # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
+    lit_module = SpeechClassifierModule(model_name, dict(config), log_dir)  # passing logdir for custom json save after training omit double fnccall
+    # logger = TensorBoardLogger(log_dir, name="my_model")
+
+    kwargs = {
+        'max_epochs': n_epochs,
+        'default_root_dir': log_dir,
+        "row_log_interval": 1,  # enables logging of metrics per step/batch
+        # 'weights_summary': 'full'
+        }
+
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+        kwargs.update({'gpus': [gpu_no]})
+
+    if "limits_datasets" in config:
+        limits = config["limits_datasets"]
+        kwargs.update({
+            'limit_train_batches': limits[0],
+            'limit_val_batches': limits[1],
+            'limit_test_batches': limits[2]
+        })
 
     if config["type"] == "train":
+
         if config["profile"]:
-            import cProfile
-            profiler = cProfile.Profile()
-            try:
-                profiler.runcall(train, model_name, config)
-            finally:
-                profiler.print_stats(sort=('tottime'))
-        else:
-            train(model_name, config)
+            # import cProfile
+            # profiler = cProfile.Profile()
+            # try:
+            #     profiler.runcall(train, model_name, config)
+            # finally:
+            #     profiler.print_stats(sort=('tottime'))
+            profiler = AdvancedProfiler()
+            kwargs.update({'profiler': profiler})
+        # else:
+            # train(model_name, config)
+
+        lit_trainer = Trainer(**kwargs)
+        print(ModelSummary(lit_module, 'full'))
+        lit_trainer.fit(lit_module)
+        lit_trainer.test(ckpt_path=None)
+
+        if config["profile"]:
+            print(profiler.summary())
+
     elif config["type"] == "eval":
-        accuracy, _ , _= evaluate(model_name, config)
+        accuracy, _, _ = evaluate(model_name, config)
         print("final accuracy is", accuracy)
     elif config["type"] == "eval_vad_keyword":
         accuracy, _, _ = evaluate(model_name, config, config_vad, config_keyword)
         print("final accuracy is", accuracy)
+
 
 if __name__ == "__main__":
     main()
