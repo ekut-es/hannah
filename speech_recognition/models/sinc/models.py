@@ -87,14 +87,15 @@ class SincConv(nn.Module):
         
         #hamming window         
         N=(self.kernel_size[0]-1)/2.0
-        self.window_=torch.hamming_window(self.kernel_size[0])
-        #self.window_=0.54-0.46*torch.cos(2*math.pi*torch.linspace(1,N,steps=int(N))/self.kernel_size)
-        self.n_=2*math.pi*torch.arange(-N,0).view(1,-1)/self.SR
-        
+        window_=torch.hamming_window(self.kernel_size[0])
+        self.register_buffer('window_', window_, persistent=False)
+
+        n_=2*math.pi*torch.arange(-N,0).view(1,-1)/self.SR
+        self.register_buffer('n_', n_, persistent=False)
+
     def forward(self, waveforms):
             
-        self.n_=self.n_.to(waveforms.device)
-        self.window_=self.window_.to(waveforms.device)
+        
             
         f_low=torch.abs(self.low_freq_)+self.min_low_hz
         f_high=torch.clamp(f_low+self.min_band_hz+torch.abs(self.band_freq_),self.min_low_hz,self.SR/2)
