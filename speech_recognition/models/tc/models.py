@@ -170,7 +170,8 @@ class TCResNetModel(SerializableModule):
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
-            x = self.dropout(x)
+        
+        x = self.dropout(x)
         if not self.fully_convolutional:
             x = x.view(x.size(0), -1)
         x = self.fc(x)
