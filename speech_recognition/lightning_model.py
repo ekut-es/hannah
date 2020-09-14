@@ -1,5 +1,10 @@
 from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.metrics.functional import accuracy, confusion_matrix, f1_score, recall
+from pytorch_lightning.metrics.functional import (
+    accuracy,
+    confusion_matrix,
+    f1_score,
+    recall,
+)
 from .train import get_loss_function, get_optimizer, get_model, save_model
 import torch.utils.data as data
 import torch
@@ -10,26 +15,31 @@ import distiller
 import torchnet.meter as tnt
 from pytorch_lightning import TrainResult, EvalResult
 
-class SpeechClassifierModule(LightningModule):
 
-    def __init__(self, model_name, config, log_dir):
+class SpeechClassifierModule(LightningModule):
+    def __init__(self, model, config, log_dir, msglogger):
         super().__init__()
 
         # TODO lit logger to saves hparams (also outdated to use)
         # which causes error TypeError: can't pickle int objects
         self.hparams = config
 
-        # trainset needed to set values in hparams
-        self.train_set, self.dev_set, self.test_set = _locate(config["dataset_cls"]).splits(config)
-        self.hparams["width"] = self.train_set.width
-        self.hparams["height"] = self.train_set.height
+        # trainset needed to set values in hparams to get model properly
+        self.train_set, self.dev_set, self.test_set = _locate(
+            config["dataset_cls"]
+        ).splits(config)
+        # self.hparams["width"] = self.train_set.width
+        # self.hparams["height"] = self.train_set.height
+        # self.model = get_model(self.hparams)
+        self.model = model
         self.compression_scheduler = None  # initialize on train start
-        self.model = get_model(self.hparams)
         self.criterion = get_loss_function(self.model, self.hparams)
         self.optimizer = get_optimizer(self.hparams, self.model)
         self.log_dir = log_dir
-        self.collate_fn = dataset.ctc_collate_fn  # if train_set.loss_function == "ctc" else None
-        self.msglogger = config_pylogger('logging.conf', "lightning-logger", self.log_dir)
+        self.collate_fn = (
+            dataset.ctc_collate_fn
+        )  # if train_set.loss_function == "ctc" else None
+        self.msglogger = msglogger
         self.msglogger.info("speech classifier initialized")
 
     # PREPARATION
@@ -42,7 +52,7 @@ class SpeechClassifierModule(LightningModule):
         self.loss = self.criterion(output, y)
 
         output_max = output.argmax(dim=1)
-        batch_acc = accuracy(output_max, y, self.hparams['n_labels'])
+        batch_acc = accuracy(output_max, y, self.hparams["n_labels"])
         batch_f1 = f1_score(output_max, y)
         batch_recall = recall(output_max, y)
 
@@ -55,7 +65,9 @@ class SpeechClassifierModule(LightningModule):
         self.batch_idx = batch_idx
 
         if self.compression_scheduler is not None:
-            self.compression_scheduler.on_minibatch_begin(self.current_epoch, batch_idx, self.batches_per_epoch)
+            self.compression_scheduler.on_minibatch_begin(
+                self.current_epoch, batch_idx, self.batches_per_epoch
+            )
 
         x, x_len, y, y_len = batch
         output = self(x)
@@ -63,20 +75,19 @@ class SpeechClassifierModule(LightningModule):
 
         if self.compression_scheduler is not None:
             self.compression_scheduler.before_backward_pass(
-                                                    self.current_epoch,
-                                                    self.batch_idx,
-                                                    self.batches_per_epoch,
-                                                    self.loss)
+                self.current_epoch, self.batch_idx, self.batches_per_epoch, self.loss
+            )
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         result = TrainResult(self.loss)
 
         log_vals = {
-            'train_loss': self.loss,
-            'train_acc': batch_acc,
-            'train_f1': batch_f1,
-            'train_recall': batch_recall}
+            "train_loss": self.loss,
+            "train_acc": batch_acc,
+            "train_f1": batch_f1,
+            "train_recall": batch_recall,
+        }
 
         # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
         result.log_dict(log_vals, on_step=True, on_epoch=True)
@@ -87,13 +98,14 @@ class SpeechClassifierModule(LightningModule):
 
         train_batch_size = self.hparams["batch_size"]
         train_loader = data.DataLoader(
-                                self.train_set,
-                                batch_size=train_batch_size,
-                                shuffle=True,
-                                drop_last=True,
-                                pin_memory=True,
-                                num_workers=self.hparams["num_workers"],
-                                collate_fn=self.collate_fn)
+            self.train_set,
+            batch_size=train_batch_size,
+            shuffle=True,
+            drop_last=True,
+            pin_memory=True,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=self.collate_fn,
+        )
 
         self.batches_per_epoch = len(train_loader)
 
@@ -114,10 +126,11 @@ class SpeechClassifierModule(LightningModule):
 
         result = EvalResult(self.loss)
         log_vals = {
-            'val_loss': self.loss,
-            'val_acc': batch_acc,
-            'val_f1': batch_f1,
-            'val_recall': batch_recall}
+            "val_loss": self.loss,
+            "val_acc": batch_acc,
+            "val_f1": batch_f1,
+            "val_recall": batch_recall,
+        }
 
         # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
         result.log_dict(log_vals)
@@ -127,11 +140,12 @@ class SpeechClassifierModule(LightningModule):
     def val_dataloader(self):
 
         dev_loader = data.DataLoader(
-                                self.dev_set,
-                                batch_size=min(len(self.dev_set), 16),
-                                shuffle=False,
-                                num_workers=self.hparams["num_workers"],
-                                collate_fn=self.collate_fn)
+            self.dev_set,
+            batch_size=min(len(self.dev_set), 16),
+            shuffle=False,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=self.collate_fn,
+        )
 
         return dev_loader
 
@@ -150,11 +164,11 @@ class SpeechClassifierModule(LightningModule):
         # RESULT DICT
         result = EvalResult()
         log_vals = {
-            'test_loss': self.loss,
-            'test_acc': batch_acc,
-            'test_f1': batch_f1,
-            'test_recall': batch_recall
-            }
+            "test_loss": self.loss,
+            "test_acc": batch_acc,
+            "test_f1": batch_f1,
+            "test_recall": batch_recall,
+        }
         result.y = y
         result.output = output
 
@@ -166,11 +180,12 @@ class SpeechClassifierModule(LightningModule):
     def test_dataloader(self):
 
         test_loader = data.DataLoader(
-                                    self.test_set,
-                                    batch_size=1,
-                                    shuffle=False,
-                                    num_workers=self.hparams["num_workers"],
-                                    collate_fn=self.collate_fn)
+            self.test_set,
+            batch_size=1,
+            shuffle=False,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=self.collate_fn,
+        )
 
         return test_loader
 
@@ -180,14 +195,26 @@ class SpeechClassifierModule(LightningModule):
         return self.model(x)
 
     # CALLBACKS
-    def on_init_end(self):
-        if self.hparams["compress"]:
-            self.model.to(self.device)
-            # msglogger.info("Activating compression scheduler")
-            self.compression_scheduler = distiller.file_config(
-                                                        self.model,
-                                                        self.optimizer,
-                                                        self.hparams["compress"])
+    def setup(self, train):
+        self.msglogger.info("!!! setup(self, train)")
+
+    def on_fit_start(self):
+        self.msglogger.info("!!! on_fit_start")
+
+    def on_train_start(self):
+        self.msglogger.info("!!! on_train_start")
+
+    def on_pretrain_routine_start(self):
+        self.msglogger.info("!!! on_pretrain_routine_start")
+
+    # def on_train_start(self):
+    #     self.msglogger.info("!!! on_train_start")
+    #     if self.hparams["compress"]:
+    #         self.model.to(self.device)
+    #         self.msglogger.info("Activating compression scheduler")
+    #         self.compression_scheduler = distiller.file_config(
+    #             self.model, self.optimizer, self.hparams["compress"]
+    #         )
 
     def on_epoch_start(self):
         if self.compression_scheduler is not None:
@@ -195,7 +222,9 @@ class SpeechClassifierModule(LightningModule):
 
     def on_batch_end(self):
         if self.compression_scheduler is not None:
-            self.compression_scheduler.on_minibatch_end(self.current_epoch, self.batch_idx, self.batches_per_epoch)
+            self.compression_scheduler.on_minibatch_end(
+                self.current_epoch, self.batch_idx, self.batches_per_epoch
+            )
 
     def on_epoch_end(self):
         if self.compression_scheduler is not None:
@@ -203,4 +232,10 @@ class SpeechClassifierModule(LightningModule):
 
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
-        save_model(self.log_dir, self.model, self.test_set, config=self.hparams, msglogger=self.msglogger)
+        save_model(
+            self.log_dir,
+            self.model,
+            self.test_set,
+            config=self.hparams,
+            msglogger=self.msglogger,
+        )
