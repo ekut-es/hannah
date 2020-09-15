@@ -1,5 +1,6 @@
 from collections import ChainMap, OrderedDict, defaultdict
 from .config import ConfigBuilder, ConfigOption
+
 import argparse
 import os
 import random
@@ -12,6 +13,8 @@ import csv
 import fcntl
 import inspect
 import importlib
+
+from multiprocessing import cpu_count
 
 from torch.autograd import Variable
 import numpy as np
@@ -958,7 +961,7 @@ def build_config(extra_config={}):
 
         num_workers=ConfigOption(
             desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
-            default=0),
+            default=min(32, cpu_count())),
 
         fold_bn=ConfigOption(
             default=-1,
