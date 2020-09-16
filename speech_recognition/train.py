@@ -1225,7 +1225,7 @@ def build_config(extra_config={}):
         ),
         auto_lr=ConfigOption(
             category="Learning Rate Config",
-            default=True,
+            default=False,
             desc="Determines the learning rate automatically",
         ),
         lr=ConfigOption(
@@ -1344,18 +1344,9 @@ def main():
     # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
     # logger = TensorBoardLogger(log_dir, name="my_model")
 
-    # trainset needed to set values in hparams to get model properly
-    train_set, dev_set, test_set = _locate(config["dataset_cls"]).splits(config)
-    config["width"] = train_set.width
-    config["height"] = train_set.height
-    model = get_model(config)
-
     lit_module = SpeechClassifierModule(
-        model, dict(config), log_dir, msglogger
+        dict(config), log_dir, msglogger
     )  # passing logdir for custom json save after training omit double fnccall
-
-    # get optimizer for distiller callback
-    optimizer = get_optimizer(config, model)
 
     kwargs = {
         "max_epochs": n_epochs,
@@ -1364,13 +1355,7 @@ def main():
     }
 
     if config["compress"]:
-        kwargs.update(
-            {
-                "callbacks": [
-                    DistillerCallback(lit_module, model, optimizer, config, msglogger)
-                ]
-            }
-        )
+        kwargs.update({"callbacks": [DistillerCallback(lit_module)]})
 
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True

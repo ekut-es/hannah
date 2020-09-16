@@ -17,28 +17,34 @@ from pytorch_lightning import TrainResult, EvalResult
 
 
 class SpeechClassifierModule(LightningModule):
-    def __init__(self, model, config, log_dir, msglogger):
+    def __init__(self, config, log_dir, msglogger):
         super().__init__()
 
         # TODO lit logger to saves hparams (also outdated to use)
         # which causes error TypeError: can't pickle int objects
         self.hparams = config
 
-        # trainset needed to set values in hparams to get model properly
+        # model
         self.train_set, self.dev_set, self.test_set = _locate(
             config["dataset_cls"]
         ).splits(config)
-        # self.hparams["width"] = self.train_set.width
-        # self.hparams["height"] = self.train_set.height
-        # self.model = get_model(self.hparams)
-        self.model = model
-        self.compression_scheduler = None  # initialize on train start
+        self.hparams["width"] = self.train_set.width
+        self.hparams["height"] = self.train_set.height
+        self.model = get_model(self.hparams)
+
+        # distiller initialized on train start
+        self.compression_scheduler = None
+
+        # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
+
+        # optimizer
         self.optimizer = get_optimizer(self.hparams, self.model)
+
+        self.collate_fn = dataset.ctc_collate_fn
+
+        # logging
         self.log_dir = log_dir
-        self.collate_fn = (
-            dataset.ctc_collate_fn
-        )  # if train_set.loss_function == "ctc" else None
         self.msglogger = msglogger
         self.msglogger.info("speech classifier initialized")
 
@@ -77,6 +83,7 @@ class SpeechClassifierModule(LightningModule):
             self.compression_scheduler.before_backward_pass(
                 self.current_epoch, self.batch_idx, self.batches_per_epoch, self.loss
             )
+
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
@@ -195,40 +202,6 @@ class SpeechClassifierModule(LightningModule):
         return self.model(x)
 
     # CALLBACKS
-    def setup(self, train):
-        self.msglogger.info("!!! setup(self, train)")
-
-    def on_fit_start(self):
-        self.msglogger.info("!!! on_fit_start")
-
-    def on_train_start(self):
-        self.msglogger.info("!!! on_train_start")
-
-    def on_pretrain_routine_start(self):
-        self.msglogger.info("!!! on_pretrain_routine_start")
-
-    # def on_train_start(self):
-    #     self.msglogger.info("!!! on_train_start")
-    #     if self.hparams["compress"]:
-    #         self.model.to(self.device)
-    #         self.msglogger.info("Activating compression scheduler")
-    #         self.compression_scheduler = distiller.file_config(
-    #             self.model, self.optimizer, self.hparams["compress"]
-    #         )
-
-    def on_epoch_start(self):
-        if self.compression_scheduler is not None:
-            self.compression_scheduler.on_epoch_begin(self.current_epoch)
-
-    def on_batch_end(self):
-        if self.compression_scheduler is not None:
-            self.compression_scheduler.on_minibatch_end(
-                self.current_epoch, self.batch_idx, self.batches_per_epoch
-            )
-
-    def on_epoch_end(self):
-        if self.compression_scheduler is not None:
-            self.compression_scheduler.on_epoch_end(self.current_epoch)
 
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
