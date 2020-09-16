@@ -1354,7 +1354,8 @@ def main():
         "row_log_interval": 1,  # enables logging of metrics per step/batch
     }
 
-    if config["compress"]:
+    # TODO distiller only available without auto_lr because compatibility issues
+    if config["compress"] and not config["auto_lr"]:
         kwargs.update({"callbacks": [DistillerCallback(lit_module)]})
 
     if config["cuda"]:
@@ -1386,23 +1387,23 @@ def main():
         # else:
         # train(model_name, config)
 
+        # INIT PYTORCH-LIGHTNING
         lit_trainer = Trainer(**kwargs)
 
         if config["auto_lr"]:
-
             # run lr finder (counts as one epoch)
             lr_finder = lit_trainer.lr_find(lit_module)
-
             # inspect results
             fig = lr_finder.plot()
             fig.savefig(f"{log_dir}/learing_rate.png")
-
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
-            lit_module = SpeechClassifierModule(model, dict(config), log_dir, msglogger)
+            lit_module = SpeechClassifierModule(dict(config), log_dir, msglogger)
 
+        # PL TRAIN
         lit_trainer.fit(lit_module)
+        # PL TEST
         lit_trainer.test(ckpt_path=None)
 
         if config["profile"]:
