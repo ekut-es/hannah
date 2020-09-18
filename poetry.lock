@@ -1088,12 +1088,16 @@ description = "Tensorflow backend for ONNX (Open Neural Network Exchange)."
 name = "onnx-tf"
 optional = true
 python-versions = "*"
-version = "1.5.0"
+version = "1.6.0"
 
 [package.dependencies]
 PyYAML = "*"
-onnx = ">=1.5.0"
+onnx = ">=1.6.0"
 
+[package.source]
+reference = "0110e0ec857898fb32526541c2199d6c69b226a1"
+type = "git"
+url = "https://github.com/onnx/onnx-tensorflow.git"
 [[package]]
 category = "main"
 description = "Optimizing numpys einsum function"
@@ -1781,6 +1785,17 @@ version = ">=0.26"
 
 [[package]]
 category = "main"
+description = "TensorFlow Addons."
+name = "tensorflow-addons"
+optional = true
+python-versions = "*"
+version = "0.11.2"
+
+[package.dependencies]
+typeguard = ">=2.7"
+
+[[package]]
+category = "main"
 description = "TensorFlow Estimator."
 name = "tensorflow-estimator"
 optional = false
@@ -1932,6 +1947,18 @@ name = "typed-ast"
 optional = false
 python-versions = "*"
 version = "1.4.1"
+
+[[package]]
+category = "main"
+description = "Run-time type checker for Python"
+name = "typeguard"
+optional = true
+python-versions = ">=3.5.3"
+version = "2.9.1"
+
+[package.extras]
+doc = ["sphinx-rtd-theme", "sphinx-autodoc-typehints (>=1.2.0)"]
+test = ["pytest", "typing-extensions"]
 
 [[package]]
 category = "main"
@@ -2094,10 +2121,10 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [extras]
-tf-backend = ["onnx-tf"]
+tf-backend = ["onnx-tf", "tensorflow-addons"]
 
 [metadata]
-content-hash = "4b6c3d81ed88effcd03e3becc4ef7a25a6b270bfc0730b70efbcc07ed4f80996"
+content-hash = "e8ef6f805b18d375af8932815ef1770a1c2635eeb933cf78cf8d22c4513169dd"
 lock-version = "1.0"
 python-versions = "^3.6.1"
 
@@ -2695,10 +2722,7 @@ onnx = [
     {file = "onnx-1.7.0-cp38-cp38-win_amd64.whl", hash = "sha256:be5cf7738268b8c2715ad4c79a8511a5cfd53c43c1b36d7688240c180345127d"},
     {file = "onnx-1.7.0.tar.gz", hash = "sha256:5e7abaaf71c9403354c406cf20975c1499399247e1f98b5a446a700d977bd948"},
 ]
-onnx-tf = [
-    {file = "onnx-tf-1.5.0.tar.gz", hash = "sha256:37a645de38e493ac91df947492b4f743f59087cc4df4e679affee2237f1f784f"},
-    {file = "onnx_tf-1.5.0-py3-none-any.whl", hash = "sha256:883516019737a3b575bd54e95073e2cb19f6315b7db86cb56d6265a4b4d2df6c"},
-]
+onnx-tf = []
 opt-einsum = [
     {file = "opt_einsum-3.3.0-py3-none-any.whl", hash = "sha256:2455e59e3947d3c275477df7f5205b30635e266fe6dc300e3d9f9646bfcea147"},
     {file = "opt_einsum-3.3.0.tar.gz", hash = "sha256:59f6475f77bbc37dcf7cd748519c0ec60722e91e63ca114e68821c0c54a46549"},
@@ -3107,6 +3131,20 @@ tensorflow = [
     {file = "tensorflow-2.2.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:8f364528f70d895b96a0de36c7c6002644bf4c5df1ee3fbfa775f5cee6571ad7"},
     {file = "tensorflow-2.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:784ab8217e4b0eb4d121c28430c6cdc2ce56c02634a9720d84fb30598b338b8c"},
 ]
+tensorflow-addons = [
+    {file = "tensorflow_addons-0.11.2-cp35-cp35m-macosx_10_13_x86_64.whl", hash = "sha256:c3dcf5fd56aeacf13fd41b198eb6c11567b9cf86f516673b9766a1f97061bde2"},
+    {file = "tensorflow_addons-0.11.2-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:adcfcddc62f879880f0e164344612198ea3b6de0f54978b9379cad5c350af5ff"},
+    {file = "tensorflow_addons-0.11.2-cp35-cp35m-win_amd64.whl", hash = "sha256:16b3fc4258a0251401bb0ced75742c6c02d7c5dee0531df976499da8208b5bb4"},
+    {file = "tensorflow_addons-0.11.2-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:677bbe0714eb8286667d7ecf3a41e53234de72d93e67d23f63b6e55345da91b6"},
+    {file = "tensorflow_addons-0.11.2-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:cfbd34c93327de78ef0dee14956fed19bac9ef039670869000b0a4405f539c4e"},
+    {file = "tensorflow_addons-0.11.2-cp36-cp36m-win_amd64.whl", hash = "sha256:35ae042544b6f3334c2d05f111db7bc9692ac2a001078c20f4414d270c481832"},
+    {file = "tensorflow_addons-0.11.2-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:22177e036e17d057afeeea0327f045d2aeb84539db31c4d81dbb5e7942692ce5"},
+    {file = "tensorflow_addons-0.11.2-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:76d7a1b99ddb69c3990581147fe751c9767f3b2555836f170c4a580525decdf9"},
+    {file = "tensorflow_addons-0.11.2-cp37-cp37m-win_amd64.whl", hash = "sha256:8663048652b8b5f7fb09c58b1c166c001fdf6e704e4a132307daef08f1b7beab"},
+    {file = "tensorflow_addons-0.11.2-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:e6b9acec0a8353b52854d7c7e422a1e96459c58c3307ee4c7ba7bf3afb035fb6"},
+    {file = "tensorflow_addons-0.11.2-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:e36dd53520989dbd2c6850ea92a23739bd90fb481d7076777d8d521dce47fcc8"},
+    {file = "tensorflow_addons-0.11.2-cp38-cp38-win_amd64.whl", hash = "sha256:551b0097f28075c31dfebc3d8e717bc23bd8521ba03f2d69e2141c2bd687cd29"},
+]
 tensorflow-estimator = [
     {file = "tensorflow_estimator-2.2.0-py2.py3-none-any.whl", hash = "sha256:d09dacdd127f2579cea8d5af21f4a918036b8ae246adc82f26b61f91cc247dc2"},
 ]
@@ -3192,6 +3230,10 @@ typed-ast = [
     {file = "typed_ast-1.4.1-cp38-cp38-win_amd64.whl", hash = "sha256:fc0fea399acb12edbf8a628ba8d2312f583bdbdb3335635db062fa98cf71fca4"},
     {file = "typed_ast-1.4.1-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:d43943ef777f9a1c42bf4e552ba23ac77a6351de620aa9acf64ad54933ad4d34"},
     {file = "typed_ast-1.4.1.tar.gz", hash = "sha256:8c8aaad94455178e3187ab22c8b01a3837f8ee50e09cf31f1ba129eb293ec30b"},
+]
+typeguard = [
+    {file = "typeguard-2.9.1-py3-none-any.whl", hash = "sha256:e258567e62d28f9a51d4f7c71f491154e9ef0889286ad2f37e3e22e4f668b21b"},
+    {file = "typeguard-2.9.1.tar.gz", hash = "sha256:529ef3d88189cc457f4340388028412f71be8091c2c943465146d4170fb67288"},
 ]
 typing-extensions = [
     {file = "typing_extensions-3.7.4.3-py2-none-any.whl", hash = "sha256:dafc7639cde7f1b6e1acc0f457842a83e722ccca8eef5270af2d74792619a89f"},

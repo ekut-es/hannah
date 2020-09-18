@@ -21,8 +21,9 @@ audioread = "2.1.6"
 # solve "No module named 'numba.decorators'":
 numba = "0.48.0"
 
+onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
+tensorflow-addons = {version = "^0.11.2", optional = true}
 # optional dependencies
-onnx-tf = {version = "^1.5.0", optional = true}
 
 [tool.poetry.dev-dependencies]
 pytest = "4.6.1"
@@ -31,7 +32,7 @@ pre_commit = "^2.7.1"
 black = "^20.8b1"
 
 [tool.poetry.extras]
-tf-backend = ["onnx-tf"]
+tf-backend = ["onnx-tf", "tensorflow-addons"]
 
 [[tool.poetry.source]]
 name = "gerum"
