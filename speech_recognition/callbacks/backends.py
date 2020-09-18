@@ -37,11 +37,11 @@ class InferenceBackendBase(Callback):
     ):
         if self.validation_epoch % self.val_frequency == 0:
             result = self.run_batch(inputs=[batch[0]])
-            result = torch.from_numpy(result[0])
             target = pl_module.forward(batch[0])
 
-            mse = F.mse_loss(result, target, reduction="mean")
-            print(mse)
+            mse = F.mse_loss(result[0], target, reduction="mean")
+            for logger in pl_module.logger:
+                logger.log_metrics({"val_backend_mse": mse})
 
     def on_validation_epoch_end(self, trainer, pl_module):
         self.validation_epoch += 1
@@ -85,5 +85,5 @@ class OnnxTFBackend(InferenceBackendBase):
         logging.info("running tf backend on batch")
 
         result = self.tf_model.run(inputs=inputs)
-
+        result = [torch.from_numpy(res) for res in result]
         return result
