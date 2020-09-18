@@ -1,5 +1,9 @@
-from pytorch_lightning import Callback
 import logging
+
+from pytorch_lightning import Callback
+import torch.onnx
+from onnx_tf.backend import prepare
+import onnx
 
 
 class InferenceBackendBase(Callback):
@@ -16,16 +20,22 @@ class InferenceBackendBase(Callback):
     def run_batch(self, batch):
         raise NotImplementedError("run_batch is an abstract method")
 
+    def prepare(self, module):
+        raise NotImplementedError("prepare is an abstract method")
+
+    def on_validation_epoch_start(self, trainer, pl_module):
+        self.prepare(pl_module)
+
     def on_validation_batch_end(
         self, trainer, pl_module, batch, batch_idx, dataloader_idx
     ):
-        result = self.run_batch(batch)
+        result = self.run_batch(inputs=[batch[0]], outputs=[batch[2]])
 
     def on_validation_epoch_end(self, trainer, pl_module):
         self.validation_epoch += 1
 
     def on_test_batch_end(self, trainer, pl_module, batch, batch_idx, dataloader_idx):
-        result = self.run_batch(batch)
+        result = self.run_batch(inputs=[batch[0]], outputs=[batch[2]])
 
 
 class OnnxTFBackend(InferenceBackendBase):
@@ -40,6 +50,18 @@ class OnnxTFBackend(InferenceBackendBase):
             val_frequency=10,
         )
 
-    def run_batch(self, batch):
+        self.tf_model = None
+
+    def prepare(self, model):
+        print("transfering model to onnx")
+        dummy_input = model.example_input_array
+        torch.onnx.export(model, dummy_input, "model.onnx", verbose=True)
+        print("Creating tf-protobuf")
+        onnx_model = onnx.load("model.onnx")
+        self.tf_model = prepare(onnx_model)
+
+    def run_batch(self, inputs=[], outputs=[]):
         print("running tf backend on batch")
-        print(batch)
+
+        result = self.tf_model.run(inputs=inputs)
+        print(result)
