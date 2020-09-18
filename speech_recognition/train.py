@@ -45,7 +45,7 @@ from .utils import _locate, _fullname
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.core.lightning import ModelSummary
 from pytorch_lightning.profiler import AdvancedProfiler
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from .lightning_model import *
 
 msglogger = None
@@ -199,9 +199,7 @@ def get_output_dir(model_name, config):
 
 
 def get_config_logdir(model_name, config):
-    return os.path.join(
-        get_output_dir(model_name, config), "configs", config["config_hash"]
-    )
+    return os.path.join(get_output_dir(model_name, config), config["config_hash"][0:8])
 
 
 def get_model(config, config2=None, model=None, vad_keyword=0):
@@ -1368,6 +1366,12 @@ def main():
             }
         )
 
+    loggers = [
+        TensorBoardLogger(log_dir + "/tb_logs", version="", name=""),
+        CSVLogger(log_dir, version="", name=""),
+    ]
+    kwargs["logger"] = loggers
+
     if config["backend"] == "onnx-tf":
         backend = OnnxTFBackend()
         kwargs["callbacks"].append(backend)
@@ -1380,7 +1384,9 @@ def main():
 
         lit_trainer = Trainer(**kwargs)
         print(ModelSummary(lit_module, "full"))
+
         lit_trainer.fit(lit_module)
+
         lit_trainer.test(ckpt_path=None)
 
         if config["profile"]:
