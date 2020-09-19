@@ -100,6 +100,7 @@ class TCResNetModel(SerializableModule):
         channel_division = config["channel_division"]
         separable = config["separable"]
         small = config["small"]
+        use_inputlayer = config["inputlayer"]
 
         self.layers = nn.ModuleList()
 
@@ -129,7 +130,7 @@ class TCResNetModel(SerializableModule):
                 self.layers.append(conv1)
                 self.layers.append(conv2)
                 self.layers.append(conv3)
-            else:
+            elif use_inputlayer:
                 conv = nn.Conv1d(input_channels, output_channels, size, stride, bias = False)
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
@@ -471,6 +472,7 @@ configs = {
         width_multiplier=1.0,
         dilation=1,
         small=False,
+        inputlayer=True,
         clipping_value=100000,
         bottleneck=(0, 0),
         channel_division=(2, 4),
@@ -486,6 +488,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (2,4),
@@ -504,6 +507,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (2,4),
@@ -525,6 +529,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (2,4),
@@ -549,6 +554,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (2,4),
@@ -576,6 +582,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (4,2),
@@ -606,6 +613,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (4,2),
@@ -639,6 +647,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (4,2),
@@ -675,6 +684,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (4,2),
@@ -715,6 +725,7 @@ configs = {
         width_multiplier = 1.0,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (4,2),
@@ -757,6 +768,7 @@ configs = {
         width_multiplier = 1.5,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (4,2),
@@ -781,6 +793,7 @@ configs = {
         width_multiplier = 1.5,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (4,2),
@@ -816,6 +829,7 @@ configs = {
         width_multiplier = 1,
         dilation = 1,
         small=False,
+        inputlayer=True,
         clipping_value = 100000,
         bottleneck = (0,0),
         channel_division = (4,2),
