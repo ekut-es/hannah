@@ -1,6 +1,6 @@
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
-from .train import get_loss_function, get_optimizer, get_model, save_model
+from .train import get_lr_scheduler, get_loss_function, get_optimizer, get_model, save_model
 import torch.utils.data as data
 import torch
 from . import dataset
@@ -27,7 +27,6 @@ class SpeechClassifierModule(LightningModule):
         self.compression_scheduler = None  # initialize on train start
         self.model = get_model(self.hparams)
         self.criterion = get_loss_function(self.model, self.hparams)
-        self.optimizer = get_optimizer(self.hparams, self.model)
         self.log_dir = log_dir
         self.collate_fn = dataset.ctc_collate_fn  # if train_set.loss_function == "ctc" else None
         self.msglogger = config_pylogger('logging.conf', "lightning-logger", self.log_dir)
@@ -42,7 +41,10 @@ class SpeechClassifierModule(LightningModule):
     # PREPARATION
 
     def configure_optimizers(self):
-        return self.optimizer
+        optimizer = get_optimizer(self.hparams, self)
+        scheduler = get_lr_scheduler(self.hparams, optimizer)
+
+        return [optimizer], [scheduler]
 
     def get_batch_metrics(self, output, y):
 
@@ -200,10 +202,16 @@ class SpeechClassifierModule(LightningModule):
 
         if self.hparams["compress"]:
             self.model.to(self.device)
+
+            if len(self.trainer.optimizers) != 1:
+                raise Exception("Compression is only available when using a single optimizer")
+
+            optimizer = self.trainer.optimizers[0]
+
             # msglogger.info("Activating compression scheduler")
             self.compression_scheduler = distiller.file_config(
                                                         self.model,
-                                                        self.optimizer,
+                                                        optimizer,
                                                         self.hparams["compress"])
 
     def on_epoch_start(self):
