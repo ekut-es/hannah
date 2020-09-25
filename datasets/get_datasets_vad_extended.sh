@@ -99,8 +99,8 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
 
     cd ..
 
-    #python3 split_vad_data_balanced_extended.py
-    #python3 downsample.py
+    python3 split_vad_data_balanced_extended.py
+    python3 downsample.py
 
 else
     echo "then please choose the right place for the project!"
