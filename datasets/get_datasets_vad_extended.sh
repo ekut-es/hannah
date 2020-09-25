@@ -100,7 +100,7 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
     cd ..
 
     python3 split_vad_data_balanced_extended.py
-    print("Next step takes 1+ hours. Take for a coffee ;-)")
+    echo "Next step takes 1+ hours. Take for a coffee ;-)"
     python3 downsample.py
 
 else
