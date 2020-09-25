@@ -33,7 +33,7 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
     #rm  -f TUT-acoustic-scenes-2017-development.audio.10.zip
 
     mkdir -p FSDKaggle
-    pushd FSDKaggle
+    cd FSDKaggle
 
     wget https://zenodo.org/record/2552860/files/FSDKaggle2018.audio_test.zip
     unzip FSDKaggle2018.audio_test.zip
@@ -46,10 +46,10 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
     wget https://zenodo.org/record/2552860/files/FSDKaggle2018.meta.zip
     unzip FSDKaggle2018.meta.zip
     rm FSDKaggle2018.meta.zip
-    popd
+    cd ..
 
     mkdir -p FSDnoisy
-    pushd FSDnoisy
+    cd FSDnoisy
     wget https://zenodo.org/record/2529934/files/FSDnoisy18k.audio_test.zip
     unzip FSDnoisy18k.audio_test.zip
     rm FSDnoisy18k.audio_test.zip
@@ -59,13 +59,13 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
     wget https://zenodo.org/record/2529934/files/FSDnoisy18k.meta.zip
     unzip FSDnoisy18k.meta.zip
     rm FSDnoisy18k.meta.zip
-    popd
+    cd ..
 
-    popd
+    cd ..
 
     mkdir -p speech_files
+    cd speech_files
 
-    pushd speech_files
     wget https://zeos.ling.washington.edu/corpora/UWNU/uwnu-v2.tar.gz
     tar xvzf  uwnu-v2.tar.gz
     rm uwnu-v2.tar.gz
@@ -108,8 +108,7 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
     rm it.tar.gz
     popd
 
-    popd
-    popd
+    cd ..
 
     #python3 split_vad_data_balanced_extended.py
     #python3 downsample.py
