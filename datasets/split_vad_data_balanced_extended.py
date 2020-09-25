@@ -47,8 +47,8 @@ if not os.path.exists("./noise_files/FSD"):
 
     #working with FSDNoise
 
-    kagglenoise_train = pd.read_csv("./FSDnoisy/FSDnoisy18k.meta/train.csv")
-    kagglenoise_test = pd.read_csv("./FSDnoisy/FSDnoisy18k.meta/test.csv")
+    kagglenoise_train = pd.read_csv("./noise_files/FSDnoisy/FSDnoisy18k.meta/train.csv")
+    kagglenoise_test = pd.read_csv("./noise_files/FSDnoisy/FSDnoisy18k.meta/test.csv")
 
     path = "./noise_files/FSD"
     os.system("mkdir " + path)
@@ -61,14 +61,14 @@ if not os.path.exists("./noise_files/FSD"):
                                        element["fname"]) + " " + os.path.join("./noise_files/FSD", element["fname"]))
 
     for idx, element in kagglenoise_test.iterrows():
-        os.system("cp " + os.path.join("./FSDnoisy/FSDnoisy18k.audio_test", element["fname"]) + " " + os.path.join("./noise_files/FSD", element["fname"]))
+        os.system("cp " + os.path.join("./noise_files/FSDnoisy/FSDnoisy18k.audio_test", element["fname"]) + " " + os.path.join("./noise_files/FSD", element["fname"]))
 
     for idx, element in kagglenoise_train.iterrows():
-        os.system("cp " + os.path.join("./FSDnoisy/FSDnoisy18k.audio_train",
+        os.system("cp " + os.path.join("./noise_files/FSDnoisy/FSDnoisy18k.audio_train",
                                        element["fname"]) + " " + os.path.join("./noise_files/FSD", element["fname"]))
 
-    os.system("rm -rf ./noise_files/FSDKaggle")
-    os.system("rm -rf ./FSDnoisy")
+    os.system("rm -r ./noise_files/FSDKaggle")
+    os.system("rm -r ./noise_files/FSDnoisy")
 
 speech_files = []
 for path, subdirs, files in os.walk(speech_dir):

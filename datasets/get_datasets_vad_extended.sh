@@ -50,12 +50,15 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
 
     mkdir -p FSDnoisy
     cd FSDnoisy
+
     wget https://zenodo.org/record/2529934/files/FSDnoisy18k.audio_test.zip
     unzip FSDnoisy18k.audio_test.zip
     rm FSDnoisy18k.audio_test.zip
+
     wget https://zenodo.org/record/2529934/files/FSDnoisy18k.audio_train.zip
     unzip FSDnoisy18k.audio_train.zip
     rm FSDnoisy18k.audio_train.zip
+
     wget https://zenodo.org/record/2529934/files/FSDnoisy18k.meta.zip
     unzip FSDnoisy18k.meta.zip
     rm FSDnoisy18k.meta.zip
