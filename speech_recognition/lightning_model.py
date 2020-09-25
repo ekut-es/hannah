@@ -33,7 +33,7 @@ class SpeechClassifierModule(LightningModule):
         self.model = get_model(self.hparams)
 
         # distiller initialized on train start
-        self.compression_scheduler = None
+        # self.compression_scheduler = None
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
