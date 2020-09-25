@@ -22,16 +22,16 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
 
     unzip  -P pass '*.zip'
 
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.1.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.2.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.3.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.4.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.5.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.6.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.7.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.8.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.9.zip
-    #rm  -f TUT-acoustic-scenes-2017-development.audio.10.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.1.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.2.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.3.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.4.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.5.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.6.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.7.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.8.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.9.zip
+    rm  -f TUT-acoustic-scenes-2017-development.audio.10.zip
 
     mkdir -p FSDKaggle
     cd FSDKaggle
