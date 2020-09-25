@@ -52,7 +52,6 @@ class SpeechClassifierModule(LightningModule):
     def get_batch_metrics(self, output, y):
 
         y = y.view(-1)
-        self.loss = self.criterion(output, y)
 
         output_max = output.argmax(dim=1)
         batch_acc = accuracy(output_max, y, self.hparams["n_labels"])
@@ -68,19 +67,20 @@ class SpeechClassifierModule(LightningModule):
         x, x_len, y, y_len = batch
         output = self(x)
         y = y.view(-1)
+        loss = self.criterion(output, y)
 
         if self.hparams["compress"]:
             self.compression_scheduler.before_backward_pass(
-                self.current_epoch, batch_idx, self.batches_per_epoch, self.loss
+                self.current_epoch, batch_idx, self.batches_per_epoch, loss
             )
 
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
-        result = TrainResult(self.loss)
+        result = TrainResult(loss)
 
         log_vals = {
-            "train_loss": self.loss,
+            "train_loss": loss,
             "train_acc": batch_acc,
             "train_f1": batch_f1,
             "train_recall": batch_recall,
@@ -117,13 +117,15 @@ class SpeechClassifierModule(LightningModule):
 
         # INFERENCE
         output = self.model(x)
+        y = y.view(-1)
+        loss = self.criterion(output, y)
 
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
-        result = EvalResult(self.loss)
+        result = EvalResult(loss)
         log_vals = {
-            "val_loss": self.loss,
+            "val_loss": loss,
             "val_acc": batch_acc,
             "val_f1": batch_f1,
             "val_recall": batch_recall,
@@ -154,6 +156,8 @@ class SpeechClassifierModule(LightningModule):
         x, x_length, y, y_length = batch
 
         output = self.model(x)
+        y = y.view(-1)
+        loss = self.criterion(output, y)
 
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
@@ -161,7 +165,7 @@ class SpeechClassifierModule(LightningModule):
         # RESULT DICT
         result = EvalResult()
         log_vals = {
-            "test_loss": self.loss,
+            "test_loss": loss,
             "test_acc": batch_acc,
             "test_f1": batch_f1,
             "test_recall": batch_recall,
