@@ -65,18 +65,11 @@ class SpeechClassifierModule(LightningModule):
 
     def training_step(self, batch, batch_idx):
 
-        # self.batch_idx = batch_idx
-
-        # if self.compression_scheduler is not None:
-        #     self.compression_scheduler.on_minibatch_begin(
-        #         self.current_epoch, batch_idx, self.batches_per_epoch
-        #     )
-
         x, x_len, y, y_len = batch
         output = self(x)
         y = y.view(-1)
 
-        if self.compression_scheduler is not None:
+        if self.hparams["compress"]:
             self.compression_scheduler.before_backward_pass(
                 self.current_epoch, batch_idx, self.batches_per_epoch, self.loss
             )
