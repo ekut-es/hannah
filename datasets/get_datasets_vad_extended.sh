@@ -1,4 +1,4 @@
-echo -n "Are you sure that you have 125GB free space on Disk (y/n)? "
+echo -n "Are you sure that you have 200 GB free space on Disk (y/n)? "
 read answer
 echo -n "Time to get a cup of coffee, this will take a while (6-8 hours)"
 
