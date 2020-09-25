@@ -70,43 +70,28 @@ if [ "$answer" != "${answer#[Yy]}" ] ;then
     tar xvzf  uwnu-v2.tar.gz
     rm uwnu-v2.tar.gz
 
-    mkdir -p mozilla
-    pushd mozilla
     #dataset version 2020-06-22
-    mkdir -p en
-    pushd en
     wget https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz
     tar xvzf en.tar.gz
     rm en.tar.gz
-    popd
 
-    mkdir de
-    pushd de
     wget https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/de.tar.gz
     tar xvzf de.tar.gz
     rm de.tar.gz
-    popd
 
-    mkdir -p fr
-    pushd fr
     wget https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/fr.tar.gz
     tar xvzf fr.tar.gz
     rm fr.tar.gz
-    popd
 
-    mkdir -p es
-    pushd es
     wget https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/es.tar.gz
     tar xvzf es.tar.gz
     rm es.tar.gz
-    popd
 
-    mkdir -p it
-    pushd it
     wget https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/it.tar.gz
     tar xvzf it.tar.gz
     rm it.tar.gz
-    popd
+
+    mv cv-corpus-5.1-2020-06-22 mozilla
 
     cd ..
 
