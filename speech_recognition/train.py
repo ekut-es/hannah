@@ -1356,7 +1356,7 @@ def main():
 
     # TODO distiller only available without auto_lr because compatibility issues
     if config["compress"] and not config["auto_lr"]:
-        kwargs.update({"callbacks": [DistillerCallback(lit_module)]})
+        kwargs.update({"callbacks": [DistillerCallback()]})
 
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
