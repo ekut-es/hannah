@@ -3,14 +3,6 @@ import distiller
 
 
 class DistillerCallback(Callback):
-    # def __init__(self, lit_module):
-    #     super().__init__()
-    #     self.lit_module = lit_module
-    #     self.hparams = lit_module.hparams
-    #     self.model = lit_module.model
-    #     self.optimizer = lit_module.optimizer
-    #     self.msglogger = lit_module.msglogger
-
     def on_train_start(self, trainer, pl_module):
         pl_module.model.to(pl_module.device)
         pl_module.msglogger.info("Activating compression scheduler")
