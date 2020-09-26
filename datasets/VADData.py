@@ -17,12 +17,12 @@ class VADData():
                         "./noise_files/FSDKaggle/", "./noise_files/FSDnoisy/",
                         "./noise_files/FSDnoisy/", "./noise_files/FSDnoisy/"]
 
-    # big_speech = ["https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
-    #              "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/de.tar.gz",
-    #              "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/fr.tar.gz",
-    #              "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/es.tar.gz",
-    #              "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/it.tar.gz"]
-    big_speech = ["https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/it.tar.gz"]
+    big_speech = ["https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
+                  "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/de.tar.gz",
+                  "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/fr.tar.gz",
+                  "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/es.tar.gz",
+                  "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/it.tar.gz"]
+
 
     def __init__(self):
         self.big = False
