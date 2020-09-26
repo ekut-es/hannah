@@ -2,17 +2,29 @@ import os
 
 
 class VADData():
-    
-    big_noise = ["https://zenodo.org/record/2552860/files/FSDKaggle2018.audio_test.zip", "https://zenodo.org/record/2552860/files/FSDKaggle2018.audio_train.zip", "https://zenodo.org/record/2552860/files/FSDKaggle2018.meta.zip", "https://zenodo.org/record/2529934/files/FSDnoisy18k.audio_test.zip", "https://zenodo.org/record/2529934/files/FSDnoisy18k.audio_train.zip", "https://zenodo.org/record/2529934/files/FSDnoisy18k.meta.zip"]
-    big_noise_folder = ["./noise_files/FSDKaggle/", "./noise_files/FSDKaggle/", "./noise_files/FSDKaggle/", "./noise_files/FSDnoisy/", "./noise_files/FSDnoisy/", "./noise_files/FSDnoisy/"]
 
-    big_speech = ["https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz", "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/de.tar.gz", "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/fr.tar.gz", "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/es.tar.gz", "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/it.tar.gz"]
+    big_noise = [
+      "https://zenodo.org/record/2552860/files/FSDKaggle2018.audio_test.zip",
+      "https://zenodo.org/record/2552860/files/FSDKaggle2018.audio_train.zip",
+      "https://zenodo.org/record/2552860/files/FSDKaggle2018.meta.zip",
+      "https://zenodo.org/record/2529934/files/FSDnoisy18k.audio_test.zip",
+      "https://zenodo.org/record/2529934/files/FSDnoisy18k.audio_train.zip",
+      "https://zenodo.org/record/2529934/files/FSDnoisy18k.meta.zip"]
+    big_noise_folder = ["./noise_files/FSDKaggle/", "./noise_files/FSDKaggle/",
+                        "./noise_files/FSDKaggle/", "./noise_files/FSDnoisy/",
+                        "./noise_files/FSDnoisy/", "./noise_files/FSDnoisy/"]
+
+    #big_speech = ["https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
+    #              "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/de.tar.gz",
+    #              "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/fr.tar.gz",
+    #              "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/es.tar.gz",
+    #              "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/it.tar.gz"]
+    big_speech = ["https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/it.tar.gz"]
 
     def __init__(self):
         print("works")
         self.make_structure()
 
-    
     def downsample(self):
         print("Start with downsample of VAD")
         for path, subdirs, files in os.walk("./vad_data_balanced/"):
@@ -31,32 +43,33 @@ class VADData():
         os.system("mkdir -p ./speech_files")
         os.system("mkdir -p ./vad_data_balanced/")
 
-    def download(self, link):
-        os.system("wget " + link)
+    def download(self, link, certificate=""):
+        os.system("wget " + link + " " + certificate)
 
     def unzip(self, file, destination):
-        os.system("unzip -P pass " + file + "-d " + destination)
+        os.system("unzip -P pass " + file + " -d " + destination)
 
-    def untar(self, filem destination):
-        os.system("tar -xvzf "+ file +" -C " + destination")
+    def untar(self, file, destination):
+        os.system("tar -xvzf " + file + " -C " + destination)
 
     def get_small_dataset(self):
         for i in range(1, 10):
             self.download("https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio." + str(i) +".zip")
+            pass
         self.unzip("'*.zip'", "./noise_files/")
         os.system("rm *.zip")
 
-        self.download("https://zeos.ling.washington.edu/corpora/UWNU/uwnu-v2.tar.gz")
-        self.untarm("uwnu-v2.tar.gz", "./speech_files/")
+        self.download("https://zeos.ling.washington.edu/corpora/UWNU/uwnu-v2.tar.g", "--no-check-certificate")
+        self.untar("uwnu-v2.tar.gz", "./speech_files/")
 
-    def big_dataset(self):
-        for link in zip(self.big_noise, self.big_noise_folder):
+    def get_big_dataset(self):
+        for link, folder  in zip(self.big_noise, self.big_noise_folder):
             self.download(link)
-            self.unzip("*.zip", destination)
+            self.unzip("*.zip", folder)
             os.system("rm *.zip")
-        
+
         for link in self.big_speech:
             self.download(link)
-            self.untar("*.tar.gz", "./speech_files/")"
+            self.untar("*.tar.gz", "./speech_files/")
             os.system("rm *.tar.gz")
-            os.system("mv ./speech_files/cv-corpus-5.1-2020-06-22/ ./speech_files/mozilla")
+            os.system("mv ./speech_files/cv-corpus-5.1-2020-06-22/ ./speech_files/mozilla/")
