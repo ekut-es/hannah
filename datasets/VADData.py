@@ -50,10 +50,10 @@ class VADData():
         os.system("mkdir -p ./vad_data_balanced/")
 
     def download(self, link, certificate=""):
-        os.system("wget " + link + " " + certificate)
+        os.system("wget -q " + link + " " + certificate)
 
     def unzip(self, file, destination):
-        os.system("unzip -P pass " + file + " -d " + destination)
+        os.system("unzip -qq -P pass " + file + " -d " + destination)
 
     def untar(self, file, destination):
         os.system("tar -xvzf " + file + " -C " + destination)
