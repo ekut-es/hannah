@@ -148,12 +148,12 @@ class VADData():
                 shutil.copy(f, data_dir)
 
     def load_Folder(self, dictionary):
-        files = []
+        tmp = []
         for path, subdirs, files in os.walk(dictionary):
             for name in files:
-                if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
-                    files.append(os.path.join(path, name))
-        return files
+                if (name.endswith(".wav") | name.endswith(".mp3")) and not name.startswith("."):
+                    tmp.append(os.path.join(path, name))
+        return tmp
 
     def split_dataset(self):
 
