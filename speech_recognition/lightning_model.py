@@ -69,10 +69,16 @@ class SpeechClassifierModule(LightningModule):
         y = y.view(-1)
         loss = self.criterion(output, y)
 
-        if self.hparams["compress"]:
-            self.compression_scheduler.before_backward_pass(
-                self.current_epoch, batch_idx, self.batches_per_epoch, loss
-            )
+        # --- after loss
+        for callback in self.trainer.callbacks:
+            if hasattr(callback, "on_before_backward"):
+                callback.on_before_backward(self.trainer, self, loss)
+
+        # if self.hparams["compress"]:
+        #     self.compression_scheduler.before_backward_pass(
+        #         self.current_epoch, batch_idx, self.batches_per_epoch, loss
+        #     )
+        # --- before backward
 
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
@@ -122,7 +128,10 @@ class SpeechClassifierModule(LightningModule):
 
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
-
+        # loss = loss.type(torch.IntTensor)
+        # print(f"!! validation_step: type(loss) = {type(loss)}")
+        # print(f"!! validation_step: loss.item() = {loss.item()}")
+        # print(f"!! validation_step: type(loss.item()) = {type(loss.item())}")
         result = EvalResult(loss)
         log_vals = {
             "val_loss": loss,
@@ -163,15 +172,13 @@ class SpeechClassifierModule(LightningModule):
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         # RESULT DICT
-        result = EvalResult()
+        result = EvalResult(loss)
         log_vals = {
             "test_loss": loss,
             "test_acc": batch_acc,
             "test_f1": batch_f1,
             "test_recall": batch_recall,
         }
-        result.y = y
-        result.output = output
 
         # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
         result.log_dict(log_vals)

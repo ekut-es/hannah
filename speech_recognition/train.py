@@ -43,6 +43,7 @@ from .lightning_model import *
 from .lightning_callbacks import DistillerCallback
 from pytorch_lightning.profiler import AdvancedProfiler
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 msglogger = None
 
@@ -1341,8 +1342,16 @@ def main():
     n_epochs = config["n_epochs"]  # max epochs
     log_dir = get_config_logdir(model_name, config)  # path for logs and checkpoints
     msglogger = config_pylogger("logging.conf", "lightning-logger", log_dir)
-    # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
-    # logger = TensorBoardLogger(log_dir, name="my_model")
+
+    # Configure checkpointing
+    checkpoint_callback = ModelCheckpoint(
+        filepath=log_dir,
+        save_top_k=-1,  #  with PL 0.9.0 only possible to save every epoch
+        verbose=True,
+        monitor="checkpoint_on",
+        mode="min",
+        prefix="",
+    )
 
     lit_module = SpeechClassifierModule(
         dict(config), log_dir, msglogger
@@ -1352,11 +1361,15 @@ def main():
         "max_epochs": n_epochs,
         "default_root_dir": log_dir,
         "row_log_interval": 1,  # enables logging of metrics per step/batch
+        "checkpoint_callback": checkpoint_callback,
+        "callbacks": [],
     }
 
     # TODO distiller only available without auto_lr because compatibility issues
     if config["compress"] and not config["auto_lr"]:
-        kwargs.update({"callbacks": [DistillerCallback()]})
+        callbacks = kwargs["callbacks"]
+        callbacks.append(DistillerCallback())
+        kwargs.update({"callbacks": callbacks})
 
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
