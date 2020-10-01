@@ -1,18 +1,13 @@
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import (
     accuracy,
-    confusion_matrix,
     f1_score,
     recall,
 )
 from .train import get_loss_function, get_optimizer, get_model, save_model
 import torch.utils.data as data
-import torch
 from . import dataset
-import numpy as np
 from .utils import _locate, config_pylogger
-import distiller
-import torchnet.meter as tnt
 from pytorch_lightning import TrainResult, EvalResult
 
 
@@ -73,11 +68,6 @@ class SpeechClassifierModule(LightningModule):
         for callback in self.trainer.callbacks:
             if hasattr(callback, "on_before_backward"):
                 callback.on_before_backward(self.trainer, self, loss)
-
-        # if self.hparams["compress"]:
-        #     self.compression_scheduler.before_backward_pass(
-        #         self.current_epoch, batch_idx, self.batches_per_epoch, loss
-        #     )
         # --- before backward
 
         # METRICS

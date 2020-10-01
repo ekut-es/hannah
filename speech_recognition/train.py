@@ -1266,6 +1266,10 @@ def build_config(extra_config={}):
             default=[1.0, 1.0, 1.0],
             desc="One value for train, validation and test dataset. Decimal number for percentage of dataset. Natural number for exact sample count.",
         ),
+        fast_dev_run=ConfigOption(
+            default=False,
+            desc="Runs 1 batch of train, test and val to find any bugs (ie: a sort of unit test).",
+        ),
         batch_size=ConfigOption(
             default=128, desc="Default minibatch size for training"
         ),
@@ -1385,6 +1389,9 @@ def main():
                 "limit_test_batches": limits[2],
             }
         )
+
+    if config["fast_dev_run"]:
+        kwargs.update({"fast_dev_run": True})
 
     if config["type"] == "train":
 
