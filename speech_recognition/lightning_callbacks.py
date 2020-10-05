@@ -9,8 +9,17 @@ class DistillerCallback(Callback):
 
     def on_train_start(self, trainer, pl_module):
         pl_module.model.to(pl_module.device)
-        pl_module.msglogger.info("Activating compression scheduler")
 
+        if self.fold_bn >= 0 and not self.bn_frozen:
+            self.bn_frozen = True
+            self.msglogger.info("Applying batch norm folding")
+            self.model = distiller.model_transforms.fold_batch_norms(
+                pl_module, dummy_input=self.example_input_array, inference=False
+            )
+            self.msglogger.info("Folded model")
+            self.msglogger.info(pl_module)
+
+        pl_module.msglogger.info("Activating compression scheduler")
         optimizers = trainer.optimizers
         if len(optimizers) != 1:
             raise Exception(
