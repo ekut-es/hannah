@@ -4,9 +4,17 @@ from pytorch_lightning.metrics.functional import (
     f1_score,
     recall,
 )
-from .train import get_loss_function, get_optimizer, get_model, save_model
+from .train import (
+    get_loss_function,
+    get_optimizer,
+    get_model,
+    save_model,
+    get_lr_scheduler,
+)
+
+import torch
 import torch.utils.data as data
-from . import dataset
+from .dataset import ctc_collate_fn, SpeechDataset
 from .utils import _locate, config_pylogger
 from pytorch_lightning import TrainResult, EvalResult
 
@@ -14,7 +22,7 @@ from pytorch_lightning import TrainResult, EvalResult
 class SpeechClassifierModule(LightningModule):
     def __init__(self, config, log_dir, msglogger):
         super().__init__()
-
+        # torch.autograd.set_detect_anomaly(True)
         # TODO lit logger to saves hparams (also outdated to use)
         # which causes error TypeError: can't pickle int objects
         self.hparams = config
@@ -29,20 +37,22 @@ class SpeechClassifierModule(LightningModule):
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
-
-        # optimizer
-        self.optimizer = get_optimizer(self.hparams, self.model)
-
-        self.collate_fn = dataset.ctc_collate_fn
-
-        # logging
         self.log_dir = log_dir
         self.msglogger = msglogger
         self.msglogger.info("speech classifier initialized")
 
+        # summarize model architecture
+        dummy_width, dummy_height = self.train_set.width, self.train_set.height
+        dummy_input = torch.zeros(1, dummy_height, dummy_width)
+        self.example_input_array = dummy_input
+        self.bn_frozen = False
+
     # PREPARATION
     def configure_optimizers(self):
-        return self.optimizer
+        optimizer = get_optimizer(self.hparams, self)
+        scheduler = get_lr_scheduler(self.hparams, optimizer)
+
+        return [optimizer], [scheduler]
 
     def get_batch_metrics(self, output, y):
 
@@ -56,7 +66,6 @@ class SpeechClassifierModule(LightningModule):
         return batch_acc, batch_f1, batch_recall
 
     # TRAINING CODE
-
     def training_step(self, batch, batch_idx):
 
         x, x_len, y, y_len = batch
@@ -97,7 +106,7 @@ class SpeechClassifierModule(LightningModule):
             drop_last=True,
             pin_memory=True,
             num_workers=self.hparams["num_workers"],
-            collate_fn=self.collate_fn,
+            collate_fn=ctc_collate_fn,
         )
 
         self.batches_per_epoch = len(train_loader)
@@ -118,10 +127,6 @@ class SpeechClassifierModule(LightningModule):
 
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
-        # loss = loss.type(torch.IntTensor)
-        # print(f"!! validation_step: type(loss) = {type(loss)}")
-        # print(f"!! validation_step: loss.item() = {loss.item()}")
-        # print(f"!! validation_step: type(loss.item()) = {type(loss.item())}")
         result = EvalResult(loss)
         log_vals = {
             "val_loss": loss,
@@ -142,7 +147,7 @@ class SpeechClassifierModule(LightningModule):
             batch_size=min(len(self.dev_set), 16),
             shuffle=False,
             num_workers=self.hparams["num_workers"],
-            collate_fn=self.collate_fn,
+            collate_fn=ctc_collate_fn,
         )
 
         return dev_loader
@@ -182,7 +187,7 @@ class SpeechClassifierModule(LightningModule):
             batch_size=1,
             shuffle=False,
             num_workers=self.hparams["num_workers"],
-            collate_fn=self.collate_fn,
+            collate_fn=ctc_collate_fn,
         )
 
         return test_loader
@@ -193,7 +198,6 @@ class SpeechClassifierModule(LightningModule):
         return self.model(x)
 
     # CALLBACKS
-
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(

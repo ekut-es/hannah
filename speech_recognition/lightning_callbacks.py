@@ -32,5 +32,24 @@ class DistillerCallback(Callback):
             pl_module.batches_per_epoch,
         )
 
+        if self.hparams["fold_bn"] == self.current_epoch and not self.bn_frozen:
+            self.bn_frozen = True
+            self.msglogger.info("Freezing batch norms")
+            # save_model(log_dir, model, test_set, config=config, model_prefix="before_freeze_")
+
+            def freeze_func(model):
+                import distiller.quantization.sim_bn_fold
+
+                if isinstance(
+                    model, distiller.quantization.sim_bn_fold.SimulatedFoldedBatchNorm
+                ):
+                    model.freeze()
+
+            with torch.no_grad():
+                self.model.apply(freeze_func)
+
+            self.msglogger.info("Model after freezing")
+            self.msglogger.info(self.model)
+
     def on_epoch_end(self, trainer, pl_module):
         self.compression_scheduler.on_epoch_end(pl_module.current_epoch)

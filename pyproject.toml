@@ -10,9 +10,11 @@ pwlf = "^2.0.0"
 distiller = {path = "./external/distiller"}
 gitdb2 = "2.0.6"
 chainmap = "^1.0.3"
-librosa = "0.6.3"
+librosa = "^0.6.3"
 redis = "^3.4.1"
+torch = "^1.3.1"
 
+# Pinned versions due to broken dependencies
 # due to bug with audioread==2.1.8
 # which causes excessive runtimes
 audioread = "2.1.6"

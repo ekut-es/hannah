@@ -29,7 +29,7 @@ Dependencies and virtual environments are managed using [poetry](https://python-
 
 For alternative installation methods see:  https://python-poetry.org/docs/#installation
 
-**Caution**: this usually install poetry to ~/.local/bin it this folder is not in your path you might need to run poetry as:
+**Caution**: this usually install poetry to ~/.local/bin if this folder is not in your path you might need to run poetry as:
 
     ~/.local/bin/poetry
 
