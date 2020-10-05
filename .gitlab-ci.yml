@@ -34,7 +34,7 @@ before_script:
   - cd ..
 
 test:
-  image: centos:7
+  image: python:3.6
   script:
     - set -e
     - source venv/bin/activate
