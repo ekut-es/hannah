@@ -1,3 +1,4 @@
+import logging
 from pytorch_lightning.callbacks import Callback
 import distiller
 
@@ -8,6 +9,7 @@ class DistillerCallback(Callback):
 
         self.fold_bn = fold_bn
         self.bn_frozen = False
+        self.msglogger = logging.getLogger()
 
     def on_train_start(self, trainer, pl_module):
         pl_module.model.to(pl_module.device)
@@ -21,7 +23,7 @@ class DistillerCallback(Callback):
             self.msglogger.info("Folded model")
             self.msglogger.info(pl_module)
 
-        pl_module.msglogger.info("Activating compression scheduler")
+        self.msglogger.info("Activating compression scheduler")
         optimizers = trainer.optimizers
         if len(optimizers) != 1:
             raise Exception(
