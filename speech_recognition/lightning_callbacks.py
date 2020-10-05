@@ -3,7 +3,9 @@ import distiller
 
 
 class DistillerCallback(Callback):
-    def __init__(self, fold_bn=-1):
+    def __init__(self, config, fold_bn=-1):
+        self.config = config
+
         self.fold_bn = fold_bn
         self.bn_frozen = False
 
@@ -28,7 +30,7 @@ class DistillerCallback(Callback):
         optimizer = optimizers[0]
 
         self.compression_scheduler = distiller.file_config(
-            pl_module, optimizer, pl_module.hparams["compress"]
+            pl_module, optimizer, self.config
         )
 
     def on_epoch_start(self, trainer, pl_module):

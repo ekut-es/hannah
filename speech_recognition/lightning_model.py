@@ -153,7 +153,6 @@ class SpeechClassifierModule(LightningModule):
         return dev_loader
 
     # TEST CODE
-
     def test_step(self, batch, batch_idx):
 
         # dataloader provides these four entries per batch
@@ -193,7 +192,6 @@ class SpeechClassifierModule(LightningModule):
         return test_loader
 
     # FORWARD (overwrite to train instance of this class directly)
-
     def forward(self, x):
         return self.model(x)
 

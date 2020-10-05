@@ -608,7 +608,9 @@ def main():
     # TODO distiller only available without auto_lr because compatibility issues
     if config["compress"] and not config["auto_lr"]:
         callbacks = kwargs["callbacks"]
-        callbacks.append(DistillerCallback())
+        callbacks.append(
+            DistillerCallback(config["compress"], fold_bn=config["fold_bn"])
+        )
         kwargs.update({"callbacks": callbacks})
 
     if config["cuda"]:
