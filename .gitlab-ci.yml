@@ -39,9 +39,9 @@ test:
     - set -e
     - source venv/bin/activate
     - python3 -m pytest test
-    - python3 -m speech_recognition.train --seed 1234 --model tc-res8  --experiment-id ci  --n-epoch=1
-    - python3 -m speech_recognition.train --seed 1234 --model tc-res8 --experiment-id ci_prof --n-epoch=1 --profile
-    - python3 -m speech_recognition.train  --model tc-res8 --compress distillation/quant_aware_train_fp/quant_aware_train_fixpoint_quant_4_4.yaml --n-epoch=3 --fold-bn 1  --normalize-bits 8
+    - python3 -m speech_recognition.train --seed 1234 --model tc-res8  --experiment-id ci  --n-epoch=1 --limits-datasets 0.01 0.01 0.01
+    - python3 -m speech_recognition.train --seed 1234 --model tc-res8 --experiment-id ci_prof --n-epoch=1 --profile --limits-datasets 0.01 0.01 0.01
+    - python3 -m speech_recognition.train  --model tc-res8 --compress distillation/quant_aware_train_fp/quant_aware_train_fixpoint_quant_4_4.yaml --n-epoch=3 --fold-bn 1  --normalize-bits 8 --limits-datasets 0.01 0.01 0.01
   tags:
     - docker
 
@@ -51,9 +51,9 @@ test_python_37:
     - set -e
     - source venv/bin/activate
     - python3 -m pytest test
-    - python3 -m speech_recognition.train --seed 1234 --model tc-res8  --experiment-id ci  --n-epoch=5 --no-cuda
-    - python3 -m speech_recognition.train --seed 1234 --model tc-res8 --experiment-id ci_prof --n-epoch=1 --profile
-    - python3 -m speech_recognition.train  --model tc-res8 --compress distillation/quant_aware_train_fp/quant_aware_train_fixpoint_quant_4_4.yaml --n-epoch=3 --fold-bn 1  --normalize-bits 8
+    - python3 -m speech_recognition.train --seed 1234 --model tc-res8  --experiment-id ci  --n-epoch=5 --no-cuda --limits-datasets 0.01 0.01 0.01
+    - python3 -m speech_recognition.train --seed 1234 --model tc-res8 --experiment-id ci_prof --n-epoch=1 --profile --limits-datasets 0.01 0.01 0.01
+    - python3 -m speech_recognition.train  --model tc-res8 --compress distillation/quant_aware_train_fp/quant_aware_train_fixpoint_quant_4_4.yaml --n-epoch=3 --fold-bn 1  --normalize-bits 8 --limits-datasets 0.01 0.01 0.01
   tags:
     - docker
 
