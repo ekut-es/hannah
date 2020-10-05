@@ -18,7 +18,7 @@ class DistillerCallback(Callback):
             self.bn_frozen = True
             self.msglogger.info("Applying batch norm folding")
             self.model = distiller.model_transforms.fold_batch_norms(
-                pl_module, dummy_input=self.example_input_array, inference=False
+                pl_module, dummy_input=pl_module.example_input_array, inference=False
             )
             self.msglogger.info("Folded model")
             self.msglogger.info(pl_module)
