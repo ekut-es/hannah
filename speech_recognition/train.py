@@ -43,10 +43,12 @@ from .summaries import *
 from .utils import _locate, _fullname
 
 from pytorch_lightning.trainer import Trainer
-from pytorch_lightning.core.lightning import ModelSummary
+from .lightning_model import *
+from .lightning_callbacks import DistillerCallback
 from pytorch_lightning.profiler import AdvancedProfiler
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from .lightning_model import *
+from pytorch_lightning.callbacks import ModelCheckpoint
+
 
 msglogger = None
 
@@ -109,6 +111,7 @@ def get_lr_scheduler(config, optimizer):
 
 
 def get_optimizer(config, model):
+
     if config["optimizer"] == "sgd":
         optimizer = torch.optim.SGD(
             model.parameters(),
@@ -163,7 +166,7 @@ def get_loss_function(model, config):
 
     def ce_loss_func(scores, labels):
         scores = scores.view(scores.size(0), -1)
-        return ce(loss_func)
+        return ce(scores, labels)
 
     criterion = ce_loss_func
 
@@ -226,7 +229,7 @@ def reset_symlink(src, dest):
 
 
 def dump_config(output_dir, config):
-    """ Dumps the configuration to json format
+    """Dumps the configuration to json format
 
     Creates file config.json in output_dir
 
@@ -292,776 +295,6 @@ def save_model(
         )
     except Exception as e:
         msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
-
-
-def validate(
-    data_loader,
-    model,
-    model2,
-    criterion,
-    config,
-    config_vad,
-    config_keywords,
-    loggers=[],
-    epoch=-1,
-    dump=False,
-    output_dir="",
-):
-
-    if dump:
-        assert output_dir != ""
-
-        try:
-            os.makedirs(f"{output_dir}/test_data/input")
-        except:
-            pass
-
-        try:
-            os.makedirs(f"{output_dir}/test_data/output")
-        except Exception as e:
-            print(e)
-            pass
-
-    combined_evaluation = True
-    if model2 is None:
-        combined_evaluation = False
-
-    losses = {"objective_loss": tnt.AverageValueMeter()}
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,))
-    batch_time = tnt.AverageValueMeter()
-    total_samples = len(data_loader.sampler)
-    batch_size = data_loader.batch_size
-    n_labels = config["n_labels"]
-    if combined_evaluation:
-        batch_size = 1
-        n_labels = n_labels + 1
-    confusion = tnt.ConfusionMeter(config["n_labels"])
-    total_steps = total_samples // batch_size
-    log_every = total_steps // 10
-
-    msglogger.info("%d samples (%d per mini-batch)", total_samples, batch_size)
-
-    model.eval()
-    if combined_evaluation:
-        model2.eval()
-
-    end = time.time()
-
-    for validation_step, (inputs, in_lengths, targets, target_lengths) in enumerate(
-        data_loader
-    ):
-        with torch.no_grad():
-            if dump:
-                x_copy = inputs.cpu().tolist()
-                with open(
-                    "{}/test_data/input/input_{}.json".format(
-                        output_dir, validation_step
-                    ),
-                    "w",
-                ) as f:
-                    f.write(json.dumps(x_copy))
-
-            if config["cuda"]:
-                inputs, targets = inputs.cuda(), targets.cuda()
-            # compute output from model
-            if combined_evaluation:
-                output_vad = model(inputs)
-                if output_vad.max(1)[1] == 0:
-                    print("classified as noise", targets)
-                    output = torch.zeros(1, config["n_labels"] + 1)
-                    output[0, config["n_labels"]] = 1
-                else:
-                    print("not classified as noise", targets)
-                    output_keyword = model2(inputs)
-                    output = torch.cat((output_keyword, torch.zeros(1, 1)), dim=1)
-            else:
-                output = model(inputs)
-
-            if dump:
-                x_copy = output.cpu().tolist()
-                with open(
-                    "{}/test_data/output/output_{}.json".format(
-                        output_dir, validation_step
-                    ),
-                    "w",
-                ) as f:
-                    f.write(json.dumps(x_copy))
-
-            if config["loss"] == "ctc":
-                loss = criterion(output, targets)
-            else:
-                targets = targets.view(-1)
-                loss = criterion(output, targets)
-
-                classerr.add(output.data, targets)
-                confusion.add(output.data, targets)
-
-            # measure accuracy and record loss
-            losses["objective_loss"].add(loss.item())
-
-        batch_time.add(time.time() - end)
-        end = time.time()
-
-        steps_completed = validation_step + 1
-
-        stats = (
-            "Performance/Validation/",
-            OrderedDict(
-                [
-                    ("Loss", losses["objective_loss"].mean),
-                    ("Accuracy", classerr.value(1)),
-                ]
-            ),
-        )
-
-        if steps_completed % log_every == 0:
-            distiller.log_training_progress(
-                stats, None, epoch, steps_completed, total_steps, log_every, loggers
-            )
-
-    msglogger.info(
-        "==> Accuracy: %.3f       Loss: %.3f\n",
-        classerr.value(1),
-        losses["objective_loss"].mean,
-    )
-
-    msglogger.info("==> Confusion:\n%s\n", str(confusion.value()))
-
-    return classerr.value(1), losses["objective_loss"].mean, confusion.value()
-
-
-def evaluate(
-    model_name,
-    config,
-    config_vad=None,
-    config_keyword=None,
-    model=None,
-    test_set=None,
-    loggers=[],
-):
-
-    # combined evaluation of vad and keyword spotting
-    combined_evaluation = True
-    if config_vad is None:
-        combined_evaluation = False
-
-    output_dir = get_output_dir(model_name, config)
-    log_dir = get_config_logdir(model_name, config)
-    global msglogger
-    if not msglogger:
-        log_dir = get_config_logdir(model_name, config)
-        msglogger = config_pylogger("logging.conf", "eval", log_dir)
-
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-        # reset_symlink(os.path.join(log_dir, "eval.log"), os.path.join(output_dir, "eval.log"))
-
-    if not loggers:
-        loggers = [PythonLogger(msglogger)]
-
-    msglogger.info("Evaluating network")
-
-    if not test_set:
-        _, _, test_set = config["dataset_cls"].splits(config)
-
-    test_loader = data.DataLoader(test_set, batch_size=1)
-
-    if model is None:
-        config["width"] = test_set.width
-        config["height"] = test_set.height
-
-        if combined_evaluation:
-            model_vad = get_model(config, config_vad, vad_keyword=1)
-            model_keyword = get_model(config, config_keyword, vad_keyword=2)
-        else:
-            model = get_model(config)
-
-    criterion = get_loss_function(model, config)
-
-    # Print network statistics
-    dummy_width, dummy_height = test_set.width, test_set.height
-    dummy_input = torch.randn((1, dummy_height, dummy_width))
-
-    if combined_evaluation:
-        model_vad.eval()
-        model_keyword.eval()
-
-        if config["cuda"]:
-            dummy_input.cuda()
-            model_vad.cuda()
-            model_keyword.cuda()
-
-        performance_summary_vad = model_summary(model_vad, dummy_input, "performance")
-        performance_summary_keyword = model_summary(
-            model_keyword, dummy_input, "performance"
-        )
-        accuracy, loss, confusion_matrix = validate(
-            test_loader,
-            model_vad,
-            model_keyword,
-            criterion,
-            config,
-            config_vad,
-            config_keyword,
-            loggers,
-            output_dir=log_dir,
-            dump=config["dump_test"],
-        )
-    else:
-        model.eval()
-        if config["cuda"]:
-            dummy_input.cuda()
-            model.cuda()
-
-        performance_summary = model_summary(model, dummy_input, "performance")
-        accuracy, loss, confusion_matrix = validate(
-            test_loader,
-            model,
-            None,
-            criterion,
-            config,
-            None,
-            None,
-            loggers,
-            output_dir=log_dir,
-            dump=config["dump_test"],
-        )
-
-    msglogger.info("==> Per class accuracy metrics")
-
-    FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)
-    FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
-    TP = np.diag(confusion_matrix)
-    TN = confusion_matrix.sum() - (FP + FN + TP)
-
-    # Sensitivity, hit rate, recall, or true positive rate
-    TPR = TP / (TP + FN)
-    # Specificity or true negative rate
-    TNR = TN / (TN + FP)
-    # Precision or positive predictive value
-    PPV = TP / (TP + FP)
-    # Negative predictive value
-    NPV = TN / (TN + FN)
-    # Fall out or false positive rate
-    FPR = FP / (FP + TN)
-    # False negative rate
-    FNR = FN / (TP + FN)
-    # False discovery rate
-    FDR = FP / (TP + FP)
-
-    # Overall accuracy
-    ACC = (TP + TN) / (TP + FP + FN + TN)
-
-    accuracy_table = []
-    for num in range(len(TPR)):
-        accuracy_table.append(
-            [
-                test_set.label_names[num],
-                TPR[num],
-                TNR[num],
-                PPV[num],
-                NPV[num],
-                FPR[num],
-                FNR[num],
-                FDR[num],
-                ACC[num],
-            ]
-        )
-
-    msglogger.info(
-        tabulate(
-            accuracy_table,
-            headers=["Class", "TPR", "TNR", "PPV", "NPV", "FPR", "FNR", "FDR", "ACC"],
-        )
-    )
-
-    return accuracy, loss, confusion_matrix
-
-
-def train(model_name, config):
-    global msglogger
-
-    output_dir = get_output_dir(model_name, config)
-    log_dir = get_config_logdir(model_name, config)
-
-    # Configure logging
-    log_name = "train"
-    msglogger = config_pylogger("logging.conf", log_name, log_dir)
-    pylogger = PythonLogger(msglogger)
-    loggers = [pylogger]
-    if config["tblogger"]:
-        tblogger = TensorBoardLogger(msglogger.logdir)
-        tblogger.log_gradients = True
-        loggers.append(tblogger)
-
-    # log_execution_env_state(distiller_gitroot=os.path.join(os.path.dirname(__file__), "distiller"))
-
-    print("All information will be saved to: ", output_dir, "logdir:", log_dir)
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    # reset_symlink(os.path.join(log_dir, "train.log"), os.path.join(output_dir, "train.log"))
-
-    dump_config(log_dir, config)
-    # reset_symlink(os.path.join(log_dir, "config.json"), os.path.join(output_dir, "config.json"))
-
-    csv_log_name = os.path.join(log_dir, "train.csv")
-    csv_log_file = open(csv_log_name, "w")
-    csv_log_writer = csv.DictWriter(
-        csv_log_file,
-        fieldnames=["Phase", "Epoch", "Accuracy", "Loss", "Macs", "Weights", "LR"],
-    )
-    csv_log_writer.writeheader()
-    # reset_symlink(csv_log_name, os.path.join(output_dir, "train.csv"))
-
-    train_set, dev_set, test_set = config["dataset_cls"].splits(config)
-
-    msglogger.info("Dataset config:")
-    msglogger.info("  train: %d", len(train_set))
-    class_nums = train_set.get_class_nums()
-    for k in sorted(class_nums.keys()):
-        msglogger.info("     {}: {}".format(train_set.label_names[k], class_nums[k]))
-
-    msglogger.info("  dev:   %d", len(dev_set))
-    class_nums = dev_set.get_class_nums()
-    for k in sorted(class_nums.keys()):
-        msglogger.info("     {}: {}".format(dev_set.label_names[k], class_nums[k]))
-
-    msglogger.info("  test:  %d", len(test_set))
-    class_nums = test_set.get_class_nums()
-    for k in sorted(class_nums.keys()):
-        msglogger.info("     {}: {}".format(test_set.label_names[k], class_nums[k]))
-
-    msglogger.info("  total: %d", len(train_set) + len(dev_set) + len(test_set))
-    msglogger.info("")
-
-    config["width"] = train_set.width
-    config["height"] = train_set.height
-
-    model = get_model(config)
-
-    if config["cuda"]:
-        torch.cuda.set_device(config["gpu_no"])
-        model.cuda()
-
-    # Setup optimizers
-    optimizer = get_optimizer(config, model)
-
-    criterion = get_loss_function(model, config)
-
-    # Setup learning rate optimizer
-    lr_scheduler = get_lr_scheduler(config, optimizer)
-
-    # Setup early stopping
-    early_stopping = EarlyStopping(config["early_stopping"])
-
-    # setup datasets
-
-    collate_fn = dataset.ctc_collate_fn  # if train_set.loss_function == "ctc" else None
-    train_batch_size = config["batch_size"]
-    train_loader = data.DataLoader(
-        train_set,
-        batch_size=train_batch_size,
-        shuffle=True,
-        drop_last=True,
-        num_workers=config["num_workers"],
-        collate_fn=collate_fn,
-    )
-
-    dev_loader = data.DataLoader(
-        dev_set,
-        batch_size=min(len(dev_set), 16),
-        shuffle=False,
-        num_workers=config["num_workers"],
-        collate_fn=collate_fn,
-    )
-
-    test_loader = data.DataLoader(
-        test_set,
-        batch_size=1,
-        shuffle=False,
-        num_workers=config["num_workers"],
-        collate_fn=collate_fn,
-    )
-
-    # Setup Decoder
-    decoder = Decoder(train_set.label_names)
-
-    # Print network statistics
-    dummy_width, dummy_height = test_set.width, test_set.height
-    dummy_input = torch.randn((1, dummy_height, dummy_width))
-    model.eval()
-    if config["cuda"]:
-        dummy_input.cuda()
-        model.cuda()
-
-    draw_classifier_to_file(model, os.path.join(log_dir, "model.png"), dummy_input)
-
-    performance_summary = model_summary(model, dummy_input, "performance")
-
-    # Setup distiller for model minimization
-    # distiller.utils.set_model_input_shape_attr(model, input_shape=(1, test_set.height, test_set.width))
-    compression_scheduler = None
-    if config["fold_bn"] >= 0:
-        msglogger.info("Applying batch norm folding")
-        model = distiller.model_transforms.fold_batch_norms(
-            model, dummy_input=dummy_input, inference=False, freeze_bn_delay=-1
-        )
-        msglogger.info("Folded model")
-        msglogger.info(model)
-
-    if config["compress"]:
-        msglogger.info("Activating compression scheduler")
-        compression_scheduler = distiller.file_config(
-            model, optimizer, config["compress"]
-        )
-
-    if config["cuda"]:
-        model.cuda()
-
-    sched_idx = 0
-    n_epochs = config["n_epochs"]
-
-    # iteration counters
-    step_no = 0
-    batches_per_epoch = len(train_loader)
-    log_every = max(1, batches_per_epoch // 15)
-    last_log = 0
-    max_acc = 0
-    last_lr = config["lr"]
-
-    for epoch_idx in range(n_epochs):
-        msglogger.info("Training epoch {} of {}".format(epoch_idx, config["n_epochs"]))
-        optimizer.zero_grad()
-
-        if compression_scheduler is not None:
-            compression_scheduler.on_epoch_begin(epoch_idx)
-
-        avg_training_loss = tnt.AverageValueMeter()
-        avg_training_accuracy = tnt.AverageValueMeter()
-
-        batch_time = tnt.AverageValueMeter()
-        end = time.time()
-        for batch_idx, (model_in, in_lengths, labels, label_lengths) in enumerate(
-            train_loader
-        ):
-
-            model.train()
-            if compression_scheduler is not None:
-                compression_scheduler.on_minibatch_begin(
-                    epoch_idx, batch_idx, batches_per_epoch
-                )
-
-            optimizer.zero_grad()
-
-            if config["cuda"]:
-                model_in = model_in.cuda()
-                labels = labels.cuda()
-            model_in = Variable(model_in)
-            scores = model(model_in)
-
-            labels = Variable(labels)
-            if config["loss"] == "ctc":
-                scores = scores.permute(2, 0, 1, 3)
-                scores = scores.view(scores.size(0), scores.size(1), -1)
-                scores = scores.log_softmax(2)
-
-                in_lengths = in_lengths / max(in_lengths) * scores.size(0)
-                in_lengths = in_lengths.round()
-                in_lengths = in_lengths.int()
-
-                loss = criterion(scores, labels, in_lengths, label_lengths)
-
-                print("loss:", loss.item())
-
-                scalar_loss = loss.item()
-                error, cer = decoder.calculate_error(
-                    scores, in_lengths, labels, label_lengths
-                )
-                scalar_accuracy = 1.0 - error
-                scalar_accuracy *= 100
-            else:
-                labels = labels.view(-1)
-
-                loss = criterion(scores, labels)
-                scalar_loss = loss.item()
-
-                try:
-                    scalar_accuracy = (
-                        torch.max(scores, 1)[1].view(labels.size(0)).data == labels.data
-                    ).float().sum() / labels.size(0)
-                    scalar_accuracy = scalar_accuracy.item()
-                    scalar_accuracy *= 100
-                except:
-                    scalar_accuracy = 0.9  # FIXME
-
-            avg_training_loss.add(scalar_loss)
-            avg_training_accuracy.add(scalar_accuracy)
-
-            if compression_scheduler is not None:
-                compression_scheduler.before_backward_pass(
-                    epoch_idx, batch_idx, batches_per_epoch, loss
-                )
-
-            loss.backward()
-            optimizer.step()
-
-            if config["fold_bn"] == epoch_idx and batch_idx == batches_per_epoch - 1:
-                msglogger.info("Freezing batch norms")
-                save_model(
-                    log_dir,
-                    model,
-                    test_set,
-                    config=config,
-                    model_prefix="before_freeze_",
-                )
-
-                def freeze_func(model):
-                    import distiller.quantization.sim_bn_fold
-
-                    if isinstance(
-                        model,
-                        distiller.quantization.sim_bn_fold.SimulatedFoldedBatchNorm,
-                    ):
-                        model.freeze()
-
-                model.apply(freeze_func)
-                msglogger.info("Model after freezing")
-                msglogger.info(model)
-                save_model(
-                    log_dir,
-                    model,
-                    test_set,
-                    config=config,
-                    model_prefix="after_freeze_",
-                )
-                max_acc = 0
-
-            if compression_scheduler is not None:
-                compression_scheduler.on_minibatch_end(
-                    epoch_idx, batch_idx, batches_per_epoch
-                )
-
-            # Log statistics
-            stats_dict = OrderedDict()
-            batch_time.add(time.time() - end)
-            step_no += 1
-
-            if last_log + log_every <= step_no:
-                last_log = step_no
-                stats_dict["Accuracy"] = scalar_accuracy
-                stats_dict["Loss"] = scalar_loss
-                stats_dict["Time"] = batch_time.mean
-                stats_dict["LR"] = optimizer.param_groups[0]["lr"]
-                stats = ("Peformance/Training/", stats_dict)
-                params = model.named_parameters()
-                distiller.log_training_progress(
-                    stats,
-                    params,
-                    epoch_idx,
-                    batch_idx,
-                    batches_per_epoch,
-                    log_every,
-                    loggers,
-                )
-
-            end = time.time()
-
-        msglogger.info(
-            "==> Accuracy: %.3f       Loss: %.3f\n",
-            avg_training_accuracy.mean,
-            avg_training_loss.mean,
-        )
-
-        performance_summary = model_summary(model, dummy_input, "performance")
-        csv_log_writer.writerow(
-            {
-                "Phase": "Train",
-                "Epoch": epoch_idx,
-                "Accuracy": avg_training_accuracy.mean,
-                "Loss": avg_training_loss.mean,
-                "Macs": performance_summary["Total MACs"],
-                "Weights": performance_summary["Total Weights"],
-                "LR": optimizer.param_groups[0]["lr"],
-            }
-        )
-
-        msglogger.info(
-            "Validation epoch {} of {}".format(epoch_idx, config["n_epochs"])
-        )
-
-        if hasattr(model, "on_val"):
-            model.on_val()
-
-        avg_acc, avg_loss, confusion_matrix = validate(
-            dev_loader,
-            model,
-            None,
-            criterion,
-            config,
-            None,
-            None,
-            loggers=loggers,
-            epoch=epoch_idx,
-        )
-        csv_log_writer.writerow(
-            {
-                "Phase": "Val",
-                "Epoch": epoch_idx,
-                "Accuracy": avg_acc,
-                "Loss": avg_loss,
-                "Macs": performance_summary["Total MACs"],
-                "Weights": performance_summary["Total Weights"],
-                "LR": optimizer.param_groups[0]["lr"],
-            }
-        )
-
-        if hasattr(model, "on_val_end"):
-            model.on_val_end()
-
-        if avg_acc > max_acc:
-            save_model(log_dir, model, test_set, config=config)
-            max_acc = avg_acc
-
-        # Stop training if the validation loss has not improved for multiple iterations
-        # and early stopping is configured
-        es = early_stopping(avg_loss)
-        if es and config["early_stopping"] > 0:
-            break
-
-        if lr_scheduler is not None:
-            if type(lr_scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
-                lr_scheduler.step(avg_loss)
-
-                # Reload best model at learning rate changes
-                new_lr = optimizer.param_groups[0]["lr"]
-                if new_lr != last_lr:
-                    last_lr = new_lr
-                    model.load(os.path.join(log_dir, "model.pt"))
-            else:
-                lr_scheduler.step()
-
-        if compression_scheduler is not None:
-            compression_scheduler.on_epoch_begin(epoch_idx)
-
-    msglogger.info("Running final test")
-
-    try:
-        model.load(os.path.join(log_dir, "model.pt"))
-    except:
-        msglogger.warning("Could not load model")
-
-    if config["dump_test"]:
-        print("Activating layer dumping")
-
-        def dump_layers(model, output_dir):
-            class DumpForwardHook:
-                def __init__(self, module, output_dir):
-                    self.module = module
-                    self.output_dir = output_dir
-                    try:
-                        os.makedirs(self.output_dir)
-                    except:
-                        pass
-
-                    self.count = 0
-
-                def __call__(self, module, input, output):
-
-                    if self.count >= 100:
-                        return
-
-                    output_name = (
-                        self.output_dir + "/output_" + str(self.count) + ".json"
-                    )
-
-                    output_copy = output.cpu().tolist()
-
-                    with open(output_name, "w") as f:
-                        f.write(json.dumps(output_copy))
-
-                    self.count += 1
-
-            for num, module in enumerate(model.modules()):
-
-                module_name = distiller.model_find_module_name(model, module)
-                if type(module) in [
-                    distiller.quantization.ClippedLinearQuantization,
-                    nn.ReLU,
-                    nn.Hardtanh,
-                ]:
-
-                    module.register_forward_hook(
-                        DumpForwardHook(
-                            module, log_dir + "/test_data/layers/" + module_name
-                        )
-                    )
-
-                if type(module) in [nn.Conv1d]:
-                    module.register_forward_hook(
-                        DumpForwardHook(
-                            module, log_dir + "/test_data/layers/" + module_name
-                        )
-                    )
-
-        dump_layers(model, output_dir + "/layer_outputs")
-
-    if hasattr(model, "on_test"):
-        model.on_test()
-    test_accuracy, test_loss, confusion_matrix = evaluate(
-        model_name, config, None, None, model, test_set
-    )
-    csv_log_writer.writerow(
-        {
-            "Phase": "Test",
-            "Epoch": epoch_idx,
-            "Accuracy": test_accuracy,
-            "Loss": test_loss,
-            "Macs": performance_summary["Total MACs"],
-            "Weights": performance_summary["Total Weights"],
-            "LR": optimizer.param_groups[0]["lr"],
-        }
-    )
-    if hasattr(model, "on_test_end"):
-        model.on_test_end()
-
-    csv_eval_log_name = os.path.join(output_dir, "eval.csv")
-    with open(csv_eval_log_name, "a") as csv_eval_file:
-        fcntl.lockf(csv_eval_file, fcntl.LOCK_EX)
-        csv_eval_writer = csv.DictWriter(
-            csv_eval_file,
-            fieldnames=[
-                "Hash",
-                "Phase",
-                "Epoch",
-                "Accuracy",
-                "Loss",
-                "Macs",
-                "Weights",
-                "LR",
-            ],
-        )
-        if os.stat(csv_eval_log_name).st_size == 0:
-            csv_eval_writer.writeheader()
-        csv_eval_writer.writerow(
-            {
-                "Hash": config["config_hash"],
-                "Phase": "Test",
-                "Epoch": epoch_idx,
-                "Accuracy": test_accuracy,
-                "Loss": test_loss,
-                "Macs": performance_summary["Total MACs"],
-                "Weights": performance_summary["Total Weights"],
-                "LR": optimizer.param_groups[0]["lr"],
-            }
-        )
-        fcntl.lockf(csv_eval_file, fcntl.LOCK_UN)
-
-    return
 
 
 def build_config(extra_config={}):
@@ -1224,6 +457,11 @@ def build_config(extra_config={}):
             desc="Use nesterov momentum with SGD optimizer",
             default=False,
         ),
+        auto_lr=ConfigOption(
+            category="Learning Rate Config",
+            default=False,
+            desc="Determines the learning rate automatically",
+        ),
         lr=ConfigOption(
             category="Learning Rate Config", desc="Initial Learining Rate", default=0.1
         ),
@@ -1260,6 +498,10 @@ def build_config(extra_config={}):
         limits_datasets=ConfigOption(
             default=[1.0, 1.0, 1.0],
             desc="One value for train, validation and test dataset. Decimal number for percentage of dataset. Natural number for exact sample count.",
+        ),
+        fast_dev_run=ConfigOption(
+            default=False,
+            desc="Runs 1 batch of train, test and val to find any bugs (ie: a sort of unit test).",
         ),
         batch_size=ConfigOption(
             default=128, desc="Default minibatch size for training"
@@ -1339,17 +581,37 @@ def main():
     gpu_no = config["gpu_no"]
     n_epochs = config["n_epochs"]  # max epochs
     log_dir = get_config_logdir(model_name, config)  # path for logs and checkpoints
-    # checkpoint_callback = ModelCheckpoint(configure checkpoint behavior here) pass it as kwarg to trainer
+    msglogger = config_pylogger("logging.conf", "training", log_dir)
+
+    # Configure checkpointing
+    checkpoint_callback = ModelCheckpoint(
+        filepath=log_dir,
+        save_top_k=-1,  #  with PL 0.9.0 only possible to save every epoch
+        verbose=True,
+        monitor="checkpoint_on",
+        mode="min",
+        prefix="",
+    )
+
     lit_module = SpeechClassifierModule(
-        model_name, dict(config), log_dir
+        dict(config), log_dir, msglogger
     )  # passing logdir for custom json save after training omit double fnccall
 
     kwargs = {
         "max_epochs": n_epochs,
         "default_root_dir": log_dir,
         "row_log_interval": 1,  # enables logging of metrics per step/batch
+        "checkpoint_callback": checkpoint_callback,
         "callbacks": [],
     }
+
+    # TODO distiller only available without auto_lr because compatibility issues
+    if config["compress"] and not config["auto_lr"]:
+        callbacks = kwargs["callbacks"]
+        callbacks.append(
+            DistillerCallback(config["compress"], fold_bn=config["fold_bn"])
+        )
+        kwargs.update({"callbacks": callbacks})
 
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
@@ -1375,6 +637,8 @@ def main():
     if config["backend"] == "onnx-tf":
         backend = OnnxTFBackend()
         kwargs["callbacks"].append(backend)
+    if config["fast_dev_run"]:
+        kwargs.update({"fast_dev_run": True})
 
     if config["type"] == "train":
 
@@ -1382,15 +646,29 @@ def main():
             profiler = AdvancedProfiler()
             kwargs.update({"profiler": profiler})
 
+        # INIT PYTORCH-LIGHTNING
         lit_trainer = Trainer(**kwargs)
-        print(ModelSummary(lit_module, "full"))
 
+        if config["auto_lr"]:
+            # run lr finder (counts as one epoch)
+            lr_finder = lit_trainer.lr_find(lit_module)
+            # inspect results
+            fig = lr_finder.plot()
+            fig.savefig(f"{log_dir}/learing_rate.png")
+            # recreate module with updated config
+            suggested_lr = lr_finder.suggestion()
+            config["lr"] = suggested_lr
+            lit_module = SpeechClassifierModule(dict(config), log_dir, msglogger)
+
+        # PL TRAIN
+        msglogger.info(ModelSummary(lit_module, "full"))
         lit_trainer.fit(lit_module)
 
+        # PL TEST
         lit_trainer.test(ckpt_path=None)
 
         if config["profile"]:
-            print(profiler.summary())
+            msglogger.info(profiler.summary())
 
     elif config["type"] == "eval":
         accuracy, _, _ = evaluate(model_name, config)

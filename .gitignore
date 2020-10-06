@@ -5,13 +5,16 @@
 .DS_Store
 *.tar.gz
 datasets/speech_commands_v0.02/
+datasets/speech_files/
+datasets/noise_files/
+datasets/vad_data_balanced/
 trained_models
 \#*
 tcml_config.json
 .project
 .pydevproject
 speech_recognition.egg-info/
-
+.coverage
 
 venv/
 srf-venv/

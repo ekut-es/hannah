@@ -69,6 +69,8 @@ class ConfigType(Enum):
     TC_RES_4 = "tc-res4"
     TC_RES_6 = "tc-res6"
     TC_RES_8 = "tc-res8"
+    TC_RES_8_S_S = "tc-res8-ss"
+    TC_RES_8_B_S = "tc-res8-bs"
     TC_RES_10 = "tc-res10"
     TC_RES_12 = "tc-res12"
     TC_RES_14 = "tc-res14"
