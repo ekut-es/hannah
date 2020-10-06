@@ -42,9 +42,7 @@ class DistillerCallback(Callback):
 
     def on_batch_start(self, trainer, pl_module):
         self.compression_scheduler.on_minibatch_begin(
-            trainer.current_epoch,
-            trainer.batch_idx,
-            pl_module.batches_per_epoch,
+            trainer.current_epoch, trainer.batch_idx, pl_module.batches_per_epoch
         )
 
     def on_before_backward(self, trainer, pl_module, loss):
@@ -54,9 +52,7 @@ class DistillerCallback(Callback):
 
     def on_batch_end(self, trainer, pl_module):
         self.compression_scheduler.on_minibatch_end(
-            trainer.current_epoch,
-            trainer.batch_idx,
-            pl_module.batches_per_epoch,
+            trainer.current_epoch, trainer.batch_idx, pl_module.batches_per_epoch
         )
 
         if self.fold_bn == trainer.current_epoch and not self.bn_frozen:

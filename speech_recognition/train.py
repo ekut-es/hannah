@@ -1,300 +1,30 @@
-from collections import ChainMap, OrderedDict, defaultdict
-from .config import ConfigBuilder, ConfigOption
-from .callbacks.backends import OnnxTFBackend
-
 import argparse
-import os
-import random
 import sys
 import json
-import time
-import math
-import hashlib
-import csv
-import fcntl
-import inspect
-import importlib
+import os
 
-from multiprocessing import cpu_count
-
-from torch.autograd import Variable
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.utils.data as data
-import itertools
 
-from .decoder import Decoder
 from . import models as mod
 from . import dataset
-from .utils import set_seed, config_pylogger, log_execution_env_state, EarlyStopping
+from .utils import set_seed, config_pylogger, log_execution_env_state
+from .config_utils import get_config_logdir
 
-# sys.path.append(os.path.join(os.path.dirname(__file__), "distiller"))
-# print("__file__" + __file__)
+from .config import ConfigBuilder, ConfigOption
+from .callbacks.backends import OnnxTFBackend
+from .callbacks.distiller import DistillerCallback
 
-import distiller
-import distiller.model_transforms
-from distiller.data_loggers import *
-import distiller.apputils as apputils
-import torchnet.meter as tnt
-from tabulate import tabulate
+from .utils import _fullname
 
-from .summaries import *
-from .utils import _locate, _fullname
+from .lightning_model import SpeechClassifierModule
 
 from pytorch_lightning.trainer import Trainer
-from .lightning_model import *
-from .lightning_callbacks import DistillerCallback
 from pytorch_lightning.profiler import AdvancedProfiler
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-
+from pytorch_lightning.core.memory import ModelSummary
 
 msglogger = None
-
-
-def get_compression(config, model, optimizer):
-    if config["compress"]:
-        # msglogger.info("Activating compression scheduler")
-        compression_scheduler = distiller.file_config(
-            model, optimizer, config["compress"]
-        )
-        return compression_scheduler
-    else:
-        return None
-
-
-def get_lr_scheduler(config, optimizer):
-    n_epochs = config["n_epochs"]
-    lr_scheduler = config["lr_scheduler"]
-    scheduler = None
-    if lr_scheduler == "step":
-        gamma = config["lr_gamma"]
-        stepsize = config["lr_stepsize"]
-        if stepsize == 0:
-            stepsize = max(2, n_epochs // 15)
-
-        scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=stepsize, gamma=gamma
-        )
-
-    elif lr_scheduler == "multistep":
-        gamma = config["lr_gamma"]
-        steps = config["lr_steps"]
-        if steps == [0]:
-            steps = itertools.count(max(1, n_epochs // 10), max(1, n_epochs // 10))
-
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, steps, gamma=gamma)
-
-    elif lr_scheduler == "exponential":
-        gamma = config["lr_gamma"]
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma)
-    elif lr_scheduler == "plateau":
-        gamma = config["lr_gamma"]
-        patience = config["lr_patience"]
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode="min",
-            factor=gamma,
-            patience=patience,
-            threshold=0.00000001,
-            threshold_mode="rel",
-            cooldown=0,
-            min_lr=0,
-            eps=1e-08,
-        )
-
-    else:
-        raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
-
-    return scheduler
-
-
-def get_optimizer(config, model):
-
-    if config["optimizer"] == "sgd":
-        optimizer = torch.optim.SGD(
-            model.parameters(),
-            lr=config["lr"],
-            nesterov=config["use_nesterov"],
-            weight_decay=config["weight_decay"],
-            momentum=config["momentum"],
-        )
-    elif config["optimizer"] == "adadelta":
-        optimizer = torch.optim.Adadelta(
-            model.parameters(),
-            lr=config["lr"],
-            rho=config["opt_rho"],
-            eps=config["opt_eps"],
-            weight_decay=config["weight_decay"],
-        )
-    elif config["optimizer"] == "adagrad":
-        optimizer = torch.optim.Adagrad(
-            model.parameters(),
-            lr=config["lr"],
-            lr_decay=config["lr_decay"],
-            weight_decay=config["weight_decay"],
-        )
-
-    elif config["optimizer"] == "adam":
-        optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=config["lr"],
-            betas=config["opt_betas"],
-            eps=config["opt_eps"],
-            weight_decay=config["weight_decay"],
-            amsgrad=config["use_amsgrad"],
-        )
-    elif config["optimizer"] == "rmsprop":
-        optimizer = torch.optim.RMSprop(
-            model.parameters(),
-            lr=config["lr"],
-            alpha=config["opt_alpha"],
-            eps=config["opt_eps"],
-            weight_decay=config["weight_decay"],
-            momentum=config["momentum"],
-        )
-    else:
-        raise Exception("Unknown Optimizer: {}".format(config["optimizer"]))
-
-    return optimizer
-
-
-def get_loss_function(model, config):
-
-    ce = nn.CrossEntropyLoss()
-
-    def ce_loss_func(scores, labels):
-        scores = scores.view(scores.size(0), -1)
-        return ce(scores, labels)
-
-    criterion = ce_loss_func
-
-    try:
-        criterion = model.get_loss_function()
-    except Exception as e:
-        print(str(e))
-        if "loss" in config:
-            if config["loss"] == "cross_entropy":
-                criterion = nn.CrossEntropyLoss()
-            elif config["loss"] == "ctc":
-                criterion = ce_loss_func
-            else:
-                raise Exception(
-                    "Loss function not supported: {}".format(config["loss"])
-                )
-
-    return criterion
-
-
-def get_output_dir(model_name, config):
-
-    output_dir = os.path.join(config["output_dir"], config["experiment_id"], model_name)
-
-    if config["compress"]:
-        compressed_name = config["compress"]
-        compressed_name = os.path.splitext(os.path.basename(compressed_name))[0]
-        output_dir = os.path.join(output_dir, compressed_name)
-
-    output_dir = os.path.abspath(output_dir)
-
-    return output_dir
-
-
-def get_config_logdir(model_name, config):
-    return os.path.join(get_output_dir(model_name, config), config["config_hash"][0:8])
-
-
-def get_model(config, config2=None, model=None, vad_keyword=0):
-    if not model:
-        if vad_keyword == 0:
-            model = _locate(config["model_class"])(config)
-            if config["input_file"]:
-                model.load(config["input_file"])
-        elif vad_keyword == 1:
-            model = _locate(config2["model_class"])(config2)
-            if config["input_file_vad"]:
-                model.load(config["input_file_vad"])
-        else:
-            model = _locate(config2["model_class"])(config2)
-            if config["input_file_keyword"]:
-                model.load(config["input_file_keyword"])
-    return model
-
-
-def reset_symlink(src, dest):
-    if os.path.exists(dest):
-        os.unlink(dest)
-    os.symlink(src, dest)
-
-
-def dump_config(output_dir, config):
-    """Dumps the configuration to json format
-
-    Creates file config.json in output_dir
-
-    Parameters
-    ----------
-    output_dir : str
-       Output directory
-    config  : dict
-       Configuration to dump
-    """
-
-    with open(os.path.join(output_dir, "config.json"), "w") as o:
-        s = json.dumps(dict(config), default=lambda x: str(x), indent=4, sort_keys=True)
-        o.write(s)
-
-
-def save_model(
-    output_dir, model, test_set=None, config=None, model_prefix="", msglogger=None
-):
-    """ Creates serialization of the model for later inference, evaluation
-
-    Creates the following files:
-
-    - model.pt: Serialized version of network parameters in pytorch
-    - model.json: Serialized version of network parameters in json format
-    - model.onnx: full model including paramters in onnx format
-
-    Parameters
-    ----------
-
-    output_dir : str
-        Directory to put serialized models
-    model : torch.nn.Module
-        Model to serialize
-    test_set : dataset.SpeechDataset
-        DataSet used to derive dummy input to use for onnx export.
-        If None no onnx will be generated
-    """
-
-    # TODO model save doesnt work "AttributeError: model has no attribute save"
-    # msglogger.info("saving best model...")
-    # model.save(os.path.join(output_dir, model_prefix+"model.pt"))
-
-    msglogger.info("saving weights to json...")
-    filename = os.path.join(output_dir, model_prefix + "model.json")
-    state_dict = model.state_dict()
-    with open(filename, "w") as f:
-        json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
-
-    msglogger.info("saving onnx...")
-    try:
-        dummy_width, dummy_height = test_set.width, test_set.height
-        dummy_input = torch.randn((1, dummy_height, dummy_width))
-
-        if config["cuda"]:
-            dummy_input = dummy_input.cuda()
-
-        torch.onnx.export(
-            model,
-            dummy_input,
-            os.path.join(output_dir, model_prefix + "model.onnx"),
-            verbose=False,
-        )
-    except Exception as e:
-        msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
 
 
 def build_config(extra_config={}):
@@ -403,7 +133,7 @@ def build_config(extra_config={}):
         ),
         num_workers=ConfigOption(
             desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
-            default=min(32, cpu_count()),
+            default=0,
         ),
         fold_bn=ConfigOption(
             default=-1, desc="Do BatchNorm folding at freeze at the given epoch"
@@ -583,10 +313,12 @@ def main():
     log_dir = get_config_logdir(model_name, config)  # path for logs and checkpoints
     msglogger = config_pylogger("logging.conf", "training", log_dir)
 
+    log_execution_env_state()
+
     # Configure checkpointing
     checkpoint_callback = ModelCheckpoint(
         filepath=log_dir,
-        save_top_k=-1,  #  with PL 0.9.0 only possible to save every epoch
+        save_top_k=-1,  # with PL 0.9.0 only possible to save every epoch
         verbose=True,
         monitor="checkpoint_on",
         mode="min",
