@@ -403,7 +403,7 @@ def build_config(extra_config={}):
         ),
         num_workers=ConfigOption(
             desc="Number of worker processes used for data loading (using a number > 0) makes results non reproducible",
-            default=min(32, cpu_count()),
+            default=0,
         ),
         fold_bn=ConfigOption(
             default=-1, desc="Do BatchNorm folding at freeze at the given epoch"
