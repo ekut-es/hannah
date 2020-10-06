@@ -1,9 +1,6 @@
 {
     "python.linting.pylintEnabled": false,
     "python.linting.enabled": true,
-    "python.pythonPath": "/home/felix/.cache/pypoetry/virtualenvs/speech-recognition-YDRHOFwV-py3.8/bin/python3",
-    "cornflakes.linter.executablePath": "/home/felix/.cache/pypoetry/virtualenvs/speech-recognition-YDRHOFwV-py3.8/bin/flake8",
-    "python.formatting.provider": "black",
-    // "editor.formatOnSaveMode": "modifications",
-    "editor.formatOnSave": true
+    "git.ignoreLimitWarning": true,
+    "python.linting.flake8Enabled": true
 }
