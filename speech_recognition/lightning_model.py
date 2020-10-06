@@ -56,6 +56,9 @@ class SpeechClassifierModule(LightningModule):
 
     def get_batch_metrics(self, output, y):
 
+        if isinstance(output, list):
+            output = torch.mean(torch.stack(output), dim=0)
+
         y = y.view(-1)
 
         output_max = output.argmax(dim=1)
