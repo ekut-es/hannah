@@ -36,6 +36,8 @@ class DistillerCallback(Callback):
         self.compression_scheduler = distiller.file_config(
             pl_module, optimizer, self.config
         )
+        self.msglogger.info("Compressed Model")
+        self.msglogger.info(pl_module)
 
     def on_epoch_start(self, trainer, pl_module):
         self.compression_scheduler.on_epoch_begin(trainer.current_epoch)

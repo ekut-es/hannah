@@ -197,7 +197,7 @@ class ExitWrapperBlock(nn.Module):
 
         super().__init__()
         
-        self.wrapped_block =  wrapped_block
+        self.wrapped_block =  torch.nn.Sequential(wrapped_block)
         self.threshold = threshold
         self.lossweight = lossweight
         self.exit_branch = exit_branch
