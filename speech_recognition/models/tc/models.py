@@ -207,6 +207,7 @@ class ExitWrapperBlock(nn.Module):
         x = self.wrapped_block.forward(x)
 
         x_exit = self.exit_branch.forward(x)
+        x_exit = torch.squeeze(x_exit)
         self.exit_result = x_exit
         
         return x
