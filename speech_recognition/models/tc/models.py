@@ -308,8 +308,6 @@ class BranchyTCResNetModel(TCResNetModel):
         x = np.concatenate(self.x)
         y = np.concatenate(self.y)
 
-        # self.piecewise_func = pwlf.PiecewiseLinFit(x, y)
-        # self.piecewise_func.fit(self.n_pieces)
 
         msglogger.info("Piecewise Parameters")
         msglogger.info("Slopes: {}".format(self.piecewise_func.slopes))
