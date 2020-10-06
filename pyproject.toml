@@ -35,5 +35,5 @@ pytest-cov = "^2.10.1"
 name = "gerum"
 url = "https://atreus.informatik.uni-tuebingen.de/~gerum/dist"
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry>=0.12", "cython"]
 build-backend = "poetry.masonry.api"
