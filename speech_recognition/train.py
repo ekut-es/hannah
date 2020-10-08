@@ -11,7 +11,7 @@ from .utils import set_seed, config_pylogger, log_execution_env_state
 from .config_utils import get_config_logdir
 
 from .config import ConfigBuilder, ConfigOption
-from .callbacks.backends import OnnxTFBackend, OnnxruntimeBackend
+from .callbacks.backends import OnnxTFBackend, OnnxruntimeBackend, UltraTrailBackend
 from .callbacks.distiller import DistillerCallback
 
 from .utils import _fullname
@@ -371,6 +371,9 @@ def main():
         kwargs["callbacks"].append(backend)
     elif config["backend"] == "onnxrt":
         backend = OnnxruntimeBackend()
+        kwargs["callbacks"].append(backend)
+    elif config["backend"] == "ultratrail" or config["ultratrail"]:
+        backend = UltraTrailBackend(ultratrail=config["ultratrail"])
         kwargs["callbacks"].append(backend)
 
     if config["fast_dev_run"]:
