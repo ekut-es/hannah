@@ -11,7 +11,7 @@ from .utils import set_seed, config_pylogger, log_execution_env_state
 from .config_utils import get_config_logdir
 
 from .config import ConfigBuilder, ConfigOption
-from .callbacks.backends import OnnxTFBackend
+from .callbacks.backends import OnnxTFBackend, OnnxruntimeBackend
 from .callbacks.distiller import DistillerCallback
 
 from .utils import _fullname
@@ -267,7 +267,7 @@ def build_config(extra_config={}):
         ),
         backend=ConfigOption(
             default="",
-            choices=["", "onnx-tf"],
+            choices=["", "onnx-tf", "onnxrt"],
             category="Backend Options",
             desc="Inference backend to use",
         ),
@@ -369,6 +369,10 @@ def main():
     if config["backend"] == "onnx-tf":
         backend = OnnxTFBackend()
         kwargs["callbacks"].append(backend)
+    elif config["backend"] == "onnxrt":
+        backend = OnnxruntimeBackend()
+        kwargs["callbacks"].append(backend)
+
     if config["fast_dev_run"]:
         kwargs.update({"fast_dev_run": True})
 
