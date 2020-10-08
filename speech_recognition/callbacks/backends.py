@@ -8,12 +8,15 @@ import torch.onnx
 
 try:
     import onnx
+except ModuleNotFoundError:
+    onnx = None
+
+try:
     import onnx_tf.backend as tf_backend
 except ModuleNotFoundError:
     tf_backend = None
 
 try:
-    import onnx
     import onnxruntime.backend as onnxrt_backend
 except ModuleNotFoundError:
     onnxrt_backend = None
@@ -80,6 +83,11 @@ class OnnxTFBackend(InferenceBackendBase):
         self.tf_model = None
         self.interpreter = None
 
+        if onnx is None or tf_backend is None:
+            raise Exception(
+                "Could not find required libraries for onnx-tf backend please install with poetry instell -E tf-backend"
+            )
+
     def prepare(self, model):
         with TemporaryDirectory() as tmp_dir:
             tmp_dir = Path(tmp_dir)
@@ -111,6 +119,11 @@ class OnnxruntimeBackend(InferenceBackendBase):
         )
 
         self.onnxrt_model = None
+
+        if onnx is None or onnxrt_backend is None:
+            raise Exception(
+                "Could not find required libraries for onnxruntime backend please install with poetry instell -E onnxrt-backend"
+            )
 
     def prepare(self, model):
         with TemporaryDirectory() as tmp_dir:
