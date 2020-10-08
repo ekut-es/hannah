@@ -5,14 +5,15 @@ from pathlib import Path
 
 from pytorch_lightning import Callback
 import torch.onnx
-import onnx
 
 try:
+    import onnx
     import onnx_tf.backend as tf_backend
 except ModuleNotFoundError:
     tf_backend = None
 
 try:
+    import onnx
     import onnxruntime.backend as onnxrt_backend
 except ModuleNotFoundError:
     onnxrt_backend = None
@@ -146,7 +147,7 @@ class UltraTrailBackend(InferenceBackendBase):
 
         assert ultra_trail_dir != ""
 
-        self.onnxrt_model = None
+        self.ultra_trail_dir = ultra_trail_dir
 
     def prepare(self, model):
         pass
