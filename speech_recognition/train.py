@@ -271,6 +271,9 @@ def build_config(extra_config={}):
             category="Backend Options",
             desc="Inference backend to use",
         ),
+        ultratrail=ConfigOption(
+            default="", category="Backend Options", desc="Path to ultratrail repository"
+        ),
     )
 
     mod_cls = mod.find_model(model_name)

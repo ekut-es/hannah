@@ -1,3 +1,4 @@
+import importlib
 import torch
 import torch.nn as nn
 import numpy as np
@@ -8,6 +9,7 @@ import os
 import sys
 import platform
 from git import Repo, InvalidGitRepositoryError
+from pathlib import Path
 
 try:
     import lsb_release
@@ -195,3 +197,13 @@ def _fullname(cls):
         return cls.__name__  # Avoid reporting __builtin__
     else:
         return module + "." + cls.__name__
+
+
+def load_module(path):
+    """small utility to automatically load modules from path"""
+    path = Path(path)
+    name = path.stem
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
