@@ -73,14 +73,32 @@ class InferenceBackendBase(Callback):
             result = self.run_batch(inputs=batch)
 
 
+class TorchMobileBackend(InferenceBackendBase):
+    """Inference backend for torch mobile"""
+
+    def __init__(self, val_batches=1, test_batches=1, val_frequency=1):
+        super().__init__(val_batches, test_batches, val_frequency)
+
+        self.traced_module = None
+
+    def prepare(self, model):
+        dummy_input = model.example_input_array
+
+        jit_trace = torch.jit.trace(model, dummy_input)
+        self.traced_module = jit_trace
+
+    def run_batch(self, inputs=0):
+        return self.traced_module(*inputs)
+
+
 class OnnxTFBackend(InferenceBackendBase):
     """Inference Backend for tensorflow"""
 
-    def __init__(
-        self, val_batches=1, test_batches=1, val_frequency=10, use_tf_lite=True
-    ):
+    def __init__(self, val_batches=1, test_batches=1, val_frequency=10):
         super(OnnxTFBackend, self).__init__(
-            val_batches=val_batches, test_batches=test_batches, val_frequency=10
+            val_batches=val_batches,
+            test_batches=test_batches,
+            val_frequency=val_frequency,
         )
 
         self.tf_model = None
