@@ -2,6 +2,7 @@ import argparse
 import sys
 import json
 import os
+import logging
 
 import torch
 
@@ -28,6 +29,7 @@ from pytorch_lightning.profiler import AdvancedProfiler
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.core.memory import ModelSummary
+
 
 msglogger = None
 
@@ -421,11 +423,9 @@ def main():
             msglogger.info(profiler.summary())
 
     elif config["type"] == "eval":
-        accuracy, _, _ = evaluate(model_name, config)
-        print("final accuracy is", accuracy)
+        logging.error("eval mode is not supported at the moment")
     elif config["type"] == "eval_vad_keyword":
-        accuracy, _, _ = evaluate(model_name, config, config_vad, config_keyword)
-        print("final accuracy is", accuracy)
+        logging.error("eval_vad_keyword is not supported at the moment")
 
 
 if __name__ == "__main__":

@@ -22,14 +22,15 @@ from collections import OrderedDict
 
 from speech_recognition.summaries import model_summary
 
+
 class TestModelConv1D(nn.Module):
     def __init__(self):
         super().__init__()
 
         self.layers = nn.Sequential(
-            nn.Conv1d(1,1,1),
-            nn.Conv1d(1,1,3,padding=1),
-            nn.Conv1d(1,1,3,padding=1,stride=2),
+            nn.Conv1d(1, 1, 1),
+            nn.Conv1d(1, 1, 3, padding=1),
+            nn.Conv1d(1, 1, 3, padding=1, stride=2),
         )
 
     def forward(self, x):
@@ -38,16 +39,23 @@ class TestModelConv1D(nn.Module):
 
 def test_conv1d_metrics():
     model = TestModelConv1D()
-    dummy_input = torch.zeros((1,1,256))
+    dummy_input = torch.zeros((1, 1, 256))
 
-    performance_result = model_summary(model, dummy_input, 'performance')
+    performance_result = model_summary(model, dummy_input, "performance")
 
     print(performance_result)
 
-    expected = OrderedDict([('Total MACs', 1408), ('Total Weights', 7), ('Total Activations', 896), ('Estimated Activations', 512)])
+    expected = OrderedDict(
+        [
+            ("Total MACs", 1408),
+            ("Total Weights", 7),
+            ("Total Activations", 896),
+            ("Estimated Activations", 512),
+        ]
+    )
 
     assert performance_result == expected
 
 
-if __name__  == "__main__":
+if __name__ == "__main__":
     test_conv1d_metrics()

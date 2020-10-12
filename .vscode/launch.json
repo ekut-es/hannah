@@ -9,7 +9,20 @@
             "type": "python",
             "request": "launch",
             "module": "speech_recognition.train",
-            "args": ["--gpu_no", "0", "--model", "tc-res8", "--n_epochs", "5", "--experiment-id", "test2"]
+            "args": [
+                "--seed",
+                "1234",
+                "--model",
+                "tc-res8",
+                "--limits-datasets",
+                "0.01",
+                "0.01",
+                "0.01",
+                "--n_epochs",
+                "1",
+                "--experiment-id",
+                "debug"
+            ]
         }
     ]
 }
