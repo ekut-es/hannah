@@ -172,42 +172,4 @@ class OnnxruntimeBackend(InferenceBackendBase):
         result = [torch.from_numpy(res) for res in result]
         return result
 
-
-class UltraTrailBackend(InferenceBackendBase):
-    def __init__(self, val_batches=1, test_batches=1, val_frequency=10, ultratrail=""):
-        super(UltraTrailBackend, self).__init__(
-            val_batches=val_batches,
-            test_batches=test_batches,
-            val_frequency=val_frequency,
-        )
-
-        self.acc_dir = Path(ultratrail).absolute()
-        backend_file = self.acc_dir / "rtl" / "model" / "memgen.py"
-        if not backend_file.exists():
-            raise Exception(
-                f"Could not find ultratrail backend in:  {backend_file} please set --ultratrail to backend path"
-            )
-        self.memgen = load_module(backend_file)
-
-    def prepare(self, model):
-        logging.info("Preparing model for ultratrail")
-        dummy_input = model.example_input_array
-        cfg = self.memgen.translate(model, dummy_input, self.acc_dir)
-
-    def run_batch(self, inputs=None):
-        test_size = config["hwa_test_size"]
-        max_idx = len(test_set)
-        idx = random.sample(range(max_idx), test_size)
-        inp = [torch.unsqueeze(test_set[i][0], 0) for i in idx]
-
-        out = []
-        model.eval()
-        with torch.no_grad():
-            for i in inp:
-                out.append(model(i))
-
-        memgen.generate_test_set(inp, out, acc_dir, cfg.bw_f, cfg.rows)
-        memgen.run_inference(
-            cfg, acc_dir, inputs="./test_data/inputs/", sim_dir=config["vsim"]
-        )
         memgen.read_results(acc_dir, "./test_data/outputs/")
