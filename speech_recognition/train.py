@@ -47,6 +47,7 @@ from .lightning_callbacks import DistillerCallback
 from pytorch_lightning.profiler import AdvancedProfiler
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.core.lightning import ModelSummary
 
 msglogger = None
 
@@ -569,9 +570,6 @@ def build_config(extra_config={}):
     return (model_name, config, default_config_vad, default_config_keyword)
 
 
-from pytorch_lightning.core.lightning import ModelSummary
-
-
 def main():
     model_name, config, config_vad, config_keyword = build_config()
     set_seed(config)
@@ -586,7 +584,7 @@ def main():
     # Configure checkpointing
     checkpoint_callback = ModelCheckpoint(
         filepath=log_dir,
-        save_top_k=-1,  #  with PL 0.9.0 only possible to save every epoch
+        save_top_k=-1,  # with PL 0.9.0 only possible to save every epoch
         verbose=True,
         monitor="checkpoint_on",
         mode="min",
