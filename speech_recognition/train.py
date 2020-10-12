@@ -11,7 +11,12 @@ from .utils import set_seed, config_pylogger, log_execution_env_state
 from .config_utils import get_config_logdir
 
 from .config import ConfigBuilder, ConfigOption
-from .callbacks.backends import OnnxTFBackend, OnnxruntimeBackend, UltraTrailBackend
+from .callbacks.backends import (
+    OnnxTFBackend,
+    OnnxruntimeBackend,
+    UltraTrailBackend,
+    TorchMobileBackend,
+)
 from .callbacks.distiller import DistillerCallback
 
 from .utils import _fullname
@@ -267,7 +272,7 @@ def build_config(extra_config={}):
         ),
         backend=ConfigOption(
             default="",
-            choices=["", "onnx-tf", "onnxrt"],
+            choices=["", "onnx-tf", "onnxrt", "torchmobile", "ultratrail"],
             category="Backend Options",
             desc="Inference backend to use",
         ),
@@ -369,6 +374,9 @@ def main():
     ]
     kwargs["logger"] = loggers
 
+    if config["backend"] == "torchmobile":
+        backend = TorchMobileBackend()
+        kwargs["callbacks"].append(backend)
     if config["backend"] == "onnx-tf":
         backend = OnnxTFBackend()
         kwargs["callbacks"].append(backend)

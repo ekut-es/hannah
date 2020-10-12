@@ -70,7 +70,7 @@ class InferenceBackendBase(Callback):
 
     def on_test_batch_end(self, trainer, pl_module, batch, batch_idx, dataloader_idx):
         if batch_idx < self.test_batches:
-            result = self.run_batch(inputs=batch)
+            result = self.run_batch(inputs=batch[0])
 
 
 class TorchMobileBackend(InferenceBackendBase):
@@ -88,7 +88,7 @@ class TorchMobileBackend(InferenceBackendBase):
         self.traced_module = jit_trace
 
     def run_batch(self, inputs=0):
-        return self.traced_module(*inputs)
+        return self.traced_module(inputs)
 
 
 class OnnxTFBackend(InferenceBackendBase):
@@ -167,16 +167,11 @@ class OnnxruntimeBackend(InferenceBackendBase):
 
 
 class UltraTrailBackend(InferenceBackendBase):
-    def __init__(
-        self,
-        val_batches=1,
-        test_batches=1,
-        val_frequency=10,
-        use_tf_lite=True,
-        ultratrail="",
-    ):
+    def __init__(self, val_batches=1, test_batches=1, val_frequency=10, ultratrail=""):
         super(UltraTrailBackend, self).__init__(
-            val_batches=val_batches, test_batches=test_batches, val_frequency=10
+            val_batches=val_batches,
+            test_batches=test_batches,
+            val_frequency=val_frequency,
         )
 
         self.acc_dir = Path(ultratrail).absolute()
