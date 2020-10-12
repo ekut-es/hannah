@@ -58,7 +58,7 @@ class InferenceBackendBase(Callback):
     ):
         if batch_idx < self.val_batches:
             if self.validation_epoch % self.val_frequency == 0:
-                result = self.run_batch(inputs=batch)
+                result = self.run_batch(inputs=[batch[0]])
                 target = pl_module.forward(batch[0])
 
                 mse = torch.nn.functional.mse_loss(result[0], target, reduction="mean")
@@ -70,7 +70,12 @@ class InferenceBackendBase(Callback):
 
     def on_test_batch_end(self, trainer, pl_module, batch, batch_idx, dataloader_idx):
         if batch_idx < self.test_batches:
-            result = self.run_batch(inputs=batch[0])
+            result = self.run_batch(inputs=[batch[0]])
+            target = pl_module.forward(batch[0])
+
+            mse = torch.nn.functional.mse_loss(result[0], target, reduction="mean")
+            for logger in pl_module.logger:
+                logger.log_metrics({"test_backend_mse": mse})
 
 
 class TorchMobileBackend(InferenceBackendBase):
@@ -87,8 +92,10 @@ class TorchMobileBackend(InferenceBackendBase):
         jit_trace = torch.jit.trace(model, dummy_input)
         self.traced_module = jit_trace
 
-    def run_batch(self, inputs=0):
-        return self.traced_module(inputs)
+    def run_batch(self, inputs=None):
+        if inputs is None:
+            return None
+        return self.traced_module(*inputs)
 
 
 class OnnxTFBackend(InferenceBackendBase):
