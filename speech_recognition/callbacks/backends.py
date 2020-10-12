@@ -61,7 +61,7 @@ class InferenceBackendBase(Callback):
                 result = self.run_batch(inputs=[batch[0]])
                 target = pl_module.forward(batch[0])
 
-                mse = torch.nn.functional.mse_loss(result[0], target, reduction="mean")
+                mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
                 for logger in pl_module.logger:
                     logger.log_metrics({"val_backend_mse": mse})
 
@@ -73,7 +73,7 @@ class InferenceBackendBase(Callback):
             result = self.run_batch(inputs=[batch[0]])
             target = pl_module.forward(batch[0])
 
-            mse = torch.nn.functional.mse_loss(result[0], target, reduction="mean")
+            mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
             for logger in pl_module.logger:
                 logger.log_metrics({"test_backend_mse": mse})
 
