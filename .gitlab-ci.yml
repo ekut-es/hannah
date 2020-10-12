@@ -34,7 +34,7 @@ before_script:
   - cd ..
 
   # Show limits
-  - ulimit -a 
+  - ulimit -a
 
 test:
   image: python:3.6
@@ -53,6 +53,16 @@ test_python_37:
     - python3 -m pytest --capture=sys --cov=speech_recognition test
   tags:
     - docker
+
+test_python_38:
+  image: python:3.8
+  script:
+    - set -e
+    - source venv/bin/activate
+    - python3 -m pytest --capture=sys --cov=speech_recognition test
+  tags:
+    - docker
+
 
 build-singularity_image:
   image:
