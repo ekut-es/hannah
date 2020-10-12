@@ -196,17 +196,18 @@ class ExitWrapperBlock(nn.Module):
                  lossweight : float):
 
         super().__init__()
-        
-        self.wrapped_block =  wrapped_block
+       
+        self.wrapped_block = wrapped_block
         self.threshold = threshold
         self.lossweight = lossweight
         self.exit_branch = exit_branch
         self.exit_result = torch.Tensor()
 
     def forward(self, x):
-        x = self.wrapped_block.forward(x)
+        x = self.wrapped_block(x)
 
-        x_exit = self.exit_branch.forward(x)
+        x_exit = self.exit_branch(x)
+        x_exit = torch.squeeze(x_exit)
         self.exit_result = x_exit
         
         return x
@@ -289,6 +290,7 @@ class BranchyTCResNetModel(TCResNetModel):
 
         self.exit_count = exit_count
         self.exits_taken = [0] * (exit_count+1)
+    
         self.layers = new_layers
 
         self.test = False
@@ -308,8 +310,6 @@ class BranchyTCResNetModel(TCResNetModel):
         x = np.concatenate(self.x)
         y = np.concatenate(self.y)
 
-        # self.piecewise_func = pwlf.PiecewiseLinFit(x, y)
-        # self.piecewise_func.fit(self.n_pieces)
 
         msglogger.info("Piecewise Parameters")
         msglogger.info("Slopes: {}".format(self.piecewise_func.slopes))
@@ -383,7 +383,6 @@ class BranchyTCResNetModel(TCResNetModel):
 
     def forward(self, x):
         x = super().forward(x)
-
         if self.training:
             results = []
             for layer in self.layers:
