@@ -6,21 +6,20 @@
 
 Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
 
-- python3.6 and development headers
-- portaudio and development headers
-- freeglut and development headers
+- python3.6+ and development headers
+- libsndfile and development headers
+- libsox and development headers 
 - a blas implementation and development headers
 
 ### Ubuntu 18.04+
 
     sudo apt update
-    sudo apt -y install python3-dev freeglut3-dev portaudio19-dev libblas-dev liblapack-dev
+    sudo apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev
 
 ### Centos / RHEL / Scientific Linux: 7+
 
-    sudo yum install python36 python36-devel -y || true
-    sudo yum install freeglut-devel -y
-    sudo yum install portaudio-devel -y
+    sudo yum install python36 python36-devel -y 
+    sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y 
 
 
 ### Install poetry
