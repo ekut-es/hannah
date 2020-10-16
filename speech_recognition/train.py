@@ -598,8 +598,8 @@ def main():
     kwargs = {
         "max_epochs": n_epochs,
         "default_root_dir": log_dir,
-        "row_log_interval": 1,  # enables logging of metrics per step/batch
-        "checkpoint_callback": checkpoint_callback,
+        "log_every_n_steps": 1,  # enables logging of metrics per step/batch
+        # "checkpoint_callback": checkpoint_callback,
         "callbacks": [],
     }
 

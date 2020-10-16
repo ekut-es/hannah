@@ -16,7 +16,8 @@ import torch
 import torch.utils.data as data
 from .dataset import ctc_collate_fn, SpeechDataset
 from .utils import _locate, config_pylogger
-from pytorch_lightning import TrainResult, EvalResult
+from pytorch_lightning.metrics import Accuracy, Recall
+from pytorch_lightning.metrics.functional import f1_score
 
 
 class SpeechClassifierModule(LightningModule):
@@ -37,6 +38,8 @@ class SpeechClassifierModule(LightningModule):
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
+
+        # logging
         self.log_dir = log_dir
         self.msglogger = msglogger
         self.msglogger.info("speech classifier initialized")
@@ -46,6 +49,10 @@ class SpeechClassifierModule(LightningModule):
         dummy_input = torch.zeros(1, dummy_height, dummy_width)
         self.example_input_array = dummy_input
         self.bn_frozen = False
+
+        # metrics
+        self.accuracy = Accuracy()
+        self.recall = Recall()
 
     # PREPARATION
     def configure_optimizers(self):
@@ -83,21 +90,33 @@ class SpeechClassifierModule(LightningModule):
         # --- before backward
 
         # METRICS
-        batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
-
-        result = TrainResult(loss)
-
-        log_vals = {
-            "train_loss": loss,
-            "train_acc": batch_acc,
-            "train_f1": batch_f1,
-            "train_recall": batch_recall,
-        }
-
+        # batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
+        # log_vals = {
+        #     "train_loss": loss,
+        #     "train_acc": batch_acc,
+        #     "train_f1": batch_f1,
+        #     "train_recall": batch_recall,
+        # }
         # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        result.log_dict(log_vals, on_step=True, on_epoch=True)
+        # result.log_dict(log_vals, on_step=True, on_epoch=True)
 
-        return result
+        self.log("train_acc_step", self.accuracy(output, y))
+        self.log("train_recall_step", self.recall(output, y))
+        self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
+        self.log(
+            "train_f1",
+            f1_score(output, y),
+            on_step=True,
+            on_epoch=True,
+            logger=True,
+        )
+
+        return loss
+
+    def training_epoch_end(self, outs):
+        # log epoch metric
+        self.log("train_acc_epoch", self.accuracy.compute())
+        self.log("train_recall_epoch", self.recall.compute())
 
     def train_dataloader(self):
 
@@ -129,19 +148,18 @@ class SpeechClassifierModule(LightningModule):
         loss = self.criterion(output, y)
 
         # METRICS
-        batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
-        result = EvalResult(loss)
-        log_vals = {
-            "val_loss": loss,
-            "val_acc": batch_acc,
-            "val_f1": batch_f1,
-            "val_recall": batch_recall,
-        }
+        # batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
+        # result = EvalResult(loss)
+        # log_vals = {
+        #     "val_loss": loss,
+        #     "val_acc": batch_acc,
+        #     "val_f1": batch_f1,
+        #     "val_recall": batch_recall,
+        # }
+        # # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
+        # result.log_dict(log_vals)
 
-        # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        result.log_dict(log_vals)
-
-        return result
+        return loss
 
     def val_dataloader(self):
 
@@ -166,21 +184,18 @@ class SpeechClassifierModule(LightningModule):
         loss = self.criterion(output, y)
 
         # METRICS
-        batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
+        # batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
+        # result = EvalResult(loss)
+        # log_vals = {
+        #     "test_loss": loss,
+        #     "test_acc": batch_acc,
+        #     "test_f1": batch_f1,
+        #     "test_recall": batch_recall,
+        # }
+        # # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
+        # result.log_dict(log_vals)
 
-        # RESULT DICT
-        result = EvalResult(loss)
-        log_vals = {
-            "test_loss": loss,
-            "test_acc": batch_acc,
-            "test_f1": batch_f1,
-            "test_recall": batch_recall,
-        }
-
-        # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        result.log_dict(log_vals)
-
-        return result
+        return loss
 
     def test_dataloader(self):
 
