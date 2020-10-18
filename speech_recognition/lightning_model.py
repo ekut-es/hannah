@@ -19,6 +19,8 @@ class SpeechClassifierModule(LightningModule):
         # TODO lit logger to saves hparams (also outdated to use)
         # which causes error TypeError: can't pickle int objects
         self.hparams = config
+        #get all the necessary data stuff
+        _locate(config["dataset_cls"]).download(config)
 
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(config["dataset_cls"]).splits(config)
