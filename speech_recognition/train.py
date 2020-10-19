@@ -321,7 +321,7 @@ def main():
     checkpoint_callback = ModelCheckpoint(
         filepath=log_dir,
         save_top_k=1,
-        verbose=True,
+        verbose=False,
         monitor="train_loss",
         mode="min",
         prefix="",

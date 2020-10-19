@@ -75,15 +75,15 @@ class SpeechClassifierModule(LightningModule):
             # log for each output
             for idx, out in enumerate(output):
                 # accuracy
-                self.log(f"{prefix}_branch_{idx}_acc_step", self.accuracy[idx](out, y))
+                self.log(f"{prefix}_acc_step/exit_{idx}", self.accuracy[idx](out, y))
 
-                # TODO: metrics
+                # TODO: f1 recall
 
         else:
-            self.log("train_acc_step", self.accuracy(output, y))
-            self.log("train_recall_step", self.recall(output, y))
+            self.log(f"{prefix}_acc_step", self.accuracy(output, y))
+            self.log(f"{prefix}_recall_step", self.recall(output, y))
             self.log(
-                "train_f1",
+                "{prefix}_f1",
                 f1_score(output, y),
                 on_step=True,
                 on_epoch=True,
@@ -100,7 +100,7 @@ class SpeechClassifierModule(LightningModule):
             for idx in range(self.model.n_pieces):
                 # accuracy
                 for accuracy in self.accuracy:
-                    self.log(f"{prefix}_branch_{idx}_acc_epoch", accuracy.compute())
+                    self.log(f"{prefix}_acc_epoch/exit_{idx}", accuracy.compute())
 
                 # TODO: recall, f1
 
