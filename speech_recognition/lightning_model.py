@@ -1,3 +1,5 @@
+import logging
+
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
 from .config_utils import (
@@ -16,7 +18,7 @@ from pytorch_lightning import TrainResult, EvalResult
 
 
 class SpeechClassifierModule(LightningModule):
-    def __init__(self, config, log_dir, msglogger):
+    def __init__(self, config):
         super().__init__()
         # torch.autograd.set_detect_anomaly(True)
         # TODO lit logger to saves hparams (also outdated to use)
@@ -33,8 +35,8 @@ class SpeechClassifierModule(LightningModule):
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
-        self.log_dir = log_dir
-        self.msglogger = msglogger
+
+        self.msglogger = logging.getLogger()
         self.msglogger.info("speech classifier initialized")
 
         # summarize model architecture
@@ -198,7 +200,7 @@ class SpeechClassifierModule(LightningModule):
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(
-            self.log_dir,
+            ".",
             self.model,
             self.test_set,
             config=self.hparams,

@@ -26,7 +26,7 @@ conv1_output_channels: 16
 conv1_size: 3
 conv1_stride: 1
 cuda: false
-data_folder: ../../../datasets/speech_commands_v0.02/
+data_folder: ${hydra:runtime.cwd}/datasets/speech_commands_v0.02/
 dataset: keywords
 dataset_cls: speech_recognition.dataset.SpeechCommandsDataset
 dev_pct: 10

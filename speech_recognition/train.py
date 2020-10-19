@@ -38,7 +38,6 @@ def main(config=DictConfig):
     log_dir = get_config_logdir(
         config["model_name"], config
     )  # path for logs and checkpoints
-    msglogger = config_pylogger("logging.conf", "training", log_dir)
 
     log_execution_env_state()
 
@@ -55,9 +54,7 @@ def main(config=DictConfig):
         prefix="",
     )
 
-    lit_module = SpeechClassifierModule(
-        dict(config), log_dir, msglogger
-    )  # passing logdir for custom json save after training omit double fnccall
+    lit_module = SpeechClassifierModule(config)
 
     kwargs = {
         "max_epochs": n_epochs,
@@ -127,17 +124,17 @@ def main(config=DictConfig):
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
-            lit_module = SpeechClassifierModule(dict(config), log_dir, msglogger)
+            lit_module = SpeechClassifierModule(dict(config))
 
         # PL TRAIN
-        msglogger.info(ModelSummary(lit_module, "full"))
+        logging.info(ModelSummary(lit_module, "full"))
         lit_trainer.fit(lit_module)
 
         # PL TEST
         lit_trainer.test(ckpt_path=None)
 
         if config["profile"]:
-            msglogger.info(profiler.summary())
+            logging.info(profiler.summary())
 
     elif config["type"] == "eval":
         logging.error("eval mode is not supported at the moment")
