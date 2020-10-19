@@ -132,24 +132,6 @@ def get_loss_function(model, config):
     return criterion
 
 
-def get_output_dir(model_name, config):
-
-    output_dir = os.path.join(config["output_dir"], config["experiment_id"], model_name)
-
-    if config["compress"]:
-        compressed_name = config["compress"]
-        compressed_name = os.path.splitext(os.path.basename(compressed_name))[0]
-        output_dir = os.path.join(output_dir, compressed_name)
-
-    output_dir = os.path.abspath(output_dir)
-
-    return output_dir
-
-
-def get_config_logdir(model_name, config):
-    return os.path.join(get_output_dir(model_name, config), config["config_hash"][0:8])
-
-
 def get_model(config, config2=None, model=None, vad_keyword=0):
     if not model:
         if vad_keyword == 0:

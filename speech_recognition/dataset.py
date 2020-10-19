@@ -76,11 +76,10 @@ class SpeechDataset(data.Dataset):
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
         self.extract_loudest = config["extract_loudest"]
-        self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
         self.randomstates = dict()
-        self.unknown_class = 2 if self.loss_function == "ctc" else 1
-        self.silence_class = 1 if self.loss_function == "ctc" else 0
+        self.unknown_class = 1
+        self.silence_class = 0
         n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
         self.features = config["features"]
@@ -148,12 +147,6 @@ class SpeechDataset(data.Dataset):
         config["train_pct"] = ConfigOption(category="Input Config", default=80)
         config["dev_pct"] = ConfigOption(category="Input Config", default=10)
         config["test_pct"] = ConfigOption(category="Input Config", default=10)
-        config["loss"] = ConfigOption(
-            category="Input Config",
-            desc="Loss function that should be used with this dataset",
-            choices=["cross_entropy", "ctc"],
-            default="cross_entropy",
-        )
         config["train_snr_low"] = ConfigOption(category="Input Config", default=0.0)
         config["train_snr_high"] = ConfigOption(category="Input Config", default=20.0)
         config["test_snr"] = ConfigOption(
@@ -226,15 +219,11 @@ class SpeechDataset(data.Dataset):
 
             extract_index = (0, len(data))
 
-            if self.extract_loudest and self.loss_function != "ctc":
+            if self.extract_loudest:
                 extract_index = self._extract_loudest_range(data, in_len)
 
             data = self._timeshift_audio(data)
             data = data[extract_index[0] : extract_index[1]]
-
-            if self.loss_function != "ctc":
-                data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
-                data = data[0:in_len]
 
         if self.bg_noise_audio:
             bg_noise = random.choice(self.bg_noise_audio)
@@ -272,10 +261,6 @@ class SpeechDataset(data.Dataset):
         )
 
         data = torch.from_numpy(data)
-
-        if self.loss_function != "ctc":
-            assert data.shape[0] == self.height
-            assert data.shape[1] == self.width
 
         if self.normalize_bits > 0:
             normalize_factor = 2.0 ** (self.normalize_bits - 1)
@@ -442,24 +427,16 @@ class SpeechHotwordDataset(SpeechDataset):
 
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
-        if self.loss_function == "ctc":
-            self.label_names = {
-                0: self.LABEL_EPS,
-                1: self.LABEL_SILENCE,
-                2: self.LABEL_UNKNOWN,
-                3: self.LABEL_HOTWORD,
-            }
-        else:
-            self.label_names = {
-                0: self.LABEL_SILENCE,
-                1: self.LABEL_UNKNOWN,
-                2: self.LABEL_HOTWORD,
-            }
+
+        self.label_names = {
+            0: self.LABEL_SILENCE,
+            1: self.LABEL_UNKNOWN,
+            2: self.LABEL_HOTWORD,
+        }
 
     @staticmethod
     def default_config():
         config = SpeechDataset.default_config()
-        config["loss"].default = "cross_entropy"
         config["n_labels"].default = 3
 
         # Splits the dataset in 1/3
@@ -501,8 +478,8 @@ class SpeechHotwordDataset(SpeechDataset):
             num_hotwords = len(hotword_files)
             num_unknowns = int(num_hotwords * unknown_prob)
             random.shuffle(unknown_files)
-            label_unknown = 2 if config["loss"] == "ctc" else 1
-            label_hotword = 3 if config["loss"] == "ctc" else 2
+            label_unknown = 1
+            label_hotword = 2
 
             datasets[num].update(
                 {u: label_unknown for u in unknown_files[:num_unknowns]}

@@ -12,8 +12,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from . import models as mod
 from . import dataset
-from .utils import set_seed, config_pylogger, log_execution_env_state
-from .config_utils import get_config_logdir
+from .utils import set_seed, log_execution_env_state
 
 from .config import ConfigBuilder, ConfigOption
 from .callbacks.backends import OnnxTFBackend, OnnxruntimeBackend, TorchMobileBackend
@@ -30,14 +29,11 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.core.memory import ModelSummary
 
 
-@hydra.main(config_name="config")
+@hydra.main(config_name="config", config_path="conf")
 def main(config=DictConfig):
     set_seed(config)
     gpu_no = config["gpu_no"]
     n_epochs = config["n_epochs"]  # max epochs
-    log_dir = get_config_logdir(
-        config["model_name"], config
-    )  # path for logs and checkpoints
 
     log_execution_env_state()
 
@@ -46,7 +42,7 @@ def main(config=DictConfig):
 
     # Configure checkpointing
     checkpoint_callback = ModelCheckpoint(
-        filepath=log_dir,
+        filepath="./checkpoints",
         save_top_k=-1,  # with PL 0.9.0 only possible to save every epoch
         verbose=True,
         monitor="checkpoint_on",
@@ -58,14 +54,18 @@ def main(config=DictConfig):
 
     kwargs = {
         "max_epochs": n_epochs,
-        "default_root_dir": log_dir,
+        "default_root_dir": ".",
         "row_log_interval": 1,  # enables logging of metrics per step/batch
         "checkpoint_callback": checkpoint_callback,
         "callbacks": [],
     }
 
     # TODO distiller only available without auto_lr because compatibility issues
-    if config["compress"] and not config["auto_lr"]:
+    if config["compress"]:
+        if config["auto_lr"]:
+            raise Exception(
+                "Automated learning rate finder is not compatible with compression"
+            )
         callbacks = kwargs["callbacks"]
         callbacks.append(
             DistillerCallback(config["compress"], fold_bn=config["fold_bn"])
@@ -88,8 +88,8 @@ def main(config=DictConfig):
         )
 
     loggers = [
-        TensorBoardLogger(log_dir + "/tb_logs", version="", name=""),
-        CSVLogger(log_dir, version="", name=""),
+        TensorBoardLogger("./tb_logs", version="", name=""),
+        CSVLogger(".", version="", name=""),
     ]
     kwargs["logger"] = loggers
 
@@ -120,11 +120,10 @@ def main(config=DictConfig):
             lr_finder = lit_trainer.lr_find(lit_module)
             # inspect results
             fig = lr_finder.plot()
-            fig.savefig(f"{log_dir}/learing_rate.png")
+            fig.savefig(f"./learing_rate.png")
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
-            lit_module = SpeechClassifierModule(dict(config))
 
         # PL TRAIN
         logging.info(ModelSummary(lit_module, "full"))

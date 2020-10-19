@@ -1,0 +1,25 @@
+data_folder: ${hydra:runtime.cwd}/datasets/speech_commands_v0.02/
+dataset: keywords
+dataset_cls: speech_recognition.dataset.SpeechCommandsDataset
+input_length: 16000
+features: mel
+freq_max: 4000
+freq_min: 20
+full_help: false
+group_speakers_by_id: true
+height: 40
+n_mels: 40
+n_mfcc: 40
+normalize_bits: 0
+normalize_max: 256
+wanted_words:
+    - 'yes'
+    - 'no'
+    - up
+    - down
+    - left
+    - right
+    - 'on'
+    - 'off'
+    - stop
+    - go
