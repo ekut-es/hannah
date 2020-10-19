@@ -1,15 +1,13 @@
 import distiller
 from distiller.data_loggers import PythonLogger, CsvLogger
-import distiller.apputils as apputils
 import logging
-import pandas as pd
-import torch
-from functools import partial
 from tabulate import tabulate
 from collections import OrderedDict
 
 
-def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=False, rankdir='TB', styles=None):
+def draw_classifier_to_file(
+    model, png_fname, dummy_input, display_param_nodes=False, rankdir="TB", styles=None
+):
     """Draw a PyTorch classifier to a PNG file.  This a helper function that
     simplifies the interface of draw_model_to_file().
 
@@ -45,28 +43,30 @@ def draw_classifier_to_file(model, png_fname, dummy_input, display_param_nodes=F
 def model_summary(model, dummy_input, what):
     msglogger = logging.getLogger()
 
-    if what == 'sparsity':
+    if what == "sparsity":
         pylogger = PythonLogger(msglogger)
-        csvlogger = CsvLogger('weights.csv')
+        csvlogger = CsvLogger("weights.csv")
 
         distiller.log_weights_sparsity(model, -1, loggers=[pylogger, csvlogger])
 
-    elif what == 'performance':
+    elif what == "performance":
 
-        total_macs     = float('nan')
-        total_weights  = float('nan')
-        total_acts     = float('nan')
-        estimated_acts = float('nan')
+        total_macs = float("nan")
+        total_weights = float("nan")
+        total_acts = float("nan")
+        estimated_acts = float("nan")
 
         try:
-            df = distiller.model_performance_summary(model, dummy_input, dummy_input.shape[0])
-            t = tabulate(df, headers='keys', tablefmt='psql', floatfmt=".5f")
-            total_macs = df['MACs'].sum()
-            total_acts = df['IFM volume'][0] + df['OFM volume'].sum()
-            total_weights = df['Weights volume'].sum()
-            estimated_acts = 2 * max(df['IFM volume'].max(), df['OFM volume'].max())
+            df = distiller.model_performance_summary(
+                model, dummy_input, dummy_input.shape[0]
+            )
+            t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
+            total_macs = df["MACs"].sum()
+            total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
+            total_weights = df["Weights volume"].sum()
+            estimated_acts = 2 * max(df["IFM volume"].max(), df["OFM volume"].max())
 
-            msglogger.info("\n"+str(t))
+            msglogger.info("\n" + str(t))
             msglogger.info("Total MACs: " + "{:,}".format(total_macs))
             msglogger.info("Total Weights: " + "{:,}".format(total_weights))
             msglogger.info("Total Activations: " + "{:,}".format(total_acts))

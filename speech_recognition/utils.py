@@ -1,85 +1,49 @@
+import importlib
 import torch
 import torch.nn as nn
 import numpy as np
 import random
 import logging
 import os
-import json
 
 import sys
 import platform
 from git import Repo, InvalidGitRepositoryError
+from pathlib import Path
+
 try:
     import lsb_release
+
     HAVE_LSB = True
 except ImportError:
     HAVE_LSB = False
+
 
 class SerializableModule(nn.Module):
     def __init__(self):
         super().__init__()
 
-        
     def on_val(self):
         pass
 
-    
     def on_val_end(self):
         pass
 
-    
     def on_test(self):
         pass
 
-    
     def on_test_end(self):
         pass
 
-        
     def save(self, filename):
         torch.save(self.state_dict(), filename)
 
-        
     def load(self, filename):
         """ Do not use model.load """
-        self.load_state_dict(torch.load(filename,
-                                        map_location=lambda storage, loc: storage),
-                             strict=False)
-
-class EarlyStopping:
-    """Early stops the training if validation loss doesn't improve after a given patience."""
-    def __init__(self, patience=10, verbose=False):
-        """
-        Args:
-            patience (int): How long to wait after last time validation loss improved.
-                            Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement.
-                            Default: False
-        """
-        self.patience = patience
-        self.verbose = verbose
-        self.counter = 0
-        self.best_score = None
-        self.early_stop = False
-        self.val_loss_min = np.Inf
-
-    def __call__(self, val_loss):
-
-        score = -val_loss
-
-        if self.best_score is None:
-            self.best_score = score
-        elif score < self.best_score:
-            self.counter += 1
-            if self.verbose:
-                print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
-            if self.counter >= self.patience:
-                self.early_stop = True
-        else:
-            self.best_score = score
-            self.counter = 0
-
-        return self.early_stop
+        self.load_state_dict(
+            torch.load(filename, map_location=lambda storage, loc: storage),
+            strict=False,
+        )
 
 
 def set_seed(config):
@@ -91,7 +55,7 @@ def set_seed(config):
     random.seed(seed)
 
 
-def config_pylogger(log_cfg_file, experiment_name, output_dir='logs'):
+def config_pylogger(log_cfg_file, experiment_name, output_dir="logs"):
     """Configure the Python logger.
     For each execution of the application, we'd like to create a unique log directory.
     By default this directory is named using the date and time of day, so that directories
@@ -105,20 +69,19 @@ def config_pylogger(log_cfg_file, experiment_name, output_dir='logs'):
     if not os.path.exists(logdir):
         os.makedirs(logdir)
 
-    log_filename = os.path.join(logdir, exp_full_name + '.log')
+    log_filename = os.path.join(logdir, exp_full_name + ".log")
     if os.path.isfile(log_cfg_file):
-        logging.config.fileConfig(log_cfg_file, defaults={'logfilename': log_filename})
-
+        logging.config.fileConfig(log_cfg_file, defaults={"logfilename": log_filename})
 
     msglogger = logging.getLogger()
     msglogger.logdir = logdir
     msglogger.log_filename = log_filename
-    msglogger.info('Log file for this run: ' + os.path.realpath(log_filename))
+    msglogger.info("Log file for this run: " + os.path.realpath(log_filename))
 
     return msglogger
 
 
-def log_execution_env_state(distiller_gitroot='.'):
+def log_execution_env_state(distiller_gitroot="."):
     """Log information about the execution environment.
     File 'config_path' will be copied to directory 'logdir'. A common use-case
     is passing the path to a (compression) schedule YAML file. Storing a copy
@@ -142,7 +105,9 @@ def log_execution_env_state(distiller_gitroot='.'):
             repo = Repo(gitroot)
             assert not repo.bare
         except InvalidGitRepositoryError:
-            logger.info("    Cannot find a Git repository.  You probably downloaded an archive")
+            logger.info(
+                "    Cannot find a Git repository.  You probably downloaded an archive"
+            )
             return
 
         if repo.is_dirty():
@@ -154,24 +119,22 @@ def log_execution_env_state(distiller_gitroot='.'):
         logger.info("    Active Git branch: %s", branch_name)
         logger.info("    Git commit: %s" % repo.head.commit.hexsha)
 
-    #logger.info("  Number of CPUs: %d", len(os.sched_getaffinity(0)))
+    # logger.info("  Number of CPUs: %d", len(os.sched_getaffinity(0)))
     logger.info("  Number of GPUs: %d", torch.cuda.device_count())
     logger.info("  CUDA version: %s", torch.version.cuda)
     logger.info("  CUDNN version: %s", torch.backends.cudnn.version())
     logger.info("  Kernel: %s", platform.release())
     if HAVE_LSB:
-        logger.info("  OS: %s", lsb_release.get_lsb_information()['DESCRIPTION'])
+        logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Numpy: %s", np.__version__)
     logger.info("  Distiller Info:")
     log_git_state(distiller_gitroot)
     logger.info("  Speech Recognition info:")
-    log_git_state(os.path.join(os.path.dirname(__file__), '..'))
+    log_git_state(os.path.join(os.path.dirname(__file__), ".."))
     logger.info("  Command line: %s", " ".join(sys.argv))
     logger.info("  ")
-
-
 
 
 def _locate(path):
@@ -179,14 +142,14 @@ def _locate(path):
     Locate an object by name or dotted path, importing as necessary.
     This is similar to the pydoc function `locate`, except that it checks for
     the module from the given path from back to front.
-    
+
     #FIXME: this should be removed if and when hydra is adapted as configuration manager
     """
     import builtins
     from importlib import import_module
 
     logger = logging.getLogger()
-    
+
     parts = [part for part in path.split(".") if part]
     module = None
     for n in reversed(range(len(parts))):
@@ -221,16 +184,26 @@ def _locate(path):
 
 
 def _fullname(cls):
-  # See: https://stackoverflow.com/questions/2020014/get-fully-qualified-class-name-of-an-object-in-python
-  # o.__module__ + "." + o.__class__.__qualname__ is an example in
-  # this context of H.L. Mencken's "neat, plausible, and wrong."
-  # Python makes no guarantees as to whether the __module__ special
-  # attribute is defined, so we take a more circumspect approach.
-  # Alas, the module name is explicitly excluded from __qualname__
-  # in Python 3.
+    # See: https://stackoverflow.com/questions/2020014/get-fully-qualified-class-name-of-an-object-in-python
+    # o.__module__ + "." + o.__class__.__qualname__ is an example in
+    # this context of H.L. Mencken's "neat, plausible, and wrong."
+    # Python makes no guarantees as to whether the __module__ special
+    # attribute is defined, so we take a more circumspect approach.
+    # Alas, the module name is explicitly excluded from __qualname__
+    # in Python 3.
 
-  module = cls.__module__
-  if module is None or module == str.__module__:
-    return cls.__name__  # Avoid reporting __builtin__
-  else:
-    return module + '.' + cls.__name__
+    module = cls.__module__
+    if module is None or module == str.__module__:
+        return cls.__name__  # Avoid reporting __builtin__
+    else:
+        return module + "." + cls.__name__
+
+
+def load_module(path):
+    """small utility to automatically load modules from path"""
+    path = Path(path)
+    name = path.stem
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
