@@ -1,20 +1,19 @@
 from pytorch_lightning.core.lightning import LightningModule
 
-# from pytorch_lightning.metrics.functional import (
-#     accuracy,
-#     f1_score,
-#     recall,
-# )
-from .train import (
+from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
+from .config_utils import (
     get_loss_function,
     get_optimizer,
     get_model,
     save_model,
     get_lr_scheduler,
 )
+from .utils import _locate
+from .dataset import ctc_collate_fn
 
 import torch
 import torch.utils.data as data
+
 from .dataset import ctc_collate_fn, SpeechDataset
 from .utils import _locate, config_pylogger
 from pytorch_lightning.metrics import Accuracy, Recall
@@ -179,18 +178,6 @@ class SpeechClassifierModule(LightningModule):
         y = y.view(-1)
         loss = self.criterion(output, y)
 
-        # METRICS
-        # batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
-        # result = EvalResult(loss)
-        # log_vals = {
-        #     "val_loss": loss,
-        #     "val_acc": batch_acc,
-        #     "val_f1": batch_f1,
-        #     "val_recall": batch_recall,
-        # }
-        # # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        # result.log_dict(log_vals)
-
         return loss
 
     def val_dataloader(self):
@@ -214,18 +201,6 @@ class SpeechClassifierModule(LightningModule):
         output = self.model(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
-
-        # METRICS
-        # batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
-        # result = EvalResult(loss)
-        # log_vals = {
-        #     "test_loss": loss,
-        #     "test_acc": batch_acc,
-        #     "test_f1": batch_f1,
-        #     "test_recall": batch_recall,
-        # }
-        # # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        # result.log_dict(log_vals)
 
         return loss
 

@@ -63,12 +63,7 @@ def test_tc_res8(
     profile,
 ):
     command_line = f"python -m speech_recognition.train {experiment_id} {model} {seed} {epochs} {limits_datasets} {distiller} {fold_bn} {normalize_bits} {profile}"
-    subprocess.run(
-        command_line,
-        check=True,
-        shell=True,
-        stdout=subprocess.PIPE,
-    )
+    subprocess.run(command_line, check=True, shell=True, stdout=subprocess.PIPE)
 
 
 # def test_tc_res8_vad():
@@ -96,7 +91,7 @@ def test_tc_res8(
             "",
             "",
             "",
-        ),
+        )
     ],
 )
 def test_sinc(
@@ -111,9 +106,12 @@ def test_sinc(
     profile,
 ):
     command_line = f"python -m speech_recognition.train {experiment_id} {model} {seed} {epochs} {limits_datasets} {distiller} {fold_bn} {normalize_bits} {profile}"
-    subprocess.run(
-        command_line,
-        check=True,
-        shell=True,
-        stdout=subprocess.PIPE,
-    )
+    subprocess.run(command_line, check=True, shell=True, stdout=subprocess.PIPE)
+
+
+@pytest.mark.parametrize(
+    "model,backend", [("tc-res8", "torchmobile"), ("sinc1", "torchmobile")]
+)
+def test_backend(model, backend):
+    command_line = f"python -m speech_recognition.train --model {model} --backend {backend} --fast-dev-run"
+    subprocess.run(command_line, check=True, shell=True, stdout=subprocess.PIPE)

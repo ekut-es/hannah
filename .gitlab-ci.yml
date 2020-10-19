@@ -8,7 +8,7 @@ before_script:
   - source /etc/os-release
   - if [[ $ID == "debian" || $ID == "ubuntu" ]]; then
   - apt update
-  - apt -y install python3-dev freeglut3-dev portaudio19-dev libblas-dev liblapack-dev
+  - apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev
   - else
   - yum install epel-release -y
   - yum install git sudo python36 -y
@@ -34,7 +34,7 @@ before_script:
   - cd ..
 
   # Show limits
-  - ulimit -a 
+  - ulimit -a
 
 test:
   image: python:3.6
@@ -53,6 +53,16 @@ test_python_37:
     - python3 -m pytest --capture=sys --cov=speech_recognition test
   tags:
     - docker
+
+test_python_38:
+  image: python:3.8
+  script:
+    - set -e
+    - source venv/bin/activate
+    - python3 -m pytest --capture=sys --cov=speech_recognition test
+  tags:
+    - docker
+
 
 build-singularity_image:
   image:
