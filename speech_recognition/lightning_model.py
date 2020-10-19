@@ -62,16 +62,8 @@ class SpeechClassifierModule(LightningModule):
         # in case of branchy nets declare multiple objects per metric
         if hasattr(self.model, "n_pieces"):
             for idx in range(self.model.n_pieces):
-
-                # accuracy
-                acc_str = f"self.accuracy_branch_{idx}"
-                code_str = f"{acc_str} = {Accuracy()}"
-                exec(code_str)
-
-                # recall
-                recall_str = f"self.recall_branch_{idx}"
-                code_str = f"{recall_str} = {Recall()}"
-                exec(code_str)
+                self.accuracy = [Accuracy() for _ in range(self.model.n_pieces)]
+                self.recall = [Recall() for _ in range(self.model.n_pieces)]
         else:
             self.accuracy = Accuracy()
             self.recall = Recall()
@@ -83,14 +75,9 @@ class SpeechClassifierModule(LightningModule):
             # log for each output
             for idx, out in enumerate(output):
                 # accuracy
-                log_acc_str = f"self.log('{prefix}_branch_{idx}_acc_step', self.accuracy_branch_{idx}(out,y))"
-                exec(log_acc_str)
+                self.log(f"{prefix}_branch_{idx}_acc_step", self.accuracy[idx](out, y))
 
-                # recall
-                log_recall_str = f"self.log('{prefix}_branch_{idx}_recall_step', self.recall_branch_{idx}(out,y))"
-                exec(log_recall_str)
-
-                # TODO f1_score too?
+                # TODO: metrics
 
         else:
             self.log("train_acc_step", self.accuracy(output, y))
@@ -112,12 +99,10 @@ class SpeechClassifierModule(LightningModule):
         if hasattr(self.model, "n_pieces"):
             for idx in range(self.model.n_pieces):
                 # accuracy
-                log_acc_str = f"self.log('{prefix}_branch_{idx}_acc_epoch', self.accuracy_branch_{idx}.compute())"
-                exec(log_acc_str)
+                for accuracy in self.accuracy:
+                    self.log(f"{prefix}_branch_{idx}_acc_epoch", accuracy.compute())
 
-                # recall
-                log_recall_str = f"self.log('{prefix}_branch_{idx}_recall_epoch', self.recall_branch_{idx}.compute())"
-                exec(log_recall_str)
+                # TODO: recall, f1
 
         else:
             self.log(f"{prefix}_acc_epoch", self.accuracy.compute())
