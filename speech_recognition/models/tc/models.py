@@ -361,6 +361,17 @@ class BranchyTCResNetModel(TCResNetModel):
 
         return torch.log(estimated_losses)
 
+    def _estimate_losses_sum(self, thresholded_result, estimated_labels):
+        expected_result = torch.zeros(thresholded_result.shape, device=thresholded_result.device)
+        for row, column in enumerate(estimated_labels):
+            for column2 in range(expected_result.shape[1]):
+                expected_result[row, column2] = thresholded_result[row, column]
+
+        diff = thresholded_result-expected_result
+        estimated_losses = torch.sum(diff, dim=1)
+
+        return estimated_losses
+
     def _estimate_losses_piecewise_linear(self, thresholded_result, estimated_labels):
         expected_result = torch.zeros(thresholded_result.shape, device=x.device)
         for row, column in enumerate(estimated_labels):
@@ -415,12 +426,13 @@ class BranchyTCResNetModel(TCResNetModel):
                 estimated_losses_real = self._estimate_losses_real(thresholded_result, estimated_labels)
                 estimated_losses_taylor = self._estimate_losses_taylor(thresholded_result, estimated_labels)
                 estimated_losses_taylor_approximate = self._estimate_losses_taylor_approximate(thresholded_result, estimated_labels)
+                estimated_losses_sum = self._estimate_losses_sum(thresholded_result, estimated_labels)
 
             #    print("real:", estimated_losses_real)
             #    print("taylor:", estimated_losses_taylor)
             #    print("taylor_approx:", estimated_losses_taylor_approximate)
 
-                estimated_losses = estimated_losses_taylor_approximate
+                estimated_losses = estimated_losses_sum
 
                 self.update_piecewise_data(thresholded_result)
 
@@ -857,7 +869,8 @@ configs = {
     ConfigType.BRANCHY_TC_RES_8.value: dict(
         features="mel",
         dropout_prob = 0.5,
-        earlyexit_thresholds = [1.4, 1.4],
+        # earlyexit_thresholds = [0.7, 0.7],
+        earlyexit_thresholds = [-81.0, -81.0],
         earlyexit_lossweights = [0.3, 0.3],
         fully_convolutional=False,
         width_multiplier = 1,
