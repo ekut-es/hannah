@@ -1,9 +1,10 @@
 from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.metrics.functional import (
-    accuracy,
-    f1_score,
-    recall,
-)
+
+# from pytorch_lightning.metrics.functional import (
+#     accuracy,
+#     f1_score,
+#     recall,
+# )
 from .train import (
     get_loss_function,
     get_optimizer,
@@ -51,8 +52,7 @@ class SpeechClassifierModule(LightningModule):
         self.bn_frozen = False
 
         # metrics
-        self.accuracy = Accuracy()
-        self.recall = Recall()
+        self.prepare_metrics()
 
     # PREPARATION
     def configure_optimizers(self):
@@ -61,19 +61,71 @@ class SpeechClassifierModule(LightningModule):
 
         return [optimizer], [scheduler]
 
-    def get_batch_metrics(self, output, y):
+    def prepare_metrics(self):
 
+        # in case of branchy nets declare multiple objects per metric
+        if hasattr(self.model, "n_pieces"):
+            for idx in range(self.model.n_pieces):
+
+                # accuracy
+                acc_str = f"self.accuracy_branch_{idx}"
+                code_str = f"{acc_str} = {Accuracy()}"
+                exec(code_str)
+
+                # recall
+                recall_str = f"self.recall_branch_{idx}"
+                code_str = f"{recall_str} = {Recall()}"
+                exec(code_str)
+        else:
+            self.accuracy = Accuracy()
+            self.recall = Recall()
+
+    def get_batch_metrics(self, output, y, loss, prefix):
+
+        # in case of multiple outputs
         if isinstance(output, list):
-            output = torch.mean(torch.stack(output), dim=0)
+            # log for each output
+            for idx, out in enumerate(output):
+                # accuracy
+                log_acc_str = f"self.log('{prefix}_branch_{idx}_acc_step', self.accuracy_branch_{idx}(out,y))"
+                exec(log_acc_str)
 
-        y = y.view(-1)
+                # recall
+                log_recall_str = f"self.log('{prefix}_branch_{idx}_recall_step', self.recall_branch_{idx}(out,y))"
+                exec(log_recall_str)
 
-        output_max = output.argmax(dim=1)
-        batch_acc = accuracy(output_max, y, self.hparams["n_labels"])
-        batch_f1 = f1_score(output_max, y)
-        batch_recall = recall(output_max, y)
+                # TODO f1_score too?
 
-        return batch_acc, batch_f1, batch_recall
+        else:
+            self.log("train_acc_step", self.accuracy(output, y))
+            self.log("train_recall_step", self.recall(output, y))
+            self.log(
+                "train_f1",
+                f1_score(output, y),
+                on_step=True,
+                on_epoch=True,
+                logger=True,
+            )
+
+        # only one loss allowed
+        # also in case of branched networks
+        self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
+
+    def get_epoch_metrics(self, prefix):
+        # log epoch metric
+        if hasattr(self.model, "n_pieces"):
+            for idx in range(self.model.n_pieces):
+                # accuracy
+                log_acc_str = f"self.log('{prefix}_branch_{idx}_acc_epoch', self.accuracy_branch_{idx}.compute())"
+                exec(log_acc_str)
+
+                # recall
+                log_recall_str = f"self.log('{prefix}_branch_{idx}_recall_epoch', self.recall_branch_{idx}.compute())"
+                exec(log_recall_str)
+
+        else:
+            self.log(f"{prefix}_acc_epoch", self.accuracy.compute())
+            self.log(f"{prefix}_recall_epoch", self.recall.compute())
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
@@ -90,33 +142,13 @@ class SpeechClassifierModule(LightningModule):
         # --- before backward
 
         # METRICS
-        # batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
-        # log_vals = {
-        #     "train_loss": loss,
-        #     "train_acc": batch_acc,
-        #     "train_f1": batch_f1,
-        #     "train_recall": batch_recall,
-        # }
-        # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        # result.log_dict(log_vals, on_step=True, on_epoch=True)
-
-        self.log("train_acc_step", self.accuracy(output, y))
-        self.log("train_recall_step", self.recall(output, y))
-        self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
-        self.log(
-            "train_f1",
-            f1_score(output, y),
-            on_step=True,
-            on_epoch=True,
-            logger=True,
-        )
+        self.get_batch_metrics(output, y, loss, "train")
 
         return loss
 
     def training_epoch_end(self, outs):
-        # log epoch metric
-        self.log("train_acc_epoch", self.accuracy.compute())
-        self.log("train_recall_epoch", self.recall.compute())
+        # log epoch metrics
+        self.get_epoch_metrics("train")
 
     def train_dataloader(self):
 

@@ -1397,7 +1397,7 @@ description = "Cross-platform windowing and multimedia library"
 name = "pyglet"
 optional = false
 python-versions = "*"
-version = "1.5.7"
+version = "1.5.8"
 
 [[package]]
 category = "main"
@@ -2131,7 +2131,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "f8b431c2f428b436f0cc06fc5d227dbc9dae12379784f2b1470484af6d5050db"
+content-hash = "8af97ea7aaedcac2942d6285465432ff43c203ba7d2394c446804cfc48c3d9d0"
 lock-version = "1.0"
 python-versions = "^3.6.1"
 
@@ -2926,8 +2926,8 @@ pyflakes = [
     {file = "pyflakes-2.2.0.tar.gz", hash = "sha256:35b2d75ee967ea93b55750aa9edbbf72813e06a66ba54438df2cfac9e3c27fc8"},
 ]
 pyglet = [
-    {file = "pyglet-1.5.7-py3-none-any.whl", hash = "sha256:9832442d59ee06acbeff12e128cf6d5aee271e94c09386040db8f0feae277013"},
-    {file = "pyglet-1.5.7.zip", hash = "sha256:3faac2dad34946aecbce79a8658f89155436fe5c07332229160c6eba302ff40d"},
+    {file = "pyglet-1.5.8-py3-none-any.whl", hash = "sha256:bfebd1f538b002c1fb9071c63e5bd39410d402a6cd594a6e6a64e3e00e132a2a"},
+    {file = "pyglet-1.5.8.zip", hash = "sha256:bf7f579c3029661f8ac3a296fd13cdcbf424280aa527b5907454d0a5f8e3f224"},
 ]
 pygments = [
     {file = "Pygments-2.7.1-py3-none-any.whl", hash = "sha256:307543fe65c0947b126e83dd5a61bd8acbd84abec11f43caebaf5534cbc17998"},
