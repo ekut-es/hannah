@@ -14,7 +14,7 @@ import torch
 import torch.utils.data as data
 
 from pytorch_lightning.metrics import Accuracy, Recall
-from pytorch_lightning.metrics.funtional import f1_score
+from pytorch_lightning.metrics.functional import f1_score
 
 
 class SpeechClassifierModule(LightningModule):

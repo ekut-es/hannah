@@ -320,9 +320,9 @@ def main():
     # Configure checkpointing
     checkpoint_callback = ModelCheckpoint(
         filepath=log_dir,
-        save_top_k=-1,  # with PL 0.9.0 only possible to save every epoch
+        save_top_k=1,
         verbose=True,
-        monitor="checkpoint_on",
+        monitor="train_loss",
         mode="min",
         prefix="",
     )
