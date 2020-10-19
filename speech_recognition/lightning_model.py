@@ -1,6 +1,5 @@
 from pytorch_lightning.core.lightning import LightningModule
 
-from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
 from .config_utils import (
     get_loss_function,
     get_optimizer,
@@ -14,10 +13,8 @@ from .dataset import ctc_collate_fn
 import torch
 import torch.utils.data as data
 
-from .dataset import ctc_collate_fn, SpeechDataset
-from .utils import _locate, config_pylogger
 from pytorch_lightning.metrics import Accuracy, Recall
-from pytorch_lightning.metrics.functional import f1_score
+from pytorch_lightning.metrics.funtional import f1_score
 
 
 class SpeechClassifierModule(LightningModule):
