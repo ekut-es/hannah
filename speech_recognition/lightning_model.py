@@ -27,8 +27,8 @@ class SpeechClassifierModule(LightningModule):
 
         # model
         self.train_set, self.dev_set, self.test_set = _locate(
-            config["dataset_cls"]
-        ).splits(config)
+            config.dataset.cls
+        ).splits(config.dataset)
         self.hparams["width"] = self.train_set.width
         self.hparams["height"] = self.train_set.height
         self.model = get_model(self.hparams)

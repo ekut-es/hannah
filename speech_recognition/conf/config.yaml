@@ -26,13 +26,11 @@ conv1_output_channels: 16
 conv1_size: 3
 conv1_stride: 1
 cuda: false
-dev_pct: 10
 dilation: 1
 dropout_prob: 0.5
 dump_test: false
 early_stopping: 0
 experiment_id: test
-extract_loudest: true
 fast_dev_run: false
 fold_bn: -1
 fully_convolutional: false
@@ -67,30 +65,18 @@ opt_rho: 0.9
 optimizer: sgd
 output_dir: trained_models
 profile: false
-samplingrate: 16000
 seed: 1234
 separable:
 - 0
 - 0
-silence_prob: 0.1
 small: false
-stride_ms: 10
 tblogger: false
-test_pct: 10
-test_snr: .inf
-timeshift_ms: 100
-train_pct: 80
-train_snr_high: 1000.0
-train_snr_low: 0.0
 type: train
 ultratrail: ''
-unknown_prob: 0.1
 use_amsgrad: false
-use_default_split: false
 use_nesterov: false
 vsim: /afs/wsi/es/tools/mentor/questa_core_prime/2019.4.2/questasim/bin/vsim
 weight_decay: 1.0e-05
-
 width_multiplier: 1.0
-window_ms: 30
 width: 101
+height: 40
