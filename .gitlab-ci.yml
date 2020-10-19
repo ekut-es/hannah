@@ -15,17 +15,10 @@ before_script:
   - yum install wget curl -y
   - yum groupinstall 'Development Tools' -y
   - fi
-  - python3 -m ensurepip
-  - python3 -V # Print out python version for debugging
-  - python3 -m pip install virtualenv
 
   # Install poetry using recommended method
   - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
   - export PATH=${POETRY_HOME}/bin:${PATH}
-
-  # create virtual environment for tests
-  - virtualenv venv -p python3
-  - source venv/bin/activate
 
   # install and manage dependencies with poetry
   - poetry install
@@ -40,8 +33,7 @@ test:
   image: python:3.6
   script:
     - set -e
-    - source venv/bin/activate
-    - python3 -m pytest --capture=sys --cov=speech_recognition test
+    - poetry run python3 -m pytest --capture=sys --cov=speech_recognition test
   tags:
     - docker
 
@@ -49,8 +41,7 @@ test_python_37:
   image: python:3.7
   script:
     - set -e
-    - source venv/bin/activate
-    - python3 -m pytest --capture=sys --cov=speech_recognition test
+    - poetry run python3 -m pytest --capture=sys --cov=speech_recognition test
   tags:
     - docker
 
@@ -58,8 +49,7 @@ test_python_38:
   image: python:3.8
   script:
     - set -e
-    - source venv/bin/activate
-    - python3 -m pytest --capture=sys --cov=speech_recognition test
+    - poetry run python3 -m pytest --capture=sys --cov=speech_recognition test
   tags:
     - docker
 
