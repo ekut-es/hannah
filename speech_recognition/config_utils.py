@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 
 from .utils import _locate
-from . import models as mod
 
 
 def get_lr_scheduler(config, optimizer):
@@ -132,20 +131,8 @@ def get_loss_function(model, config):
     return criterion
 
 
-def get_model(config, config2=None, model=None, vad_keyword=0):
-    if not model:
-        if vad_keyword == 0:
-            model = _locate(config["model_class"])(config)
-            if config["input_file"]:
-                model.load(config["input_file"])
-        elif vad_keyword == 1:
-            model = _locate(config2["model_class"])(config2)
-            if config["input_file_vad"]:
-                model.load(config["input_file_vad"])
-        else:
-            model = _locate(config2["model_class"])(config2)
-            if config["input_file_keyword"]:
-                model.load(config["input_file_keyword"])
+def get_model(config):
+    model = _locate(config["model_class"])(config)
     return model
 
 

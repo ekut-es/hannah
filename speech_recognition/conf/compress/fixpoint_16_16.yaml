@@ -1,10 +1,12 @@
-quantizers:
+# @package _group_
+
+uantizers:
   fixpoint_quantizer:
     class: SignedFixpointQuantizer
     bits_activations: 16
     bits_weights: 16
     bits_bias: 16
-    
+
 policies:
     - quantizer:
         instance_name: fixpoint_quantizer

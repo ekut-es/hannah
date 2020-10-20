@@ -29,9 +29,10 @@ class SpeechClassifierModule(LightningModule):
         self.train_set, self.dev_set, self.test_set = _locate(
             config.dataset.cls
         ).splits(config.dataset)
-        self.hparams["width"] = self.train_set.width
-        self.hparams["height"] = self.train_set.height
-        self.model = get_model(self.hparams)
+        self.hparams.model.width = self.train_set.width
+        self.hparams.model.height = self.train_set.height
+        self.hparams.model.n_labels = len(self.train_set.label_names)
+        self.model = get_model(self.hparams.model)
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)

@@ -1,6 +1,3 @@
-import argparse
-import sys
-import json
 import os
 import logging
 
@@ -9,16 +6,10 @@ import torch
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-
-from . import models as mod
-from . import dataset
 from .utils import set_seed, log_execution_env_state
 
-from .config import ConfigBuilder, ConfigOption
 from .callbacks.backends import OnnxTFBackend, OnnxruntimeBackend, TorchMobileBackend
 from .callbacks.distiller import DistillerCallback
-
-from .utils import _fullname
 
 from .lightning_model import SpeechClassifierModule
 
@@ -61,15 +52,13 @@ def main(config=DictConfig):
     }
 
     # TODO distiller only available without auto_lr because compatibility issues
-    if config["compress"]:
+    if config.compress or config.fold_bn >= 0:
         if config["auto_lr"]:
             raise Exception(
                 "Automated learning rate finder is not compatible with compression"
             )
         callbacks = kwargs["callbacks"]
-        callbacks.append(
-            DistillerCallback(config["compress"], fold_bn=config["fold_bn"])
-        )
+        callbacks.append(DistillerCallback(config.compress, fold_bn=config.fold_bn))
         kwargs.update({"callbacks": callbacks})
 
     if config["cuda"]:
@@ -120,7 +109,7 @@ def main(config=DictConfig):
             lr_finder = lit_trainer.lr_find(lit_module)
             # inspect results
             fig = lr_finder.plot()
-            fig.savefig(f"./learing_rate.png")
+            fig.savefig("./learing_rate.png")
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
@@ -134,6 +123,8 @@ def main(config=DictConfig):
 
         if config["profile"]:
             logging.info(profiler.summary())
+
+        return lit_trainer
 
     elif config["type"] == "eval":
         logging.error("eval mode is not supported at the moment")
