@@ -678,13 +678,13 @@ class SpeechHotwordDataset(SpeechDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        userlanguage = config["speech_lang"].split("/")
-
         if len(os.listdir(data_folder)) == 0:
             if platform.node() == "lucille":
+                mvtarget = os.path.join(data_folder, "speech_commands_v0.02.tar.gz")
                 #datasets are in /storage/local/dataset/...... prestored
-                if "snips" in userlanguage:
-                    os.system("cp /storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz" + os.path.join(data_folder, "hey_snips_kws_4.0.tar.gz"))
+                os.system("cp /storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz " + mvtarget)
+                extract_archive(mvtarget, data_folder, True)
+
             else:
                 download_and_extract_archive(
                     "https://atreus.informatik.uni-tuebingen.de/seafhttp/files/f972c8e6-75ad-4636-875e-7be2b160ac5b/hey_snips_kws_4.0.tar.gz",
