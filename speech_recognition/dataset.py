@@ -678,8 +678,17 @@ class SpeechHotwordDataset(SpeechDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
+        userlanguage = config["speech_lang"].split("/")
+
         if len(os.listdir(data_folder)) == 0:
-            speechdir = os.path.join(data_folder, "speech_files")
+            if platform.node() == "lucille":
+                #datasets are in /storage/local/dataset/...... prestored
+                if "snips" in userlanguage:
+                    os.system("cp /storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz" + os.path.join(data_folder, "hey_snips_kws_4.0.tar.gz"))
+            else:
+                download_and_extract_archive(
+                    "https://atreus.informatik.uni-tuebingen.de/seafhttp/files/f972c8e6-75ad-4636-875e-7be2b160ac5b/hey_snips_kws_4.0.tar.gz",
+                    data_folder, data_folder, remove_finished=True)
 
 class VadDataset(SpeechDataset):
 
@@ -757,7 +766,7 @@ class VadDataset(SpeechDataset):
 
                 if "uwnu" in userlanguage:
                     download_and_extract_archive(
-                        "https://zeos.ling.washington.edu/corpora/UWNU/uwnu-v2.tar.gz", speechdir, speechdir, remove_finished=True)
+                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1", speechdir, speechdir, remove_finished=True)
 
                 for name in lang:
                     if name in userlanguage:
