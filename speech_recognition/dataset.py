@@ -756,23 +756,30 @@ class VadDataset(SpeechDataset):
                 os.makedirs(speechdir)
                 for name in lang:
                     if name in userlanguage:
-                        os.system("cp /storage/local/dataset/mozilla" + name + "tar.gz" + os.path.join(speechdir, name + "tar.gz"))
+                        mvtarget = os.path.join(speechdir, name + ".tar.gz")
+                        os.system("cp /storage/local/dataset/mozilla/" + name + ".tar.gz " + mvtarget)
+                        extract_archive(mvtarget, speechdir, True)
+
                 if "uwnu" in userlanguage:
-                    os.system("cp /storage/local/dataset/uwnu-v2 " + os.path.join(speechdir, ""))
+                    mvtarget = os.path.join(speechdir, "uwnu-v2.tar.gz")
+                    os.system("cp /storage/local/dataset/uwnu/uwnu-v2.tar.gz " + mvtarget)
+                    extract_archive(mvtarget, speechdir, True)
+
             else:
                 #download mozilla dataset
                 if "en" in userlanguage:
                     download_and_extract_archive("https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz", speechdir, speechdir, remove_finished=True)
-
-                if "uwnu" in userlanguage:
-                    download_and_extract_archive(
-                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1", speechdir, speechdir, remove_finished=True)
 
                 for name in lang:
                     if name in userlanguage:
                         download_and_extract_archive(
                             "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/" + name + ".tar.gz",
                             speechdir, speechdir, remove_finished=True)
+
+                if "uwnu" in userlanguage:
+                    download_and_extract_archive(
+                        "https://atreus.informatik.uni-tuebingen.de/seafhttp/files/4d05eaa7-bb81-4f85-8796-363fa4ead830/uwnu-v2.tar.gz", speechdir, speechdir, remove_finished=True)
+
 
 class KeyWordDataset(SpeechDataset):
 
