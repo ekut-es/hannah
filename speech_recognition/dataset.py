@@ -18,8 +18,8 @@ import hashlib
 import redis
 import pickle
 import platform
-from torchvision.datasets.utils import download_and_extract_archive
 
+from torchvision.datasets.utils import download_and_extract_archive, extract_archive
 from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
 
@@ -886,49 +886,19 @@ class KeyWordDataset(SpeechDataset):
             os.makedirs(data_folder)
 
         if len(os.listdir(data_folder)) == 0:
-            speechdir = os.path.join(data_folder, "speech_files")
             speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
-
-            os.makedirs(speechdir)
             os.makedirs(speechcommand)
-
-            lang = ["de", "fr", "es", "it"]
-            userlanguage = config["speech_lang"].split("/")
 
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
-                lang.append("en")
                 # datasets are in /storage/local/dataset/...... prestored
 
-                for name in lang:
-                    if name in userlanguage:
-                        os.system(
-                            "cp /storage/local/dataset/mozilla" + name + "tar.gz" + os.path.join(
-                                speechdir, name + "tar.gz"))
-                if "uwnu" in userlanguage:
-                    os.system(
-                        "cp /storage/local/dataset/uwnu-v2 " + os.path.join(
-                            speechdir, ""))
+                mvtarget = os.path.join(speechcommand, "speech_commands_v0.02.tar.gz")
+                os.system(
+                    "cp /storage/local/dataset/speech_commands/speech_commands_v0.02.tar.gz " + mvtarget)
+                extract_archive(mvtarget, speechcommand, True)
 
-                #TODO speechcommand missing
             else:
-                # download mozilla dataset
-                if "en" in userlanguage:
-                    download_and_extract_archive(
-                        "https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
-                        speechdir, speechdir, remove_finished=True)
-
-                if "uwnu" in userlanguage:
-                    download_and_extract_archive(
-                        "https://zeos.ling.washington.edu/corpora/UWNU/uwnu-v2.tar.gz",
-                        speechdir, speechdir, remove_finished=True)
-
-                for name in lang:
-                    if name in userlanguage:
-                        download_and_extract_archive(
-                            "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/" + name + ".tar.gz",
-                            speechdir, speechdir, remove_finished=True)
-
                 download_and_extract_archive(
                     "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
                     speechcommand, speechcommand, remove_finished=True)
