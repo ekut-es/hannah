@@ -4,6 +4,7 @@ import os
 import numpy as np
 import distiller
 import torchnet.meter as tnt
+import platform
 
 from . import dataset
 from .utils import _locate, config_pylogger
@@ -22,8 +23,10 @@ class SpeechClassifierModule(LightningModule):
         # TODO lit logger to saves hparams (also outdated to use)
         # which causes error TypeError: can't pickle int objects
         self.hparams = config
+
         #get all the necessary data stuff
         _locate(config["dataset_cls"]).download(config)
+        self.download_noise(config)
 
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(config["dataset_cls"]).splits(config)
@@ -44,6 +47,39 @@ class SpeechClassifierModule(LightningModule):
         self.bn_frozen = False
 
     # PREPARATION
+
+    def download_noise(self, config):
+        data_folder = config["data_folder"]
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+        noise_folder = os.path.join(data_folder, "noise_files")
+
+        if not os.path.isdir(noise_folder):
+            os.makedirs(noise_folder)
+            noisedatasets = config["noise_dataset"].split("/")
+
+
+
+            speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+            os.makedirs(speechcommand)
+
+            # Test if the the code is run on lucille or not
+            if platform.node() == "lucille":
+                # datasets are in /storage/local/dataset/...... prestored
+
+                mvtarget = os.path.join(speechcommand,
+                                        "speech_commands_v0.02.tar.gz")
+                os.system(
+                    "cp /storage/local/dataset/speech_commands/speech_commands_v0.02.tar.gz " + mvtarget)
+                extract_archive(mvtarget, speechcommand, True)
+
+            else:
+                download_and_extract_archive(
+                    "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
+                    speechcommand, speechcommand, remove_finished=True)
+
+
+        pass
 
     def configure_optimizers(self):
         optimizer = get_optimizer(self.hparams, self)
@@ -242,11 +278,11 @@ class SpeechClassifierModule(LightningModule):
 
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_minibatch_end(self.current_epoch, self.batch_idx, self.batches_per_epoch)
-    
+
     def on_epoch_end(self):
         if self.compression_scheduler is not None:
             self.compression_scheduler.on_epoch_end(self.current_epoch)
-        
+
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(self.log_dir, self.model, self.test_set, config=self.hparams, msglogger=self.msglogger)
