@@ -580,17 +580,12 @@ class SpeechCommandsDataset(SpeechDataset):
 
             os.makedirs(speechcommand)
 
-            lang = ["de", "fr", "es", "it"]
-            userlanguage = config["speech_lang"].split("/")
-
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
-                if "uwnu" in userlanguage:
-                    os.system(
-                        "cp /storage/local/dataset/uwnu-v2 " + os.path.join(
-                            speechcommand, ""))
+                mvtarget = os.path.join(speechcommand, "speech_commands_v0.02.tar.gz")
+                os.system("cp /storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz " + mvtarget)
+                extract_archive(mvtarget, speechcommand, True)
 
-                #TODO speechcommand missing
             else:
                 download_and_extract_archive(
                     "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
