@@ -1,4 +1,3 @@
-from enum import Enum
 import hashlib
 import math
 import os
@@ -6,9 +5,6 @@ import random
 import re
 import json
 import logging
-from collections import defaultdict
-
-from chainmap import ChainMap
 import librosa
 import numpy as np
 import scipy.signal as signal
@@ -19,6 +15,9 @@ import redis
 import pickle
 import platform
 
+from enum import Enum
+from collections import defaultdict
+from chainmap import ChainMap
 from torchvision.datasets.utils import download_and_extract_archive, extract_archive
 from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
