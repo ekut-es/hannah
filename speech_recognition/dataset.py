@@ -430,43 +430,6 @@ class SpeechDataset(data.Dataset):
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
 
-    @classmethod
-    def download(cls, config):
-        data_folder = config["data_folder"]
-        if not os.path.isdir(data_folder):
-            os.makedirs(data_folder)
-
-        if len(os.listdir(data_folder)) == 0:
-            speechdir = os.path.join(data_folder, "speech_files")
-            lang = ["de", "fr", "es", "it"]
-
-            userlanguage = config["speech_lang"].split("/")
-
-            #Test if the the code is run on lucille or not
-            if platform.node() == "lucille":
-                lang.append("en")
-                #datasets are in /storage/local/dataset/...... prestored
-                os.makedirs(speechdir)
-                for name in lang:
-                    if name in userlanguage:
-                        os.system("cp /storage/local/dataset/mozilla" + name + "tar.gz" + os.path.join(speechdir, name + "tar.gz"))
-                if "uwnu" in userlanguage:
-                    os.system("cp /storage/local/dataset/uwnu-v2 " + os.path.join(speechdir, ""))
-            else:
-                #download mozilla dataset
-                if "en" in userlanguage:
-                    download_and_extract_archive("https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz", speechdir, speechdir, remove_finished=True)
-
-                if "uwnu" in userlanguage:
-                    download_and_extract_archive(
-                        "https://zeos.ling.washington.edu/corpora/UWNU/uwnu-v2.tar.gz", speechdir, speechdir, remove_finished=True)
-
-                for name in lang:
-                    if name in userlanguage:
-                        download_and_extract_archive(
-                            "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/" + name + ".tar.gz",
-                            speechdir, speechdir, remove_finished=True)
-
 
 class SpeechCommandsDataset(SpeechDataset):
     """This class implements reading and preprocessing of speech commands like
