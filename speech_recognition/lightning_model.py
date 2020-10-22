@@ -16,7 +16,7 @@ from pytorch_lightning import TrainResult, EvalResult
 
 
 class SpeechClassifierModule(LightningModule):
-    def __init__(self, config, log_dir, msglogger):
+    def __init__(self, config=None, log_dir="", msglogger=None):
         super().__init__()
         # torch.autograd.set_detect_anomaly(True)
         # TODO lit logger to saves hparams (also outdated to use)
