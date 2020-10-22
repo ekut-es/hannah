@@ -15,6 +15,7 @@ tcml_config.json
 .pydevproject
 speech_recognition.egg-info/
 .coverage
+.idea/
 
 venv/
 srf-venv/
