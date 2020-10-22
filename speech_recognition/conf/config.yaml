@@ -11,6 +11,7 @@ backend: ''
 batch_size: 128
 experiment_id: test
 fold_bn: -1
+lr: 0.05
 
 config: ''
 cuda: True
