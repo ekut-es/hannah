@@ -19,10 +19,13 @@ from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.core.memory import ModelSummary
 
+from . import conf  # noqa
+
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config=DictConfig):
     set_seed(config)
+    config.cuda = config.cuda if torch.cuda.is_available() else None
     gpu_no = config["gpu_no"]
     n_epochs = config["n_epochs"]  # max epochs
 
@@ -34,9 +37,9 @@ def main(config=DictConfig):
     # Configure checkpointing
     checkpoint_callback = ModelCheckpoint(
         filepath="./checkpoints",
-        save_top_k=-1,  # with PL 0.9.0 only possible to save every epoch
-        verbose=True,
-        monitor="checkpoint_on",
+        save_top_k=5,
+        verbose=False,
+        monitor="val_loss",
         mode="min",
         prefix="",
     )
@@ -52,7 +55,7 @@ def main(config=DictConfig):
     }
 
     # TODO distiller only available without auto_lr because compatibility issues
-    if config.compress or config.fold_bn >= 0:
+    if "compress" in config or config.fold_bn >= 0:
         if config["auto_lr"]:
             raise Exception(
                 "Automated learning rate finder is not compatible with compression"
@@ -109,7 +112,7 @@ def main(config=DictConfig):
             lr_finder = lit_trainer.lr_find(lit_module)
             # inspect results
             fig = lr_finder.plot()
-            fig.savefig("./learing_rate.png")
+            fig.savefig("./learning_rate.png")
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr

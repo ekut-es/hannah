@@ -2,19 +2,15 @@ import logging
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
-from .config_utils import (
-    get_loss_function,
-    get_optimizer,
-    get_model,
-    save_model,
-    get_lr_scheduler,
-)
+from .config_utils import get_loss_function, get_model, save_model
+
 from .utils import _locate
 from .dataset import ctc_collate_fn
 
 import torch
 import torch.utils.data as data
 from pytorch_lightning import TrainResult, EvalResult
+from hydra.utils import instantiate
 
 
 class SpeechClassifierModule(LightningModule):
@@ -48,8 +44,10 @@ class SpeechClassifierModule(LightningModule):
 
     # PREPARATION
     def configure_optimizers(self):
-        optimizer = get_optimizer(self.hparams, self)
-        scheduler = get_lr_scheduler(self.hparams, optimizer)
+        optimizer = instantiate(
+            self.hparams.optimizer, params=self.parameters(), lr=self.hparams.lr
+        )
+        scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
 
         return [optimizer], [scheduler]
 

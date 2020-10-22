@@ -1,4 +1,3 @@
-import itertools
 import json
 import os
 
@@ -6,102 +5,6 @@ import torch
 import torch.nn as nn
 
 from .utils import _locate
-
-
-def get_lr_scheduler(config, optimizer):
-    n_epochs = config["n_epochs"]
-    lr_scheduler = config["lr_scheduler"]
-    scheduler = None
-    if lr_scheduler == "step":
-        gamma = config["lr_gamma"]
-        stepsize = config["lr_stepsize"]
-        if stepsize == 0:
-            stepsize = max(2, n_epochs // 15)
-
-        scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=stepsize, gamma=gamma
-        )
-
-    elif lr_scheduler == "multistep":
-        gamma = config["lr_gamma"]
-        steps = config["lr_steps"]
-        if steps == [0]:
-            steps = itertools.count(max(1, n_epochs // 10), max(1, n_epochs // 10))
-
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, steps, gamma=gamma)
-
-    elif lr_scheduler == "exponential":
-        gamma = config["lr_gamma"]
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma)
-    elif lr_scheduler == "plateau":
-        gamma = config["lr_gamma"]
-        patience = config["lr_patience"]
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode="min",
-            factor=gamma,
-            patience=patience,
-            threshold=0.00000001,
-            threshold_mode="rel",
-            cooldown=0,
-            min_lr=0,
-            eps=1e-08,
-        )
-
-    else:
-        raise Exception("Unknown learing rate scheduler: {}".format(lr_scheduler))
-
-    return scheduler
-
-
-def get_optimizer(config, model):
-
-    if config["optimizer"] == "sgd":
-        optimizer = torch.optim.SGD(
-            model.parameters(),
-            lr=config["lr"],
-            nesterov=config["use_nesterov"],
-            weight_decay=config["weight_decay"],
-            momentum=config["momentum"],
-        )
-    elif config["optimizer"] == "adadelta":
-        optimizer = torch.optim.Adadelta(
-            model.parameters(),
-            lr=config["lr"],
-            rho=config["opt_rho"],
-            eps=config["opt_eps"],
-            weight_decay=config["weight_decay"],
-        )
-    elif config["optimizer"] == "adagrad":
-        optimizer = torch.optim.Adagrad(
-            model.parameters(),
-            lr=config["lr"],
-            lr_decay=config["lr_decay"],
-            weight_decay=config["weight_decay"],
-        )
-
-    elif config["optimizer"] == "adam":
-        optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=config["lr"],
-            betas=config["opt_betas"],
-            eps=config["opt_eps"],
-            weight_decay=config["weight_decay"],
-            amsgrad=config["use_amsgrad"],
-        )
-    elif config["optimizer"] == "rmsprop":
-        optimizer = torch.optim.RMSprop(
-            model.parameters(),
-            lr=config["lr"],
-            alpha=config["opt_alpha"],
-            eps=config["opt_eps"],
-            weight_decay=config["weight_decay"],
-            momentum=config["momentum"],
-        )
-    else:
-        raise Exception("Unknown Optimizer: {}".format(config["optimizer"]))
-
-    return optimizer
 
 
 def get_loss_function(model, config):

@@ -3,8 +3,8 @@ defaults:
     - model: tc-res8
     - compress: null
     - scheduler: step
- #   - trainer: pl/trainer
-
+    - optimizer: adam
+#    - trainer: pl/trainer
 
 auto_lr: false
 backend: ''
