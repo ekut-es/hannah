@@ -1,7 +1,10 @@
 defaults:
     - dataset: kws
     - model: tc-res8
-    - compress: ''
+    - compress: null
+    - scheduler: step
+ #   - trainer: pl/trainer
+
 
 auto_lr: false
 backend: ''
@@ -10,11 +13,11 @@ experiment_id: test
 fold_bn: -1
 
 config: ''
-cuda: false
+cuda: True
 dump_test: false
 early_stopping: 0
 fast_dev_run: false
-gpu_no:
+gpu_no: 0
 input_file: ''
 limits_datasets:
 - 1.0
