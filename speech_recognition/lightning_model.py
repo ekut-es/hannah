@@ -12,7 +12,7 @@ from pytorch_lightning import TrainResult, EvalResult
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
 from .train import get_lr_scheduler, get_loss_function, get_optimizer, get_model, save_model
-from torchvision.datasets.utils import download_and_extract_archive, extract_archive
+from torchvision.datasets.utils import download_and_extract_archive, extract_archive, list_files
 
 
 class SpeechClassifierModule(LightningModule):
@@ -58,28 +58,45 @@ class SpeechClassifierModule(LightningModule):
             os.makedirs(noise_folder)
             noisedatasets = config["noise_dataset"].split("/")
 
-
-
-            speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
-            os.makedirs(speechcommand)
-
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
                 # datasets are in /storage/local/dataset/...... prestored
-
-                mvtarget = os.path.join(speechcommand,
-                                        "speech_commands_v0.02.tar.gz")
-                os.system(
-                    "cp /storage/local/dataset/speech_commands/speech_commands_v0.02.tar.gz " + mvtarget)
-                extract_archive(mvtarget, speechcommand, True)
-
+                noisekeys = ["FSDKaggle", "FSDnoisy", "TUT"]
+                for key in noisekeys:
+                    if key in noisedatasets:
+                        source = os.path.join("/storage/local/dataset/", key)
+                        mvtarget = os.path.join(noisedatasets, key)
+                        os.system("cp -r "+ source + " " + mvtarget)
+                        for element in list_files(mvtarget, ".zip"):
+                            file_to_extract = os.path.join(mvtarget, element)
+                            extract_archive(file_to_extract, mvtarget, True)
             else:
-                download_and_extract_archive(
-                    "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                    speechcommand, speechcommand, remove_finished=True)
+                FSDParts = ["audio_test", "audio_train", "meta"]
+                if "TUT" in noisedatasets:
+                    for i in range(1, 10):
+                        download_and_extract_archive(
+                            "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio." + str(i) + ".zip",
+                            noise_folder, noise_folder, remove_finished=True)
+
+                if "FSDKaggle" in noisedatasets:
+                    FSDKaggle_folder = os.path.join(noise_folder, "FSDKaggle")
+                    os.makedirs(FSDKaggle_folder)
+
+                    for part in FSDParts:
+                        download_and_extract_archive(
+                            "https://zenodo.org/record/2552860/files/FSDKaggle2018." + part + ".zip",
+                            FSDKaggle_folder, FSDKaggle_folder, remove_finished=True)
+
+                if "FSDnoisy" in noisedatasets:
+                    FSDnoisy_folder = os.path.join(noise_folder, "FSDnoisy")
+                    os.makedirs(FSDnoisy_folder)
+
+                    for part in FSDParts:
+                        download_and_extract_archive(
+                            "https://zenodo.org/record/2529934/files/FSDnoisy18k." + part + ".zip",
+                            FSDnoisy_folder, FSDnoisy_folder, remove_finished=True)
 
 
-        pass
 
     def configure_optimizers(self):
         optimizer = get_optimizer(self.hparams, self)
