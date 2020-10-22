@@ -71,25 +71,25 @@ class SpeechClassifierModule(LightningModule):
         noise_files = []
         for path, subdirs, files in os.walk(noise_dir):
             for name in files:
-                if name.endswith("wav") and not name.startswith("."):
+                if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
                     noise_files.append(os.path.join(path, name))
 
         if (data_split == "vad") or (data_split == "vad_balanced"):
             for path, subdirs, files in os.walk(speech_dir):
                 for name in files:
-                    if name.endswith("wav") and not name.startswith("."):
+                    if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
                         speech_files.append(os.path.join(path, name))
         elif data_split == "vad_speech":
             for path, subdirs, files in os.walk(speech_dir):
                 if "noise" not in subdirs:
                     for name in files:
-                        if name.endswith("wav") and not name.startswith("."):
+                        if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
                             speech_files.append(os.path.join(path, name))
         elif data_split == "getrennt":
             speech_files_N = []
             for path, subdirs, files in os.walk(speech_dir):
                 for name in files:
-                    if name.endswith("wav") and not name.startswith("."):
+                    if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
                         if "NC" in name:
                             speech_files_P.append(os.path.join(path, name))
                         else:
