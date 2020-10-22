@@ -152,7 +152,9 @@ class SpeechDataset(data.Dataset):
         config["speech_lang"] = ConfigOption(category="Input Config",
                                              default="")
         config["noise_dataset"] = ConfigOption(category="Input Config",
-                                             default="")
+                                               default="")
+        config["data_split"] = ConfigOption(category="Input Config",
+                                               default="")
         config["samplingrate"]         = ConfigOption(category="Input Config",
                                                       default=16000)
         config["input_length"]         = ConfigOption(category="Input Config",
