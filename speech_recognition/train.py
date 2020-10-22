@@ -240,8 +240,7 @@ def build_config(extra_config={}):
         ),
         seed=ConfigOption(default=0, desc="Seed for Random number generators"),
         input_file=ConfigOption(
-            default="",
-            desc="Input model file for finetuning (.pth) or code generation (.onnx)",
+            default="", desc="Input model .ckpt file for finetuning or eval"
         ),
         input_file_vad=ConfigOption(
             default="",
@@ -307,8 +306,7 @@ def build_config(extra_config={}):
     return (model_name, config, default_config_vad, default_config_keyword)
 
 
-def main():
-    model_name, config, config_vad, config_keyword = build_config()
+def build_trainer(model_name, config):
     set_seed(config)
     gpu_no = config["gpu_no"]
     n_epochs = config["n_epochs"]  # max epochs
@@ -327,9 +325,17 @@ def main():
         prefix="",
     )
 
-    lit_module = SpeechClassifierModule(
-        dict(config), log_dir, msglogger
-    )  # passing logdir for custom json save after training omit double fnccall
+    if not config["input_file"]:
+        lit_module = SpeechClassifierModule(
+            config=dict(config), log_dir=log_dir, msglogger=msglogger
+        )  # passing logdir for custom json save after training omit double fnccall
+    else:
+        lit_module = SpeechClassifierModule.load_from_checkpoint(
+            config["input_file"],
+            config=dict(config),
+            log_dir=log_dir,
+            msglogger=msglogger,
+        )
 
     kwargs = {
         "max_epochs": n_epochs,
@@ -381,38 +387,65 @@ def main():
     if config["fast_dev_run"]:
         kwargs.update({"fast_dev_run": True})
 
+    profiler = None
+    if config["profile"]:
+        profiler = AdvancedProfiler()
+        kwargs.update({"profiler": profiler})
+
+    # INIT PYTORCH-LIGHTNING
+    lit_trainer = Trainer(**kwargs)
+
+    return lit_trainer, lit_module, profiler
+
+
+def train(model_name, config):
+    lit_trainer, lit_module, profiler = build_trainer(model_name, config)
+
+    if config["auto_lr"]:
+        # run lr finder (counts as one epoch)
+        lr_finder = lit_trainer.lr_find(lit_module)
+        # inspect results
+        fig = lr_finder.plot()
+        fig.savefig(f"{log_dir}/learning_rate.png")
+        # recreate module with updated config
+        suggested_lr = lr_finder.suggestion()
+        config["lr"] = suggested_lr
+
+    # PL TRAIN
+    logging.info(ModelSummary(lit_module, "full"))
+    lit_trainer.fit(lit_module)
+
+    # PL TEST
+    lit_trainer.test(ckpt_path=None)
+
+    if profiler:
+        logging.info(profiler.summary())
+
+
+def eval(model_name, config):
+    lit_trainer, lit_module, profiler = build_trainer(model_name, config)
+    test_loader = lit_module.test_dataloader()
+
+    lit_module.eval()
+    lit_module.freeze()
+
+    results = None
+    for batch in test_loader:
+        result = lit_module.forward(batch[0])
+        if results is None:
+            results = result
+        else:
+            results = torch.cat([results, result])
+    return results
+
+
+def main():
+    model_name, config, config_vad, config_keyword = build_config()
+
     if config["type"] == "train":
-
-        if config["profile"]:
-            profiler = AdvancedProfiler()
-            kwargs.update({"profiler": profiler})
-
-        # INIT PYTORCH-LIGHTNING
-        lit_trainer = Trainer(**kwargs)
-
-        if config["auto_lr"]:
-            # run lr finder (counts as one epoch)
-            lr_finder = lit_trainer.lr_find(lit_module)
-            # inspect results
-            fig = lr_finder.plot()
-            fig.savefig(f"{log_dir}/learing_rate.png")
-            # recreate module with updated config
-            suggested_lr = lr_finder.suggestion()
-            config["lr"] = suggested_lr
-            lit_module = SpeechClassifierModule(dict(config), log_dir, msglogger)
-
-        # PL TRAIN
-        msglogger.info(ModelSummary(lit_module, "full"))
-        lit_trainer.fit(lit_module)
-
-        # PL TEST
-        lit_trainer.test(ckpt_path=None)
-
-        if config["profile"]:
-            msglogger.info(profiler.summary())
-
+        train(model_name, config)
     elif config["type"] == "eval":
-        logging.error("eval mode is not supported at the moment")
+        eval(model_name, config)
     elif config["type"] == "eval_vad_keyword":
         logging.error("eval_vad_keyword is not supported at the moment")
 

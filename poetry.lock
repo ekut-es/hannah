@@ -2185,7 +2185,7 @@ description = "Backport of pathlib-compatible object wrapper for zip files"
 name = "zipp"
 optional = false
 python-versions = ">=3.6"
-version = "3.3.0"
+version = "3.3.1"
 
 [package.extras]
 docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
@@ -2196,7 +2196,7 @@ onnxrt-backend = ["onnxruntime"]
 tf-backend = ["onnx-tf", "tensorflow-addons"]
 
 [metadata]
-content-hash = "1470eb724310b37e4668da7fcb26b647dfd62ab1bc55b2523b875f961a17c6cd"
+content-hash = "9e08db171bd0a0c8ef854928aaef53075f030c8ebeb55c2522103d7818f315a0"
 lock-version = "1.0"
 python-versions = "^3.6.1"
 
@@ -3437,6 +3437,6 @@ xlsxwriter = [
     {file = "XlsxWriter-1.3.6.tar.gz", hash = "sha256:b89002dea57bb3d4c8207f3e28ef8244bfd9e936b85d74e7dd1f97e11bb70313"},
 ]
 zipp = [
-    {file = "zipp-3.3.0-py3-none-any.whl", hash = "sha256:eed8ec0b8d1416b2ca33516a37a08892442f3954dee131e92cfd92d8fe3e7066"},
-    {file = "zipp-3.3.0.tar.gz", hash = "sha256:64ad89efee774d1897a58607895d80789c59778ea02185dd846ac38394a8642b"},
+    {file = "zipp-3.3.1-py3-none-any.whl", hash = "sha256:16522f69653f0d67be90e8baa4a46d66389145b734345d68a257da53df670903"},
+    {file = "zipp-3.3.1.tar.gz", hash = "sha256:c1532a8030c32fd52ff6a288d855fe7adef5823ba1d26a29a68fd6314aa72baa"},
 ]
