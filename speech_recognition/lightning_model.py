@@ -27,6 +27,7 @@ class SpeechClassifierModule(LightningModule):
         #get all the necessary data stuff
         _locate(config["dataset_cls"]).download(config)
         self.download_noise(config)
+        self.downsample(config)
 
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(config["dataset_cls"]).splits(config)
@@ -47,6 +48,28 @@ class SpeechClassifierModule(LightningModule):
         self.bn_frozen = False
 
     # PREPARATION
+
+    def downsample(self, config):
+        downsample_folder = ["vad_data_balanced", "vad_data_balanced_getrennt", "vad_data", "vad_speech"]
+
+        for folder in downsample_folder:
+            folderpath = os.path.join(config["data_folder"] , folder)
+            if os.path.isdir(folderpath):
+                for path, subdirs, files in os.walk(folderpath):
+                    for name in files:
+                        if name.endswith("wav") and not name.startswith("."):
+                            os.system("ffmpeg -y -i " + os.path.join(path, name) +
+                                      " -ar 16000 -loglevel quiet " + os.path.join(path,
+                                                                                   "new" + name))
+                            os.system("rm " + os.path.join(path, name))
+                            os.system("mv " + os.path.join(path,
+                                                           "new" + name) + " " + os.path.join(
+                                path, name))
+                        elif name.endswith("mp3") and not name.startswith("."):
+                            os.system("ffmpeg -y -i " + os.path.join(path, name) +
+                                      " -ar 16000 -ac 1 -loglevel quiet " + os.path.join(
+                                path, name.replace(".mp3", ".wav")))
+                            os.system("rm " + os.path.join(path, name))
 
     def download_noise(self, config):
         data_folder = config["data_folder"]
