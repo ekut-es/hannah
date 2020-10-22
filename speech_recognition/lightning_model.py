@@ -1,14 +1,17 @@
+import torch.utils.data as data
+import torch
+import os
+import numpy as np
+import distiller
+import torchnet.meter as tnt
+
+from . import dataset
+from .utils import _locate, config_pylogger
+from pytorch_lightning import TrainResult, EvalResult
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
 from .train import get_lr_scheduler, get_loss_function, get_optimizer, get_model, save_model
-import torch.utils.data as data
-import torch
-from . import dataset
-import numpy as np
-from .utils import _locate, config_pylogger
-import distiller
-import torchnet.meter as tnt
-from pytorch_lightning import TrainResult, EvalResult
+from torchvision.datasets.utils import download_and_extract_archive, extract_archive
 
 
 class SpeechClassifierModule(LightningModule):
