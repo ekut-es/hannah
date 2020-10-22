@@ -23,25 +23,9 @@ limits_datasets:
 - 1.0
 - 1.0
 - 1.0
-lr: 0.1
-lr_decay: 0
-lr_gamma: 0.75
-lr_patience: 10
-lr_scheduler: step
-lr_steps:
-- 0
-lr_stepsize: 0
-momentum: 0.9
 n_epochs: 500
 n_labels: 12
 num_workers: 32
-opt_alpha: 0.99
-opt_betas:
-- 0.9
-- 0.999
-opt_eps: 1.0e-06
-opt_rho: 0.9
-optimizer: sgd
 output_dir: trained_models
 profile: false
 type: train
