@@ -99,7 +99,7 @@ class SpeechClassifierModule(LightningModule):
         # validation and test set
         random.shuffle(noise_files)
         random.shuffle(speech_files)
-        random.shuffle(speech_files_P)
+
 
         nb_noise_files = len(noise_files)
         nb_train_noise = int(0.6 * nb_noise_files)
@@ -137,6 +137,7 @@ class SpeechClassifierModule(LightningModule):
                 dev_speech = speech_files[nb_train_noise:nb_train_noise + nb_dev_noise]
                 test_speech = speech_files[nb_train_noise + nb_dev_noise:nb_noise_files]
             elif "getrennt" == data_split:
+                random.shuffle(speech_files_P)
                 train_speech = speech_files_N[:nb_train_noise]
                 dev_speech = speech_files_P[
                              nb_train_noise:nb_train_noise + nb_dev_noise]
