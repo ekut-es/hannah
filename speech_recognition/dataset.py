@@ -648,8 +648,8 @@ class SpeechHotwordDataset(SpeechDataset):
 
             else:
                 download_and_extract_archive(
-                    "https://atreus.informatik.uni-tuebingen.de/seafhttp/files/f972c8e6-75ad-4636-875e-7be2b160ac5b/hey_snips_kws_4.0.tar.gz",
-                    data_folder, data_folder, remove_finished=True)
+                    "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1",
+                    data_folder, data_folder, "hey_snips_kws_4.0.tar.gz", remove_finished=True)
 
 class VadDataset(SpeechDataset):
 
@@ -739,7 +739,7 @@ class VadDataset(SpeechDataset):
 
                 if "uwnu" in userlanguage:
                     download_and_extract_archive(
-                        "https://atreus.informatik.uni-tuebingen.de/seafhttp/files/4d05eaa7-bb81-4f85-8796-363fa4ead830/uwnu-v2.tar.gz", speechdir, speechdir, remove_finished=True)
+                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1", speechdir, speechdir, "uwnu-v2.tar.gz", remove_finished=True)
 
 
 class KeyWordDataset(SpeechDataset):
