@@ -23,8 +23,8 @@ from . import conf  # noqa
 @hydra.main(config_name="config", config_path="conf")
 def main(config=DictConfig):
     seed_everything(config.seed)
-    if torch.cuda.is_available():
-        config.trainer.gpus = []
+    if not torch.cuda.is_available():
+        config.trainer.gpus = None
 
     log_execution_env_state()
 
