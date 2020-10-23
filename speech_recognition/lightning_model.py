@@ -29,6 +29,8 @@ class SpeechClassifierModule(LightningModule):
         dummy_width, dummy_height = self.train_set.width, self.train_set.height
         dummy_input = torch.zeros(1, dummy_height, dummy_width)
         self.example_input_array = dummy_input
+        if torch.cuda.is_available():
+            dummy_input.cuda()
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
