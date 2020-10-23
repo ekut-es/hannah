@@ -73,7 +73,6 @@ class SpeechClassifierModule(LightningModule):
                 speech_dir = "./speech_commands_v0.02"
 
             destination_dict = dict()
-            outputdir = "error"
 
             # list all noise  and speech files
             speech_files_P = []
@@ -135,7 +134,6 @@ class SpeechClassifierModule(LightningModule):
                                     "dev/speech": dev_speech,
                                     "test/noise": test_noise,
                                     "test/speech": test_speech}
-                outputdir = "vad_data"
 
             elif ("vad_balanced" == data_split) or ("vad_speech" == data_split) or ("getrennt" == data_split):
                 train_noise = noise_files[:nb_train_noise]
