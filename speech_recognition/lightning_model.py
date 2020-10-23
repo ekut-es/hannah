@@ -165,7 +165,7 @@ class SpeechClassifierModule(LightningModule):
             elif "getrennt" == data_split:
                 outputdir = "vad_data_balanced_getrennt"
 
-        outputdir = os.path.join(data, outputdir)
+        outputdir = os.path.join(data_folder, outputdir)
         for key, value in destination_dict.items():
             data_dir = os.path.join(outputdir, key)
             if not os.path.exists(data_dir):
