@@ -155,6 +155,8 @@ class SpeechDataset(data.Dataset):
                                                default="")
         config["data_split"] = ConfigOption(category="Input Config",
                                                default="")
+        config["clear_download"] = ConfigOption(category="Input Config",
+                                            default=False)
         config["samplingrate"]         = ConfigOption(category="Input Config",
                                                       default=16000)
         config["input_length"]         = ConfigOption(category="Input Config",
@@ -538,6 +540,7 @@ class SpeechCommandsDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -552,7 +555,7 @@ class SpeechCommandsDataset(SpeechDataset):
             else:
                 download_and_extract_archive(
                     "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                    speechcommand, speechcommand, remove_finished=True)
+                    speechcommand, speechcommand, remove_finished=clear_download)
 
 
 class SpeechHotwordDataset(SpeechDataset):
@@ -633,6 +636,7 @@ class SpeechHotwordDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -645,7 +649,7 @@ class SpeechHotwordDataset(SpeechDataset):
             else:
                 download_and_extract_archive(
                     "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1",
-                    data_folder, data_folder, "hey_snips_kws_4.0.tar.gz", remove_finished=True)
+                    data_folder, data_folder, "hey_snips_kws_4.0.tar.gz", remove_finished=clear_download)
 
 class VadDataset(SpeechDataset):
 
@@ -697,6 +701,7 @@ class VadDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -721,17 +726,17 @@ class VadDataset(SpeechDataset):
             else:
                 #download mozilla dataset
                 if "en" in userlanguage:
-                    download_and_extract_archive("https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz", speechdir, speechdir, remove_finished=True)
+                    download_and_extract_archive("https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz", speechdir, speechdir, remove_finished=clear_download)
 
                 for name in lang:
                     if name in userlanguage:
                         download_and_extract_archive(
                             "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/" + name + ".tar.gz",
-                            speechdir, speechdir, remove_finished=True)
+                            speechdir, speechdir, remove_finished=clear_download)
 
                 if "uwnu" in userlanguage:
                     download_and_extract_archive(
-                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1", speechdir, speechdir, "uwnu-v2.tar.gz", remove_finished=True)
+                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1", speechdir, speechdir, "uwnu-v2.tar.gz", remove_finished=clear_download)
 
 
 class KeyWordDataset(SpeechDataset):
@@ -842,6 +847,7 @@ class KeyWordDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -857,7 +863,7 @@ class KeyWordDataset(SpeechDataset):
             else:
                 download_and_extract_archive(
                     "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                    speechcommand, speechcommand, remove_finished=True)
+                    speechcommand, speechcommand, remove_finished=clear_download)
 
 def find_dataset(name):
     """Returns the appropriate class for reading a dataset of type name:

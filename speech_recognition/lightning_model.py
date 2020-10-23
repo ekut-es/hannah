@@ -190,6 +190,7 @@ class SpeechClassifierModule(LightningModule):
 
     def download_noise(self, config):
         data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
         noise_folder = os.path.join(data_folder, "noise_files")
@@ -211,12 +212,13 @@ class SpeechClassifierModule(LightningModule):
                             file_to_extract = os.path.join(source, element)
                             extract_archive(file_to_extract, mvtarget, False)
             else:
-                FSDParts = ["audio_test", "audio_train", "meta"]
                 if "TUT" in noisedatasets:
                     for i in range(1, 10):
                         download_and_extract_archive(
                             "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio." + str(i) + ".zip",
-                            noise_folder, noise_folder, remove_finished=True)
+                            noise_folder, noise_folder, remove_finished=clear_download)
+
+                FSDParts = ["audio_test", "audio_train", "meta"]
                 datasetname = ["FSDKaggle", "FSDnoisy"]
                 FSDLinks = [ "https://zenodo.org/record/2552860/files/FSDKaggle2018.",  "https://zenodo.org/record/2529934/files/FSDnoisy18k."]
                 for name, url in zip(datasetname, FSDLinks):
@@ -226,7 +228,7 @@ class SpeechClassifierModule(LightningModule):
                         for part in FSDParts:
                             download_and_extract_archive(
                                 url + part + ".zip",
-                                targetfolder, targetfolder, remove_finished=True)
+                                targetfolder, targetfolder, remove_finished=clear_download)
 
     def configure_optimizers(self):
         optimizer = get_optimizer(self.hparams, self)
