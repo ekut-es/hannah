@@ -202,7 +202,7 @@ class SpeechClassifierModule(LightningModule):
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
                 # datasets are in /storage/local/dataset/...... prestored
-                noisekeys = ["FSDKaggle", "FSDnoisy", "TUT"]
+                noisekeys = ["FSD/FSDKaggle", "FSD/FSDnoisy", "TUT", "FSD/FSD50K"]
                 for key in noisekeys:
                     if key in noisedatasets:
                         source = os.path.join("/storage/local/dataset/", key)
