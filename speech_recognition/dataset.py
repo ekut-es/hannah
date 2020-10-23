@@ -158,9 +158,9 @@ class SpeechDataset(data.Dataset):
         config["downsample"] = ConfigOption(category="Input Config",
                                                default=0)
         config["clear_download"] = ConfigOption(category="Input Config",
-                                            default=False)
+                                            default="leave")
         config["clear_split"] = ConfigOption(category="Input Config",
-                                            default=False)
+                                            default="leave")
         config["samplingrate"]         = ConfigOption(category="Input Config",
                                                       default=16000)
         config["input_length"]         = ConfigOption(category="Input Config",
@@ -544,7 +544,7 @@ class SpeechCommandsDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = config["clear_download"]
+        clear_download = (config["clear_download"] == "clear")
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -642,7 +642,7 @@ class SpeechHotwordDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = config["clear_download"]
+        clear_download = (config["clear_download"] == "clear")
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -709,7 +709,7 @@ class VadDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = config["clear_download"]
+        clear_download = (config["clear_download"] == "clear")
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -855,7 +855,7 @@ class KeyWordDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = config["clear_download"]
+        clear_download = (config["clear_download"] == "clear")
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)

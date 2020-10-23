@@ -173,7 +173,7 @@ class SpeechClassifierModule(LightningModule):
                 for f in value:
                     shutil.copy2(f, data_dir)
 
-            if config["clear_split"]:
+            if config["clear_split"] == "clear":
                 #remove old folders
                 for name in ["noise_files", "speech_files", "speech_commands_v0.02"]:
                     oldpath = os.path.join(data_folder, name)
@@ -192,11 +192,11 @@ class SpeechClassifierModule(LightningModule):
                         for name in files:
                             if name.endswith("wav") and not name.startswith("."):
                                 os.system("ffmpeg -y -i " + os.path.join(path, name) +
-                                          " -ar " + samplerate + " -loglevel quiet " + os.path.join(path, "new" + name))
+                                          " -ar " + str(samplerate) + " -loglevel quiet " + os.path.join(path, "new" + name))
                                 os.system("rm " + os.path.join(path, name))
                                 os.system("mv " + os.path.join(path, "new" + name) + " " + os.path.join(path, name))
                             elif name.endswith("mp3") and not name.startswith("."):
-                                os.system("ffmpeg -y -i " + os.path.join(path, name) + " -ar " + samplerate + " -ac 1 -loglevel quiet " + os.path.join(path, name.replace(".mp3", ".wav")))
+                                os.system("ffmpeg -y -i " + os.path.join(path, name) + " -ar " + str(samplerate) + " -ac 1 -loglevel quiet " + os.path.join(path, name.replace(".mp3", ".wav")))
                                 os.system("rm " + os.path.join(path, name))
 
     def download_noise(self, config):
