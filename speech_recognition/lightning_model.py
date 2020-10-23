@@ -17,7 +17,7 @@ class SpeechClassifierModule(LightningModule):
     def __init__(self, config):
         super().__init__()
         # torch.autograd.set_detect_anomaly(True)
-        # TODO lit logger to saves hparams (also outdated to use)
+        # TODO lit logger to save hparams (also outdated to use)
         # which causes error TypeError: can't pickle int objects
         self.hparams = config
 
@@ -25,6 +25,7 @@ class SpeechClassifierModule(LightningModule):
         self.train_set, self.dev_set, self.test_set = _locate(
             config.dataset.cls
         ).splits(config.dataset)
+
         # Create example input
         dummy_width, dummy_height = self.train_set.width, self.train_set.height
         dummy_input = torch.zeros(1, dummy_height, dummy_width)
@@ -34,7 +35,9 @@ class SpeechClassifierModule(LightningModule):
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
-        self.example_feature_array = self.features(self.example_input_array)
+        features = self.features(self.example_input_array)
+        features = torch.squeeze(features, dim=1)
+        self.example_feature_array = features
 
         # Instantiate Model
         self.hparams.model.width = self.example_feature_array.size(2)
@@ -124,14 +127,13 @@ class SpeechClassifierModule(LightningModule):
         return train_loader
 
     # VALIDATION CODE
-
     def validation_step(self, batch, batch_idx):
 
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
         # INFERENCE
-        output = self.model(x)
+        output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
 
@@ -168,7 +170,7 @@ class SpeechClassifierModule(LightningModule):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
-        output = self.model(x)
+        output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
 
@@ -204,6 +206,7 @@ class SpeechClassifierModule(LightningModule):
     # FORWARD (overwrite to train instance of this class directly)
     def forward(self, x):
         x = self.features(x)
+        x = torch.squeeze(x, dim=1)
         return self.model(x)
 
     # CALLBACKS
