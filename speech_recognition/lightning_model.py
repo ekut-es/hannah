@@ -31,10 +31,13 @@ class SpeechClassifierModule(LightningModule):
         dummy_input = torch.zeros(1, dummy_height, dummy_width)
         self.example_input_array = dummy_input
         if torch.cuda.is_available():
-            dummy_input.cuda()
+            self.example_input_array = self.example_input_array.cuda()
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
+        if torch.cuda.is_available():
+            self.features = self.features.cuda()
+
         features = self.features(self.example_input_array)
         features = torch.squeeze(features, dim=1)
         self.example_feature_array = features

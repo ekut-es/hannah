@@ -82,7 +82,7 @@ def main(config=DictConfig):
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
 
-        logging.info(ModelSummary(lit_module, "full"))
+        #logging.info(ModelSummary(lit_module, "full"))
 
         # PL TRAIN
         lit_trainer.fit(lit_module)
