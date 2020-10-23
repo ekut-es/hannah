@@ -1,0 +1,16 @@
+# @package _group_
+
+_target_: torchaudio.transforms.MFCC
+sample_rate: 16000
+n_mfcc: 40
+dct_type: 2
+norm: 'ortho'
+melkwargs:
+    win_length: null
+    hop_length: null
+    f_min: 0.0
+    f_max: null
+    pad: 0
+    n_mels: 128
+    power: 2.0
+    normalized: False

@@ -1,0 +1,3 @@
+- trainer.gpus=null
+- +trainer.overfit_batches=0.01
+- features=mfcc

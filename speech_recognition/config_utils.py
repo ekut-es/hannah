@@ -32,12 +32,6 @@ def get_model(config):
     return model
 
 
-def reset_symlink(src, dest):
-    if os.path.exists(dest):
-        os.unlink(dest)
-    os.symlink(src, dest)
-
-
 def dump_config(output_dir, config):
     """Dumps the configuration to json format
 

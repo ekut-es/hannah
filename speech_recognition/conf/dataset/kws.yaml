@@ -4,7 +4,7 @@ data_folder: ${hydra:runtime.cwd}/datasets/speech_commands_v0.02/
 dataset: keywords
 cls: speech_recognition.dataset.SpeechCommandsDataset
 input_length: 16000
-features: mel
+features: raw
 freq_max: 4000
 freq_min: 20
 full_help: false

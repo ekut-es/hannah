@@ -25,8 +25,18 @@ class SpeechClassifierModule(LightningModule):
         self.train_set, self.dev_set, self.test_set = _locate(
             config.dataset.cls
         ).splits(config.dataset)
-        self.hparams.model.width = self.train_set.width
-        self.hparams.model.height = self.train_set.height
+        # Create example input
+        dummy_width, dummy_height = self.train_set.width, self.train_set.height
+        dummy_input = torch.zeros(1, dummy_height, dummy_width)
+        self.example_input_array = dummy_input
+
+        # Instantiate features
+        self.features = instantiate(self.hparams.features)
+        self.example_feature_array = self.features(self.example_input_array)
+
+        # Instantiate Model
+        self.hparams.model.width = self.example_feature_array.size(2)
+        self.hparams.model.height = self.example_feature_array.size(1)
         self.hparams.model.n_labels = len(self.train_set.label_names)
 
         self.model = get_model(self.hparams.model)
@@ -38,9 +48,6 @@ class SpeechClassifierModule(LightningModule):
         self.msglogger.info("speech classifier initialized")
 
         # summarize model architecture
-        dummy_width, dummy_height = self.train_set.width, self.train_set.height
-        dummy_input = torch.zeros(1, dummy_height, dummy_width)
-        self.example_input_array = dummy_input
         self.bn_frozen = False
 
     # PREPARATION
@@ -194,6 +201,7 @@ class SpeechClassifierModule(LightningModule):
 
     # FORWARD (overwrite to train instance of this class directly)
     def forward(self, x):
+        x = self.features(x)
         return self.model(x)
 
     # CALLBACKS

@@ -4,6 +4,7 @@ defaults:
     - compress: null
     - scheduler: step
     - optimizer: adam
+    - features: mfcc
     - trainer: default
     - checkpoint: default
     - backend: null
@@ -18,8 +19,9 @@ fold_bn: -1
 lr: 0.05
 seed: 1234
 num_workers: 0
+output_dir: trained_models
+
 
 #TODO:
 dump_test: false
 input_file: ''
-output_dir: trained_models
