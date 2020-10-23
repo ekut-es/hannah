@@ -13,7 +13,7 @@ from .dataset import ctc_collate_fn
 import torch
 import torch.utils.data as data
 
-from pytorch_lightning.metrics import Accuracy, Recall
+# from pytorch_lightning.metrics import Accuracy, Recall
 from pytorch_lightning.metrics.functional import f1_score, accuracy, recall
 
 
