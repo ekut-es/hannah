@@ -172,21 +172,22 @@ class SpeechClassifierModule(LightningModule):
                     shutil.copy2(f, data_dir)
 
     def downsample(self, config):
-        downsample_folder = ["train", "dev", "test"]
-
-        for folder in downsample_folder:
-            folderpath = os.path.join(config["data_folder"], folder)
-            if os.path.isdir(folderpath):
-                for path, subdirs, files in os.walk(folderpath):
-                    for name in files:
-                        if name.endswith("wav") and not name.startswith("."):
-                            os.system("ffmpeg -y -i " + os.path.join(path, name) +
-                                      " -ar 16000 -loglevel quiet " + os.path.join(path, "new" + name))
-                            os.system("rm " + os.path.join(path, name))
-                            os.system("mv " + os.path.join(path, "new" + name) + " " + os.path.join(path, name))
-                        elif name.endswith("mp3") and not name.startswith("."):
-                            os.system("ffmpeg -y -i " + os.path.join(path, name) + " -ar 16000 -ac 1 -loglevel quiet " + os.path.join(path, name.replace(".mp3", ".wav")))
-                            os.system("rm " + os.path.join(path, name))
+        samplerate = config["downsample"]
+        if samplerate > 0:
+            downsample_folder = ["train", "dev", "test"]
+            for folder in downsample_folder:
+                folderpath = os.path.join(config["data_folder"], folder)
+                if os.path.isdir(folderpath):
+                    for path, subdirs, files in os.walk(folderpath):
+                        for name in files:
+                            if name.endswith("wav") and not name.startswith("."):
+                                os.system("ffmpeg -y -i " + os.path.join(path, name) +
+                                          " -ar " + samplerate + " -loglevel quiet " + os.path.join(path, "new" + name))
+                                os.system("rm " + os.path.join(path, name))
+                                os.system("mv " + os.path.join(path, "new" + name) + " " + os.path.join(path, name))
+                            elif name.endswith("mp3") and not name.startswith("."):
+                                os.system("ffmpeg -y -i " + os.path.join(path, name) + " -ar " + samplerate + " -ac 1 -loglevel quiet " + os.path.join(path, name.replace(".mp3", ".wav")))
+                                os.system("rm " + os.path.join(path, name))
 
     def download_noise(self, config):
         data_folder = config["data_folder"]
