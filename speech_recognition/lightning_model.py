@@ -65,16 +65,14 @@ class SpeechClassifierModule(LightningModule):
         return [optimizer], [scheduler]
 
     def get_batch_metrics(self, output, y):
-
         if isinstance(output, list):
             output = torch.mean(torch.stack(output), dim=0)
 
         y = y.view(-1)
 
-        output_max = output.argmax(dim=1)
-        batch_acc = accuracy(output_max, y)
-        batch_f1 = f1_score(output_max, y)
-        batch_recall = recall(output_max, y)
+        batch_acc = accuracy(output, y)
+        batch_f1 = f1_score(output, y)
+        batch_recall = recall(output, y)
 
         return batch_acc, batch_f1, batch_recall
 
