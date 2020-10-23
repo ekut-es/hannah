@@ -53,128 +53,126 @@ class SpeechClassifierModule(LightningModule):
     # PREPARATION
 
     def split_data(self, config):
-        data_folder = config["data_folder"]
-
-        # directories with original data
-        noise_dir = os.path.join(data_folder, "noise_files")
-        speech_dir = os.path.join(data_folder, "speech_files")
         data_split = config["data_split"]
-        if (data_split == "vad_speech"):
-            speech_dir = "./speech_commands_v0.02"
+        splits = ["vad", "vad_speech", "vad_balanced", "getrennt"]
 
-        destination_dict = dict()
-        outputdir = "error"
+        if data_split in splits:
+            data_folder = config["data_folder"]
 
-        # list all noise  and speech files
-        speech_files_P = []
-        speech_files = []
-        noise_files = []
-        for path, subdirs, files in os.walk(noise_dir):
-            for name in files:
-                if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
-                    noise_files.append(os.path.join(path, name))
+            
 
-        if (data_split == "vad") or (data_split == "vad_balanced"):
-            for path, subdirs, files in os.walk(speech_dir):
+            # directories with original data
+            noise_dir = os.path.join(data_folder, "noise_files")
+            speech_dir = os.path.join(data_folder, "speech_files")
+
+            if (data_split == "vad_speech"):
+                speech_dir = "./speech_commands_v0.02"
+
+            destination_dict = dict()
+            outputdir = "error"
+
+            # list all noise  and speech files
+            speech_files_P = []
+            speech_files = []
+            noise_files = []
+            for path, subdirs, files in os.walk(noise_dir):
                 for name in files:
                     if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
-                        speech_files.append(os.path.join(path, name))
-        elif data_split == "vad_speech":
-            for path, subdirs, files in os.walk(speech_dir):
-                if "noise" not in subdirs:
+                        noise_files.append(os.path.join(path, name))
+
+            if (data_split == "vad") or (data_split == "vad_balanced"):
+                for path, subdirs, files in os.walk(speech_dir):
                     for name in files:
                         if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
                             speech_files.append(os.path.join(path, name))
-        elif data_split == "getrennt":
-            speech_files_N = []
-            for path, subdirs, files in os.walk(speech_dir):
-                for name in files:
-                    if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
-                        if "NC" in name:
-                            speech_files_P.append(os.path.join(path, name))
-                        else:
-                            speech_files_N.append(os.path.join(path, name))
+            elif data_split == "vad_speech":
+                for path, subdirs, files in os.walk(speech_dir):
+                    if "noise" not in subdirs:
+                        for name in files:
+                            if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
+                                speech_files.append(os.path.join(path, name))
+            elif data_split == "getrennt":
+                speech_files_N = []
+                for path, subdirs, files in os.walk(speech_dir):
+                    for name in files:
+                        if (name.endswith("wav") or name.endswith("mp3")) and not name.startswith("."):
+                            if "NC" in name:
+                                speech_files_P.append(os.path.join(path, name))
+                            else:
+                                speech_files_N.append(os.path.join(path, name))
 
-        # randomly shuffle the noise and speech files and split them in train,
-        # validation and test set
-        random.shuffle(noise_files)
-        random.shuffle(speech_files)
+            # randomly shuffle the noise and speech files and split them in train,
+            # validation and test set
+            random.shuffle(noise_files)
+            random.shuffle(speech_files)
 
 
-        nb_noise_files = len(noise_files)
-        nb_train_noise = int(0.6 * nb_noise_files)
-        nb_dev_noise = int(0.2 * nb_noise_files)
+            nb_noise_files = len(noise_files)
+            nb_train_noise = int(0.6 * nb_noise_files)
+            nb_dev_noise = int(0.2 * nb_noise_files)
 
-        if "vad" == data_split:
-            nb_speech_files = len(speech_files)
-            nb_train_speech = int(0.6 * nb_speech_files)
-            nb_dev_speech = int(0.2 * nb_speech_files)
+            if "vad" == data_split:
+                nb_speech_files = len(speech_files)
+                nb_train_speech = int(0.6 * nb_speech_files)
+                nb_dev_speech = int(0.2 * nb_speech_files)
 
-            train_noise = noise_files[:nb_train_noise]
-            dev_noise = noise_files[nb_train_noise:nb_train_noise + nb_dev_noise]
-            test_noise = noise_files[nb_train_noise + nb_dev_noise:]
+                train_noise = noise_files[:nb_train_noise]
+                dev_noise = noise_files[nb_train_noise:nb_train_noise + nb_dev_noise]
+                test_noise = noise_files[nb_train_noise + nb_dev_noise:]
 
-            train_speech = speech_files[:nb_train_speech]
-            dev_speech = speech_files[
-                         nb_train_speech:nb_train_speech + nb_dev_speech]
-            test_speech = speech_files[nb_train_speech + nb_dev_speech:]
+                train_speech = speech_files[:nb_train_speech]
+                dev_speech = speech_files[
+                             nb_train_speech:nb_train_speech + nb_dev_speech]
+                test_speech = speech_files[nb_train_speech + nb_dev_speech:]
 
-            destination_dict = {"train/noise": train_noise,
-                                "train/speech": train_speech,
-                                "dev/noise": dev_noise,
-                                "dev/speech": dev_speech,
-                                "test/noise": test_noise,
-                                "test/speech": test_speech}
-            outputdir = "vad_data"
+                destination_dict = {"train/noise": train_noise,
+                                    "train/speech": train_speech,
+                                    "dev/noise": dev_noise,
+                                    "dev/speech": dev_speech,
+                                    "test/noise": test_noise,
+                                    "test/speech": test_speech}
+                outputdir = "vad_data"
 
-        elif ("vad_balanced" == data_split) or ("vad_speech" == data_split) or ("getrennt" == data_split):
-            train_noise = noise_files[:nb_train_noise]
-            dev_noise = noise_files[nb_train_noise:nb_train_noise + nb_dev_noise]
-            test_noise = noise_files[nb_train_noise + nb_dev_noise:]
+            elif ("vad_balanced" == data_split) or ("vad_speech" == data_split) or ("getrennt" == data_split):
+                train_noise = noise_files[:nb_train_noise]
+                dev_noise = noise_files[nb_train_noise:nb_train_noise + nb_dev_noise]
+                test_noise = noise_files[nb_train_noise + nb_dev_noise:]
 
-            if ("vad_balanced" == data_split) or ("vad_speech" == data_split):
-                train_speech = speech_files[:nb_train_noise]
-                dev_speech = speech_files[nb_train_noise:nb_train_noise + nb_dev_noise]
-                test_speech = speech_files[nb_train_noise + nb_dev_noise:nb_noise_files]
-            elif "getrennt" == data_split:
-                random.shuffle(speech_files_P)
-                train_speech = speech_files_N[:nb_train_noise]
-                dev_speech = speech_files_P[
-                             nb_train_noise:nb_train_noise + nb_dev_noise]
-                test_speech = speech_files_P[
-                              nb_train_noise + nb_dev_noise:nb_noise_files]
+                if ("vad_balanced" == data_split) or ("vad_speech" == data_split):
+                    train_speech = speech_files[:nb_train_noise]
+                    dev_speech = speech_files[nb_train_noise:nb_train_noise + nb_dev_noise]
+                    test_speech = speech_files[nb_train_noise + nb_dev_noise:nb_noise_files]
+                elif "getrennt" == data_split:
+                    random.shuffle(speech_files_P)
+                    train_speech = speech_files_N[:nb_train_noise]
+                    dev_speech = speech_files_P[
+                                 nb_train_noise:nb_train_noise + nb_dev_noise]
+                    test_speech = speech_files_P[
+                                  nb_train_noise + nb_dev_noise:nb_noise_files]
 
-            train_bg_noise = train_noise[:100]
-            dev_bg_noise = dev_noise[:100]
-            test_bg_noise = test_noise[:100]
+                train_bg_noise = train_noise[:100]
+                dev_bg_noise = dev_noise[:100]
+                test_bg_noise = test_noise[:100]
 
-            destination_dict = {"train/noise": train_noise,
-                                "train/speech": train_speech,
-                                "dev/noise": dev_noise,
-                                "dev/speech": dev_speech,
-                                "test/noise": test_noise,
-                                "test/speech": test_speech,
-                                "train/background_noise": train_bg_noise,
-                                "dev/background_noise": dev_bg_noise,
-                                "test/background_noise": test_bg_noise}
+                destination_dict = {"train/noise": train_noise,
+                                    "train/speech": train_speech,
+                                    "dev/noise": dev_noise,
+                                    "dev/speech": dev_speech,
+                                    "test/noise": test_noise,
+                                    "test/speech": test_speech,
+                                    "train/background_noise": train_bg_noise,
+                                    "dev/background_noise": dev_bg_noise,
+                                    "test/background_noise": test_bg_noise}
 
-            if "vad_balanced" == data_split:
-                outputdir = "vad_data_balanced"
-            elif "vad_speech" == data_split:
-                outputdir = "vad_speech"
-            elif "getrennt" == data_split:
-                outputdir = "vad_data_balanced_getrennt"
-
-        outputdir = os.path.join(data_folder, outputdir)
-        for key, value in destination_dict.items():
-            data_dir = os.path.join(outputdir, key)
-            if not os.path.exists(data_dir):
-                os.makedirs(data_dir)
-            for f in value:
-                shutil.copy2(f, data_dir)
+            for key, value in destination_dict.items():
+                data_dir = os.path.join(data_folder, key)
+                if not os.path.exists(data_dir):
+                    os.makedirs(data_dir)
+                for f in value:
+                    shutil.copy2(f, data_dir)
 
     def downsample(self, config):
-        downsample_folder = ["vad_data_balanced", "vad_data_balanced_getrennt", "vad_data", "vad_speech"]
+        downsample_folder = ["train", "dev", "test"]
 
         for folder in downsample_folder:
             folderpath = os.path.join(config["data_folder"], folder)
@@ -208,10 +206,10 @@ class SpeechClassifierModule(LightningModule):
                     if key in noisedatasets:
                         source = os.path.join("/storage/local/dataset/", key)
                         mvtarget = os.path.join(noisedatasets, key)
-                        os.system("cp -r "+ source + " " + mvtarget)
-                        for element in list_files(mvtarget, ".zip"):
-                            file_to_extract = os.path.join(mvtarget, element)
-                            extract_archive(file_to_extract, mvtarget, True)
+                        os.makedirs(mvtarget)
+                        for element in list_files(source, ".zip"):
+                            file_to_extract = os.path.join(source, element)
+                            extract_archive(file_to_extract, mvtarget, False)
             else:
                 FSDParts = ["audio_test", "audio_train", "meta"]
                 if "TUT" in noisedatasets:
