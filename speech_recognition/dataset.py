@@ -18,7 +18,6 @@ import torch.utils.data as data
 import hashlib
 import pickle
 
-
 def factor(snr, psig, pnoise):
     y = 10 ** (snr / 10)
     return np.sqrt(psig / (pnoise * y))
@@ -193,6 +192,9 @@ class SpeechDataset(data.Dataset):
         return classcounter
 
     def __getitem__(self, index):
+
+        import os
+        print("get", index, os.getpid())
 
         label = torch.Tensor(self.get_class(index))
         label = label.long()
