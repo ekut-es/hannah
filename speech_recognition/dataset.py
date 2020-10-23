@@ -548,8 +548,10 @@ class SpeechCommandsDataset(SpeechDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        if len(os.listdir(data_folder)) == 0:
-            speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+        userlanguage = config["speech_lang"].split("/")
+        speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+
+        if os.path.isdir(speechcommand) and "speech_command" in userlanguage:
 
             os.makedirs(speechcommand)
 
@@ -644,7 +646,9 @@ class SpeechHotwordDataset(SpeechDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        if len(os.listdir(data_folder)) == 0:
+        userlanguage = config["speech_lang"].split("/")
+
+        if (len(os.listdir(data_folder)) == 0) and ("snipsKWS" in userlanguage):
             if platform.node() == "lucille":
                 mvtarget = os.path.join(data_folder, "speech_commands_v0.02.tar.gz")
                 #datasets are in /storage/local/dataset/...... prestored
@@ -852,18 +856,19 @@ class KeyWordDataset(SpeechDataset):
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
+
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        if len(os.listdir(data_folder)) == 0:
-            speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+        userlanguage = config["speech_lang"].split("/")
+        speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+
+        if (not os.path.isdir(speechcommand)) and ("speech_command" in userlanguage):
             os.makedirs(speechcommand)
 
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
-                # datasets are in /storage/local/dataset/...... prestored
-                extract_archive("/storage/local/dataset/speech_commands/speech_commands_v0.02.tar.gz", speechcommand, False)
-
+                extract_archive("/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz", speechcommand, False)
             else:
                 download_and_extract_archive(
                     "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",

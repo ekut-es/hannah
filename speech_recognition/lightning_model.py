@@ -70,7 +70,7 @@ class SpeechClassifierModule(LightningModule):
             speech_dir = os.path.join(data_folder, "speech_files")
 
             if (data_split == "vad_speech"):
-                speech_dir = "speech_commands_v0.02"
+                speech_dir = os.path.join(data_folder, "speech_commands_v0.02")
 
             destination_dict = dict()
 
