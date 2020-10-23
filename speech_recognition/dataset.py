@@ -193,9 +193,6 @@ class SpeechDataset(data.Dataset):
 
     def __getitem__(self, index):
 
-        import os
-        print("get", index, os.getpid())
-
         label = torch.Tensor(self.get_class(index))
         label = label.long()
 
