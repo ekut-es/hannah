@@ -14,7 +14,7 @@ import torch
 import torch.utils.data as data
 
 from pytorch_lightning.metrics import Accuracy, Recall
-from pytorch_lightning.metrics.functional import f1_score
+from pytorch_lightning.metrics.functional import f1_score, accuracy, recall
 
 
 class SpeechClassifierModule(LightningModule):
@@ -48,7 +48,7 @@ class SpeechClassifierModule(LightningModule):
         self.bn_frozen = False
 
         # metrics
-        self.prepare_metrics()
+        # self.prepare_metrics()
 
     # PREPARATION
     def configure_optimizers(self):
@@ -57,16 +57,16 @@ class SpeechClassifierModule(LightningModule):
 
         return [optimizer], [scheduler]
 
-    def prepare_metrics(self):
+    # def prepare_metrics(self):
 
-        # in case of branchy nets declare multiple objects per metric
-        if hasattr(self.model, "n_pieces"):
-            for idx in range(self.model.n_pieces):
-                self.accuracy = [Accuracy() for _ in range(self.model.n_pieces)]
-                self.recall = [Recall() for _ in range(self.model.n_pieces)]
-        else:
-            self.accuracy = Accuracy()
-            self.recall = Recall()
+    #     # in case of branchy nets declare multiple objects per metric
+    #     if hasattr(self.model, "n_pieces"):
+    #         for idx in range(self.model.n_pieces):
+    #             self.accuracy = [Accuracy() for _ in range(self.model.n_pieces)]
+    #             self.recall = [Recall() for _ in range(self.model.n_pieces)]
+    #     else:
+    #         self.accuracy = Accuracy()
+    #         self.recall = Recall()
 
     def get_batch_metrics(self, output, y, loss, prefix):
 
@@ -75,16 +75,50 @@ class SpeechClassifierModule(LightningModule):
             # log for each output
             for idx, out in enumerate(output):
                 # accuracy
-                self.log(f"{prefix}_acc_step/exit_{idx}", self.accuracy[idx](out, y))
-
-                # TODO: f1 recall
+                # self.log(f"{prefix}_acc_step/exit_{idx}", self.accuracy[idx](out, y))
+                self.log(
+                    f"{prefix}_accuracy/exit_{idx}",
+                    accuracy(out, y),
+                    on_step=True,
+                    on_epoch=True,
+                    logger=True,
+                )
+                self.log(
+                    f"{prefix}_recall/exit_{idx}",
+                    recall(out, y),
+                    on_step=True,
+                    on_epoch=True,
+                    logger=True,
+                )
+                self.log(
+                    f"{prefix}_f1/exit_{idx}",
+                    f1_score(out, y),
+                    on_step=True,
+                    on_epoch=True,
+                    logger=True,
+                )
+            # TODO: f1 recall
 
         else:
-            self.log(f"{prefix}_acc_step", self.accuracy(output, y))
-            self.log(f"{prefix}_recall_step", self.recall(output, y))
+            # self.log(f"{prefix}_acc_step", self.accuracy(output, y))
+            # self.log(f"{prefix}_recall_step", self.recall(output, y))
             self.log(
-                "{prefix}_f1",
+                f"{prefix}_f1",
                 f1_score(output, y),
+                on_step=True,
+                on_epoch=True,
+                logger=True,
+            )
+            self.log(
+                f"{prefix}_accuracy",
+                accuracy(output, y),
+                on_step=True,
+                on_epoch=True,
+                logger=True,
+            )
+            self.log(
+                f"{prefix}_recall",
+                recall(output, y),
                 on_step=True,
                 on_epoch=True,
                 logger=True,
@@ -92,21 +126,21 @@ class SpeechClassifierModule(LightningModule):
 
         # only one loss allowed
         # also in case of branched networks
-        self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
+        self.log(f"{prefix}_loss", loss, on_step=True, on_epoch=True, logger=True)
 
-    def get_epoch_metrics(self, prefix):
-        # log epoch metric
-        if hasattr(self.model, "n_pieces"):
-            for idx in range(self.model.n_pieces):
-                # accuracy
-                for accuracy in self.accuracy:
-                    self.log(f"{prefix}_acc_epoch/exit_{idx}", accuracy.compute())
+    # def get_epoch_metrics(self, prefix):
+    #     # log epoch metric
+    #     if hasattr(self.model, "n_pieces"):
+    #         for idx in range(self.model.n_pieces):
+    #             # accuracy
+    #             for acc in self.accuracy:
+    #                 self.log(f"{prefix}_acc_epoch/exit_{idx}", acc.compute())
 
-                # TODO: recall, f1
+    #             # TODO: recall, f1
 
-        else:
-            self.log(f"{prefix}_acc_epoch", self.accuracy.compute())
-            self.log(f"{prefix}_recall_epoch", self.recall.compute())
+    #     else:
+    #         self.log(f"{prefix}_acc_epoch", self.accuracy.compute())
+    #         self.log(f"{prefix}_recall_epoch", self.recall.compute())
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
@@ -127,9 +161,9 @@ class SpeechClassifierModule(LightningModule):
 
         return loss
 
-    def training_epoch_end(self, outs):
-        # log epoch metrics
-        self.get_epoch_metrics("train")
+    # def training_epoch_end(self, outs):
+    #     # log epoch metrics
+    #     self.get_epoch_metrics("train")
 
     def train_dataloader(self):
 
@@ -160,6 +194,9 @@ class SpeechClassifierModule(LightningModule):
         y = y.view(-1)
         loss = self.criterion(output, y)
 
+        # METRICS
+        self.get_batch_metrics(output, y, loss, "val")
+
         return loss
 
     def val_dataloader(self):
@@ -183,6 +220,9 @@ class SpeechClassifierModule(LightningModule):
         output = self.model(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
+
+        # METRICS
+        self.get_batch_metrics(output, y, loss, "test")
 
         return loss
 
