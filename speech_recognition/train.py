@@ -90,9 +90,6 @@ def main(config=DictConfig):
         # PL TEST
         lit_trainer.test(ckpt_path=None)
 
-        if config["profile"]:
-            logging.info(profiler.summary())
-
         return lit_trainer
 
     elif config["type"] == "eval":
