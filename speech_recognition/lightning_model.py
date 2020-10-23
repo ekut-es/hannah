@@ -73,7 +73,7 @@ class SpeechClassifierModule(LightningModule):
 
         y = y.view(-1)
 
-        batch_acc = accuracy(output, y)
+        batch_acc = accuracy(output, y, num_classes=self.hparams.model.n_labels)
         batch_f1 = f1_score(output, y)
         batch_recall = recall(output, y)
 
