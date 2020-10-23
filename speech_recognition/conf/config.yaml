@@ -4,36 +4,22 @@ defaults:
     - compress: null
     - scheduler: step
     - optimizer: adam
-#    - trainer: pl/trainer
+    - trainer: default
+    - checkpoint: default
+    - backend: null
+    - early_stopping: null
+    - profiler: null
 
+type: train
 auto_lr: false
-backend: ''
 batch_size: 128
 experiment_id: test
 fold_bn: -1
 lr: 0.05
-
-config: ''
-cuda: True
-dump_test: false
-early_stopping: 0
-fast_dev_run: false
-gpu_no: 0
-input_file: ''
-limits_datasets:
-- 1.0
-- 1.0
-- 1.0
-n_epochs: 500
-n_labels: 12
-num_workers: 32
-output_dir: trained_models
-profile: false
-type: train
-ultratrail: ''
-use_amsgrad: false
-use_nesterov: false
-vsim: /afs/wsi/es/tools/mentor/questa_core_prime/2019.4.2/questasim/bin/vsim
-weight_decay: 1.0e-05
-
 seed: 1234
+num_workers: 0
+
+#TODO:
+dump_test: false
+input_file: ''
+output_dir: trained_models

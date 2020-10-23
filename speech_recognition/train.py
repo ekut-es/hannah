@@ -1,12 +1,11 @@
 import os
 import logging
 
-import torch
-
 import hydra
 from omegaconf import DictConfig, OmegaConf
+import torch
 
-from .utils import set_seed, log_execution_env_state
+from .utils import log_execution_env_state
 
 from .callbacks.backends import OnnxTFBackend, OnnxruntimeBackend, TorchMobileBackend
 from .callbacks.distiller import DistillerCallback
@@ -14,45 +13,29 @@ from .callbacks.distiller import DistillerCallback
 from .lightning_model import SpeechClassifierModule
 
 from pytorch_lightning.trainer import Trainer
-from pytorch_lightning.profiler import AdvancedProfiler
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.core.memory import ModelSummary
+from pytorch_lightning.utilities.seed import seed_everything
+from hydra.utils import instantiate
 
 from . import conf  # noqa
 
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config=DictConfig):
-    set_seed(config)
-    config.cuda = config.cuda if torch.cuda.is_available() else None
-    gpu_no = config["gpu_no"]
-    n_epochs = config["n_epochs"]  # max epochs
+    seed_everything(config.seed)
+    if torch.cuda.is_available():
+        config.trainer.gpus = []
 
     log_execution_env_state()
 
+    logging.info("Configuration: ")
     logging.info(OmegaConf.to_yaml(config))
     logging.info("Current working directory %s", os.getcwd())
 
-    # Configure checkpointing
-    checkpoint_callback = ModelCheckpoint(
-        filepath="./checkpoints",
-        save_top_k=5,
-        verbose=False,
-        monitor="val_loss",
-        mode="min",
-        prefix="",
-    )
-
+    checkpoint_callback = instantiate(config.checkpoint)
     lit_module = SpeechClassifierModule(config)
-
-    kwargs = {
-        "max_epochs": n_epochs,
-        "default_root_dir": ".",
-        "row_log_interval": 1,  # enables logging of metrics per step/batch
-        "checkpoint_callback": checkpoint_callback,
-        "callbacks": [],
-    }
+    callbacks = []
 
     # TODO distiller only available without auto_lr because compatibility issues
     if "compress" in config or config.fold_bn >= 0:
@@ -60,65 +43,49 @@ def main(config=DictConfig):
             raise Exception(
                 "Automated learning rate finder is not compatible with compression"
             )
-        callbacks = kwargs["callbacks"]
         callbacks.append(DistillerCallback(config.compress, fold_bn=config.fold_bn))
-        kwargs.update({"callbacks": callbacks})
 
-    if config["cuda"]:
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-        kwargs.update({"gpus": [gpu_no]})
-
-    if "limits_datasets" in config:
-        limits = config["limits_datasets"]
-        kwargs.update(
-            {
-                "limit_train_batches": limits[0],
-                "limit_val_batches": limits[1],
-                "limit_test_batches": limits[2],
-            }
-        )
-
-    loggers = [
+    logger = [
         TensorBoardLogger("./tb_logs", version="", name=""),
         CSVLogger(".", version="", name=""),
     ]
-    kwargs["logger"] = loggers
 
-    if config["backend"] == "torchmobile":
-        backend = TorchMobileBackend()
-        kwargs["callbacks"].append(backend)
-    if config["backend"] == "onnx-tf":
-        backend = OnnxTFBackend()
-        kwargs["callbacks"].append(backend)
-    elif config["backend"] == "onnxrt":
-        backend = OnnxruntimeBackend()
-        kwargs["callbacks"].append(backend)
+    if "backend" in config:
+        backend = instantiate(config.backend)
+        callbacks.append(backend)
 
-    if config["fast_dev_run"]:
-        kwargs.update({"fast_dev_run": True})
-
+    logging.info("type: '%s'", config.type)
     if config["type"] == "train":
+        logging.info("Starting training")
 
-        if config["profile"]:
-            profiler = AdvancedProfiler()
-            kwargs.update({"profiler": profiler})
+        profiler = None
+        if "profiler" in config:
+            profiler = instantiate(config.profiler)
 
         # INIT PYTORCH-LIGHTNING
-        lit_trainer = Trainer(**kwargs)
+        lit_trainer = Trainer(
+            **config.trainer,
+            profiler=profiler,
+            callbacks=callbacks,
+            checkpoint_callback=checkpoint_callback,
+            logger=logger
+        )
 
         if config["auto_lr"]:
             # run lr finder (counts as one epoch)
             lr_finder = lit_trainer.lr_find(lit_module)
+
             # inspect results
             fig = lr_finder.plot()
             fig.savefig("./learning_rate.png")
+
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
 
-        # PL TRAIN
         logging.info(ModelSummary(lit_module, "full"))
+
+        # PL TRAIN
         lit_trainer.fit(lit_module)
 
         # PL TEST

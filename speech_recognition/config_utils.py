@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 
 import torch
 import torch.nn as nn
@@ -20,16 +21,8 @@ def get_loss_function(model, config):
     try:
         criterion = model.get_loss_function()
     except Exception as e:
-        print(str(e))
-        if "loss" in config:
-            if config["loss"] == "cross_entropy":
-                criterion = nn.CrossEntropyLoss()
-            elif config["loss"] == "ctc":
-                criterion = ce_loss_func
-            else:
-                raise Exception(
-                    "Loss function not supported: {}".format(config["loss"])
-                )
+        logging.info(str(e))
+        criterion = nn.CrossEntropyLoss()
 
     return criterion
 

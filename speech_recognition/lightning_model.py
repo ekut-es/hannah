@@ -28,6 +28,7 @@ class SpeechClassifierModule(LightningModule):
         self.hparams.model.width = self.train_set.width
         self.hparams.model.height = self.train_set.height
         self.hparams.model.n_labels = len(self.train_set.label_names)
+
         self.model = get_model(self.hparams.model)
 
         # loss function
@@ -59,7 +60,7 @@ class SpeechClassifierModule(LightningModule):
         y = y.view(-1)
 
         output_max = output.argmax(dim=1)
-        batch_acc = accuracy(output_max, y, self.hparams["n_labels"])
+        batch_acc = accuracy(output_max, y)
         batch_f1 = f1_score(output_max, y)
         batch_recall = recall(output_max, y)
 

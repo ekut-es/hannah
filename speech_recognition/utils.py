@@ -2,14 +2,14 @@ import importlib
 import torch
 import torch.nn as nn
 import numpy as np
-import random
 import logging
 import os
-
 import sys
 import platform
-from git import Repo, InvalidGitRepositoryError
 from pathlib import Path
+from typing import Any, Callable
+
+from git import Repo, InvalidGitRepositoryError
 
 try:
     import lsb_release
@@ -44,15 +44,6 @@ class SerializableModule(nn.Module):
             torch.load(filename, map_location=lambda storage, loc: storage),
             strict=False,
         )
-
-
-def set_seed(config):
-    seed = config["seed"]
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    if config["cuda"]:
-        torch.cuda.manual_seed(seed)
-    random.seed(seed)
 
 
 def config_pylogger(log_cfg_file, experiment_name, output_dir="logs"):

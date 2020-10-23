@@ -1,0 +1,5 @@
+# @package _group_
+
+_target_: pytorch_lightning.profiler.AdvancedProfiler
+output_filename: null
+line_count_restriction: 20
