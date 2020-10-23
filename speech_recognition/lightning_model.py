@@ -27,8 +27,7 @@ class SpeechClassifierModule(LightningModule):
         ).splits(config.dataset)
 
         # Create example input
-        dummy_width, dummy_height = self.train_set.width, self.train_set.height
-        dummy_input = torch.zeros(1, dummy_height, dummy_width)
+        dummy_input = torch.zeros(1, self.train_set.input_length)
         self.example_input_array = dummy_input
         if torch.cuda.is_available():
             self.example_input_array = self.example_input_array.cuda()
@@ -39,7 +38,6 @@ class SpeechClassifierModule(LightningModule):
             self.features = self.features.cuda()
 
         features = self.features(self.example_input_array)
-        features = torch.squeeze(features, dim=1)
         self.example_feature_array = features
 
         # Instantiate Model
@@ -207,7 +205,6 @@ class SpeechClassifierModule(LightningModule):
     # FORWARD (overwrite to train instance of this class directly)
     def forward(self, x):
         x = self.features(x)
-        x = torch.squeeze(x, dim=1)
         return self.model(x)
 
     # CALLBACKS

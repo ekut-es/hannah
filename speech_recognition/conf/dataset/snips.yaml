@@ -1,0 +1,28 @@
+# @package _group_
+
+data_folder: ${hydra:runtime.cwd}/datasets/hey_snips_research_6k_en_train_eval_clean_ter/
+dataset: keywords
+cls: speech_recognition.dataset.SpeechHotwordDataset
+
+group_speakers_by_id: false
+use_default_split: false
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+wanted_words: []
+bg_noise_files: []
+
+input_length: 16000
+samplingrate: 16000
+
+timeshift_ms: 100
+extract_loudest: true
+
+silence_prob: 1.0
+unknown_prob: 1.0
+test_snr: .inf
+train_snr_high: 1000.0
+train_snr_low: 0.0
+
+normalize_bits: 0
+normalize_max: 256

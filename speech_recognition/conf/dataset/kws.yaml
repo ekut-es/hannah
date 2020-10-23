@@ -3,25 +3,12 @@
 data_folder: ${hydra:runtime.cwd}/datasets/speech_commands_v0.02/
 dataset: keywords
 cls: speech_recognition.dataset.SpeechCommandsDataset
-input_length: 16000
-features: raw
-freq_max: 4000
-freq_min: 20
-full_help: false
+
 group_speakers_by_id: true
-height: 40
-n_mels: 40
-n_mfcc: 40
-normalize_bits: 0
-normalize_max: 256
-unknown_prob: 0.1
+use_default_split: false
 test_pct: 10
-test_snr: .inf
 dev_pct: 10
-timeshift_ms: 100
 train_pct: 80
-train_snr_high: 1000.0
-train_snr_low: 0.0
 wanted_words:
     - 'yes'
     - 'no'
@@ -33,9 +20,18 @@ wanted_words:
     - 'off'
     - stop
     - go
-use_default_split: false
+
+input_length: 16000
 samplingrate: 16000
-silence_prob: 0.1
+
+timeshift_ms: 100
 extract_loudest: true
-stride_ms: 10
-window_ms: 30
+
+silence_prob: 0.1
+unknown_prob: 0.1
+test_snr: .inf
+train_snr_high: 1000.0
+train_snr_low: 0.0
+
+normalize_bits: 0
+normalize_max: 256
