@@ -59,7 +59,11 @@ class SpeechClassifierModule(LightningModule):
         if data_split in splits:
             data_folder = config["data_folder"]
 
-            
+            #remove old folders
+            for name in ["train", "dev", "test"]:
+                oldpath = os.path.join(data_folder, name)
+                if os.path.isdir(oldpath):
+                    shutil.rmtree(oldpath)
 
             # directories with original data
             noise_dir = os.path.join(data_folder, "noise_files")
