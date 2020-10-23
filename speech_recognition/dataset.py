@@ -548,10 +548,7 @@ class SpeechCommandsDataset(SpeechDataset):
 
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
-                mvtarget = os.path.join(speechcommand, "speech_commands_v0.02.tar.gz")
-                os.system("cp /storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz " + mvtarget)
-                extract_archive(mvtarget, speechcommand, True)
-
+                extract_archive("/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz", speechcommand, False)
             else:
                 download_and_extract_archive(
                     "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
@@ -643,8 +640,7 @@ class SpeechHotwordDataset(SpeechDataset):
             if platform.node() == "lucille":
                 mvtarget = os.path.join(data_folder, "speech_commands_v0.02.tar.gz")
                 #datasets are in /storage/local/dataset/...... prestored
-                os.system("cp /storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz " + mvtarget)
-                extract_archive(mvtarget, data_folder, True)
+                extract_archive("/storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz", data_folder, False)
 
             else:
                 download_and_extract_archive(
@@ -717,14 +713,10 @@ class VadDataset(SpeechDataset):
                 os.makedirs(speechdir)
                 for name in lang:
                     if name in userlanguage:
-                        mvtarget = os.path.join(speechdir, name + ".tar.gz")
-                        os.system("cp /storage/local/dataset/mozilla/" + name + ".tar.gz " + mvtarget)
-                        extract_archive(mvtarget, speechdir, True)
+                        extract_archive("/storage/local/dataset/mozilla/" + name + ".tar.gz", speechdir, False)
 
                 if "uwnu" in userlanguage:
-                    mvtarget = os.path.join(speechdir, "uwnu-v2.tar.gz")
-                    os.system("cp /storage/local/dataset/uwnu/uwnu-v2.tar.gz " + mvtarget)
-                    extract_archive(mvtarget, speechdir, True)
+                    extract_archive("/storage/local/dataset/uwnu/uwnu-v2.tar.gz", speechdir, False)
 
             else:
                 #download mozilla dataset
@@ -860,11 +852,7 @@ class KeyWordDataset(SpeechDataset):
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
                 # datasets are in /storage/local/dataset/...... prestored
-
-                mvtarget = os.path.join(speechcommand, "speech_commands_v0.02.tar.gz")
-                os.system(
-                    "cp /storage/local/dataset/speech_commands/speech_commands_v0.02.tar.gz " + mvtarget)
-                extract_archive(mvtarget, speechcommand, True)
+                extract_archive("/storage/local/dataset/speech_commands/speech_commands_v0.02.tar.gz", speechcommand, False)
 
             else:
                 download_and_extract_archive(
