@@ -10,6 +10,7 @@ from .utils import log_execution_env_state
 from .callbacks.distiller import DistillerCallback
 
 from .lightning_model import SpeechClassifierModule
+from .callbacks.optimization import HydraOptCallback
 
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
@@ -61,6 +62,9 @@ def main(config=DictConfig):
         if "profiler" in config:
             profiler = instantiate(config.profiler)
 
+        opt_callback = HydraOptCallback()
+        callbacks.append(opt_callback)
+
         # INIT PYTORCH-LIGHTNING
         lit_trainer = Trainer(
             **config.trainer,
@@ -82,7 +86,7 @@ def main(config=DictConfig):
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
 
-        #logging.info(ModelSummary(lit_module, "full"))
+        # logging.info(ModelSummary(lit_module, "full"))
 
         # PL TRAIN
         lit_trainer.fit(lit_module)
@@ -90,7 +94,7 @@ def main(config=DictConfig):
         # PL TEST
         lit_trainer.test(ckpt_path=None)
 
-        return lit_trainer
+        return opt_callback.result()
 
     elif config["type"] == "eval":
         logging.error("eval mode is not supported at the moment")

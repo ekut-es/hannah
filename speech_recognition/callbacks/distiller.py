@@ -17,7 +17,6 @@ class DistillerCallback(Callback):
         pl_module.model.to(pl_module.device)
 
         if self.fold_bn >= 0 and not self.bn_frozen:
-            self.bn_frozen = True
             self.msglogger.info("Applying batch norm folding")
             self.model = distiller.model_transforms.fold_batch_norms(
                 pl_module.model,
