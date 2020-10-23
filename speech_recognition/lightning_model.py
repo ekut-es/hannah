@@ -9,7 +9,6 @@ from .dataset import ctc_collate_fn
 
 import torch
 import torch.utils.data as data
-from pytorch_lightning import TrainResult, EvalResult
 from hydra.utils import instantiate
 
 
@@ -94,8 +93,6 @@ class SpeechClassifierModule(LightningModule):
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
-        result = TrainResult(loss)
-
         log_vals = {
             "train_loss": loss,
             "train_acc": batch_acc,
@@ -104,9 +101,9 @@ class SpeechClassifierModule(LightningModule):
         }
 
         # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        result.log_dict(log_vals, on_step=True, on_epoch=True)
+        self.log_dict(log_vals, on_step=True, on_epoch=False)
 
-        return result
+        return loss
 
     def train_dataloader(self):
 
@@ -138,7 +135,6 @@ class SpeechClassifierModule(LightningModule):
 
         # METRICS
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
-        result = EvalResult(loss)
         log_vals = {
             "val_loss": loss,
             "val_acc": batch_acc,
@@ -147,9 +143,9 @@ class SpeechClassifierModule(LightningModule):
         }
 
         # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        result.log_dict(log_vals)
+        self.log_dict(log_vals)
 
-        return result
+        return loss
 
     def val_dataloader(self):
 
@@ -177,7 +173,6 @@ class SpeechClassifierModule(LightningModule):
         batch_acc, batch_f1, batch_recall = self.get_batch_metrics(output, y)
 
         # RESULT DICT
-        result = EvalResult(loss)
         log_vals = {
             "test_loss": loss,
             "test_acc": batch_acc,
@@ -186,9 +181,9 @@ class SpeechClassifierModule(LightningModule):
         }
 
         # TODO sync across devices in case of multi gpu via kwarg sync_dist=True
-        result.log_dict(log_vals)
+        self.log_dict(log_vals)
 
-        return result
+        return loss
 
     def test_dataloader(self):
 
