@@ -70,7 +70,7 @@ class SpeechClassifierModule(LightningModule):
             speech_dir = os.path.join(data_folder, "speech_files")
 
             if (data_split == "vad_speech"):
-                speech_dir = "./speech_commands_v0.02"
+                speech_dir = "speech_commands_v0.02"
 
             destination_dict = dict()
 
@@ -172,6 +172,14 @@ class SpeechClassifierModule(LightningModule):
                     os.makedirs(data_dir)
                 for f in value:
                     shutil.copy2(f, data_dir)
+
+            if config["clear_split"]:
+                #remove old folders
+                for name in ["noise_files", "speech_files", "speech_commands_v0.02"]:
+                    oldpath = os.path.join(data_folder, name)
+                    if os.path.isdir(oldpath):
+                        shutil.rmtree(oldpath)
+
 
     def downsample(self, config):
         samplerate = config["downsample"]

@@ -159,6 +159,8 @@ class SpeechDataset(data.Dataset):
                                                default=0)
         config["clear_download"] = ConfigOption(category="Input Config",
                                             default=False)
+        config["clear_split"] = ConfigOption(category="Input Config",
+                                            default=False)
         config["samplingrate"]         = ConfigOption(category="Input Config",
                                                       default=16000)
         config["input_length"]         = ConfigOption(category="Input Config",
