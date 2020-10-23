@@ -171,7 +171,7 @@ class SpeechClassifierModule(LightningModule):
             if not os.path.exists(data_dir):
                 os.makedirs(data_dir)
             for f in value:
-                shutil.move(f, data_dir)
+                shutil.copy2(f, data_dir)
 
     def downsample(self, config):
         downsample_folder = ["vad_data_balanced", "vad_data_balanced_getrennt", "vad_data", "vad_speech"]
