@@ -18,9 +18,6 @@ import torch.utils.data as data
 import hashlib
 import pickle
 
-from .config import ConfigOption
-from .process_audio import preprocess_audio, calculate_feature_shape
-
 
 def factor(snr, psig, pnoise):
     y = 10 ** (snr / 10)
@@ -35,7 +32,7 @@ def load_audio(file_name, sr=16000, backend="torchaudio", res_type="kaiser_fast"
         data, samplingrate = torchaudio.load(file_name)
         data = data.numpy()
         if samplingrate != sr:
-            data = librosa.resample(data, sampling_sr, sr, res_type=res_type)
+            data = librosa.resample(data, samplingrate, sr, res_type=res_type)
     else:
         raise Exception(f"Unknown backend name {backend}")
 
@@ -76,108 +73,18 @@ class SpeechDataset(data.Dataset):
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
         self.extract_loudest = config["extract_loudest"]
-        self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
         self.randomstates = dict()
         self.unknown_class = 1
         self.silence_class = 0
         n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
-        self.features = config["features"]
-        self.n_mfcc = config["n_mfcc"]
-        self.n_mels = config["n_mels"]
-        self.stride_ms = config["stride_ms"]
-        self.window_ms = config["window_ms"]
-        self.freq_min = config["freq_min"]
-        self.freq_max = config["freq_max"]
-        self.normalize_bits = config["normalize_bits"]
-        self.normalize_max = config["normalize_max"]
         self.max_feature = 0
         self.train_snr_low = config["train_snr_low"]
         self.train_snr_high = config["train_snr_high"]
         self.test_snr = config["test_snr"]
 
-        self.height, self.width = calculate_feature_shape(
-            self.input_length,
-            features=self.features,
-            samplingrate=self.samplingrate,
-            n_mels=self.n_mels,
-            n_mfcc=self.n_mfcc,
-            stride_ms=self.stride_ms,
-            window_ms=self.window_ms,
-        )
-
-    @staticmethod
-    def default_config():
-        """ Returns the default configuration for the Dataset and
-        Feature extraction"""
-        config = {}
-
-        # Input Description
-        config["wanted_words"] = ConfigOption(
-            category="Input Config",
-            default=[
-                "yes",
-                "no",
-                "up",
-                "down",
-                "left",
-                "right",
-                "on",
-                "off",
-                "stop",
-                "go",
-            ],
-        )
-        config["n_labels"] = ConfigOption(category="Input Config", default=12)
-        config["data_folder"] = ConfigOption(
-            category="Input Config", default="datasets/speech_commands_v0.02/"
-        )
-        config["samplingrate"] = ConfigOption(category="Input Config", default=16000)
-        config["input_length"] = ConfigOption(category="Input Config", default=16000)
-        config["extract_loudest"] = ConfigOption(category="Input Config", default=True)
-        config["timeshift_ms"] = ConfigOption(category="Input Config", default=100)
-        config["use_default_split"] = ConfigOption(
-            category="Input Config", default=False
-        )
-        config["group_speakers_by_id"] = ConfigOption(
-            category="Input Config", default=True
-        )
-        config["silence_prob"] = ConfigOption(category="Input Config", default=0.1)
-        config["unknown_prob"] = ConfigOption(category="Input Config", default=0.1)
-        config["train_pct"] = ConfigOption(category="Input Config", default=80)
-        config["dev_pct"] = ConfigOption(category="Input Config", default=10)
-        config["test_pct"] = ConfigOption(category="Input Config", default=10)
-        config["train_snr_low"] = ConfigOption(category="Input Config", default=0.0)
-        config["train_snr_high"] = ConfigOption(category="Input Config", default=20.0)
-        config["test_snr"] = ConfigOption(
-            category="Input Config", desc="SNR used during test", default=float("inf")
-        )
-
-        # Feature extraction
-        config["features"] = ConfigOption(
-            category="Feature Config",
-            choices=["mel", "mfcc", "melspec", "spectrogram", "raw"],
-            default="mel",
-        )
-        config["n_mfcc"] = ConfigOption(category="Feature Config", default=40)
-        config["n_mels"] = ConfigOption(category="Feature Config", default=40)
-        config["stride_ms"] = ConfigOption(category="Feature Config", default=10)
-        config["window_ms"] = ConfigOption(category="Feature Config", default=30)
-        config["freq_min"] = ConfigOption(category="Feature Config", default=20)
-        config["freq_max"] = ConfigOption(category="Feature Config", default=4000)
-
-        config["normalize_bits"] = ConfigOption(
-            category="Feature Config",
-            desc="Normalize features to n bits 0 means no normalization",
-            default=0,
-        )
-        config["normalize_max"] = ConfigOption(
-            category="Feature Config",
-            desc="Divide features by this value before normalization",
-            default=256,
-        )
-
-        return config
+        self.normalize_bits = config["normalize_bits"]
+        self.normalize_max = config["normalize_max"]
 
     def _timeshift_audio(self, data):
         """Shifts data by a random amount of ms given by parameter timeshift_ms"""
@@ -231,7 +138,9 @@ class SpeechDataset(data.Dataset):
             bg_noise = bg_noise[a : a + data.shape[0]]
 
         else:
-            bg_noise = np.zeros(data.shape[0])
+            # Same formula as used for google kws white noise
+            bg_noise = np.random.normal(0, 1, data.shape[0]) / 3
+            bg_noise = np.float32(bg_noise)
 
         if self.set_type == DatasetType.TEST:
             snr = self.test_snr
@@ -246,19 +155,6 @@ class SpeechDataset(data.Dataset):
 
             if np.amax(np.absolute(data)) > 1:
                 data = data / np.amax(np.absolute(data))
-
-        data = preprocess_audio(
-            data,
-            features=self.features,
-            samplingrate=self.samplingrate,
-            n_mels=self.n_mels,
-            n_mfcc=self.n_mfcc,
-            dct_filters=self.dct_filters,
-            freq_min=self.freq_min,
-            freq_max=self.freq_max,
-            window_ms=self.window_ms,
-            stride_ms=self.stride_ms,
-        )
 
         data = torch.from_numpy(data)
 
@@ -306,7 +202,7 @@ class SpeechDataset(data.Dataset):
         else:
             data = self.preprocess(self.audio_files[index])
 
-        return data, data.shape[1], label, label.shape[0]
+        return data, data.shape[0], label, label.shape[0]
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence
@@ -327,12 +223,13 @@ class SpeechCommandsDataset(SpeechDataset):
     def splits(cls, config):
         msglogger = logging.getLogger()
 
-        folder = config["data_folder"]
-        wanted_words = config["wanted_words"]
-        unknown_prob = config["unknown_prob"]
         train_pct = config["train_pct"]
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
+
+        folder = config["data_folder"]
+        wanted_words = config["wanted_words"]
+        unknown_prob = config["unknown_prob"]
         use_default_split = config["use_default_split"]
 
         words = {word: i + 2 for i, word in enumerate(wanted_words)}
@@ -660,31 +557,6 @@ class KeyWordDataset(SpeechDataset):
             cls(sets[2], DatasetType.TEST, config),
         )
         return datasets
-
-
-def find_dataset(name):
-    """Returns the appropriate class for reading a dataset of type name:
-
-       Parameters
-       ----------
-       name : str
-           The name of the dataset type
-
-            - keywords = Google Speech Commands like  dataset
-            - hotword = Hey Snips! like dataset
-
-       Returns
-"""
-    if name == "keywords":
-        return SpeechCommandsDataset
-    elif name == "hotword":
-        return SpeechHotwordDataset
-    elif name == "vad":
-        return VadDataset
-    elif name == "keywords_and_noise":
-        return KeyWordDataset
-
-    raise Exception("Could not find dataset type: {}".format(name))
 
 
 def ctc_collate_fn(data):
