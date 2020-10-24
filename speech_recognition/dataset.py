@@ -293,6 +293,13 @@ class SpeechDataset(data.Dataset):
             cutstart = cutstart + int(len(data) * 0.1)
             return (cutstart, cutstart + in_len)
 
+    def _extract_front_range(self, data, in_len):
+        """Extract front part of the sample with length self.input_length"""
+        if len(data) <= in_len:
+            return (0, len(data))
+        else:
+            return (0, in_len)
+
     def _extract_loudest_range(self, data, in_len):
         """Extract the loudest part of the sample with length self.input_length"""
         if len(data) <= in_len:
@@ -336,6 +343,8 @@ class SpeechDataset(data.Dataset):
                     extract_index = self._extract_loudest_range(data, in_len)
                 elif self.extract == "trim_border" and self.loss_function != "ctc":
                     extract_index = self._extract_random_range(data, in_len)
+                elif self.extract == "front" and self.loss_function != "ctc":
+                    extract_index = self._extract_front_range(data, in_len)
 
                 data = self._timeshift_audio(data)
                 data = data[extract_index[0] : extract_index[1]]
