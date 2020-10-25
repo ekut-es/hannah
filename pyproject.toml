@@ -25,6 +25,9 @@ tensorflow-addons = {version = "^0.11.2", optional = true}
 onnxruntime = {version = "==1.4.0", optional = true}
 torchaudio = "^0.6.0"
 hydra-core = "^1.0.3"
+hydra-nevergrad-sweeper = "^1.1.0-rc.1"
+hydra-joblib-launcher = "^1.1.0"
+hydra-submitit-launcher = "^1.0.0"
 
 
 [tool.poetry.dev-dependencies]
