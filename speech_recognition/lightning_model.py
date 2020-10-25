@@ -57,17 +57,6 @@ class SpeechClassifierModule(LightningModule):
 
         return [optimizer], [scheduler]
 
-    # def prepare_metrics(self):
-
-    #     # in case of branchy nets declare multiple objects per metric
-    #     if hasattr(self.model, "n_pieces"):
-    #         for idx in range(self.model.n_pieces):
-    #             self.accuracy = [Accuracy() for _ in range(self.model.n_pieces)]
-    #             self.recall = [Recall() for _ in range(self.model.n_pieces)]
-    #     else:
-    #         self.accuracy = Accuracy()
-    #         self.recall = Recall()
-
     def get_batch_metrics(self, output, y, loss, prefix):
 
         # in case of multiple outputs
@@ -100,8 +89,6 @@ class SpeechClassifierModule(LightningModule):
             # TODO: f1 recall
 
         else:
-            # self.log(f"{prefix}_acc_step", self.accuracy(output, y))
-            # self.log(f"{prefix}_recall_step", self.recall(output, y))
             self.log(
                 f"{prefix}_f1",
                 f1_score(output, y),
@@ -128,20 +115,6 @@ class SpeechClassifierModule(LightningModule):
         # also in case of branched networks
         self.log(f"{prefix}_loss", loss, on_step=True, on_epoch=True, logger=True)
 
-    # def get_epoch_metrics(self, prefix):
-    #     # log epoch metric
-    #     if hasattr(self.model, "n_pieces"):
-    #         for idx in range(self.model.n_pieces):
-    #             # accuracy
-    #             for acc in self.accuracy:
-    #                 self.log(f"{prefix}_acc_epoch/exit_{idx}", acc.compute())
-
-    #             # TODO: recall, f1
-
-    #     else:
-    #         self.log(f"{prefix}_acc_epoch", self.accuracy.compute())
-    #         self.log(f"{prefix}_recall_epoch", self.recall.compute())
-
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
 
@@ -160,10 +133,6 @@ class SpeechClassifierModule(LightningModule):
         self.get_batch_metrics(output, y, loss, "train")
 
         return loss
-
-    # def training_epoch_end(self, outs):
-    #     # log epoch metrics
-    #     self.get_epoch_metrics("train")
 
     def train_dataloader(self):
 
