@@ -83,7 +83,7 @@ def load_audio(file_name, sr=16000, backend="torchaudio", res_type="kaiser_fast"
         data, samplingrate = torchaudio.load(file_name)
         data = data.numpy()
         if samplingrate != sr:
-            data = librosa.resample(data, sampling_sr, sr, res_type=res_type)
+            data = librosa.resample(data, samplingrate, sr, res_type=res_type)
     else:
         raise Exception(f"Unknown backend name {backend}")
 
