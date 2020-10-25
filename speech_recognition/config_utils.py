@@ -5,6 +5,8 @@ import logging
 import torch
 import torch.nn as nn
 
+from hydra.utils import instantiate
+
 from .utils import _locate
 
 
@@ -28,7 +30,10 @@ def get_loss_function(model, config):
 
 
 def get_model(config):
-    model = _locate(config["model_class"])(config)
+    if "_target_" in config:
+        model = instantiate(config)
+    else:
+        model = _locate(config.cls)(config)
     return model
 
 

@@ -1,6 +1,6 @@
 # @package _group_
 
-_target_: speech_recognition.models.sinc.models.SincNet
+cls: speech_recognition.models.sinc.models.SincNet
 name: sinc1
 cnn_N_filt: 40
 cnn_filt_len: 101
