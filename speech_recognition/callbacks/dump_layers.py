@@ -1,5 +1,5 @@
 import os
-import json 
+import json
 
 import distiller
 import torch.nn as nn
@@ -10,7 +10,7 @@ from pytorch_lightning import Callback
 class TestDumperCallback(Callback):
     def __init__(self, output_dir="."):
         self.output_dir = output_dir
-    
+
     def on_test_start(self, pl_trainer, pl_model):
         print("Activating layer dumping")
 
