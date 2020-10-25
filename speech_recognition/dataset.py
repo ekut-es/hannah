@@ -82,7 +82,7 @@ def load_audio(file_name, sr=16000, backend="torchaudio", res_type="kaiser_fast"
         data, samplingrate = torchaudio.load(file_name)
         data = data.numpy()
         if samplingrate != sr:
-            data = librosa.resample(data, sampling_sr, sr, res_type=res_type)
+            data = librosa.resample(data, samplingrate, sr, res_type=res_type)
     else:
         raise Exception(f"Unknown backend name {backend}")
 
@@ -122,7 +122,7 @@ class SpeechDataset(data.Dataset):
         self.silence_prob = config["silence_prob"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
-        self.extract_loudest = config["extract_loudest"]
+        self.extract = config["extract"]
         self.loss_function = config["loss"]
         self.dct_filters = librosa.filters.dct(config["n_mfcc"], config["n_mels"])
         self._file_cache = SimpleCache(config["cache_size"])
@@ -190,7 +190,7 @@ class SpeechDataset(data.Dataset):
         )
         config["samplingrate"] = ConfigOption(category="Input Config", default=16000)
         config["input_length"] = ConfigOption(category="Input Config", default=16000)
-        config["extract_loudest"] = ConfigOption(category="Input Config", default=True)
+        config["extract"] = ConfigOption(category="Input Config", default="front")
         config["timeshift_ms"] = ConfigOption(category="Input Config", default=100)
         config["use_default_split"] = ConfigOption(
             category="Input Config", default=False
@@ -277,8 +277,30 @@ class SpeechDataset(data.Dataset):
         data = np.pad(data, (a, b), "constant")
         return data[: len(data) - a] if a else data[b:]
 
+    def _extract_random_range(self, data, in_len):
+        """Extract random part of the sample with length self.input_length"""
+        if len(data) <= in_len:
+            return (0, len(data))
+        elif (int(len(data) * 0.8) - 1) < in_len:
+            rand_end = len(data) -in_len
+            cutstart = np.random.randint(0, rand_end)
+            return (cutstart, cutstart + in_len)
+        else:
+            max_length = int(len(data) * 0.8)
+            max_length = max_length - in_len
+            cutstart = np.random.randint(0, max_length)
+            cutstart = cutstart + int(len(data) * 0.1)
+            return (cutstart, cutstart + in_len)
+
+    def _extract_front_range(self, data, in_len):
+        """Extract front part of the sample with length self.input_length"""
+        if len(data) <= in_len:
+            return (0, len(data))
+        else:
+            return (0, in_len)
+
     def _extract_loudest_range(self, data, in_len):
-        """Extract the loudest part of the sample with length self.input_lenght"""
+        """Extract the loudest part of the sample with length self.input_length"""
         if len(data) <= in_len:
             return (0, len(data))
 
@@ -316,8 +338,12 @@ class SpeechDataset(data.Dataset):
 
                 extract_index = (0, len(data))
 
-                if self.extract_loudest and self.loss_function != "ctc":
+                if self.extract == "loudest" and self.loss_function != "ctc":
                     extract_index = self._extract_loudest_range(data, in_len)
+                elif self.extract == "trim_border" and self.loss_function != "ctc":
+                    extract_index = self._extract_random_range(data, in_len)
+                elif self.extract == "front" and self.loss_function != "ctc":
+                    extract_index = self._extract_front_range(data, in_len)
 
                 data = self._timeshift_audio(data)
                 data = data[extract_index[0] : extract_index[1]]
