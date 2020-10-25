@@ -1,8 +1,7 @@
 # @package _group_
 
-model: tc-res8
-model_class: speech_recognition.models.tc.models.TCResNetModel
-model_name: tc-res8
+_target_: speech_recognition.models.tc.models.TCResNetModel
+name: tc-res8
 separable:
 - 0
 - 0

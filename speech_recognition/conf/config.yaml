@@ -18,7 +18,7 @@ experiment_id: test
 fold_bn: -1
 lr: 0.05
 seed: 1234
-num_workers: 0
+num_workers: 4
 output_dir: trained_models
 
 
