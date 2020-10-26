@@ -12,6 +12,7 @@ from .callbacks.distiller import DistillerCallback
 from .lightning_model import SpeechClassifierModule
 from .callbacks.optimization import HydraOptCallback
 
+from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.core.memory import ModelSummary
@@ -61,6 +62,9 @@ def main(config=DictConfig):
         profiler = None
         if "profiler" in config:
             profiler = instantiate(config.profiler)
+
+        lr_monitor = LearningRateMonitor()
+        callbacks.append(lr_monitor)
 
         opt_callback = HydraOptCallback()
         callbacks.append(opt_callback)
