@@ -1,0 +1,13 @@
+# @package _group_
+
+_target_: torchaudio.transforms.Spectrogram
+n_fft: 400
+win_length: None
+hop_length: None
+pad: 0
+power: 2.0
+normalized: False
+
+# TODO
+#window_fn:
+#wkwargs:
