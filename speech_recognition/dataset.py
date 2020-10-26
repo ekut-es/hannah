@@ -1,10 +1,11 @@
 from enum import Enum
-import hashlib
 import os
 import random
 import re
 import json
 import logging
+import hashlib
+
 from collections import defaultdict
 
 from chainmap import ChainMap
