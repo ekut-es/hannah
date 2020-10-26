@@ -22,12 +22,15 @@ from torchvision.datasets.utils import download_and_extract_archive, extract_arc
 from .config import ConfigOption
 from .process_audio import preprocess_audio, calculate_feature_shape
 
-def factor(snr,psig,pnoise):
-    y=10**(snr/10)
-    return np.sqrt(psig/(pnoise*y))
+
+def factor(snr, psig, pnoise):
+    y = 10 ** (snr / 10)
+    return np.sqrt(psig / (pnoise * y))
+
 
 class SimpleCache(dict):
     """ A simple in memory cache used for audio files and preprocessed features"""
+
     def __init__(self, limit):
         """ Initializes the cache with a maximum size of limit """
         super().__init__()
@@ -42,6 +45,7 @@ class SimpleCache(dict):
             self.n_keys += 1
             super().__setitem__(key, value)
         return value
+
 
 class RedisCache(SimpleCache):
     def __init__(self, limit):
@@ -61,35 +65,45 @@ class RedisCache(SimpleCache):
             return data
 
     def __setitem__(self, key, value):
-        if(not key in super().keys()):
+        if not key in super().keys():
             m = hashlib.sha256()
             m.update(pickle.dumps(key))
             hashedkey = m.digest()
-            if(not hashedkey in self.__cacheclient):
+            if not hashedkey in self.__cacheclient:
                 self.__cacheclient[hashedkey] = pickle.dumps(value)
             super().__setitem__(key, value)
         return value
 
+
 class DatasetType(Enum):
     """ The type of a dataset partition e.g. train, dev, test """
+
     TRAIN = 0
     DEV = 1
     TEST = 2
 
+
 class SpeechDataset(data.Dataset):
     """ Base Class for speech datasets """
+
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
     LABEL_NOISE = "__noise__"
+
     def __init__(self, data, set_type, config):
         super().__init__()
         self.audio_files = list(data.keys())
         self.set_type = set_type
         self.audio_labels = list(data.values())
 
-        config["bg_noise_files"] = list(filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", [])))
+        config["bg_noise_files"] = list(
+            filter(lambda x: x.endswith("wav"), config.get("bg_noise_files", []))
+        )
         self.samplingrate = config["samplingrate"]
-        self.bg_noise_audio = [librosa.core.load(file, sr=self.samplingrate)[0] for file in config["bg_noise_files"]]
+        self.bg_noise_audio = [
+            librosa.core.load(file, sr=self.samplingrate)[0]
+            for file in config["bg_noise_files"]
+        ]
         self.unknown_prob = config["unknown_prob"]
         self.silence_prob = config["silence_prob"]
         self.input_length = config["input_length"]
@@ -101,7 +115,7 @@ class SpeechDataset(data.Dataset):
         self.cache_prob = config["cache_prob"]
         self.randomstates = dict()
         self.use_redis_cache = config["use_redis_cache"]
-        if(self.use_redis_cache == True):
+        if self.use_redis_cache == True:
             self._features_cache = RedisCache(config["redis_cache_size"])
             self.cache_variants = config["cache_variants"]
         else:
@@ -110,7 +124,7 @@ class SpeechDataset(data.Dataset):
         self.silence_class = 1 if self.loss_function == "ctc" else 0
         n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
-        self.features = config['features']
+        self.features = config["features"]
         self.n_mfcc = config["n_mfcc"]
         self.n_mels = config["n_mels"]
         self.stride_ms = config["stride_ms"]
@@ -122,120 +136,129 @@ class SpeechDataset(data.Dataset):
         self.max_feature = 0
         self.train_snr_low = config["train_snr_low"]
         self.train_snr_high = config["train_snr_high"]
-        self.test_snr=config["test_snr"]
+        self.test_snr = config["test_snr"]
 
-        self.height, self.width = calculate_feature_shape(self.input_length,
-                                                          features=self.features,
-                                                          samplingrate=self.samplingrate,
-                                                          n_mels=self.n_mels,
-                                                          n_mfcc=self.n_mfcc,
-                                                          stride_ms=self.stride_ms,
-                                                          window_ms=self.window_ms)
+        self.height, self.width = calculate_feature_shape(
+            self.input_length,
+            features=self.features,
+            samplingrate=self.samplingrate,
+            n_mels=self.n_mels,
+            n_mfcc=self.n_mfcc,
+            stride_ms=self.stride_ms,
+            window_ms=self.window_ms,
+        )
 
     @staticmethod
     def default_config():
-        """ Returns the default configuration for the Dataset and
+        """Returns the default configuration for the Dataset and
         Feature extraction"""
         config = {}
 
-        #Input Description
-        config["wanted_words"]         = ConfigOption(category="Input Config",
-                                                      default=["yes", "no", "up",
-                                                               "down", "left",
-                                                               "right", "on",
-                                                               "off", "stop",
-                                                               "go"])
-        config["n_labels"]             = ConfigOption(category="Input Config",
-                                                      default=12)
-        config["data_folder"]          = ConfigOption(category="Input Config",
-                                                      default="datasets/speech_commands_v0.02/")
-        config["speech_lang"] = ConfigOption(category="Input Config",
-                                             default="")
-        config["noise_dataset"] = ConfigOption(category="Input Config",
-                                               default="")
-        config["data_split"] = ConfigOption(category="Input Config",
-                                               default="")
-        config["downsample"] = ConfigOption(category="Input Config",
-                                               default=0)
-        config["clear_download"] = ConfigOption(category="Input Config",
-                                            default="leave")
-        config["clear_split"] = ConfigOption(category="Input Config",
-                                            default="leave")
-        config["samplingrate"]         = ConfigOption(category="Input Config",
-                                                      default=16000)
-        config["input_length"]         = ConfigOption(category="Input Config",
-                                                      default=16000)
-        config["extract_loudest"]      = ConfigOption(category="Input Config",
-                                                      default=True)
-        config["timeshift_ms"]         = ConfigOption(category="Input Config",
-                                                      default=100)
-        config["use_default_split"]    = ConfigOption(category="Input Config",
-                                                      default=False)
-        config["group_speakers_by_id"] = ConfigOption(category="Input Config",
-                                                      default=True)
-        config["silence_prob"]         = ConfigOption(category="Input Config",
-                                                      default=0.1)
-        config["unknown_prob"]         = ConfigOption(category="Input Config",
-                                                      default=0.1)
-        config["train_pct"]            = ConfigOption(category="Input Config",
-                                                      default=80)
-        config["dev_pct"]              = ConfigOption(category="Input Config",
-                                                      default=10)
-        config["test_pct"]             = ConfigOption(category="Input Config",
-                                                      default=10)
-        config["loss"]                 = ConfigOption(category="Input Config",
-                                                      desc="Loss function that should be used with this dataset",
-                                                      choices=["cross_entropy", "ctc"],
-                                                      default="cross_entropy") 
-        config["train_snr_low"]             = ConfigOption(category="Input Config",
-                                                      default=0.0)     
-        config["train_snr_high"]             = ConfigOption(category="Input Config",
-                                                      default=20.0)        
-        config["test_snr"]             = ConfigOption(category="Input Config",
-                                                      desc="SNR used during test",
-                                                      default=float('inf'))
-        
-        
-        # Feature extraction
-        config["features"]  = ConfigOption(category="Feature Config",
-                                           choices=["mel", "mfcc", "melspec", "spectrogram", "raw"],
-                                           default="mel")
-        config["n_mfcc"]    = ConfigOption(category="Feature Config",
-                                           default=40)
-        config["n_mels"]    = ConfigOption(category="Feature Config",
-                                           default=40)
-        config["stride_ms"] = ConfigOption(category="Feature Config",
-                                           default=10)
-        config["window_ms"] = ConfigOption(category="Feature Config",
-                                           default=30)
-        config["freq_min"]  = ConfigOption(category="Feature Config",
-                                           default=20)
-        config["freq_max"]  = ConfigOption(category="Feature Config",
-                                           default=4000)
+        # Input Description
+        config["wanted_words"] = ConfigOption(
+            category="Input Config",
+            default=[
+                "yes",
+                "no",
+                "up",
+                "down",
+                "left",
+                "right",
+                "on",
+                "off",
+                "stop",
+                "go",
+            ],
+        )
+        config["n_labels"] = ConfigOption(category="Input Config", default=12)
+        config["data_folder"] = ConfigOption(
+            category="Input Config", default="datasets/speech_commands_v0.02/"
+        )
+        config["speech_lang"] = ConfigOption(category="Input Config", default="")
+        config["noise_dataset"] = ConfigOption(category="Input Config", default="")
+        config["data_split"] = ConfigOption(category="Input Config", default="")
+        config["downsample"] = ConfigOption(category="Input Config", default=0)
+        config["clear_download"] = ConfigOption(
+            category="Input Config", default="leave"
+        )
+        config["clear_split"] = ConfigOption(category="Input Config", default="leave")
+        config["samplingrate"] = ConfigOption(category="Input Config", default=16000)
+        config["input_length"] = ConfigOption(category="Input Config", default=16000)
+        config["extract_loudest"] = ConfigOption(category="Input Config", default=True)
+        config["timeshift_ms"] = ConfigOption(category="Input Config", default=100)
+        config["use_default_split"] = ConfigOption(
+            category="Input Config", default=False
+        )
+        config["group_speakers_by_id"] = ConfigOption(
+            category="Input Config", default=True
+        )
+        config["silence_prob"] = ConfigOption(category="Input Config", default=0.1)
+        config["unknown_prob"] = ConfigOption(category="Input Config", default=0.1)
+        config["train_pct"] = ConfigOption(category="Input Config", default=80)
+        config["dev_pct"] = ConfigOption(category="Input Config", default=10)
+        config["test_pct"] = ConfigOption(category="Input Config", default=10)
+        config["loss"] = ConfigOption(
+            category="Input Config",
+            desc="Loss function that should be used with this dataset",
+            choices=["cross_entropy", "ctc"],
+            default="cross_entropy",
+        )
+        config["train_snr_low"] = ConfigOption(category="Input Config", default=0.0)
+        config["train_snr_high"] = ConfigOption(category="Input Config", default=20.0)
+        config["test_snr"] = ConfigOption(
+            category="Input Config", desc="SNR used during test", default=float("inf")
+        )
 
-        config["normalize_bits"] = ConfigOption(category="Feature Config",
-                                                desc="Normalize features to n bits 0 means no normalization",
-                                                default=0)
-        config["normalize_max"] = ConfigOption(category="Feature Config",
-                                                desc="Divide features by this value before normalization",
-                                                default=256)
-        
+        # Feature extraction
+        config["features"] = ConfigOption(
+            category="Feature Config",
+            choices=["mel", "mfcc", "melspec", "spectrogram", "raw"],
+            default="mel",
+        )
+        config["n_mfcc"] = ConfigOption(category="Feature Config", default=40)
+        config["n_mels"] = ConfigOption(category="Feature Config", default=40)
+        config["stride_ms"] = ConfigOption(category="Feature Config", default=10)
+        config["window_ms"] = ConfigOption(category="Feature Config", default=30)
+        config["freq_min"] = ConfigOption(category="Feature Config", default=20)
+        config["freq_max"] = ConfigOption(category="Feature Config", default=4000)
+
+        config["normalize_bits"] = ConfigOption(
+            category="Feature Config",
+            desc="Normalize features to n bits 0 means no normalization",
+            default=0,
+        )
+        config["normalize_max"] = ConfigOption(
+            category="Feature Config",
+            desc="Divide features by this value before normalization",
+            default=256,
+        )
+
         # Cache config
-        config["use_redis_cache"] = ConfigOption(category="Cache Config",
-                                            default=False,
-                                            desc="Use redis cache (true) for shared access of multiple instances or a simple cache for a private cache per process")
-        config["cache_size"] = ConfigOption(category="Cache Config",
-                                            default=200000,
-                                            desc="Size of the caches for preprocessed and raw data")
-        config["cache_prob"] = ConfigOption(category="Cache Config",
-                                            default=0.8,
-                                            desc="Probabilty of using a cached sample during training")
-        config["redis_cache_size"] = ConfigOption(category="Redis Cache Config",
-                                            default=200000,
-                                            desc="Size of the redis cache for feature samples")
-        config["cache_variants"] = ConfigOption(category="Cache Config",
-                                            default=10,
-                                            desc="Number of cached variants per sample")
+        config["use_redis_cache"] = ConfigOption(
+            category="Cache Config",
+            default=False,
+            desc="Use redis cache (true) for shared access of multiple instances or a simple cache for a private cache per process",
+        )
+        config["cache_size"] = ConfigOption(
+            category="Cache Config",
+            default=200000,
+            desc="Size of the caches for preprocessed and raw data",
+        )
+        config["cache_prob"] = ConfigOption(
+            category="Cache Config",
+            default=0.8,
+            desc="Probabilty of using a cached sample during training",
+        )
+        config["redis_cache_size"] = ConfigOption(
+            category="Redis Cache Config",
+            default=200000,
+            desc="Size of the redis cache for feature samples",
+        )
+        config["cache_variants"] = ConfigOption(
+            category="Cache Config",
+            default=10,
+            desc="Number of cached variants per sample",
+        )
 
         return config
 
@@ -246,7 +269,7 @@ class SpeechDataset(data.Dataset):
         a = -min(0, shift)
         b = max(0, shift)
         data = np.pad(data, (a, b), "constant")
-        return data[:len(data) - a] if a else data[b:]
+        return data[: len(data) - a] if a else data[b:]
 
     def _extract_loudest_range(self, data, in_len):
         """Extract the loudest part of the sample with length self.input_lenght"""
@@ -261,21 +284,18 @@ class SpeechDataset(data.Dataset):
         window_start = np.argmax(correlation)
         window_start = max(0, window_start)
 
-        return (window_start, window_start+in_len)
+        return (window_start, window_start + in_len)
 
-
-    def preprocess(self, example, silence=False, label = 0):
+    def preprocess(self, example, silence=False, label=0):
         """ Run preprocessing and feature extraction """
-
 
         if silence:
             example = "__silence__"
-        if ((self.use_redis_cache == False) & (random.random() <= self.cache_prob)):
+        if (self.use_redis_cache == False) & (random.random() <= self.cache_prob):
             try:
                 return self._audio_cache[example]
             except KeyError:
                 pass
-
 
         in_len = self.input_length
 
@@ -285,7 +305,7 @@ class SpeechDataset(data.Dataset):
             data = self._file_cache.get(example)
 
             if data is None:
-              
+
                 data = librosa.core.load(example, sr=self.samplingrate)[0]
 
                 extract_index = (0, len(data))
@@ -294,70 +314,66 @@ class SpeechDataset(data.Dataset):
                     extract_index = self._extract_loudest_range(data, in_len)
 
                 data = self._timeshift_audio(data)
-                data = data[extract_index[0]:extract_index[1]]
+                data = data[extract_index[0] : extract_index[1]]
 
                 if self.loss_function != "ctc":
                     data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
                     data = data[0:in_len]
 
-
             self._file_cache[example] = data
-
-
 
         if self.bg_noise_audio:
             bg_noise = random.choice(self.bg_noise_audio)
             a = random.randint(0, len(bg_noise) - data.shape[0] - 1)
-            bg_noise = bg_noise[a:a + data.shape[0]]
-          
+            bg_noise = bg_noise[a : a + data.shape[0]]
+
         else:
             bg_noise = np.zeros(data.shape[0])
 
-        if self.set_type==DatasetType.TEST:
-            snr=self.test_snr
+        if self.set_type == DatasetType.TEST:
+            snr = self.test_snr
         else:
-            snr=random.uniform(self.train_snr_low,self.train_snr_high)
+            snr = random.uniform(self.train_snr_low, self.train_snr_high)
 
-        if snr != float('inf'):
-            psig=np.sum(data*data)/len(data)
-            pnoise=np.sum(bg_noise*bg_noise)/len(bg_noise)
-            f=factor(snr,psig,pnoise)
-            data=data+f*bg_noise
-            
-            if np.amax(np.absolute(data))>1:
-                data=data/np.amax(np.absolute(data))
+        if snr != float("inf"):
+            psig = np.sum(data * data) / len(data)
+            pnoise = np.sum(bg_noise * bg_noise) / len(bg_noise)
+            f = factor(snr, psig, pnoise)
+            data = data + f * bg_noise
 
+            if np.amax(np.absolute(data)) > 1:
+                data = data / np.amax(np.absolute(data))
 
-        data = preprocess_audio(data,
-                                features = self.features,
-                                samplingrate = self.samplingrate,
-                                n_mels = self.n_mels,
-                                n_mfcc = self.n_mfcc,
-                                dct_filters = self.dct_filters,
-                                freq_min = self.freq_min,
-                                freq_max = self.freq_max,
-                                window_ms = self.window_ms,
-                                stride_ms = self.stride_ms)
-
+        data = preprocess_audio(
+            data,
+            features=self.features,
+            samplingrate=self.samplingrate,
+            n_mels=self.n_mels,
+            n_mfcc=self.n_mfcc,
+            dct_filters=self.dct_filters,
+            freq_min=self.freq_min,
+            freq_max=self.freq_max,
+            window_ms=self.window_ms,
+            stride_ms=self.stride_ms,
+        )
 
         data = torch.from_numpy(data)
-        
-        
+
         if self.loss_function != "ctc":
             assert data.shape[0] == self.height
             assert data.shape[1] == self.width
 
         if self.normalize_bits > 0:
-            normalize_factor = 2.0**(self.normalize_bits-1)
-            
+            normalize_factor = 2.0 ** (self.normalize_bits - 1)
+
             data = data / self.normalize_max * normalize_factor
             data = data.round()
             data = data / normalize_factor
-            data = data.clamp(-1.0, 1.0-1.0/normalize_factor)
-            
+            data = data.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
+
         if self.use_redis_cache == False:
             self._audio_cache[example] = data
-        
+
         return data
 
     def get_class(self, index):
@@ -388,21 +404,23 @@ class SpeechDataset(data.Dataset):
 
         label = torch.Tensor(self.get_class(index))
         label = label.long()
-        
+
         if self.use_redis_cache == False:
             if index >= len(self.audio_labels):
                 data = self.preprocess(None, silence=True)
             else:
                 data = self.preprocess(self.audio_files[index])
         else:
-            features_config = (self.features,
-                                   self.samplingrate,
-                                   self.n_mels,
-                                   self.n_mfcc,
-                                   self.freq_min,
-                                   self.freq_max,
-                                   self.window_ms,
-                                   self.stride_ms)
+            features_config = (
+                self.features,
+                self.samplingrate,
+                self.n_mels,
+                self.n_mfcc,
+                self.freq_min,
+                self.freq_max,
+                self.window_ms,
+                self.stride_ms,
+            )
 
             random_state_backup = random.getstate()
             try:
@@ -410,15 +428,20 @@ class SpeechDataset(data.Dataset):
             except KeyError:
                 random.seed(0)
 
-            variant_nr = random.randint(1, max(1,self.cache_variants))
+            variant_nr = random.randint(1, max(1, self.cache_variants))
             self.randomstates[index] = random.getstate()
             random.setstate(random_state_backup)
 
-            is_silence = (index >= len(self.audio_labels))
+            is_silence = index >= len(self.audio_labels)
             audio_file = None
             if not is_silence:
                 audio_file = self.audio_files[index]
-            features_constellation = (audio_file, features_config, variant_nr, is_silence)
+            features_constellation = (
+                audio_file,
+                features_config,
+                variant_nr,
+                is_silence,
+            )
 
             data = None
 
@@ -440,12 +463,13 @@ class SpeechDataset(data.Dataset):
 class SpeechCommandsDataset(SpeechDataset):
     """This class implements reading and preprocessing of speech commands like
     dataset"""
+
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
 
-        self.label_names = {0 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN}
+        self.label_names = {0: self.LABEL_SILENCE, 1: self.LABEL_UNKNOWN}
         for i, word in enumerate(config["wanted_words"]):
-            self.label_names[i+2] = word
+            self.label_names[i + 2] = word
 
     @classmethod
     def splits(cls, config):
@@ -460,7 +484,7 @@ class SpeechCommandsDataset(SpeechDataset):
         use_default_split = config["use_default_split"]
 
         words = {word: i + 2 for i, word in enumerate(wanted_words)}
-        words.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1})
+        words.update({cls.LABEL_SILENCE: 0, cls.LABEL_UNKNOWN: 1})
         sets = [{}, {}, {}]
         unknowns = [0] * 3
         bg_noise_files = []
@@ -478,7 +502,6 @@ class SpeechCommandsDataset(SpeechDataset):
                 for line in validation_list.readlines():
                     line = line.strip()
                     dev_files.add(os.path.join(folder, line))
-
 
         for folder_name in os.listdir(folder):
             path_name = os.path.join(folder, folder_name)
@@ -513,9 +536,9 @@ class SpeechCommandsDataset(SpeechDataset):
                         hashname = re.sub(r"_nohash_.*$", "", filename)
                     else:
                         hashname = filename
-                    max_no_wavs = 2**27 - 1
+                    max_no_wavs = 2 ** 27 - 1
                     bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
-                    bucket = (bucket % (max_no_wavs + 1)) * (100. / max_no_wavs)
+                    bucket = (bucket % (max_no_wavs + 1)) * (100.0 / max_no_wavs)
                     if bucket < dev_pct:
                         tag = DatasetType.DEV
                     elif bucket < test_pct + dev_pct:
@@ -536,15 +559,17 @@ class SpeechCommandsDataset(SpeechDataset):
 
         train_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
         test_cfg = ChainMap(dict(bg_noise_files=bg_noise_files), config)
-        datasets = (cls(sets[0], DatasetType.TRAIN, train_cfg),
-                    cls(sets[1], DatasetType.DEV, test_cfg),
-                    cls(sets[2], DatasetType.TEST, test_cfg))
+        datasets = (
+            cls(sets[0], DatasetType.TRAIN, train_cfg),
+            cls(sets[1], DatasetType.DEV, test_cfg),
+            cls(sets[2], DatasetType.TEST, test_cfg),
+        )
         return datasets
 
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = (config["clear_download"] == "clear")
+        clear_download = config["clear_download"] == "clear"
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -557,11 +582,18 @@ class SpeechCommandsDataset(SpeechDataset):
 
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
-                extract_archive("/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz", speechcommand, False)
+                extract_archive(
+                    "/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz",
+                    speechcommand,
+                    False,
+                )
             else:
                 download_and_extract_archive(
                     "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                    speechcommand, speechcommand, remove_finished=clear_download)
+                    speechcommand,
+                    speechcommand,
+                    remove_finished=clear_download,
+                )
 
 
 class SpeechHotwordDataset(SpeechDataset):
@@ -573,20 +605,26 @@ class SpeechHotwordDataset(SpeechDataset):
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
         if self.loss_function == "ctc":
-            self.label_names = {0 : self.LABEL_EPS, 1 : self.LABEL_SILENCE,  2 : self.LABEL_UNKNOWN, 3 : self.LABEL_HOTWORD}
+            self.label_names = {
+                0: self.LABEL_EPS,
+                1: self.LABEL_SILENCE,
+                2: self.LABEL_UNKNOWN,
+                3: self.LABEL_HOTWORD,
+            }
         else:
-            self.label_names = {0 : self.LABEL_SILENCE,
-                                1 : self.LABEL_UNKNOWN,
-                                2 : self.LABEL_HOTWORD}
-
+            self.label_names = {
+                0: self.LABEL_SILENCE,
+                1: self.LABEL_UNKNOWN,
+                2: self.LABEL_HOTWORD,
+            }
 
     @staticmethod
     def default_config():
         config = SpeechDataset.default_config()
         config["loss"].default = "cross_entropy"
         config["n_labels"].default = 3
-        
-        # Splits the dataset in 1/3 
+
+        # Splits the dataset in 1/3
         config["silence_prob"].default = 1.0
         config["unknown_prob"].default = 1.0
         return config
@@ -602,8 +640,7 @@ class SpeechHotwordDataset(SpeechDataset):
 
         descriptions = ["train.json", "dev.json", "test.json"]
         dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
-        datasets=[{}, {}, {}]
-
+        datasets = [{}, {}, {}]
 
         for num, desc in enumerate(descriptions):
             descs = os.path.join(folder, desc)
@@ -629,20 +666,23 @@ class SpeechHotwordDataset(SpeechDataset):
             label_unknown = 2 if config["loss"] == "ctc" else 1
             label_hotword = 3 if config["loss"] == "ctc" else 2
 
-            datasets[num].update({u : label_unknown for u in unknown_files[:num_unknowns]})
-            datasets[num].update({h : label_hotword for h in hotword_files})
+            datasets[num].update(
+                {u: label_unknown for u in unknown_files[:num_unknowns]}
+            )
+            datasets[num].update({h: label_hotword for h in hotword_files})
 
-
-        res_datasets = (cls(datasets[0], DatasetType.TRAIN, config),
-                        cls(datasets[1], DatasetType.DEV, config),
-                        cls(datasets[2], DatasetType.TEST, config))
+        res_datasets = (
+            cls(datasets[0], DatasetType.TRAIN, config),
+            cls(datasets[1], DatasetType.DEV, config),
+            cls(datasets[2], DatasetType.TEST, config),
+        )
 
         return res_datasets
 
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = (config["clear_download"] == "clear")
+        clear_download = config["clear_download"] == "clear"
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -651,65 +691,86 @@ class SpeechHotwordDataset(SpeechDataset):
         if (len(os.listdir(data_folder)) == 0) and ("snipsKWS" in userlanguage):
             if platform.node() == "lucille":
                 mvtarget = os.path.join(data_folder, "speech_commands_v0.02.tar.gz")
-                #datasets are in /storage/local/dataset/...... prestored
-                extract_archive("/storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz", data_folder, False)
+                # datasets are in /storage/local/dataset/...... prestored
+                extract_archive(
+                    "/storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz",
+                    data_folder,
+                    False,
+                )
 
             else:
                 download_and_extract_archive(
                     "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1",
-                    data_folder, data_folder, "hey_snips_kws_4.0.tar.gz", remove_finished=clear_download)
+                    data_folder,
+                    data_folder,
+                    "hey_snips_kws_4.0.tar.gz",
+                    remove_finished=clear_download,
+                )
+
 
 class VadDataset(SpeechDataset):
-
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
 
-        self.label_names = {0 : "noise", 1 : "speech"}
+        self.label_names = {0: "noise", 1: "speech"}
 
     @classmethod
     def splits(cls, config):
-            """Splits the dataset in training, devlopment and test set and returns
-            the three sets as List"""
+        """Splits the dataset in training, devlopment and test set and returns
+        the three sets as List"""
 
-            msglogger = logging.getLogger()
+        msglogger = logging.getLogger()
 
-            folder = config["data_folder"]
+        folder = config["data_folder"]
 
-            descriptions = ["train", "dev", "test"]
-            dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
-            datasets=[{}, {}, {}]
-            configs = [{}, {}, {}]
+        descriptions = ["train", "dev", "test"]
+        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
+        datasets = [{}, {}, {}]
+        configs = [{}, {}, {}]
 
+        for num, desc in enumerate(descriptions):
 
-            for num, desc in enumerate(descriptions):
+            descs_noise = os.path.join(folder, desc, "noise")
+            descs_speech = os.path.join(folder, desc, "speech")
+            descs_bg = os.path.join(folder, desc, "background_noise")
 
-                descs_noise = os.path.join(folder, desc, "noise")
-                descs_speech = os.path.join(folder, desc, "speech")
-                descs_bg = os.path.join(folder, desc, "background_noise")
+            noise_files = [
+                os.path.join(descs_noise, f)
+                for f in os.listdir(descs_noise)
+                if os.path.isfile(os.path.join(descs_noise, f))
+            ]
+            speech_files = [
+                os.path.join(descs_speech, f)
+                for f in os.listdir(descs_speech)
+                if os.path.isfile(os.path.join(descs_speech, f))
+            ]
+            bg_noise_files = [
+                os.path.join(descs_bg, f)
+                for f in os.listdir(descs_bg)
+                if os.path.isfile(os.path.join(descs_bg, f))
+            ]
 
-                noise_files = [os.path.join(descs_noise,f) for f in os.listdir(descs_noise) if os.path.isfile(os.path.join(descs_noise, f))]
-                speech_files = [os.path.join(descs_speech,f) for f in os.listdir(descs_speech) if os.path.isfile(os.path.join(descs_speech, f))]
-                bg_noise_files = [os.path.join(descs_bg, f) for f in os.listdir(descs_bg) if os.path.isfile(os.path.join(descs_bg, f))]
+            random.shuffle(noise_files)
+            random.shuffle(speech_files)
+            label_noise = 0
+            label_speech = 1
 
-                random.shuffle(noise_files)
-                random.shuffle(speech_files)
-                label_noise =  0
-                label_speech = 1
+            datasets[num].update({n: label_noise for n in noise_files})
+            datasets[num].update({s: label_speech for s in speech_files})
+            configs[num].update(ChainMap(dict(bg_noise_files=bg_noise_files), config))
 
-                datasets[num].update({n : label_noise for n in noise_files})
-                datasets[num].update({s : label_speech for s in speech_files})
-                configs[num].update(ChainMap(dict(bg_noise_files=bg_noise_files), config))               
-            
-            res_datasets = (cls(datasets[0], DatasetType.TRAIN, configs[0]),
-                            cls(datasets[1], DatasetType.DEV, configs[1]),
-                            cls(datasets[2], DatasetType.TEST,configs[2]))
+        res_datasets = (
+            cls(datasets[0], DatasetType.TRAIN, configs[0]),
+            cls(datasets[1], DatasetType.DEV, configs[1]),
+            cls(datasets[2], DatasetType.TEST, configs[2]),
+        )
 
-            return res_datasets
+        return res_datasets
 
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = (config["clear_download"] == "clear")
+        clear_download = config["clear_download"] == "clear"
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -719,44 +780,64 @@ class VadDataset(SpeechDataset):
 
             userlanguage = config["speech_lang"].split("/")
 
-            #Test if the the code is run on lucille or not
+            # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
                 lang.append("en")
-                #datasets are in /storage/local/dataset/...... prestored
+                # datasets are in /storage/local/dataset/...... prestored
                 os.makedirs(speechdir)
                 for name in lang:
                     if name in userlanguage:
-                        extract_archive("/storage/local/dataset/mozilla/" + name + ".tar.gz", speechdir, False)
+                        extract_archive(
+                            "/storage/local/dataset/mozilla/" + name + ".tar.gz",
+                            speechdir,
+                            False,
+                        )
 
                 if "uwnu" in userlanguage:
-                    extract_archive("/storage/local/dataset/uwnu/uwnu-v2.tar.gz", speechdir, False)
+                    extract_archive(
+                        "/storage/local/dataset/uwnu/uwnu-v2.tar.gz", speechdir, False
+                    )
 
             else:
-                #download mozilla dataset
+                # download mozilla dataset
                 if "en" in userlanguage:
-                    download_and_extract_archive("https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz", speechdir, speechdir, remove_finished=clear_download)
+                    download_and_extract_archive(
+                        "https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
+                        speechdir,
+                        speechdir,
+                        remove_finished=clear_download,
+                    )
 
                 for name in lang:
                     if name in userlanguage:
                         download_and_extract_archive(
-                            "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/" + name + ".tar.gz",
-                            speechdir, speechdir, remove_finished=clear_download)
+                            "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/"
+                            + name
+                            + ".tar.gz",
+                            speechdir,
+                            speechdir,
+                            remove_finished=clear_download,
+                        )
 
                 if "uwnu" in userlanguage:
                     download_and_extract_archive(
-                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1", speechdir, speechdir, "uwnu-v2.tar.gz", remove_finished=clear_download)
+                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1",
+                        speechdir,
+                        speechdir,
+                        "uwnu-v2.tar.gz",
+                        remove_finished=clear_download,
+                    )
 
 
 class KeyWordDataset(SpeechDataset):
-
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
 
-        self.label_names = {0 : self.LABEL_SILENCE, 1 : self.LABEL_UNKNOWN}
+        self.label_names = {0: self.LABEL_SILENCE, 1: self.LABEL_UNKNOWN}
         l_noise = 2
         for i, word in enumerate(config["wanted_words"]):
-            self.label_names[i+2] = word
-            l_noise = l_noise +1
+            self.label_names[i + 2] = word
+            l_noise = l_noise + 1
         self.label_names[l_noise] = self.LABEL_NOISE
 
     @classmethod
@@ -774,9 +855,11 @@ class KeyWordDataset(SpeechDataset):
         words = {}
         l_noise = 2
         for i, word in enumerate(wanted_words):
-            words.update({word:i+2})
-            l_noise = l_noise +1
-        words.update({cls.LABEL_SILENCE:0, cls.LABEL_UNKNOWN:1, cls.LABEL_NOISE:l_noise})
+            words.update({word: i + 2})
+            l_noise = l_noise + 1
+        words.update(
+            {cls.LABEL_SILENCE: 0, cls.LABEL_UNKNOWN: 1, cls.LABEL_NOISE: l_noise}
+        )
         sets = [{}, {}, {}]
         unknowns = [0] * 3
         bg_noise_files = []
@@ -794,7 +877,6 @@ class KeyWordDataset(SpeechDataset):
                 for line in validation_list.readlines():
                     line = line.strip()
                     dev_files.add(os.path.join(folder, line))
-
 
         for folder_name in os.listdir(folder):
             path_name = os.path.join(folder, folder_name)
@@ -825,9 +907,9 @@ class KeyWordDataset(SpeechDataset):
                         hashname = re.sub(r"_nohash_.*$", "", filename)
                     else:
                         hashname = filename
-                    max_no_wavs = 2**27 - 1
+                    max_no_wavs = 2 ** 27 - 1
                     bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
-                    bucket = (bucket % (max_no_wavs + 1)) * (100. / max_no_wavs)
+                    bucket = (bucket % (max_no_wavs + 1)) * (100.0 / max_no_wavs)
                     if bucket < dev_pct:
                         tag = DatasetType.DEV
                     elif bucket < test_pct + dev_pct:
@@ -835,7 +917,6 @@ class KeyWordDataset(SpeechDataset):
                     else:
                         tag = DatasetType.TRAIN
                 sets[tag.value][wav_name] = label
-
 
         for tag in range(len(sets)):
             unknowns[tag] = int(unknown_prob * len(sets[tag]))
@@ -847,15 +928,17 @@ class KeyWordDataset(SpeechDataset):
             dataset.update(unk_dict)
             a = b
 
-        datasets = (cls(sets[0], DatasetType.TRAIN, config),
-                    cls(sets[1], DatasetType.DEV, config),
-                    cls(sets[2], DatasetType.TEST, config))
+        datasets = (
+            cls(sets[0], DatasetType.TRAIN, config),
+            cls(sets[1], DatasetType.DEV, config),
+            cls(sets[2], DatasetType.TEST, config),
+        )
         return datasets
 
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = (config["clear_download"] == "clear")
+        clear_download = config["clear_download"] == "clear"
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
@@ -868,25 +951,32 @@ class KeyWordDataset(SpeechDataset):
 
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
-                extract_archive("/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz", speechcommand, False)
+                extract_archive(
+                    "/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz",
+                    speechcommand,
+                    False,
+                )
             else:
                 download_and_extract_archive(
                     "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                    speechcommand, speechcommand, remove_finished=clear_download)
+                    speechcommand,
+                    speechcommand,
+                    remove_finished=clear_download,
+                )
+
 
 def find_dataset(name):
     """Returns the appropriate class for reading a dataset of type name:
 
-       Parameters
-       ----------
-       name : str
-           The name of the dataset type
+    Parameters
+    ----------
+    name : str
+        The name of the dataset type
 
-            - keywords = Google Speech Commands like  dataset
-            - hotword = Hey Snips! like dataset
+         - keywords = Google Speech Commands like  dataset
+         - hotword = Hey Snips! like dataset
 
-       Returns
-"""
+    Returns"""
     if name == "keywords":
         return SpeechCommandsDataset
     elif name == "hotword":
@@ -897,7 +987,6 @@ def find_dataset(name):
         return KeyWordDataset
 
     raise Exception("Could not find dataset type: {}".format(name))
-
 
 
 def ctc_collate_fn(data):
@@ -918,7 +1007,6 @@ def ctc_collate_fn(data):
         trg_lengths: torch tensor of shape (batch_size); valid length for each padded target sequence.
     """
 
-
     def merge(sequences):
         temporal_dimension = 0
         lengths = [seq.shape[-1] for seq in sequences]
@@ -927,10 +1015,12 @@ def ctc_collate_fn(data):
         padded_seqs = []
 
         for item in sequences:
-            padded = torch.nn.functional.pad(input=item,
-                                             pad=(0,max_length-item.shape[-1]),
-                                             mode='constant',
-                                             value=0)
+            padded = torch.nn.functional.pad(
+                input=item,
+                pad=(0, max_length - item.shape[-1]),
+                mode="constant",
+                value=0,
+            )
             padded_seqs.append(padded)
 
         return padded_seqs, lengths
@@ -942,6 +1032,9 @@ def ctc_collate_fn(data):
     src_seqs, src_lengths = merge(src_seqs)
     trg_seqs, trg_lengths = merge(trg_seqs)
 
-
-
-    return torch.stack(src_seqs), torch.Tensor(src_lengths), torch.stack(trg_seqs), torch.Tensor(trg_lengths)
+    return (
+        torch.stack(src_seqs),
+        torch.Tensor(src_lengths),
+        torch.stack(trg_seqs),
+        torch.Tensor(trg_lengths),
+    )
