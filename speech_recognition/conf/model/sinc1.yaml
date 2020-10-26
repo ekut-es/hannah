@@ -2,11 +2,6 @@
 
 cls: speech_recognition.models.sinc.models.SincNet
 name: sinc1
-cnn_N_filt: 40
-cnn_filt_len: 101
-cnn_bn_len: 40
-cnn_avgpool_len: 2
-cnn_stride: 8
 
 dsconv_N_filt: [162,162,162,162,162]
 dsconv_filt_len: [25,9,9,9,9]
@@ -18,6 +13,6 @@ dsconv_bn_len: [162,162,162,162,162]
 dsconv_spatDrop: [0.1,0.1,0.1,0.1,0.1,0.1]
 
 # Set by LigthningModule
-width: ???
-height: ???
-n_labels: ???
+width: 101
+height: 40
+n_labels: 12

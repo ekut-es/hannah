@@ -91,9 +91,8 @@ class GDSConvBlock(nn.Module):
 class SincNet(SerializableModule):
     def __init__(self, config):
         super(SincNet, self).__init__()
-
-        self.num_classes = config["num_classes"]
-
+        self.height = config["height"]
+        self.n_labels = config["n_labels"]
         self.dsconv_N_filt = config["dsconv_N_filt"]
         self.dsconv_filt_len = config["dsconv_filt_len"]
         self.dsconv_stride = config["dsconv_stride"]
@@ -110,7 +109,7 @@ class SincNet(SerializableModule):
             if i == 0:
                 self.GDSBlocks.append(
                     GDSConvBlock(
-                        self.cnn_N_filt,
+                        self.height,
                         self.dsconv_N_filt[i],
                         self.dsconv_filt_len[i],
                         self.dsconv_stride[i],
@@ -138,14 +137,11 @@ class SincNet(SerializableModule):
                 )
 
         self.Global_avg_pool = nn.AdaptiveAvgPool1d(1)
-        self.fc = nn.Linear(self.dsconv_N_filt[self.dsconv_num - 1], self.num_classes)
+        self.fc = nn.Linear(self.dsconv_N_filt[self.dsconv_num - 1], self.n_labels)
 
     def forward(self, x):
 
         batch = x.shape[0]
-        x = x.view(x.shape[0], 1, x.shape[2])
-        x = self.SincNet(x)
-
         for i in range(self.dsconv_num):
             x = self.GDSBlocks[i](x)
 

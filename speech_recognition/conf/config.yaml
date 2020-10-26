@@ -5,6 +5,7 @@ defaults:
     - scheduler: step
     - optimizer: adam
     - features: mfcc
+    - normalizer: null
     - trainer: default
     - checkpoint: default
     - backend: null

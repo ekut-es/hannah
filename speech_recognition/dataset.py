@@ -80,9 +80,6 @@ class SpeechDataset(data.Dataset):
         self.train_snr_high = config["train_snr_high"]
         self.test_snr = config["test_snr"]
 
-        self.normalize_bits = config["normalize_bits"]
-        self.normalize_max = config["normalize_max"]
-
     def _timeshift_audio(self, data):
         """Shifts data by a random amount of ms given by parameter timeshift_ms"""
         shift = (self.samplingrate * self.timeshift_ms) // 1000
@@ -154,14 +151,6 @@ class SpeechDataset(data.Dataset):
                 data = data / np.amax(np.absolute(data))
 
         data = torch.from_numpy(data)
-
-        if self.normalize_bits > 0:
-            normalize_factor = 2.0 ** (self.normalize_bits - 1)
-
-            data = data / self.normalize_max * normalize_factor
-            data = data.round()
-            data = data / normalize_factor
-            data = data.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
 
         return data
 

@@ -39,6 +39,12 @@ class SpeechClassifierModule(LightningModule):
         features = self.features(self.example_input_array)
         self.example_feature_array = features
 
+        # Instantiate normalizer
+        if hasattr(self.hparams, "features"):
+            self.normalizer = instantiate(self.hparams.features)
+        else:
+            self.normalizer = torch.nn.Identity()
+
         # Instantiate Model
         self.hparams.model.width = self.example_feature_array.size(2)
         self.hparams.model.height = self.example_feature_array.size(1)
@@ -200,6 +206,7 @@ class SpeechClassifierModule(LightningModule):
     # FORWARD (overwrite to train instance of this class directly)
     def forward(self, x):
         x = self.features(x)
+        x = self.normalizer(x)
         return self.model(x)
 
     # CALLBACKS
