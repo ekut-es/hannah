@@ -2,7 +2,7 @@ import pytest
 
 from hydra.experimental import initialize, compose
 
-from speech_recognition.train import main
+from speech_recognition.train import train, main
 
 # @pytest.mark.parametrize(
 #     "experiment_id, model, seed, epochs, limits_datasets, distiller, fold_bn, normalize_bits, profile",
@@ -114,7 +114,7 @@ from speech_recognition.train import main
 @pytest.mark.parametrize(
     "model,backend", [("tc-res8", "torchmobile"), ("sinc1", "torchmobile")]
 )
-def test_backend(model, backend):
+def test_backend(model, backend, tmp_path):
     with initialize(config_path="../speech_recognition/conf"):
         # config is relative to a module
         cfg = compose(
@@ -123,6 +123,9 @@ def test_backend(model, backend):
                 f"model={model}",
                 f"backend={backend}",
                 "trainer.fast_dev_run=True",
+                "dataset.data_folder=../datasets/speech_commands_v0.02/",
+                f"hydra.runtime.cwd={tmp_path}",
             ],
+            return_hydra_config=True,
         )
-        val_loss = main(cfg)
+        val_loss = train(cfg)

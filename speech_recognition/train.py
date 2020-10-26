@@ -22,8 +22,7 @@ from hydra.utils import instantiate
 from . import conf  # noqa
 
 
-@hydra.main(config_name="config", config_path="conf")
-def main(config=DictConfig):
+def train(config=DictConfig):
     seed_everything(config.seed)
     if not torch.cuda.is_available():
         config.trainer.gpus = None
@@ -56,50 +55,56 @@ def main(config=DictConfig):
         callbacks.append(backend)
 
     logging.info("type: '%s'", config.type)
+
+    logging.info("Starting training")
+
+    profiler = None
+    if "profiler" in config:
+        profiler = instantiate(config.profiler)
+
+    lr_monitor = LearningRateMonitor()
+    callbacks.append(lr_monitor)
+
+    opt_callback = HydraOptCallback()
+    callbacks.append(opt_callback)
+
+    # INIT PYTORCH-LIGHTNING
+    lit_trainer = Trainer(
+        **config.trainer,
+        profiler=profiler,
+        callbacks=callbacks,
+        checkpoint_callback=checkpoint_callback,
+        logger=logger
+    )
+
+    if config["auto_lr"]:
+        # run lr finder (counts as one epoch)
+        lr_finder = lit_trainer.lr_find(lit_module)
+
+        # inspect results
+        fig = lr_finder.plot()
+        fig.savefig("./learning_rate.png")
+
+        # recreate module with updated config
+        suggested_lr = lr_finder.suggestion()
+        config["lr"] = suggested_lr
+
+    # logging.info(ModelSummary(lit_module, "full"))
+
+    # PL TRAIN
+    lit_trainer.fit(lit_module)
+
+    # PL TEST
+    lit_trainer.test(ckpt_path=None)
+
+    return opt_callback.result()
+
+
+@hydra.main(config_name="config", config_path="conf")
+def main(config=DictConfig):
+
     if config["type"] == "train":
-        logging.info("Starting training")
-
-        profiler = None
-        if "profiler" in config:
-            profiler = instantiate(config.profiler)
-
-        lr_monitor = LearningRateMonitor()
-        callbacks.append(lr_monitor)
-
-        opt_callback = HydraOptCallback()
-        callbacks.append(opt_callback)
-
-        # INIT PYTORCH-LIGHTNING
-        lit_trainer = Trainer(
-            **config.trainer,
-            profiler=profiler,
-            callbacks=callbacks,
-            checkpoint_callback=checkpoint_callback,
-            logger=logger
-        )
-
-        if config["auto_lr"]:
-            # run lr finder (counts as one epoch)
-            lr_finder = lit_trainer.lr_find(lit_module)
-
-            # inspect results
-            fig = lr_finder.plot()
-            fig.savefig("./learning_rate.png")
-
-            # recreate module with updated config
-            suggested_lr = lr_finder.suggestion()
-            config["lr"] = suggested_lr
-
-        # logging.info(ModelSummary(lit_module, "full"))
-
-        # PL TRAIN
-        lit_trainer.fit(lit_module)
-
-        # PL TEST
-        lit_trainer.test(ckpt_path=None)
-
-        return opt_callback.result()
-
+        train(config)
     elif config["type"] == "eval":
         logging.error("eval mode is not supported at the moment")
     elif config["type"] == "eval_vad_keyword":
