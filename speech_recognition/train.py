@@ -263,7 +263,7 @@ def build_config(extra_config={}):
             desc="Enable logging of learning progress and network parameter statistics to Tensorboard",
         ),
         gpulogger=ConfigOption(
-            default=True,
+            default=False,
             desc="Enable logging of GPU usage to Tensorboard",
         ),
         experiment_id=ConfigOption(
