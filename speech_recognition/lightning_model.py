@@ -270,7 +270,7 @@ class SpeechClassifierModule(LightningModule):
 
         if not os.path.isdir(noise_folder):
             os.makedirs(noise_folder)
-            noisedatasets = config["noise_dataset"].split("/")
+            noisedatasets = config["noise_dataset"]
 
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
