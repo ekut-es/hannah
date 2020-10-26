@@ -1,0 +1,18 @@
+# @package _group_
+
+_target_: speech_recognition.features.SincConv
+out_channels: 40
+kernel_size: 101
+sample_rate: 16000
+in_channels: 1
+stride: 1
+padding: 0
+dilation: 1
+bias: False
+groups: 1
+min_low_hz: 50
+min_band_hz: 50
+
+#TODO:
+#window_fn: Callable[[...], torch.Tensor] = <built-in method hann_window of type object>
+#wkwargs: Optional[dict] = None

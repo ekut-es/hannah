@@ -1,5 +1,11 @@
+import math
+
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
+
+from torch.nn.modules.utils import _single
 
 
 # Mirco Ravanelli, Yoshua Bengio, “Speaker Recognition from raw waveform with SincNet” Arxiv
@@ -12,7 +18,7 @@ class SincConv(nn.Module):
     -----------------
         in_channels: No. of input channels(must be 1)
         out_channels: No. of filters(40)
-        SR: sampling rate, default set at 32000
+        sample_rate: sampling rate, default set at 32000
         kernel_size: Filter length(101)
     """
 
@@ -26,9 +32,9 @@ class SincConv(nn.Module):
 
     def __init__(
         self,
-        out_channels,
-        kernel_size,
-        SR=16000,
+        out_channels=40,
+        kernel_size=101,
+        sample_rate=16000,
         in_channels=1,
         stride=1,
         padding=0,
@@ -55,7 +61,7 @@ class SincConv(nn.Module):
         self.stride = _single(stride)
         self.padding = _single(padding)
         self.dilation = _single(dilation)
-        self.SR = SR
+        self.sample_rate = sample_rate
         self.in_channels = in_channels
         self.groups = groups
         self.min_low_hz = min_low_hz
@@ -68,7 +74,7 @@ class SincConv(nn.Module):
 
         # initializing filter banks in audible frequency range
         low_hz = self.min_low_hz
-        high_hz = SR / 2 - (self.min_band_hz + self.min_low_hz)
+        high_hz = sample_rate / 2 - (self.min_band_hz + self.min_low_hz)
 
         mel = np.linspace(
             self.to_mel(low_hz), self.to_mel(high_hz), self.out_channels + 1
@@ -83,7 +89,7 @@ class SincConv(nn.Module):
         window_ = torch.hamming_window(self.kernel_size[0])
         self.register_buffer("window_", window_, persistent=False)
 
-        n_ = 2 * math.pi * torch.arange(-N, 0).view(1, -1) / self.SR
+        n_ = 2 * math.pi * torch.arange(-N, 0).view(1, -1) / self.sample_rate
         self.register_buffer("n_", n_, persistent=False)
 
     def forward(self, waveforms):
@@ -92,7 +98,7 @@ class SincConv(nn.Module):
         f_high = torch.clamp(
             f_low + self.min_band_hz + torch.abs(self.band_freq_),
             self.min_low_hz,
-            self.SR / 2,
+            self.sample_rate / 2,
         )
         f_band = (f_high - f_low)[:, 0]
 
@@ -120,3 +126,9 @@ class SincConv(nn.Module):
             bias=None,
             groups=1,
         )
+
+
+class RawFeatures(nn.Module):
+    def forward(self, x):
+        x = torch.squeeze(x, dim=1)
+        return x
