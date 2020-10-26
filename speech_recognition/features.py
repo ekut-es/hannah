@@ -8,13 +8,13 @@ import numpy as np
 
 class SincConv(nn.Module):
     """Sinc convolution:
-        Parameters:
-        -----------------
-            in_channels: No. of input channels(must be 1)
-            out_channels: No. of filters(40)
-            SR: sampling rate, default set at 32000
-            kernel_size: Filter length(101)
-            """
+    Parameters:
+    -----------------
+        in_channels: No. of input channels(must be 1)
+        out_channels: No. of filters(40)
+        SR: sampling rate, default set at 32000
+        kernel_size: Filter length(101)
+    """
 
     @staticmethod
     def to_mel(hz):
