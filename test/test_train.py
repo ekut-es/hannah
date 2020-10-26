@@ -1,8 +1,9 @@
+from pathlib import Path
+
 import pytest
+import subprocess
 
-from hydra.experimental import initialize, compose
-
-from speech_recognition.train import train, main
+topdir = Path(__file__).parent.absolute() / ".."
 
 # @pytest.mark.parametrize(
 #     "experiment_id, model, seed, epochs, limits_datasets, distiller, fold_bn, normalize_bits, profile",
@@ -77,55 +78,28 @@ from speech_recognition.train import train, main
 #         stdout=subprocess.PIPE,
 #     )
 
-# python -m speech_recognition.train  --gpu-no 0  --n-epochs 3 --model sinc1 --experiment-id test
+
+@pytest.mark.parametrize(
+    "model,features",
+    [("tc-res8", "sinc"), ("sinc1", "sinc"), ("tc-res8", "mfcc"), ("sinc1", "mfcc")],
+)
+def test_models(model, features):
+    command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} features={features}"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
-# @pytest.mark.parametrize(
-#     "experiment_id, model, seed, epochs, limits_datasets, distiller, fold_bn, normalize_bits, profile",
-#     [
-#         (
-#             "--experiment-id ci_sinc1",
-#             "--model sinc1",
-#             "",
-#             "--fast-dev-run",
-#             "",
-#             "",
-#             "",
-#             "",
-#             "",
-#         )
-#     ],
-# )
-# def test_sinc(
-#     experiment_id,
-#     model,
-#     seed,
-#     epochs,
-#     limits_datasets,
-#     distiller,
-#     fold_bn,
-#     normalize_bits,
-#     profile,
-# ):
-#     command_line = f"python -m speech_recognition.train {experiment_id} {model} {seed} {epochs} {limits_datasets} {distiller} {fold_bn} {normalize_bits} {profile}"
-#     subprocess.run(command_line, check=True, shell=True, stdout=subprocess.PIPE)
+@pytest.mark.parametrize(
+    "model, features, compress",
+    [("tc-res8", "mfcc", "fixpoint_8_8"), ("sinc1", "sinc", "fixpoint_8_8")],
+)
+def test_distiller(model, features, compress):
+    command_line = f"python -m speech_recognition.train trainer.overfit_batches=0.01 trainer.max_epochs=10 model={model} features={features} compress={compress} normalizer=fixedpoint fold_bn=9"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
 @pytest.mark.parametrize(
     "model,backend", [("tc-res8", "torchmobile"), ("sinc1", "torchmobile")]
 )
-def test_backend(model, backend, tmp_path):
-    with initialize(config_path="../speech_recognition/conf"):
-        # config is relative to a module
-        cfg = compose(
-            config_name="config",
-            overrides=[
-                f"model={model}",
-                f"backend={backend}",
-                "trainer.fast_dev_run=True",
-                "dataset.data_folder=../datasets/speech_commands_v0.02/",
-                f"hydra.runtime.cwd={tmp_path}",
-            ],
-            return_hydra_config=True,
-        )
-        val_loss = train(cfg)
+def test_backend(model, backend):
+    command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True experiment_id=test_backend backend={backend} model={model}"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
