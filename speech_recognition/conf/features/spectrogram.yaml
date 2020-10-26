@@ -2,8 +2,8 @@
 
 _target_: torchaudio.transforms.Spectrogram
 n_fft: 400
-win_length: None
-hop_length: None
+win_length: null
+hop_length: null
 pad: 0
 power: 2.0
 normalized: False

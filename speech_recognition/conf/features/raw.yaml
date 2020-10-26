@@ -1,8 +1,3 @@
 # @package _group_
 
 _target_: speech_recognition.features.RawFeatures
-
-
-#TODO:
-#window_fn: Callable[[...], torch.Tensor] = <built-in method hann_window of type object>
-#wkwargs: Optional[dict] = None

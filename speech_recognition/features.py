@@ -10,8 +10,6 @@ from torch.nn.modules.utils import _single
 
 # Mirco Ravanelli, Yoshua Bengio, “Speaker Recognition from raw waveform with SincNet” Arxiv
 # https://github.com/mravanelli/SincNet
-
-
 class SincConv(nn.Module):
     """Sinc convolution:
     Parameters:
@@ -32,10 +30,10 @@ class SincConv(nn.Module):
 
     def __init__(
         self,
-        out_channels=40,
-        kernel_size=101,
-        sample_rate=16000,
         in_channels=1,
+        out_channels=40,
+        sample_rate=16000,
+        kernel_size=101,
         stride=1,
         padding=0,
         dilation=1,
@@ -93,6 +91,7 @@ class SincConv(nn.Module):
         self.register_buffer("n_", n_, persistent=False)
 
     def forward(self, waveforms):
+        waveforms = torch.unsqueeze(waveforms, dim=1)
 
         f_low = torch.abs(self.low_freq_) + self.min_low_hz
         f_high = torch.clamp(
@@ -128,7 +127,62 @@ class SincConv(nn.Module):
         )
 
 
+class Sinc_Act(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, input):
+
+        return torch.log10(torch.abs(input) + 1)
+
+
+class SincConvBlock(nn.Module):
+    def __init__(
+        self,
+        in_channels=1,
+        out_channels=40,
+        sample_rate=16000,
+        kernel_size=101,
+        stride=1,
+        padding=0,
+        dilation=1,
+        bias=False,
+        groups=1,
+        min_low_hz=50,
+        min_band_hz=50,
+        bn_len=40,
+        pool_len=20,
+    ):
+
+        super(SincConvBlock, self).__init__()
+
+        self.layer = nn.Sequential(
+            SincConv(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                sample_rate=sample_rate,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding if padding else kernel_size // 2,
+                dilation=dilation,
+                bias=bias,
+                groups=groups,
+                min_low_hz=min_low_hz,
+                min_band_hz=min_band_hz,
+            ),
+            Sinc_Act(),
+            nn.BatchNorm1d(bn_len),
+            nn.AvgPool1d(pool_len),
+        )
+
+    def forward(self, x):
+
+        out = self.layer(x)
+
+        return out
+
+
 class RawFeatures(nn.Module):
     def forward(self, x):
-        x = torch.squeeze(x, dim=1)
+        x = torch.unsqueeze(x, dim=1)
         return x

@@ -1,59 +1,16 @@
-from typing import Dict, Any
-
-
 import torch
 import torch.nn as nn
 from torch.nn.modules.utils import _single
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-import logging
-
-msglogger = logging.getLogger()
-
 import numpy as np
 import matplotlib.pyplot as plt
 
-from speech_recognition.features import SincConv
 from ..utils import ConfigType, SerializableModule, next_power_of2
 
 
-########################## Activation Function ################################
-
-
-class Sinc_Act(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, input):
-
-        return torch.log10(torch.abs(input) + 1)
-
-
-############################### SincConv Block ################################
-
-
-class SincConvBlock(nn.Module):
-    def __init__(self, N_filt, filt_len, bn_len, avgpool_len, SR, stride):
-        super(SincConvBlock, self).__init__()
-
-        self.layer = nn.Sequential(
-            SincConv(N_filt, filt_len, SR, stride=stride, padding=filt_len // 2),
-            Sinc_Act(),
-            nn.BatchNorm1d(bn_len),
-            nn.AvgPool1d(avgpool_len),
-        )
-
-    def forward(self, x):
-
-        out = self.layer(x)
-
-        return out
-
-
 ############################# DS Conv Block ###################################
-
-
 class GDSConv(nn.Module):
     def __init__(
         self,
@@ -137,13 +94,6 @@ class SincNet(SerializableModule):
 
         self.num_classes = config["num_classes"]
 
-        self.cnn_N_filt = config["cnn_N_filt"]
-        self.cnn_filt_len = config["cnn_filt_len"]
-        self.cnn_bn_len = config["cnn_bn_len"]
-        self.cnn_avgpool_len = config["cnn_avgpool_len"]
-        self.SR = config["samplingrate"]
-        self.cnn_stride = config["cnn_stride"]
-
         self.dsconv_N_filt = config["dsconv_N_filt"]
         self.dsconv_filt_len = config["dsconv_filt_len"]
         self.dsconv_stride = config["dsconv_stride"]
@@ -154,14 +104,6 @@ class SincNet(SerializableModule):
         self.dsconv_spatDrop = config["dsconv_spatDrop"]
         self.dsconv_num = len(config["dsconv_N_filt"])
 
-        self.SincNet = SincConvBlock(
-            self.cnn_N_filt,
-            self.cnn_filt_len,
-            self.cnn_bn_len,
-            self.cnn_avgpool_len,
-            self.SR,
-            self.cnn_stride,
-        )
         self.GDSBlocks = nn.ModuleList([])
 
         for i in range(self.dsconv_num):
@@ -213,9 +155,6 @@ class SincNet(SerializableModule):
         x = self.fc(x)
 
         return x
-
-
-###############################################################################
 
 
 configs = {
