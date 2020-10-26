@@ -66,7 +66,7 @@ def train(config=DictConfig):
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
 
-    if config.trainer.gpus:
+    if "gpu_stats" in config and config.gpu_stats:
         gpu_stats = GPUStatsMonitor()
         callbacks.append(gpu_stats)
 
