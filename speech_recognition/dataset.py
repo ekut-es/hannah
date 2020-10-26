@@ -164,7 +164,7 @@ class SpeechDataset(data.Dataset):
 
     @staticmethod
     def default_config():
-        """ Returns the default configuration for the Dataset and
+        """Returns the default configuration for the Dataset and
         Feature extraction"""
         config = {}
 
@@ -282,7 +282,7 @@ class SpeechDataset(data.Dataset):
         if len(data) <= in_len:
             return (0, len(data))
         elif (int(len(data) * 0.8) - 1) < in_len:
-            rand_end = len(data) -in_len
+            rand_end = len(data) - in_len
             cutstart = np.random.randint(0, rand_end)
             return (cutstart, cutstart + in_len)
         else:
@@ -692,7 +692,7 @@ class VadDataset(SpeechDataset):
     @classmethod
     def splits(cls, config):
         """Splits the dataset in training, devlopment and test set and returns
-            the three sets as List"""
+        the three sets as List"""
 
         msglogger = logging.getLogger()
 
@@ -853,16 +853,15 @@ class KeyWordDataset(SpeechDataset):
 def find_dataset(name):
     """Returns the appropriate class for reading a dataset of type name:
 
-       Parameters
-       ----------
-       name : str
-           The name of the dataset type
+    Parameters
+    ----------
+    name : str
+        The name of the dataset type
 
-            - keywords = Google Speech Commands like  dataset
-            - hotword = Hey Snips! like dataset
+         - keywords = Google Speech Commands like  dataset
+         - hotword = Hey Snips! like dataset
 
-       Returns
-"""
+    Returns"""
     if name == "keywords":
         return SpeechCommandsDataset
     elif name == "hotword":
