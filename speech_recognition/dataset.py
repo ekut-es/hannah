@@ -1,4 +1,3 @@
-from enum import Enum
 import os
 import random
 import re
@@ -8,13 +7,17 @@ import hashlib
 
 from collections import defaultdict
 
-from chainmap import ChainMap
 import librosa
 import torchaudio
 import numpy as np
 import scipy.signal as signal
 import torch
 import torch.utils.data as data
+
+from enum import Enum
+from collections import defaultdict
+from chainmap import ChainMap
+from torchvision.datasets.utils import download_and_extract_archive, extract_archive
 
 
 def factor(snr, psig, pnoise):
@@ -70,8 +73,8 @@ class SpeechDataset(data.Dataset):
         self.silence_prob = config["silence_prob"]
         self.input_length = config["input_length"]
         self.timeshift_ms = config["timeshift_ms"]
-        self.extract_loudest = config["extract_loudest"]
-        self.randomstates = dict()
+
+        self.extract = config["extract"]
         self.unknown_class = 1
         self.silence_class = 0
         n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
@@ -90,8 +93,30 @@ class SpeechDataset(data.Dataset):
         data = np.pad(data, (a, b), "constant")
         return data[: len(data) - a] if a else data[b:]
 
+    def _extract_random_range(self, data, in_len):
+        """Extract random part of the sample with length self.input_length"""
+        if len(data) <= in_len:
+            return (0, len(data))
+        elif (int(len(data) * 0.8) - 1) < in_len:
+            rand_end = len(data) - in_len
+            cutstart = np.random.randint(0, rand_end)
+            return (cutstart, cutstart + in_len)
+        else:
+            max_length = int(len(data) * 0.8)
+            max_length = max_length - in_len
+            cutstart = np.random.randint(0, max_length)
+            cutstart = cutstart + int(len(data) * 0.1)
+            return (cutstart, cutstart + in_len)
+
+    def _extract_front_range(self, data, in_len):
+        """Extract front part of the sample with length self.input_length"""
+        if len(data) <= in_len:
+            return (0, len(data))
+        else:
+            return (0, in_len)
+
     def _extract_loudest_range(self, data, in_len):
-        """Extract the loudest part of the sample with length self.input_lenght"""
+        """Extract the loudest part of the sample with length self.input_length"""
         if len(data) <= in_len:
             return (0, len(data))
 
@@ -116,16 +141,22 @@ class SpeechDataset(data.Dataset):
         if silence:
             data = np.zeros(in_len, dtype=np.float32)
         else:
-
             data = load_audio(example, sr=self.samplingrate)[0]
 
             extract_index = (0, len(data))
 
-            if self.extract_loudest:
+            if self.extract == "loudest":
                 extract_index = self._extract_loudest_range(data, in_len)
+            elif self.extract == "trim_border":
+                extract_index = self._extract_random_range(data, in_len)
+            elif self.extract == "front":
+                extract_index = self._extract_front_range(data, in_len)
 
             data = self._timeshift_audio(data)
             data = data[extract_index[0] : extract_index[1]]
+
+            data = np.pad(data, (0, max(0, in_len - len(data))), "constant")
+            data = data[0:in_len]
 
         if self.bg_noise_audio:
             bg_noise = random.choice(self.bg_noise_audio)
@@ -302,6 +333,35 @@ class SpeechCommandsDataset(SpeechDataset):
         )
         return datasets
 
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"] == "clear"
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+
+        userlanguage = config["lang"]
+        speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+
+        if os.path.isdir(speechcommand) and "speech_command" in userlanguage:
+
+            os.makedirs(speechcommand)
+
+            # Test if the the code is run on lucille or not
+            if platform.node() == "lucille":
+                extract_archive(
+                    "/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz",
+                    speechcommand,
+                    False,
+                )
+            else:
+                download_and_extract_archive(
+                    "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
+                    speechcommand,
+                    speechcommand,
+                    remove_finished=clear_download,
+                )
+
 
 class SpeechHotwordDataset(SpeechDataset):
     """Dataset Class for Hotword dataset e.g. Hey Snips!"""
@@ -378,6 +438,34 @@ class SpeechHotwordDataset(SpeechDataset):
 
         return res_datasets
 
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"] == "clear"
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+
+        userlanguage = config["lang"]
+
+        if (len(os.listdir(data_folder)) == 0) and ("snipsKWS" in userlanguage):
+            if platform.node() == "lucille":
+                mvtarget = os.path.join(data_folder, "speech_commands_v0.02.tar.gz")
+                # datasets are in /storage/local/dataset/...... prestored
+                extract_archive(
+                    "/storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz",
+                    data_folder,
+                    False,
+                )
+
+            else:
+                download_and_extract_archive(
+                    "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1",
+                    data_folder,
+                    data_folder,
+                    "hey_snips_kws_4.0.tar.gz",
+                    remove_finished=clear_download,
+                )
+
 
 class VadDataset(SpeechDataset):
     def __init__(self, data, set_type, config):
@@ -388,7 +476,116 @@ class VadDataset(SpeechDataset):
     @classmethod
     def splits(cls, config):
         """Splits the dataset in training, devlopment and test set and returns
-            the three sets as List"""
+        the three sets as List"""
+
+        msglogger = logging.getLogger()
+
+        folder = config["data_folder"]
+
+        descriptions = ["train", "dev", "test"]
+        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
+        datasets = [{}, {}, {}]
+        configs = [{}, {}, {}]
+
+        for num, desc in enumerate(descriptions):
+
+            descs_noise = os.path.join(folder, desc, "noise")
+            descs_speech = os.path.join(folder, desc, "speech")
+            descs_bg = os.path.join(folder, desc, "background_noise")
+
+            noise_files = [
+                os.path.join(descs_noise, f)
+                for f in os.listdir(descs_noise)
+                if os.path.isfile(os.path.join(descs_noise, f))
+            ]
+            speech_files = [
+                os.path.join(descs_speech, f)
+                for f in os.listdir(descs_speech)
+                if os.path.isfile(os.path.join(descs_speech, f))
+            ]
+            bg_noise_files = [
+                os.path.join(descs_bg, f)
+                for f in os.listdir(descs_bg)
+                if os.path.isfile(os.path.join(descs_bg, f))
+            ]
+
+            random.shuffle(noise_files)
+            random.shuffle(speech_files)
+            label_noise = 0
+            label_speech = 1
+
+            datasets[num].update({n: label_noise for n in noise_files})
+            datasets[num].update({s: label_speech for s in speech_files})
+            configs[num].update(ChainMap(dict(bg_noise_files=bg_noise_files), config))
+
+        res_datasets = (
+            cls(datasets[0], DatasetType.TRAIN, configs[0]),
+            cls(datasets[1], DatasetType.DEV, configs[1]),
+            cls(datasets[2], DatasetType.TEST, configs[2]),
+        )
+
+        return res_datasets
+
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"] == "clear"
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+
+        if len(os.listdir(data_folder)) == 0:
+            speechdir = os.path.join(data_folder, "speech_files")
+            lang = ["de", "fr", "es", "it"]
+
+            userlanguage = config["lang"]
+
+            # Test if the the code is run on lucille or not
+            if platform.node() == "lucille":
+                lang.append("en")
+                # datasets are in /storage/local/dataset/...... prestored
+                os.makedirs(speechdir)
+                for name in lang:
+                    if name in userlanguage:
+                        extract_archive(
+                            "/storage/local/dataset/mozilla/" + name + ".tar.gz",
+                            speechdir,
+                            False,
+                        )
+
+                if "uwnu" in userlanguage:
+                    extract_archive(
+                        "/storage/local/dataset/uwnu/uwnu-v2.tar.gz", speechdir, False
+                    )
+
+            else:
+                # download mozilla dataset
+                if "en" in userlanguage:
+                    download_and_extract_archive(
+                        "https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
+                        speechdir,
+                        speechdir,
+                        remove_finished=clear_download,
+                    )
+
+                for name in lang:
+                    if name in userlanguage:
+                        download_and_extract_archive(
+                            "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/"
+                            + name
+                            + ".tar.gz",
+                            speechdir,
+                            speechdir,
+                            remove_finished=clear_download,
+                        )
+
+                if "uwnu" in userlanguage:
+                    download_and_extract_archive(
+                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1",
+                        speechdir,
+                        speechdir,
+                        "uwnu-v2.tar.gz",
+                        remove_finished=clear_download,
+                    )
 
         msglogger = logging.getLogger()
 
@@ -544,6 +741,35 @@ class KeyWordDataset(SpeechDataset):
             cls(sets[2], DatasetType.TEST, config),
         )
         return datasets
+
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"] == "clear"
+
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+
+        userlanguage = config["lang"]
+        speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+
+        if (not os.path.isdir(speechcommand)) and ("speech_command" in userlanguage):
+            os.makedirs(speechcommand)
+
+            # Test if the the code is run on lucille or not
+            if platform.node() == "lucille":
+                extract_archive(
+                    "/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz",
+                    speechcommand,
+                    False,
+                )
+            else:
+                download_and_extract_archive(
+                    "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
+                    speechcommand,
+                    speechcommand,
+                    remove_finished=clear_download,
+                )
 
 
 def ctc_collate_fn(data):

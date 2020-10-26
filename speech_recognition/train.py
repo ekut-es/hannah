@@ -15,6 +15,7 @@ from .callbacks.optimization import HydraOptCallback
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+from pytorch_lightning.callbacks import GPUStatsMonitor
 from pytorch_lightning.core.memory import ModelSummary
 from pytorch_lightning.utilities.seed import seed_everything
 from hydra.utils import instantiate
@@ -65,6 +66,10 @@ def train(config=DictConfig):
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
 
+    if config.trainer.gpus:
+        gpu_stats = GPUStatsMonitor()
+        callbacks.append(gpu_stats)
+
     opt_callback = HydraOptCallback()
     callbacks.append(opt_callback)
 
@@ -100,13 +105,30 @@ def train(config=DictConfig):
     return opt_callback.result()
 
 
+def eval(model_name, config):
+    lit_trainer, lit_module, profiler = build_trainer(model_name, config)
+    test_loader = lit_module.test_dataloader()
+
+    lit_module.eval()
+    lit_module.freeze()
+
+    results = None
+    for batch in test_loader:
+        result = lit_module.forward(batch[0])
+        if results is None:
+            results = result
+        else:
+            results = torch.cat([results, result])
+    return results
+
+
 @hydra.main(config_name="config", config_path="conf")
 def main(config=DictConfig):
 
     if config["type"] == "train":
-        train(config)
+        return train(config)
     elif config["type"] == "eval":
-        logging.error("eval mode is not supported at the moment")
+        return eval(config)
     elif config["type"] == "eval_vad_keyword":
         logging.error("eval_vad_keyword is not supported at the moment")
 

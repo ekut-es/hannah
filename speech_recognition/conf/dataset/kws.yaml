@@ -25,7 +25,11 @@ input_length: 16000
 samplingrate: 16000
 
 timeshift_ms: 100
-extract_loudest: true
+extract: loudest
+clear_download: False
+lang: ["speech_commands"]
+data_split: []
+noise_dataset: []
 
 silence_prob: 0.1
 unknown_prob: 0.1

@@ -53,7 +53,7 @@ class InferenceBackendBase(Callback):
                 self.prepare(pl_module)
 
     def on_validation_batch_end(
-        self, trainer, pl_module, output, batch, batch_idx, dataloader_idx
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
         if batch_idx < self.val_batches:
             if self.validation_epoch % self.val_frequency == 0:
