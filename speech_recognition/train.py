@@ -22,7 +22,7 @@ from .lightning_model import SpeechClassifierModule
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.profiler import AdvancedProfiler
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, GPUStatsMonitor
 from pytorch_lightning.core.memory import ModelSummary
 
 
@@ -262,6 +262,10 @@ def build_config(extra_config={}):
             default=False,
             desc="Enable logging of learning progress and network parameter statistics to Tensorboard",
         ),
+        gpulogger=ConfigOption(
+            default=True,
+            desc="Enable logging of GPU usage to Tensorboard",
+        ),
         experiment_id=ConfigOption(
             default="test",
             desc="Unique id to identify the experiment, overwrites all output files with same experiment id, output_dir, and model_name",
@@ -345,7 +349,13 @@ def build_trainer(model_name, config):
         "callbacks": [],
     }
 
-    # TODO distiller only available without auto_lr because compatibility issues
+    if config["gpulogger"]:
+        gpu_stats = GPUStatsMonitor()
+        callbacks = kwargs["callbacks"]
+        callbacks.append(gpu_stats)
+        kwargs.update({"callbacks": callbacks})
+
+    # TODO distiller only available without auto_lr because compatibility issues (issue #14)
     if config["compress"] and not config["auto_lr"]:
         callbacks = kwargs["callbacks"]
         callbacks.append(
@@ -406,6 +416,7 @@ def train(model_name, config):
         lr_finder = lit_trainer.lr_find(lit_module)
         # inspect results
         fig = lr_finder.plot()
+        log_dir = lit_trainer.default_root_dir
         fig.savefig(f"{log_dir}/learning_rate.png")
         # recreate module with updated config
         suggested_lr = lr_finder.suggestion()
