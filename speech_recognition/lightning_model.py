@@ -40,8 +40,8 @@ class SpeechClassifierModule(LightningModule):
         self.example_feature_array = features
 
         # Instantiate normalizer
-        if hasattr(self.hparams, "features"):
-            self.normalizer = instantiate(self.hparams.features)
+        if hasattr(self.hparams, "normalizer"):
+            self.normalizer = instantiate(self.hparams.normalizer)
         else:
             self.normalizer = torch.nn.Identity()
 
