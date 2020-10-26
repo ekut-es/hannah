@@ -22,7 +22,14 @@ topdir = Path(__file__).parent.absolute() / ".."
         ("gds", "sinc"),
         ("lstm", "sinc"),
         ("tc-res8", "mfcc"),
-        ("gds", "mfcc")("lstm", "mfcc"),
+        ("gds", "mfcc"),
+        ("lstm", "mfcc"),
+        ("tc-res8", "spectrogram"),
+        ("gds", "spectrogram"),
+        ("lstm", "spectrogram"),
+        ("tc-res8", "melspec"),
+        ("gds", "melspec"),
+        ("lstm", "melspec"),
     ],
 )
 def test_models(model, features):
