@@ -9,7 +9,7 @@ class HydraOptCallback(Callback):
     def on_validation_end(self, trainer, pl_module):
         metrics = trainer.logger_connector.logged_metrics
         if self.monitor in metrics:
-            self.value = metrics
+            self.value = metrics[monitor]
 
     def result(self):
         return self.value
