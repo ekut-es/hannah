@@ -57,6 +57,7 @@ class SpeechClassifierModule(LightningModule):
         splits = ["vad", "vad_speech", "vad_balanced", "getrennt"]
 
         if data_split in splits:
+            print("split data begins")
             data_folder = config["data_folder"]
 
             #remove old folders
@@ -184,6 +185,7 @@ class SpeechClassifierModule(LightningModule):
     def downsample(self, config):
         samplerate = config["downsample"]
         if samplerate > 0:
+            print("downsample data begins")
             downsample_folder = ["train", "dev", "test"]
             for folder in downsample_folder:
                 folderpath = os.path.join(config["data_folder"], folder)
