@@ -22,6 +22,11 @@ lr: 0.05
 seed: 1234
 num_workers: 4
 
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
 
 #TODO:
 dump_test: false
