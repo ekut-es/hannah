@@ -27,27 +27,27 @@ class SpeechClassifierModule(LightningModule):
         super().__init__()
         self.hparams = config
 
-        # get all the necessary data stuff
-        _locate(config.dataset.cls).download(config.dataset)
-        self.download_noise(config.dataset)
-        self.split_data(config.dataset)
-        self.downsample(config.dataset)
+        self.msglogger = logging.getLogger()
 
+    def prepare_data(self):
+        # get all the necessary data stuff
+        _locate(self.hparams.dataset.cls).download(self.hparams.dataset)
+        self.download_noise(self.hparams.dataset)
+        self.split_data(self.hparams.dataset)
+        self.downsample(self.hparams.dataset)
+
+    def setup(self, stage):
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(
-            config.dataset.cls
-        ).splits(config.dataset)
+            self.hparams.dataset.cls
+        ).splits(self.hparams.dataset)
 
         # Create example input
-        dummy_input = torch.zeros(1, self.train_set.input_length)
+        dummy_input = torch.zeros(1, self.train_set.input_length, device=self.device)
         self.example_input_array = dummy_input
-        if torch.cuda.is_available():
-            self.example_input_array = self.example_input_array.cuda()
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
-        if torch.cuda.is_available():
-            self.features = self.features.cuda()
 
         features = self.features(self.example_input_array)
         self.example_feature_array = features
@@ -67,8 +67,6 @@ class SpeechClassifierModule(LightningModule):
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
-
-        self.msglogger = logging.getLogger()
 
     def split_data(self, config):
         data_split = config["data_split"]
