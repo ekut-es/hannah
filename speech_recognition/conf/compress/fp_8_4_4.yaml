@@ -1,0 +1,18 @@
+# @package _group_
+
+fold_bn: 0.9
+quantizers:
+  fixpoint_quantizer:
+    class: SignedFixpointQuantizer
+    bits_activations: 8
+    bits_weights: 4
+    bits_bias: 4
+
+policies:
+    - quantizer:
+        instance_name: fixpoint_quantizer
+      # For now putting a large range here, which should cover both training from scratch or resuming from some
+      # pre-trained checkpoint at some unknown epoch
+      starting_epoch: 0
+      ending_epoch: 500
+      frequency: 1
