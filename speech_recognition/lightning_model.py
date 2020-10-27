@@ -36,20 +36,20 @@ class SpeechClassifierModule(LightningModule):
         self.split_data(self.hparams.dataset)
         self.downsample(self.hparams.dataset)
 
-    def setup(self, stage):
+    def setup(self, mode):
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(
             self.hparams.dataset.cls
         ).splits(self.hparams.dataset)
 
-        print("device:", self.device)
-
         # Create example input
-        dummy_input = torch.zeros(1, self.train_set.input_length, device=self.device)
+        device = self.trainer.root_gpu if self.trainer.root_gpu else self.device
+        dummy_input = torch.zeros(1, self.train_set.input_length, device=device)
         self.example_input_array = dummy_input
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
+        self.features.to(device)
 
         features = self.features(self.example_input_array)
         self.example_feature_array = features
