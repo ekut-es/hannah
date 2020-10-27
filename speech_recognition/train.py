@@ -15,7 +15,6 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
-from pytorch_lightning.core.memory import ModelSummary
 from pytorch_lightning.utilities.seed import seed_everything
 from hydra.utils import instantiate
 
@@ -100,8 +99,6 @@ def train(config=DictConfig):
         # recreate module with updated config
         suggested_lr = lr_finder.suggestion()
         config["lr"] = suggested_lr
-
-    # logging.info(ModelSummary(lit_module, "full"))
 
     # PL TRAIN
     lit_trainer.fit(lit_module)
