@@ -42,6 +42,8 @@ class SpeechClassifierModule(LightningModule):
             self.hparams.dataset.cls
         ).splits(self.hparams.dataset)
 
+        print("device:", self.device)
+
         # Create example input
         dummy_input = torch.zeros(1, self.train_set.input_length, device=self.device)
         self.example_input_array = dummy_input
