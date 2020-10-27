@@ -5,7 +5,7 @@ defaults:
     - optimizer: adam
     - features: mfcc
     - normalizer: null
-    - module: default
+    - module: speech_classifier
     - compress: null
     - trainer: default
     - checkpoint: default
