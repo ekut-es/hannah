@@ -1,5 +1,6 @@
 # @package _group_
 
+fold_bn: 0.9
 quantizers:
   fixpoint_quantizer:
     class: SignedFixpointQuantizer

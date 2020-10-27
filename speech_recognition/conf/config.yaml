@@ -17,7 +17,6 @@ type: train
 experiment_id: test
 output_dir: trained_models
 auto_lr: false
-fold_bn: -1
 seed: 1234
 
 hydra:
