@@ -1,0 +1,13 @@
+# @package _group_
+
+defaults:
+    - model: tc-res8
+    - scheduler: step
+    - optimizer: adam
+    - features: mfcc
+    - normalizer: null
+
+_target_: speech_recognition.modules.SpeechClassifierModule
+num_workers: 4
+batch_size: 128
+lr: 0.05

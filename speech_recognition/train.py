@@ -35,7 +35,7 @@ def train(config=DictConfig):
     logging.info("Current working directory %s", os.getcwd())
 
     checkpoint_callback = instantiate(config.checkpoint)
-    lit_module = SpeechClassifierModule(config)
+    lit_module = instantiate(config.module)
     callbacks = []
 
     # TODO distiller only available without auto_lr because compatibility issues

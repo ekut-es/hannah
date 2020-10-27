@@ -1,12 +1,8 @@
 defaults:
     - dataset: kws
-    - model: tc-res8
     - compress: null
-    - scheduler: step
-    - optimizer: adam
-    - features: mfcc
-    - normalizer: null
     - trainer: default
+    - module: default
     - checkpoint: default
     - backend: null
     - early_stopping: null
@@ -16,11 +12,8 @@ type: train
 experiment_id: test
 output_dir: trained_models
 auto_lr: false
-batch_size: 128
 fold_bn: -1
-lr: 0.05
 seed: 1234
-num_workers: 4
 
 hydra:
     run:
