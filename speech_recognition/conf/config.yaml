@@ -1,8 +1,13 @@
 defaults:
     - dataset: kws
+    - model: tc-res8
+    - scheduler: step
+    - optimizer: adam
+    - features: mfcc
+    - normalizer: null
+    - module: default
     - compress: null
     - trainer: default
-    - module: default
     - checkpoint: default
     - backend: null
     - early_stopping: null

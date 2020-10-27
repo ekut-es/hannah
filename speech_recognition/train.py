@@ -9,7 +9,6 @@ from .utils import log_execution_env_state
 
 from .callbacks.distiller import DistillerCallback
 
-from .lightning_model import SpeechClassifierModule
 from .callbacks.optimization import HydraOptCallback
 
 from pytorch_lightning.callbacks import LearningRateMonitor
@@ -35,7 +34,15 @@ def train(config=DictConfig):
     logging.info("Current working directory %s", os.getcwd())
 
     checkpoint_callback = instantiate(config.checkpoint)
-    lit_module = instantiate(config.module)
+    lit_module = instantiate(
+        config.module,
+        dataset=config.dataset,
+        model=config.model,
+        optimizer=config.optimizer,
+        features=config.features,
+        scheduler=config.get("scheduler", None),
+        normalizer=config.get("normalizer", None),
+    )
     callbacks = []
 
     # TODO distiller only available without auto_lr because compatibility issues

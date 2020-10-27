@@ -6,10 +6,10 @@ import logging
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
-from .config_utils import get_loss_function, get_model, save_model
+from .config_utils import get_loss_function, get_model, save_model, _locate
+from typing import Optional
 
-from .utils import _locate
-from .dataset import ctc_collate_fn
+from ..dataset import ctc_collate_fn
 
 import torch
 import torch.utils.data as data
@@ -21,11 +21,25 @@ from torchvision.datasets.utils import (
     list_files,
 )
 
+from omegaconf import DictConfig
+
 
 class SpeechClassifierModule(LightningModule):
-    def __init__(self, config=None, log_dir="", msglogger=None):
+    def __init__(
+        self,
+        dataset: DictConfig,
+        model: DictConfig,
+        optimizer: DictConfig,
+        features: DictConfig,
+        normalizer: Optional[DictConfig] = None,
+        lr: int = 0.05,
+        scheduler: Optional[DictConfig] = None,
+        num_workers: int = 0,
+        batch_size: int = 128,
+    ):
         super().__init__()
-        self.hparams = config
+
+        self.save_hyperparameters()
 
         self.msglogger = logging.getLogger()
 
@@ -57,7 +71,7 @@ class SpeechClassifierModule(LightningModule):
         self.example_feature_array = features
 
         # Instantiate normalizer
-        if hasattr(self.hparams, "normalizer"):
+        if self.hparams.normalizer is not None:
             self.normalizer = instantiate(self.hparams.normalizer)
         else:
             self.normalizer = torch.nn.Identity()
@@ -71,6 +85,8 @@ class SpeechClassifierModule(LightningModule):
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
+
+        print(self)
 
     def split_data(self, config):
         data_split = config["data_split"]
