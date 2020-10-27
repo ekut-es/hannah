@@ -224,7 +224,7 @@ class SpeechClassifierModule(LightningModule):
                         shutil.rmtree(oldpath)
 
     def downsample(self, config):
-        if not "downsample" in config:
+        if "downsample" not in config:
             return
 
         samplerate = config["downsample"]
@@ -330,8 +330,6 @@ class SpeechClassifierModule(LightningModule):
         if isinstance(output, list):
             # log for each output
             for idx, out in enumerate(output):
-                # accuracy
-                # self.log(f"{prefix}_acc_step/exit_{idx}", self.accuracy[idx](out, y))
                 self.log(
                     f"{prefix}_accuracy/exit_{idx}",
                     accuracy(out, y),
@@ -353,7 +351,6 @@ class SpeechClassifierModule(LightningModule):
                     on_epoch=True,
                     logger=True,
                 )
-            # TODO: f1 recall
 
         else:
             self.log(
