@@ -12,11 +12,14 @@ train_pct: 80
 wanted_words: []
 bg_noise_files: []
 
+data_split: []
+noise_dataset: []
+
 input_length: 16000
 samplingrate: 16000
 
 timeshift_ms: 100
-extract_loudest: true
+extract: loudest
 
 silence_prob: 1.0
 unknown_prob: 1.0
