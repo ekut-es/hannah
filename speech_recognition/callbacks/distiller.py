@@ -54,14 +54,14 @@ class DistillerCallback(Callback):
         )
 
     def on_batch_end(self, trainer, pl_module):
-        self.compression_scheduler.on_minibatch_end(
-            trainer.current_epoch, trainer.batch_idx, pl_module.batches_per_epoch
-        )
-
         if self.fold_bn is not None:
             freeze_epoch = int(trainer.max_epochs * self.fold_bn)
             if freeze_epoch == trainer.current_epoch and not self.bn_frozen:
                 self._freeze(pl_module)
+
+        self.compression_scheduler.on_minibatch_end(
+            trainer.current_epoch, trainer.batch_idx, pl_module.batches_per_epoch
+        )
 
     def on_epoch_end(self, trainer, pl_module):
         self.compression_scheduler.on_epoch_end(pl_module.current_epoch)
