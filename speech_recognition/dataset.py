@@ -4,6 +4,7 @@ import re
 import json
 import logging
 import hashlib
+import platform
 
 from collections import defaultdict
 
@@ -336,7 +337,7 @@ class SpeechCommandsDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = config["clear_download"] == "clear"
+        clear_download = config["clear_download"]
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -441,15 +442,13 @@ class SpeechHotwordDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = config["clear_download"] == "clear"
+        clear_download = config["clear_download"]
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        userlanguage = config["lang"]
-
-        if (len(os.listdir(data_folder)) == 0) and ("snipsKWS" in userlanguage):
+        if len(os.listdir(data_folder)) == 0:
             if platform.node() == "lucille":
-                mvtarget = os.path.join(data_folder, "speech_commands_v0.02.tar.gz")
+                mvtarget = os.path.join(data_folder, "hey_snips_kws_4.0.tar.tar.gz")
                 # datasets are in /storage/local/dataset/...... prestored
                 extract_archive(
                     "/storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz",
@@ -529,7 +528,7 @@ class VadDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = config["clear_download"] == "clear"
+        clear_download = config["clear_download"]
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
@@ -745,7 +744,7 @@ class KeyWordDataset(SpeechDataset):
     @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
-        clear_download = config["clear_download"] == "clear"
+        clear_download = config["clear_download"]
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)

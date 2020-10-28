@@ -23,6 +23,4 @@ unknown_prob: 1.0
 test_snr: .inf
 train_snr_high: 1000.0
 train_snr_low: 0.0
-
-normalize_bits: 0
-normalize_max: 256
+clear_download: false
