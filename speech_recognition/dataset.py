@@ -20,6 +20,7 @@ from collections import defaultdict
 from chainmap import ChainMap
 from torchvision.datasets.utils import download_and_extract_archive, extract_archive
 
+msglogger = logging.getLogger()
 
 def factor(snr, psig, pnoise):
     y = 10 ** (snr / 10)
@@ -31,7 +32,12 @@ def load_audio(file_name, sr=16000, backend="torchaudio", res_type="kaiser_fast"
         data = librosa.core.load(file_name, sr=sr, res_type=res_type)
     elif backend == "torchaudio":
         torchaudio.set_audio_backend("sox")
-        data, samplingrate = torchaudio.load(file_name)
+        try: 
+            data, samplingrate = torchaudio.load(file_name)
+        except:
+            msglogger.warning("Could not load %s with default backend trying sndfile", str(file_name))
+            torchaudio.set_audio_backend("soundfile")
+            data, samplingrate = torchaudio.load(file_name)
         data = data.numpy()
         if samplingrate != sr:
             data = librosa.resample(data, samplingrate, sr, res_type=res_type)
