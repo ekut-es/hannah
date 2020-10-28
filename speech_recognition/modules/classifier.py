@@ -54,6 +54,8 @@ class SpeechClassifierModule(LightningModule):
         if self.initialized:
             return
 
+        self.initialized = True
+
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(
             self.hparams.dataset.cls
