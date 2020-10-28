@@ -437,6 +437,7 @@ class SpeechClassifierModule(LightningModule):
         loss = self.criterion(output, y)
 
         # METRICS
+        self.get_batch_metrics(output, y, loss, "test")
 
         return loss
 
