@@ -42,10 +42,10 @@ def test_models(model, features):
 
 @pytest.mark.parametrize(
     "model, features, compress",
-    [("tc-res8", "mfcc", "fixpoint_8_8"), ("gds", "sinc", "fixpoint_8_8")],
+    [("tc-res8", "mfcc", "fp_8_8"), ("gds", "sinc", "fp_8_8")],
 )
 def test_distiller(model, features, compress):
-    command_line = f"python -m speech_recognition.train trainer.overfit_batches=0.01 trainer.max_epochs=10 model={model} features={features} compress={compress} normalizer=fixedpoint fold_bn=9"
+    command_line = f"python -m speech_recognition.train trainer.overfit_batches=0.01 trainer.max_epochs=10 model={model} features={features} compress={compress} normalizer=fixedpoint"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
