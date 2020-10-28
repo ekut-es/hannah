@@ -51,8 +51,13 @@ class SpeechClassifierModule(LightningModule):
         self.downsample(self.hparams.dataset)
 
     def setup(self, stage):
+
+        print("Setting up model")
+
         if self.initialized:
             return
+
+        self.initialized = True
 
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(
@@ -343,7 +348,7 @@ class SpeechClassifierModule(LightningModule):
             scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
             schedulers.append(scheduler)
 
-        return [optimizer], []
+        return [optimizer], schedulers
 
     def get_batch_metrics(self, output, y, loss, prefix):
 
@@ -367,6 +372,7 @@ class SpeechClassifierModule(LightningModule):
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
+
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
@@ -383,7 +389,6 @@ class SpeechClassifierModule(LightningModule):
         return loss
 
     def train_dataloader(self):
-
         train_batch_size = self.hparams["batch_size"]
         train_loader = data.DataLoader(
             self.train_set,
