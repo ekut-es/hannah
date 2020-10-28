@@ -31,16 +31,15 @@ class SpeechClassifierModule(LightningModule):
         model: DictConfig,
         optimizer: DictConfig,
         features: DictConfig,
-        normalizer: Optional[DictConfig] = None,
         lr: int = 0.05,
-        scheduler: Optional[DictConfig] = None,
         num_workers: int = 0,
         batch_size: int = 128,
+        scheduler: Optional[DictConfig] = None,
+        normalizer: Optional[DictConfig] = None,
     ):
         super().__init__()
 
         self.save_hyperparameters()
-
         self.msglogger = logging.getLogger()
 
     def prepare_data(self):
@@ -50,7 +49,10 @@ class SpeechClassifierModule(LightningModule):
         self.split_data(self.hparams.dataset)
         self.downsample(self.hparams.dataset)
 
-    def setup(self, mode):
+    def setup(self, stage):
+        if stage == "test":
+            return
+
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(
             self.hparams.dataset.cls
@@ -85,8 +87,6 @@ class SpeechClassifierModule(LightningModule):
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
-
-        print(self)
 
     def split_data(self, config):
         data_split = config["data_split"]
@@ -346,54 +346,18 @@ class SpeechClassifierModule(LightningModule):
         if isinstance(output, list):
             # log for each output
             for idx, out in enumerate(output):
-                self.log(
-                    f"{prefix}_accuracy/exit_{idx}",
-                    accuracy(out, y),
-                    on_step=True,
-                    on_epoch=True,
-                    logger=True,
-                )
-                self.log(
-                    f"{prefix}_recall/exit_{idx}",
-                    recall(out, y),
-                    on_step=True,
-                    on_epoch=True,
-                    logger=True,
-                )
-                self.log(
-                    f"{prefix}_f1/exit_{idx}",
-                    f1_score(out, y),
-                    on_step=True,
-                    on_epoch=True,
-                    logger=True,
-                )
+                self.log(f"{prefix}_accuracy/exit_{idx}", accuracy(out, y))
+                self.log(f"{prefix}_recall/exit_{idx}", recall(out, y))
+                self.log(f"{prefix}_f1/exit_{idx}", f1_score(out, y))
 
         else:
-            self.log(
-                f"{prefix}_f1",
-                f1_score(output, y),
-                on_step=True,
-                on_epoch=True,
-                logger=True,
-            )
-            self.log(
-                f"{prefix}_accuracy",
-                accuracy(output, y),
-                on_step=True,
-                on_epoch=True,
-                logger=True,
-            )
-            self.log(
-                f"{prefix}_recall",
-                recall(output, y),
-                on_step=True,
-                on_epoch=True,
-                logger=True,
-            )
+            self.log(f"{prefix}_f1", f1_score(output, y))
+            self.log(f"{prefix}_accuracy", accuracy(output, y))
+            self.log(f"{prefix}_recall", recall(output, y))
 
         # only one loss allowed
         # also in case of branched networks
-        self.log(f"{prefix}_loss", loss, on_step=True, on_epoch=True, logger=True)
+        self.log(f"{prefix}_loss", loss)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):

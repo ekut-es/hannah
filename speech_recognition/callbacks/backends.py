@@ -85,18 +85,15 @@ class TorchMobileBackend(InferenceBackendBase):
     def __init__(self, val_batches=1, test_batches=1, val_frequency=1):
         super().__init__(val_batches, test_batches, val_frequency)
 
-        self.traced_module = None
+        self.script_module = None
 
     def prepare(self, model):
-        dummy_input = model.example_input_array
-
-        jit_trace = torch.jit.trace(model, dummy_input)
-        self.traced_module = jit_trace
+        self.script_module = model.to_torchscript(method="trace")
 
     def run_batch(self, inputs=None):
         if inputs is None:
             return None
-        return self.traced_module(*inputs)
+        return self.script_module(*inputs)
 
 
 class OnnxTFBackend(InferenceBackendBase):
