@@ -53,8 +53,8 @@ def train(config=DictConfig):
         callbacks.append(DistillerCallback(config.compress))
 
     logger = [
-        TensorBoardLogger("./tb_logs", version="", name=""),
-        CSVLogger(".", version="", name=""),
+        TensorBoardLogger(".", name=""),
+        CSVLogger(".", name=""),
     ]
 
     if "backend" in config:

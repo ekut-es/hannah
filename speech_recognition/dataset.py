@@ -451,7 +451,7 @@ class SpeechHotwordDataset(SpeechDataset):
                 mvtarget = os.path.join(data_folder, "hey_snips_kws_4.0.tar.tar.gz")
                 # datasets are in /storage/local/dataset/...... prestored
                 extract_archive(
-                    "/storage/local/dataset/snipsKWS/hey_snips_kws_4.0.tar.gz",
+                    "/storage/local/datasets/snipsKWS/hey_snips_kws_4.0.tar.gz",
                     data_folder,
                     False,
                 )
