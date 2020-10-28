@@ -51,7 +51,7 @@ class SpeechClassifierModule(LightningModule):
         self.downsample(self.hparams.dataset)
 
     def setup(self, stage):
-        if stage == "test":
+        if self.initialized:
             return
 
         # trainset needed to set values in hparams
