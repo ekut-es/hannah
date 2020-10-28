@@ -337,9 +337,13 @@ class SpeechClassifierModule(LightningModule):
         optimizer = instantiate(
             self.hparams.optimizer, params=self.parameters(), lr=self.hparams.lr
         )
-        scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
+        schedulers = []
 
-        return [optimizer], [scheduler]
+        if self.hparams.scheduler is not None:
+            scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
+            schedulers.append(scheduler)
+
+        return [optimizer], []
 
     def get_batch_metrics(self, output, y, loss, prefix):
 

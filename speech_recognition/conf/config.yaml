@@ -1,7 +1,7 @@
 defaults:
     - dataset: kws
     - model: tc-res8
-    - scheduler: step
+    - scheduler: null
     - optimizer: adam
     - features: mfcc
     - normalizer: null

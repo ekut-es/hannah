@@ -3,4 +3,4 @@
 _target_: speech_recognition.modules.SpeechClassifierModule
 num_workers: 0
 batch_size: 128
-lr: 0.05
+lr: 0.001
