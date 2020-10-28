@@ -64,6 +64,7 @@ class SpeechClassifierModule(LightningModule):
             self.trainer.root_gpu if self.trainer.root_gpu is not None else self.device
         )
         self.example_input_array = torch.zeros(1, self.train_set.input_length)
+        self.example_input_array.to(device)
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
