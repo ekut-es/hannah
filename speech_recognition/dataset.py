@@ -174,14 +174,18 @@ class SpeechDataset(data.Dataset):
         else:
             snr = random.uniform(self.train_snr_low, self.train_snr_high)
 
-        if snr != float("inf"):
-            psig = np.sum(data * data) / len(data)
-            pnoise = np.sum(bg_noise * bg_noise) / len(bg_noise)
-            f = factor(snr, psig, pnoise)
-            data = data + f * bg_noise
+        psig = np.sum(data * data) / len(data)
+        pnoise = np.sum(bg_noise * bg_noise) / len(bg_noise)
+        if pnoise == 0.0:
+            data = bg_noise
+        else:
+            if snr != float("inf"):
 
-            if np.amax(np.absolute(data)) > 1:
-                data = data / np.amax(np.absolute(data))
+                f = factor(snr, psig, pnoise)
+                data = data + f * bg_noise
+
+                if np.amax(np.absolute(data)) > 1:
+                    data = data / np.amax(np.absolute(data))
 
         data = torch.from_numpy(data)
 
