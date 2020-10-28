@@ -6,11 +6,11 @@ n_mfcc: 40
 dct_type: 2
 norm: 'ortho'
 melkwargs:
-    win_length: null
-    hop_length: null
-    f_min: 0.0
-    f_max: null
+    win_length: 48
+    hop_length: 16
+    f_min: 20
+    f_max: 4000
     pad: 0
-    n_mels: 128
+    n_mels: 40
     power: 2.0
     normalized: False

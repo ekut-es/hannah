@@ -22,6 +22,7 @@ from torchvision.datasets.utils import download_and_extract_archive, extract_arc
 
 msglogger = logging.getLogger()
 
+
 def factor(snr, psig, pnoise):
     y = 10 ** (snr / 10)
     return np.sqrt(psig / (pnoise * y))
@@ -32,10 +33,12 @@ def load_audio(file_name, sr=16000, backend="torchaudio", res_type="kaiser_fast"
         data = librosa.core.load(file_name, sr=sr, res_type=res_type)
     elif backend == "torchaudio":
         torchaudio.set_audio_backend("sox")
-        try: 
+        try:
             data, samplingrate = torchaudio.load(file_name)
         except:
-            msglogger.warning("Could not load %s with default backend trying sndfile", str(file_name))
+            msglogger.warning(
+                "Could not load %s with default backend trying sndfile", str(file_name)
+            )
             torchaudio.set_audio_backend("soundfile")
             data, samplingrate = torchaudio.load(file_name)
         data = data.numpy()
@@ -182,11 +185,10 @@ class SpeechDataset(data.Dataset):
 
         psig = np.sum(data * data) / len(data)
         pnoise = np.sum(bg_noise * bg_noise) / len(bg_noise)
-        if pnoise == 0.0:
+        if psig == 0.0:
             data = bg_noise
         else:
             if snr != float("inf"):
-
                 f = factor(snr, psig, pnoise)
                 data = data + f * bg_noise
 
