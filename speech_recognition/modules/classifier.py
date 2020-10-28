@@ -64,13 +64,13 @@ class SpeechClassifierModule(LightningModule):
             self.trainer.root_gpu if self.trainer.root_gpu is not None else self.device
         )
         self.example_input_array = torch.zeros(1, self.train_set.input_length)
-        self.example_input_array.to(device)
+        dummy_input = self.example_input_array.to(device)
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
 
-        features = self.features(self.example_input_array)
+        features = self.features(dummy_input)
         self.example_feature_array = features
 
         # Instantiate normalizer
