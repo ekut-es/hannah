@@ -1,7 +1,10 @@
+import platform
+import subprocess
+
+
 from pathlib import Path
 
 import pytest
-import subprocess
 
 topdir = Path(__file__).parent.absolute() / ".."
 
@@ -46,6 +49,10 @@ def test_distiller(model, features, compress):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.skipif(
+    platform.processor() == "ppc64le",
+    reason="currently needs cpu based fft wich is not available on ppc",
+)
 @pytest.mark.parametrize(
     "model,backend", [("tc-res8", "torchmobile"), ("gds", "torchmobile")]
 )
