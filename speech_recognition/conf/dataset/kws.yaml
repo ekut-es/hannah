@@ -1,8 +1,8 @@
 # @package _group_
 
 data_folder: ${hydra:runtime.cwd}/datasets/speech_commands_v0.02/
-dataset: keywords
 cls: speech_recognition.dataset.SpeechCommandsDataset
+dataset: keywords
 
 group_speakers_by_id: true
 use_default_split: false
