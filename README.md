@@ -152,15 +152,17 @@ Common configuration options for datasets are:
  - timeshift_ms: "Timeshift the input data by +- given ms"
  - extract: loudest
  - clear_download: False
- - lang: ["speech_commands"]
+
+ - silence_prob: % dataset samples that are silence
+ - unknown_prob: % dataset samples that are unknown
+ - test_snr: SNR used for test
+ - train_snr_high: minimal SNR for training data
+ - train_snr_low: maximal SNR for test data
+
+FIXME: clarify with tobias
+
  - data_split: []
  - noise_dataset: []
-
-silence_prob: % dataset samples that are silence
-unknown_prob: % dataset samples that are unknown
-test_snr: SNR used for test
-train_snr_high: minimal SNR for training data
-train_snr_low: maximal SNR for test data
 
 ## features
 
