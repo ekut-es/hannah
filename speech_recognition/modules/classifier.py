@@ -52,7 +52,7 @@ class SpeechClassifierModule(LightningModule):
 
     def setup(self, stage):
 
-        print("Setting up model")
+        self.msglogger.info("Setting up model")
 
         if self.initialized:
             return
