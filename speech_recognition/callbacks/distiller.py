@@ -8,6 +8,8 @@ from omegaconf import DictConfig, OmegaConf
 class DistillerCallback(Callback):
     def __init__(self, config: DictConfig):
         self.config = config
+    
+        # torch.autograd.set_detect_anomaly(True)
 
         self.fold_bn = config.get("fold_bn", None)
         self.bn_frozen = False
@@ -16,12 +18,15 @@ class DistillerCallback(Callback):
     def on_train_start(self, trainer, pl_module):
         pl_module.model.to(pl_module.device)
 
+        train_set_len = len(pl_module.train_dataloader()) 
+
         if self.fold_bn is not None:
             self.msglogger.info("Applying batch norm folding")
             self.model = distiller.model_transforms.fold_batch_norms(
                 pl_module.model,
                 dummy_input=pl_module.example_feature_array,
                 inference=False,
+                freeze_bn_delay = trainer.max_epochs * self.fold_bn * train_set_len
             )
             self.msglogger.info("Folded model")
             self.msglogger.info(pl_module)
@@ -54,10 +59,10 @@ class DistillerCallback(Callback):
         )
 
     def on_batch_end(self, trainer, pl_module):
-        if self.fold_bn is not None:
-            freeze_epoch = int(trainer.max_epochs * self.fold_bn)
-            if freeze_epoch == trainer.current_epoch and not self.bn_frozen:
-                self._freeze(pl_module)
+        #if self.fold_bn is not None:
+        #    freeze_epoch = int(trainer.max_epochs * self.fold_bn)
+        #    if freeze_epoch == trainer.current_epoch and not self.bn_frozen:
+        #        self._freeze(pl_module)
 
         self.compression_scheduler.on_minibatch_end(
             trainer.current_epoch, trainer.batch_idx, pl_module.batches_per_epoch
@@ -71,6 +76,7 @@ class DistillerCallback(Callback):
             self._freeze(pl_module)
 
     def _freeze(self, pl_module):
+        return
         self.bn_frozen = True
         self.msglogger.info("Freezing batch norms")
         # save_model(log_dir, model, test_set, config=config, model_prefix="before_freeze_")
