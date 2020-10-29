@@ -133,28 +133,28 @@ Choices are: `kws` (For Google Keyword Spotting), `snips` (For hey snips dataset
 
 Common configuration options for datasets are:
 
-data_folder: Folder containing the data
-cls: speech_recognition.dataset.SpeechCommandsDataset
-dataset: # should go away
+ - data_folder: Folder containing the data
+ - cls: speech_recognition.dataset.SpeechCommandsDataset
+ - dataset: # should go away
 
-group_speakers_by_id: true
-use_default_split: false
-test_pct: Percentage of dataset used for test
-dev_pct:  Percentage of dataset used for validation
-train_pct: Percentage of dataset used for training
-wanted_words: Wanted words for keyword datasets
+ - group_speakers_by_id: true
+ - use_default_split: false
+ - test_pct: Percentage of dataset used for test
+ - dev_pct:  Percentage of dataset used for validation
+ - train_pct: Percentage of dataset used for training
+ - wanted_words: Wanted words for keyword datasets
 
-input_length: "Length of the input samples"
-samplingrate: "Sampling rate"
-clear_download: "Remove downloaded archive after download"
-lang: Language to use for multilanguage datasets
+ - input_length: "Length of the input samples"
+ - samplingrate: "Sampling rate"
+ - clear_download: "Remove downloaded archive after download"
+ - lang: Language to use for multilanguage datasets
 
-timeshift_ms: 100
-extract: loudest
-clear_download: False
-lang: ["speech_commands"]
-data_split: []
-noise_dataset: []
+ - timeshift_ms: "Timeshift the input data by +- given ms"
+ - extract: loudest
+ - clear_download: False
+ - lang: ["speech_commands"]
+ - data_split: []
+ - noise_dataset: []
 
 silence_prob: % dataset samples that are silence
 unknown_prob: % dataset samples that are unknown
