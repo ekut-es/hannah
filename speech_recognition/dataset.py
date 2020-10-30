@@ -563,7 +563,7 @@ class VadDataset(SpeechDataset):
                             False,
                         )
 
-                if "uwnu" in userlanguage:
+                if "UWNU" in userlanguage:
                     extract_archive(
                         "/storage/local/dataset/uwnu/uwnu-v2.tar.gz", speechdir, False
                     )
@@ -589,7 +589,7 @@ class VadDataset(SpeechDataset):
                             remove_finished=clear_download,
                         )
 
-                if "uwnu" in userlanguage:
+                if "UWNU" in userlanguage:
                     download_and_extract_archive(
                         "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1",
                         speechdir,

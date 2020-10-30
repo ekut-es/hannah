@@ -238,7 +238,7 @@ class SpeechClassifierModule(LightningModule):
                 for f in value:
                     shutil.copy2(f, data_dir)
 
-            if config["clear_split"] == "clear":
+            if config["clear_split"]:
                 # remove old folders
                 for name in ["noise_files", "speech_files", "speech_commands_v0.02"]:
                     oldpath = os.path.join(data_folder, name)
@@ -252,6 +252,7 @@ class SpeechClassifierModule(LightningModule):
         samplerate = config["downsample"]
         if samplerate > 0:
             print("downsample data begins")
+            config["downsample"] = 0
             downsample_folder = ["train", "dev", "test"]
             for folder in downsample_folder:
                 folderpath = os.path.join(config["data_folder"], folder)

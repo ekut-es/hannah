@@ -1,0 +1,22 @@
+# @package _group_
+
+data_folder: ${hydra:runtime.cwd}/datasets/vad_data_balanced/
+cls: speech_recognition.dataset.VadDataset
+dataset: vad
+
+input_length: 16000
+samplingrate: 16000
+
+timeshift_ms: 0
+extract: trim_borders
+clear_download: False
+lang: ["UWNU"]
+data_split: ""
+noise_dataset: ["TUT"]
+clear_split: False
+
+silence_prob: 0.1
+unknown_prob: 0.1
+test_snr: .inf
+train_snr_high: 1000.0
+train_snr_low: 0.0
