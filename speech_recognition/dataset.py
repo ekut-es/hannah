@@ -598,54 +598,6 @@ class VadDataset(SpeechDataset):
                         remove_finished=clear_download,
                     )
 
-        msglogger = logging.getLogger()
-
-        folder = config["data_folder"]
-
-        descriptions = ["train", "dev", "test"]
-        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
-        datasets = [{}, {}, {}]
-        configs = [{}, {}, {}]
-
-        for num, desc in enumerate(descriptions):
-
-            descs_noise = os.path.join(folder, desc, "noise")
-            descs_speech = os.path.join(folder, desc, "speech")
-            descs_bg = os.path.join(folder, desc, "background_noise")
-
-            noise_files = [
-                os.path.join(descs_noise, f)
-                for f in os.listdir(descs_noise)
-                if os.path.isfile(os.path.join(descs_noise, f))
-            ]
-            speech_files = [
-                os.path.join(descs_speech, f)
-                for f in os.listdir(descs_speech)
-                if os.path.isfile(os.path.join(descs_speech, f))
-            ]
-            bg_noise_files = [
-                os.path.join(descs_bg, f)
-                for f in os.listdir(descs_bg)
-                if os.path.isfile(os.path.join(descs_bg, f))
-            ]
-
-            random.shuffle(noise_files)
-            random.shuffle(speech_files)
-            label_noise = 0
-            label_speech = 1
-
-            datasets[num].update({n: label_noise for n in noise_files})
-            datasets[num].update({s: label_speech for s in speech_files})
-            configs[num].update(ChainMap(dict(bg_noise_files=bg_noise_files), config))
-
-        res_datasets = (
-            cls(datasets[0], DatasetType.TRAIN, configs[0]),
-            cls(datasets[1], DatasetType.DEV, configs[1]),
-            cls(datasets[2], DatasetType.TEST, configs[2]),
-        )
-
-        return res_datasets
-
 
 class KeyWordDataset(SpeechDataset):
     def __init__(self, data, set_type, config):
