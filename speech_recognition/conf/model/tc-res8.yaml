@@ -28,7 +28,7 @@ fully_convolutional: false
 inputlayer: true
 width_multiplier: 1.0
 dilation: 1
-clipping_value: 100000
+clipping_value: 100000.0
 small: false
 
 

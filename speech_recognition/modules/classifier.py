@@ -468,10 +468,7 @@ class SpeechClassifierModule(LightningModule):
     # CALLBACKS
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
-        save_model(
-            ".",
-            self.model,
-            self.test_set,
-            config=self.hparams,
-            msglogger=self.msglogger,
-        )
+        save_model(".", self)
+
+        script = self.to_torchscript()
+        torch.jit.save(script, "model.pt")

@@ -53,9 +53,7 @@ def dump_config(output_dir, config):
         o.write(s)
 
 
-def save_model(
-    output_dir, model, test_set=None, config=None, model_prefix="", msglogger=None
-):
+def save_model(output_dir, model):
     """ Creates serialization of the model for later inference, evaluation
 
     Creates the following files:
@@ -69,36 +67,27 @@ def save_model(
 
     output_dir : str
         Directory to put serialized models
-    model : torch.nn.Module
+    model : LightningModule
         Model to serialize
-    test_set : dataset.SpeechDataset
-        DataSet used to derive dummy input to use for onnx export.
-        If None no onnx will be generated
     """
-
-    # TODO model save doesnt work "AttributeError: model has no attribute save"
-    # msglogger.info("saving best model...")
-    # model.save(os.path.join(output_dir, model_prefix+"model.pt"))
+    msglogger = logging.getLogger()
 
     msglogger.info("saving weights to json...")
-    filename = os.path.join(output_dir, model_prefix + "model.json")
+    filename = os.path.join(output_dir, "model.json")
     state_dict = model.state_dict()
     with open(filename, "w") as f:
         json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
 
     msglogger.info("saving onnx...")
     try:
-        dummy_width, dummy_height = test_set.width, test_set.height
-        dummy_input = torch.randn((1, dummy_height, dummy_width))
-
-        if config["cuda"]:
-            dummy_input = dummy_input.cuda()
+        dummy_input = model.example_input_array
 
         torch.onnx.export(
             model,
             dummy_input,
-            os.path.join(output_dir, model_prefix + "model.onnx"),
+            os.path.join(output_dir, "model.onnx"),
             verbose=False,
+            opset_version=12,
         )
     except Exception as e:
         msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
