@@ -77,6 +77,9 @@ def train(config=DictConfig):
         gpu_stats = GPUStatsMonitor()
         callbacks.append(gpu_stats)
 
+    mac_summary_callback = MacSummaryCallback()
+    callbacks.append(mac_summary_callback)
+
     opt_callback = HydraOptCallback()
     callbacks.append(opt_callback)
 
