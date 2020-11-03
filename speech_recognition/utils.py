@@ -2,14 +2,14 @@ import importlib
 import torch
 import torch.nn as nn
 import numpy as np
-import random
 import logging
 import os
-
 import sys
 import platform
-from git import Repo, InvalidGitRepositoryError
 from pathlib import Path
+from typing import Any, Callable
+
+from git import Repo, InvalidGitRepositoryError
 
 try:
     import lsb_release
@@ -44,15 +44,6 @@ class SerializableModule(nn.Module):
             torch.load(filename, map_location=lambda storage, loc: storage),
             strict=False,
         )
-
-
-def set_seed(config):
-    seed = config["seed"]
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    if config["cuda"]:
-        torch.cuda.manual_seed(seed)
-    random.seed(seed)
 
 
 def config_pylogger(log_cfg_file, experiment_name, output_dir="logs"):
@@ -135,68 +126,6 @@ def log_execution_env_state(distiller_gitroot="."):
     log_git_state(os.path.join(os.path.dirname(__file__), ".."))
     logger.info("  Command line: %s", " ".join(sys.argv))
     logger.info("  ")
-
-
-def _locate(path):
-    """
-    Locate an object by name or dotted path, importing as necessary.
-    This is similar to the pydoc function `locate`, except that it checks for
-    the module from the given path from back to front.
-
-    #FIXME: this should be removed if and when hydra is adapted as configuration manager
-    """
-    import builtins
-    from importlib import import_module
-
-    logger = logging.getLogger()
-
-    parts = [part for part in path.split(".") if part]
-    module = None
-    for n in reversed(range(len(parts))):
-        try:
-            module = import_module(".".join(parts[:n]))
-        except Exception as e:
-            if n == 0:
-                logger.error(f"Error loading module {path} : {e}")
-                raise e
-            continue
-        if module:
-            break
-    if module:
-        obj = module
-    else:
-        obj = builtins
-    for part in parts[n:]:
-        if not hasattr(obj, part):
-            raise ValueError(
-                f"Error finding attribute ({part}) in class ({obj.__name__}): {path}"
-            )
-        obj = getattr(obj, part)
-    if isinstance(obj, type):
-        obj_type: type = obj
-        return obj_type
-    elif callable(obj):
-        obj_callable: Callable[..., Any] = obj
-        return obj_callable
-    else:
-        # dummy case
-        raise ValueError(f"Invalid type ({type(obj)}) found for {path}")
-
-
-def _fullname(cls):
-    # See: https://stackoverflow.com/questions/2020014/get-fully-qualified-class-name-of-an-object-in-python
-    # o.__module__ + "." + o.__class__.__qualname__ is an example in
-    # this context of H.L. Mencken's "neat, plausible, and wrong."
-    # Python makes no guarantees as to whether the __module__ special
-    # attribute is defined, so we take a more circumspect approach.
-    # Alas, the module name is explicitly excluded from __qualname__
-    # in Python 3.
-
-    module = cls.__module__
-    if module is None or module == str.__module__:
-        return cls.__name__  # Avoid reporting __builtin__
-    else:
-        return module + "." + cls.__name__
 
 
 def load_module(path):

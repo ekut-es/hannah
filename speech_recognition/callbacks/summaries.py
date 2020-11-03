@@ -11,7 +11,7 @@ msglogger = logging.getLogger()
 
 class MacSummaryCallback(Callback):
     def _do_summary(self, pl_module, print=True):
-        dummy_input = pl_module.example_input_array
+        dummy_input = pl_module.example_feature_array
 
         total_macs = 0.0
         total_acts = 0.0
@@ -38,7 +38,7 @@ class MacSummaryCallback(Callback):
         except RuntimeError as e:
             if print:
                 msglogger.warning("Could not create performance summary: %s", str(e))
-                return OrderedDict()
+            return OrderedDict()
 
         res = OrderedDict()
         res["total_macs"] = total_macs

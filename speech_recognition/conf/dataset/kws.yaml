@@ -1,0 +1,38 @@
+# @package _group_
+
+data_folder: ${hydra:runtime.cwd}/datasets/speech_commands_v0.02/
+cls: speech_recognition.dataset.SpeechCommandsDataset
+dataset: keywords
+
+group_speakers_by_id: true
+use_default_split: false
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+wanted_words:
+    - 'yes'
+    - 'no'
+    - up
+    - down
+    - left
+    - right
+    - 'on'
+    - 'off'
+    - stop
+    - go
+
+input_length: 16000
+samplingrate: 16000
+
+timeshift_ms: 100
+extract: loudest
+clear_download: False
+lang: ["speech_commands"]
+data_split: []
+noise_dataset: []
+
+silence_prob: 0.1
+unknown_prob: 0.1
+test_snr: .inf
+train_snr_high: 1000.0
+train_snr_low: 0.0

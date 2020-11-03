@@ -1,21 +1,19 @@
-import torch.utils.data as data
-import torch
 import os
-import platform
 import shutil
 import random
+import platform
+import logging
 
-from .dataset import ctc_collate_fn
-from .utils import _locate
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
-from .config_utils import (
-    get_lr_scheduler,
-    get_loss_function,
-    get_optimizer,
-    get_model,
-    save_model,
-)
+from .config_utils import get_loss_function, get_model, save_model, _locate
+from typing import Optional
+
+from ..dataset import ctc_collate_fn
+
+import torch
+import torch.utils.data as data
+from hydra.utils import instantiate
 
 from torchvision.datasets.utils import (
     download_and_extract_archive,
@@ -23,41 +21,78 @@ from torchvision.datasets.utils import (
     list_files,
 )
 
+from omegaconf import DictConfig
+
 
 class SpeechClassifierModule(LightningModule):
-    def __init__(self, config=None, log_dir="", msglogger=None):
+    def __init__(
+        self,
+        dataset: DictConfig,
+        model: DictConfig,
+        optimizer: DictConfig,
+        features: DictConfig,
+        lr: int = 0.05,
+        num_workers: int = 0,
+        batch_size: int = 128,
+        scheduler: Optional[DictConfig] = None,
+        normalizer: Optional[DictConfig] = None,
+    ):
         super().__init__()
 
-        self.hparams = config
+        self.save_hyperparameters()
+        self.msglogger = logging.getLogger()
+        self.initialized = False
 
+    def prepare_data(self):
         # get all the necessary data stuff
-        _locate(config["dataset_cls"]).download(config)
-        self.download_noise(config)
-        self.split_data(config)
-        self.downsample(config)
+        _locate(self.hparams.dataset.cls).download(self.hparams.dataset)
+        self.download_noise(self.hparams.dataset)
+        self.split_data(self.hparams.dataset)
+        self.downsample(self.hparams.dataset)
+
+    def setup(self, stage):
+
+        self.msglogger.info("Setting up model")
+
+        if self.initialized:
+            return
+
+        self.initialized = True
 
         # trainset needed to set values in hparams
         self.train_set, self.dev_set, self.test_set = _locate(
-            config["dataset_cls"]
-        ).splits(config)
-        self.hparams["width"] = self.train_set.width
-        self.hparams["height"] = self.train_set.height
-        self.model = get_model(self.hparams)
+            self.hparams.dataset.cls
+        ).splits(self.hparams.dataset)
+
+        # Create example input
+        device = (
+            self.trainer.root_gpu if self.trainer.root_gpu is not None else self.device
+        )
+        self.example_input_array = torch.zeros(1, self.train_set.input_length)
+        dummy_input = self.example_input_array.to(device)
+
+        # Instantiate features
+        self.features = instantiate(self.hparams.features)
+        self.features.to(device)
+
+        features = self.features(dummy_input)
+        self.example_feature_array = features
+
+        # Instantiate normalizer
+        if self.hparams.normalizer is not None:
+            self.normalizer = instantiate(self.hparams.normalizer)
+        else:
+            self.normalizer = torch.nn.Identity()
+
+        # Instantiate Model
+        self.hparams.model.width = self.example_feature_array.size(2)
+        self.hparams.model.height = self.example_feature_array.size(1)
+        self.hparams.model.n_labels = len(self.train_set.label_names)
+
+        self.model = get_model(self.hparams.model)
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
-
-        # logging
-        self.log_dir = log_dir
-        self.msglogger = msglogger
-
-        self.msglogger.info("speech classifier initialized")
-
-        # summarize model architecture
-        dummy_width, dummy_height = self.train_set.width, self.train_set.height
-        dummy_input = torch.zeros(1, dummy_height, dummy_width)
-        self.example_input_array = dummy_input
-        self.bn_frozen = False
 
     def split_data(self, config):
         data_split = config["data_split"]
@@ -203,7 +238,7 @@ class SpeechClassifierModule(LightningModule):
                 for f in value:
                     shutil.copy2(f, data_dir)
 
-            if config["clear_split"] == "clear":
+            if config["clear_split"]:
                 # remove old folders
                 for name in ["noise_files", "speech_files", "speech_commands_v0.02"]:
                     oldpath = os.path.join(data_folder, name)
@@ -211,9 +246,13 @@ class SpeechClassifierModule(LightningModule):
                         shutil.rmtree(oldpath)
 
     def downsample(self, config):
+        if "downsample" not in config:
+            return
+
         samplerate = config["downsample"]
         if samplerate > 0:
             print("downsample data begins")
+            config["downsample"] = 0
             downsample_folder = ["train", "dev", "test"]
             for folder in downsample_folder:
                 folderpath = os.path.join(config["data_folder"], folder)
@@ -256,7 +295,7 @@ class SpeechClassifierModule(LightningModule):
 
         if not os.path.isdir(noise_folder):
             os.makedirs(noise_folder)
-            noisedatasets = config["noise_dataset"].split("/")
+            noisedatasets = config["noise_dataset"]
 
             # Test if the the code is run on lucille or not
             if platform.node() == "lucille":
@@ -301,10 +340,16 @@ class SpeechClassifierModule(LightningModule):
                             )
 
     def configure_optimizers(self):
-        optimizer = get_optimizer(self.hparams, self)
-        scheduler = get_lr_scheduler(self.hparams, optimizer)
+        optimizer = instantiate(
+            self.hparams.optimizer, params=self.parameters(), lr=self.hparams.lr
+        )
+        schedulers = []
 
-        return [optimizer], [scheduler]
+        if self.hparams.scheduler is not None:
+            scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
+            schedulers.append(scheduler)
+
+        return [optimizer], schedulers
 
     def get_batch_metrics(self, output, y, loss, prefix):
 
@@ -312,61 +357,23 @@ class SpeechClassifierModule(LightningModule):
         if isinstance(output, list):
             # log for each output
             for idx, out in enumerate(output):
-                # accuracy
-                # self.log(f"{prefix}_acc_step/exit_{idx}", self.accuracy[idx](out, y))
-                self.log(
-                    f"{prefix}_accuracy/exit_{idx}",
-                    accuracy(out, y),
-                    on_step=True,
-                    on_epoch=True,
-                    logger=True,
-                )
-                self.log(
-                    f"{prefix}_recall/exit_{idx}",
-                    recall(out, y),
-                    on_step=True,
-                    on_epoch=True,
-                    logger=True,
-                )
-                self.log(
-                    f"{prefix}_f1/exit_{idx}",
-                    f1_score(out, y),
-                    on_step=True,
-                    on_epoch=True,
-                    logger=True,
-                )
-            # TODO: f1 recall
+                self.log(f"{prefix}_accuracy/exit_{idx}", accuracy(out, y))
+                self.log(f"{prefix}_recall/exit_{idx}", recall(out, y))
+                self.log(f"{prefix}_f1/exit_{idx}", f1_score(out, y))
 
         else:
-            self.log(
-                f"{prefix}_f1",
-                f1_score(output, y),
-                on_step=True,
-                on_epoch=True,
-                logger=True,
-            )
-            self.log(
-                f"{prefix}_accuracy",
-                accuracy(output, y),
-                on_step=True,
-                on_epoch=True,
-                logger=True,
-            )
-            self.log(
-                f"{prefix}_recall",
-                recall(output, y),
-                on_step=True,
-                on_epoch=True,
-                logger=True,
-            )
+            self.log(f"{prefix}_f1", f1_score(output, y))
+            self.log(f"{prefix}_accuracy", accuracy(output, y))
+            self.log(f"{prefix}_recall", recall(output, y))
 
         # only one loss allowed
         # also in case of branched networks
-        self.log(f"{prefix}_loss", loss, on_step=True, on_epoch=True, logger=True)
+        self.log(f"{prefix}_loss", loss)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
+
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
@@ -383,7 +390,6 @@ class SpeechClassifierModule(LightningModule):
         return loss
 
     def train_dataloader(self):
-
         train_batch_size = self.hparams["batch_size"]
         train_loader = data.DataLoader(
             self.train_set,
@@ -400,14 +406,13 @@ class SpeechClassifierModule(LightningModule):
         return train_loader
 
     # VALIDATION CODE
-
     def validation_step(self, batch, batch_idx):
 
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
         # INFERENCE
-        output = self.model(x)
+        output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
 
@@ -433,7 +438,7 @@ class SpeechClassifierModule(LightningModule):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
-        output = self.model(x)
+        output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
 
@@ -456,15 +461,11 @@ class SpeechClassifierModule(LightningModule):
 
     # FORWARD (overwrite to train instance of this class directly)
     def forward(self, x):
+        x = self.features(x)
+        x = self.normalizer(x)
         return self.model(x)
 
     # CALLBACKS
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
-        save_model(
-            self.log_dir,
-            self.model,
-            self.test_set,
-            config=self.hparams,
-            msglogger=self.msglogger,
-        )
+        save_model(".", self)
