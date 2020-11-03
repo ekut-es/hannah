@@ -14,6 +14,7 @@ from .config_utils import get_config_logdir
 from .config import ConfigBuilder, ConfigOption
 from .callbacks.backends import OnnxTFBackend, OnnxruntimeBackend, TorchMobileBackend
 from .callbacks.distiller import DistillerCallback
+from .callbacks.summaries import MacSummaryCallback
 
 from .utils import _fullname
 
@@ -263,8 +264,7 @@ def build_config(extra_config={}):
             desc="Enable logging of learning progress and network parameter statistics to Tensorboard",
         ),
         gpulogger=ConfigOption(
-            default=False,
-            desc="Enable logging of GPU usage to Tensorboard",
+            default=False, desc="Enable logging of GPU usage to Tensorboard"
         ),
         experiment_id=ConfigOption(
             default="test",
@@ -363,6 +363,8 @@ def build_trainer(model_name, config):
         )
         kwargs.update({"callbacks": callbacks})
 
+    kwargs["callbacks"].append(MacSummaryCallback())
+
     if config["cuda"]:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -423,7 +425,6 @@ def train(model_name, config):
         config["lr"] = suggested_lr
 
     # PL TRAIN
-    logging.info(ModelSummary(lit_module, "full"))
     lit_trainer.fit(lit_module)
 
     # PL TEST
