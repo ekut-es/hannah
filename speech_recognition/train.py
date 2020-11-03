@@ -8,6 +8,7 @@ import torch
 from .utils import log_execution_env_state
 
 from .callbacks.distiller import DistillerCallback
+from .callbacks.summaries import MacSummaryCallback
 
 from .callbacks.optimization import HydraOptCallback
 
