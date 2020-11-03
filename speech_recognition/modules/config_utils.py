@@ -80,10 +80,10 @@ def save_model(output_dir, model):
 
     msglogger.info("saving onnx...")
     try:
-        dummy_input = model.example_input_array
+        dummy_input = model.example_feature_array
 
         torch.onnx.export(
-            model,
+            model.model,
             dummy_input,
             os.path.join(output_dir, "model.onnx"),
             verbose=False,

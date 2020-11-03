@@ -469,6 +469,3 @@ class SpeechClassifierModule(LightningModule):
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(".", self)
-
-        script = self.to_torchscript()
-        torch.jit.save(script, "model.pt")
