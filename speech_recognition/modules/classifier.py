@@ -375,6 +375,7 @@ class SpeechClassifierModule(LightningModule):
         x, x_len, y, y_len = batch
 
         output = self(x)
+        output = torch.squeeze(output)
         y = y.view(-1)
         loss = self.criterion(output, y)
 
@@ -413,6 +414,7 @@ class SpeechClassifierModule(LightningModule):
 
         # INFERENCE
         output = self(x)
+        output = torch.squeeze(output)
         y = y.view(-1)
         loss = self.criterion(output, y)
 
@@ -439,6 +441,7 @@ class SpeechClassifierModule(LightningModule):
         x, x_length, y, y_length = batch
 
         output = self(x)
+        output = torch.squeeze(output)
         y = y.view(-1)
         loss = self.criterion(output, y)
 
