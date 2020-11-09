@@ -86,9 +86,8 @@ def save_model(output_dir, model):
             model.model,
             dummy_input,
             os.path.join(output_dir, "model.onnx"),
-            verbose=True,
+            verbose=False,
             opset_version=12,
-            do_constant_folding=True,
         )
     except Exception as e:
         msglogger.error("Could not export onnx model ...\n {}".format(str(e)))
