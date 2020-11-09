@@ -3,6 +3,8 @@ import shutil
 import random
 import platform
 import logging
+import numpy as np
+import torchvision
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
@@ -21,6 +23,8 @@ from torchvision.datasets.utils import (
     list_files,
     list_dir,
 )
+
+import torchaudio
 
 from omegaconf import DictConfig
 
@@ -255,37 +259,41 @@ class SpeechClassifierModule(LightningModule):
             print("downsample data begins")
             config["downsample"] = 0
             downsample_folder = ["train", "dev", "test"]
+            torchaudio.set_audio_backend("sox")
+            files = list()
+
             for folder in downsample_folder:
-                folderpath = os.path.join(config["data_folder"], folder)
-                if os.path.isdir(folderpath):
-                    for path, subdirs, files in os.walk(folderpath):
-                        for name in files:
-                            if name.endswith("wav") and not name.startswith("."):
-                                os.system(
-                                    "ffmpeg -y -i "
-                                    + os.path.join(path, name)
-                                    + " -ar "
-                                    + str(samplerate)
-                                    + " -loglevel quiet "
-                                    + os.path.join(path, "new" + name)
-                                )
-                                os.system("rm " + os.path.join(path, name))
-                                os.system(
-                                    "mv "
-                                    + os.path.join(path, "new" + name)
-                                    + " "
-                                    + os.path.join(path, name)
-                                )
-                            elif name.endswith("mp3") and not name.startswith("."):
-                                os.system(
-                                    "ffmpeg -y -i "
-                                    + os.path.join(path, name)
-                                    + " -ar "
-                                    + str(samplerate)
-                                    + " -ac 1 -loglevel quiet "
-                                    + os.path.join(path, name.replace(".mp3", ".wav"))
-                                )
-                                os.system("rm " + os.path.join(path, name))
+                folders = list()
+                folders.append(os.path.join(config["data_folder"], folder))
+                for element in folders:
+                    folders.extend(list_dir(element, True))
+                    files.extend(list_files(element, ".wav", True))
+                    files.extend(list_files(element, ".mp3", True))
+
+                del folders
+
+            stepsize = 300
+            n_splits = len(files) / stepsize
+            files_split = np.array_split(np.array(files), n_splits)
+            for parts in files_split:
+                tmp_files = list()
+                output_files = list()
+
+                for filename in parts:
+                    tmp_files.append(torchaudio.load(filename))
+
+                for (data, sr) in tmp_files:
+                    data = torchaudio.transforms.Resample(sr, samplerate).forward(data)
+                    output_files.append(data)
+
+                for data, filename in zip(output_files, parts):
+                    if filename.endswith("mp3"):
+                        os.system("rm " + filename)
+                        filename = filename.replace(".mp3", ".wav")
+                    torchaudio.save(filename, data, samplerate)
+
+                del tmp_files
+                del output_files
 
     def download_noise(self, config):
         data_folder = config["data_folder"]
@@ -303,7 +311,7 @@ class SpeechClassifierModule(LightningModule):
         noisedatasets = config["noise_dataset"]
 
         subdownloadfolder = list_dir(downloadfolder_tmp)
-        files_downloadfolder = list_files(downloadfolder_tmp)
+        files_downloadfolder = list_files(downloadfolder_tmp, ".zip")
         for element in subdownloadfolder:
             files_downloadfolder.extend(
                 list_files(os.path.join(downloadfolder_tmp, element),
