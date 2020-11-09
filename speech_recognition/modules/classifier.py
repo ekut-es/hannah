@@ -19,6 +19,7 @@ from torchvision.datasets.utils import (
     download_and_extract_archive,
     extract_archive,
     list_files,
+    list_dir,
 )
 
 from omegaconf import DictConfig
@@ -289,55 +290,69 @@ class SpeechClassifierModule(LightningModule):
     def download_noise(self, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
-        if not os.path.isdir(data_folder):
-            os.makedirs(data_folder)
+        downloadfolder_tmp = config["downloadfolder"]
         noise_folder = os.path.join(data_folder, "noise_files")
 
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+        if len(downloadfolder_tmp) == 0:
+            downloadfolder_tmp = data_folder
         if not os.path.isdir(noise_folder):
             os.makedirs(noise_folder)
-            noisedatasets = config["noise_dataset"]
 
-            # Test if the the code is run on lucille or not
-            if platform.node() == "lucille":
-                # datasets are in /storage/local/dataset/...... prestored
-                noisekeys = ["FSD/FSDKaggle", "FSD/FSDnoisy", "TUT", "FSD/FSD50K"]
-                for key in noisekeys:
-                    if key in noisedatasets:
-                        source = os.path.join("/storage/local/dataset/", key)
-                        mvtarget = os.path.join(noisedatasets, key)
-                        os.makedirs(mvtarget)
-                        for element in list_files(source, ".zip"):
-                            file_to_extract = os.path.join(source, element)
-                            extract_archive(file_to_extract, mvtarget, False)
-            else:
-                if "TUT" in noisedatasets:
-                    for i in range(1, 10):
+        noisedatasets = config["noise_dataset"]
+
+        subdownloadfolder = list_dir(downloadfolder_tmp)
+        files_downloadfolder = list_files(downloadfolder_tmp)
+        for element in subdownloadfolder:
+            files_downloadfolder.extend(
+                list_files(os.path.join(downloadfolder_tmp, element),
+                           ".zip"))
+
+        if "TUT" in noisedatasets:
+            tut_target = os.path.join(noise_folder, "TUT-acoustic-scenes-2017-development")
+            for i in range(1, 10):
+                noise_filename = "TUT-acoustic-scenes-2017-development.audio." + str(
+                    i) + + ".zip"
+
+                if "TUT" in noisedatasets and noise_filename not in files_downloadfolder and not os.path.isdir(tut_target):
+                    download_and_extract_archive(
+                        "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio." + str(i) + ".zip",
+                        os.path.join(downloadfolder_tmp, "TUT"),
+                        noise_folder,
+                        remove_finished=clear_download,
+                    )
+                elif "TUT" in noisedatasets and noise_filename in files_downloadfolder and not os.path.isdir(tut_target):
+                    extract_archive(
+                        os.path.join(os.path.join(downloadfolder_tmp, "TUT"), noise_filename),
+                        noise_folder,
+                        remove_finished=clear_download)
+
+            FSDParts = ["audio_test", "audio_train", "meta"]
+            datasetname = ["FSDKaggle", "FSDnoisy"]
+            filename_part = ["FSDKaggle2018.", "FSDnoisy18k."]
+            FSDLinks = [
+                "https://zenodo.org/record/2552860/files/FSDKaggle2018.",
+                "https://zenodo.org/record/2529934/files/FSDnoisy18k.",
+            ]
+            for name, url, filebegin in zip(datasetname, FSDLinks, filename_part):
+                for fileend in FSDParts:
+                    filename = filebegin + fileend + ".zip"
+                    targetfolder = os.path.join(
+                        os.path.join(noise_folder, datasetname), filebegin + fileend)
+                    if name in noisedatasets and filename not in files_downloadfolder and not os.path.isdir(targetfolder):
                         download_and_extract_archive(
-                            "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio."
-                            + str(i)
-                            + ".zip",
-                            noise_folder,
-                            noise_folder,
+                            "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio." + str(i) + ".zip",
+                            os.path.join(downloadfolder_tmp, name),
+                            os.path.join(noise_folder, name),
                             remove_finished=clear_download,
                         )
+                    elif name in noisedatasets and noise_filename in files_downloadfolder and not os.path.isdir(targetfolder):
+                        extract_archive(
+                            os.path.join(os.path.join(downloadfolder_tmp, name), filename),
+                            os.path.join(noise_folder, name),
+                            remove_finished=clear_download)
 
-                FSDParts = ["audio_test", "audio_train", "meta"]
-                datasetname = ["FSDKaggle", "FSDnoisy"]
-                FSDLinks = [
-                    "https://zenodo.org/record/2552860/files/FSDKaggle2018.",
-                    "https://zenodo.org/record/2529934/files/FSDnoisy18k.",
-                ]
-                for name, url in zip(datasetname, FSDLinks):
-                    if name in noisedatasets:
-                        targetfolder = os.path.join(noise_folder, name)
-                        os.makedirs(targetfolder)
-                        for part in FSDParts:
-                            download_and_extract_archive(
-                                url + part + ".zip",
-                                targetfolder,
-                                targetfolder,
-                                remove_finished=clear_download,
-                            )
 
     def configure_optimizers(self):
         optimizer = instantiate(
