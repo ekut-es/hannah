@@ -31,7 +31,6 @@ class SpeechClassifierModule(LightningModule):
         model: DictConfig,
         optimizer: DictConfig,
         features: DictConfig,
-        lr: int = 0.05,
         num_workers: int = 0,
         batch_size: int = 128,
         scheduler: Optional[DictConfig] = None,
@@ -341,7 +340,7 @@ class SpeechClassifierModule(LightningModule):
 
     def configure_optimizers(self):
         optimizer = instantiate(
-            self.hparams.optimizer, params=self.parameters(), lr=self.hparams.lr
+            self.hparams.optimizer, params=self.parameters()
         )
         schedulers = []
 
