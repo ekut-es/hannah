@@ -20,7 +20,7 @@ class DistillerCallback(Callback):
 
         train_set_len = len(pl_module.train_dataloader()) 
 
-        if self.fold_bn is not None:
+        if isinstance(self.fold_bn, float):
             self.msglogger.info("Applying batch norm folding")
             self.model = distiller.model_transforms.fold_batch_norms(
                 pl_module.model,
@@ -45,6 +45,7 @@ class DistillerCallback(Callback):
         self.msglogger.info("Compressed Model")
         self.msglogger.info(pl_module)
 
+
     def on_epoch_start(self, trainer, pl_module):
         self.compression_scheduler.on_epoch_begin(trainer.current_epoch)
 
@@ -59,11 +60,6 @@ class DistillerCallback(Callback):
         )
 
     def on_batch_end(self, trainer, pl_module):
-        #if self.fold_bn is not None:
-        #    freeze_epoch = int(trainer.max_epochs * self.fold_bn)
-        #    if freeze_epoch == trainer.current_epoch and not self.bn_frozen:
-        #        self._freeze(pl_module)
-
         self.compression_scheduler.on_minibatch_end(
             trainer.current_epoch, trainer.batch_idx, pl_module.batches_per_epoch
         )
@@ -71,24 +67,15 @@ class DistillerCallback(Callback):
     def on_epoch_end(self, trainer, pl_module):
         self.compression_scheduler.on_epoch_end(pl_module.current_epoch)
 
-    def on_train_end(self, trainer, pl_module):
-        if self.fold_bn is not None and not self.bn_frozen:
-            self._freeze(pl_module)
 
-    def _freeze(self, pl_module):
-        return
-        self.bn_frozen = True
-        self.msglogger.info("Freezing batch norms")
-        # save_model(log_dir, model, test_set, config=config, model_prefix="before_freeze_")
 
-        def freeze_func(model):
-            if isinstance(
-                model, distiller.quantization.sim_bn_fold.SimulatedFoldedBatchNorm
-            ):
-                model.freeze()
 
-        with torch.no_grad():
-            self.model.apply(freeze_func)
 
-        self.msglogger.info("Model after freezing")
-        self.msglogger.info(pl_module)
+
+
+
+
+
+
+
+
