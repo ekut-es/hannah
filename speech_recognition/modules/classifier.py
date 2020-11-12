@@ -6,6 +6,7 @@ import logging
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
+from pytorch_lightning.loggers import TensorBoardLogger
 from .config_utils import get_loss_function, get_model, save_model, _locate
 from typing import Optional
 
@@ -476,3 +477,14 @@ class SpeechClassifierModule(LightningModule):
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(".", self)
+
+    def on_fit_end(self):
+        for logger in self.trainer.logger:
+            if isinstance(logger, TensorBoardLogger):
+                logger.log_hyperparams(
+                    self.hparams,
+                    metrics={
+                        "val_loss": self.trainer.callback_metrics["val_loss"],
+                        "val_accuracy": self.trainer.callback_metrics["val_accuracy"],
+                    },
+                )
