@@ -93,6 +93,7 @@ class SpeechDataset(data.Dataset):
         self.train_snr_low = config["train_snr_low"]
         self.train_snr_high = config["train_snr_high"]
         self.test_snr = config["test_snr"]
+        self.channels = 1  # FIXME: add config option
 
     def _timeshift_audio(self, data):
         """Shifts data by a random amount of ms given by parameter timeshift_ms"""
@@ -196,6 +197,7 @@ class SpeechDataset(data.Dataset):
                     data = data / np.amax(np.absolute(data))
 
         data = torch.from_numpy(data)
+        data = torch.unsqueeze(data, 0)
 
         return data
 

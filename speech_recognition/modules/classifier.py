@@ -67,14 +67,16 @@ class SpeechClassifierModule(LightningModule):
         device = (
             self.trainer.root_gpu if self.trainer.root_gpu is not None else self.device
         )
-        self.example_input_array = torch.zeros(1, self.train_set.input_length)
+        self.example_input_array = torch.zeros(
+            1, self.train_set.channels, self.train_set.input_length
+        )
         dummy_input = self.example_input_array.to(device)
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
 
-        features = self.features(dummy_input)
+        features = self._extract_features(dummy_input)
         self.example_feature_array = features
 
         # Instantiate normalizer
@@ -339,9 +341,7 @@ class SpeechClassifierModule(LightningModule):
                             )
 
     def configure_optimizers(self):
-        optimizer = instantiate(
-            self.hparams.optimizer, params=self.parameters()
-        )
+        optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
         schedulers = []
 
         if self.hparams.scheduler is not None:
@@ -458,9 +458,17 @@ class SpeechClassifierModule(LightningModule):
 
         return test_loader
 
-    # FORWARD (overwrite to train instance of this class directly)
-    def forward(self, x):
+    def _extract_features(self, x):
         x = self.features(x)
+
+        if x.dim() == 4:
+            new_channels = x.size(1) * x.size(2)
+            x = torch.reshape(x, (x.size(0), new_channels, x.size(3)))
+
+        return x
+
+    def forward(self, x):
+        x = self._extract_features(x)
         x = self.normalizer(x)
         return self.model(x)
 
