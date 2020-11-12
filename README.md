@@ -159,9 +159,11 @@ Common configuration options for datasets are:
  - train_snr_high: minimal SNR for training data
  - train_snr_low: maximal SNR for test data
 
+ - data_split: initial split after downloading the datasets(Possibilities: "vad", "vad_speech", "vad_balanced", "getrennt")
+ - downsample: samplerate DESTRUCTIVE! change the samplerate of the real files to the target samplerate.  Use better parameter samplingrate
+
 FIXME: clarify with tobias
 
- - data_split: []
  - noise_dataset: []
 
 ## features
