@@ -10,10 +10,11 @@ samplingrate: 16000
 timeshift_ms: 0
 extract: trim_borders
 clear_download: False
-lang: ["UWNU"]
+lang: [""]
 data_split: ""
-noise_dataset: ["TUT"]
+noise_dataset: [""]
 clear_split: False
+download_folder: ""
 
 silence_prob: 0.1
 unknown_prob: 0.1
