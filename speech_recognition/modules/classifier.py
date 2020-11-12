@@ -290,7 +290,7 @@ class SpeechClassifierModule(LightningModule):
                     if filename.endswith("mp3"):
                         os.system("rm " + filename)
                         filename = filename.replace(".mp3", ".wav")
-                    torchaudio.save(filename, data, samplerate)
+                    torchaudio.save(filename, data[0], samplerate)
 
                 del tmp_files
                 del output_files
