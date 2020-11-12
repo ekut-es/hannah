@@ -54,7 +54,7 @@ def train(config=DictConfig):
         callbacks.append(DistillerCallback(config.compress))
 
     logger = [
-        TensorBoardLogger(".", name=""),
+        TensorBoardLogger(".", name="", default_hp_metric=False),
         CSVLogger(".", name=""),
     ]
 
