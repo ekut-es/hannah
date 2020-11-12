@@ -314,27 +314,43 @@ class SpeechClassifierModule(LightningModule):
         files_downloadfolder = list_files(downloadfolder_tmp, ".zip")
         for element in subdownloadfolder:
             files_downloadfolder.extend(
-                list_files(os.path.join(downloadfolder_tmp, element),
-                           ".zip"))
+                list_files(os.path.join(downloadfolder_tmp, element), ".zip")
+            )
 
         if "TUT" in noisedatasets:
-            tut_target = os.path.join(noise_folder, "TUT-acoustic-scenes-2017-development")
+            tut_target = os.path.join(
+                noise_folder, "TUT-acoustic-scenes-2017-development"
+            )
             for i in range(1, 10):
-                noise_filename = "TUT-acoustic-scenes-2017-development.audio." + str(
-                    i) + + ".zip"
+                noise_filename = (
+                    "TUT-acoustic-scenes-2017-development.audio." + str(i) + +".zip"
+                )
 
-                if "TUT" in noisedatasets and noise_filename not in files_downloadfolder and not os.path.isdir(tut_target):
+                if (
+                    "TUT" in noisedatasets
+                    and noise_filename not in files_downloadfolder
+                    and not os.path.isdir(tut_target)
+                ):
                     download_and_extract_archive(
-                        "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio." + str(i) + ".zip",
+                        "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio."
+                        + str(i)
+                        + ".zip",
                         os.path.join(downloadfolder_tmp, "TUT"),
                         noise_folder,
                         remove_finished=clear_download,
                     )
-                elif "TUT" in noisedatasets and noise_filename in files_downloadfolder and not os.path.isdir(tut_target):
+                elif (
+                    "TUT" in noisedatasets
+                    and noise_filename in files_downloadfolder
+                    and not os.path.isdir(tut_target)
+                ):
                     extract_archive(
-                        os.path.join(os.path.join(downloadfolder_tmp, "TUT"), noise_filename),
+                        os.path.join(
+                            os.path.join(downloadfolder_tmp, "TUT"), noise_filename
+                        ),
                         noise_folder,
-                        remove_finished=clear_download)
+                        remove_finished=clear_download,
+                    )
 
             FSDParts = ["audio_test", "audio_train", "meta"]
             datasetname = ["FSDKaggle", "FSDnoisy"]
@@ -347,20 +363,33 @@ class SpeechClassifierModule(LightningModule):
                 for fileend in FSDParts:
                     filename = filebegin + fileend + ".zip"
                     targetfolder = os.path.join(
-                        os.path.join(noise_folder, datasetname), filebegin + fileend)
-                    if name in noisedatasets and filename not in files_downloadfolder and not os.path.isdir(targetfolder):
+                        os.path.join(noise_folder, datasetname), filebegin + fileend
+                    )
+                    if (
+                        name in noisedatasets
+                        and filename not in files_downloadfolder
+                        and not os.path.isdir(targetfolder)
+                    ):
                         download_and_extract_archive(
-                            "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio." + str(i) + ".zip",
+                            "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio."
+                            + str(i)
+                            + ".zip",
                             os.path.join(downloadfolder_tmp, name),
                             os.path.join(noise_folder, name),
                             remove_finished=clear_download,
                         )
-                    elif name in noisedatasets and noise_filename in files_downloadfolder and not os.path.isdir(targetfolder):
+                    elif (
+                        name in noisedatasets
+                        and noise_filename in files_downloadfolder
+                        and not os.path.isdir(targetfolder)
+                    ):
                         extract_archive(
-                            os.path.join(os.path.join(downloadfolder_tmp, name), filename),
+                            os.path.join(
+                                os.path.join(downloadfolder_tmp, name), filename
+                            ),
                             os.path.join(noise_folder, name),
-                            remove_finished=clear_download)
-
+                            remove_finished=clear_download,
+                        )
 
     def configure_optimizers(self):
         optimizer = instantiate(
