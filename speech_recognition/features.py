@@ -91,8 +91,6 @@ class SincConv(nn.Module):
         self.register_buffer("n_", n_, persistent=False)
 
     def forward(self, waveforms):
-        waveforms = torch.unsqueeze(waveforms, dim=1)
-
         f_low = torch.abs(self.low_freq_) + self.min_low_hz
         f_high = torch.clamp(
             f_low + self.min_band_hz + torch.abs(self.band_freq_),
@@ -116,7 +114,7 @@ class SincConv(nn.Module):
 
         self.filters = band.view(self.out_channels, 1, self.kernel_size[0])
 
-        return F.conv1d(
+        result = F.conv1d(
             waveforms,
             self.filters,
             stride=self.stride,
@@ -125,6 +123,8 @@ class SincConv(nn.Module):
             bias=None,
             groups=1,
         )
+
+        return result
 
 
 class Sinc_Act(nn.Module):
