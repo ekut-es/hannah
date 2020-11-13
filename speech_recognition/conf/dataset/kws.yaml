@@ -27,9 +27,10 @@ samplingrate: 16000
 timeshift_ms: 100
 extract: loudest
 clear_download: False
-lang: ["speech_commands"]
+variants: ["speech_commands"]
 data_split: []
 noise_dataset: []
+download_folder: ""
 
 silence_prob: 0.1
 unknown_prob: 0.1
