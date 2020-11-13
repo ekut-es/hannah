@@ -366,8 +366,9 @@ class SpeechCommandsDataset(SpeechDataset):
         userlanguage = config["variants"]
 
         subdownloadfolder = list_dir(downloadfolder_tmp)
-        files_downloadfolder = list_files(downloadfolder_tmp)
+        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz")
         for element in subdownloadfolder:
+            subdownloadfolder.extend(list_dir(downloadfolder_tmp))
             files_downloadfolder.extend(
                 list_files(os.path.join(downloadfolder_tmp, element), ".tar.gz")
             )
@@ -597,8 +598,9 @@ class VadDataset(SpeechDataset):
         userlanguage = config["variants"]
 
         subdownloadfolder = list_dir(downloadfolder_tmp)
-        files_downloadfolder = list()
+        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz")
         for element in subdownloadfolder:
+            subdownloadfolder.extend(list_dir(downloadfolder_tmp))
             files_downloadfolder.extend(
                 list_files(os.path.join(downloadfolder_tmp, element), ".tar.gz")
             )
@@ -799,8 +801,9 @@ class KeyWordDataset(SpeechDataset):
         userlanguage = config["variants"]
 
         subdownloadfolder = list_dir(downloadfolder_tmp)
-        files_downloadfolder = list_files(downloadfolder_tmp)
+        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz")
         for element in subdownloadfolder:
+            subdownloadfolder.extend(list_dir(downloadfolder_tmp))
             files_downloadfolder.extend(
                 list_files(os.path.join(downloadfolder_tmp, element), ".tar.gz")
             )
