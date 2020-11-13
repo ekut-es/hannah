@@ -271,6 +271,5 @@ To enable pre commit hooks run the following command in a `poetry shell`.
 
 Training:
 
-- Implement Wavenet
 - Experiment with dilations
 - Add estimation of non functional properties on algorithmic level (WIP)
