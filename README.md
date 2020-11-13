@@ -105,7 +105,7 @@ We currently have the following configuration groups:
 
 Configures the app to run a subset of validation and test on configured backend
 
-Choices are: `null` (no backend, default),  `tochmobile` (translates model to backend)
+Choices are: `null` (no backend, default),  `torchmobile` (translates model to backend)
 
 ## checkpoint
 
@@ -177,13 +177,12 @@ Sinc Convolutions have the following parameters:
 
 Choices: `null` (default), fixedpoint
 
-Feature Normalizer run between timing annotation.
+Feature Normalizer run between feature extraction and the neural network model.
 
 
 ## model
 
 Neural network to train: choices are gds (Old sinc1 with sinc convolutions removed), lstm, tc-res8, branchy-tc-res8
-
 
 ## module
 
@@ -211,7 +210,7 @@ Learning rate scheduler to use for scheduling, default is null.
 
 ## trainer
 
-Currently: default
+Choices: default
 
 Capsules the options to the lightning trainer. Currently it sets the following defaults:
 
