@@ -1,11 +1,9 @@
 import os
 import shutil
 import random
-import platform
 import logging
 import numpy as np
 import sys
-import torchvision
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
@@ -13,7 +11,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from .config_utils import get_loss_function, get_model, save_model, _locate
 from typing import Optional
 
-from ..dataset import ctc_collate_fn
+from speech_recognition.datasets.dataset import ctc_collate_fn
 
 import torch
 import torch.utils.data as data

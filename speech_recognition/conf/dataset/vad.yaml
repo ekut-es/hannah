@@ -1,7 +1,7 @@
 # @package _group_
 
 data_folder: ${hydra:runtime.cwd}/datasets/vad_data_balanced/
-cls: speech_recognition.dataset.VadDataset
+cls: speech_recognition.datasets.dataset.VadDataset
 dataset: vad
 
 input_length: 16000
