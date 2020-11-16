@@ -4,6 +4,7 @@ import random
 import platform
 import logging
 import numpy as np
+import sys
 import torchvision
 
 from pytorch_lightning.core.lightning import LightningModule
@@ -303,20 +304,31 @@ class SpeechClassifierModule(LightningModule):
         downloadfolder_tmp = config["download_folder"]
         noise_folder = os.path.join(data_folder, "noise_files")
 
+        if len(downloadfolder_tmp) == 0:
+            downloadfolder_tmp = os.path.join(
+                sys.argv[0].replace("speech_recognition/train.py", ""),
+                "datasets/downloads",
+            )
+
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
-        if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = data_folder
+
+        if not os.path.isdir(downloadfolder_tmp):
+            os.makedirs(downloadfolder_tmp)
+
         if not os.path.isdir(noise_folder):
             os.makedirs(noise_folder)
 
         noisedatasets = config["noise_dataset"]
 
-        subdownloadfolder = list_dir(downloadfolder_tmp)
-        files_downloadfolder = list_files(downloadfolder_tmp, ".zip")
+        subdownloadfolder = list_dir(downloadfolder_tmp, prefix=True)
+        files_downloadfolder = list_files(downloadfolder_tmp, ".zip", prefix=True)
         for element in subdownloadfolder:
+            subdownloadfolder.extend(list_dir(element, prefix=True))
             files_downloadfolder.extend(
-                list_files(os.path.join(downloadfolder_tmp, element), ".zip")
+                list_files(
+                    os.path.join(downloadfolder_tmp, element), ".zip", prefix=True
+                )
             )
 
         if "TUT" in noisedatasets:
