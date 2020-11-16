@@ -375,7 +375,7 @@ class SpeechCommandsDataset(SpeechDataset):
 
         speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
 
-        # download UWNU dataset
+        # download speech_commands dataset
         speechcommand_filename = "speech_commands_v0.02.tar.gz"
         if (
             "speech_command" in userlanguage
@@ -810,7 +810,7 @@ class KeyWordDataset(SpeechDataset):
 
         speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
 
-        # download UWNU dataset
+        # download speech_commands dataset
         speechcommand_filename = "speech_commands_v0.02.tar.gz"
         if (
             "speech_command" in userlanguage
