@@ -8,14 +8,14 @@ import sys
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
 from pytorch_lightning.loggers import TensorBoardLogger
-from .config_utils import get_loss_function, get_model, save_model, _locate
+from .config_utils import get_loss_function, get_model, save_model
 from typing import Optional
 
 from speech_recognition.datasets.dataset import ctc_collate_fn
 
 import torch
 import torch.utils.data as data
-from hydra.utils import instantiate
+from hydra.utils import instantiate, get_class
 
 from torchvision.datasets.utils import (
     download_and_extract_archive,
@@ -49,7 +49,7 @@ class SpeechClassifierModule(LightningModule):
 
     def prepare_data(self):
         # get all the necessary data stuff
-        _locate(self.hparams.dataset.cls).download(self.hparams.dataset)
+        get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
         self.download_noise(self.hparams.dataset)
         self.split_data(self.hparams.dataset)
         self.downsample(self.hparams.dataset)
@@ -64,7 +64,7 @@ class SpeechClassifierModule(LightningModule):
         self.initialized = True
 
         # trainset needed to set values in hparams
-        self.train_set, self.dev_set, self.test_set = _locate(
+        self.train_set, self.dev_set, self.test_set = get_class(
             self.hparams.dataset.cls
         ).splits(self.hparams.dataset)
 
