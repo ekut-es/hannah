@@ -25,6 +25,8 @@ from torchvision.datasets.utils import (
     list_dir,
 )
 
+from ..utils import list_all_files, extract_from_download_cache
+
 msglogger = logging.getLogger()
 
 
@@ -373,36 +375,37 @@ class SpeechCommandsDataset(SpeechDataset):
 
         userlanguage = config["variants"]
 
-        subdownloadfolder = list_dir(downloadfolder_tmp, prefix=True)
-        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz", prefix=True)
-        for element in subdownloadfolder:
-            subdownloadfolder.extend(list_dir(element, prefix=True))
-            files_downloadfolder.extend(
-                list_files(
-                    os.path.join(downloadfolder_tmp, element), ".tar.gz", prefix=True
-                )
-            )
+        files_downloadfolder = list_all_files(downloadfolder_tmp, ".tar.gz")
 
-        # speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+        speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
 
         # download speech_commands dataset
         speechcommand_filename = "speech_commands_v0.02.tar.gz"
 
-        if (
-            "speech_command" in userlanguage
-            and speechcommand_filename not in files_downloadfolder
-            and len(list_dir(data_folder)) == 0
+        if "speech_command" in userlanguage:
+            extract_from_download_cache(
+                speechcommand_filename,
+                "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
+                files_downloadfolder,
+                os.path.join(downloadfolder_tmp, "speech_commands"),
+                speechcommand,
+                clear_download,
+            )
+        """
+        if(
+            speechcommand_filename not in files_downloadfolder
+            and not os.path.isdir(speechcommand)
         ):
             download_and_extract_archive(
                 "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
                 os.path.join(downloadfolder_tmp, "speech_commands"),
-                data_folder,
+                speechcommand,
                 remove_finished=clear_download,
             )
         elif (
             "speech_command" in userlanguage
             and speechcommand_filename in files_downloadfolder
-            and len(list_dir(data_folder)) == 0
+            and not os.path.isdir(speechcommand)
         ):
             print("Extract from download")
             extract_archive(
@@ -410,9 +413,10 @@ class SpeechCommandsDataset(SpeechDataset):
                     os.path.join(downloadfolder_tmp, "speech_commands"),
                     speechcommand_filename,
                 ),
-                data_folder,
+                speechcommand,
                 remove_finished=clear_download,
             )
+        """
 
 
 class SpeechHotwordDataset(SpeechDataset):
@@ -621,15 +625,7 @@ class VadDataset(SpeechDataset):
 
         userlanguage = config["variants"]
 
-        subdownloadfolder = list_dir(downloadfolder_tmp, prefix=True)
-        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz", prefix=True)
-        for element in subdownloadfolder:
-            subdownloadfolder.extend(list_dir(element, prefix=True))
-            files_downloadfolder.extend(
-                list_files(
-                    os.path.join(downloadfolder_tmp, element), ".tar.gz", prefix=True
-                )
-            )
+        files_downloadfolder = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         # download mozilla dataset
         mozilla_downloadfolder = os.path.join(downloadfolder_tmp, "mozilla")
@@ -832,17 +828,9 @@ class KeyWordDataset(SpeechDataset):
 
         userlanguage = config["variants"]
 
-        subdownloadfolder = list_dir(downloadfolder_tmp, prefix=True)
-        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz", prefix=True)
-        for element in subdownloadfolder:
-            subdownloadfolder.extend(list_dir(element, prefix=True))
-            files_downloadfolder.extend(
-                list_files(
-                    os.path.join(downloadfolder_tmp, element), ".tar.gz", prefix=True
-                )
-            )
+        files_downloadfolder = list_all_files(downloadfolder_tmp, ".tar.gz")
 
-        # speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+        speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
 
         # download speech_commands dataset
         speechcommand_filename = "speech_commands_v0.02.tar.gz"
@@ -850,18 +838,18 @@ class KeyWordDataset(SpeechDataset):
         if (
             "speech_command" in userlanguage
             and speechcommand_filename not in files_downloadfolder
-            and len(list_dir(data_folder)) == 0
+            and not os.path.isdir(speechcommand)
         ):
             download_and_extract_archive(
                 "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
                 os.path.join(downloadfolder_tmp, "speech_commands"),
-                data_folder,
+                speechcommand,
                 remove_finished=clear_download,
             )
         elif (
             "speech_command" in userlanguage
             and speechcommand_filename in files_downloadfolder
-            and len(list_dir(data_folder)) == 0
+            and not os.path.isdir(speechcommand)
         ):
             print("Extract from download")
             extract_archive(
@@ -869,7 +857,7 @@ class KeyWordDataset(SpeechDataset):
                     os.path.join(downloadfolder_tmp, "speech_commands"),
                     speechcommand_filename,
                 ),
-                data_folder,
+                speechcommand,
                 remove_finished=clear_download,
             )
 
