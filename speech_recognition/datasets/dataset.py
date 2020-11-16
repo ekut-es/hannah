@@ -375,20 +375,20 @@ class SpeechCommandsDataset(SpeechDataset):
 
         variants = config["variants"]
 
-        files_downloadfolder = list_all_files(downloadfolder_tmp, ".tar.gz")
+        cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
-        speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+        target_folder = os.path.join(data_folder, "speech_commands_v0.02")
 
         # download speech_commands dataset
-        speechcommand_filename = "speech_commands_v0.02.tar.gz"
+        filename = "speech_commands_v0.02.tar.gz"
 
         if "speech_command" in variants:
             extract_from_download_cache(
-                speechcommand_filename,
+                filename,
                 "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                files_downloadfolder,
+                cached_files,
                 os.path.join(downloadfolder_tmp, "speech_commands"),
-                speechcommand,
+                target_folder,
                 clear_download,
             )
 
@@ -802,20 +802,20 @@ class KeyWordDataset(SpeechDataset):
 
         variants = config["variants"]
 
-        files_downloadfolder = list_all_files(downloadfolder_tmp, ".tar.gz")
+        cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
-        speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
+        target_folder = os.path.join(data_folder, "speech_commands_v0.02")
 
         # download speech_commands dataset
-        speechcommand_filename = "speech_commands_v0.02.tar.gz"
+        filename = "speech_commands_v0.02.tar.gz"
 
         if "speech_command" in variants:
             extract_from_download_cache(
-                speechcommand_filename,
+                filename,
                 "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                files_downloadfolder,
+                cached_files,
                 os.path.join(downloadfolder_tmp, "speech_commands"),
-                speechcommand,
+                target_folder,
                 clear_download,
             )
 
