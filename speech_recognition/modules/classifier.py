@@ -298,7 +298,7 @@ class SpeechClassifierModule(LightningModule):
     def download_noise(self, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
-        downloadfolder_tmp = config["downloadfolder"]
+        downloadfolder_tmp = config["download_folder"]
         noise_folder = os.path.join(data_folder, "noise_files")
 
         if not os.path.isdir(data_folder):
