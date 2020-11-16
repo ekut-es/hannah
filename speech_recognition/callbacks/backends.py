@@ -170,4 +170,42 @@ class OnnxruntimeBackend(InferenceBackendBase):
         result = [torch.from_numpy(res) for res in result]
         return result
 
-        memgen.read_results(acc_dir, "./test_data/outputs/")
+
+class TRaxUltraTrailBackend(Callback):
+    """TRax UltraTrail backend"""
+
+    def __init__(self, backend_dir, teda_dir, app, num_inferences):
+        self.backend_dir = backend_dir
+        self.teda_dir = Path(teda_dir)
+        self.app = app
+        self.num_inferences = num_inferences
+
+        self.xs = []
+        self.ys = []
+
+    def on_test_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+    ):
+        if batch_idx < self.num_inferences:
+            x = pl_module._extract_features(batch[0])
+            x = pl_module.normalizer(x)
+            y = pl_module.model(x)
+            self.xs.append(x)
+            self.ys.append(y)
+
+    def on_test_end(self, trainer, pl_module):
+        logging.info("Preparing ultratrail")
+        # load backend package
+        import sys
+
+        sys.path.append(self.backend_dir)
+        from backend.backend import UltraTrailBackend
+
+        # execute backend
+        backend = UltraTrailBackend()
+        backend.set_model(
+            pl_module.model, pl_module.example_feature_array, verbose=True
+        )
+        backend.set_inputs_and_outputs(self.xs, self.ys)
+        backend.prepare(self.teda_dir / "apps" / self.app / "includes")
+        backend.run(self.teda_dir, self.app)
