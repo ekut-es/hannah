@@ -11,6 +11,8 @@ from typing import Any, Callable
 
 from git import Repo, InvalidGitRepositoryError
 
+from torchvision.datasets.utils import list_files, list_dir
+
 try:
     import lsb_release
 
@@ -136,3 +138,13 @@ def load_module(path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def list_all_files(path, file_suffix, file_prefix=False):
+    subfolder = list_dir(path, prefix=True)
+    files_in_folder = list_files(path, file_suffix, prefix=file_prefix)
+    for element in subfolder:
+        subfolder.extend(list_dir(element, prefix=True))
+        files_in_folder.extend(list_files(element, file_suffix, prefix=file_prefix))
+
+    return files_in_folder
