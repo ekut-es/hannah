@@ -18,7 +18,12 @@ import torch.utils.data as data
 from enum import Enum
 from collections import defaultdict
 from chainmap import ChainMap
-from torchvision.datasets.utils import download_and_extract_archive, extract_archive
+from torchvision.datasets.utils import (
+    download_and_extract_archive,
+    extract_archive,
+    list_files,
+    list_dir,
+)
 
 msglogger = logging.getLogger()
 
@@ -260,7 +265,7 @@ class SpeechCommandsDataset(SpeechDataset):
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
 
-        folder = config["data_folder"]
+        folder = os.path.join(config["data_folder"], "speech_commands_v0.02")
         wanted_words = config["wanted_words"]
         unknown_prob = config["unknown_prob"]
         use_default_split = config["use_default_split"]
@@ -352,30 +357,49 @@ class SpeechCommandsDataset(SpeechDataset):
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+
+        if len(downloadfolder_tmp) == 0:
+            downloadfolder_tmp = data_folder
+
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        userlanguage = config["lang"]
+        userlanguage = config["variants"]
+
+        subdownloadfolder = list_dir(downloadfolder_tmp)
+        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz")
+
         speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
 
-        if os.path.isdir(speechcommand) and "speech_command" in userlanguage:
+        # download speech_commands dataset
+        speechcommand_filename = "speech_commands_v0.02.tar.gz"
 
-            os.makedirs(speechcommand)
-
-            # Test if the the code is run on lucille or not
-            if platform.node() == "lucille":
-                extract_archive(
-                    "/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz",
-                    speechcommand,
-                    False,
-                )
-            else:
-                download_and_extract_archive(
-                    "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                    speechcommand,
-                    speechcommand,
-                    remove_finished=clear_download,
-                )
+        if (
+            "speech_command" in userlanguage
+            and speechcommand_filename not in files_downloadfolder
+            and not os.path.isdir(speechcommand)
+        ):
+            download_and_extract_archive(
+                "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
+                os.path.join(downloadfolder_tmp, "speech_commands"),
+                speechcommand,
+                remove_finished=clear_download,
+            )
+        elif (
+            "speech_command" in userlanguage
+            and speechcommand_filename in files_downloadfolder
+            and not os.path.isdir(speechcommand)
+        ):
+            print("Extract from download")
+            extract_archive(
+                os.path.join(
+                    os.path.join(downloadfolder_tmp, "speech_commands"),
+                    speechcommand_filename,
+                ),
+                speechcommand,
+                remove_finished=clear_download,
+            )
 
 
 class SpeechHotwordDataset(SpeechDataset):
@@ -457,27 +481,43 @@ class SpeechHotwordDataset(SpeechDataset):
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+
+        if len(downloadfolder_tmp) == 0:
+            downloadfolder_tmp = data_folder
+
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        if len(os.listdir(data_folder)) == 0:
-            if platform.node() == "lucille":
-                mvtarget = os.path.join(data_folder, "hey_snips_kws_4.0.tar.tar.gz")
-                # datasets are in /storage/local/dataset/...... prestored
-                extract_archive(
-                    "/storage/local/datasets/snipsKWS/hey_snips_kws_4.0.tar.gz",
-                    data_folder,
-                    False,
-                )
+        userlanguage = config["variants"]
+        snips_target = os.path.join(
+            data_folder, "hey_snips_research_6k_en_train_eval_clean_ter"
+        )
 
-            else:
-                download_and_extract_archive(
-                    "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1",
-                    data_folder,
-                    data_folder,
-                    "hey_snips_kws_4.0.tar.gz",
-                    remove_finished=clear_download,
-                )
+        # download UWNU dataset
+        snips_filename = "hey_snips_kws_4.0.tar.gz"
+        if (
+            "snips" in userlanguage
+            and not os.path.isfile(os.path.join(downloadfolder_tmp, snips_filename))
+            and os.path.isdir(snips_target)
+        ):
+            download_and_extract_archive(
+                "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1",
+                downloadfolder_tmp,
+                data_folder,
+                snips_filename,
+                remove_finished=clear_download,
+            )
+        elif (
+            "snips" in userlanguage
+            and os.path.isfile(os.path.join(downloadfolder_tmp, snips_filename))
+            and os.path.isdir(snips_target)
+        ):
+            extract_archive(
+                os.path.join(downloadfolder_tmp, snips_filename),
+                data_folder,
+                remove_finished=clear_download,
+            )
 
 
 class VadDataset(SpeechDataset):
@@ -543,62 +583,100 @@ class VadDataset(SpeechDataset):
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+
+        if len(downloadfolder_tmp) == 0:
+            downloadfolder_tmp = data_folder
+
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        if len(os.listdir(data_folder)) == 0:
-            speechdir = os.path.join(data_folder, "speech_files")
-            lang = ["de", "fr", "es", "it"]
+        speechdir = os.path.join(data_folder, "speech_files")
+        lang = ["de", "fr", "es", "it"]
 
-            userlanguage = config["lang"]
+        userlanguage = config["variants"]
 
-            # Test if the the code is run on lucille or not
-            if platform.node() == "lucille":
-                lang.append("en")
-                # datasets are in /storage/local/dataset/...... prestored
-                os.makedirs(speechdir)
-                for name in lang:
-                    if name in userlanguage:
-                        extract_archive(
-                            "/storage/local/dataset/mozilla/" + name + ".tar.gz",
-                            speechdir,
-                            False,
-                        )
+        subdownloadfolder = list_dir(downloadfolder_tmp)
+        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz")
+        for element in subdownloadfolder:
+            subdownloadfolder.extend(list_dir(downloadfolder_tmp))
+            files_downloadfolder.extend(
+                list_files(os.path.join(downloadfolder_tmp, element), ".tar.gz")
+            )
 
-                if "UWNU" in userlanguage:
-                    extract_archive(
-                        "/storage/local/dataset/uwnu/uwnu-v2.tar.gz", speechdir, False
-                    )
+        # download mozilla dataset
+        mozilla_downloadfolder = os.path.join(downloadfolder_tmp, "mozilla")
+        mozilla_target = os.path.join(speechdir, "cv-corpus-5.1-2020-06-22")
+        if (
+            "en" in userlanguage
+            and "en.tar.gz" not in files_downloadfolder
+            and not os.path.isdir(os.path.join(mozilla_target, "en"))
+        ):
+            download_and_extract_archive(
+                "https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
+                mozilla_downloadfolder,
+                speechdir,
+                remove_finished=clear_download,
+            )
+        elif (
+            "en" in userlanguage
+            and "en.tar.gz" in files_downloadfolder
+            and not os.path.isdir(os.path.join(mozilla_target, "en"))
+        ):
+            extract_archive(
+                os.path.join(mozilla_downloadfolder, "en.tar.gz"),
+                speechdir,
+                remove_finished=clear_download,
+            )
 
-            else:
-                # download mozilla dataset
-                if "en" in userlanguage:
-                    download_and_extract_archive(
-                        "https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
-                        speechdir,
-                        speechdir,
-                        remove_finished=clear_download,
-                    )
-
-                for name in lang:
-                    if name in userlanguage:
-                        download_and_extract_archive(
-                            "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/"
-                            + name
-                            + ".tar.gz",
-                            speechdir,
-                            speechdir,
-                            remove_finished=clear_download,
-                        )
-
-                if "UWNU" in userlanguage:
-                    download_and_extract_archive(
-                        "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1",
-                        speechdir,
-                        speechdir,
-                        "uwnu-v2.tar.gz",
-                        remove_finished=clear_download,
-                    )
+        for name in lang:
+            filename = name + ".tar.gz"
+            if (
+                name in userlanguage
+                and filename not in files_downloadfolder
+                and not os.path.isdir(os.path.join(mozilla_target, name))
+            ):
+                download_and_extract_archive(
+                    "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/"
+                    + filename,
+                    mozilla_downloadfolder,
+                    speechdir,
+                    remove_finished=clear_download,
+                )
+            elif (
+                name in userlanguage
+                and filename in files_downloadfolder
+                and not os.path.isdir(os.path.join(mozilla_target, name))
+            ):
+                extract_archive(
+                    os.path.join(mozilla_downloadfolder, filename),
+                    speechdir,
+                    remove_finished=clear_download,
+                )
+        # download UWNU dataset
+        uwnu_filename = "uwnu-v2.tar.gz"
+        if (
+            "UWNU" in userlanguage
+            and uwnu_filename not in files_downloadfolder
+            and not os.path.isdir(os.path.join(speechdir, "UWNU"))
+        ):
+            download_and_extract_archive(
+                "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1",
+                os.path.join(downloadfolder_tmp, "UWNU"),
+                speechdir,
+                uwnu_filename,
+                remove_finished=clear_download,
+            )
+        elif (
+            "UWNU" in userlanguage
+            and uwnu_filename in files_downloadfolder
+            and not os.path.isdir(os.path.join(speechdir, "UWNU"))
+        ):
+            extract_archive(
+                os.path.join(os.path.join(downloadfolder_tmp, "UWNU"), uwnu_filename),
+                speechdir,
+                remove_finished=clear_download,
+            )
 
 
 class KeyWordDataset(SpeechDataset):
@@ -711,30 +789,57 @@ class KeyWordDataset(SpeechDataset):
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+
+        if len(downloadfolder_tmp) == 0:
+            downloadfolder_tmp = data_folder
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        userlanguage = config["lang"]
+        userlanguage = config["variants"]
+
+        subdownloadfolder = list_dir(downloadfolder_tmp)
+        print(subdownloadfolder)
+        files_downloadfolder = list_files(downloadfolder_tmp, ".tar.gz")
+        print(files_downloadfolder)
+        for element in subdownloadfolder:
+            # subdownloadfolder.extend(list_dir(downloadfolder_tmp))
+            print(subdownloadfolder)
+            files_downloadfolder.extend(
+                list_files(os.path.join(downloadfolder_tmp, element), ".tar.gz")
+            )
+            print(files_downloadfolder)
+
         speechcommand = os.path.join(data_folder, "speech_commands_v0.02")
 
-        if (not os.path.isdir(speechcommand)) and ("speech_command" in userlanguage):
-            os.makedirs(speechcommand)
-
-            # Test if the the code is run on lucille or not
-            if platform.node() == "lucille":
-                extract_archive(
-                    "/storage/local/datasets/speech_commands/speech_commands_v0.02.tar.gz",
-                    speechcommand,
-                    False,
-                )
-            else:
-                download_and_extract_archive(
-                    "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
-                    speechcommand,
-                    speechcommand,
-                    remove_finished=clear_download,
-                )
+        # download speech_commands dataset
+        speechcommand_filename = "speech_commands_v0.02.tar.gz"
+        if (
+            "speech_command" in userlanguage
+            and speechcommand_filename not in files_downloadfolder
+            and not os.path.isdir(speechcommand)
+        ):
+            print("Download and extract")
+            download_and_extract_archive(
+                "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz",
+                os.path.join(downloadfolder_tmp, "speech_commands"),
+                speechcommand,
+                remove_finished=clear_download,
+            )
+        elif (
+            "speech_command" in userlanguage
+            and speechcommand_filename in files_downloadfolder
+            and not os.path.isdir(speechcommand)
+        ):
+            extract_archive(
+                os.path.join(
+                    os.path.join(downloadfolder_tmp, "speech_commands"),
+                    speechcommand_filename,
+                ),
+                speechcommand,
+                remove_finished=clear_download,
+            )
 
 
 def ctc_collate_fn(data):

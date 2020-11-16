@@ -3,6 +3,8 @@ import shutil
 import random
 import platform
 import logging
+import numpy as np
+import torchvision
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
@@ -20,7 +22,10 @@ from torchvision.datasets.utils import (
     download_and_extract_archive,
     extract_archive,
     list_files,
+    list_dir,
 )
+
+import torchaudio
 
 from omegaconf import DictConfig
 
@@ -256,90 +261,137 @@ class SpeechClassifierModule(LightningModule):
             print("downsample data begins")
             config["downsample"] = 0
             downsample_folder = ["train", "dev", "test"]
+            torchaudio.set_audio_backend("sox")
+            files = list()
+
             for folder in downsample_folder:
-                folderpath = os.path.join(config["data_folder"], folder)
-                if os.path.isdir(folderpath):
-                    for path, subdirs, files in os.walk(folderpath):
-                        for name in files:
-                            if name.endswith("wav") and not name.startswith("."):
-                                os.system(
-                                    "ffmpeg -y -i "
-                                    + os.path.join(path, name)
-                                    + " -ar "
-                                    + str(samplerate)
-                                    + " -loglevel quiet "
-                                    + os.path.join(path, "new" + name)
-                                )
-                                os.system("rm " + os.path.join(path, name))
-                                os.system(
-                                    "mv "
-                                    + os.path.join(path, "new" + name)
-                                    + " "
-                                    + os.path.join(path, name)
-                                )
-                            elif name.endswith("mp3") and not name.startswith("."):
-                                os.system(
-                                    "ffmpeg -y -i "
-                                    + os.path.join(path, name)
-                                    + " -ar "
-                                    + str(samplerate)
-                                    + " -ac 1 -loglevel quiet "
-                                    + os.path.join(path, name.replace(".mp3", ".wav"))
-                                )
-                                os.system("rm " + os.path.join(path, name))
+                folders = list()
+                folders.append(os.path.join(config["data_folder"], folder))
+                for element in folders:
+                    folders.extend(list_dir(element, True))
+                    files.extend(list_files(element, ".wav", True))
+                    files.extend(list_files(element, ".mp3", True))
+
+                del folders
+
+            stepsize = 300
+            n_splits = len(files) / stepsize
+            files_split = np.array_split(np.array(files), n_splits)
+            for parts in files_split:
+                tmp_files = list()
+                output_files = list()
+
+                for filename in parts:
+                    tmp_files.append(torchaudio.load(filename))
+
+                for (data, sr) in tmp_files:
+                    data = torchaudio.transforms.Resample(sr, samplerate).forward(data)
+                    output_files.append(data)
+
+                for data, filename in zip(output_files, parts):
+                    if filename.endswith("mp3"):
+                        os.system("rm " + filename)
+                        filename = filename.replace(".mp3", ".wav")
+                    torchaudio.save(filename, data[0], samplerate)
+
+                del tmp_files
+                del output_files
 
     def download_noise(self, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
-        if not os.path.isdir(data_folder):
-            os.makedirs(data_folder)
+        downloadfolder_tmp = config["download_folder"]
         noise_folder = os.path.join(data_folder, "noise_files")
 
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+        if len(downloadfolder_tmp) == 0:
+            downloadfolder_tmp = data_folder
         if not os.path.isdir(noise_folder):
             os.makedirs(noise_folder)
-            noisedatasets = config["noise_dataset"]
 
-            # Test if the the code is run on lucille or not
-            if platform.node() == "lucille":
-                # datasets are in /storage/local/dataset/...... prestored
-                noisekeys = ["FSD/FSDKaggle", "FSD/FSDnoisy", "TUT", "FSD/FSD50K"]
-                for key in noisekeys:
-                    if key in noisedatasets:
-                        source = os.path.join("/storage/local/dataset/", key)
-                        mvtarget = os.path.join(noisedatasets, key)
-                        os.makedirs(mvtarget)
-                        for element in list_files(source, ".zip"):
-                            file_to_extract = os.path.join(source, element)
-                            extract_archive(file_to_extract, mvtarget, False)
-            else:
-                if "TUT" in noisedatasets:
-                    for i in range(1, 10):
+        noisedatasets = config["noise_dataset"]
+
+        subdownloadfolder = list_dir(downloadfolder_tmp)
+        files_downloadfolder = list_files(downloadfolder_tmp, ".zip")
+        for element in subdownloadfolder:
+            files_downloadfolder.extend(
+                list_files(os.path.join(downloadfolder_tmp, element), ".zip")
+            )
+
+        if "TUT" in noisedatasets:
+            tut_target = os.path.join(
+                noise_folder, "TUT-acoustic-scenes-2017-development"
+            )
+            for i in range(1, 10):
+                noise_filename = (
+                    "TUT-acoustic-scenes-2017-development.audio." + str(i) + +".zip"
+                )
+
+                if (
+                    "TUT" in noisedatasets
+                    and noise_filename not in files_downloadfolder
+                    and not os.path.isdir(tut_target)
+                ):
+                    download_and_extract_archive(
+                        "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio."
+                        + str(i)
+                        + ".zip",
+                        os.path.join(downloadfolder_tmp, "TUT"),
+                        noise_folder,
+                        remove_finished=clear_download,
+                    )
+                elif (
+                    "TUT" in noisedatasets
+                    and noise_filename in files_downloadfolder
+                    and not os.path.isdir(tut_target)
+                ):
+                    extract_archive(
+                        os.path.join(
+                            os.path.join(downloadfolder_tmp, "TUT"), noise_filename
+                        ),
+                        noise_folder,
+                        remove_finished=clear_download,
+                    )
+
+            FSDParts = ["audio_test", "audio_train", "meta"]
+            datasetname = ["FSDKaggle", "FSDnoisy"]
+            filename_part = ["FSDKaggle2018.", "FSDnoisy18k."]
+            FSDLinks = [
+                "https://zenodo.org/record/2552860/files/FSDKaggle2018.",
+                "https://zenodo.org/record/2529934/files/FSDnoisy18k.",
+            ]
+            for name, url, filebegin in zip(datasetname, FSDLinks, filename_part):
+                for fileend in FSDParts:
+                    filename = filebegin + fileend + ".zip"
+                    targetfolder = os.path.join(
+                        os.path.join(noise_folder, datasetname), filebegin + fileend
+                    )
+                    if (
+                        name in noisedatasets
+                        and filename not in files_downloadfolder
+                        and not os.path.isdir(targetfolder)
+                    ):
                         download_and_extract_archive(
                             "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio."
                             + str(i)
                             + ".zip",
-                            noise_folder,
-                            noise_folder,
+                            os.path.join(downloadfolder_tmp, name),
+                            os.path.join(noise_folder, name),
                             remove_finished=clear_download,
                         )
-
-                FSDParts = ["audio_test", "audio_train", "meta"]
-                datasetname = ["FSDKaggle", "FSDnoisy"]
-                FSDLinks = [
-                    "https://zenodo.org/record/2552860/files/FSDKaggle2018.",
-                    "https://zenodo.org/record/2529934/files/FSDnoisy18k.",
-                ]
-                for name, url in zip(datasetname, FSDLinks):
-                    if name in noisedatasets:
-                        targetfolder = os.path.join(noise_folder, name)
-                        os.makedirs(targetfolder)
-                        for part in FSDParts:
-                            download_and_extract_archive(
-                                url + part + ".zip",
-                                targetfolder,
-                                targetfolder,
-                                remove_finished=clear_download,
-                            )
+                    elif (
+                        name in noisedatasets
+                        and noise_filename in files_downloadfolder
+                        and not os.path.isdir(targetfolder)
+                    ):
+                        extract_archive(
+                            os.path.join(
+                                os.path.join(downloadfolder_tmp, name), filename
+                            ),
+                            os.path.join(noise_folder, name),
+                            remove_finished=clear_download,
+                        )
 
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())

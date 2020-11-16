@@ -1,6 +1,6 @@
 # @package _group_
 
-data_folder: ${hydra:runtime.cwd}/datasets/hey_snips_research_6k_en_train_eval_clean_ter/
+data_folder: ${hydra:runtime.cwd}/datasets/
 dataset: keywords
 cls: speech_recognition.dataset.SpeechHotwordDataset
 
@@ -14,6 +14,7 @@ bg_noise_files: []
 
 data_split: []
 noise_dataset: []
+download_folder: ""
 
 input_length: 16000
 samplingrate: 16000
