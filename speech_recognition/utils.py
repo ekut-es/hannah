@@ -11,7 +11,12 @@ from typing import Any, Callable
 
 from git import Repo, InvalidGitRepositoryError
 
-from torchvision.datasets.utils import list_files, list_dir
+from torchvision.datasets.utils import (
+    list_files,
+    list_dir,
+    download_and_extract_archive,
+    extract_archive,
+)
 
 try:
     import lsb_release
@@ -148,3 +153,20 @@ def list_all_files(path, file_suffix, file_prefix=False):
         files_in_folder.extend(list_files(element, file_suffix, prefix=file_prefix))
 
     return files_in_folder
+
+
+def extract_from_download_cache(
+    filename, url, cached_files, target_cache, target_folder, clear_download=False
+):
+    if filename not in cached_files and not os.path.isdir(target_folder):
+        print("download and extract: " + str(filename))
+        download_and_extract_archive(
+            url, target_cache, target_folder, remove_finished=clear_download
+        )
+    elif filename in cached_files and not os.path.isdir(target_folder):
+        print("extract from download_cache: " + str(filename))
+        extract_archive(
+            os.path.join(target_cache, filename),
+            target_folder,
+            remove_finished=clear_download,
+        )
