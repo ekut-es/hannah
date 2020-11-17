@@ -1,11 +1,9 @@
 import logging
-
-from tempfile import TemporaryDirectory
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from pytorch_lightning import Callback
 import torch.onnx
-
+from pytorch_lightning import Callback
 
 try:
     import onnx
@@ -174,11 +172,18 @@ class OnnxruntimeBackend(InferenceBackendBase):
 class TRaxUltraTrailBackend(Callback):
     """TRax UltraTrail backend"""
 
-    def __init__(self, backend_dir, teda_dir, app, num_inferences):
+    def __init__(
+        self, backend_dir, teda_dir, app, num_inferences, bw_w, bw_b, bw_f, cols, rows
+    ):
         self.backend_dir = backend_dir
         self.teda_dir = Path(teda_dir)
         self.app = app
         self.num_inferences = num_inferences
+        self.bw_w = bw_w
+        self.bw_b = bw_b
+        self.bw_f = bw_f
+        self.cols = cols
+        self.rows = rows
 
         self.xs = []
         self.ys = []
@@ -202,7 +207,13 @@ class TRaxUltraTrailBackend(Callback):
         from backend.backend import UltraTrailBackend
 
         # execute backend
-        backend = UltraTrailBackend()
+        backend = UltraTrailBackend(
+            bw_w=self.bw_w,
+            bw_b=self.bw_b,
+            bw_f=self.bw_f,
+            cols=self.cols,
+            rows=self.rows,
+        )
         backend.set_model(
             pl_module.model, pl_module.example_feature_array, verbose=True
         )

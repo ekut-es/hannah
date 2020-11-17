@@ -1,7 +1,12 @@
 # @package _group_
 
 _target_: speech_recognition.callbacks.backends.TRaxUltraTrailBackend
-backend_dir: "/local/palomero/projects/tc-resnet8-accelerator"
+backend_dir: "/local/palomero/projects/teda/rtl/tc-resnet8-accelerator"
 teda_dir: "/local/palomero/projects/teda"
 app: "ut_backend"
 num_inferences: 3
+bw_w: 6
+bw_b: 6
+bw_f: 8
+cols: 8
+rows: 8
