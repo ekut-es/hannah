@@ -427,6 +427,7 @@ class SpeechHotwordDataset(SpeechDataset):
         msglogger = logging.getLogger()
 
         folder = config["data_folder"]
+        folder = os.path.join(folder, "hey_snips_research_6k_en_train_eval_clean_ter")
 
         descriptions = ["train.json", "dev.json", "test.json"]
         dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
@@ -474,6 +475,7 @@ class SpeechHotwordDataset(SpeechDataset):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
         downloadfolder_tmp = config["download_folder"]
+        variants = config["variants"]
 
         if len(downloadfolder_tmp) == 0:
             downloadfolder_tmp = os.path.join(
@@ -483,38 +485,27 @@ class SpeechHotwordDataset(SpeechDataset):
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        userlanguage = config["variants"]
         snips_target = os.path.join(
             data_folder, "hey_snips_research_6k_en_train_eval_clean_ter"
         )
-
-        # download UWNU dataset
         snips_filename = "hey_snips_kws_4.0.tar.gz"
-        if (
-            "snips" in userlanguage
-            and not os.path.isfile(os.path.join(downloadfolder_tmp, snips_filename))
-            and os.path.isdir(snips_target)
-        ):
+        url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1"
+
+        if "snips" in variants:
             download_and_extract_archive(
-                "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1",
-                downloadfolder_tmp,
-                data_folder,
                 snips_filename,
-                remove_finished=clear_download,
-            )
-        elif (
-            "snips" in userlanguage
-            and os.path.isfile(os.path.join(downloadfolder_tmp, snips_filename))
-            and os.path.isdir(snips_target)
-        ):
-            extract_archive(
-                os.path.join(downloadfolder_tmp, snips_filename),
-                data_folder,
-                remove_finished=clear_download,
+                url,
+                cached_files,
+                downloadfolder_tmp,
+                snips_target,
+                snips_target,
             )
 
 
