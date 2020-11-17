@@ -164,6 +164,17 @@ def extract_from_download_cache(
     target_test_folder="",
     clear_download=False,
 ):
+    """extracts given file from cache or donwloads first from url
+
+        Args:
+            filename (str): name of the file to download or extract
+            url (str): possible url to download the file
+            cached_files (list(str)): cached files in download cache
+            target_cache (str): path to the folder to cache file if download necessary
+            target_folder (str): path where to extract file
+            target_test_folder (str, optional): folder to check if data are already there
+            clear_download (bool): clear download after usage
+        """
     if len(target_test_folder) == 0:
         target_test_folder = target_folder
     if filename not in cached_files and not os.path.isdir(target_test_folder):
