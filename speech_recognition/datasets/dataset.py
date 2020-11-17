@@ -369,13 +369,14 @@ class SpeechCommandsDataset(SpeechDataset):
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
         variants = config["variants"]
-
-        cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         target_folder = os.path.join(data_folder, "speech_commands_v0.02")
 
@@ -779,13 +780,14 @@ class KeyWordDataset(SpeechDataset):
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
         variants = config["variants"]
-
-        cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         target_folder = os.path.join(data_folder, "speech_commands_v0.02")
 
