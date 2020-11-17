@@ -531,6 +531,7 @@ class VadDataset(SpeechDataset):
         msglogger = logging.getLogger()
 
         folder = config["data_folder"]
+        folder = os.path.join(folder, "vad_data_balanced")
 
         descriptions = ["train", "dev", "test"]
         dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]

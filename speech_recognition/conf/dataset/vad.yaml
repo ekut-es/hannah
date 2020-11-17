@@ -1,6 +1,6 @@
 # @package _group_
 
-data_folder: ${hydra:runtime.cwd}/datasets/vad_data_balanced/
+data_folder: ${hydra:runtime.cwd}/datasets/
 cls: speech_recognition.datasets.dataset.VadDataset
 dataset: vad
 
@@ -10,7 +10,7 @@ samplingrate: 16000
 timeshift_ms: 0
 extract: trim_borders
 clear_download: False
-variants: [""]
+variants: []
 data_split: ""
 noise_dataset: [""]
 clear_split: False
