@@ -621,8 +621,8 @@ class VadDataset(SpeechDataset):
                 clear_download=clear_download,
             )
 
-        lang = ["de", "fr", "es", "it"]
-        for name in lang:
+        mozilla_lang = ["de", "fr", "es", "it"]
+        for name in mozilla_lang:
             filename = name + ".tar.gz"
             target_test_folder = os.path.join(mozilla_supertarget, name)
             url = (
