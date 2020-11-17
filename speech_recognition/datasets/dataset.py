@@ -591,90 +591,72 @@ class VadDataset(SpeechDataset):
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
         speechdir = os.path.join(data_folder, "speech_files")
-        lang = ["de", "fr", "es", "it"]
+        variants = config["variants"]
 
-        userlanguage = config["variants"]
-
-        files_downloadfolder = list_all_files(downloadfolder_tmp, ".tar.gz")
+        # cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         # download mozilla dataset
-        mozilla_downloadfolder = os.path.join(downloadfolder_tmp, "mozilla")
-        mozilla_target = os.path.join(speechdir, "cv-corpus-5.1-2020-06-22")
-        if (
-            "en" in userlanguage
-            and "en.tar.gz" not in files_downloadfolder
-            and not os.path.isdir(os.path.join(mozilla_target, "en"))
-        ):
-            download_and_extract_archive(
+        target_cache_mozilla = os.path.join(downloadfolder_tmp, "mozilla")
+        mozilla_supertarget = os.path.join(speechdir, "cv-corpus-5.1-2020-06-22")
+
+        if "en" in variants:
+            filename = "en.tar.gz"
+            target_test_folder = os.path.join(mozilla_supertarget, "en")
+            extract_from_download_cache(
+                filename,
                 "https://voice-prod-bundler-ee1969a6ce8178826482b88e843c335139bd3fb4.s3.amazonaws.com/cv-corpus-5.1-2020-06-22/en.tar.gz",
-                mozilla_downloadfolder,
+                cached_files,
+                target_cache_mozilla,
                 speechdir,
-                remove_finished=clear_download,
-            )
-        elif (
-            "en" in userlanguage
-            and "en.tar.gz" in files_downloadfolder
-            and not os.path.isdir(os.path.join(mozilla_target, "en"))
-        ):
-            extract_archive(
-                os.path.join(mozilla_downloadfolder, "en.tar.gz"),
-                speechdir,
-                remove_finished=clear_download,
+                target_test_folder=target_test_folder,
+                clear_download=clear_download,
             )
 
+        lang = ["de", "fr", "es", "it"]
         for name in lang:
             filename = name + ".tar.gz"
-            if (
-                name in userlanguage
-                and filename not in files_downloadfolder
-                and not os.path.isdir(os.path.join(mozilla_target, name))
-            ):
-                download_and_extract_archive(
-                    "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/"
-                    + filename,
-                    mozilla_downloadfolder,
+            target_test_folder = os.path.join(mozilla_supertarget, name)
+            url = (
+                "https://cdn.commonvoice.mozilla.org/cv-corpus-5.1-2020-06-22/"
+                + filename
+            )
+
+            if name in variants:
+                extract_from_download_cache(
+                    filename,
+                    url,
+                    cached_files,
+                    target_cache_mozilla,
                     speechdir,
-                    remove_finished=clear_download,
+                    target_test_folder,
+                    clear_download,
                 )
-            elif (
-                name in userlanguage
-                and filename in files_downloadfolder
-                and not os.path.isdir(os.path.join(mozilla_target, name))
-            ):
-                extract_archive(
-                    os.path.join(mozilla_downloadfolder, filename),
-                    speechdir,
-                    remove_finished=clear_download,
-                )
+
         # download UWNU dataset
-        uwnu_filename = "uwnu-v2.tar.gz"
-        if (
-            "UWNU" in userlanguage
-            and uwnu_filename not in files_downloadfolder
-            and not os.path.isdir(os.path.join(speechdir, "UWNU"))
-        ):
-            download_and_extract_archive(
-                "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1",
-                os.path.join(downloadfolder_tmp, "UWNU"),
-                speechdir,
-                uwnu_filename,
-                remove_finished=clear_download,
-            )
-        elif (
-            "UWNU" in userlanguage
-            and uwnu_filename in files_downloadfolder
-            and not os.path.isdir(os.path.join(speechdir, "UWNU"))
-        ):
-            extract_archive(
-                os.path.join(os.path.join(downloadfolder_tmp, "UWNU"), uwnu_filename),
-                speechdir,
-                remove_finished=clear_download,
-            )
+        if "UWNU" in variants:
+            filename = "uwnu-v2.tar.gz"
+            target_test_folder = os.path.join(speechdir, "UWNU")
+            url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1"
+            target_cache = os.path.join(downloadfolder_tmp, "UWNU")
+
+            if name in variants:
+                extract_from_download_cache(
+                    filename,
+                    url,
+                    cached_files,
+                    target_cache,
+                    speechdir,
+                    target_test_folder,
+                    clear_download,
+                )
 
 
 class KeyWordDataset(SpeechDataset):
