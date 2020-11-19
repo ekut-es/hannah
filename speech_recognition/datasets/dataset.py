@@ -499,7 +499,7 @@ class SpeechHotwordDataset(SpeechDataset):
         url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1"
 
         if "snips" in variants:
-            download_and_extract_archive(
+            extract_from_download_cache(
                 snips_filename,
                 url,
                 cached_files,
@@ -523,7 +523,7 @@ class VadDataset(SpeechDataset):
         msglogger = logging.getLogger()
 
         folder = config["data_folder"]
-        folder = os.path.join(folder, "vad_data_balanced")
+        folder = os.path.join(folder, "vad_balanced")
 
         descriptions = ["train", "dev", "test"]
         dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
