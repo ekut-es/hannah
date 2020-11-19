@@ -6,8 +6,6 @@ import logging
 import hashlib
 import sys
 
-from collections import defaultdict
-
 import librosa
 import torchaudio
 import numpy as np
@@ -18,12 +16,6 @@ import torch.utils.data as data
 from enum import Enum
 from collections import defaultdict
 from chainmap import ChainMap
-from torchvision.datasets.utils import (
-    download_and_extract_archive,
-    extract_archive,
-    list_files,
-    list_dir,
-)
 
 from ..utils import list_all_files, extract_from_download_cache
 
