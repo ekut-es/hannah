@@ -1,12 +1,127 @@
 import os
 import sys
 import shutil
+import random
 from ..utils import list_all_files, extract_from_download_cache
+from torchvision.datasets.utils import extract_archive
 
 
 class NoiseDataset:
     def __init__(self):
         pass
+
+    @classmethod
+    def getTUT_NoiseFiles(cls, config):
+        data_folder = config["data_folder"]
+        noise_folder = os.path.join(data_folder, "noise_files")
+        tut_folder = os.path.join(noise_folder, "TUT-acoustic-scenes-2017-development")
+        if os.path.isdir(tut_folder):
+            files = NoiseDataset.read_dataset_specific(tut_folder)
+            return files
+        return []
+
+    @classmethod
+    def getOthers_divided(cls, config):
+        output_train = list()
+        output_dev = list()
+        output_test = list()
+
+        train, dev, test = NoiseDataset.getFSDKaggle_divided(config)
+        if train != None:
+            output_train.extend(train)
+            output_dev.extend(dev)
+            output_test.extend(test)
+
+        train, dev, test = NoiseDataset.getFSDnoisy_divided(config)
+        if train != None:
+            output_train.extend(train)
+            output_dev.extend(dev)
+            output_test.extend(test)
+        train, dev, test = NoiseDataset.getFSD50K_divided(config)
+        if train != None:
+            output_train.extend(train)
+            output_dev.extend(dev)
+            output_test.extend(test)
+
+        return (output_train, output_dev, output_test)
+
+    @classmethod
+    def getFSDKaggle_divided(cls, config):
+        data_folder = config["data_folder"]
+        noise_folder = os.path.join(data_folder, "noise_files")
+        kaggle_folder = os.path.join(noise_folder, "FSDKaggle")
+        if os.path.isdir(kaggle_folder):
+
+            FSDParts = ["audio_test", "audio_train"]
+
+            test = NoiseDataset.read_dataset_specific(
+                os.path.join(kaggle_folder, "FSDKaggle2018.audio_test")
+            )
+            train = NoiseDataset.read_dataset_specific(
+                os.path.join(kaggle_folder, "FSDKaggle2018.audio_train")
+            )
+            random.shuffle(train)
+            dev = train[0 : len(test)]
+            train = train[len(test) :]
+
+            return (train, dev, test)
+        return (None, None, None)
+
+    @classmethod
+    def getFSD50K_divided(cls, config):
+        data_folder = config["data_folder"]
+        noise_folder = os.path.join(data_folder, "noise_files")
+        kaggle_folder = os.path.join(noise_folder, "FSD50K")
+        if os.path.isdir(kaggle_folder):
+
+            train = NoiseDataset.read_dataset_specific(
+                os.path.join(kaggle_folder, "FSD50K.dev_audio")
+            )
+            test = NoiseDataset.read_dataset_specific(
+                os.path.join(kaggle_folder, "FSD50K.eval_audio")
+            )
+
+            random.shuffle(train)
+            dev = train[0 : len(test)]
+            train = train[len(test) :]
+
+            return (train, dev, test)
+        return (None, None, None)
+
+    @classmethod
+    def getFSDnoisy_divided(cls, config):
+        data_folder = config["data_folder"]
+        noise_folder = os.path.join(data_folder, "noise_files")
+        kaggle_folder = os.path.join(noise_folder, "FSDnoisy")
+        if os.path.isdir(kaggle_folder):
+
+            FSDParts = ["audio_test", "audio_train"]
+            test = list()
+            dev = list()
+            train = list()
+
+            test = NoiseDataset.read_dataset_specific(
+                os.path.join(kaggle_folder, "FSDFSDnoisy.audio_test")
+            )
+            train = NoiseDataset.read_dataset_specific(
+                os.path.join(kaggle_folder, "FSDKaggle2018.audio_train")
+            )
+            random.shuffle(train)
+            dev = train[0 : len(test)]
+            train = train[len(test) :]
+
+            return (train, dev, test)
+        return (None, None, None)
+
+    @classmethod
+    def read_dataset_specific(cls, folder):
+        files = list_all_files(
+            folder, ".wav", remove_file_beginning=".", file_prefix=True
+        )
+        files.extend(
+            list_all_files(folder, ".mp3", remove_file_beginning=".", file_prefix=True)
+        )
+        return files
 
     @classmethod
     def download_noise(self, config):
@@ -89,4 +204,36 @@ class NoiseDataset:
                             target_cache,
                             target_folder,
                             target_test_folder,
+                        )
+
+            if "FSD50K" in noisedatasets:
+                filename = "50k.tar"
+                url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/1fe048dfbbbf49eaa9d5/?dl=1"
+                target_test_folder = os.path.join(target_cache, "FSDK50K")
+                extract_from_download_cache(
+                    filename,
+                    url,
+                    cached_files,
+                    target_cache,
+                    target_cache,
+                    target_test_folder,
+                    clear_download=clear_download,
+                )
+
+                fsd50k_folder = os.path.join(noise_folder, "FSD50K")
+                if not os.path.isdir(fsd50k_folder):
+                    os.makedirs(fsd50k_folder)
+
+                files = ["FSD50K.dev.zip", "FSD50K.eval.zip"]
+                tfolders = ["FSD50K.dev_audio", "FSD50K.eval_audio"]
+                source = target_test_folder
+                for f, tf in zip(files, tfolders):
+                    target = os.path.join(noise_folder, "FSD50K")
+                    target_test_folder = os.path.join(target, tf)
+                    if not os.path.isdir(target_test_folder):
+                        print("extract from download_cache: " + str(f))
+                        extract_archive(
+                            os.path.join(source, f),
+                            target,
+                            remove_finished=clear_download,
                         )
