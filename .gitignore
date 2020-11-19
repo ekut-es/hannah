@@ -7,7 +7,14 @@
 datasets/speech_commands_v0.02/
 datasets/speech_files/
 datasets/noise_files/
-datasets/vad_data_balanced/
+datasets/vad_balanced/
+datasets/vad/
+datasets/vad_speech/
+datasets/getrennt/
+datasets/downloads/
+datasets/noise_files/
+datasets/speech_files/
+datasets/hey_snips_research_6k_en_train_eval_clean_ter/
 trained_models
 \#*
 tcml_config.json
@@ -37,4 +44,3 @@ lightning_logs/
 srf-poetry/README.rst
 srf-poetry/srf_poetry/
 srf-poetry/tests/
-
