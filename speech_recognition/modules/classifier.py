@@ -24,6 +24,7 @@ from torchvision.datasets.utils import (
     list_dir,
 )
 
+from ..datasets.NoiseDataset import NoiseDataset
 from ..datasets.DatasetSplit import DatasetSplit
 from ..datasets.Downsample import Downsample
 import torchaudio
@@ -52,7 +53,7 @@ class SpeechClassifierModule(LightningModule):
     def prepare_data(self):
         # get all the necessary data stuff
         get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
-        self.download_noise(self.hparams.dataset)
+        NoiseDataset.download_noise(self.hparams.dataset)
         DatasetSplit.split_data(self.hparams.dataset)
         Downsample.downsample(self.hparams.dataset)
 
