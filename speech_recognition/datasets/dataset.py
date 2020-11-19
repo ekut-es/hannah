@@ -583,9 +583,11 @@ class VadDataset(SpeechDataset):
             os.makedirs(data_folder)
 
         speechdir = os.path.join(data_folder, "speech_files")
-        variants = config["variants"]
 
-        # cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
+        if not os.path.isdir(speechdir):
+            os.makedirs(speechdir)
+
+        variants = config["variants"]
 
         # download mozilla dataset
         target_cache_mozilla = os.path.join(downloadfolder_tmp, "mozilla")
@@ -627,20 +629,19 @@ class VadDataset(SpeechDataset):
         # download UWNU dataset
         if "UWNU" in variants:
             filename = "uwnu-v2.tar.gz"
-            target_test_folder = os.path.join(speechdir, "UWNU")
+            target_test_folder = os.path.join(speechdir, "uwnu-v2")
             url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1"
             target_cache = os.path.join(downloadfolder_tmp, "UWNU")
 
-            if name in variants:
-                extract_from_download_cache(
-                    filename,
-                    url,
-                    cached_files,
-                    target_cache,
-                    speechdir,
-                    target_test_folder,
-                    clear_download,
-                )
+            extract_from_download_cache(
+                filename,
+                url,
+                cached_files,
+                target_cache,
+                speechdir,
+                target_test_folder,
+                clear_download,
+            )
 
 
 class KeyWordDataset(SpeechDataset):
