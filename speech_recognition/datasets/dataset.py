@@ -498,6 +498,7 @@ class SpeechHotwordDataset(SpeechDataset):
                 downloadfolder_tmp,
                 snips_target,
                 snips_target,
+                clear_download=clear_download,
             )
 
 
