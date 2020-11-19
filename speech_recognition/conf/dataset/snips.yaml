@@ -12,6 +12,7 @@ train_pct: 80
 wanted_words: []
 bg_noise_files: []
 
+variants: []
 data_split: []
 noise_dataset: []
 download_folder: ""
