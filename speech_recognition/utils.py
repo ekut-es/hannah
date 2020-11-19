@@ -145,12 +145,22 @@ def load_module(path):
     return module
 
 
-def list_all_files(path, file_suffix, file_prefix=False):
+def list_all_files(path, file_suffix, file_prefix=False, remove_file_beginning=""):
     subfolder = list_dir(path, prefix=True)
     files_in_folder = list_files(path, file_suffix, prefix=file_prefix)
-    for element in subfolder:
-        subfolder.extend(list_dir(element, prefix=True))
-        files_in_folder.extend(list_files(element, file_suffix, prefix=file_prefix))
+    for subfold in subfolder:
+        subfolder.extend(list_dir(subfold, prefix=True))
+        if len(remove_file_beginning):
+            tmp = list_files(subfold, file_suffix, prefix=False)
+            tmp = [
+                element
+                for element in tmp
+                if not element.startswith(remove_file_beginning)
+            ]
+            for filename in tmp:
+                files_in_folder.append(os.path.join(subfold, filename))
+        else:
+            files_in_folder.extend(list_files(subfold, file_suffix, prefix=file_prefix))
 
     return files_in_folder
 

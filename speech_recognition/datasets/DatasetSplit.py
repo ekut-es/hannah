@@ -11,11 +11,11 @@ class DatasetSplit:
 
     @classmethod
     def load_vad_default(cls, speechdir, noisedir):
-        noise_files = list_all_files(noisedir, ".wav", True)
-        noise_files.extend(list_all_files(noisedir, ".mp3", True))
+        noise_files = list_all_files(noisedir, ".wav", True, ".")
+        noise_files.extend(list_all_files(noisedir, ".mp3", True, "."))
 
-        speech_files = list_all_files(speechdir, ".wav", True)
-        speech_files.extend(list_all_files(speechdir, ".mp3", True))
+        speech_files = list_all_files(speechdir, ".wav", True, ".")
+        speech_files.extend(list_all_files(speechdir, ".mp3", True, "."))
 
         return (speech_files, noise_files)
 
