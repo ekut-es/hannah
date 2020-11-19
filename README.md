@@ -158,13 +158,13 @@ Common configuration options for datasets are:
  - test_snr: SNR used for test
  - train_snr_high: minimal SNR for training data
  - train_snr_low: maximal SNR for test data
-
+ - noise_dataset: ["TUT", "FSDKaggle", "FSDnoisy"] Downlaods all the specified datasets. Use TUT + one other
  - data_split: initial split after downloading the datasets(Possibilities: "vad", "vad_speech", "vad_balanced", "getrennt")
  - downsample: samplerate DESTRUCTIVE! change the samplerate of the real files to the target samplerate.  Use better parameter samplingrate
 
 FIXME: clarify with tobias
 
- - noise_dataset: []
+
 
 ## features
 
