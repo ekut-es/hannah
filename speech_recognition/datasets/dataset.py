@@ -382,7 +382,7 @@ class SpeechCommandsDataset(SpeechDataset):
                 cached_files,
                 os.path.join(downloadfolder_tmp, "speech_commands"),
                 target_folder,
-                clear_download,
+                clear_download=clear_download,
             )
 
 
@@ -785,7 +785,7 @@ class KeyWordDataset(SpeechDataset):
                 cached_files,
                 os.path.join(downloadfolder_tmp, "speech_commands"),
                 target_folder,
-                clear_download,
+                clear_download=clear_download,
             )
 
 
