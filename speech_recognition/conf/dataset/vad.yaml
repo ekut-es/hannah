@@ -12,7 +12,7 @@ extract: trim_borders
 clear_download: False
 variants: []
 data_split: ""
-noise_dataset: [""]
+noise_dataset: []
 clear_split: False
 download_folder: ""
 
