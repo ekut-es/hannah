@@ -11,6 +11,13 @@ from typing import Any, Callable
 
 from git import Repo, InvalidGitRepositoryError
 
+from torchvision.datasets.utils import (
+    list_files,
+    list_dir,
+    download_and_extract_archive,
+    extract_archive,
+)
+
 try:
     import lsb_release
 
@@ -136,3 +143,69 @@ def load_module(path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def list_all_files(path, file_suffix, file_prefix=False, remove_file_beginning=""):
+    subfolder = list_dir(path, prefix=True)
+    files_in_folder = list_files(path, file_suffix, prefix=file_prefix)
+    for subfold in subfolder:
+        subfolder.extend(list_dir(subfold, prefix=True))
+        if len(remove_file_beginning):
+            tmp = list_files(subfold, file_suffix, prefix=False)
+            tmp = [
+                element
+                for element in tmp
+                if not element.startswith(remove_file_beginning)
+            ]
+            for filename in tmp:
+                files_in_folder.append(os.path.join(subfold, filename))
+        else:
+            files_in_folder.extend(list_files(subfold, file_suffix, prefix=file_prefix))
+
+    return files_in_folder
+
+
+def extract_from_download_cache(
+    filename,
+    url,
+    cached_files,
+    target_cache,
+    target_folder,
+    target_test_folder="",
+    clear_download=False,
+    no_exist_check=False,
+):
+    """extracts given file from cache or donwloads first from url
+
+        Args:
+            filename (str): name of the file to download or extract
+            url (str): possible url to download the file
+            cached_files (list(str)): cached files in download cache
+            target_cache (str): path to the folder to cache file if download necessary
+            target_folder (str): path where to extract file
+            target_test_folder (str, optional): folder to check if data are already there
+            clear_download (bool): clear download after usage
+            no_exist_check (bool): disables the check if folder exists
+        """
+    if len(target_test_folder) == 0:
+        target_test_folder = target_folder
+    if filename not in cached_files and (
+        not os.path.isdir(target_test_folder) or no_exist_check
+    ):
+        print("download and extract: " + str(filename))
+        download_and_extract_archive(
+            url,
+            target_cache,
+            target_folder,
+            filename=filename,
+            remove_finished=clear_download,
+        )
+    elif filename in cached_files and (
+        not os.path.isdir(target_test_folder) or no_exist_check
+    ):
+        print("extract from download_cache: " + str(filename))
+        extract_archive(
+            os.path.join(target_cache, filename),
+            target_folder,
+            remove_finished=clear_download,
+        )
