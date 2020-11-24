@@ -174,6 +174,8 @@ class SpeechDataset(data.Dataset):
             for _ in range(0, count):
                 if len(bg_noise) < (data.shape[0] + 1):
                     bg_noise = np.concatenate((bg_noise, bg_noise), axis=0)
+                else:
+                    break
             a = random.randint(0, len(bg_noise) - data.shape[0] - 1)
             bg_noise = bg_noise[a : a + data.shape[0]]
 
