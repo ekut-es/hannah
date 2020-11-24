@@ -170,6 +170,8 @@ class SpeechDataset(data.Dataset):
 
         if self.bg_noise_audio:
             bg_noise = random.choice(self.bg_noise_audio)
+            while len(bg_noise) < (data.shape[0] + 1):
+                bg_noise = np.concatenate((bg_noise, bg_noise), axis=0)
             a = random.randint(0, len(bg_noise) - data.shape[0] - 1)
             bg_noise = bg_noise[a : a + data.shape[0]]
 
