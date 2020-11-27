@@ -1,0 +1,36 @@
+# @package _group_
+
+
+# Das Netzwerk hat entweder 1 oder 2 layer.
+# Und jedes der layer ist entweder ein convolution der größe 1 oder 3.
+
+
+# Zustand in dieser yaml Datei definiert nur den default candidate.
+# Die parametrisierung wird durch Hydra vorgenommen.
+# Die Suche wird mittels Hydras --multirun implementiert.
+
+
+cls: speech_recognition.models.nas.TCCandidateModel
+name: tc-candidate-model
+
+# model init
+n_labels: 12
+width: 101
+height: 40
+dropout_prob: 0.5
+width_multiplier: 1.0
+
+
+
+
+# every major-block consists of k micro-blocks
+k_MicroBlocks: 2
+conv_sizes: [1, 3]
+
+# every tc-residual-block consists of l major-blocks
+l_MajorBlocks: 1
+
+# the nn consists of m tc-residual-block
+m_TCResidualBlocks: 1
+
+
