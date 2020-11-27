@@ -33,7 +33,7 @@ test:
   image: python:3.6
   script:
     - set -e
-    - poetry run python3 -m pytest --capture=sys --cov=speech_recognition test
+    - poetry run python3 -m pytest  --cov=speech_recognition test
   tags:
     - docker
 
@@ -41,7 +41,7 @@ test_python_37:
   image: python:3.7
   script:
     - set -e
-    - poetry run python3 -m pytest --capture=sys --cov=speech_recognition test
+    - poetry run python3 -m pytest  --cov=speech_recognition test
   tags:
     - docker
 
@@ -49,7 +49,7 @@ test_python_38:
   image: python:3.8
   script:
     - set -e
-    - poetry run python3 -m pytest --capture=sys --cov=speech_recognition test
+    - poetry run python3 -m pytest  --cov=speech_recognition test
   tags:
     - docker
 

@@ -618,7 +618,7 @@ class BranchyTCResNetModel(TCResNetModel):
 
                 exit_number += 1
 
-        global_result += torch.where(current_mask > 0, x, global_result)
+        global_result += torch.where(current_mask > 0, x, zeros)
         batch_taken.append(x.shape[0])
         for i, taken in enumerate(batch_taken):
             self.exits_taken[i] += taken

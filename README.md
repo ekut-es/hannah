@@ -129,7 +129,7 @@ The other configuration options follow the distiller configuration format with o
 
 ## dataset
 
-Choices are: `kws` (For Google Keyword Spotting), `snips` (For hey snips dataset)
+Choices are: `kws` (For Google Keyword Spotting), `snips` (For hey snips dataset), `vad` (For Voice Activity Detection)
 
 Common configuration options for datasets are:
 
@@ -147,7 +147,7 @@ Common configuration options for datasets are:
  - input_length: "Length of the input samples"
  - samplingrate: "Sampling rate"
  - clear_download: "Remove downloaded archive after download"
- - lang: Language to use for multilanguage datasets
+ - variants: Language to use for multilanguage datasets
 
  - timeshift_ms: "Timeshift the input data by +- given ms"
  - extract: loudest
@@ -158,13 +158,39 @@ Common configuration options for datasets are:
  - test_snr: SNR used for test
  - train_snr_high: minimal SNR for training data
  - train_snr_low: maximal SNR for test data
-
+ - noise_dataset: ["TUT", "FSDKaggle", "FSDnoisy"] Downlaods all the specified datasets. Use TUT + one other
  - data_split: initial split after downloading the datasets(Possibilities: "vad", "vad_speech", "vad_balanced", "getrennt")
  - downsample: samplerate DESTRUCTIVE! change the samplerate of the real files to the target samplerate.  Use better parameter samplingrate
 
-FIXME: clarify with tobias
+### variants
+variants for `kws`
+- speech_command
 
- - noise_dataset: []
+variants for `snips`
+- spnis
+
+variants for `vad`
+- UWNU
+- Mozilla has the following language options:
+    - en: Englisch
+    - de: Detusch
+    - fr: Französisch
+    - it: Italienisch
+    - es: Spanisch
+    - kab: Kabylisch
+    - ca: Katalanisch
+    - nl: Niderländisch
+    - eo: Esperanto
+    - fa: Persisch
+    - eu: Baskisch
+    - rw: Kinyarwanda
+    - ru: Russisch
+    - pt: Portugiesisch
+    - pl: Polnisch
+
+
+
+
 
 ## features
 
