@@ -646,7 +646,7 @@ class VadDataset(SpeechDataset):
 
         # download UWNU dataset
         if "UWNU" in variants:
-            filename = "uwnu-v2.tar.gz"
+            filename = "uwnu-v2.tar"
             target_test_folder = os.path.join(speechdir, "uwnu-v2")
             url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1"
             target_cache = os.path.join(downloadfolder_tmp, "UWNU")
