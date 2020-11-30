@@ -89,6 +89,46 @@ e.g. for GPU 2 use:
 
 Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
+## Training - VAD
+
+Training of VAD is invoked by
+
+    python -m speech_recognition.train dataset=vad model.n_labels=2
+
+Training of VAD_Extended is invoked by
+
+    python -m speech_recognition.train dataset=vad_extended model.n_labels=2
+
+If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.gpus=[number]
+e.g. for GPU 2 use:
+
+    python -m speech_recognition.train dataset=vad model.n_labels=2 trainer.gpus=[2]
+
+Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
+
+### Data Creation at the beginning
+
+Selection of other Voice Dataset use  `dataset.variants="[UWNU, de, en, it, fr, es]" `
+
+    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU, de, en, it, fr, es]"
+
+Selection of other Noise Datasets use  `dataset.noise_dataset="[TUT]" `
+
+    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.noise_dataset="[TUT]"
+
+Selection of dataset Split use  `dataset.data_split="vad_balanced" `
+
+    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.data_split="vad_balanced"
+
+Create Vad_small Dataset
+
+    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU]" dataset.noise_dataset="[TUT]" dataset.data_split="vad_balanced"
+
+Create VAD_big Dataset
+
+    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU, en, de, fr, es, it]" dataset.noise_dataset="[TUT, FSD50K]" dataset.data_split="vad_balanced"
+
+
 # Configuration
 
 Configurations are managed by hydra (http://hydra.cc). And follow a structured configuration.
