@@ -22,9 +22,6 @@ before_script:
 
   # install and manage dependencies with poetry
   - poetry install
-  - cd datasets
-  - ./get_datasets.sh
-  - cd ..
 
   # Show limits
   - ulimit -a
