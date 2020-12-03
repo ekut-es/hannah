@@ -49,13 +49,17 @@ class SpeechClassifierModule(LightningModule):
         self.save_hyperparameters()
         self.msglogger = logging.getLogger()
         self.initialized = False
+        self.train_set = None
+        self.test_set = None 
+        self.dev_set = None
 
     def prepare_data(self):
         # get all the necessary data stuff
-        get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
-        NoiseDataset.download_noise(self.hparams.dataset)
-        DatasetSplit.split_data(self.hparams.dataset)
-        Downsample.downsample(self.hparams.dataset)
+        if not self.train_set or not self.test_set or not self.dev_set:
+            get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
+            NoiseDataset.download_noise(self.hparams.dataset)
+            DatasetSplit.split_data(self.hparams.dataset)
+            Downsample.downsample(self.hparams.dataset)
 
     def setup(self, stage):
 
