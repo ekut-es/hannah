@@ -10,14 +10,12 @@ pwlf = "^2.0.0"
 distiller = {path = "./external/distiller"}
 gitdb2 = "2.0.6"
 chainmap = "^1.0.3"
-librosa = "^0.6.3"
 redis = "^3.4.1"
 torch = "^1.6.0"
 pytorch-lightning = "^1.0.3"
 SoundFile = "^0.10.3"
 
 # Pinned dependencies
-numba = "0.48.0"
 
 # optional dependencies
 onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
