@@ -23,10 +23,6 @@ class ScalarConfigSpec:
     # upper bound if any
     upper: Optional[float] = None
 
-    # initial value
-    # default to the middle point if completely bounded
-    init: Optional[float] = None
-
     # step size for an update
     # defaults to 1 if unbounded
     # or 1/6 of the range if completely bounded
@@ -48,6 +44,7 @@ class OptimConf:
     eps: float = 0.1
     num_workers: int = 10
     seed: Optional[int] = None
+    bounds: Optional[Dict[str, float]] = None
 
 
 @dataclass

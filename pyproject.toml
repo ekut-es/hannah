@@ -29,6 +29,7 @@ hydra-nevergrad-sweeper = "^1.1.0-rc.1"
 hydra-joblib-launcher = "^1.1.0"
 zipp = "^3.3.1"
 bitstring = "^3.1.7"
+hydra-unas-sweeper = {path = "plugins/hydra_unas_sweeper"}
 
 
 [tool.poetry.dev-dependencies]
