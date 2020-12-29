@@ -276,7 +276,6 @@ class PhysioClassifierModule(LightningModule):
         self.train_set = None
         self.test_set = None
         self.dev_set = None
-        self.train_confusion_matrix = ConfusionMatrix(4)
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -375,8 +374,6 @@ class PhysioClassifierModule(LightningModule):
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
 
-
-
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
@@ -389,8 +386,6 @@ class PhysioClassifierModule(LightningModule):
 
         # METRICS
         self.get_batch_metrics(output, y, loss, "train")
-
-        self.train_confusion_matrix.update((output, y))
 
         return loss
 
@@ -408,8 +403,6 @@ class PhysioClassifierModule(LightningModule):
             collate_fn=ctc_collate_fn,
             sampler=sampler,
         )
-
-
 
         self.batches_per_epoch = len(train_loader)
 
@@ -493,7 +486,6 @@ class PhysioClassifierModule(LightningModule):
     def on_train_end(self):
         # TODO currently custom save, in future proper configure lighting for saving ckpt
         save_model(".", self)
-        print(self.train_confusion_matrix.compute())
 
     def on_fit_end(self):
         for logger in self.trainer.logger:

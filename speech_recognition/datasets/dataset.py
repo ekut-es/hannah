@@ -232,7 +232,7 @@ class AtrialFibrillationDataset(PhysioDataset):
                     stop_sample = len(samples) - 1
                 start = start_sample
                 stop = stop_sample
-                step = sample_length // 2
+                step = int(sample_length * (1 - config["overlap_pct"]))
                 for i in range(start, stop, step):
                     if start_sample+sample_length < stop_sample:
                         chunk = samples[start_sample:start_sample+sample_length]
@@ -243,7 +243,6 @@ class AtrialFibrillationDataset(PhysioDataset):
                                         f"ex{experiment_nr}_{i}")
 
                     with open(path, "wb") as f:
-                        print(f"Dumping {path}...")
                         pickle.dump(chunk, f)
 
     @classmethod

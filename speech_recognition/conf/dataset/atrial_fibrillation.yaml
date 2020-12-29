@@ -12,6 +12,8 @@ input_length: 1250
 samplingrate: 250
 num_channels: 2
 
+overlap_pct: 0.0
+
 clear_download: False
 variants: ["atrial_fibrillation"]
 data_split: []
