@@ -15,8 +15,6 @@ torch = "^1.6.0"
 pytorch-lightning = "^1.0.3"
 SoundFile = "^0.10.3"
 
-# Pinned dependencies
-
 # optional dependencies
 onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
 tensorflow-addons = {version = "^0.11.2", optional = true}
