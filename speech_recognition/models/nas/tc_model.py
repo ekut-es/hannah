@@ -29,7 +29,6 @@ class ApproximateGlobalAveragePooling1D(nn.Module):
         return x
 
 
-# TODO: implement case: block type input and minor type parallel
 class MajorBlock(nn.Module):
     def __init__(
         self,
@@ -37,24 +36,31 @@ class MajorBlock(nn.Module):
         stride,
         branch,
         minor_blocks,
-        input_channels=None,
         act_layer=None,
+        input_channels=None,
+        dilation_factor=None,
     ):
         super().__init__()
 
+        # TODO stupid but positional arguments not working with hydra
         assert act_layer is not None
+        self.act_layer = act_layer
 
         # module lists for branches of MajorBlock
         self.main_modules = nn.ModuleList()
         self.parallel_modules = nn.ModuleList()
 
         self.is_residual_block = False
+        self.is_input_block = False
+
         if branch == "residual":
             self.is_residual_block = True
+        elif branch == "input":
+            self.is_input_block = True
 
         # config for iteration of minors
-        n_parallels = sum(block["parallel"] for block in minor_blocks)
-        n_mains = len(minor_blocks) - n_parallels
+        # n_parallels = sum(block["parallel"] for block in minor_blocks)
+        # n_mains = len(minor_blocks) - n_parallels
         count_main = 1
         count_parallel = 1
 
@@ -64,16 +70,29 @@ class MajorBlock(nn.Module):
         input_channels_main = input_channels
         input_channels_parallel = input_channels
 
+        # standard minor block config is fully loaded
         kwargs_main = {
-            "batch_norm": True,
+            "dilation_factor": dilation_factor,
+            "act_layer": act_layer,
+        }
+
+        kwargs_parallel = {
+            "dilation_factor": dilation_factor,
             "act_layer": act_layer,
         }
 
         # BUILD MajorBlock of MinorBlocks
         for minor_block in minor_blocks:
 
-            is_parallel = minor_block["parallel"]
             size = minor_block["size"]
+            padding = minor_block["padding"]
+            batchnorm = minor_block["batchnorm"]
+            activation = minor_block["activation"]
+            is_parallel = minor_block["parallel"]
+
+            if not activation:
+                kwargs_main.update({"act_layer": None})
+                kwargs_parallel.update({"act_layer": None})
 
             # parallel MinorBlocks
             if is_parallel:
@@ -87,8 +106,9 @@ class MajorBlock(nn.Module):
                     output_channels,
                     size,
                     stride_parallel,
-                    batch_norm=True,
-                    act_layer=act_layer,
+                    padding,
+                    batchnorm,
+                    **kwargs_parallel,
                 )
 
                 count_parallel += 1
@@ -96,36 +116,23 @@ class MajorBlock(nn.Module):
 
             # main MinorBlocks
             else:
+
                 if count_main > 1:
                     input_channels_main = output_channels
                     stride_main = 1
-                    kwargs_main
-
-                if not self.is_residual_block:
-                    kwargs_main = {
-                        "batch_norm": False,
-                        "act_layer": None,
-                    }
-                elif count_main == n_mains:
-                    kwargs_main = {
-                        "batch_norm": True,
-                        "act_layer": None,
-                    }
 
                 module = MinorBlock(
                     input_channels_main,
                     output_channels,
                     size,
                     stride_main,
-                    **kwargs_main
+                    padding,
+                    batchnorm,
+                    **kwargs_main,
                 )
 
                 self.main_modules.append(module)
                 count_main += 1
-
-        # only append activation layer if residual block
-        if self.is_residual_block:
-            self.act_layer = act_layer
 
     def forward(self, x):
 
@@ -136,17 +143,37 @@ class MajorBlock(nn.Module):
         for layer in self.main_modules:
             main_feed = layer(main_feed)
 
-        if self.is_residual_block:
+        act_input = main_feed
 
+        print(f"main_feed = {main_feed.size()}")
+
+        if self.is_residual_block:
+            #                |---> parallel: True  --->  parallel: True  ---> |
+            # Residual:  --->|                                                +--->
+            #                |---> parallel: False --->  parallel: False ---> |
             for layer in self.parallel_modules:
                 parallel_feed = layer(parallel_feed)
 
+            print(f"parallel_feed = {parallel_feed.size()}")
             act_input = main_feed + parallel_feed
 
-            output = self.act_layer(act_input)
+        if self.is_input_block:
+            #                 |---> parallel: True  --->  |  ---> |
+            #                 |---> parallel: True  --->  |  ---> + ----------|
+            # Input:      --->|                                               +--->
+            #                 |---> parallel: False ---> parallel: False      |
+            if self.parallel_modules:
+                parallel_outs = []
+                for layer in self.parallel_modules:
+                    parallel_outs.append(layer(parallel_feed))
 
-        output = main_feed
+                parallel_outs_sum = sum(parallel_outs)
+                act_input = main_feed + parallel_outs_sum
+                print(f"parallel_outs = {parallel_outs}")
+                print(f"parallel_outs_sum = {parallel_outs_sum}")
+                print(f"parallel_outs_sum.size() = {parallel_outs_sum.size()}")
 
+        output = self.act_layer(act_input)
         return output
 
 
@@ -158,11 +185,18 @@ class MinorBlock(nn.Module):
         output_channels,
         size,
         stride,
-        batch_norm=True,
+        padding,
+        batch_norm,
+        dilation_factor=None,
         act_layer=None,
     ):
         super().__init__()
         layers = []
+
+        if padding:
+            assert dilation_factor is not None
+            pad_x = size // 2
+            padding = dilation_factor * pad_x
 
         layers.append(
             nn.Conv1d(
@@ -170,9 +204,8 @@ class MinorBlock(nn.Module):
                 output_channels,
                 size,
                 stride,
-                # padding=dilation * pad_x,
-                # dilation=dilation,
-                bias=False,
+                padding=padding,
+                dilation=dilation_factor,
             )
         )
 
@@ -198,23 +231,11 @@ class TCCandidateModel(SerializableModule):
         n_labels = config["n_labels"]
         width = config["width"]
         height = config["height"]
-        dropout_prob = config["dropout_prob"]
-        width_multiplier = config["width_multiplier"]
         activation_fnc = config["activation_function"]
-        is_fully_convolutional = config["is_fully_convolutional"]
-        has_inputlayer = config["has_inputlayer"]
-        dilation_factor = config["dilation_factor"]
+        dropout_prob = config["dropout_prob"]
         clipping_value = config["clipping_value"]
-        small = config["small"]
         act_layer = create_act(activation_fnc, clipping_value)
-
-        # TODO: make following properties configurable
-        bottleneck = 0
-        channel_division = 4
-        separable = 0
-        # TODO: channel division not implemented
-
-        # config architecture
+        dilation_factor = config["dilation_factor"]
         major_blocks = config["major_blocks"]
 
         # model
@@ -226,9 +247,14 @@ class TCCandidateModel(SerializableModule):
         for major_block in major_blocks:
             # first major block cannot be parallel
             current_module = instantiate(
-                major_block, input_channels=input_channels, act_layer=act_layer
+                # TODO positional arguments not working
+                major_block,
+                input_channels=input_channels,
+                act_layer=act_layer,
+                dilation_factor=dilation_factor,
             )
             self.modules.append(current_module)
+            # input channels for next major block are output channels of current
             input_channels = major_block["output_channels"]
 
         # ------------------
@@ -255,13 +281,9 @@ class TCCandidateModel(SerializableModule):
         self.dropout = nn.Dropout(dropout_prob)
 
         # fully connect
-        if not self.fully_convolutional:
-            x = x.view(1, -1)
+        x = x.view(1, -1)
         shape = x.shape
-        if self.fully_convolutional:
-            self.fc = nn.Conv1d(shape[1], n_labels, 1, bias=False)
-        else:
-            self.fc = nn.Linear(shape[1], n_labels, bias=False)
+        self.fc = nn.Linear(shape[1], n_labels, bias=False)
 
         print("Model created.")
 
