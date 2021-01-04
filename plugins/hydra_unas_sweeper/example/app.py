@@ -11,6 +11,8 @@ log = logging.getLogger()
 @hydra.main(config_name="config")
 def main(cfg: DictConfig) -> Dict[str, float]:
 
+    # print(cfg)
+
     acc = 1.0 / len(cfg.conv_layers)
     mem = len(cfg.conv_layers) * 1.0
 

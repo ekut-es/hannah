@@ -61,16 +61,14 @@ class UNASSweeperImpl(Sweeper):
 
             parameters = [self.optimizer.next_parameters() for _ in range(nw)]
 
-            for override in parameters:
-                from pprint import pprint
-
-                pprint(override)
+            # for override in parameters:
+            #    from pprint import pprint
+            #    pprint(override)
 
             overrides = [self._build_overrides(param) for param in parameters]
 
-            from pprint import pprint
-
-            pprint(overrides)
+            # from pprint import pprint
+            # pprint(overrides)
 
             overrides = [tuple([f"+{k}={v}" for k, v in x.items()]) for x in overrides]
             returns = self.launcher.launch(overrides, initial_job_idx=self.job_idx)

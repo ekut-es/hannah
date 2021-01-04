@@ -80,7 +80,7 @@ class ChoiceParameter(Parameter):
         return choice
 
     def mutations(self, config, index):
-        # FIXME: here we would need to save space
+        # FIXME: here we would need to add child mutations
         def mutate_random(d):
             print("mutating: ", index)
             return nested_set(d, index, self.get_random())
@@ -108,6 +108,17 @@ class ChoiceListParameter(Parameter):
             choice = ret
         return choice
 
+    def _child_mutations(self, choice, config, index):
+        mutations = []
+        if isinstance(choice, Parameter):
+            choice.mutations(config, index)
+        elif isinstance(choice, MutableMapping):
+            for k, v in choice.items():
+                param_index = index + (k,)
+                mutations.extend(choice[k].mutations(config[k], param_index))
+
+        return mutations
+
     def get_random(self):
         length = np.random.randint(self.min, self.max)
         result = []
@@ -122,19 +133,38 @@ class ChoiceListParameter(Parameter):
         length = len(config)
 
         def drop_random(d):
-            print("Dropping random layer", index)
+            print("Dropping random element", index)
             idx = np.random.randint(low=0, high=length)
             l = nested_get(d, index)
             l.pop(idx)
 
         def add_random(d):
-            print("adding random layer", index)
+            print("adding random element", index)
             num = np.random.randint(low=0, high=length + 1)
             choice = self._random_child()
             l = nested_get(d, index)
             l.insert(num, choice)
 
-        return [drop_random, add_random]
+        mutations = []
+        if length < self.max:
+            mutations.append(add_random)
+        if length > self.min:
+            mutations.append(drop_random)
+
+        # Create mutations for all children
+        for num, child in enumerate(config):
+            print("Child", child)
+            child_keys = child.keys()
+            for choice in self.choices:
+                choice_keys = choice.keys()
+
+                # FIXME: also compare values
+                if choice_keys == child_keys:
+                    print("Get child mutations")
+                    child_index = index + (num,)
+                    mutations.extend(self._child_mutations(choice, child, child_index))
+
+        return mutations
 
 
 class IntervalParameter(Parameter):
@@ -181,8 +211,6 @@ class SearchSpace(Parameter):
             index = (k,)
             print(self.space[k])
             mutations.extend(self.space[k].mutations(v, index))
-
-        print(mutations)
 
         mutation = np.random.choice(mutations)
         mutation(config)

@@ -5,7 +5,7 @@ hydra:
   sweeper:
     optim:
       optimizer: aging_evolution
-      population_size: 10
+      population_size: 4
       sample_size: 2
       budget:  2000
       seed: 1234
