@@ -1,6 +1,7 @@
 import platform
 import subprocess
 import os
+import logging
 
 from pathlib import Path
 
@@ -73,7 +74,7 @@ def test_datasets(model, dataset, split):
         "TEST_DOWNLOAD_FOLDER", "/net/rausch1/export/lucille/datasets/"
     )
     if not os.path.exists(download_folder):
-        return
+        logging.warning("Could not find download folder, skipping datased tests")
 
     command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.download_folder={download_folder} dataset.data_split={split}"
 
