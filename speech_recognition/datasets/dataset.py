@@ -6,7 +6,6 @@ import logging
 import hashlib
 import sys
 
-import librosa
 import torchaudio
 import numpy as np
 import scipy.signal as signal
@@ -28,9 +27,7 @@ def factor(snr, psig, pnoise):
 
 
 def load_audio(file_name, sr=16000, backend="torchaudio", res_type="kaiser_fast"):
-    if backend == "librosa":
-        data = librosa.core.load(file_name, sr=sr, res_type=res_type)
-    elif backend == "torchaudio":
+    if backend == "torchaudio":
         torchaudio.set_audio_backend("sox")
         try:
             data, samplingrate = torchaudio.load(file_name)
@@ -498,7 +495,7 @@ class SpeechHotwordDataset(SpeechDataset):
                 url,
                 cached_files,
                 downloadfolder_tmp,
-                snips_target,
+                data_folder,
                 snips_target,
                 clear_download=clear_download,
             )
@@ -646,7 +643,7 @@ class VadDataset(SpeechDataset):
 
         # download UWNU dataset
         if "UWNU" in variants:
-            filename = "uwnu-v2.tar.gz"
+            filename = "uwnu-v2.tar"
             target_test_folder = os.path.join(speechdir, "uwnu-v2")
             url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1"
             target_cache = os.path.join(downloadfolder_tmp, "UWNU")

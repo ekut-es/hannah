@@ -1,6 +1,6 @@
 import platform
 import subprocess
-
+import os
 
 from pathlib import Path
 
@@ -57,4 +57,24 @@ def test_distiller(model, features, compress):
 )
 def test_backend(model, backend):
     command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True experiment_id=test_backend backend={backend} model={model}"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
+@pytest.mark.parametrize(
+    "model,dataset,split",
+    [
+        ("tc-res8", "snips", ""),
+        ("tc-res8", "vad", "vad_balanced"),
+        ("tc-res8", "kws", ""),
+    ],
+)
+def test_datasets(model, dataset, split):
+    download_folder = os.getenv(
+        "TEST_DOWNLOAD_FOLDER", "/net/rausch1/export/lucille/datasets/"
+    )
+    if not os.path.exists(download_folder):
+        return
+
+    command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.download_folder={download_folder} dataset.data_split={split}"
+
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
