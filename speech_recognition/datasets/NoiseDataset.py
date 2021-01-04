@@ -154,31 +154,32 @@ class NoiseDataset:
                 tut_target = os.path.join(
                     noise_folder, "TUT-acoustic-scenes-2017-development"
                 )
-                # remove old data because they could be incomplete
-                if os.path.isdir(tut_target):
-                    shutil.rmtree(tut_target)
 
-                target_cache = os.path.join(downloadfolder_tmp, "TUT")
+                if not os.path.exists(tut_target):
 
-                for i in range(1, 10):
-                    filename = (
-                        "TUT-acoustic-scenes-2017-development.audio." + str(i) + ".zip"
-                    )
-                    url = (
-                        "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio."
-                        + str(i)
-                        + ".zip"
-                    )
-                    extract_from_download_cache(
-                        filename,
-                        url,
-                        cached_files,
-                        target_cache,
-                        noise_folder,
-                        tut_target,
-                        no_exist_check=True,
-                        clear_download=clear_download,
-                    )
+                    target_cache = os.path.join(downloadfolder_tmp, "TUT")
+
+                    for i in range(1, 10):
+                        filename = (
+                            "TUT-acoustic-scenes-2017-development.audio."
+                            + str(i)
+                            + ".zip"
+                        )
+                        url = (
+                            "https://zenodo.org/record/400515/files/TUT-acoustic-scenes-2017-development.audio."
+                            + str(i)
+                            + ".zip"
+                        )
+                        extract_from_download_cache(
+                            filename,
+                            url,
+                            cached_files,
+                            target_cache,
+                            noise_folder,
+                            tut_target,
+                            no_exist_check=True,
+                            clear_download=clear_download,
+                        )
 
             FSDParts = ["audio_test", "audio_train", "meta"]
             datasetname = ["FSDKaggle", "FSDnoisy"]
