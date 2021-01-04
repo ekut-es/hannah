@@ -34,6 +34,7 @@ topdir = Path(__file__).parent.absolute() / ".."
         ("gds", "melspec"),
         ("lstm", "melspec"),
         ("wavenet", "mfcc"),
+        ("nas-tc", "mfcc"),
     ],
 )
 def test_models(model, features):
