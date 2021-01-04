@@ -10,7 +10,6 @@ from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
 from pytorch_lightning.loggers import TensorBoardLogger
 from .config_utils import get_loss_function, get_model, save_model
 from typing import Optional
-from ignite.metrics import ConfusionMatrix
 
 from speech_recognition.datasets.dataset import ctc_collate_fn
 
