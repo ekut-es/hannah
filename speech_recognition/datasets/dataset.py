@@ -6,7 +6,6 @@ import logging
 import hashlib
 import sys
 
-import librosa
 import torchaudio
 import numpy as np
 import scipy.signal as signal
@@ -28,9 +27,7 @@ def factor(snr, psig, pnoise):
 
 
 def load_audio(file_name, sr=16000, backend="torchaudio", res_type="kaiser_fast"):
-    if backend == "librosa":
-        data = librosa.core.load(file_name, sr=sr, res_type=res_type)
-    elif backend == "torchaudio":
+    if backend == "torchaudio":
         torchaudio.set_audio_backend("sox")
         try:
             data, samplingrate = torchaudio.load(file_name)
