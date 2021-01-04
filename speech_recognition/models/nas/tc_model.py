@@ -44,7 +44,6 @@ class MajorBlock(nn.Module):
 
         # TODO stupid but positional arguments not working with hydra
         assert act_layer is not None
-        self.act_layer = act_layer
 
         # module lists for branches of MajorBlock
         self.main_modules = nn.ModuleList()
@@ -52,11 +51,14 @@ class MajorBlock(nn.Module):
 
         self.is_residual_block = False
         self.is_input_block = False
+        self.is_straight_block = False
 
         if branch == "residual":
             self.is_residual_block = True
         elif branch == "input":
             self.is_input_block = True
+        elif branch == "none":
+            self.is_straight_block = True
 
         # config for iteration of minors
         # n_parallels = sum(block["parallel"] for block in minor_blocks)
@@ -134,6 +136,10 @@ class MajorBlock(nn.Module):
                 self.main_modules.append(module)
                 count_main += 1
 
+            # only if block has branches it needs a final activation layer for the outs of the branches
+            if self.is_input_block or self.is_residual_block:
+                self.act_layer = act_layer
+
     def forward(self, x):
 
         main_feed = x
@@ -145,8 +151,6 @@ class MajorBlock(nn.Module):
 
         act_input = main_feed
 
-        print(f"main_feed = {main_feed.size()}")
-
         if self.is_residual_block:
             #                |---> parallel: True  --->  parallel: True  ---> |
             # Residual:  --->|                                                +--->
@@ -154,7 +158,6 @@ class MajorBlock(nn.Module):
             for layer in self.parallel_modules:
                 parallel_feed = layer(parallel_feed)
 
-            print(f"parallel_feed = {parallel_feed.size()}")
             act_input = main_feed + parallel_feed
 
         if self.is_input_block:
@@ -169,11 +172,12 @@ class MajorBlock(nn.Module):
 
                 parallel_outs_sum = sum(parallel_outs)
                 act_input = main_feed + parallel_outs_sum
-                print(f"parallel_outs = {parallel_outs}")
-                print(f"parallel_outs_sum = {parallel_outs_sum}")
-                print(f"parallel_outs_sum.size() = {parallel_outs_sum.size()}")
 
-        output = self.act_layer(act_input)
+        if self.is_straight_block:
+            output = main_feed
+        else:
+            output = self.act_layer(act_input)
+
         return output
 
 
@@ -191,7 +195,7 @@ class MinorBlock(nn.Module):
         act_layer=None,
     ):
         super().__init__()
-        layers = []
+        layers = nn.ModuleList()
 
         if padding:
             assert dilation_factor is not None
@@ -219,7 +223,6 @@ class MinorBlock(nn.Module):
 
     def forward(self, x):
         y = self.sequential(x)
-
         return y
 
 
@@ -239,7 +242,7 @@ class TCCandidateModel(SerializableModule):
         major_blocks = config["major_blocks"]
 
         # model
-        self.modules = []
+        self.modules_list = nn.ModuleList()
 
         # BUILD MODEL BODY
         input_channels = height
@@ -253,7 +256,7 @@ class TCCandidateModel(SerializableModule):
                 act_layer=act_layer,
                 dilation_factor=dilation_factor,
             )
-            self.modules.append(current_module)
+            self.modules_list.append(current_module)
             # input channels for next major block are output channels of current
             input_channels = major_block["output_channels"]
 
@@ -266,7 +269,7 @@ class TCCandidateModel(SerializableModule):
 
         # iterate over the layers of the main branch to get dummy output
         print("!!! TCCandidateModel layers:")
-        for layer in self.modules:
+        for layer in self.modules_list:
             print(layer)
             x = layer(x)
         print("------------------------------")
@@ -274,7 +277,7 @@ class TCCandidateModel(SerializableModule):
         # average pooling
         shape = x.shape
         average_pooling = ApproximateGlobalAveragePooling1D(x.shape[2])
-        self.modules.append(average_pooling)
+        self.modules_list.append(average_pooling)
         x = average_pooling(x)
 
         # dropout
@@ -288,12 +291,11 @@ class TCCandidateModel(SerializableModule):
         print("Model created.")
 
     def forward(self, x):
-        for layer in self.modules:
+        for layer in self.modules_list:
             x = layer(x)
 
         x = self.dropout(x)
-        if not self.fully_convolutional:
-            x = x.view(x.size(0), -1)
+        x = x.view(x.size(0), -1)
         x = self.fc(x)
 
         return x
