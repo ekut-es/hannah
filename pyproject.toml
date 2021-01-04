@@ -11,7 +11,7 @@ distiller = {path = "./external/distiller"}
 gitdb2 = "2.0.6"
 chainmap = "^1.0.3"
 redis = "^3.4.1"
-torch = "^1.6.0"
+torch = "1.6.1"
 pytorch-lightning = "^1.0.3"
 SoundFile = "^0.10.3"
 
