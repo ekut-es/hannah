@@ -182,7 +182,7 @@ class MajorBlock(nn.Module):
         return output
 
 
-# 1D-Conv + (optional: activation) + (optional: batch normalization) + (optional: dropout)
+# 1D-Conv + (optional: activation) + (optional: batch normalization)
 class MinorBlock(nn.Module):
     def __init__(
         self,
