@@ -36,14 +36,12 @@ class MajorBlock(nn.Module):
         stride,
         branch,
         minor_blocks,
-        act_layer=None,
+        activation_fn="relu",
+        clipping_value=6,
         input_channels=None,
         dilation_factor=None,
     ):
         super().__init__()
-
-        # TODO stupid but positional arguments not working with hydra
-        assert act_layer is not None
 
         # module lists for branches of MajorBlock
         self.main_modules = nn.ModuleList()
@@ -78,12 +76,12 @@ class MajorBlock(nn.Module):
             # standard minor block config is fully loaded
             kwargs_main = {
                 "dilation_factor": dilation_factor,
-                "act_layer": act_layer,
+                "act_layer": create_act(activation_fn, clipping_value),
             }
 
             kwargs_parallel = {
                 "dilation_factor": dilation_factor,
-                "act_layer": act_layer,
+                "act_layer": create_act(activation_fn, clipping_value),
             }
 
             # get minor block config
@@ -99,7 +97,6 @@ class MajorBlock(nn.Module):
 
             # parallel MinorBlocks
             if is_parallel:
-
                 if count_parallel > 1:
                     input_channels_parallel = output_channels
                     stride_parallel = 1
@@ -139,7 +136,7 @@ class MajorBlock(nn.Module):
 
             # only if block has parallel minor blocks it needs a final activation layer for the outs of the branches
             if self.has_parallel:
-                self.act_layer = act_layer
+                self.act_layer = create_act(activation_fn, clipping_value)
 
     def forward(self, x):
 
@@ -235,10 +232,9 @@ class TCCandidateModel(SerializableModule):
         n_labels = config["n_labels"]
         width = config["width"]
         height = config["height"]
-        activation_fnc = config["activation_function"]
+        activation_fn = config["activation_function"]
         dropout_prob = config["dropout_prob"]
         clipping_value = config["clipping_value"]
-        act_layer = create_act(activation_fnc, clipping_value)
         dilation_factor = config["dilation_factor"]
         major_blocks = config["major_blocks"]
 
@@ -254,7 +250,8 @@ class TCCandidateModel(SerializableModule):
                 # TODO positional arguments not working
                 major_block,
                 input_channels=input_channels,
-                act_layer=act_layer,
+                activation_fn=activation_fn,
+                clipping_value=clipping_value,
                 dilation_factor=dilation_factor,
             )
             self.modules_list.append(current_module)
