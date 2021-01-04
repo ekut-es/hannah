@@ -62,8 +62,7 @@ class MajorBlock(nn.Module):
         if n_parallels > 0:
             self.has_parallel = True
 
-        # config for iteration of minors
-
+        # helpers for iteration of minors
         count_main = 1
         count_parallel = 1
 
@@ -87,6 +86,7 @@ class MajorBlock(nn.Module):
                 "act_layer": act_layer,
             }
 
+            # get minor block config
             size = minor_block["size"]
             padding = minor_block["padding"]
             batchnorm = minor_block["batchnorm"]
@@ -261,9 +261,7 @@ class TCCandidateModel(SerializableModule):
             # input channels for next major block are output channels of current
             input_channels = major_block["output_channels"]
 
-        # ------------------
-
-        # BUILD AND APPEND pooling, droput and fully connect
+        # GET OUTPUT SHAPE
 
         # dummy input to forward once through the model for configuring
         x = Variable(torch.zeros(1, height, width))
@@ -275,16 +273,16 @@ class TCCandidateModel(SerializableModule):
             x = layer(x)
         print("------------------------------")
 
-        # average pooling
+        # APPEND average pooling
         shape = x.shape
         average_pooling = ApproximateGlobalAveragePooling1D(x.shape[2])
         self.modules_list.append(average_pooling)
         x = average_pooling(x)
 
-        # dropout
+        # APPEND dropout
         self.dropout = nn.Dropout(dropout_prob)
 
-        # fully connect
+        # APPEND fully connect
         x = x.view(1, -1)
         shape = x.shape
         self.fc = nn.Linear(shape[1], n_labels, bias=False)
