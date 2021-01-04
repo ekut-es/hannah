@@ -29,7 +29,8 @@ class EvolutionResult:
 
 class Parameter:
     def _recurse(self, config):
-        print(config)
+        # print("_recurse")
+        # print(config)
         # breakpoint()
         if isinstance(config, MutableSequence):
             return ChoiceParameter(config)
@@ -40,7 +41,7 @@ class Parameter:
                 try:
                     config = ChoiceList(**config)
                 except:
-                    pass
+                    config = config
 
             if isinstance(config, ScalarConfigSpec):
                 res = IntervalParameter(config)
@@ -56,7 +57,12 @@ class Parameter:
             return config
 
     def mutations(self, config, index):
-        return []
+        # FIXME: here we would need to add child mutations
+        def mutate_random(d):
+            print("Warning: using mutate random for ", index)
+            return nested_set(d, index, self.get_random())
+
+        return [mutate_random]
 
 
 class ChoiceParameter(Parameter):
@@ -79,13 +85,7 @@ class ChoiceParameter(Parameter):
 
         return choice
 
-    def mutations(self, config, index):
-        # FIXME: here we would need to add child mutations
-        def mutate_random(d):
-            print("mutating: ", index)
-            return nested_set(d, index, self.get_random())
-
-        return [mutate_random]
+    # TODO: Add child mutations
 
 
 class ChoiceListParameter(Parameter):
@@ -209,7 +209,6 @@ class SearchSpace(Parameter):
 
         for k, v in config.items():
             index = (k,)
-            print(self.space[k])
             mutations.extend(self.space[k].mutations(v, index))
 
         mutation = np.random.choice(mutations)
@@ -248,11 +247,11 @@ class AgingEvolution:
         self.sample_size = sample_size
         self.eps = eps
 
-        print("parametrization:", parametrization)
+        # print("parametrization:", parametrization)
 
         self.parametrization = SearchSpace(parametrization)
 
-        print("SearchSpace:", self.parametrization)
+        # print("SearchSpace:", self.parametrization)
 
         self.history = []
         self.population = []
@@ -283,7 +282,7 @@ class AgingEvolution:
 
         return child
 
-    def tell(self, parameters, metrics):
+    def tell_result(self, parameters, metrics):
         "Tell the result of a task"
 
         result = EvolutionResult(parameters, metrics)

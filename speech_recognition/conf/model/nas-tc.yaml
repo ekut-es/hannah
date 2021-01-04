@@ -4,19 +4,15 @@ cls: speech_recognition.models.nas.tc_model.TCCandidateModel
 name: tc-candidate-model
 
 # PROPERTIES
-
-n_labels: 12
-width: 101
-height: 40
 dropout_prob: 0.5
 width_multiplier: 1.0
 activation_function: "relu"
 dilation_factor: 1
-clipping_value: 100000.0
+clipping_value: 6
 
 # ARCHITECTURE
 major_blocks:
-# Input Block 
+# Input Block
 - _target_: speech_recognition.models.nas.tc_model.MajorBlock
   output_channels: 16
   stride: 1
@@ -28,7 +24,7 @@ major_blocks:
     batchnorm: false
     activation: false
     parallel: false
-# Residual Block 
+# Residual Block
 - _target_: speech_recognition.models.nas.tc_model.MajorBlock
   output_channels: 24
   stride: 2
@@ -52,7 +48,7 @@ major_blocks:
     batchnorm: true
     activation: true
     parallel: true
-# Residual Block 
+# Residual Block
 - _target_: speech_recognition.models.nas.tc_model.MajorBlock
   output_channels: 32
   stride: 2
@@ -76,7 +72,7 @@ major_blocks:
     batchnorm: true
     activation: true
     parallel: true
-# Residual Block 
+# Residual Block
 - _target_: speech_recognition.models.nas.tc_model.MajorBlock
   output_channels: 48
   stride: 2
@@ -101,5 +97,8 @@ major_blocks:
     activation: true
     parallel: true
 
-# Output Layers
-# ... currently hard coded
+
+# TODO: these are overwritten by runtime, remove completely
+n_labels: 12
+width: 101
+height: 40
