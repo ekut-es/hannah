@@ -79,7 +79,8 @@ class PhysioDataset(data.Dataset):
             data = pickle.load(f)
         data = torch.from_numpy(data)
         data = data.transpose(1, 0).float()
-
+        if self.channels == 1:
+            data = data[0]
         return data, data.shape[0], label, label.shape[0]
 
     def get_label_list(self):
@@ -232,7 +233,7 @@ class AtrialFibrillationDataset(PhysioDataset):
                     stop_sample = len(samples) - 1
                 start = start_sample
                 stop = stop_sample
-                step = int(sample_length * (1 - config["overlap_pct"]))
+                step = int(sample_length * (1 - config["overlap_ratio"]))
                 for i in range(start, stop, step):
                     if start_sample+sample_length < stop_sample:
                         chunk = samples[start_sample:start_sample+sample_length]
