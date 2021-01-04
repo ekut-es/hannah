@@ -72,19 +72,19 @@ class MajorBlock(nn.Module):
         input_channels_main = input_channels
         input_channels_parallel = input_channels
 
-        # standard minor block config is fully loaded
-        kwargs_main = {
-            "dilation_factor": dilation_factor,
-            "act_layer": act_layer,
-        }
-
-        kwargs_parallel = {
-            "dilation_factor": dilation_factor,
-            "act_layer": act_layer,
-        }
-
         # BUILD MajorBlock of MinorBlocks
         for minor_block in minor_blocks:
+
+            # standard minor block config is fully loaded
+            kwargs_main = {
+                "dilation_factor": dilation_factor,
+                "act_layer": act_layer,
+            }
+
+            kwargs_parallel = {
+                "dilation_factor": dilation_factor,
+                "act_layer": act_layer,
+            }
 
             size = minor_block["size"]
             padding = minor_block["padding"]
