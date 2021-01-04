@@ -20,7 +20,7 @@ major_blocks:
 - _target_: speech_recognition.models.nas.tc_model.MajorBlock
   output_channels: 16
   stride: 1
-  branch: "none"
+  branch: "input"
   minor_blocks:
   - _target_: speech_recognition.models.nas.tc_model.MinorBlock
     size: 3

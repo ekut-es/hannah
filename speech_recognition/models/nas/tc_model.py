@@ -51,18 +51,19 @@ class MajorBlock(nn.Module):
 
         self.is_residual_block = False
         self.is_input_block = False
-        self.is_straight_block = False
+        self.has_parallel = False
 
         if branch == "residual":
             self.is_residual_block = True
         elif branch == "input":
             self.is_input_block = True
-        elif branch == "none":
-            self.is_straight_block = True
+
+        n_parallels = sum(block["parallel"] for block in minor_blocks)
+        if n_parallels > 0:
+            self.has_parallel = True
 
         # config for iteration of minors
-        # n_parallels = sum(block["parallel"] for block in minor_blocks)
-        # n_mains = len(minor_blocks) - n_parallels
+
         count_main = 1
         count_parallel = 1
 
@@ -136,8 +137,8 @@ class MajorBlock(nn.Module):
                 self.main_modules.append(module)
                 count_main += 1
 
-            # only if block has branches it needs a final activation layer for the outs of the branches
-            if self.is_input_block or self.is_residual_block:
+            # only if block has parallel minor blocks it needs a final activation layer for the outs of the branches
+            if self.has_parallel:
                 self.act_layer = act_layer
 
     def forward(self, x):
@@ -173,7 +174,7 @@ class MajorBlock(nn.Module):
                 parallel_outs_sum = sum(parallel_outs)
                 act_input = main_feed + parallel_outs_sum
 
-        if self.is_straight_block:
+        if not self.has_parallel:
             output = main_feed
         else:
             output = self.act_layer(act_input)
