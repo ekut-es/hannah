@@ -240,6 +240,7 @@ class AgingEvolution:
         self.history = []
         self.population = []
         self.bounds = bounds
+        self.visited_configs = set()
 
     def get_fitness_function(self):
         ff = FitnessFunction(self.bounds)
@@ -249,22 +250,26 @@ class AgingEvolution:
     def next_parameters(self):
         "Returns a list of current tasks"
 
-        if len(self.history) < self.population_size:
-            return self.parametrization.get_random()
+        parametrization = {}
 
-        if np.random.uniform() < self.eps:
-            return self.parametrization.get_random()
+        while hash(repr(parametrization)) in self.visited_configs:
+            if len(self.history) < self.population_size:
+                parametrization = self.parametrization.get_random()
+            elif np.random.uniform() < self.eps:
+                parametrization = self.parametrization.get_random()
+            else:
+                sample = np.random.choice(self.population, size=self.sample_size)
+                fitness_function = self.get_fitness_function()
 
-        sample = np.random.choice(self.population, size=self.sample_size)
-        fitness_function = self.get_fitness_function()
+                fitness = [fitness_function(x.result) for x in sample]
 
-        fitness = [fitness_function(x.result) for x in sample]
+                parent = sample[np.argmin(fitness)]
 
-        parent = sample[np.argmin(fitness)]
+                parametrization = self.parametrization.mutate(parent.parameters)
 
-        child = self.parametrization.mutate(parent.parameters)
+        self.visited_configs.add(hash(repr(parametrization)))
 
-        return child
+        return parametrization
 
     def tell_result(self, parameters, metrics):
         "Tell the result of a task"
