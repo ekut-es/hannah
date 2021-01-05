@@ -48,9 +48,7 @@ class Parameter:
             elif isinstance(config, ChoiceList):
                 res = ChoiceListParameter(config)
             else:
-                res = {}
-                for k, v in config.items():
-                    res[k] = self._recurse(v)
+                res = SearchSpace(config)
 
             return res
         else:
@@ -188,7 +186,7 @@ class IntervalParameter(Parameter):
 class SearchSpace(Parameter):
     def __init__(self, config):
         self.config = config
-        self.space = self._recurse(config)
+        self.space = {k: self._recurse(v) for k, v in config.items()}
 
     def get_random(self):
         config = {}

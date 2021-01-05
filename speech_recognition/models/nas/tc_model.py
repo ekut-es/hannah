@@ -1,4 +1,5 @@
 import logging
+from numpy.core.shape_base import _block_setup
 import torch.nn as nn
 import torch
 from torch.autograd import Variable
@@ -57,6 +58,15 @@ class MajorBlock(nn.Module):
             self.is_input_block = True
 
         n_parallels = sum(block["parallel"] for block in minor_blocks)
+        n_seq = sum(not block["parallel"] for block in minor_blocks)
+
+        # If all blocks are set to parallel:
+        # Make all blocks sequential
+        if n_seq == 0:
+            n_parallels = 0
+            for block in minor_blocks:
+                block["parallel"] = False
+
         if n_parallels > 0:
             self.has_parallel = True
 
@@ -153,10 +163,11 @@ class MajorBlock(nn.Module):
             #                |---> parallel: True  --->  parallel: True  ---> |
             # Residual:  --->|                                                +--->
             #                |---> parallel: False --->  parallel: False ---> |
-            for layer in self.parallel_modules:
-                parallel_feed = layer(parallel_feed)
+            if self.has_parallel:
+                for layer in self.parallel_modules:
+                    parallel_feed = layer(parallel_feed)
 
-            act_input = main_feed + parallel_feed
+                act_input = main_feed + parallel_feed
 
         if self.is_input_block:
             #                 |---> parallel: True  --->  |  ---> |
@@ -262,6 +273,7 @@ class TCCandidateModel(SerializableModule):
 
         # dummy input to forward once through the model for configuring
         x = Variable(torch.zeros(1, height, width))
+        self.eval()
 
         # iterate over the layers of the main branch to get dummy output
         print("!!! TCCandidateModel layers:")

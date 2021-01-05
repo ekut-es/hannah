@@ -6,6 +6,7 @@ import numpy as np
 
 from hydra.core.plugins import Plugins
 from hydra.core.config_loader import ConfigLoader
+from hydra.core.override_parser.overrides_parser import OverridesParser
 from hydra.plugins.launcher import Launcher
 from hydra.plugins.sweeper import Sweeper
 from hydra.types import TaskFunction
@@ -60,21 +61,22 @@ class UNASSweeperImpl(Sweeper):
             nw = min(self.num_workers, self.budget - self.job_idx)
 
             parameters = [self.optimizer.next_parameters() for _ in range(nw)]
+            param_overrides = []
+            for parameter in parameters:
+                override = {}
+                for k, v in parameter.items():
+                    override[k] = self._build_overrides(v)
 
-            print("Parameters:", parameters)
+                param_overrides.append(override)
 
-            # for override in parameters:
-            #    from pprint import pprint
-            #    pprint(override)
-            overrides = [
-                {k: self._build_overrides(v) for k, v in parameter.items()}
-                for parameter in parameters
+            param_overrides = [
+                tuple([f"{k}={v}" for k, v in x.items()]) for x in param_overrides
             ]
+            overrides = []
+            for override in param_overrides:
+                override += tuple(arguments)
+                overrides.append(override)
 
-            # from pprint import pprint
-            # pprint(overrides)
-
-            overrides = [tuple([f"+{k}={v}" for k, v in x.items()]) for x in overrides]
             returns = self.launcher.launch(overrides, initial_job_idx=self.job_idx)
 
             for param, ret in zip(parameters, returns):
