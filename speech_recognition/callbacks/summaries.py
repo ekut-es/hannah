@@ -55,4 +55,5 @@ class MacSummaryCallback(Callback):
 
     def on_validation_epoch_end(self, trainer, pl_module):
         res = self._do_summary(pl_module, print=False)
-        trainer.logger.log_metrics(res)
+        for k, v in res.items():
+            pl_module.log(k, v)

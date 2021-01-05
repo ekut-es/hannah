@@ -1,6 +1,12 @@
 defaults:
   - hydra/sweeper: unas
 
+db: mnist
+lr: 2.0
+dropout: 0.5
+batch_size: 32
+conv_layers: []
+
 hydra:
   sweeper:
     optim:

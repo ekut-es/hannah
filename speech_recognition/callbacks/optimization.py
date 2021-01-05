@@ -2,14 +2,19 @@ from pytorch_lightning.callbacks import Callback
 
 
 class HydraOptCallback(Callback):
-    def __init__(self, monitor="val_loss"):
+    def __init__(self, monitor=["val_loss"]):
         self.monitor = monitor
-        self.value = 0.0
+        self.values = {}
 
     def on_validation_end(self, trainer, pl_module):
-        metrics = trainer.logger_connector.logged_metrics
-        if self.monitor in metrics:
-            self.value = metrics[self.monitor]
+        callback_metrics = trainer.callback_metrics
+
+        for monitor in self.monitor:
+            if monitor in callback_metrics:
+                self.values[monitor] = callback_metrics[monitor]
 
     def result(self):
-        return self.value
+        if len(self.values) == 1:
+            return list(self.values.values())[0]
+
+        return self.values

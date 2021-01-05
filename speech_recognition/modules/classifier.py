@@ -6,7 +6,7 @@ import numpy as np
 import sys
 
 from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
+from pytorch_lightning.metrics.functional import accuracy, f1, recall
 from pytorch_lightning.loggers import TensorBoardLogger
 from .config_utils import get_loss_function, get_model, save_model
 from typing import Optional
@@ -50,7 +50,7 @@ class SpeechClassifierModule(LightningModule):
         self.msglogger = logging.getLogger()
         self.initialized = False
         self.train_set = None
-        self.test_set = None 
+        self.test_set = None
         self.dev_set = None
 
     def prepare_data(self):
@@ -100,7 +100,8 @@ class SpeechClassifierModule(LightningModule):
         # Instantiate Model
         self.hparams.model.width = self.example_feature_array.size(2)
         self.hparams.model.height = self.example_feature_array.size(1)
-        self.hparams.model.n_labels = len(self.train_set.label_names)
+        self.num_classes = len(self.train_set.label_names)
+        self.hparams.model.n_labels = self.num_classes
 
         self.model = get_model(self.hparams.model)
 
@@ -125,10 +126,10 @@ class SpeechClassifierModule(LightningModule):
             for idx, out in enumerate(output):
                 self.log(f"{prefix}_accuracy/exit_{idx}", accuracy(out, y))
                 self.log(f"{prefix}_recall/exit_{idx}", recall(out, y))
-                self.log(f"{prefix}_f1/exit_{idx}", f1_score(out, y))
+                self.log(f"{prefix}_f1/exit_{idx}", f1(out, y, self.num_classes))
 
         else:
-            self.log(f"{prefix}_f1", f1_score(output, y))
+            self.log(f"{prefix}_f1", f1(output, y, self.num_classes))
             self.log(f"{prefix}_accuracy", accuracy(output, y))
             self.log(f"{prefix}_recall", recall(output, y))
 

@@ -6,7 +6,6 @@ import numpy as np
 
 from hydra.core.plugins import Plugins
 from hydra.core.config_loader import ConfigLoader
-from hydra.core.override_parser.overrides_parser import OverridesParser
 from hydra.plugins.launcher import Launcher
 from hydra.plugins.sweeper import Sweeper
 from hydra.types import TaskFunction
@@ -19,7 +18,7 @@ from .aging_evolution import AgingEvolution
 
 
 class UNASSweeperImpl(Sweeper):
-    def __init__(self, optim: OptimConf, parametrization: Dict[str, Any]):
+    def __init__(self, optim: OptimConf, parametrization: MutableMapping[str, Any]):
 
         self.optim_conf = optim
         self.parametrization_conf = parametrization

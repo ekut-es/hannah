@@ -106,17 +106,6 @@ class ChoiceListParameter(Parameter):
             choice = ret
         return choice
 
-    def _child_mutations(self, choice, config, index):
-        mutations = []
-        if isinstance(choice, Parameter):
-            choice.mutations(config, index)
-        elif isinstance(choice, MutableMapping):
-            for k, v in choice.items():
-                param_index = index + (k,)
-                mutations.extend(choice[k].mutations(config[k], param_index))
-
-        return mutations
-
     def get_random(self):
         length = np.random.randint(self.min, self.max)
         result = []
@@ -154,13 +143,14 @@ class ChoiceListParameter(Parameter):
             print("Child", child)
             child_keys = child.keys()
             for choice in self.choices:
-                choice_keys = choice.keys()
+                choice_keys = choice.space.keys()
 
                 # FIXME: also compare values
                 if choice_keys == child_keys:
                     print("Get child mutations")
                     child_index = index + (num,)
-                    mutations.extend(self._child_mutations(choice, child, child_index))
+                    if isinstance(choice, Parameter):
+                        mutations.extend(choice.mutations(child, child_index))
 
         return mutations
 
@@ -171,16 +161,6 @@ class IntervalParameter(Parameter):
 
     def get_random(self):
         return np.random.random()
-
-    def mutations(self, config, index):
-
-        print("mutations", index)
-
-        def mutation(d):
-            print("mutating: ", index)
-            return nested_set(d, index, self.get_random())
-
-        return [mutation]
 
 
 class SearchSpace(Parameter):
@@ -199,18 +179,24 @@ class SearchSpace(Parameter):
 
         return config
 
+    def mutations(self, config, index):
+        mutations = []
+        for k, v in config.items():
+            child_index = index + (k,)
+            if isinstance(self.space[k], Parameter):
+                mutations.extend(self.space[k].mutations(v, child_index))
+
+        return mutations
+
     def mutate(self, config):
         print("mutate")
         config = deepcopy(config)
 
-        mutations = []
-
-        for k, v in config.items():
-            index = (k,)
-            mutations.extend(self.space[k].mutations(v, index))
+        mutations = self.mutations(config, tuple())
 
         mutation = np.random.choice(mutations)
         mutation(config)
+
         return config
 
     def __str__(self):
