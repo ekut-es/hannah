@@ -49,7 +49,9 @@ class MacSummaryCallback(Callback):
         return res
 
     def on_train_start(self, trainer, pl_module):
+        pl_module.eval()
         self._do_summary(pl_module)
+        pl_module.train()
 
     def on_validation_epoch_end(self, trainer, pl_module):
         res = self._do_summary(pl_module, print=False)
