@@ -260,7 +260,7 @@ class AgingEvolution:
 
         fitness = [fitness_function(x.result) for x in sample]
 
-        parent = sample[np.argmax(fitness)]
+        parent = sample[np.argmin(fitness)]
 
         child = self.parametrization.mutate(parent.parameters)
 
