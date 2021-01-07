@@ -1,6 +1,6 @@
 defaults:
     - dataset: kws
-    - model: nas_empty
+    - model: nas-tc
     - scheduler: null
     - optimizer: adam
     - features: mfcc
