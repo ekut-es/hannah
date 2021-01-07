@@ -2,7 +2,7 @@ import numpy as np
 
 
 # Fast calculation of pareto front: https://stackoverflow.com/questions/32791911/fast-calculation-of-pareto-front-in-python
-def is_pareto_efficient(costs, return_mask=True):
+def get_pareto_points(costs, return_mask=True):
     """
     Find the pareto-efficient points
     :param costs: An (n_points, n_costs) array

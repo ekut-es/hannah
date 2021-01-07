@@ -5,6 +5,7 @@ from copy import deepcopy
 from omegaconf import DictConfig
 
 from .config import OptimConf, ScalarConfigSpec, ChoiceList
+from .utils import get_pareto_points
 
 import numpy as np
 
@@ -302,5 +303,15 @@ class AgingEvolution:
         costs = []
         for point in self.history:
             result = point.result
+            costs.append(np.array(list(result.values())))
 
-            print(result)
+        costs = np.array(costs)
+
+        pareto_indices = get_pareto_points(costs)
+
+        result = []
+        for num, index in enumerate(pareto_indices):
+            if index:
+                result.append(self.history[num])
+
+        return result

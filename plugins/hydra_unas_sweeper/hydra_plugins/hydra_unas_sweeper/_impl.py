@@ -4,6 +4,7 @@ from typing import Dict, Any, List, MutableMapping, MutableSequence
 
 import numpy as np
 
+
 from hydra.core.plugins import Plugins
 from hydra.core.config_loader import ConfigLoader
 from hydra.plugins.launcher import Launcher
@@ -12,6 +13,8 @@ from hydra.types import TaskFunction
 from hydra.utils import instantiate
 
 from omegaconf import DictConfig, ListConfig, OmegaConf
+from tabulate import tabulate
+
 
 from .config import OptimConf
 from .aging_evolution import AgingEvolution
@@ -87,8 +90,14 @@ class UNASSweeperImpl(Sweeper):
             self.job_idx += nw
 
         pareto_points = self.optimizer.pareto_points()
-        print("Pareto optimal solutions: ")
-        print(pareto_points)
+        print(f"Found {len(pareto_points)}  pareto-optimal solutions:")
+        table = []
+        headers = ["Num"] + list(self.optim_conf.bounds.keys())
+        for num, pareto_point in enumerate(pareto_points):
+            result = pareto_point.result
+            table.append([num] + list(result.values()))
+
+        print(tabulate(table, headers=headers))
 
     def _build_overrides(self, choices, overrides=""):
         res = ""

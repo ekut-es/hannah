@@ -13,7 +13,7 @@ hydra:
       optimizer: aging_evolution
       population_size: 20
       sample_size: 10
-      budget:  100
+      budget:  2
       seed: 1234
       num_workers:  1
       bounds:
