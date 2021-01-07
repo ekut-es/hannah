@@ -28,12 +28,9 @@ class EvolutionResult:
 
 
 class Parameter:
-    def _recurse(self, config):
-        # print("_recurse")
-        # print(config)
-        # breakpoint()
+    def _recurse(self, config, random_state):
         if isinstance(config, MutableSequence):
-            return ChoiceParameter(config)
+            return ChoiceParameter(config, random_state=random_state)
         elif isinstance(config, MutableMapping):
             try:
                 config = ScalarConfigSpec(**config)
@@ -44,11 +41,11 @@ class Parameter:
                     config = config
 
             if isinstance(config, ScalarConfigSpec):
-                res = IntervalParameter(config)
+                res = IntervalParameter(config, random_state)
             elif isinstance(config, ChoiceList):
-                res = ChoiceListParameter(config)
+                res = ChoiceListParameter(config, random_state)
             else:
-                res = SearchSpace(config)
+                res = SearchSpace(config, random_state)
 
             return res
         else:
@@ -64,11 +61,12 @@ class Parameter:
 
 
 class ChoiceParameter(Parameter):
-    def __init__(self, config):
-        self.choices = [self._recurse(c) for c in config]
+    def __init__(self, config, random_state):
+        self.choices = [self._recurse(c, random_state) for c in config]
+        self.random_state = random_state
 
     def get_random(self):
-        choice = np.random.choice(self.choices)
+        choice = self.random_state.choice(self.choices)
 
         if isinstance(choice, Parameter):
             return choice.get_random()
@@ -87,13 +85,16 @@ class ChoiceParameter(Parameter):
 
 
 class ChoiceListParameter(Parameter):
-    def __init__(self, config):
+    def __init__(self, config, random_state):
         self.min = config.min
         self.max = config.max
-        self.choices = [self._recurse(choice) for choice in config.choices]
+        self.choices = [
+            self._recurse(choice, random_state) for choice in config.choices
+        ]
+        self.random_state = random_state
 
     def _random_child(self):
-        choice = np.random.choice(self.choices)
+        choice = self.random_state.choice(self.choices)
         if isinstance(choice, Parameter):
             choice = choice.get_random()
         elif isinstance(choice, MutableMapping):
@@ -107,7 +108,7 @@ class ChoiceListParameter(Parameter):
         return choice
 
     def get_random(self):
-        length = np.random.randint(self.min, self.max)
+        length = self.random_state.randint(self.min, self.max)
         result = []
         for _ in range(length):
             choice = self._random_child()
@@ -121,13 +122,13 @@ class ChoiceListParameter(Parameter):
 
         def drop_random(d):
             print("Dropping random element", index)
-            idx = np.random.randint(low=0, high=length)
+            idx = self.random_state.randint(low=0, high=length)
             l = nested_get(d, index)
             l.pop(idx)
 
         def add_random(d):
             print("adding random element", index)
-            num = np.random.randint(low=0, high=length + 1)
+            num = self.random_state.randint(low=0, high=length + 1)
             choice = self._random_child()
             l = nested_get(d, index)
             l.insert(num, choice)
@@ -156,17 +157,19 @@ class ChoiceListParameter(Parameter):
 
 
 class IntervalParameter(Parameter):
-    def __init__(self, config):
+    def __init__(self, config, random_state):
         self.config = config
+        self.random_state = random_state
 
     def get_random(self):
-        return np.random.random()
+        return self.random_state.random()
 
 
 class SearchSpace(Parameter):
-    def __init__(self, config):
+    def __init__(self, config, random_state):
         self.config = config
-        self.space = {k: self._recurse(v) for k, v in config.items()}
+        self.random_state = random_state
+        self.space = {k: self._recurse(v, self.random_state) for k, v in config.items()}
 
     def get_random(self):
         config = {}
@@ -194,7 +197,7 @@ class SearchSpace(Parameter):
 
         mutations = self.mutations(config, tuple())
 
-        mutation = np.random.choice(mutations)
+        mutation = self.random_state.choice(mutations)
         mutation(config)
 
         return config
@@ -209,33 +212,31 @@ class SearchSpace(Parameter):
 
 
 class FitnessFunction:
-    def __init__(self, bounds):
+    def __init__(self, bounds, random_state):
         self.bounds = bounds
-        self.lambdas = np.random.uniform(low=0.0, high=1.0, size=len(bounds))
+        self.random_state = random_state
 
     def __call__(self, values):
+        lambdas = self.random_state.uniform(low=0.0, high=1.0, size=len(bounds))
+
         result = 0.0
         for num, key in enumerate(self.bounds.keys()):
             if key in values:
-                result += np.power(
-                    self.lambdas[num] * (values[key] / self.bounds[key]), 2
-                )
+                result += np.power(lambdas[num] * (values[key] / self.bounds[key]), 2)
         return np.sqrt(result)
 
 
 class AgingEvolution:
     """Aging Evolution based multi objective optimization"""
 
-    def __init__(self, population_size, sample_size, eps, bounds, parametrization):
+    def __init__(
+        self, population_size, sample_size, eps, bounds, parametrization, random_state
+    ):
         self.population_size = population_size
         self.sample_size = sample_size
         self.eps = eps
-
-        # print("parametrization:", parametrization)
-
-        self.parametrization = SearchSpace(parametrization)
-
-        # print("SearchSpace:", self.parametrization)
+        self.parametrization = SearchSpace(parametrization, random_state)
+        self.random_state = random_state
 
         self.history = []
         self.population = []
@@ -243,7 +244,7 @@ class AgingEvolution:
         self.visited_configs = set()
 
     def get_fitness_function(self):
-        ff = FitnessFunction(self.bounds)
+        ff = FitnessFunction(self.bounds, self.random_state)
 
         return ff
 
@@ -255,10 +256,12 @@ class AgingEvolution:
         while hash(repr(parametrization)) in self.visited_configs:
             if len(self.history) < self.population_size:
                 parametrization = self.parametrization.get_random()
-            elif np.random.uniform() < self.eps:
+            elif self.random_state.uniform() < self.eps:
                 parametrization = self.parametrization.get_random()
             else:
-                sample = np.random.choice(self.population, size=self.sample_size)
+                sample = self.random_state.choice(
+                    self.population, size=self.sample_size
+                )
                 fitness_function = self.get_fitness_function()
 
                 fitness = [fitness_function(x.result) for x in sample]

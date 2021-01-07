@@ -22,6 +22,7 @@ class UNASSweeperImpl(Sweeper):
 
         self.optim_conf = optim
         self.parametrization_conf = parametrization
+        self.random_state = None
 
     def setup(
         self,
@@ -33,9 +34,10 @@ class UNASSweeperImpl(Sweeper):
         self.budget = self.optim_conf.budget
         self.num_workers = self.optim_conf.num_workers
 
+        self.random_state = np.random.RandomState()
         seed = self.optim_conf.seed
         if seed:
-            np.random.seed(seed)
+            self.random_state.seed(seed)
 
         self.config = config
         self.config_loader = config_loader
@@ -49,6 +51,7 @@ class UNASSweeperImpl(Sweeper):
                 eps=self.optim_conf.eps,
                 bounds=self.optim_conf.bounds,
                 parametrization=self.parametrization_conf,
+                random_state=self.random_state,
             )
         else:
             raise Exception(f"Undefined optimizer: {self.optim_conf.optimizer}")
