@@ -61,6 +61,7 @@ def test_backend(model, backend):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.skip(reason="These tests do not run reliably on build servers, due to their high disk memory consumption")
 @pytest.mark.parametrize(
     "model,dataset,split",
     [
