@@ -174,6 +174,8 @@ class SearchSpace(Parameter):
     def get_random(self):
         config = {}
 
+        print(self.space)
+
         for k, v in self.space.items():
             if isinstance(v, Parameter):
                 config[k] = v.get_random()
@@ -214,15 +216,16 @@ class SearchSpace(Parameter):
 class FitnessFunction:
     def __init__(self, bounds, random_state):
         self.bounds = bounds
-        self.random_state = random_state
+        self.lambdas = random_state.uniform(low=0.0, high=1.0, size=len(self.bounds))
 
     def __call__(self, values):
-        lambdas = self.random_state.uniform(low=0.0, high=1.0, size=len(bounds))
 
         result = 0.0
         for num, key in enumerate(self.bounds.keys()):
             if key in values:
-                result += np.power(lambdas[num] * (values[key] / self.bounds[key]), 2)
+                result += np.power(
+                    self.lambdas[num] * (values[key] / self.bounds[key]), 2
+                )
         return np.sqrt(result)
 
 
@@ -236,6 +239,10 @@ class AgingEvolution:
         self.sample_size = sample_size
         self.eps = eps
         self.parametrization = SearchSpace(parametrization, random_state)
+
+        print("Search Space")
+        print(self.parametrization)
+
         self.random_state = random_state
 
         self.history = []
@@ -253,7 +260,9 @@ class AgingEvolution:
 
         parametrization = {}
 
-        while hash(repr(parametrization)) in self.visited_configs:
+        while (
+            hash(repr(parametrization)) in self.visited_configs or not parametrization
+        ):
             if len(self.history) < self.population_size:
                 parametrization = self.parametrization.get_random()
             elif self.random_state.uniform() < self.eps:
@@ -285,3 +294,13 @@ class AgingEvolution:
             self.population.pop(0)
 
         return None
+
+    def pareto_points(self):
+        """ Get pareto optimal points discovered during search """
+
+        # Build cost matrix
+        costs = []
+        for point in self.history:
+            result = point.result
+
+            print(result)

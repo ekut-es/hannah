@@ -86,6 +86,10 @@ class UNASSweeperImpl(Sweeper):
 
             self.job_idx += nw
 
+        pareto_points = self.optimizer.pareto_points()
+        print("Pareto optimal solutions: ")
+        print(pareto_points)
+
     def _build_overrides(self, choices, overrides=""):
         res = ""
         if isinstance(choices, MutableMapping):
