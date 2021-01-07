@@ -67,7 +67,7 @@ class UNASSweeperImpl(Sweeper):
 
             parameters = [self.optimizer.next_parameters() for _ in range(nw)]
             param_overrides = []
-            for parameter in parameters:
+            for parameter in (p.flatten() for p in parameters):
                 override = {}
                 for k, v in parameter.items():
                     override[k] = self._build_overrides(v)

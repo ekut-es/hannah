@@ -1,4 +1,4 @@
-from typing import Dict, Any, MutableMapping, MutableSequence
+from typing import Dict, Any, MutableMapping, MutableSequence, Union
 from dataclasses import dataclass
 from copy import deepcopy
 
@@ -28,6 +28,14 @@ class EvolutionResult:
     result: Dict[str, float]
 
 
+@dataclass
+class ParameterState:
+    value: Any
+
+    def flatten(self):
+        return self.value
+
+
 class Parameter:
     def _recurse(self, config, random_state):
         if isinstance(config, MutableSequence):
@@ -52,13 +60,22 @@ class Parameter:
         else:
             return config
 
-    def mutations(self, config, index):
+    def mutations(self, state):
         # FIXME: here we would need to add child mutations
-        def mutate_random(d):
-            print("Warning: using mutate random for ", index)
-            return nested_set(d, index, self.get_random())
+        def mutate_random():
+            print("Warning: using mutate random")
+            value = self.get_random().value
+            state.value = value
 
         return [mutate_random]
+
+
+@dataclass
+class ChoiceParameterState(ParameterState):
+    choice_num: int
+
+    def flatten(self):
+        return self.value.flatten()
 
 
 class ChoiceParameter(Parameter):
@@ -67,22 +84,64 @@ class ChoiceParameter(Parameter):
         self.random_state = random_state
 
     def get_random(self):
-        choice = self.random_state.choice(self.choices)
+        num_choices = len(self.choices)
+        choice_num = self.random_state.randint(0, num_choices)
+        choice = self.choices[choice_num]
 
         if isinstance(choice, Parameter):
-            return choice.get_random()
-        elif isinstance(choice, MutableMapping):
-            ret = {}
-            for k, v in choice.items:
-                if isinstance(v, Parameter):
-                    ret[k] = v.get_random()
-                else:
-                    ret[k] = v
-            return ret
+            choice = choice.get_random()
+        else:
+            choice = ParameterState(choice)
 
-        return choice
+        return ChoiceParameterState(choice, choice_num)
 
-    # TODO: Add child mutations
+    def mutations(self, state):
+        choice_num = state.choice_num
+
+        def increase_choice():
+            choice_num = state.choice_num + 1
+            choice = self.choices[choice_num]
+
+            if isinstance(choice, Parameter):
+                choice = choice.get_random()
+            else:
+                choice = ParameterState(choice)
+
+            state.value = choice
+            state.choice_num = choice_num
+
+        def decrease_choice():
+            choice_num = state.choice_num - 1
+            choice = self.choices[choice_num]
+
+            if isinstance(choice, Parameter):
+                choice = choice.get_random()
+            else:
+                choice = ParameterState(choice)
+
+            state.value = choice
+            state.choice_num = choice_num
+
+        mutations = []
+        if choice_num < len(self.choices) - 1:
+            mutations.append(increase_choice)
+        if choice_num > 0:
+            mutations.append(decrease_choice)
+
+        choice = self.choices[choice_num]
+        if isinstance(choice, Parameter):
+            mutations.extend(choice.mutattions(state.value))
+
+        return mutations
+
+
+@dataclass
+class ChoiceListParameterState(ParameterState):
+    choices: MutableSequence[int]
+    length: int
+
+    def flatten(self):
+        return [v.flatten() for v in self.value]
 
 
 class ChoiceListParameter(Parameter):
@@ -95,44 +154,48 @@ class ChoiceListParameter(Parameter):
         self.random_state = random_state
 
     def _random_child(self):
-        choice = self.random_state.choice(self.choices)
+        num_choices = len(self.choices)
+        choice_num = self.random_state.randint(0, num_choices)
+        choice = self.choices[choice_num]
         if isinstance(choice, Parameter):
-            choice = choice.get_random()
-        elif isinstance(choice, MutableMapping):
-            ret = {}
-            for k, v in choice.items():
-                if isinstance(v, Parameter):
-                    ret[k] = v.get_random()
-                else:
-                    ret[k] = v
-            choice = ret
-        return choice
+            value = choice.get_random()
+        else:
+            value = ParameterState(choice)
+
+        return value, choice_num
 
     def get_random(self):
         length = self.random_state.randint(self.min, self.max)
         result = []
+        choices = []
         for _ in range(length):
-            choice = self._random_child()
-            result.append(choice)
+            value, choice = self._random_child()
+            result.append(value)
+            choices.append(choice)
 
-        return result
+        return ChoiceListParameterState(result, choices, length)
 
-    def mutations(self, config, index):
+    def mutations(self, state: ChoiceListParameterState):
 
-        length = len(config)
+        length = state.length
 
-        def drop_random(d):
-            print("Dropping random element", index)
+        def drop_random():
+            print("Dropping random element")
             idx = self.random_state.randint(low=0, high=length)
-            l = nested_get(d, index)
-            l.pop(idx)
+            print(idx, length)
+            print(state.choices)
+            print(state.value)
+            state.value.pop(idx)
+            state.choices.pop(idx)
+            state.length -= 1
 
-        def add_random(d):
-            print("adding random element", index)
+        def add_random():
+            print("adding random element")
             num = self.random_state.randint(low=0, high=length + 1)
-            choice = self._random_child()
-            l = nested_get(d, index)
-            l.insert(num, choice)
+            value, choice = self._random_child()
+            state.value.insert(num, value)
+            state.choices.insert(num, choice)
+            state.length += 1
 
         mutations = []
         if length < self.max:
@@ -141,20 +204,19 @@ class ChoiceListParameter(Parameter):
             mutations.append(drop_random)
 
         # Create mutations for all children
-        for num, child in enumerate(config):
-            print("Child", child)
-            child_keys = child.keys()
-            for choice in self.choices:
-                choice_keys = choice.space.keys()
-
-                # FIXME: also compare values
-                if choice_keys == child_keys:
-                    print("Get child mutations")
-                    child_index = index + (num,)
-                    if isinstance(choice, Parameter):
-                        mutations.extend(choice.mutations(child, child_index))
+        for num, child in enumerate(state.value):
+            choice_num = state.choices[num]
+            choice = self.choices[choice_num]
+            if isinstance(choice, Parameter):
+                mutations.extend(choice.mutations(child))
 
         return mutations
+
+
+@dataclass
+class IntervalParameterState(ParameterState):
+    def flatten(self):
+        return self.value
 
 
 class IntervalParameter(Parameter):
@@ -163,7 +225,17 @@ class IntervalParameter(Parameter):
         self.random_state = random_state
 
     def get_random(self):
-        return self.random_state.random()
+        return IntervalParameterState(self.random_state.random())
+
+
+@dataclass
+class SearchSpaceState(ParameterState):
+    def flatten(self):
+        res = {}
+        for k, v in self.value.items():
+            res[k] = v.flatten()
+
+        return res
 
 
 class SearchSpace(Parameter):
@@ -175,22 +247,19 @@ class SearchSpace(Parameter):
     def get_random(self):
         config = {}
 
-        print(self.space)
-
         for k, v in self.space.items():
             if isinstance(v, Parameter):
                 config[k] = v.get_random()
             else:
-                config[k] = v
+                config[k] = ParameterState(v)
 
-        return config
+        return SearchSpaceState(config)
 
-    def mutations(self, config, index):
+    def mutations(self, state):
         mutations = []
-        for k, v in config.items():
-            child_index = index + (k,)
+        for k, v in state.value.items():
             if isinstance(self.space[k], Parameter):
-                mutations.extend(self.space[k].mutations(v, child_index))
+                mutations.extend(self.space[k].mutations(v))
 
         return mutations
 
@@ -198,10 +267,10 @@ class SearchSpace(Parameter):
         print("mutate")
         config = deepcopy(config)
 
-        mutations = self.mutations(config, tuple())
+        mutations = self.mutations(config)
 
         mutation = self.random_state.choice(mutations)
-        mutation(config)
+        mutation()
 
         return config
 
