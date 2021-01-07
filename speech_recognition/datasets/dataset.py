@@ -400,16 +400,6 @@ class SpeechHotwordDataset(SpeechDataset):
             2: self.LABEL_HOTWORD,
         }
 
-    @staticmethod
-    def default_config():
-        config = SpeechDataset.default_config()
-        config["n_labels"].default = 3
-
-        # Splits the dataset in 1/3
-        config["silence_prob"].default = 1.0
-        config["unknown_prob"].default = 1.0
-        return config
-
     @classmethod
     def splits(cls, config):
         """Splits the dataset in training, devlopment and test set and returns

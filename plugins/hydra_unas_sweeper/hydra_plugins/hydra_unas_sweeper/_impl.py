@@ -18,7 +18,7 @@ from .aging_evolution import AgingEvolution
 
 
 class UNASSweeperImpl(Sweeper):
-    def __init__(self, optim: OptimConf, parametrization: Dict[str, Any]):
+    def __init__(self, optim: OptimConf, parametrization: MutableMapping[str, Any]):
 
         self.optim_conf = optim
         self.parametrization_conf = parametrization
@@ -60,41 +60,51 @@ class UNASSweeperImpl(Sweeper):
             nw = min(self.num_workers, self.budget - self.job_idx)
 
             parameters = [self.optimizer.next_parameters() for _ in range(nw)]
+            param_overrides = []
+            for parameter in parameters:
+                override = {}
+                for k, v in parameter.items():
+                    override[k] = self._build_overrides(v)
 
-            # for override in parameters:
-            #    from pprint import pprint
-            #    pprint(override)
+                param_overrides.append(override)
 
-            overrides = [self._build_overrides(param) for param in parameters]
+            param_overrides = [
+                tuple([f"{k}={v}" for k, v in x.items()]) for x in param_overrides
+            ]
+            overrides = []
+            for override in param_overrides:
+                override += tuple(arguments)
+                overrides.append(override)
 
-            # from pprint import pprint
-            # pprint(overrides)
-
-            overrides = [tuple([f"+{k}={v}" for k, v in x.items()]) for x in overrides]
             returns = self.launcher.launch(overrides, initial_job_idx=self.job_idx)
 
             for param, ret in zip(parameters, returns):
-                self.optimizer.tell(param, ret.return_value)
+                self.optimizer.tell_result(param, ret.return_value)
 
             self.job_idx += nw
 
-    def _build_overrides(self, choices, parent_key="", overrides=None):
-        if overrides is None:
-            overrides = {}
-
+    def _build_overrides(self, choices, overrides=""):
+        res = ""
         if isinstance(choices, MutableMapping):
-            if parent_key:
-                parent_key += "."
+            res += "{"
+            count = 0
             for k, v in choices.items():
-                child_key = parent_key + k
-                self._build_overrides(v, child_key, overrides)
-        elif isinstance(choices, MutableSequence):
-            if parent_key:
-                parent_key += "."
-            for num, v in enumerate(choices):
-                child_key = parent_key + str(num)
-                self._build_overrides(v, child_key, overrides)
-        else:
-            overrides[parent_key] = choices
+                res += k
+                res += ":"
+                res += self._build_overrides(v, overrides)
+                if count < len(choices) - 1:
+                    res += ","
+                count += 1
 
-        return overrides
+            res += "}"
+        elif isinstance(choices, MutableSequence):
+            res += "["
+            for num, v in enumerate(choices):
+                res += self._build_overrides(v, overrides)
+                if num < len(choices) - 1:
+                    res += ", "
+            res += "]"
+        else:
+            res += str(choices)
+
+        return res

@@ -1,4 +1,5 @@
 import logging
+from numpy.core.shape_base import _block_setup
 import torch.nn as nn
 import torch
 from torch.autograd import Variable
@@ -36,14 +37,12 @@ class MajorBlock(nn.Module):
         stride,
         branch,
         minor_blocks,
-        act_layer=None,
+        activation_fn="relu",
+        clipping_value=6,
         input_channels=None,
         dilation_factor=None,
     ):
         super().__init__()
-
-        # TODO stupid but positional arguments not working with hydra
-        assert act_layer is not None
 
         # module lists for branches of MajorBlock
         self.main_modules = nn.ModuleList()
@@ -59,6 +58,15 @@ class MajorBlock(nn.Module):
             self.is_input_block = True
 
         n_parallels = sum(block["parallel"] for block in minor_blocks)
+        n_seq = sum(not block["parallel"] for block in minor_blocks)
+
+        # If all blocks are set to parallel:
+        # Make all blocks sequential
+        if n_seq == 0:
+            n_parallels = 0
+            for block in minor_blocks:
+                block["parallel"] = False
+
         if n_parallels > 0:
             self.has_parallel = True
 
@@ -78,12 +86,12 @@ class MajorBlock(nn.Module):
             # standard minor block config is fully loaded
             kwargs_main = {
                 "dilation_factor": dilation_factor,
-                "act_layer": act_layer,
+                "act_layer": create_act(activation_fn, clipping_value),
             }
 
             kwargs_parallel = {
                 "dilation_factor": dilation_factor,
-                "act_layer": act_layer,
+                "act_layer": create_act(activation_fn, clipping_value),
             }
 
             # get minor block config
@@ -99,7 +107,6 @@ class MajorBlock(nn.Module):
 
             # parallel MinorBlocks
             if is_parallel:
-
                 if count_parallel > 1:
                     input_channels_parallel = output_channels
                     stride_parallel = 1
@@ -139,7 +146,7 @@ class MajorBlock(nn.Module):
 
             # only if block has parallel minor blocks it needs a final activation layer for the outs of the branches
             if self.has_parallel:
-                self.act_layer = act_layer
+                self.act_layer = create_act(activation_fn, clipping_value)
 
     def forward(self, x):
 
@@ -156,10 +163,11 @@ class MajorBlock(nn.Module):
             #                |---> parallel: True  --->  parallel: True  ---> |
             # Residual:  --->|                                                +--->
             #                |---> parallel: False --->  parallel: False ---> |
-            for layer in self.parallel_modules:
-                parallel_feed = layer(parallel_feed)
+            if self.has_parallel:
+                for layer in self.parallel_modules:
+                    parallel_feed = layer(parallel_feed)
 
-            act_input = main_feed + parallel_feed
+                act_input = main_feed + parallel_feed
 
         if self.is_input_block:
             #                 |---> parallel: True  --->  |  ---> |
@@ -235,10 +243,9 @@ class TCCandidateModel(SerializableModule):
         n_labels = config["n_labels"]
         width = config["width"]
         height = config["height"]
-        activation_fnc = config["activation_function"]
+        activation_fn = config["activation_function"]
         dropout_prob = config["dropout_prob"]
         clipping_value = config["clipping_value"]
-        act_layer = create_act(activation_fnc, clipping_value)
         dilation_factor = config["dilation_factor"]
         major_blocks = config["major_blocks"]
 
@@ -254,7 +261,8 @@ class TCCandidateModel(SerializableModule):
                 # TODO positional arguments not working
                 major_block,
                 input_channels=input_channels,
-                act_layer=act_layer,
+                activation_fn=activation_fn,
+                clipping_value=clipping_value,
                 dilation_factor=dilation_factor,
             )
             self.modules_list.append(current_module)
@@ -265,6 +273,7 @@ class TCCandidateModel(SerializableModule):
 
         # dummy input to forward once through the model for configuring
         x = Variable(torch.zeros(1, height, width))
+        self.eval()
 
         # iterate over the layers of the main branch to get dummy output
         print("!!! TCCandidateModel layers:")

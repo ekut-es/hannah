@@ -75,6 +75,7 @@ def test_datasets(model, dataset, split):
     )
     if not os.path.exists(download_folder):
         logging.warning("Could not find download folder, skipping datased tests")
+        return
 
     command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.download_folder={download_folder} dataset.data_split={split}"
 

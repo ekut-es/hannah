@@ -29,7 +29,8 @@ class EvolutionResult:
 
 class Parameter:
     def _recurse(self, config):
-        print(config)
+        # print("_recurse")
+        # print(config)
         # breakpoint()
         if isinstance(config, MutableSequence):
             return ChoiceParameter(config)
@@ -40,23 +41,26 @@ class Parameter:
                 try:
                     config = ChoiceList(**config)
                 except:
-                    pass
+                    config = config
 
             if isinstance(config, ScalarConfigSpec):
                 res = IntervalParameter(config)
             elif isinstance(config, ChoiceList):
                 res = ChoiceListParameter(config)
             else:
-                res = {}
-                for k, v in config.items():
-                    res[k] = self._recurse(v)
+                res = SearchSpace(config)
 
             return res
         else:
             return config
 
     def mutations(self, config, index):
-        return []
+        # FIXME: here we would need to add child mutations
+        def mutate_random(d):
+            print("Warning: using mutate random for ", index)
+            return nested_set(d, index, self.get_random())
+
+        return [mutate_random]
 
 
 class ChoiceParameter(Parameter):
@@ -79,13 +83,7 @@ class ChoiceParameter(Parameter):
 
         return choice
 
-    def mutations(self, config, index):
-        # FIXME: here we would need to add child mutations
-        def mutate_random(d):
-            print("mutating: ", index)
-            return nested_set(d, index, self.get_random())
-
-        return [mutate_random]
+    # TODO: Add child mutations
 
 
 class ChoiceListParameter(Parameter):
@@ -107,17 +105,6 @@ class ChoiceListParameter(Parameter):
                     ret[k] = v
             choice = ret
         return choice
-
-    def _child_mutations(self, choice, config, index):
-        mutations = []
-        if isinstance(choice, Parameter):
-            choice.mutations(config, index)
-        elif isinstance(choice, MutableMapping):
-            for k, v in choice.items():
-                param_index = index + (k,)
-                mutations.extend(choice[k].mutations(config[k], param_index))
-
-        return mutations
 
     def get_random(self):
         length = np.random.randint(self.min, self.max)
@@ -156,13 +143,14 @@ class ChoiceListParameter(Parameter):
             print("Child", child)
             child_keys = child.keys()
             for choice in self.choices:
-                choice_keys = choice.keys()
+                choice_keys = choice.space.keys()
 
                 # FIXME: also compare values
                 if choice_keys == child_keys:
                     print("Get child mutations")
                     child_index = index + (num,)
-                    mutations.extend(self._child_mutations(choice, child, child_index))
+                    if isinstance(choice, Parameter):
+                        mutations.extend(choice.mutations(child, child_index))
 
         return mutations
 
@@ -174,21 +162,11 @@ class IntervalParameter(Parameter):
     def get_random(self):
         return np.random.random()
 
-    def mutations(self, config, index):
-
-        print("mutations", index)
-
-        def mutation(d):
-            print("mutating: ", index)
-            return nested_set(d, index, self.get_random())
-
-        return [mutation]
-
 
 class SearchSpace(Parameter):
     def __init__(self, config):
         self.config = config
-        self.space = self._recurse(config)
+        self.space = {k: self._recurse(v) for k, v in config.items()}
 
     def get_random(self):
         config = {}
@@ -201,19 +179,24 @@ class SearchSpace(Parameter):
 
         return config
 
+    def mutations(self, config, index):
+        mutations = []
+        for k, v in config.items():
+            child_index = index + (k,)
+            if isinstance(self.space[k], Parameter):
+                mutations.extend(self.space[k].mutations(v, child_index))
+
+        return mutations
+
     def mutate(self, config):
         print("mutate")
         config = deepcopy(config)
 
-        mutations = []
-
-        for k, v in config.items():
-            index = (k,)
-            print(self.space[k])
-            mutations.extend(self.space[k].mutations(v, index))
+        mutations = self.mutations(config, tuple())
 
         mutation = np.random.choice(mutations)
         mutation(config)
+
         return config
 
     def __str__(self):
@@ -248,15 +231,16 @@ class AgingEvolution:
         self.sample_size = sample_size
         self.eps = eps
 
-        print("parametrization:", parametrization)
+        # print("parametrization:", parametrization)
 
         self.parametrization = SearchSpace(parametrization)
 
-        print("SearchSpace:", self.parametrization)
+        # print("SearchSpace:", self.parametrization)
 
         self.history = []
         self.population = []
         self.bounds = bounds
+        self.visited_configs = set()
 
     def get_fitness_function(self):
         ff = FitnessFunction(self.bounds)
@@ -266,24 +250,28 @@ class AgingEvolution:
     def next_parameters(self):
         "Returns a list of current tasks"
 
-        if len(self.history) < self.population_size:
-            return self.parametrization.get_random()
+        parametrization = {}
 
-        if np.random.uniform() < self.eps:
-            return self.parametrization.get_random()
+        while hash(repr(parametrization)) in self.visited_configs:
+            if len(self.history) < self.population_size:
+                parametrization = self.parametrization.get_random()
+            elif np.random.uniform() < self.eps:
+                parametrization = self.parametrization.get_random()
+            else:
+                sample = np.random.choice(self.population, size=self.sample_size)
+                fitness_function = self.get_fitness_function()
 
-        sample = np.random.choice(self.population, size=self.sample_size)
-        fitness_function = self.get_fitness_function()
+                fitness = [fitness_function(x.result) for x in sample]
 
-        fitness = [fitness_function(x.result) for x in sample]
+                parent = sample[np.argmin(fitness)]
 
-        parent = sample[np.argmax(fitness)]
+                parametrization = self.parametrization.mutate(parent.parameters)
 
-        child = self.parametrization.mutate(parent.parameters)
+        self.visited_configs.add(hash(repr(parametrization)))
 
-        return child
+        return parametrization
 
-    def tell(self, parameters, metrics):
+    def tell_result(self, parameters, metrics):
         "Tell the result of a task"
 
         result = EvolutionResult(parameters, metrics)

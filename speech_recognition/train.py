@@ -93,7 +93,8 @@ def train(config=DictConfig):
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
 
-    opt_callback = HydraOptCallback()
+    opt_monitor = config.get("monitor", ["val_loss"])
+    opt_callback = HydraOptCallback(monitor=opt_monitor)
     callbacks.append(opt_callback)
 
     # INIT PYTORCH-LIGHTNING
