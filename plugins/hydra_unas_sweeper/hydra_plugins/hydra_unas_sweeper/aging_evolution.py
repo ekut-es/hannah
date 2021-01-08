@@ -310,9 +310,6 @@ class AgingEvolution:
         self.eps = eps
         self.parametrization = SearchSpace(parametrization, random_state)
 
-        print("Search Space")
-        print(self.parametrization)
-
         self.random_state = random_state
 
         self.history = []
