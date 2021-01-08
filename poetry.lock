@@ -231,6 +231,14 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
+name = "cloudpickle"
+version = "1.6.0"
+description = "Extended pickling support for Python objects"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[[package]]
 name = "cma"
 version = "3.0.3"
 description = "CMA-ES, Covariance Matrix Adaptation Evolution Strategy for non-linear numerical optimization in Python"
@@ -552,7 +560,7 @@ six = "*"
 
 [[package]]
 name = "hydra-core"
-version = "1.0.4"
+version = "1.0.5"
 description = "A framework for elegantly configuring complex applications"
 category = "main"
 optional = false
@@ -561,7 +569,7 @@ python-versions = "*"
 [package.dependencies]
 antlr4-python3-runtime = "4.8"
 importlib-resources = {version = "*", markers = "python_version < \"3.9\""}
-omegaconf = ">=2.0.5"
+omegaconf = ">=2.0.5,<2.1"
 
 [[package]]
 name = "hydra-joblib-launcher"
@@ -586,6 +594,18 @@ python-versions = "*"
 [package.dependencies]
 hydra-core = ">=1.0.0"
 nevergrad = ">=0.4.1.post4"
+
+[[package]]
+name = "hydra-submitit-launcher"
+version = "1.0.1"
+description = "Submitit Launcher for Hydra apps"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+hydra-core = ">=1.0.0"
+submitit = ">=1.0.0"
 
 [[package]]
 name = "hydra-unas-sweeper"
@@ -1800,6 +1820,21 @@ cffi = ">=1.0"
 numpy = ["numpy"]
 
 [[package]]
+name = "submitit"
+version = "1.1.5"
+description = "Python 3.6+ toolbox for submitting jobs to Slurm"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+cloudpickle = ">=1.2.1"
+typing_extensions = ">=3.7.4.2"
+
+[package.extras]
+dev = ["black (==19.10b0)", "isort (==5.5.3)", "mypy (>=0.782)", "pre-commit (>=1.15.2)", "pytest-cov (>=2.6.1)", "coverage[toml] (>=5.1)", "pytest (>=4.3.0)", "pylint (>=2.6.0)"]
+
+[[package]]
 name = "tabulate"
 version = "0.8.3"
 description = "Pretty-print tabular data"
@@ -2209,7 +2244,7 @@ tf-backend = ["onnx-tf", "tensorflow-addons"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.1, <3.9.0"
-content-hash = "b1bae24c3166b314992021779e97214cfd2d60902f483be9333d729b19335ad7"
+content-hash = "2374d314f7e8eed248de5e97860bdc7a39d95514006c98e4248e60b3953b8e4c"
 
 [metadata.files]
 absl-py = [
@@ -2344,6 +2379,10 @@ chardet = [
 click = [
     {file = "click-7.1.2-py2.py3-none-any.whl", hash = "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"},
     {file = "click-7.1.2.tar.gz", hash = "sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a"},
+]
+cloudpickle = [
+    {file = "cloudpickle-1.6.0-py3-none-any.whl", hash = "sha256:3a32d0eb0bc6f4d0c57fbc4f3e3780f7a81e6fee0fa935072884d58ae8e1cc7c"},
+    {file = "cloudpickle-1.6.0.tar.gz", hash = "sha256:9bc994f9e9447593bd0a45371f0e7ac7333710fcf64a4eb9834bf149f4ef2f32"},
 ]
 cma = [
     {file = "cma-3.0.3-py2.py3-none-any.whl", hash = "sha256:592d1a1973ee0d97b11958a00a33359f1dda9a7b56ca21b42b674665d0cca760"},
@@ -2545,8 +2584,8 @@ h5py = [
     {file = "h5py-2.10.0.tar.gz", hash = "sha256:84412798925dc870ffd7107f045d7659e60f5d46d1c70c700375248bf6bf512d"},
 ]
 hydra-core = [
-    {file = "hydra-core-1.0.4.tar.gz", hash = "sha256:a3c9a30d866361d811e8c0a0dbecac541a6381deb0e618a49a7f1561d0b016b4"},
-    {file = "hydra_core-1.0.4-py3-none-any.whl", hash = "sha256:febf981846658713e623cf8bc7a645f2795f33013706115e18611c43baa1832e"},
+    {file = "hydra-core-1.0.5.tar.gz", hash = "sha256:059dad5587267317176539e5d5a5ee77f7970b45bf50311018f7ea7e3a90dac5"},
+    {file = "hydra_core-1.0.5-py3-none-any.whl", hash = "sha256:e0fdfe35bd2b899699482afaab7ee45ddd0c3a4e749e2983958a42d10bdcc343"},
 ]
 hydra-joblib-launcher = [
     {file = "hydra-joblib-launcher-1.1.0.tar.gz", hash = "sha256:a1c83d40858c13b06779325dfd7145f09a21820115a8ba1829d6d69a999daa22"},
@@ -2555,6 +2594,10 @@ hydra-joblib-launcher = [
 hydra-nevergrad-sweeper = [
     {file = "hydra-nevergrad-sweeper-1.1.0rc1.tar.gz", hash = "sha256:8dc5dfd15b40ee09fb989c0c8a5c5385afb84b9ce2e36fb4551371ab891053ac"},
     {file = "hydra_nevergrad_sweeper-1.1.0rc1-py3-none-any.whl", hash = "sha256:2be79c80290c5ed97fcc32ad87c435889ad90d15d2d16c8d982a935a75f920e3"},
+]
+hydra-submitit-launcher = [
+    {file = "hydra-submitit-launcher-1.0.1.tar.gz", hash = "sha256:27d4fa4fb446bd5bea3b7738c3efa688ae553fd1c61e163fc891ef4d0667d19e"},
+    {file = "hydra_submitit_launcher-1.0.1-py3-none-any.whl", hash = "sha256:140d8ea19a36d89d42a1dae237dd40e5151671a45206955a304366c2de95d8f1"},
 ]
 hydra-unas-sweeper = []
 identify = [
@@ -3241,6 +3284,9 @@ soundfile = [
     {file = "SoundFile-0.10.3.post1-py2.py3.cp26.cp27.cp32.cp33.cp34.cp35.cp36.pp27.pp32.pp33-none-win32.whl", hash = "sha256:4555438c2c4f02b39fea2ed40f6ddeda88a80cd1ee9dd129be4d5f5134698cc2"},
     {file = "SoundFile-0.10.3.post1-py2.py3.cp26.cp27.cp32.cp33.cp34.cp35.cp36.pp27.pp32.pp33-none-win_amd64.whl", hash = "sha256:b361d4ac1519a2e516cabafa6bf7e93492f999f35d7d25350cd87fdc3e5cb27e"},
     {file = "SoundFile-0.10.3.post1.tar.gz", hash = "sha256:490cff42650733d1832728b937fe99fa1802896f5ef4d61bcf78cf7ebecb107b"},
+]
+submitit = [
+    {file = "submitit-1.1.5.tar.gz", hash = "sha256:0c1e18e80ffda82cd96bd79d26599182214f72800903da770879922dfba45afb"},
 ]
 tabulate = [
     {file = "tabulate-0.8.3.tar.gz", hash = "sha256:8af07a39377cee1103a5c8b3330a421c2d99b9141e9cc5ddd2e3263fea416943"},
