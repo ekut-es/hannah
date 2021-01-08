@@ -17,13 +17,13 @@ class HydraOptCallback(Callback):
     def result(self):
 
         return_values = {}
-        for value in self.values:
+        for key, value in self.values.items():
             if isinstance(value, Tensor):
                 value = float(value.cpu())
             else:
                 value = float(value)
 
-            return_values.append(value)
+            return_values[key] = value
 
         if len(return_values) == 1:
             return list(return_values.values())[0]
