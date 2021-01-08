@@ -573,7 +573,7 @@ omegaconf = ">=2.0.5,<2.1"
 
 [[package]]
 name = "hydra-joblib-launcher"
-version = "1.1.0"
+version = "1.1.1"
 description = "Joblib Launcher for Hydra apps"
 category = "main"
 optional = false
@@ -2588,8 +2588,8 @@ hydra-core = [
     {file = "hydra_core-1.0.5-py3-none-any.whl", hash = "sha256:e0fdfe35bd2b899699482afaab7ee45ddd0c3a4e749e2983958a42d10bdcc343"},
 ]
 hydra-joblib-launcher = [
-    {file = "hydra-joblib-launcher-1.1.0.tar.gz", hash = "sha256:a1c83d40858c13b06779325dfd7145f09a21820115a8ba1829d6d69a999daa22"},
-    {file = "hydra_joblib_launcher-1.1.0-py3-none-any.whl", hash = "sha256:fe09f9e1bcf23fe48e6fa9d28f2b5841c2c5353400bd817092e69ab8d5b2ea8c"},
+    {file = "hydra-joblib-launcher-1.1.1.tar.gz", hash = "sha256:e8a097b88b7d12039e2e2db6c54f9a3a12c947c99ca010e676ff2216d1dbb120"},
+    {file = "hydra_joblib_launcher-1.1.1-py3-none-any.whl", hash = "sha256:8ab95624d5a56e2f02a03e6f9c5d2f7f7c5d93bad39a1af836c4910dd5c12577"},
 ]
 hydra-nevergrad-sweeper = [
     {file = "hydra-nevergrad-sweeper-1.1.0rc1.tar.gz", hash = "sha256:8dc5dfd15b40ee09fb989c0c8a5c5385afb84b9ce2e36fb4551371ab891053ac"},
