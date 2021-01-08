@@ -3,5 +3,6 @@
     "python.linting.enabled": true,
     "git.ignoreLimitWarning": true,
     "python.linting.flake8Enabled": true,
-    "python.formatting.provider": "black"
+    "python.formatting.provider": "black",
+    "cmake.configureOnOpen": false
 }
