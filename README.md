@@ -371,6 +371,8 @@ Example:
       - _target : "torch.nn.MaxPool2d"
         size: 7
 
+*Warning*: Mutations for intervall parameters currently always sample randomly from the range of values
+
 ### Intervall Parameters
 
 Intervall Parameters represent a Scalar Value from an intervall of Values
