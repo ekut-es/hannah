@@ -124,13 +124,17 @@ class SpeechClassifierModule(LightningModule):
         if isinstance(output, list):
             # log for each output
             for idx, out in enumerate(output):
-                self.log(f"{prefix}_accuracy/exit_{idx}", accuracy(out, y))
+                acc = accuracy(out, y)
+                self.log(f"{prefix}_accuracy/exit_{idx}", acc)
+                self.log(f"{prefix}_error/exit_{idx}", 1.0 - acc)
                 self.log(f"{prefix}_recall/exit_{idx}", recall(out, y))
                 self.log(f"{prefix}_f1/exit_{idx}", f1(out, y, self.num_classes))
 
         else:
+            acc = accuracy(output, y)
+            self.log(f"{prefix}_accuracy", acc)
+            self.log(f"{prefix}_error", 1.0 - acc)
             self.log(f"{prefix}_f1", f1(output, y, self.num_classes))
-            self.log(f"{prefix}_accuracy", accuracy(output, y))
             self.log(f"{prefix}_recall", recall(output, y))
 
         # only one loss allowed

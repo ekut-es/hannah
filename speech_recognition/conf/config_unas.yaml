@@ -1,6 +1,6 @@
 defaults:
     - dataset: kws
-    - model: nas_empty
+    - model: nas-tc
     - scheduler: null
     - optimizer: adam
     - features: mfcc
@@ -37,7 +37,7 @@ hydra:
       sample_size: 10
       budget:  2000
       seed: 1234
-      num_workers:  1
+      num_workers:  10
       bounds:
         val_loss: 0.2
         total_macs: 500000

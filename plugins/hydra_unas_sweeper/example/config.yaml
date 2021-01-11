@@ -11,14 +11,15 @@ hydra:
   sweeper:
     optim:
       optimizer: aging_evolution
-      population_size: 4
-      sample_size: 2
-      budget:  2000
+      population_size: 20
+      sample_size: 10
+      budget:  500
       seed: 1234
       num_workers:  1
       bounds:
-        val_acc: -0.9
-        tot_mem: 5.0
+        val_loss: 0.15
+        tot_mem: 2000.0
+        tot_weights: 1000.0
 
 
     # default parametrization of the search space
