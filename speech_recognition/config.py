@@ -3,16 +3,26 @@ import argparse
 import hashlib
 import sys
 
+
 class ConfigOption(object):
-    def __init__(self, nargs=None,
-                 const=None, default=None,
-                 dtype=None, choices=None,
-                 required=False, desc="",
-                 category="Global Options", visible=True):
+    def __init__(
+        self,
+        nargs=None,
+        const=None,
+        default=None,
+        dtype=None,
+        choices=None,
+        required=False,
+        desc="",
+        category="Global Options",
+        visible=True,
+    ):
 
         if default is None and dtype is None:
-            raise Exception("Either default or dtype need to be given for a config option.")
-        
+            raise Exception(
+                "Either default or dtype need to be given for a config option."
+            )
+
         self.nargs = nargs
         self.const = const
         self.default = default
@@ -33,7 +43,7 @@ class ConfigOption(object):
         if self.default is not None:
             res["default"] = self.default
 
-        if not self.visible: 
+        if not self.visible:
             help = argparse.SUPPRESS
         elif self.desc is not None:
             help = str(self.desc)
@@ -43,10 +53,10 @@ class ConfigOption(object):
 
         if self.choices is not None:
             res["choices"] = self.choices
-            
+
         if self.dtype == bool:
             res["dest"] = name
-            res["action"] = 'store_true'
+            res["action"] = "store_true"
             res["default"] = self.default
 
         elif self.dtype == list:
@@ -56,39 +66,52 @@ class ConfigOption(object):
         elif self.dtype == tuple:
             res["nargs"] = len(self.default)
             res["type"] = type(self.default[0])
-                
+
         return res
 
     def _gen_flags(self, name):
-        
+
         flags = []
         if "_" in name:
             flags.append("--{}".format(name.replace("_", "-")))
         flags.append("--{}".format(name))
 
-        return flags 
-    
+        return flags
+
     def get_args(self, name):
 
         args = self._get_dict(name)
         flags = self._gen_flags(name)
 
         res = [(flags, args)]
-        
+
         if self.dtype == bool:
             no_name = "no_" + name
-            no_flags=self._gen_flags(no_name)
+            no_flags = self._gen_flags(no_name)
             no_args = self._get_dict(name)
-            no_args['action'] = 'store_false'
+            no_args["action"] = "store_false"
 
             res.append((no_flags, no_args))
 
         return res
-        
+
+
 class ConfigBuilder(object):
-    
-    unhashed_options = set(["config", "dataset_cls", "model_class", "type", "cuda", "gpu_no", "output_dir", "config_hash", "dump_test"])
-    
+
+    unhashed_options = set(
+        [
+            "config",
+            "dataset_cls",
+            "model_class",
+            "type",
+            "cuda",
+            "gpu_no",
+            "output_dir",
+            "config_hash",
+            "dump_test",
+        ]
+    )
+
     def __init__(self, *default_configs):
         self.default_config = ChainMap(*default_configs)
 
@@ -98,12 +121,13 @@ class ConfigBuilder(object):
         parser.add_argument("--full-help", action="store_true")
         categories = {}
         for key, value in self.default_config.items():
-            #Allow overiding of default options
+            # Allow overiding of default options
             if not isinstance(value, ConfigOption):
                 for map in self.default_config.maps:
                     if key == "cache_size":
                         print("map:")
                         from pprint import pprint
+
                         pprint(map)
                     if key in map:
                         obj = map[key]
@@ -122,9 +146,11 @@ class ConfigBuilder(object):
                             category = parser.add_argument_group(title=value.category)
                             categories[value.category] = category
                         category = categories[value.category]
-                    category.add_argument(*flags, **args) 
+                    category.add_argument(*flags, **args)
             elif isinstance(value, tuple):
-                parser.add_argument(flag, default=list(value), nargs=len(value), type=type(value[0]))
+                parser.add_argument(
+                    flag, default=list(value), nargs=len(value), type=type(value[0])
+                )
             elif isinstance(value, list):
                 parser.add_argument(flag, default=value, nargs="+", type=type(value[0]))
             elif isinstance(value, bool):
@@ -132,7 +158,9 @@ class ConfigBuilder(object):
                     parser.add_argument(flag, action="store_true")
                 else:
                     flag = "--no_{}".format(key)
-                    parser.add_argument(flag, dest=str(key), action="store_false", default=True)
+                    parser.add_argument(
+                        flag, dest=str(key), action="store_false", default=True
+                    )
             else:
                 parser.add_argument(flag, default=value, type=type(value))
         return parser
@@ -145,13 +173,18 @@ class ConfigBuilder(object):
         if args["full_help"]:
             parser.print_help()
             sys.exit(0)
-            
+
         config = ChainMap(args, self.default_config)
-        config_string = str([item for item in sorted(config.items()) if item[0] not in self.unhashed_options])
-            
-            
+        config_string = str(
+            [
+                item
+                for item in sorted(config.items())
+                if item[0] not in self.unhashed_options
+            ]
+        )
+
         m = hashlib.sha256()
-        m.update(config_string.encode('utf-8'))
+        m.update(config_string.encode("utf-8"))
         config["config_hash"] = m.hexdigest()
-            
+
         return config

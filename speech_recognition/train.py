@@ -22,6 +22,19 @@ from hydra.utils import instantiate
 from . import conf  # noqa
 
 
+def handleDataset(config=DictConfig):
+    lit_module = instantiate(
+        config.module,
+        dataset=config.dataset,
+        model=config.model,
+        optimizer=config.optimizer,
+        features=config.features,
+        scheduler=config.get("scheduler", None),
+        normalizer=config.get("normalizer", None),
+    )
+    lit_module.prepare_data()
+
+
 def train(config=DictConfig):
     seed_everything(config.seed)
     if not torch.cuda.is_available():
@@ -80,7 +93,8 @@ def train(config=DictConfig):
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
 
-    opt_callback = HydraOptCallback()
+    opt_monitor = config.get("monitor", ["val_loss"])
+    opt_callback = HydraOptCallback(monitor=opt_monitor)
     callbacks.append(opt_callback)
 
     # INIT PYTORCH-LIGHTNING
@@ -139,6 +153,9 @@ def main(config=DictConfig):
         return eval(config)
     elif config["type"] == "eval_vad_keyword":
         logging.error("eval_vad_keyword is not supported at the moment")
+    elif config["type"] == "dataset":
+        print("Only the dataset will be created and downloaded")
+        handleDataset(config)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,2 @@
+class Mutation:
+    pass

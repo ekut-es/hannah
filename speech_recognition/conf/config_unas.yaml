@@ -1,0 +1,77 @@
+defaults:
+    - dataset: kws
+    - model: nas_empty
+    - scheduler: null
+    - optimizer: adam
+    - features: mfcc
+    - normalizer: null
+    - module: speech_classifier
+    - compress: null
+    - trainer: default
+    - checkpoint: default
+    - backend: null
+    - early_stopping: null
+    - profiler: null
+    - hydra/sweeper: unas
+
+
+type: train
+experiment_id: nas
+output_dir: trained_models
+auto_lr: false
+seed: 1234
+
+monitor: ["val_loss", "total_weights", "est_act", "total_macs"]
+model:
+  major_blocks: []
+
+hydra:
+  run:
+    dir: ${output_dir}/${experiment_id}/${model.name}/
+  sweep:
+    dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+  sweeper:
+    optim:
+      optimizer: aging_evolution
+      population_size: 25
+      sample_size: 10
+      budget:  2000
+      seed: 1234
+      num_workers:  1
+      bounds:
+        val_loss: 0.2
+        total_macs: 500000
+        total_weights: 20000
+        est_act: 8000
+
+
+    # default parametrization of the search space
+    parametrization:
+      model:
+        # a linearly-distributed scalar between 0 and 1
+        dropout_prob:
+          lower: 0.0
+          upper: 1.0
+
+        width_multiplier:
+          lower: 0.5
+          upper: 2.0
+
+        major_blocks:
+            min: 4
+            max: 10
+            choices:
+              - _target_: speech_recognition.models.nas.tc_model.MajorBlock
+                output_channels: [8,16,24,32,40,48,56,64]
+                stride: [1,2,3]
+                branch: "residual"
+                minor_blocks:
+                  min: 1
+                  max: 6
+                  choices:
+                    - _target_: speech_recognition.models.nas.tc_model.MinorBlock
+                      size: [1, 3, 5, 7, 9]
+                      padding: true
+                      batchnorm: [true, false]
+                      activation: [true, false]
+                      parallel: [true, false]

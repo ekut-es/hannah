@@ -6,7 +6,7 @@ import numpy as np
 import sys
 
 from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.metrics.functional import accuracy, f1_score, recall
+from pytorch_lightning.metrics.functional import accuracy, f1, recall
 from pytorch_lightning.loggers import TensorBoardLogger
 from .config_utils import get_loss_function, get_model, save_model
 from typing import Optional
@@ -100,7 +100,8 @@ class SpeechClassifierModule(LightningModule):
         # Instantiate Model
         self.hparams.model.width = self.example_feature_array.size(2)
         self.hparams.model.height = self.example_feature_array.size(1)
-        self.hparams.model.n_labels = len(self.train_set.label_names)
+        self.num_classes = len(self.train_set.label_names)
+        self.hparams.model.n_labels = self.num_classes
 
         self.model = get_model(self.hparams.model)
 
@@ -125,10 +126,10 @@ class SpeechClassifierModule(LightningModule):
             for idx, out in enumerate(output):
                 self.log(f"{prefix}_accuracy/exit_{idx}", accuracy(out, y))
                 self.log(f"{prefix}_recall/exit_{idx}", recall(out, y))
-                self.log(f"{prefix}_f1/exit_{idx}", f1_score(out, y))
+                self.log(f"{prefix}_f1/exit_{idx}", f1(out, y, self.num_classes))
 
         else:
-            self.log(f"{prefix}_f1", f1_score(output, y))
+            self.log(f"{prefix}_f1", f1(output, y, self.num_classes))
             self.log(f"{prefix}_accuracy", accuracy(output, y))
             self.log(f"{prefix}_recall", recall(output, y))
 
@@ -255,6 +256,7 @@ class SpeechClassifierModule(LightningModule):
                     },
                 )
 
+
 class PhysioClassifierModule(LightningModule):
     def __init__(
         self,
@@ -359,14 +361,13 @@ class PhysioClassifierModule(LightningModule):
     @staticmethod
     def get_sampler(dataset):
         distribution = dataset.get_categories_distribution()
-        weights = 1. / torch.tensor(
-            [distribution[i] for i in range(len(distribution))],
-            dtype=torch.float)
+        weights = 1.0 / torch.tensor(
+            [distribution[i] for i in range(len(distribution))], dtype=torch.float
+        )
 
         sampler_weights = weights[dataset.get_label_list()]
 
-        sampler = data.WeightedRandomSampler(sampler_weights,
-                                             len(dataset))
+        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
 
     # TRAINING CODE
@@ -417,8 +418,6 @@ class PhysioClassifierModule(LightningModule):
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
-
-
 
         # METRICS
         self.get_batch_metrics(output, y, loss, "val")
@@ -496,4 +495,3 @@ class PhysioClassifierModule(LightningModule):
                         "val_accuracy": self.trainer.callback_metrics["val_accuracy"],
                     },
                 )
-

@@ -9,7 +9,6 @@ import sys
 import pickle
 import wfdb
 
-import librosa
 import torchaudio
 import numpy as np
 import scipy.signal as signal
@@ -31,9 +30,7 @@ def factor(snr, psig, pnoise):
 
 
 def load_audio(file_name, sr=16000, backend="torchaudio", res_type="kaiser_fast"):
-    if backend == "librosa":
-        data = librosa.core.load(file_name, sr=sr, res_type=res_type)
-    elif backend == "torchaudio":
+    if backend == "torchaudio":
         torchaudio.set_audio_backend("sox")
         try:
             data, samplingrate = torchaudio.load(file_name)
@@ -98,6 +95,7 @@ class PhysioDataset(data.Dataset):
 
 class AtrialFibrillationDataset(PhysioDataset):
     """ Atrial Fibrillation Database (https://physionet.org/content/afdb/1.0.0/)"""
+
     LABEL_ATRIAL_FIBRILLATION = "atrial_fibrillation"
     LABEL_ATRIAL_FLUTTER = "atrial_flutter"
     LABEL_JUNCTIONAL_RYTHM = "junctional_rythm"
@@ -118,24 +116,30 @@ class AtrialFibrillationDataset(PhysioDataset):
 
     @classmethod
     def get_annotation_names(cls):
-        return {cls.ANN_ATRIAL_FIBRILLATION: 0,
-                cls.ANN_ATRIAL_FLUTTER: 1,
-                cls.ANN_JUNCTIONAL_RYTHM: 2,
-                cls.ANN_OTHER_RYTHM: 3, }
+        return {
+            cls.ANN_ATRIAL_FIBRILLATION: 0,
+            cls.ANN_ATRIAL_FLUTTER: 1,
+            cls.ANN_JUNCTIONAL_RYTHM: 2,
+            cls.ANN_OTHER_RYTHM: 3,
+        }
 
     @classmethod
     def get_label_mapping(cls):
-        return {cls.LABEL_ATRIAL_FIBRILLATION: 0,
-                cls.LABEL_ATRIAL_FLUTTER: 1,
-                cls.LABEL_JUNCTIONAL_RYTHM: 2,
-                cls.LABEL_OTHER_RYTHM: 3, }
+        return {
+            cls.LABEL_ATRIAL_FIBRILLATION: 0,
+            cls.LABEL_ATRIAL_FLUTTER: 1,
+            cls.LABEL_JUNCTIONAL_RYTHM: 2,
+            cls.LABEL_OTHER_RYTHM: 3,
+        }
 
     @classmethod
     def get_label_names(cls):
-        return {0: cls.LABEL_ATRIAL_FIBRILLATION,
-                1: cls.LABEL_ATRIAL_FLUTTER,
-                2: cls.LABEL_JUNCTIONAL_RYTHM,
-                3: cls.LABEL_OTHER_RYTHM, }
+        return {
+            0: cls.LABEL_ATRIAL_FIBRILLATION,
+            1: cls.LABEL_ATRIAL_FLUTTER,
+            2: cls.LABEL_JUNCTIONAL_RYTHM,
+            3: cls.LABEL_OTHER_RYTHM,
+        }
 
     @classmethod
     def get_physiological_pattern(cls):
@@ -207,16 +211,13 @@ class AtrialFibrillationDataset(PhysioDataset):
 
         for name in files_list:
             sample_path = os.path.join(raw_folder, name)
-            annotations = wfdb.rdann(sample_path,
-                                     extension="atr",
-                                     return_label_elements=[
-                                         "symbol",
-                                         "label_store",
-                                         "description", ])
+            annotations = wfdb.rdann(
+                sample_path,
+                extension="atr",
+                return_label_elements=["symbol", "label_store", "description"],
+            )
             samples, _ = wfdb.rdsamp(sample_path)
-            raw_data += [{"name": name,
-                          "annotations": annotations,
-                          "samples": samples, }]
+            raw_data += [{"name": name, "annotations": annotations, "samples": samples}]
 
         sample_length = config["input_length"]
 
@@ -224,7 +225,8 @@ class AtrialFibrillationDataset(PhysioDataset):
             samples = element["samples"]
             annotations = element["annotations"]
             for i, (typus, start_sample) in enumerate(
-                zip(annotations.aux_note, annotations.sample)):
+                zip(annotations.aux_note, annotations.sample)
+            ):
 
                 label_number = cls.get_annotation_names()[typus]
                 if i < len(annotations.sample) - 1:
@@ -235,13 +237,17 @@ class AtrialFibrillationDataset(PhysioDataset):
                 stop = stop_sample
                 step = int(sample_length * (1 - config["overlap_ratio"]))
                 for i in range(start, stop, step):
-                    if start_sample+sample_length < stop_sample:
-                        chunk = samples[start_sample:start_sample+sample_length]
+                    if start_sample + sample_length < stop_sample:
+                        chunk = samples[start_sample : start_sample + sample_length]
                     else:
-                        chunk = samples[stop_sample-sample_length-1:stop_sample-1]
-                    path = os.path.join(output_folder,
-                                        cls.get_label_names()[label_number],
-                                        f"ex{experiment_nr}_{i}")
+                        chunk = samples[
+                            stop_sample - sample_length - 1 : stop_sample - 1
+                        ]
+                    path = os.path.join(
+                        output_folder,
+                        cls.get_label_names()[label_number],
+                        f"ex{experiment_nr}_{i}",
+                    )
 
                     with open(path, "wb") as f:
                         pickle.dump(chunk, f)
@@ -625,16 +631,6 @@ class SpeechHotwordDataset(SpeechDataset):
             1: self.LABEL_UNKNOWN,
             2: self.LABEL_HOTWORD,
         }
-
-    @staticmethod
-    def default_config():
-        config = SpeechDataset.default_config()
-        config["n_labels"].default = 3
-
-        # Splits the dataset in 1/3
-        config["silence_prob"].default = 1.0
-        config["unknown_prob"].default = 1.0
-        return config
 
     @classmethod
     def splits(cls, config):

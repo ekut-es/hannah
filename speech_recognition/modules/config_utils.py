@@ -54,7 +54,7 @@ def dump_config(output_dir, config):
 
 
 def save_model(output_dir, model):
-    """ Creates serialization of the model for later inference, evaluation
+    """Creates serialization of the model for later inference, evaluation
 
     Creates the following files:
 
