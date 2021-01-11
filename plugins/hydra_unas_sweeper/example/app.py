@@ -15,10 +15,23 @@ def main(cfg: DictConfig) -> Dict[str, float]:
 
     pprint(cfg)
 
-    acc = 1.0 / len(cfg.conv_layers)
-    mem = len(cfg.conv_layers) * 1.0
+    loss = 1.0 / len(cfg.conv_layers) - 0.1 * cfg.lr + 0.1 * cfg.dropout
+    mem = 0.0
+    old_channels = 1.0
+    weights = 0.0
+    for layer in cfg.conv_layers:
+        local_mem = layer.channels * layer.size * old_channels
+        if layer.stride > 0:
+            local_mem /= layer.stride
+        mem = max(mem, local_mem)
+        weights += layer.channels * old_channels * layer.size
+        old_channels = layer.channels
 
-    return {"val_acc": acc, "tot_mem": mem}
+    return {
+        "val_loss": float(loss),
+        "tot_mem": float(mem),
+        "tot_weights": float(weights),
+    }
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ from typing import Dict, Any, List, MutableMapping, MutableSequence
 
 import numpy as np
 
+
 from hydra.core.plugins import Plugins
 from hydra.core.config_loader import ConfigLoader
 from hydra.plugins.launcher import Launcher
@@ -12,6 +13,8 @@ from hydra.types import TaskFunction
 from hydra.utils import instantiate
 
 from omegaconf import DictConfig, ListConfig, OmegaConf
+from tabulate import tabulate
+
 
 from .config import OptimConf
 from .aging_evolution import AgingEvolution
@@ -22,6 +25,7 @@ class UNASSweeperImpl(Sweeper):
 
         self.optim_conf = optim
         self.parametrization_conf = parametrization
+        self.random_state = None
 
     def setup(
         self,
@@ -33,9 +37,10 @@ class UNASSweeperImpl(Sweeper):
         self.budget = self.optim_conf.budget
         self.num_workers = self.optim_conf.num_workers
 
+        self.random_state = np.random.RandomState()
         seed = self.optim_conf.seed
         if seed:
-            np.random.seed(seed)
+            self.random_state.seed(seed)
 
         self.config = config
         self.config_loader = config_loader
@@ -49,6 +54,7 @@ class UNASSweeperImpl(Sweeper):
                 eps=self.optim_conf.eps,
                 bounds=self.optim_conf.bounds,
                 parametrization=self.parametrization_conf,
+                random_state=self.random_state,
             )
         else:
             raise Exception(f"Undefined optimizer: {self.optim_conf.optimizer}")
@@ -61,7 +67,7 @@ class UNASSweeperImpl(Sweeper):
 
             parameters = [self.optimizer.next_parameters() for _ in range(nw)]
             param_overrides = []
-            for parameter in parameters:
+            for parameter in (p.flatten() for p in parameters):
                 override = {}
                 for k, v in parameter.items():
                     override[k] = self._build_overrides(v)
@@ -82,6 +88,16 @@ class UNASSweeperImpl(Sweeper):
                 self.optimizer.tell_result(param, ret.return_value)
 
             self.job_idx += nw
+
+        pareto_points = self.optimizer.pareto_points()
+        print(f"Found {len(pareto_points)}  pareto-optimal solutions:")
+        table = []
+        headers = ["Num"] + list(self.optim_conf.bounds.keys())
+        for num, pareto_point in enumerate(pareto_points):
+            result = pareto_point.result
+            table.append([num] + list(result.values()))
+
+        print(tabulate(table, headers=headers))
 
     def _build_overrides(self, choices, overrides=""):
         res = ""

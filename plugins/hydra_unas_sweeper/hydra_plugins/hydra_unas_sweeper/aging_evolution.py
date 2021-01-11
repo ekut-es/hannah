@@ -1,10 +1,11 @@
-from typing import Dict, Any, MutableMapping, MutableSequence
+from typing import Dict, Any, MutableMapping, MutableSequence, Union
 from dataclasses import dataclass
 from copy import deepcopy
 
 from omegaconf import DictConfig
 
 from .config import OptimConf, ScalarConfigSpec, ChoiceList
+from .utils import get_pareto_points
 
 import numpy as np
 
@@ -27,13 +28,18 @@ class EvolutionResult:
     result: Dict[str, float]
 
 
+@dataclass
+class ParameterState:
+    value: Any
+
+    def flatten(self):
+        return self.value
+
+
 class Parameter:
-    def _recurse(self, config):
-        # print("_recurse")
-        # print(config)
-        # breakpoint()
+    def _recurse(self, config, random_state):
         if isinstance(config, MutableSequence):
-            return ChoiceParameter(config)
+            return ChoiceParameter(config, random_state=random_state)
         elif isinstance(config, MutableMapping):
             try:
                 config = ScalarConfigSpec(**config)
@@ -44,93 +50,152 @@ class Parameter:
                     config = config
 
             if isinstance(config, ScalarConfigSpec):
-                res = IntervalParameter(config)
+                res = IntervalParameter(config, random_state)
             elif isinstance(config, ChoiceList):
-                res = ChoiceListParameter(config)
+                res = ChoiceListParameter(config, random_state)
             else:
-                res = SearchSpace(config)
+                res = SearchSpace(config, random_state)
 
             return res
         else:
             return config
 
-    def mutations(self, config, index):
+    def mutations(self, state):
         # FIXME: here we would need to add child mutations
-        def mutate_random(d):
-            print("Warning: using mutate random for ", index)
-            return nested_set(d, index, self.get_random())
+        def mutate_random():
+            print("Warning: using mutate random")
+            value = self.get_random().value
+            state.value = value
 
         return [mutate_random]
 
 
+@dataclass
+class ChoiceParameterState(ParameterState):
+    choice_num: int
+
+    def flatten(self):
+        return self.value.flatten()
+
+
 class ChoiceParameter(Parameter):
-    def __init__(self, config):
-        self.choices = [self._recurse(c) for c in config]
+    def __init__(self, config, random_state):
+        self.choices = [self._recurse(c, random_state) for c in config]
+        self.random_state = random_state
 
     def get_random(self):
-        choice = np.random.choice(self.choices)
+        num_choices = len(self.choices)
+        choice_num = self.random_state.randint(0, num_choices)
+        choice = self.choices[choice_num]
 
         if isinstance(choice, Parameter):
-            return choice.get_random()
-        elif isinstance(choice, MutableMapping):
-            ret = {}
-            for k, v in choice.items:
-                if isinstance(v, Parameter):
-                    ret[k] = v.get_random()
-                else:
-                    ret[k] = v
-            return ret
+            choice = choice.get_random()
+        else:
+            choice = ParameterState(choice)
 
-        return choice
+        return ChoiceParameterState(choice, choice_num)
 
-    # TODO: Add child mutations
+    def mutations(self, state):
+        choice_num = state.choice_num
+
+        def increase_choice():
+            choice_num = state.choice_num + 1
+            choice = self.choices[choice_num]
+
+            if isinstance(choice, Parameter):
+                choice = choice.get_random()
+            else:
+                choice = ParameterState(choice)
+
+            state.value = choice
+            state.choice_num = choice_num
+
+        def decrease_choice():
+            choice_num = state.choice_num - 1
+            choice = self.choices[choice_num]
+
+            if isinstance(choice, Parameter):
+                choice = choice.get_random()
+            else:
+                choice = ParameterState(choice)
+
+            state.value = choice
+            state.choice_num = choice_num
+
+        mutations = []
+        if choice_num < len(self.choices) - 1:
+            mutations.append(increase_choice)
+        if choice_num > 0:
+            mutations.append(decrease_choice)
+
+        choice = self.choices[choice_num]
+        if isinstance(choice, Parameter):
+            mutations.extend(choice.mutattions(state.value))
+
+        return mutations
+
+
+@dataclass
+class ChoiceListParameterState(ParameterState):
+    choices: MutableSequence[int]
+    length: int
+
+    def flatten(self):
+        return [v.flatten() for v in self.value]
 
 
 class ChoiceListParameter(Parameter):
-    def __init__(self, config):
+    def __init__(self, config, random_state):
         self.min = config.min
         self.max = config.max
-        self.choices = [self._recurse(choice) for choice in config.choices]
+        self.choices = [
+            self._recurse(choice, random_state) for choice in config.choices
+        ]
+        self.random_state = random_state
 
     def _random_child(self):
-        choice = np.random.choice(self.choices)
+        num_choices = len(self.choices)
+        choice_num = self.random_state.randint(0, num_choices)
+        choice = self.choices[choice_num]
         if isinstance(choice, Parameter):
-            choice = choice.get_random()
-        elif isinstance(choice, MutableMapping):
-            ret = {}
-            for k, v in choice.items():
-                if isinstance(v, Parameter):
-                    ret[k] = v.get_random()
-                else:
-                    ret[k] = v
-            choice = ret
-        return choice
+            value = choice.get_random()
+        else:
+            value = ParameterState(choice)
+
+        return value, choice_num
 
     def get_random(self):
-        length = np.random.randint(self.min, self.max)
+        length = self.random_state.randint(self.min, self.max)
         result = []
+        choices = []
         for _ in range(length):
-            choice = self._random_child()
-            result.append(choice)
+            value, choice = self._random_child()
+            result.append(value)
+            choices.append(choice)
 
-        return result
+        return ChoiceListParameterState(result, choices, length)
 
-    def mutations(self, config, index):
+    def mutations(self, state: ChoiceListParameterState):
 
-        length = len(config)
+        length = state.length
 
-        def drop_random(d):
-            print("Dropping random element", index)
-            idx = np.random.randint(low=0, high=length)
-            l = nested_get(d, index)
-            l.pop(idx)
+        def drop_random():
+            print("Dropping random element")
+            idx = self.random_state.randint(low=0, high=length)
+            print(idx, length)
+            print(state.choices)
+            print(state.value)
+            state.value.pop(idx)
+            state.choices.pop(idx)
+            state.length -= 1
 
-        def add_random(d):
-            print("adding random element", index)
-            num = np.random.randint(low=0, high=length + 1)
-            choice = self._random_child()
-            l = nested_get(d, index)
-            l.insert(num, choice)
+        def add_random():
+            print("adding random element")
+            num = self.random_state.randint(low=0, high=length + 1)
+            value, choice = self._random_child()
+            state.value.insert(num, value)
+            state.choices.insert(num, choice)
+            state.length += 1
 
         mutations = []
         if length < self.max:
@@ -139,34 +204,45 @@ class ChoiceListParameter(Parameter):
             mutations.append(drop_random)
 
         # Create mutations for all children
-        for num, child in enumerate(config):
-            print("Child", child)
-            child_keys = child.keys()
-            for choice in self.choices:
-                choice_keys = choice.space.keys()
-
-                # FIXME: also compare values
-                if choice_keys == child_keys:
-                    print("Get child mutations")
-                    child_index = index + (num,)
-                    if isinstance(choice, Parameter):
-                        mutations.extend(choice.mutations(child, child_index))
+        for num, child in enumerate(state.value):
+            choice_num = state.choices[num]
+            choice = self.choices[choice_num]
+            if isinstance(choice, Parameter):
+                mutations.extend(choice.mutations(child))
 
         return mutations
 
 
+@dataclass
+class IntervalParameterState(ParameterState):
+    def flatten(self):
+        return self.value
+
+
 class IntervalParameter(Parameter):
-    def __init__(self, config):
+    def __init__(self, config, random_state):
         self.config = config
+        self.random_state = random_state
 
     def get_random(self):
-        return np.random.random()
+        return IntervalParameterState(self.random_state.random())
+
+
+@dataclass
+class SearchSpaceState(ParameterState):
+    def flatten(self):
+        res = {}
+        for k, v in self.value.items():
+            res[k] = v.flatten()
+
+        return res
 
 
 class SearchSpace(Parameter):
-    def __init__(self, config):
+    def __init__(self, config, random_state):
         self.config = config
-        self.space = {k: self._recurse(v) for k, v in config.items()}
+        self.random_state = random_state
+        self.space = {k: self._recurse(v, self.random_state) for k, v in config.items()}
 
     def get_random(self):
         config = {}
@@ -175,16 +251,15 @@ class SearchSpace(Parameter):
             if isinstance(v, Parameter):
                 config[k] = v.get_random()
             else:
-                config[k] = v
+                config[k] = ParameterState(v)
 
-        return config
+        return SearchSpaceState(config)
 
-    def mutations(self, config, index):
+    def mutations(self, state):
         mutations = []
-        for k, v in config.items():
-            child_index = index + (k,)
+        for k, v in state.value.items():
             if isinstance(self.space[k], Parameter):
-                mutations.extend(self.space[k].mutations(v, child_index))
+                mutations.extend(self.space[k].mutations(v))
 
         return mutations
 
@@ -192,10 +267,10 @@ class SearchSpace(Parameter):
         print("mutate")
         config = deepcopy(config)
 
-        mutations = self.mutations(config, tuple())
+        mutations = self.mutations(config)
 
-        mutation = np.random.choice(mutations)
-        mutation(config)
+        mutation = self.random_state.choice(mutations)
+        mutation()
 
         return config
 
@@ -209,11 +284,12 @@ class SearchSpace(Parameter):
 
 
 class FitnessFunction:
-    def __init__(self, bounds):
+    def __init__(self, bounds, random_state):
         self.bounds = bounds
-        self.lambdas = np.random.uniform(low=0.0, high=1.0, size=len(bounds))
+        self.lambdas = random_state.uniform(low=0.0, high=1.0, size=len(self.bounds))
 
     def __call__(self, values):
+
         result = 0.0
         for num, key in enumerate(self.bounds.keys()):
             if key in values:
@@ -226,16 +302,15 @@ class FitnessFunction:
 class AgingEvolution:
     """Aging Evolution based multi objective optimization"""
 
-    def __init__(self, population_size, sample_size, eps, bounds, parametrization):
+    def __init__(
+        self, population_size, sample_size, eps, bounds, parametrization, random_state
+    ):
         self.population_size = population_size
         self.sample_size = sample_size
         self.eps = eps
+        self.parametrization = SearchSpace(parametrization, random_state)
 
-        # print("parametrization:", parametrization)
-
-        self.parametrization = SearchSpace(parametrization)
-
-        # print("SearchSpace:", self.parametrization)
+        self.random_state = random_state
 
         self.history = []
         self.population = []
@@ -243,7 +318,7 @@ class AgingEvolution:
         self.visited_configs = set()
 
     def get_fitness_function(self):
-        ff = FitnessFunction(self.bounds)
+        ff = FitnessFunction(self.bounds, self.random_state)
 
         return ff
 
@@ -252,13 +327,17 @@ class AgingEvolution:
 
         parametrization = {}
 
-        while hash(repr(parametrization)) in self.visited_configs:
+        while (
+            hash(repr(parametrization)) in self.visited_configs or not parametrization
+        ):
             if len(self.history) < self.population_size:
                 parametrization = self.parametrization.get_random()
-            elif np.random.uniform() < self.eps:
+            elif self.random_state.uniform() < self.eps:
                 parametrization = self.parametrization.get_random()
             else:
-                sample = np.random.choice(self.population, size=self.sample_size)
+                sample = self.random_state.choice(
+                    self.population, size=self.sample_size
+                )
                 fitness_function = self.get_fitness_function()
 
                 fitness = [fitness_function(x.result) for x in sample]
@@ -282,3 +361,23 @@ class AgingEvolution:
             self.population.pop(0)
 
         return None
+
+    def pareto_points(self):
+        """ Get pareto optimal points discovered during search """
+
+        # Build cost matrix
+        costs = []
+        for point in self.history:
+            result = point.result
+            costs.append(np.array(list(result.values())))
+
+        costs = np.array(costs)
+
+        pareto_indices = get_pareto_points(costs)
+
+        result = []
+        for num, index in enumerate(pareto_indices):
+            if index:
+                result.append(self.history[num])
+
+        return result

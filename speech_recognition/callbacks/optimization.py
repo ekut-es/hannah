@@ -1,4 +1,5 @@
 from pytorch_lightning.callbacks import Callback
+from torch import Tensor
 
 
 class HydraOptCallback(Callback):
@@ -14,7 +15,17 @@ class HydraOptCallback(Callback):
                 self.values[monitor] = callback_metrics[monitor]
 
     def result(self):
-        if len(self.values) == 1:
-            return list(self.values.values())[0]
 
-        return self.values
+        return_values = {}
+        for key, value in self.values.items():
+            if isinstance(value, Tensor):
+                value = float(value.cpu())
+            else:
+                value = float(value)
+
+            return_values[key] = value
+
+        if len(return_values) == 1:
+            return list(return_values.values())[0]
+
+        return return_values
