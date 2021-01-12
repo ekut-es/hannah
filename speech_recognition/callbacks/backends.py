@@ -173,11 +173,20 @@ class TRaxUltraTrailBackend(Callback):
     """TRax UltraTrail backend"""
 
     def __init__(
-        self, backend_dir, teda_dir, app, num_inferences, bw_w, bw_b, bw_f, cols, rows
+        self,
+        backend_dir,
+        teda_dir,
+        standalone,
+        num_inferences,
+        bw_w,
+        bw_b,
+        bw_f,
+        cols,
+        rows,
     ):
         self.backend_dir = backend_dir
         self.teda_dir = Path(teda_dir)
-        self.app = app
+        self.standalone = standalone
         self.num_inferences = num_inferences
         self.bw_w = bw_w
         self.bw_b = bw_b
@@ -208,6 +217,7 @@ class TRaxUltraTrailBackend(Callback):
 
         # execute backend
         backend = UltraTrailBackend(
+            teda=self.teda_dir,
             bw_w=self.bw_w,
             bw_b=self.bw_b,
             bw_f=self.bw_f,
@@ -218,5 +228,5 @@ class TRaxUltraTrailBackend(Callback):
             pl_module.model, pl_module.example_feature_array, verbose=True
         )
         backend.set_inputs_and_outputs(self.xs, self.ys)
-        backend.prepare(self.teda_dir / "apps" / self.app / "includes")
-        backend.run(self.teda_dir, self.app)
+        backend.prepare()
+        backend.run(standalone=self.standalone)
