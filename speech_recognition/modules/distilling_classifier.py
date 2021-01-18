@@ -1,4 +1,4 @@
-import SpeechClassifierModule
+from .classifier import SpeechClassifierModule
 from omegaconf import DictConfig
 from typing import Optional
 from .config_utils import get_model
@@ -10,8 +10,8 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         self,
         dataset: DictConfig,
         # TODO how to pass teacher model?
+        model: DictConfig,  # student model
         teacher_model: DictConfig,
-        student_model: DictConfig,
         optimizer: DictConfig,
         features: DictConfig,
         num_workers: int = 0,
@@ -21,7 +21,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
     ):
         super().__init__(
             dataset,
-            student_model,
+            model,
             optimizer,
             features,
             num_workers,
@@ -30,7 +30,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             normalizer,
         )
 
-        # TODO whicht loss?
+        # TODO which loss?
         self.mse_loss = nn.MSELoss()
         self.teacher_model = get_model(self.hparams.teacher_model)
 

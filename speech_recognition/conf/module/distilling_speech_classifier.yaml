@@ -1,0 +1,6 @@
+# @package _group_
+
+_target_: speech_recognition.modules.SpeechKDClassifierModule
+num_workers: 0
+batch_size: 128
+teacher_model: tc-res8

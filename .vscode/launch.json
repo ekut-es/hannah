@@ -10,18 +10,9 @@
             "request": "launch",
             "module": "speech_recognition.train",
             "args": [
-                "--seed",
-                "1234",
-                "--model",
-                "tc-res8",
-                "--limits-datasets",
-                "0.01",
-                "0.01",
-                "0.01",
-                "--n_epochs",
-                "1",
-                "--experiment-id",
-                "debug"
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=3",
+                "model=tc-res8"
             ]
         }
     ]

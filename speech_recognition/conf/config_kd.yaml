@@ -1,0 +1,30 @@
+defaults:
+    - dataset: kws
+    - model: tc-res8 # student model
+    - scheduler: null
+    - optimizer: adam
+    - features: mfcc
+    - normalizer: null
+    - module: distilling_speech_classifier
+    - compress: null
+    - trainer: default
+    - checkpoint: default
+    - backend: null
+    - early_stopping: null
+    - profiler: null
+
+type: train
+experiment_id: test
+output_dir: trained_models
+auto_lr: false
+seed: 1234
+
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+
+#TODO:
+dump_test: false
+input_file: ''
