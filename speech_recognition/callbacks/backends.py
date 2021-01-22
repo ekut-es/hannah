@@ -230,3 +230,5 @@ class TRaxUltraTrailBackend(Callback):
         backend.set_inputs_and_outputs(self.xs, self.ys)
         backend.prepare()
         backend.run(standalone=self.standalone)
+        if self.standalone and self.analyze:
+            backend.analyze()

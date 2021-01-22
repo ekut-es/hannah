@@ -3,10 +3,11 @@
 _target_: speech_recognition.callbacks.backends.TRaxUltraTrailBackend
 backend_dir: "/local/palomero/projects/teda/rtl/tc-resnet8-accelerator"
 teda_dir: "/local/palomero/projects/teda"
-standalone: True
-num_inferences: 3
-bw_w: 6
-bw_b: 6
+standalone: False
+analyze: False
+num_inferences: 1
+bw_w: 8
+bw_b: 8
 bw_f: 8
 cols: 8
 rows: 8
