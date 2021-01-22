@@ -177,6 +177,7 @@ class TRaxUltraTrailBackend(Callback):
         backend_dir,
         teda_dir,
         standalone,
+        analyze,
         num_inferences,
         bw_w,
         bw_b,
@@ -187,6 +188,7 @@ class TRaxUltraTrailBackend(Callback):
         self.backend_dir = backend_dir
         self.teda_dir = Path(teda_dir)
         self.standalone = standalone
+        self.analyze = analyze
         self.num_inferences = num_inferences
         self.bw_w = bw_w
         self.bw_b = bw_b
