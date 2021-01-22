@@ -170,6 +170,7 @@ class SpeechClassifierModule(LightningModule):
             pin_memory=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
         )
 
         self.batches_per_epoch = len(train_loader)
@@ -199,6 +200,7 @@ class SpeechClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
         )
 
         return dev_loader
@@ -226,6 +228,7 @@ class SpeechClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
         )
 
         return test_loader
