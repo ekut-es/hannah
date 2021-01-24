@@ -43,6 +43,7 @@ class SpeechClassifierModule(LightningModule):
         batch_size: int = 128,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
+        teacher_model: DictConfig = None,
     ):
         super().__init__()
 
@@ -52,6 +53,10 @@ class SpeechClassifierModule(LightningModule):
         self.train_set = None
         self.test_set = None
         self.dev_set = None
+        self.has_teacher = False
+
+        if teacher_model:
+            self.has_teacher = True
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -104,6 +109,20 @@ class SpeechClassifierModule(LightningModule):
         self.hparams.model.n_labels = self.num_classes
 
         self.model = get_model(self.hparams.model)
+
+        # instanciate teacher model
+        self.msglogger.info("Setting up teacher model")
+        if self.has_teacher:
+            self.hparams.teacher_model.width = self.example_feature_array.size(2)
+            self.hparams.teacher_model.height = self.example_feature_array.size(1)
+            self.num_classes = len(self.train_set.label_names)
+            self.hparams.teacher_model.n_labels = self.num_classes
+
+            self.teacher_model = get_model(self.hparams.teacher_model)
+
+            # no training for teacher model
+            for param in self.teacher_model.parameters():
+                param.requires_grad = False
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)

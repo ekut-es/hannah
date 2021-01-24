@@ -1,6 +1,7 @@
 defaults:
     - dataset: kws
-    - model: tc-res8 # student model
+    - model: tc-res8 # tc-res4 and res6 student model
+    - teacher_model: tc-res8
     - scheduler: null
     - optimizer: adam
     - features: mfcc

@@ -11,13 +11,13 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         dataset: DictConfig,
         # TODO how to pass teacher model?
         model: DictConfig,  # student model
-        teacher_model: DictConfig,
         optimizer: DictConfig,
         features: DictConfig,
         num_workers: int = 0,
         batch_size: int = 128,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
+        teacher_model: DictConfig = None,
     ):
         super().__init__(
             dataset,
@@ -28,22 +28,18 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             batch_size,
             scheduler,
             normalizer,
+            teacher_model,
         )
 
         # TODO which loss?
         self.mse_loss = nn.MSELoss()
-        self.teacher_model = get_model(self.hparams.teacher_model)
-
-        # no training for teacher model
-        for param in self.teacher_model.parameters():
-            param.requires_grad = False
 
     def training_step(self, batch, batch_idx):
         # x inputs, y labels
         x, x_len, y, y_len = batch
 
-        student_logits = self.forward(x)
-        teacher_logits = self.teacher_model.forward(x)
+        student_logits = super().forward(x)
+        teacher_logits = self.forward(x)
         y = y.view(-1)
 
         loss = self.mse_loss(student_logits, teacher_logits)
@@ -58,3 +54,8 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         self.get_batch_metrics(student_logits, y, loss, "train")
 
         return loss
+
+    def forward(self, x):
+        x = super()._extract_features(x)
+        x = self.normalizer(x)
+        return self.teacher_model(x)

@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Modul",
+            "name": "standard",
             "type": "python",
             "request": "launch",
             "module": "speech_recognition.train",
@@ -14,6 +14,19 @@
                 "trainer.max_epochs=3",
                 "model=tc-res8"
             ]
-        }
+        },
+        {
+            "name": "kd",
+            "type": "python",
+            "request": "launch",
+            "module": "speech_recognition.train",
+            "args": [
+                "--config-name",
+                "config_kd",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=3",
+                "model=tc-res8"
+            ]
+        },
     ]
 }
