@@ -1,7 +1,6 @@
 from .classifier import SpeechClassifierModule
 from omegaconf import DictConfig
 from typing import Optional
-from .config_utils import get_model
 import torch.nn as nn
 
 

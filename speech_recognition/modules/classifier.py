@@ -111,8 +111,9 @@ class SpeechClassifierModule(LightningModule):
         self.model = get_model(self.hparams.model)
 
         # instanciate teacher model
-        self.msglogger.info("Setting up teacher model")
         if self.has_teacher:
+            self.msglogger.info("Setting up teacher model")
+
             self.hparams.teacher_model.width = self.example_feature_array.size(2)
             self.hparams.teacher_model.height = self.example_feature_array.size(1)
             self.num_classes = len(self.train_set.label_names)
