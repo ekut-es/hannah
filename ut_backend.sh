@@ -1,11 +1,11 @@
 TEDA=/local/palomero/projects/teda
-LOAD=true
+LOAD=false
 
 PERIOD=1000
-MACRO_TYPE=INVECAS
+MACRO_TYPE=RTL
 CHANNELS=16
 
-for DIM in {2..16}
+for DIM in 8
 do
   for BIT in 8
   do
@@ -33,9 +33,9 @@ do
       backend=trax_ut \
       backend.standalone=True \
       backend.rtl_simulation=True \
-      backend.synthesis=True \
-      backend.postsyn_simulation=True \
-      backend.power_estimation=True \
+      backend.synthesis=False \
+      backend.postsyn_simulation=False \
+      backend.power_estimation=False \
       backend.num_inferences=1 \
       backend.cols=$DIM \
       backend.rows=$DIM \
