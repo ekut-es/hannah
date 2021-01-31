@@ -158,6 +158,18 @@ class ModelFactory:
                     qconfig=qconfig,
                 )
             else:
-                layer = qat.Conv1d()
+                layers = qat.Conv1d(
+                    in_channels,
+                    out_channels,
+                    kernel_size,
+                    stride=stride,
+                    padding=padding,
+                    dilation=dilation,
+                    groups=groups,
+                    padding_mode=padding_mode,
+                    qconfig=qconfig,
+                )
         else:
             raise Exception(f"Qconfig: {qconfig} is not supported for conv1d")
+
+        return layers
