@@ -222,14 +222,34 @@ class ModelFactory:
 
         return layers
 
+    def minor(self, config: MinorBlockConfig):
+        if config.type == "conv1d":
+            self.conv1d(
+                in_channels,
+                config.out_channels,
+                kernel_size=config.kernel_size,
+                stride=config.stride,
+                padding=config.padding,
+                dilation=config.dilation,
+                groups=config.groups,
+                padding_mode=config.padding_mode,
+                act=config.act,
+                norm=config.norm,
+                qconfig=config.qconfig,
+            )
+        else:
+            raise Exception(f"Unknown minor block config {config}")
+
     def residual(self):
         pass
 
     def parallel(self):
         pass
 
-    def structured(self):
-        pass
+    def full(self):
+        raise NotImplementedError(
+            "Fully parallel network topology has not been implemented yet"
+        )
 
     def major(self, config: MajorBlockConfig):
         pass
