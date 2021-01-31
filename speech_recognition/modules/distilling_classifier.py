@@ -33,9 +33,12 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             teacher_model,
             teacher_checkpoint,
         )
-
+        loss_config = "MSE"
         # TODO which loss?
-        self.mse_loss = nn.MSELoss()
+        if loss_config == "MSE":
+            self.loss_func = nn.MSELoss()
+        else:
+            self.loss_func = None
 
         print(f"!!! teacher model is {teacher_model} with type {type(teacher_model)}")
 
@@ -47,7 +50,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         teacher_logits = self.forward(x)
         y = y.view(-1)
 
-        loss = self.mse_loss(student_logits, teacher_logits)
+        loss = self.loss_func(student_logits, teacher_logits)
 
         # --- after loss
         for callback in self.trainer.callbacks:
