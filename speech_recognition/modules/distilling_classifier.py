@@ -2,13 +2,14 @@ from .classifier import SpeechClassifierModule
 from omegaconf import DictConfig
 from typing import Optional
 import torch.nn as nn
+from pytorch_lightning.callbacks import ModelCheckpoint
+from typing import Union
 
 
 class SpeechKDClassifierModule(SpeechClassifierModule):
     def __init__(
         self,
         dataset: DictConfig,
-        # TODO how to pass teacher model?
         model: DictConfig,  # student model
         optimizer: DictConfig,
         features: DictConfig,
@@ -16,7 +17,9 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         batch_size: int = 128,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
+        # TODO how to pass pre trained teacher model?
         teacher_model: DictConfig = None,
+        teacher_checkpoint: str = None,
     ):
         super().__init__(
             dataset,
@@ -28,10 +31,13 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             scheduler,
             normalizer,
             teacher_model,
+            teacher_checkpoint,
         )
 
         # TODO which loss?
         self.mse_loss = nn.MSELoss()
+
+        print(f"!!! teacher model is {teacher_model} with type {type(teacher_model)}")
 
     def training_step(self, batch, batch_idx):
         # x inputs, y labels

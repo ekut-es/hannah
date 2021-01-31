@@ -3,3 +3,5 @@
 _target_: speech_recognition.modules.SpeechKDClassifierModule
 num_workers: 0
 batch_size: 128
+teacher_model: tc-res8
+teacher_checkpoint: "/home/felix/git/speech_recognition/trained_models/test/tc-res8/checkpoints/epoch=49-step=999.ckpt"

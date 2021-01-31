@@ -4,6 +4,7 @@ import random
 import logging
 import numpy as np
 import sys
+import re
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1, recall
@@ -16,6 +17,8 @@ from speech_recognition.datasets.dataset import ctc_collate_fn
 import torch
 import torch.utils.data as data
 from hydra.utils import instantiate, get_class
+
+from ..models.tc.models import TCResNetModel
 
 from torchvision.datasets.utils import (
     download_and_extract_archive,
@@ -30,6 +33,7 @@ from ..datasets.Downsample import Downsample
 import torchaudio
 
 from omegaconf import DictConfig
+from typing import Union
 
 
 class SpeechClassifierModule(LightningModule):
@@ -44,6 +48,7 @@ class SpeechClassifierModule(LightningModule):
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
         teacher_model: DictConfig = None,
+        teacher_checkpoint: str = None,
     ):
         super().__init__()
 
@@ -53,10 +58,21 @@ class SpeechClassifierModule(LightningModule):
         self.train_set = None
         self.test_set = None
         self.dev_set = None
+
+        # handle teacher
         self.has_teacher = False
+        self.teacher_from_checkpoint = False
+        self.teacher_from_dictconfig = False
 
         if teacher_model:
             self.has_teacher = True
+
+            # TODO maybe only one boolean to infer type?
+            if type(teacher_model) is str:
+                self.teacher_from_checkpoint = True
+
+            if type(teacher_model) is DictConfig:
+                self.teacher_from_dictconfig = True
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -112,18 +128,35 @@ class SpeechClassifierModule(LightningModule):
 
         # instanciate teacher model
         if self.has_teacher:
+
             self.msglogger.info("Setting up teacher model")
 
-            self.hparams.teacher_model.width = self.example_feature_array.size(2)
-            self.hparams.teacher_model.height = self.example_feature_array.size(1)
-            self.num_classes = len(self.train_set.label_names)
-            self.hparams.teacher_model.n_labels = self.num_classes
+            if self.teacher_from_dictconfig:
+                self.hparams.teacher_model.width = self.example_feature_array.size(2)
+                self.hparams.teacher_model.height = self.example_feature_array.size(1)
+                self.num_classes = len(self.train_set.label_names)
+                self.hparams.teacher_model.n_labels = self.num_classes
 
-            self.teacher_model = get_model(self.hparams.teacher_model)
+                self.teacher_model = get_model(self.hparams.teacher_model)
 
-            # no training for teacher model
-            for param in self.teacher_model.parameters():
-                param.requires_grad = False
+            if self.teacher_from_checkpoint:
+                ckpt_path = self.hparams.teacher_checkpoint
+                checkpoint = torch.load(ckpt_path)
+                checkpoint_weights = checkpoint["state_dict"]
+
+                loaded_model = get_model(checkpoint["hyper_parameters"]["model"])
+                loaded_model_state_dict = loaded_model.state_dict()
+
+                # overwrite entries in the existing state dict
+                loaded_model_state_dict.update(checkpoint_weights)
+                # load the new state dict
+                loaded_model.load_state_dict(loaded_model_state_dict)
+
+                self.teacher_model = loaded_model
+
+                # no training for teacher model in case of loading from checkpoint
+                for param in self.teacher_model.parameters():
+                    param.requires_grad = False
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)

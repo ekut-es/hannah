@@ -1,7 +1,8 @@
 defaults:
     - dataset: kws
     - model: tc-res4 # tc-res4 and res6 student model
-    - teacher_model: tc-res8
+    # - teacher_model: tc-res8
+    # - teacher_model_ckpt: "/home/felix/git/speech_recognition/trained_models/test/tc-res8/checkpoints/epoch=49-step=999.ckpt"
     - scheduler: null
     - optimizer: adam
     - features: mfcc
