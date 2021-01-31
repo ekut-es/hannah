@@ -70,7 +70,7 @@ class ModelFactory:
         out_channels: int,
         kernel_size: int,
         stride: int = 0,
-        padding: bool = True,
+        padding: Union[int, bool] = True,
         dilation: int = 0,
         groups: int = 1,
         padding_mode: str = "zeros",
@@ -78,6 +78,12 @@ class ModelFactory:
         act: Union[ActConfig, bool] = False,
         qconfig: Union[tqant.QConfig, bool] = False,
     ) -> None:
+        if padding is True:
+            # Calculate full padding
+            padding = (kernel_size + (kernel_size - 1) * (dilation - 1) - 1) // 2
+
+        if padding is False:
+            padding = 0
 
         if norm is True:
             norm = self.norm
