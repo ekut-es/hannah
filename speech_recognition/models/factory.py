@@ -144,7 +144,7 @@ class ModelFactory:
                     qconfig=qconfig,
                 )
             elif act:
-                layers = qat.ConvBn1d(
+                layers = qat.ConvReLU1d(
                     in_channels,
                     out_channels,
                     kernel_size,

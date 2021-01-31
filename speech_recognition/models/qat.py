@@ -583,6 +583,46 @@ class ConvReLU2d(nnqat.Conv2d, nni._FusedModule):
         return super(ConvReLU2d, cls).from_float(mod)
 
 
+class ConvReLU1d(nn.Conv1d):
+    r"""A ConvReLU1d module is fused module of Conv1d and ReLU, attached with
+     FakeQuantize modules for quantization aware trainting"""
+
+    _FLOAT_MODULE = nn.Conv1d
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
+        qconfig=None,
+    ):
+        super(Conv1d, self).__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            padding_mode=padding_mode,
+        )
+        assert qconfig, "qconfig must be provided for QAT module"
+        self.qconfig = qconfig
+        self.weight_fake_quant = self.qconfig.weight()
+        self.act_fake_quant = self.qconfig.activations()
+        if hasattr(qconfig, self.bias):
+            self.bias_fake_quant = self.qconfig.bias()
+        else:
+            self.bias_fake_quant = self.act_fake_quant()
+
+
 class Conv1d(nn.Conv1d):
     r"""A Conv1d module is a Conv1d module , attached with
     FakeQuantize modules for weight for
