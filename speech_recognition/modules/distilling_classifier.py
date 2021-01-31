@@ -38,8 +38,12 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         # TODO which loss?
         if loss_config == "MSE":
             self.loss_func = nn.MSELoss()
+        elif loss_config == "tfs":
+            self.loss_func = self.teacher_free_selfkd_loss()
+        elif loss_config == "tff":
+            self.loss_func = self.teacher_free_framework_loss()
         else:
-            self.loss_func = None
+            self.loss_func = nn.MSELoss()
 
         print(f"!!! teacher model is {teacher_model} with type {type(teacher_model)}")
 
