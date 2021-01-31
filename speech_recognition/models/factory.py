@@ -6,7 +6,7 @@ interface.
 """
 
 from dataclasses import dataclass
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 from torch import nn
 import torch.quantization as tqant
@@ -14,7 +14,14 @@ from . import qat
 
 
 @dataclass
+class ReductionConfig:
+    # one of add, concat
+    type: str = "add"
+
+
+@dataclass
 class NormConfig:
+    # Currently only bn is supported
     type: str
 
 
@@ -45,7 +52,15 @@ class HardtanhConfig(ActConfig):
 
 
 @dataclass
-class ConvLayerConfig(ActConfig):
+class MinorBlockConfig:
+    target: str
+    out_channels: int
+    kernel_size: int
+    stride: int
+
+
+@dataclass
+class ConvLayerConfig(MinorBlockConfig):
     target: str = "conv1d"
     out_channels: int = 32
     kernel_size: int = 3
@@ -58,16 +73,25 @@ class ConvLayerConfig(ActConfig):
     act: Union[ActConfig] = False
 
 
+@dataclass
+class MajorBlockConfig:
+    out_channels: int = 32
+    blocks: List[MinorBlockConfig] = []
+
+
+@dataclass
+class NetworkConfig:
+    norm: Optional[NormConfig] = BNConfig()
+    act: Optional[ActConfig] = ActConfig()
+    qconfig: Optional[tqant.QConfig] = ActConfig()
+    blocks: List[MajorBlockConfig] = []
+
+
 class ModelFactory:
-    def __init__(
-        self,
-        norm: Optional[NormConfig] = BNConfig(),
-        act: Optional[ActConfig] = ActConfig(),
-        qconfig: Optional[tqant.QConfig] = None,
-    ) -> None:
-        self.norm = norm
-        self.act = act
-        self.qconfig = qconfig
+    def __init__(self,) -> None:
+        self.norm = None
+        self.act = None
+        self.qconfig = None
 
     def conv1d(
         self,
@@ -194,3 +218,20 @@ class ModelFactory:
             raise Exception(f"Qconfig: {qconfig} is not supported for conv1d")
 
         return layers
+
+    def residual(self):
+        pass
+
+    def parallel(self):
+        pass
+
+    def structured(self):
+        pass
+
+    def major(self):
+        pass
+
+    def network(self, nework_config: NetworkConfig):
+        self.norm = network_config.norm
+        self.act = network_config.act
+        self.qconfig = network_config.qconfig
