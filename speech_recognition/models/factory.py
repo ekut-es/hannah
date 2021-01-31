@@ -112,8 +112,14 @@ class ModelFactory:
                 layers.append(norm_module)
 
             if act:
-                act_module = self.getattr(act.type)(**act)
+                if act.type == "relu":
+                    act_module = nn.ReLU()
+                elif act.type == "elu":
+                    act_module = nn.ELU(alpha=act.alpha)
+                elif act.type == "hardtanh":
+                    act_module = nn.Hardtanh(min_val=act.min_val, max_val=act.max_val)
                 layers.append(act_module)
+
         elif isinstance(qconfig, tqant.QConfig):
             if norm and act:
                 layers = qat.ConvBnReLU1d(
