@@ -6,6 +6,7 @@ interface.
 """
 
 from dataclasses import dataclass
+from speech_recognition.models.act import DummyActivation
 from typing import Union, Optional, List
 
 from torch import nn
@@ -148,6 +149,7 @@ class ModelFactory:
                     raise Exception(f"Unknown normalization module: {norm}")
                 layers.append(norm_module)
 
+            act_module = DummyActivation()
             if act:
                 if act.type == "relu":
                     act_module = nn.ReLU()
@@ -157,7 +159,8 @@ class ModelFactory:
                     act_module = nn.Hardtanh(min_val=act.min_val, max_val=act.max_val)
                 else:
                     raise Exception(f"Unknown activation config {act}")
-                layers.append(act_module)
+
+            layers.append(act_module)
 
         elif isinstance(qconfig, tqant.QConfig):
             if norm and act:
@@ -228,10 +231,16 @@ class ModelFactory:
     def structured(self):
         pass
 
-    def major(self):
+    def major(self, config: MajorBlockConfig):
         pass
 
-    def network(self, nework_config: NetworkConfig):
+    def network(self, network_config: NetworkConfig):
         self.norm = network_config.norm
         self.act = network_config.act
         self.qconfig = network_config.qconfig
+
+        model = nn.Sequential()
+        for block in network_config.blocks:
+            self.model.append(self.major(block))
+
+        return model

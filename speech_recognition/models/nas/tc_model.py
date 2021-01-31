@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch
 from torch.autograd import Variable
 from ..utils import SerializableModule, next_power_of2
+from ..act import DummyActivation
 from hydra.utils import instantiate
 
 msglogger = logging.getLogger()
@@ -16,16 +17,6 @@ def create_act(act, clipping_value):
         return nn.Hardtanh(0.0, clipping_value)
     else:
         raise ("Unknown activation function: %s", act)
-
-
-class DummyActivation(nn.Identity):
-    """Dummy class that instantiated to mark a missing activation.
-
-       This can be used to mark requantization of activations for convolutional layers without
-       activation functions.
-    """
-
-    pass
 
 
 class MajorBlock(nn.Module):
