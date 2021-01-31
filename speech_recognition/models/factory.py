@@ -222,9 +222,9 @@ class ModelFactory:
 
         return layers
 
-    def minor(self, config: MinorBlockConfig):
+    def minor(self, in_channels, config: MinorBlockConfig):
         if config.type == "conv1d":
-            self.conv1d(
+            return self.conv1d(
                 in_channels,
                 config.out_channels,
                 kernel_size=config.kernel_size,
