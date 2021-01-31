@@ -3,6 +3,7 @@ from omegaconf import DictConfig
 from typing import Optional
 import torch.nn as nn
 import torch
+import random
 from pytorch_lightning.callbacks import ModelCheckpoint
 from typing import Union
 
@@ -34,14 +35,16 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             teacher_model,
             teacher_checkpoint,
         )
+        # TODO Loss configuration dynamic
         loss_config = "MSE"
-        # TODO which loss?
         if loss_config == "MSE":
             self.loss_func = nn.MSELoss()
-        elif loss_config == "tfs":
+        elif loss_config == "TFself":
             self.loss_func = self.teacher_free_selfkd_loss()
-        elif loss_config == "tff":
+        elif loss_config == "TFFramework":
             self.loss_func = self.teacher_free_framework_loss()
+        elif loss_config == "noisyTecher":
+            self.loss_func = self.noisyTeacher_loss()
         else:
             self.loss_func = nn.MSELoss()
 
@@ -107,6 +110,67 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             torch.nn.functional.softmax(y_pred_teacher / self.temp, dim=1),
         )
         return loss
+
+    """
+    Code taken from Paper: "KD-Lib: A PyTorch library for Knowledge Distillation, Pruning and Quantization"
+    arxiv: 2011.14691
+    License: MIT
+
+    Original idea coverd in: "Deep Model Compression: Distilling Knowledge from Noisy Teachers"
+    arxiv: 1610.09650
+    """
+
+    def noisyTeacher_loss(
+        self,
+        y_pred_student,
+        y_pred_teacher,
+        y_true,
+        distil_weight=0.5,
+        temp=20.0,
+        alpha=0.5,
+        noise_variance=0.1,
+    ):
+        """
+        Function used for calculating the KD loss during distillation
+
+        :param y_pred_student (torch.FloatTensor): Prediction made by the student model
+        :param y_pred_teacher (torch.FloatTensor): Prediction made by the teacher model
+        :param y_true (torch.FloatTensor): Original label
+        """
+        local_loss = nn.MSELoss()
+
+        if random.uniform(0, 1) <= alpha:
+            y_pred_teacher = self.add_noise(y_pred_teacher, noise_variance)
+
+        loss = (1.0 - distil_weight) * torch.nn.functional.cross_entropy(
+            y_pred_student, y_true
+        )
+
+        loss += (distil_weight * temp * temp) * local_loss(
+            torch.nn.functional.log_softmax(y_pred_student / temp, dim=1),
+            torch.nn.functional.softmax(y_pred_teacher / temp, dim=1),
+        )
+
+        return loss
+
+    """
+    Code taken from Paper: "KD-Lib: A PyTorch library for Knowledge Distillation, Pruning and Quantization"
+    arxiv: 2011.14691
+    License: MIT
+
+    Original idea coverd in: "Deep Model Compression: Distilling Knowledge from Noisy Teachers"
+    arxiv: 1610.09650
+    """
+
+    def add_noise(x, variance=0.1):
+        """
+        Function for adding gaussian noise
+
+        :param x (torch.FloatTensor): Input for adding noise
+        :param variance (float): Variance for adding noise
+        """
+
+        return x * (1 + (variance ** 0.5) * torch.randn_like(x))
 
     def training_step(self, batch, batch_idx):
         # x inputs, y labels
