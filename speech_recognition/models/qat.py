@@ -622,6 +622,13 @@ class ConvReLU1d(nn.Conv1d):
         else:
             self.bias_fake_quant = self.act_fake_quant()
 
+    def forward(self, input):
+        output = self._conv_forward(
+            input, self.weight_fake_quant(self.weight), self.bias_fake_quant(self.bias)
+        )
+        output = F.relu(output)
+        return self.act_fake_quant(output)
+
 
 class Conv1d(nn.Conv1d):
     r"""A Conv1d module is a Conv1d module , attached with
