@@ -14,7 +14,12 @@ from . import qat
 
 
 @dataclass
-class BNConfig:
+class NormConfig:
+    type: str
+
+
+@dataclass
+class BNConfig(NormConfig):
     type: str = "bn"
     eps: float = 1e-05
     momentum: float = 0.1
@@ -49,15 +54,15 @@ class ConvLayerConfig(ActConfig):
     dilation: int = 0
     groups: int = 1
     padding_mode: str = "zeros"
-    norm: Union[BNConfig] = False
+    norm: Union[NormConfig] = False
     act: Union[ActConfig] = False
 
 
 class ModelFactory:
     def __init__(
         self,
-        norm: BNConfig = BNConfig(),
-        act: ActConfig = ActConfig(),
+        norm: Optional[NormConfig] = BNConfig(),
+        act: Optional[ActConfig] = ActConfig(),
         qconfig: Optional[tqant.QConfig] = None,
     ) -> None:
         self.norm = norm
@@ -108,7 +113,15 @@ class ModelFactory:
             )
             layers.append(conv_module)
             if norm:
-                norm_module = self.getattr(norm.type)(**norm)
+                if norm.type == "bn":
+                    norm_module = nn.BatchNorm1d(
+                        out_channels,
+                        eps=norm.eps,
+                        momentum=norm.momentum,
+                        affine=norm.affine,
+                    )
+                else:
+                    raise Exception(f"Unknown normalization module: {norm}")
                 layers.append(norm_module)
 
             if act:
@@ -118,6 +131,8 @@ class ModelFactory:
                     act_module = nn.ELU(alpha=act.alpha)
                 elif act.type == "hardtanh":
                     act_module = nn.Hardtanh(min_val=act.min_val, max_val=act.max_val)
+                else:
+                    raise Exception(f"Unknown activation config {act}")
                 layers.append(act_module)
 
         elif isinstance(qconfig, tqant.QConfig):
