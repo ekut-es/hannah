@@ -142,17 +142,39 @@ class SpeechClassifierModule(LightningModule):
             if self.teacher_from_checkpoint:
                 ckpt_path = self.hparams.teacher_checkpoint
                 checkpoint = torch.load(ckpt_path)
+
+                # doesnt work due to missing keys error:
+                # loaded_lightning_module = loaded_lightning_module.load_from_checkpoint(
+                #     ckpt_path, strict=True
+                # )
+                # -----------------
+
+                checkpoint_hparams = checkpoint["hyper_parameters"]
+
+                loaded_lightning_module = SpeechClassifierModule(
+                    dataset=checkpoint_hparams["dataset"],
+                    model=checkpoint_hparams["model"],
+                    optimizer=checkpoint_hparams["optimizer"],
+                    features=checkpoint_hparams["features"],
+                    num_workers=checkpoint_hparams["num_workers"],
+                    batch_size=checkpoint_hparams["batch_size"],
+                    scheduler=checkpoint_hparams["scheduler"],
+                    normalizer=checkpoint_hparams["normalizer"],
+                )
+
+                loaded_model = get_model(checkpoint_hparams["model"])
+                loaded_lightning_module.model = loaded_model
+
                 checkpoint_weights = checkpoint["state_dict"]
 
-                loaded_model = get_model(checkpoint["hyper_parameters"]["model"])
-                loaded_model_state_dict = loaded_model.state_dict()
+                # this also produces missing keys error:
+                loaded_lightning_module.model.load_state_dict(checkpoint_weights)
 
-                # overwrite entries in the existing state dict
-                loaded_model_state_dict.update(checkpoint_weights)
-                # load the new state dict
-                loaded_model.load_state_dict(loaded_model_state_dict)
+                # eval() to set dropout and batch normalization layers to evaluation mode before running inference
+                loaded_lightning_module.model.eval()
 
-                self.teacher_model = loaded_model
+                # TODO rename to teacher_module
+                self.teacher_model = loaded_lightning_module
 
                 # no training for teacher model in case of loading from checkpoint
                 for param in self.teacher_model.parameters():
