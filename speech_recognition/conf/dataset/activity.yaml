@@ -1,0 +1,18 @@
+# @package _group_
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: speech_recognition.datasets.dataset.PAMAP2_Dataset
+dataset: pamap2
+
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+
+input_length: 200
+samplingrate: 100
+
+clear_download: False
+variants: ["pamap2"]
+data_split: []
+noise_dataset: []
+download_folder: ""
