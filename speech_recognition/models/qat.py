@@ -18,7 +18,41 @@ from torch.nn.parameter import Parameter
 _BN_CLASS_MAP = {1: nn.BatchNorm1d, 2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
 
 
-class _ConvBnNd(nn.modules.conv._ConvNd):
+class _ConvForwardMixin:
+    def _real_conv_forward(self, input, weight, bias):
+        if self.dim == 1:
+            return F.conv1d(
+                input,
+                weight,
+                bias,
+                self.stride,
+                self.padding,
+                self.dilation,
+                self.groups,
+            )
+        elif self.dim == 2:
+            return F.conv2d(
+                input,
+                weight,
+                bias,
+                self.stride,
+                self.padding,
+                self.dilation,
+                self.groups,
+            )
+        elif self.dim == 3:
+            return F.conv3d(
+                input,
+                weight,
+                bias,
+                self.stride,
+                self.padding,
+                self.dilation,
+                self.groups,
+            )
+
+
+class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
 
     _version = 2
 
@@ -90,38 +124,6 @@ class _ConvBnNd(nn.modules.conv._ConvNd):
         else:
             self.freeze_bn_stats()
 
-    def _conv_forward(self, input, weight, bias=None):
-        if self.dim == 1:
-            return F.conv1d(
-                input,
-                weight,
-                bias,
-                self.stride,
-                self.padding,
-                self.dilation,
-                self.groups,
-            )
-        elif self.dim == 2:
-            return F.conv2d(
-                input,
-                weight,
-                bias,
-                self.stride,
-                self.padding,
-                self.dilation,
-                self.groups,
-            )
-        elif self.dim == 3:
-            return F.conv3d(
-                input,
-                weight,
-                bias,
-                self.stride,
-                self.padding,
-                self.dilation,
-                self.groups,
-            )
-
     def reset_running_stats(self):
         self.bn.reset_running_stats()
 
@@ -164,7 +166,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd):
             zero_bias = torch.zeros_like(self.bias)
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
-        conv = self._conv_forward(input, scaled_weight, zero_bias)
+        conv = self._real_conv_forward(input, scaled_weight, zero_bias)
         conv_orig = conv / scale_factor.reshape(bias_shape)
         if self.bias is not None:
             conv_orig = conv_orig + self.bias_fake_quant(self.bias.reshape(bias_shape))
@@ -300,7 +302,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd):
         return qat_convbn
 
 
-class ConvBn1d(_ConvBnNd, nn.Conv1d):
+class ConvBn1d(_ConvBnNd):
     r"""
     A ConvBn1d module is a module fused from Conv1d and BatchNorm1d,
     attached with FakeQuantize modules for weight,
@@ -431,7 +433,7 @@ class ConvBnReLU1d(ConvBn1d):
         return super(ConvBnReLU1d, cls).from_float(mod)
 
 
-class ConvBn2d(_ConvBnNd, nn.Conv2d):
+class ConvBn2d(_ConvBnNd):
     r"""
     A ConvBn2d module is a module fused from Conv2d and BatchNorm2d,
     attached with FakeQuantize modules for weight,
@@ -551,14 +553,14 @@ class ConvBnReLU2d(ConvBn2d):
         self.act_fake_quant = qconfig.activation()
 
     def forward(self, input):
-        return self.act_fake_quant(F.relu(ConvBn2d._forward(self, input)))
+        return self.act_fake_quant(F.relu(super(ConvBnReLU2d, self).forward(input)))
 
     @classmethod
     def from_float(cls, mod):
         return super(ConvBnReLU2d, cls).from_float(mod)
 
 
-class ConvReLU2d(nnqat.Conv2d):
+class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
     r"""A ConvReLU2d module is a fused module of Conv2d and ReLU, attached with
     FakeQuantize modules for weight for
     quantization aware training.
@@ -592,13 +594,13 @@ class ConvReLU2d(nnqat.Conv2d):
             groups=groups,
             bias=bias,
             padding_mode=padding_mode,
-            qconfig=qconfig,
         )
         assert qconfig, "qconfig must be provided for QAT module"
+        self.dim = 2
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
         self.act_fake_quant = self.qconfig.activation()
-        if hasattr(qconfig, self.bias):
+        if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
             self.bias_fake_quant = self.act_fake_quant
@@ -606,7 +608,7 @@ class ConvReLU2d(nnqat.Conv2d):
     def forward(self, input):
         return self.act_fake_quant(
             F.relu(
-                self._conv_forward(
+                self._real_conv_forward(
                     input,
                     self.weight_fake_quant(self.weight),
                     self.bias_fake_quant(self.bias),
@@ -619,7 +621,7 @@ class ConvReLU2d(nnqat.Conv2d):
         return super(ConvReLU2d, cls).from_float(mod)
 
 
-class ConvReLU1d(nn.Conv1d):
+class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
     r"""A ConvReLU1d module is fused module of Conv1d and ReLU, attached with
      FakeQuantize modules for quantization aware trainting"""
 
@@ -638,7 +640,7 @@ class ConvReLU1d(nn.Conv1d):
         padding_mode="zeros",
         qconfig=None,
     ):
-        super(Conv1d, self).__init__(
+        super(ConvReLU1d, self).__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -650,16 +652,17 @@ class ConvReLU1d(nn.Conv1d):
             padding_mode=padding_mode,
         )
         assert qconfig, "qconfig must be provided for QAT module"
+        self.dim = 1
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
         self.act_fake_quant = self.qconfig.activation()
-        if hasattr(qconfig, self.bias):
+        if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
             self.bias_fake_quant = self.act_fake_quant
 
     def forward(self, input):
-        output = self._conv_forward(
+        output = self._real_conv_forward(
             input, self.weight_fake_quant(self.weight), self.bias_fake_quant(self.bias)
         )
         output = F.relu(output)
@@ -713,7 +716,7 @@ class Conv1d(nn.Conv1d):
     def forward(self, input):
         return self.act_fake_quant(
             F.relu(
-                self._conv_forward(
+                self._real_conv_forward(
                     input,
                     self.weight_fake_quant(self.weight),
                     self.bias_fake_quant(self.bias),
