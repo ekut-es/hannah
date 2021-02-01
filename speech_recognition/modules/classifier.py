@@ -68,11 +68,16 @@ class SpeechClassifierModule(LightningModule):
             self.has_teacher = True
 
             # TODO maybe only one boolean to infer type?
-            if type(teacher_model) is str:
+            if (
+                type(teacher_model) is str
+                and type(self.hparams.get("teacher_checkpoint", False)) is str
+            ):
                 self.teacher_from_checkpoint = True
-
-            if type(teacher_model) is DictConfig:
+            elif type(teacher_model) is DictConfig:
                 self.teacher_from_dictconfig = True
+            else:
+                # TODO train befor use
+                print("model train before use")
 
     def prepare_data(self):
         # get all the necessary data stuff
