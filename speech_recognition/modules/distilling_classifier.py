@@ -43,7 +43,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             self.loss_func = self.teacher_free_selfkd_loss()
         elif loss_config == "TFFramework":
             self.loss_func = self.teacher_free_framework_loss()
-        elif loss_config == "noisyTecher":
+        elif loss_config == "noisyTeacher":
             self.loss_func = self.noisyTeacher_loss()
         else:
             self.loss_func = nn.MSELoss()
