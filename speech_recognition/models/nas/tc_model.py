@@ -149,9 +149,7 @@ class MajorBlock(nn.Module):
         act_input = main_feed
 
         if self.is_residual_block:
-            #                |---> parallel: True  --->  parallel: True  ---> |
-            # Residual:  --->|                                                +--->
-            #                |---> parallel: False --->  parallel: False ---> |
+
             if self.has_parallel:
                 for layer in self.parallel_modules:
                     parallel_feed = layer(parallel_feed)

@@ -241,12 +241,27 @@ class ModelFactory:
             raise Exception(f"Unknown minor block config {config}")
 
     def residual(self):
+        # If parallel is set to [True, False, True, False]
+        #                |---> parallel: True  --->  parallel: True  ---> |
+        # Input: ------->|                                                +--->
+        #                |---> parallel: False --->  parallel: False ---> |
         pass
 
-    def parallel(self):
+    def input(self):
+        # If parallel is set to [True, False, True, False]
+        #                 |---> parallel: True  ---> |
+        #                 |---> parallel: True  ---> + -----------------> |
+        # Input:--------->|                                               +--->
+        #                 |---> parallel: False ---> parallel: False ---> |
         pass
 
     def full(self):
+        # If parallel is set to [True, False, True, False]
+        #           |---> parallel: True  ---------------------------------- -|
+        # Input:--->|                                                         +--->
+        #           |                           |--> parallel: False --->|    |
+        #           |---> parallel: False ----> |                        +--->|
+        #                                       |--> parallel: True ---->|
         raise NotImplementedError(
             "Fully parallel network topology has not been implemented yet"
         )
