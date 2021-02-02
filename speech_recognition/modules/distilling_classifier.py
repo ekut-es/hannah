@@ -1,4 +1,4 @@
-from .classifier import SpeechClassifierModule
+from .classifier import StreamClassifierModule
 from omegaconf import DictConfig
 from typing import Optional
 import torch.nn as nn
@@ -8,7 +8,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from typing import Union
 
 
-class SpeechKDClassifierModule(SpeechClassifierModule):
+class SpeechKDClassifierModule(StreamClassifierModule):
     def __init__(
         self,
         dataset: DictConfig,
