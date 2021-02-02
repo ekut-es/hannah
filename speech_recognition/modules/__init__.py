@@ -1,2 +1,1 @@
-from .classifier import SpeechClassifierModule  # noqa
-from .classifier import PhysioClassifierModule
+from .classifier import StreamClassifierModule  # noqa

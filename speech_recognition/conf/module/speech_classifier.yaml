@@ -1,5 +1,0 @@
-# @package _group_
-
-_target_: speech_recognition.modules.SpeechClassifierModule
-num_workers: 0
-batch_size: 128
