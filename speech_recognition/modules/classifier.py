@@ -176,27 +176,19 @@ class StreamClassifierModule(LightningModule):
     def train_dataloader(self):
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
+        sampler = None
         if "balance_train_set_by_sampler" in dataset_conf.keys() and dataset_conf["balance_train_set_by_sampler"]:
             sampler = self.get_balancing_sampler(self.train_set)
-            train_loader = data.DataLoader(
-                self.train_set,
-                batch_size=train_batch_size,
-                drop_last=True,
-                pin_memory=True,
-                num_workers=self.hparams["num_workers"],
-                collate_fn=ctc_collate_fn,
-                sampler=sampler,
-            )
-        else:
-            train_loader = data.DataLoader(
-                self.train_set,
-                batch_size=train_batch_size,
-                shuffle=True,
-                drop_last=True,
-                pin_memory=True,
-                num_workers=self.hparams["num_workers"],
-                collate_fn=ctc_collate_fn,
-            )
+        train_loader = data.DataLoader(
+            self.train_set,
+            batch_size=train_batch_size,
+            drop_last=True,
+            pin_memory=True,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=ctc_collate_fn,
+            sampler=sampler,
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
+        )
 
         self.batches_per_epoch = len(train_loader)
 
@@ -225,6 +217,7 @@ class StreamClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
         )
 
         return dev_loader
@@ -252,6 +245,7 @@ class StreamClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
         )
 
         return test_loader
