@@ -187,7 +187,7 @@ class StreamClassifierModule(LightningModule):
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             sampler=sampler,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None,
         )
 
         self.batches_per_epoch = len(train_loader)
@@ -217,7 +217,7 @@ class StreamClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None,
         )
 
         return dev_loader
@@ -245,7 +245,7 @@ class StreamClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
+            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None,
         )
 
         return test_loader
@@ -279,3 +279,8 @@ class StreamClassifierModule(LightningModule):
                         "val_accuracy": self.trainer.callback_metrics["val_accuracy"],
                     },
                 )
+
+class SpeechClassifierModule(LightningModule):
+    def __init__(self, *args, **kwargs):
+        logging.critical("SpeechClassifierModule has been renamed to StreamClassifierModule")
+        super(SpeechClassifierModule, self).__init__(*args, **kwargs)
