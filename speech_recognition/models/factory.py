@@ -77,6 +77,7 @@ class ConvLayerConfig(MinorBlockConfig):
 @dataclass
 class MajorBlockConfig:
     out_channels: int = 32
+    type: str = "residual"
     blocks: List[MinorBlockConfig] = []
 
 
@@ -266,16 +267,24 @@ class ModelFactory:
             "Fully parallel network topology has not been implemented yet"
         )
 
-    def major(self, config: MajorBlockConfig):
-        pass
+    def major(self, in_channels: int, config: MajorBlockConfig):
+        if config.type == "residual":
+            layers, out_channels = self.residual(in_channels, config)
+        elif config.type == "input":
+            layers, out_channels = self.input(in_channels, config)
+        elif config.type == "parallel":
+            layers, out_channels = self.parallel(in_channels, config)
 
-    def network(self, network_config: NetworkConfig):
+        return layers, out_channels
+
+    def network(self, in_channels, network_config: NetworkConfig):
         self.norm = network_config.norm
         self.act = network_config.act
         self.qconfig = network_config.qconfig
 
         model = nn.Sequential()
         for block in network_config.blocks:
-            self.model.append(self.major(block))
+            block_model, in_channels = self.major(block)
+            self.model.append(block_model)
 
         return model
