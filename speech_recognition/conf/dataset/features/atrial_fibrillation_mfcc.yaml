@@ -1,0 +1,6 @@
+features:
+    melkwargs:
+        win_length: 250
+        hop_length: 10
+        f_min: 0.1
+        f_max: 100.0

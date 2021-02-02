@@ -1,3 +1,3 @@
-from .classifier import SpeechClassifierModule  # noqa
+from .distilling_classifier import SpeechKDClassifierModule # noqa
+from .classifier import StreamClassifierModule  # noqa
 
-from .distilling_classifier import SpeechKDClassifierModule
