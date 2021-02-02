@@ -149,7 +149,7 @@ class PAMAP2_DataPoint:
         19: "house_cleaning",
         20: "playing_soccer",
         24: "rope_jumping",
-        0: "other",  # NOTE: This ("other") should be discarded from analysis
+        # 0: "other",  # NOTE: This ("other") should be discarded from analysis
     }
 
     last_heart_rate = 0
@@ -180,6 +180,14 @@ class PAMAP2_DataPoint:
         self.imu_chest = imu_chest
         self.imu_ankle = imu_ankle
 
+    @staticmethod
+    def from_elements(**kwargs):
+        activityID = int(kwargs["activityID"])
+        if activityID not in PAMAP2_DataPoint.ACTIVITY_MAPPING.keys():
+            return None
+        else:
+            return PAMAP2_DataPoint(**kwargs)
+
     def to_tensor(self):
         heart_rate_tensor = torch.Tensor([self.heart_rate])
         tensor_tuple = (heart_rate_tensor,
@@ -201,12 +209,13 @@ class PAMAP2_DataPoint:
         elements = [None if element == nan_string else element
                     for element in elements]
 
-        return PAMAP2_DataPoint(timestamp=elements[0],
-                                activityID=elements[1],
-                                heart_rate=elements[2],
-                                imu_hand=PAMPAP2_IMUData.from_elements(elements[3:19]),
-                                imu_chest=PAMPAP2_IMUData.from_elements(elements[20:36]),
-                                imu_ankle=PAMPAP2_IMUData.from_elements(elements[37:53]))
+        return PAMAP2_DataPoint.\
+            from_elements(timestamp=elements[0],
+                          activityID=elements[1],
+                          heart_rate=elements[2],
+                          imu_hand=PAMPAP2_IMUData.from_elements(elements[3:19]),
+                          imu_chest=PAMPAP2_IMUData.from_elements(elements[20:36]),
+                          imu_ankle=PAMPAP2_IMUData.from_elements(elements[37:53]))
 
 
 class PAMAP2_DataChunk(list):
@@ -351,7 +360,8 @@ class PAMAP2_Dataset(data.Dataset):
                 print(f"Now processing {file}...")
                 for line in f:
                     datapoint = PAMAP2_DataPoint.from_line(line)
-                    datapoints += [datapoint]
+                    if datapoint is not None:
+                        datapoints += [datapoint]
             print("Now grouping...")
             groups = list()
             old_activityID = None
