@@ -36,16 +36,15 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         )
         self.save_hyperparameters()
 
-        # TODO Loss configuration dynamic
-
+        self.distillation_loss = distillation_loss
         if distillation_loss == "MSE":
             self.loss_func = nn.MSELoss()
         elif distillation_loss == "TFself":
-            self.loss_func = self.teacher_free_selfkd_loss()
+            self.loss_func = self.teacher_free_selfkd_loss
         elif distillation_loss == "TFFramework":
-            self.loss_func = self.teacher_free_framework_loss()
+            self.loss_func = self.teacher_free_framework_loss
         elif distillation_loss == "noisyTeacher":
-            self.loss_func = self.noisyTeacher_loss()
+            self.loss_func = self.noisyTeacher_loss
         else:
             logging.warning(
                 "Distillation loss %s unknown falling back to MSE", distillation_loss
@@ -168,9 +167,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
 
     def noisyTeacher_loss(
         self,
-        y_pred_student,
-        y_pred_teacher,
-        y_true,
+        y_pred_student=None,
+        y_pred_teacher=None,
+        y_true=None,
         distil_weight=0.5,
         temp=20.0,
         alpha=0.5,
@@ -208,7 +207,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
     arxiv: 1610.09650
     """
 
-    def add_noise(x, variance=0.1):
+    def add_noise(self, x, variance=0.1):
         """
         Function for adding gaussian noise
 
@@ -232,7 +231,10 @@ class SpeechKDClassifierModule(StreamClassifierModule):
 
         # TODO: handle multiple teachers
         assert len(teacher_logits) == 1
-        loss = self.loss_func(student_logits, teacher_logits[0])
+        if self.distillation_loss == "MSE":
+            loss = self.loss_func(student_logits, teacher_logits[0])
+        else:
+            loss = self.loss_func(student_logits, teacher_logits[0], y)
 
         # --- after loss
         for callback in self.trainer.callbacks:
