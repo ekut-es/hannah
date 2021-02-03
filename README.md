@@ -399,8 +399,11 @@ Intervall Parameters represent a Scalar Value from an intervall of Values
 They are configure with the following parameters:
 
 `lower`: lower bound of intervall [lower, upper[
+
 `upper`: upper bound of intervall [lower, upper[
+
 `int`: set to true to generate integers
+
 `log`: set to true to generate log scaled distribution
 # Development
 

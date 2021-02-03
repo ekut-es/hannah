@@ -1,0 +1,6 @@
+# @package _group_
+
+_target_: speech_recognition.callbacks.pruning.FilteredPruning
+pruning_fn: l1_unstructured
+amount: 0.1
+verbose: 1

@@ -1,4 +1,4 @@
-from speech_recognition.models.qat import (
+from speech_recognition.models.factory.qat import (
     ConvBnReLU1d,
     ConvBnReLU2d,
     ConvBn1d,

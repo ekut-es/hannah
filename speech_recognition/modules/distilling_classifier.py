@@ -7,7 +7,6 @@ from typing import Optional
 import torch.nn as nn
 import torch
 import random
-from pytorch_lightning.callbacks import ModelCheckpoint
 from typing import Union, List
 import math
 
@@ -345,9 +344,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         teacher_logits = []
         for teacher in self.teachers:
             teacher.eval()
-            teacher_logits.append(teacher(x))
+            with torch.no_grad():
+                teacher_logits.append(teacher(x))
 
-        self.forward(x)
         y = y.view(-1)
 
         assert len(teacher_logits) >= 1
@@ -360,6 +359,8 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         # --- before backward
 
         # METRICS
-        self.get_batch_metrics(student_logits, y, loss, "train")
+        self.calculate_batch_metrics(
+            student_logits, y, loss, self.train_metrics, "train"
+        )
 
         return loss

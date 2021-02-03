@@ -4,7 +4,8 @@ import torch.nn as nn
 import torch
 from torch.autograd import Variable
 from ..utils import SerializableModule, next_power_of2
-from ..act import DummyActivation
+from ..factory.act import DummyActivation
+from ..factory.pooling import ApproximateGlobalAveragePooling1D
 from hydra.utils import instantiate
 
 msglogger = logging.getLogger()
@@ -149,7 +150,6 @@ class MajorBlock(nn.Module):
         act_input = main_feed
 
         if self.is_residual_block:
-
             if self.has_parallel:
                 for layer in self.parallel_modules:
                     parallel_feed = layer(parallel_feed)
@@ -263,11 +263,11 @@ class TCCandidateModel(SerializableModule):
         self.eval()
 
         # iterate over the layers of the main branch to get dummy output
-        print("!!! TCCandidateModel layers:")
+        logging.info("!!! TCCandidateModel layers:")
         for layer in self.modules_list:
-            print(layer)
+            logging.info(str(layer))
             x = layer(x)
-        print("------------------------------")
+        logging.info("------------------------------")
 
         # APPEND average pooling
         shape = x.shape
@@ -283,7 +283,7 @@ class TCCandidateModel(SerializableModule):
         shape = x.shape
         self.fc = nn.Linear(shape[1], n_labels, bias=False)
 
-        print("Model created.")
+        logging.info("Model created.")
 
     def forward(self, x):
         for layer in self.modules_list:

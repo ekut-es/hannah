@@ -2,7 +2,7 @@
 
 data_folder: ${hydra:runtime.cwd}/datasets/
 dataset: keywords
-cls: speech_recognition.datasets.dataset.SpeechHotwordDataset
+cls: speech_recognition.datasets.speech.SpeechHotwordDataset
 
 group_speakers_by_id: false
 use_default_split: false

@@ -64,8 +64,7 @@ class InferenceBackendBase(Callback):
                 target = pl_module.forward(batch[0])
 
                 mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
-                for logger in pl_module.logger:
-                    logger.log_metrics({"val_backend_mse": mse})
+                pl_module.log("val_backend_mse", mse)
 
     def on_validation_epoch_end(self, trainer, pl_module):
         self.validation_epoch += 1
@@ -78,8 +77,7 @@ class InferenceBackendBase(Callback):
             target = pl_module.forward(batch[0])
 
             mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
-            for logger in pl_module.logger:
-                logger.log_metrics({"test_backend_mse": mse})
+            pl_module.log("test_backend_mse", mse)
 
 
 class TorchMobileBackend(InferenceBackendBase):
@@ -333,4 +331,10 @@ class TRaxUltraTrailBackend(Callback):
         )
         backend.set_inputs_and_outputs(self.xs, self.ys)
         backend.prepare()
-        backend.eda(self.standalone, self.rtl_simulation, self.synthesis, self.postsyn_simulation, self.power_estimation)
+        backend.eda(
+            self.standalone,
+            self.rtl_simulation,
+            self.synthesis,
+            self.postsyn_simulation,
+            self.power_estimation,
+        )

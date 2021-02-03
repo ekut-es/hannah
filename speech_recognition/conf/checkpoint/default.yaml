@@ -1,8 +1,13 @@
 # @package _group_
 
 _target_: pytorch_lightning.callbacks.ModelCheckpoint
+<<<<<<< HEAD
 filepath: "checkpoints"
 save_top_k: 1
+=======
+dirpath: "checkpoints"
+save_top_k: 5
+>>>>>>> c36677e... Adopt to new lightning interface
 verbose: true
 monitor: val_error
 mode: min

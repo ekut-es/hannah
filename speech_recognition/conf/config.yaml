@@ -12,6 +12,7 @@ defaults:
     - backend: null
     - early_stopping: null
     - profiler: null
+    - pruning: null
     - dataset/features: ${defaults.0.dataset}_${defaults.4.features}
       optional: true
 
@@ -25,7 +26,9 @@ hydra:
     run:
       dir: ${output_dir}/${experiment_id}/${model.name}/
     sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+
+
 
 #TODO:
 dump_test: false

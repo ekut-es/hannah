@@ -8,17 +8,18 @@ from omegaconf import DictConfig, OmegaConf
 class DistillerCallback(Callback):
     def __init__(self, config: DictConfig):
         self.config = config
-    
+
         # torch.autograd.set_detect_anomaly(True)
 
         self.fold_bn = config.get("fold_bn", None)
         self.bn_frozen = False
+        self.compression_scheduler = None
         self.msglogger = logging.getLogger()
 
     def on_train_start(self, trainer, pl_module):
         pl_module.model.to(pl_module.device)
 
-        train_set_len = len(pl_module.train_dataloader()) 
+        train_set_len = len(pl_module.train_dataloader())
 
         if isinstance(self.fold_bn, float):
             self.msglogger.info("Applying batch norm folding")
@@ -26,7 +27,7 @@ class DistillerCallback(Callback):
                 pl_module.model,
                 dummy_input=pl_module.example_feature_array,
                 inference=False,
-                freeze_bn_delay = trainer.max_epochs * self.fold_bn * train_set_len
+                freeze_bn_delay=trainer.max_epochs * self.fold_bn * train_set_len,
             )
             self.msglogger.info("Folded model")
             self.msglogger.info(pl_module)
@@ -44,7 +45,6 @@ class DistillerCallback(Callback):
         )
         self.msglogger.info("Compressed Model")
         self.msglogger.info(pl_module)
-
 
     def on_epoch_start(self, trainer, pl_module):
         self.compression_scheduler.on_epoch_begin(trainer.current_epoch)
@@ -65,17 +65,5 @@ class DistillerCallback(Callback):
         )
 
     def on_epoch_end(self, trainer, pl_module):
-        self.compression_scheduler.on_epoch_end(pl_module.current_epoch)
-
-
-
-
-
-
-
-
-
-
-
-
-
+        if self.compression_scheduler:
+            self.compression_scheduler.on_epoch_end(pl_module.current_epoch)
