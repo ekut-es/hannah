@@ -22,6 +22,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         normalizer: Optional[DictConfig] = None,
         teacher_checkpoint: Union[str, List[str], None] = None,
         freeze_teachers: bool = True,
+        distillation_loss: str = "MSE",
     ):
         super().__init__(
             dataset,
@@ -36,16 +37,19 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         self.save_hyperparameters()
 
         # TODO Loss configuration dynamic
-        loss_config = "MSE"
-        if loss_config == "MSE":
+
+        if distillation_loss == "MSE":
             self.loss_func = nn.MSELoss()
-        elif loss_config == "TFself":
+        elif distillation_loss == "TFself":
             self.loss_func = self.teacher_free_selfkd_loss()
-        elif loss_config == "TFFramework":
+        elif distillation_loss == "TFFramework":
             self.loss_func = self.teacher_free_framework_loss()
-        elif loss_config == "noisyTeacher":
+        elif distillation_loss == "noisyTeacher":
             self.loss_func = self.noisyTeacher_loss()
         else:
+            logging.warning(
+                "Distillation loss %s unknwon falling back to MSE", distillation_loss
+            )
             self.loss_func = nn.MSELoss()
 
         self.teachers = nn.ModuleList()
