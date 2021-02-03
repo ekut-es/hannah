@@ -225,6 +225,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         student_logits = self.forward(x)
         teacher_logits = []
         for teacher in self.teachers:
+            teacher.eval()
             teacher_logits.append(teacher(x))
 
         self.forward(x)
