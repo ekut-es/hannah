@@ -86,6 +86,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             hparams["dataset"] = self.hparams["dataset"]
             teacher_module = StreamClassifierModule(**hparams)
             teacher_module.trainer = self.trainer
+            # TODO Parameter der setup methode wird in ihr nie verwendet! Welche Auswirkungen soll diese haben?
             teacher_module.setup("fit")
             teacher_module.load_state_dict(checkpoint["state_dict"])
 

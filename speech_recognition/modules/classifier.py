@@ -66,7 +66,7 @@ class StreamClassifierModule(LightningModule):
             Downsample.downsample(self.hparams.dataset)
 
     def setup(self, stage):
-
+        # TODO stage variable is not used!
         self.msglogger.info("Setting up model")
 
         if self.initialized:
