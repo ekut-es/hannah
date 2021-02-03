@@ -48,7 +48,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             self.loss_func = self.noisyTeacher_loss()
         else:
             logging.warning(
-                "Distillation loss %s unknwon falling back to MSE", distillation_loss
+                "Distillation loss %s unknown falling back to MSE", distillation_loss
             )
             self.loss_func = nn.MSELoss()
 
