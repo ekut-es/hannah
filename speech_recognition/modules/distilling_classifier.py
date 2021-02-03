@@ -1,3 +1,4 @@
+import logging
 from .classifier import StreamClassifierModule
 from omegaconf import DictConfig
 from typing import Optional
@@ -5,7 +6,7 @@ import torch.nn as nn
 import torch
 import random
 from pytorch_lightning.callbacks import ModelCheckpoint
-from typing import Union
+from typing import Union, List
 
 
 class SpeechKDClassifierModule(StreamClassifierModule):
@@ -19,9 +20,8 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         batch_size: int = 128,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
-        # TODO how to pass pre trained teacher model?
-        teacher_model: DictConfig = None,
-        teacher_checkpoint: str = None,
+        teacher_checkpoint: Union[str, List[str], None] = None,
+        freeze_teachers: bool = True,
     ):
         super().__init__(
             dataset,
@@ -32,9 +32,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             batch_size,
             scheduler,
             normalizer,
-            teacher_model,
-            teacher_checkpoint,
         )
+        self.save_hyperparameters()
+
         # TODO Loss configuration dynamic
         loss_config = "MSE"
         if loss_config == "MSE":
@@ -48,7 +48,49 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         else:
             self.loss_func = nn.MSELoss()
 
-        print(f"!!! teacher model is {teacher_model} with type {type(teacher_model)}")
+        self.teachers = nn.ModuleList()
+
+        if teacher_checkpoint is None:
+            teacher_checkpoint = []
+        if isinstance(teacher_checkpoint, str):
+            teacher_checkpoint = [teacher_checkpoint]
+
+        if teacher_checkpoint is []:
+            # TODO: raise exception if this is not a teacher free distillation
+            logging.warning("No teachers defined")
+
+        self.teacher_checkpoints = teacher_checkpoint
+        self.freeze_teachers = freeze_teachers
+
+    def setup(self, stage):
+        super().setup(stage)
+
+        for checkpoint_file in self.teacher_checkpoints:
+            checkpoint = torch.load(checkpoint_file, map_location=torch.device("cpu"))
+
+            print(checkpoint.keys())
+
+            hparams = checkpoint["hyper_parameters"]
+            print(hparams)
+
+            # TODO: train new teacher checkpoints and remove from model
+            if "teacher_model" in hparams:
+                del hparams["teacher_model"]
+            if "teacher_checkpoint" in hparams:
+                del hparams["teacher_checkpoint"]
+
+            # Overwrite dataset
+            hparams["dataset"] = self.hparams["dataset"]
+            teacher_module = StreamClassifierModule(**hparams)
+            teacher_module.trainer = self.trainer
+            teacher_module.setup("fit")
+            teacher_module.load_state_dict(checkpoint["state_dict"])
+
+            if self.freeze_teachers:
+                for param in teacher_module.parameters():
+                    param.requires_grad = False
+
+            self.teachers.append(teacher_module)
 
     """
     Code taken from Paper: "KD-Lib: A PyTorch library for Knowledge Distillation, Pruning and Quantization"
@@ -176,11 +218,17 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         # x inputs, y labels
         x, x_len, y, y_len = batch
 
-        student_logits = super().forward(x)
-        teacher_logits = self.forward(x)
+        student_logits = self.forward(x)
+        teacher_logits = []
+        for teacher in self.teachers:
+            teacher_logits.append(teacher(x))
+
+        self.forward(x)
         y = y.view(-1)
 
-        loss = self.loss_func(student_logits, teacher_logits)
+        # TODO: handle multiple teachers
+        assert len(teacher_logits) == 1
+        loss = self.loss_func(student_logits, teacher_logits[0])
 
         # --- after loss
         for callback in self.trainer.callbacks:
@@ -192,8 +240,3 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         self.get_batch_metrics(student_logits, y, loss, "train")
 
         return loss
-
-    def forward(self, x):
-        x = super()._extract_features(x)
-        x = self.normalizer(x)
-        return self.teacher_model(x)

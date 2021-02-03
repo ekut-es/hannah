@@ -47,8 +47,6 @@ class StreamClassifierModule(LightningModule):
         batch_size: int = 128,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
-        teacher_model: DictConfig = None,
-        teacher_checkpoint: str = None,
     ):
         super().__init__()
 
@@ -58,26 +56,6 @@ class StreamClassifierModule(LightningModule):
         self.train_set = None
         self.test_set = None
         self.dev_set = None
-
-        # handle teacher
-        self.has_teacher = False
-        self.teacher_from_checkpoint = False
-        self.teacher_from_dictconfig = False
-
-        if teacher_model:
-            self.has_teacher = True
-
-            # TODO maybe only one boolean to infer type?
-            if (
-                type(teacher_model) is str
-                and type(self.hparams.get("teacher_checkpoint", False)) is str
-            ):
-                self.teacher_from_checkpoint = True
-            elif type(teacher_model) is DictConfig:
-                self.teacher_from_dictconfig = True
-            else:
-                # TODO train befor use
-                print("model train before use")
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -131,60 +109,6 @@ class StreamClassifierModule(LightningModule):
 
         self.model = get_model(self.hparams.model)
 
-        # instanciate teacher model
-        if self.has_teacher:
-
-            self.msglogger.info("Setting up teacher model")
-
-            if self.teacher_from_dictconfig:
-                self.hparams.teacher_model.width = self.example_feature_array.size(2)
-                self.hparams.teacher_model.height = self.example_feature_array.size(1)
-                self.num_classes = len(self.train_set.label_names)
-                self.hparams.teacher_model.n_labels = self.num_classes
-
-                self.teacher_model = get_model(self.hparams.teacher_model)
-
-            if self.teacher_from_checkpoint:
-                ckpt_path = self.hparams.teacher_checkpoint
-                checkpoint = torch.load(ckpt_path)
-
-                # doesnt work due to missing keys error:
-                # loaded_lightning_module = loaded_lightning_module.load_from_checkpoint(
-                #     ckpt_path, strict=True
-                # )
-                # -----------------
-
-                checkpoint_hparams = checkpoint["hyper_parameters"]
-
-                loaded_lightning_module = SpeechClassifierModule(
-                    dataset=checkpoint_hparams["dataset"],
-                    model=checkpoint_hparams["model"],
-                    optimizer=checkpoint_hparams["optimizer"],
-                    features=checkpoint_hparams["features"],
-                    num_workers=checkpoint_hparams["num_workers"],
-                    batch_size=checkpoint_hparams["batch_size"],
-                    scheduler=checkpoint_hparams["scheduler"],
-                    normalizer=checkpoint_hparams["normalizer"],
-                )
-
-                loaded_model = get_model(checkpoint_hparams["model"])
-                loaded_lightning_module.model = loaded_model
-
-                checkpoint_weights = checkpoint["state_dict"]
-
-                # this also produces missing keys error:
-                loaded_lightning_module.model.load_state_dict(checkpoint_weights)
-
-                # eval() to set dropout and batch normalization layers to evaluation mode before running inference
-                loaded_lightning_module.model.eval()
-
-                # TODO rename to teacher_module
-                self.teacher_model = loaded_lightning_module
-
-                # no training for teacher model in case of loading from checkpoint
-                for param in self.teacher_model.parameters():
-                    param.requires_grad = False
-
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
 
@@ -225,8 +149,7 @@ class StreamClassifierModule(LightningModule):
     def get_balancing_sampler(dataset):
         distribution = dataset.get_categories_distribution()
         weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))],
-            dtype=torch.float
+            [distribution[i] for i in range(len(distribution))], dtype=torch.float
         )
 
         sampler_weights = weights[dataset.get_label_list()]
@@ -257,7 +180,10 @@ class StreamClassifierModule(LightningModule):
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
         sampler = None
-        if "balance_train_set_by_sampler" in dataset_conf.keys() and dataset_conf["balance_train_set_by_sampler"]:
+        if (
+            "balance_train_set_by_sampler" in dataset_conf.keys()
+            and dataset_conf["balance_train_set_by_sampler"]
+        ):
             sampler = self.get_balancing_sampler(self.train_set)
         train_loader = data.DataLoader(
             self.train_set,
@@ -267,7 +193,7 @@ class StreamClassifierModule(LightningModule):
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             sampler=sampler,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
         self.batches_per_epoch = len(train_loader)
@@ -297,7 +223,7 @@ class StreamClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
         return dev_loader
@@ -325,7 +251,7 @@ class StreamClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
         return test_loader
@@ -360,7 +286,10 @@ class StreamClassifierModule(LightningModule):
                     },
                 )
 
+
 class SpeechClassifierModule(LightningModule):
     def __init__(self, *args, **kwargs):
-        logging.critical("SpeechClassifierModule has been renamed to StreamClassifierModule")
+        logging.critical(
+            "SpeechClassifierModule has been renamed to StreamClassifierModule"
+        )
         super(SpeechClassifierModule, self).__init__(*args, **kwargs)
