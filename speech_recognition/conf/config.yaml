@@ -5,15 +5,13 @@ defaults:
     - optimizer: adam
     - features: mfcc
     - normalizer: null
-    - module: stream_classifier
+    - module: speech_classifier
     - compress: null
     - trainer: default
     - checkpoint: default
     - backend: null
     - early_stopping: null
     - profiler: null
-    - dataset/features: ${defaults.0.dataset}_${defaults.4.features}
-      optional: true
 
 type: train
 experiment_id: test

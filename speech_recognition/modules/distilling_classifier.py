@@ -1,5 +1,5 @@
 import logging
-from .classifier import StreamClassifierModule
+from .classifier import SpeechClassifierModule
 from omegaconf import DictConfig
 from typing import Optional
 import torch.nn as nn
@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from typing import Union, List
 
 
-class SpeechKDClassifierModule(StreamClassifierModule):
+class SpeechKDClassifierModule(SpeechClassifierModule):
     def __init__(
         self,
         dataset: DictConfig,
@@ -84,7 +84,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
 
             # Overwrite dataset
             hparams["dataset"] = self.hparams["dataset"]
-            teacher_module = StreamClassifierModule(**hparams)
+            teacher_module = SpeechClassifierModule(**hparams)
             teacher_module.trainer = self.trainer
             # TODO Parameter der setup methode wird in ihr nie verwendet! Welche Auswirkungen soll diese haben?
             teacher_module.setup("fit")

@@ -36,7 +36,7 @@ from omegaconf import DictConfig
 from typing import Union
 
 
-class StreamClassifierModule(LightningModule):
+class SpeechClassifierModule(LightningModule):
     def __init__(
         self,
         dataset: DictConfig,
@@ -145,18 +145,6 @@ class StreamClassifierModule(LightningModule):
         # also in case of branched networks
         self.log(f"{prefix}_loss", loss)
 
-    @staticmethod
-    def get_balancing_sampler(dataset):
-        distribution = dataset.get_categories_distribution()
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
-        )
-
-        sampler_weights = weights[dataset.get_label_list()]
-
-        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
-        return sampler
-
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
@@ -178,22 +166,14 @@ class StreamClassifierModule(LightningModule):
 
     def train_dataloader(self):
         train_batch_size = self.hparams["batch_size"]
-        dataset_conf = self.hparams.dataset
-        sampler = None
-        if (
-            "balance_train_set_by_sampler" in dataset_conf.keys()
-            and dataset_conf["balance_train_set_by_sampler"]
-        ):
-            sampler = self.get_balancing_sampler(self.train_set)
         train_loader = data.DataLoader(
             self.train_set,
             batch_size=train_batch_size,
+            shuffle=True,
             drop_last=True,
             pin_memory=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            sampler=sampler,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
         self.batches_per_epoch = len(train_loader)
@@ -285,11 +265,3 @@ class StreamClassifierModule(LightningModule):
                         "val_accuracy": self.trainer.callback_metrics["val_accuracy"],
                     },
                 )
-
-
-class SpeechClassifierModule(LightningModule):
-    def __init__(self, *args, **kwargs):
-        logging.critical(
-            "SpeechClassifierModule has been renamed to StreamClassifierModule"
-        )
-        super(SpeechClassifierModule, self).__init__(*args, **kwargs)

@@ -254,7 +254,7 @@ Neural network to train: choices are gds (Old sinc1 with sinc convolutions remov
 
 ## module
 
-Currently only `stream_classifier` is available.
+Currently only `speech_classifier` is available.
 
 The toplevel module implementing the training and eval loops.
 

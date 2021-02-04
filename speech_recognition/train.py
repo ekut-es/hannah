@@ -31,7 +31,6 @@ def handleDataset(config=DictConfig):
         features=config.features,
         scheduler=config.get("scheduler", None),
         normalizer=config.get("normalizer", None),
-        # teacher_model=config.get("teacher_model", None),
     )
     lit_module.prepare_data()
 
@@ -56,7 +55,6 @@ def train(config=DictConfig):
         features=config.features,
         scheduler=config.get("scheduler", None),
         normalizer=config.get("normalizer", None),
-        # teacher_model=config.get("teacher_model", None),
     )
     callbacks = []
 
