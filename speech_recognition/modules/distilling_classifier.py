@@ -138,7 +138,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
     """
 
     def teacher_free_selfkd_loss(
-        self, y_pred_student, y_pred_teacher, y_true, distil_weight=0.5
+        self, y_pred_student, y_pred_teacher, y_true, distil_weight=0.5, temp=10.0
     ):
         """
         Function used for calculating the KD loss during distillation
@@ -153,7 +153,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         )
         loss += (distil_weight) * local_loss(
             torch.nn.functional.log_softmax(y_pred_student, dim=1),
-            torch.nn.functional.softmax(y_pred_teacher / self.temp, dim=1),
+            torch.nn.functional.softmax(y_pred_teacher / temp, dim=1),
         )
         return loss
 
