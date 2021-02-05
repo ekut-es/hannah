@@ -21,7 +21,7 @@ output_dir: trained_models
 auto_lr: false
 seed: 1234
 
-monitor: ["val_loss", "total_weights", "est_act", "total_macs"]
+monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_performance", "acc_power", "acc_area", "acc_accuracy"]
 model:
   major_blocks: []
 
@@ -33,16 +33,24 @@ hydra:
   sweeper:
     optim:
       optimizer: aging_evolution
-      population_size: 25
-      sample_size: 10
-      budget:  2000
+      population_size: 3
+      #population_size: 25
+      sample_size: 1
+      #sample_size: 10
+      budget:  3
+      #budget:  2000
       seed: 1234
-      num_workers:  10
+      num_workers:  3
+      #num_workers:  10
       bounds:
         val_loss: 0.2
         total_macs: 500000
         total_weights: 20000
         est_act: 8000
+        acc_performance: 100
+        acc_power: 100
+        acc_area: 100
+        acc_accuracy: 1
 
 
     # default parametrization of the search space
@@ -75,3 +83,15 @@ hydra:
                       batchnorm: [true, false]
                       activation: [true, false]
                       parallel: [true, false]
+      backend:             
+              bw_w: [4,6,8]
+              #bw_b: [2,4,8] Not yet included in analytical or statistical model
+              #bw_f: [2,4,8]
+              cols: [2,4,8,16]
+              #rows: [2,4,8,16]
+              period:
+                integer: true
+                lower: 2.0
+                upper: 1000.0
+        
+

@@ -1,10 +1,12 @@
 # @package _group_
 
 _target_: speech_recognition.callbacks.backends.TRaxUltraTrailBackend
-backend_dir: "/local/palomero/projects/teda/rtl/tc-resnet8-accelerator"
-teda_dir: "/local/palomero/projects/teda"
+
+backend_dir: "/local/frischkn/neural_networks/teda/rtl/tc-resnet8-accelerator"
+teda_dir: "/local/frischkn/neural_networks/teda"
+
 standalone: False
-rtl_simulation: True
+rtl_simulation: False
 synthesis: False
 postsyn_simulation: False
 power_estimation: False
@@ -16,3 +18,4 @@ cols: 8
 rows: 8
 period: 1000
 macro_type: "RTL"
+use_acc_statistic_model: True

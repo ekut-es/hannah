@@ -2,6 +2,8 @@ import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from collections import OrderedDict
+
 import torch.onnx
 from pytorch_lightning import Callback
 
@@ -189,6 +191,7 @@ class TRaxUltraTrailBackend(Callback):
         rows,
         period,
         macro_type,
+        use_acc_statistic_model,
     ):
         self.backend_dir = backend_dir
         self.teda_dir = Path(teda_dir)
@@ -205,10 +208,38 @@ class TRaxUltraTrailBackend(Callback):
         self.rows = rows
         self.period = period
         self.macro_type = macro_type
-
         self.xs = []
         self.ys = []
+        self.use_acc_statistic_model  = use_acc_statistic_model
+        self.use_acc_analytical_model = False
+        self.use_acc_teda_data        = False
+        self.performance = 1000000000.0
+        self.power = 1000000000.0
+        self.area = 1000000000.0
+        self.accuracy = 0.0
+        
+    def _do_summary(self, pl_module, print=True):
+        res = OrderedDict()
 
+        if self.use_acc_statistic_model:
+            self.performance = 1457.2   *self.cols**2 -33736.2  *self.cols -6.5      *self.bw_w**2 +65       *self.bw_w +170720.2
+            self.power       = 1.469e-07*self.cols**2 +3.133e-06*self.cols +2.937e-07*self.bw_w**2 +2.175e-06*self.bw_w -1.514e-05
+            self.area        = 792.9    *self.cols**2 +1026.6   *self.cols -122.5    *self.bw_w**2 +18941.7  *self.bw_w -63560.6
+            self.accuracy    = 1.0
+       # if use_acc_analytical_model:
+       #     self.performance = Formula from the UltraTrail paper
+        
+        res["acc_performance"] = self.performance
+        res["acc_power"]       = self.power
+        res["acc_area"]        = self.area
+        res["acc_accuracy"]    = self.accuracy
+        return res
+        
+    def on_validation_epoch_end(self, trainer, pl_module):
+        res = self._do_summary(pl_module, print=False)
+        for k, v in res.items():
+            pl_module.log(k, v)
+        
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
