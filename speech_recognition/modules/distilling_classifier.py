@@ -74,6 +74,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         super().setup(stage)
 
         if len(self.teachers) == 0 and self.distillation_loss == "TFself":
+            # TODO Multiple Teacher could maybe done here
             params = deepcopy(self.hparams)
             params.pop("teacher_checkpoint")
             params.pop("freeze_teachers")
