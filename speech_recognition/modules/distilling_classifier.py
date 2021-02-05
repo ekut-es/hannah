@@ -1,4 +1,6 @@
 import logging
+from copy import deepcopy
+
 from .classifier import SpeechClassifierModule
 from omegaconf import DictConfig
 from typing import Optional
@@ -35,13 +37,16 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             normalizer,
         )
         self.save_hyperparameters()
-
         self.distillation_loss = distillation_loss
         if distillation_loss == "MSE":
             self.loss_func = nn.MSELoss()
         elif distillation_loss == "TFself":
             self.loss_func = self.teacher_free_selfkd_loss
+        elif distillation_loss == "TFself_Loss":
+            self.loss_func = self.teacher_free_selfkd_loss
         elif distillation_loss == "TFFramework":
+            self.loss_func = self.teacher_free_framework_loss
+        elif distillation_loss == "TFFramework_Loss":
             self.loss_func = self.teacher_free_framework_loss
         elif distillation_loss == "noisyTeacher":
             self.loss_func = self.noisyTeacher_loss
@@ -68,33 +73,49 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
     def setup(self, stage):
         super().setup(stage)
 
-        for checkpoint_file in self.teacher_checkpoints:
-            checkpoint = torch.load(checkpoint_file, map_location=torch.device("cpu"))
-
-            print(checkpoint.keys())
-
-            hparams = checkpoint["hyper_parameters"]
-            print(hparams)
-
-            # TODO: train new teacher checkpoints and remove from model
-            if "teacher_model" in hparams:
-                del hparams["teacher_model"]
-            if "teacher_checkpoint" in hparams:
-                del hparams["teacher_checkpoint"]
-
-            # Overwrite dataset
-            hparams["dataset"] = self.hparams["dataset"]
-            teacher_module = SpeechClassifierModule(**hparams)
-            teacher_module.trainer = self.trainer
-            # TODO Parameter der setup methode wird in ihr nie verwendet! Welche Auswirkungen soll diese haben?
+        if len(self.teachers) == 0 and self.distillation_loss == "TFself":
+            params = deepcopy(self.hparams)
+            params.pop("teacher_checkpoint")
+            params.pop("freeze_teachers")
+            params.pop("distillation_loss")
+            teacher_module = SpeechClassifierModule(**params)
+            teacher_module.trainer = deepcopy(self.trainer)
+            teacher_module.model = deepcopy(self.model)
             teacher_module.setup("fit")
-            teacher_module.load_state_dict(checkpoint["state_dict"])
-
-            if self.freeze_teachers:
-                for param in teacher_module.parameters():
-                    param.requires_grad = False
-
+            teacher_module.trainer.fit(teacher_module)
+            teacher_module.trainer.test(ckpt_path=None)
             self.teachers.append(teacher_module)
+
+        else:
+            for checkpoint_file in self.teacher_checkpoints:
+                checkpoint = torch.load(
+                    checkpoint_file, map_location=torch.device("cpu")
+                )
+
+                print(checkpoint.keys())
+
+                hparams = checkpoint["hyper_parameters"]
+                print(hparams)
+
+                # TODO: train new teacher checkpoints and remove from model
+                if "teacher_model" in hparams:
+                    del hparams["teacher_model"]
+                if "teacher_checkpoint" in hparams:
+                    del hparams["teacher_checkpoint"]
+
+                # Overwrite dataset
+                hparams["dataset"] = self.hparams["dataset"]
+                teacher_module = SpeechClassifierModule(**hparams)
+                teacher_module.trainer = self.trainer
+                teacher_module.setup("fit")
+                teacher_module.load_state_dict(checkpoint["state_dict"])
+                # Train the self part of the algorithm
+
+                if self.freeze_teachers:
+                    for param in teacher_module.parameters():
+                        param.requires_grad = False
+
+                self.teachers.append(teacher_module)
 
     """
     Code taken from Paper: "KD-Lib: A PyTorch library for Knowledge Distillation, Pruning and Quantization"
