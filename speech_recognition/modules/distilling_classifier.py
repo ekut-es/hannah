@@ -44,10 +44,8 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             self.loss_func = self.teacher_free_selfkd_loss
         elif distillation_loss == "TFself_Loss":
             self.loss_func = self.teacher_free_selfkd_loss
-        elif distillation_loss == "TFFramework":
-            self.loss_func = self.teacher_free_framework_loss
-        elif distillation_loss == "TFFramework_Loss":
-            self.loss_func = self.teacher_free_framework_loss
+        elif distillation_loss == "TFVirtual":
+            self.loss_func = self.teacher_free_virtual_loss
         elif distillation_loss == "noisyTeacher":
             self.loss_func = self.noisyTeacher_loss
         else:
@@ -127,7 +125,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
     arxiv: 1909.11723
     """
 
-    def teacher_free_framework_loss(
+    def teacher_free_virtual_loss(
         self, y_pred_student, y_true, distil_weight=0.5, correct_prob=0.9, temp=10.0
     ):
         local_loss = nn.KLDivLoss()
@@ -257,6 +255,8 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         assert len(teacher_logits) == 1
         if self.distillation_loss == "MSE":
             loss = self.loss_func(student_logits, teacher_logits[0])
+        elif self.distillation_loss == "TFVirtual":
+            loss = self.loss_func(student_logits, y)
         else:
             loss = self.loss_func(student_logits, teacher_logits[0], y)
 
