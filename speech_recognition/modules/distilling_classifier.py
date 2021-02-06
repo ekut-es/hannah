@@ -48,6 +48,8 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             self.loss_func = self.teacher_free_virtual_loss
         elif distillation_loss == "noisyTeacher":
             self.loss_func = self.noisyTeacher_loss
+        elif distillation_loss == "KLLoss":
+            self.loss_func = self.KLloss
         else:
             logging.warning(
                 "Distillation loss %s unknown falling back to MSE", distillation_loss
@@ -237,6 +239,31 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         """
 
         return x * (1 + (variance ** 0.5) * torch.randn_like(x))
+
+    """
+        Code taken from Paper: "MEAL V2: Boosting Vanilla ResNet-50 to 80%+ Top-1 Accuracy on ImageNet without Tricks"
+        arxiv: https://arxiv.org/abs/2009.08453
+    """
+
+    def KLloss(self, student, teacher, target):
+        # Target is ignored at training time. Loss is defined as KL divergence
+        # between the model output and the soft labels.
+        soft_labels = torch.nn.functional.softmax(teacher, dim=1)
+
+        model_output_log_prob = torch.nn.functional.log_softmax(student, dim=1)
+
+        # Loss is -dot(model_output_log_prob, soft_labels). Prepare tensors
+        # for batch matrix multiplicatio
+        soft_labels = soft_labels.unsqueeze(1)
+        model_output_log_prob = model_output_log_prob.unsqueeze(2)
+
+        # Compute the loss, and average for the batch.
+        cross_entropy_loss = -torch.bmm(soft_labels, model_output_log_prob)
+        cross_entropy_loss = cross_entropy_loss.mean()
+        # Return a pair of (loss_output, model_output). Model output will be
+        # used for top-1 and top-5 evaluation.
+        model_output_log_prob = model_output_log_prob.squeeze(2)
+        return cross_entropy_loss  # , model_output_log_prob)
 
     def training_step(self, batch, batch_idx):
         # x inputs, y labels
