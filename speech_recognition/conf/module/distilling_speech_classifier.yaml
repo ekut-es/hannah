@@ -3,5 +3,10 @@
 _target_: speech_recognition.modules.SpeechKDClassifierModule
 num_workers: 0
 batch_size: 128
-#teacher_model: tc-res8
-teacher_checkpoint: ${hydra:runtime.cwd}/teachers/speech_commands/tc-res8.ckpt
+teacher_checkpoint:
+  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res20.ckpt
+  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res16.ckpt
+  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res8.ckpt
+  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res6.ckpt
+
+# teacher_checkpoint: ${hydra:runtime.cwd}/teachers/speech_commands/tc-res8.ckpt
