@@ -24,7 +24,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         normalizer: Optional[DictConfig] = None,
         teacher_checkpoint: Union[str, List[str], None] = None,
         freeze_teachers: bool = True,
-        distillation_loss: str = "DGKD",
+        distillation_loss: str = "MSE",
     ):
         super().__init__(
             dataset,
