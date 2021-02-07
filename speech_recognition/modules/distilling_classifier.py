@@ -9,6 +9,7 @@ import torch
 import random
 from pytorch_lightning.callbacks import ModelCheckpoint
 from typing import Union, List
+import math
 
 
 class SpeechKDClassifierModule(SpeechClassifierModule):
@@ -320,6 +321,18 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
 
         return loss
 
+    def calculate_loss(self, student_logits, teacher_logits, y):
+        loss = math.inf
+        if self.distillation_loss == "MSE":
+            loss = self.loss_func(student_logits, teacher_logits[0])
+        elif self.distillation_loss == "TFVirtual":
+            loss = self.loss_func(student_logits, y)
+        elif self.distillation_loss == "DGKD":
+            loss = self.loss_func(student_logits, teacher_logits, y)
+        else:
+            loss = self.loss_func(student_logits, teacher_logits[0], y)
+        return loss
+
     def training_step(self, batch, batch_idx):
         # x inputs, y labels
         x, x_len, y, y_len = batch
@@ -338,14 +351,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         #    loss, student_logits, y = self.loss_func(x, y)
 
         assert len(teacher_logits) >= 1
-        if self.distillation_loss == "MSE":
-            loss = self.loss_func(student_logits, teacher_logits[0])
-        elif self.distillation_loss == "TFVirtual":
-            loss = self.loss_func(student_logits, y)
-        elif self.distillation_loss == "DGKD":
-            loss = self.loss_func(student_logits, teacher_logits, y)
-        else:
-            loss = self.loss_func(student_logits, teacher_logits[0], y)
+        loss = self.calculate_loss(student_logits, teacher_logits, y)
 
         # --- after loss
         for callback in self.trainer.callbacks:
