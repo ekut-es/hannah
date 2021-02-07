@@ -279,7 +279,6 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         # setup
         assert len(teacher_logits) >= 2
 
-        logits = []
         n = len(teacher_logits[1:])
 
         # pop t random elements from logits
@@ -345,10 +344,6 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
 
         self.forward(x)
         y = y.view(-1)
-
-        # TODO integrate better in existing design of method
-        # if self.dgkd:
-        #    loss, student_logits, y = self.loss_func(x, y)
 
         assert len(teacher_logits) >= 1
         loss = self.calculate_loss(student_logits, teacher_logits, y)
