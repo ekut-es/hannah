@@ -274,31 +274,12 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         arxiv: 2009.08825
     """
     # densely guided knowledge distillation using multiple teachers
-    def densely_guided_kd(self, x, y):
+    def densely_guided_kd(self, student_logits, teacher_logits, y):
         # setup
-        assert len(self.teachers) >= 2
+        assert len(teacher_logits) >= 2
 
         logits = []
-
-        student_logits = self.forward(x)
-        y = y.view(-1)
-
-        # set teachers and assisstants to eval mode
-        for teacher in self.teachers:
-            teacher.eval()
-
-        # assuming first in list has largest model and therefore is teacher
-        teacher = self.teachers[0]
-        # remaining in list are assumed to be ordered by decreasing model complexity
-        assistants = self.teachers[1:]
-        n = len(assistants)
-        # TODO possibly unnecessary split into teacher and assistants
-        teacher_logits = teacher(x)
-        logits.append(teacher_logits)
-
-        for assi in assistants:
-            assi_logits = assi(x)
-            logits.append(assi_logits)
+        n = len(teacher_logits[1:])
 
         # pop t random elements from logits
         # works as kind of regularizer (not mandatory)
@@ -318,7 +299,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         l_ce_s = cross_entropy(student_logits, y)
 
         y_hat_s = softmax(student_logits.squeeze(1))
-        y_hat_t = softmax(teacher_logits.squeeze(1))
+        y_hat_t = softmax(teacher_logits[0].squeeze(1))
 
         # TODO missing temperature T
         kl_div_t_s = kl_div(y_hat_t, y_hat_s)
@@ -326,7 +307,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         # TODO is there a smarter (numpy) way to sum?
         sum_kl_div_assis_s = 0
         # removing teacher logits
-        assi_logits = logits[1:]
+        assi_logits = teacher_logits[1:]
         for logits in assi_logits:
             y_hat_assi = softmax(logits)
             sum_kl_div_assis_s += kl_div(y_hat_assi, y_hat_s)
@@ -337,33 +318,34 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         # equation (7) in paper
         loss = (n + 1) * (1 - lam) * l_ce_s + lam * (kl_div_t_s + sum_kl_div_assis_s)
 
-        return loss, student_logits, y
+        return loss
 
     def training_step(self, batch, batch_idx):
         # x inputs, y labels
         x, x_len, y, y_len = batch
 
+        student_logits = self.forward(x)
+        teacher_logits = []
+        for teacher in self.teachers:
+            teacher.eval()
+            teacher_logits.append(teacher(x))
+
+        self.forward(x)
+        y = y.view(-1)
+
         # TODO integrate better in existing design of method
-        if self.dgkd:
-            loss, student_logits, y = self.loss_func(x, y)
+        # if self.dgkd:
+        #    loss, student_logits, y = self.loss_func(x, y)
 
+        assert len(teacher_logits) >= 1
+        if self.distillation_loss == "MSE":
+            loss = self.loss_func(student_logits, teacher_logits[0])
+        elif self.distillation_loss == "TFVirtual":
+            loss = self.loss_func(student_logits, y)
+        elif self.distillation_loss == "DGKD":
+            loss = self.loss_func(student_logits, teacher_logits, y)
         else:
-            student_logits = self.forward(x)
-            teacher_logits = []
-            for teacher in self.teachers:
-                teacher.eval()
-                teacher_logits.append(teacher(x))
-
-            self.forward(x)
-            y = y.view(-1)
-
-            assert len(teacher_logits) == 1
-            if self.distillation_loss == "MSE":
-                loss = self.loss_func(student_logits, teacher_logits[0])
-            elif self.distillation_loss == "TFVirtual":
-                loss = self.loss_func(student_logits, y)
-            else:
-                loss = self.loss_func(student_logits, teacher_logits[0], y)
+            loss = self.loss_func(student_logits, teacher_logits[0], y)
 
         # --- after loss
         for callback in self.trainer.callbacks:
