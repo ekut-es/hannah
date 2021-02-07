@@ -37,6 +37,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             normalizer,
         )
         self.save_hyperparameters()
+        self.dgkd = False
         self.distillation_loss = distillation_loss
         if distillation_loss == "MSE":
             self.loss_func = nn.MSELoss()
