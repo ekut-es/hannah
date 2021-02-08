@@ -3,6 +3,13 @@
 _target_: speech_recognition.modules.SpeechKDClassifierModule
 num_workers: 0
 batch_size: 128
+
+temp: 10.0,
+distil_weight: 0.5,
+alpha: 0.5,
+noise_variance: 0.1,
+correct_prob: 0.9,
+
 teacher_checkpoint:
   - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res20.ckpt
   - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res16.ckpt
