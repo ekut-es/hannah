@@ -321,7 +321,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
 
     def calculate_loss(self, student_logits, teacher_logits, y):
         loss = math.inf
-        if self.distillation_loss == "MSE" & self.distillation_loss == "KLLoss":
+        if (self.distillation_loss == "MSE") | (self.distillation_loss == "KLLoss"):
             loss = self.loss_func(student_logits, teacher_logits[0])
         elif self.distillation_loss == "TFVirtual":
             loss = self.loss_func(student_logits, y)
