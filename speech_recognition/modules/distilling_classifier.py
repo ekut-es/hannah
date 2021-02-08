@@ -44,6 +44,12 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         )
         self.save_hyperparameters()
         self.distillation_loss = distillation_loss
+        self.temp = temp
+        self.distil_weight = distil_weight
+        self.alpha = alpha
+        self.noise_variance = noise_variance
+        self.correct_prob = correct_prob
+
         if distillation_loss == "MSE":
             self.loss_func = nn.MSELoss()
         elif distillation_loss == "TFself":
@@ -87,6 +93,11 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             params.pop("teacher_checkpoint")
             params.pop("freeze_teachers")
             params.pop("distillation_loss")
+            params.pop("temp")
+            params.pop("distil_weight")
+            params.pop("alpha")
+            params.pop("noise_variance")
+            params.pop("correct_prob")
             teacher_module = SpeechClassifierModule(**params)
             teacher_module.trainer = deepcopy(self.trainer)
             teacher_module.model = deepcopy(self.model)
@@ -135,26 +146,22 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
     arxiv: 1909.11723
     """
 
-    def teacher_free_virtual_loss(
-        self, y_pred_student, y_true, distil_weight=0.5, correct_prob=0.9, temp=10.0
-    ):
+    def teacher_free_virtual_loss(self, y_pred_student, y_true):
         local_loss = nn.KLDivLoss()
         num_classes = y_pred_student.shape[1]
 
-        soft_label = torch.ones_like(
-            y_pred_student
-        )  # .to(self.device) Brauchen wir das?
-        soft_label = soft_label * (1 - correct_prob) / (num_classes - 1)
+        soft_label = torch.ones_like(y_pred_student)
+        soft_label = soft_label * (1 - self.correct_prob) / (num_classes - 1)
 
         for i in range(y_pred_student.shape[0]):
-            soft_label[i, y_true[i]] = correct_prob
+            soft_label[i, y_true[i]] = self.correct_prob
 
-        loss = (1 - distil_weight) * torch.nn.functional.cross_entropy(
+        loss = (1 - self.distil_weight) * torch.nn.functional.cross_entropy(
             y_pred_student, y_true
         )
-        loss += (distil_weight) * local_loss(
+        loss += (self.distil_weight) * local_loss(
             torch.nn.functional.log_softmax(y_pred_student, dim=1),
-            torch.nn.functional.softmax(soft_label / temp, dim=1),
+            torch.nn.functional.softmax(soft_label / self.temp, dim=1),
         )
         return loss
 
@@ -167,9 +174,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
     arxiv: 1909.11723
     """
 
-    def teacher_free_selfkd_loss(
-        self, y_pred_student, y_pred_teacher, y_true, distil_weight=0.5, temp=10.0
-    ):
+    def teacher_free_selfkd_loss(self, y_pred_student, y_pred_teacher, y_true):
         """
         Function used for calculating the KD loss during distillation
 
@@ -178,12 +183,12 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         :param y_true (torch.FloatTensor): Original label
         """
         local_loss = nn.KLDivLoss()
-        loss = (1 - distil_weight) * torch.nn.functional.cross_entropy(
+        loss = (1 - self.distil_weight) * torch.nn.functional.cross_entropy(
             y_pred_student, y_true
         )
-        loss += (distil_weight) * local_loss(
+        loss += (self.distil_weight) * local_loss(
             torch.nn.functional.log_softmax(y_pred_student, dim=1),
-            torch.nn.functional.softmax(y_pred_teacher / temp, dim=1),
+            torch.nn.functional.softmax(y_pred_teacher / self.temp, dim=1),
         )
         return loss
 
@@ -196,16 +201,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
     arxiv: 1610.09650
     """
 
-    def noisyTeacher_loss(
-        self,
-        y_pred_student=None,
-        y_pred_teacher=None,
-        y_true=None,
-        distil_weight=0.5,
-        temp=20.0,
-        alpha=0.5,
-        noise_variance=0.1,
-    ):
+    def noisyTeacher_loss(self, y_pred_student=None, y_pred_teacher=None, y_true=None):
         """
         Function used for calculating the KD loss during distillation
 
@@ -215,16 +211,16 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         """
         local_loss = nn.MSELoss()
 
-        if random.uniform(0, 1) <= alpha:
-            y_pred_teacher = self.add_noise(y_pred_teacher, noise_variance)
+        if random.uniform(0, 1) <= self.alpha:
+            y_pred_teacher = self.add_noise(y_pred_teacher, self.noise_variance)
 
-        loss = (1.0 - distil_weight) * torch.nn.functional.cross_entropy(
+        loss = (1.0 - self.distil_weight) * torch.nn.functional.cross_entropy(
             y_pred_student, y_true
         )
 
-        loss += (distil_weight * temp * temp) * local_loss(
-            torch.nn.functional.log_softmax(y_pred_student / temp, dim=1),
-            torch.nn.functional.softmax(y_pred_teacher / temp, dim=1),
+        loss += (self.distil_weight * self.temp * self.temp) * local_loss(
+            torch.nn.functional.log_softmax(y_pred_student / self.temp, dim=1),
+            torch.nn.functional.softmax(y_pred_teacher / self.temp, dim=1),
         )
 
         return loss
