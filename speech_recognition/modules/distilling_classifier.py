@@ -26,6 +26,11 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         teacher_checkpoint: Union[str, List[str], None] = None,
         freeze_teachers: bool = True,
         distillation_loss: str = "MSE",
+        temp: float = 10.0,
+        distil_weight: float = 0.5,
+        alpha: float = 0.5,
+        noise_variance: float = 0.1,
+        correct_prob: float = 0.9,
     ):
         super().__init__(
             dataset,
