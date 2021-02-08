@@ -249,7 +249,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         arxiv: https://arxiv.org/abs/2009.08453
     """
 
-    def KLloss(self, student, teacher, target):
+    def KLloss(self, student, teacher):
         # Target is ignored at training time. Loss is defined as KL divergence
         # between the model output and the soft labels.
         soft_labels = torch.nn.functional.softmax(teacher, dim=1)
@@ -321,7 +321,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
 
     def calculate_loss(self, student_logits, teacher_logits, y):
         loss = math.inf
-        if self.distillation_loss == "MSE":
+        if self.distillation_loss == "MSE" & self.distillation_loss == "KLLoss":
             loss = self.loss_func(student_logits, teacher_logits[0])
         elif self.distillation_loss == "TFVirtual":
             loss = self.loss_func(student_logits, y)
