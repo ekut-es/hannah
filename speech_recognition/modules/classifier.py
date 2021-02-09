@@ -170,10 +170,7 @@ class StreamClassifierModule(LightningModule):
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
         sampler = None
-        if (
-            "balance_train_set_by_sampler" in dataset_conf.keys()
-            and dataset_conf["balance_train_set_by_sampler"]
-        ):
+        if dataset_conf.sampler == "weighted":
             sampler = self.get_balancing_sampler(self.train_set)
         else:
             sampler = data.RandomSampler(self.train_set)
