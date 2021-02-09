@@ -103,7 +103,7 @@ def train(config=DictConfig):
         profiler=profiler,
         callbacks=callbacks,
         checkpoint_callback=checkpoint_callback,
-        logger=logger
+        logger=logger,
     )
 
     if config["auto_lr"]:

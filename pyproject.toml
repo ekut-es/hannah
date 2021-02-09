@@ -27,6 +27,7 @@ zipp = "^3.3.1"
 bitstring = "^3.1.7"
 hydra-unas-sweeper = {path = "plugins/hydra_unas_sweeper", develop=true}
 hydra-submitit-launcher = "^1.0.1"
+wfdb = "^3.2.0"
 
 
 [tool.poetry.dev-dependencies]

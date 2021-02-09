@@ -17,22 +17,16 @@ import torch
 import torch.utils.data as data
 from hydra.utils import instantiate, get_class
 
-from torchvision.datasets.utils import (
-    download_and_extract_archive,
-    extract_archive,
-    list_files,
-    list_dir,
-)
 
 from ..datasets.NoiseDataset import NoiseDataset
 from ..datasets.DatasetSplit import DatasetSplit
 from ..datasets.Downsample import Downsample
-import torchaudio
+
 
 from omegaconf import DictConfig
 
 
-class SpeechClassifierModule(LightningModule):
+class StreamClassifierModule(LightningModule):
     def __init__(
         self,
         dataset: DictConfig,
@@ -141,6 +135,18 @@ class SpeechClassifierModule(LightningModule):
         # also in case of branched networks
         self.log(f"{prefix}_loss", loss)
 
+    @staticmethod
+    def get_balancing_sampler(dataset):
+        distribution = dataset.get_categories_distribution()
+        weights = 1.0 / torch.tensor(
+            [distribution[i] for i in range(len(distribution))], dtype=torch.float
+        )
+
+        sampler_weights = weights[dataset.get_label_list()]
+
+        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
+        return sampler
+
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
@@ -162,15 +168,21 @@ class SpeechClassifierModule(LightningModule):
 
     def train_dataloader(self):
         train_batch_size = self.hparams["batch_size"]
+        dataset_conf = self.hparams.dataset
+        sampler = None
+        if dataset_conf.sampler == "weighted":
+            sampler = self.get_balancing_sampler(self.train_set)
+        else:
+            sampler = data.RandomSampler(self.train_set)
         train_loader = data.DataLoader(
             self.train_set,
             batch_size=train_batch_size,
-            shuffle=True,
             drop_last=True,
             pin_memory=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
+            sampler=sampler,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
         self.batches_per_epoch = len(train_loader)
@@ -200,7 +212,7 @@ class SpeechClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
         return dev_loader
@@ -228,7 +240,7 @@ class SpeechClassifierModule(LightningModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context='fork' if self.hparams['num_workers'] > 0 else None, 
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
         return test_loader
@@ -262,3 +274,11 @@ class SpeechClassifierModule(LightningModule):
                         "val_accuracy": self.trainer.callback_metrics["val_accuracy"],
                     },
                 )
+
+
+class SpeechClassifierModule(LightningModule):
+    def __init__(self, *args, **kwargs):
+        logging.critical(
+            "SpeechClassifierModule has been renamed to StreamClassifierModule"
+        )
+        super(SpeechClassifierModule, self).__init__(*args, **kwargs)

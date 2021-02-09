@@ -1,7 +1,7 @@
 # @package _group_
 
 _target_: torchaudio.transforms.MFCC
-sample_rate: 16000
+sample_rate: ${dataset.samplingrate}
 n_mfcc: 40
 dct_type: 2
 norm: 'ortho'
