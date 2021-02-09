@@ -3,7 +3,6 @@
 data_folder: ${hydra:runtime.cwd}/datasets/
 cls: speech_recognition.datasets.dataset.AtrialFibrillationDataset
 dataset: atrial_fibrillation
-balance_train_set_by_sampler: True
 
 test_pct: 10
 dev_pct: 10
@@ -20,3 +19,4 @@ variants: ["atrial_fibrillation"]
 data_split: []
 noise_dataset: []
 download_folder: ""
+sampler: weighted
