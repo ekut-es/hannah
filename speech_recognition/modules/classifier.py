@@ -175,6 +175,8 @@ class StreamClassifierModule(LightningModule):
             and dataset_conf["balance_train_set_by_sampler"]
         ):
             sampler = self.get_balancing_sampler(self.train_set)
+        else:
+            sampler = data.RandomSampler(self.train_set)
         train_loader = data.DataLoader(
             self.train_set,
             batch_size=train_batch_size,
