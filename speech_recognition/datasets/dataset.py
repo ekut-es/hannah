@@ -221,13 +221,13 @@ class PAMAP2_DataPoint:
 class PAMAP2_DataChunk:
     """ A DataChunk is a item of the pytorch dataset """
 
-    def __init__(self, source):
+    def __init__(self, source, start=None, stop=None):
         if type(source) is list:
             self.data = np.stack([datapoint.to_array() for datapoint in source])
             self.label = source[0].to_label()
         elif type(source) is str:
             with h5py.File(source, "r") as f:
-                self.data = f["dataset"][()]
+                self.data = f["dataset"][start:stop]
                 self.label = f["dataset"].attrs["label"]
         else:
             raise Exception("Unsupported DataChunk parameter")
@@ -260,8 +260,8 @@ class PAMAP2_Dataset(data.Dataset):
                             for index in sorted(list(PAMAP2_DataPoint.ACTIVITY_MAPPING.keys()))]
 
     def __getitem__(self, item):
-        path = self.data_files[item]
-        chunk = PAMAP2_DataChunk(path)
+        path, start = self.data_files[item]
+        chunk = PAMAP2_DataChunk(path, start=start, stop=start+self.input_length)
         data = chunk.get_tensor().transpose(1, 0)
         label = chunk.get_label_tensor()
         return data, data.shape[0], label, label.shape[0]
@@ -279,26 +279,34 @@ class PAMAP2_Dataset(data.Dataset):
 
         folder = os.path.join(config["data_folder"],
                               "pamap2",
-                              "pamap2_prepared",
-                              f"input_length_{input_length}")
+                              "pamap2_prepared")
 
         sets = [[], [], []]
 
         for root, dirs, files in os.walk(folder):
             for file_name in files:
                 path = os.path.join(root, file_name)
+                with h5py.File(path, "r") as f:
+                    length = len(f["dataset"][()])
                 max_no_files = 2 ** 27 - 1
-                bucket = int(hashlib.sha1(path.encode()).hexdigest(),
-                             16)
-                bucket = (bucket % (max_no_files + 1)) * (
-                        100.0 / max_no_files)
-                if bucket < dev_pct:
-                    tag = DatasetType.DEV
-                elif bucket < test_pct + dev_pct:
-                    tag = DatasetType.TEST
-                else:
-                    tag = DatasetType.TRAIN
-                sets[tag.value] += [path]
+                start = 0
+                stop = length
+                step = input_length
+                for i in range(start, stop, step):
+                    if i+step >= stop - 1:
+                        continue
+                    chunk_hash = f"{path}{i}"
+                    bucket = int(hashlib.sha1(chunk_hash.encode()).hexdigest(),
+                                 16)
+                    bucket = (bucket % (max_no_files + 1)) * (
+                            100.0 / max_no_files)
+                    if bucket < dev_pct:
+                        tag = DatasetType.DEV
+                    elif bucket < test_pct + dev_pct:
+                        tag = DatasetType.TEST
+                    else:
+                        tag = DatasetType.TRAIN
+                    sets[tag.value] += [(path, i)]
 
         datasets = (
             cls(sets[DatasetType.TRAIN.value], DatasetType.TRAIN, config),
@@ -345,11 +353,8 @@ class PAMAP2_Dataset(data.Dataset):
                 clear_download=clear_download,
             )
 
-        input_length = config["input_length"]
-
         folder_prepared = os.path.join(target_folder,
-                                       "pamap2_prepared",
-                                       f"input_length_{input_length}")
+                                       "pamap2_prepared")
 
         if not os.path.isdir(folder_prepared):
             cls.prepare_files(config, folder_prepared, target_folder)
@@ -357,7 +362,6 @@ class PAMAP2_Dataset(data.Dataset):
     @classmethod
     def prepare_files(cls, config, folder_prepared, folder_source):
         os.makedirs(folder_prepared)
-        input_length = config["input_length"]
 
         folder_conf = ["Protocol", "Optional"]
         for conf in folder_conf:
@@ -383,9 +387,6 @@ class PAMAP2_Dataset(data.Dataset):
                     old_activityID = datapoint.activityID
                 print("Now writing...")
                 for nr, group in enumerate(groups):
-                    start = 0
-                    stop = len(group)
-                    step = input_length
 
                     subfolder = f"label_{str(group[0].to_label()).zfill(2)}" \
                                 f"_activityID_{str(group[0].activityID).zfill(2)}" \
@@ -395,14 +396,11 @@ class PAMAP2_Dataset(data.Dataset):
                     if not os.path.isdir(subfolder_path):
                         os.mkdir(subfolder_path)
 
-                    for i in range(start, stop, step):
-                        if i+input_length < stop - 1:
-                            chunk = group[i:i+input_length]
-                            data_chunk = PAMAP2_DataChunk(chunk)
-                            data_chunk.to_file(
-                                os.path.join(folder_prepared,
-                                             subfolder,
-                                             f"{conf}_{file}_{nr}_{i}.hdf5"))
+                    data_chunk = PAMAP2_DataChunk(group)
+                    data_chunk.to_file(
+                        os.path.join(folder_prepared,
+                                     subfolder,
+                                     f"{conf}_{file}_{nr}.hdf5"))
 
 
 
