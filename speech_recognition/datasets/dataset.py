@@ -11,7 +11,7 @@ import numpy as np
 import scipy.signal as signal
 import torch
 import torch.utils.data as data
-import pickle
+import h5py
 
 from enum import Enum
 from collections import defaultdict
@@ -76,8 +76,8 @@ class Data3D:
         Data3D.last_y = self.y
         Data3D.last_z = self.z
 
-    def to_tensor(self):
-        return torch.Tensor([self.x, self.y, self.z])
+    def to_array(self):
+        return np.array([self.x, self.y, self.z])
 
 
 class PAMPAP2_IMUData:
@@ -108,15 +108,15 @@ class PAMPAP2_IMUData:
 
         PAMPAP2_IMUData.last_temperature = self.temperature
 
-    def to_tensor(self):
-        temperature_tensor = torch.Tensor([self.temperature])
+    def to_array(self):
+        temperature_tensor = np.array([self.temperature])
         tensor_tuple = (temperature_tensor,
-                        self.high_range_acceleration_data.to_tensor(),
-                        self.low_range_acceleration_data.to_tensor(),
-                        self.gyroscope_data.to_tensor(),
-                        self.magnetometer_data.to_tensor(),
+                        self.high_range_acceleration_data.to_array(),
+                        self.low_range_acceleration_data.to_array(),
+                        self.gyroscope_data.to_array(),
+                        self.magnetometer_data.to_array(),
                         )
-        return torch.cat(tensor_tuple)
+        return np.concatenate(tensor_tuple)
 
     @staticmethod
     def from_elements(elements):
@@ -188,18 +188,18 @@ class PAMAP2_DataPoint:
         else:
             return PAMAP2_DataPoint(**kwargs)
 
-    def to_tensor(self):
-        heart_rate_tensor = torch.Tensor([self.heart_rate])
+    def to_array(self):
+        heart_rate_tensor = np.array([self.heart_rate])
         tensor_tuple = (heart_rate_tensor,
-                        self.imu_hand.to_tensor(),
-                        self.imu_chest.to_tensor(),
-                        self.imu_ankle.to_tensor(),)
+                        self.imu_hand.to_array(),
+                        self.imu_chest.to_array(),
+                        self.imu_ankle.to_array(),)
 
-        return torch.cat(tensor_tuple)
+        return np.concatenate(tensor_tuple)
 
     def to_label(self):
         label = sorted(list(self.ACTIVITY_MAPPING.keys())).index(self.activityID)
-        return torch.Tensor([label]).long(), label
+        return label
 
     @staticmethod
     def from_line(line, split_character=" ", nan_string="NaN"):
@@ -218,30 +218,30 @@ class PAMAP2_DataPoint:
                           imu_ankle=PAMPAP2_IMUData.from_elements(elements[37:53]))
 
 
-class PAMAP2_DataChunk(list):
+class PAMAP2_DataChunk:
     """ A DataChunk is a item of the pytorch dataset """
 
-    def __init__(self, datapoints):
-        super(PAMAP2_DataChunk, self).__init__()
-        for datapoint in datapoints:
-            self.__iadd__([datapoint.to_tensor()])
-        self.label_tensor, self.label = datapoints[0].to_label()
+    def __init__(self, source):
+        if type(source) is list:
+            self.data = np.stack([datapoint.to_array() for datapoint in source])
+            self.label = source[0].to_label()
+        elif type(source) is str:
+            with h5py.File(source, "r") as f:
+                self.data = f["dataset"][()]
+                self.label = f["dataset"].attrs["label"]
+        else:
+            raise Exception("Unsupported DataChunk parameter")
 
-    def to_pickle_file(self, file):
-        with open(file, "wb") as f:
-            pickle.dump(self, f)
-
-    @staticmethod
-    def from_pickle_file(file):
-        with open(file, "rb") as f:
-            obj = pickle.load(f)
-        return obj
+    def to_file(self, file):
+        with h5py.File(file, "w") as f:
+            dataset = f.create_dataset("dataset", data=self.data)
+            dataset.attrs["label"] = self.label
 
     def get_tensor(self):
-        return torch.stack(self)
+        return torch.from_numpy(self.data).float()
 
     def get_label_tensor(self):
-        return self.label_tensor
+        return torch.Tensor([self.label]).long()
 
     def get_label(self):
         return self.label
@@ -261,7 +261,7 @@ class PAMAP2_Dataset(data.Dataset):
 
     def __getitem__(self, item):
         path = self.data_files[item]
-        chunk = PAMAP2_DataChunk.from_pickle_file(path)
+        chunk = PAMAP2_DataChunk(path)
         data = chunk.get_tensor().transpose(1, 0)
         label = chunk.get_label_tensor()
         return data, data.shape[0], label, label.shape[0]
@@ -380,9 +380,9 @@ class PAMAP2_Dataset(data.Dataset):
                     if i+input_length < stop - 1:
                         chunk = group[i:i+input_length]
                         data_chunk = PAMAP2_DataChunk(chunk)
-                        data_chunk.to_pickle_file(
+                        data_chunk.to_file(
                             os.path.join(folder_prepared,
-                                         f"{file}_{nr}_{i}.pkl"))
+                                         f"{file}_{nr}_{i}.hdf5"))
 
 
 
