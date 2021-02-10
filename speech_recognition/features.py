@@ -1,10 +1,9 @@
 import math
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-
 from torch.nn.modules.utils import _single
 
 
@@ -186,3 +185,57 @@ class RawFeatures(nn.Module):
     def forward(self, x):
         x = torch.unsqueeze(x, dim=1)
         return x
+
+
+class SincConvFFT(nn.Module):
+    @staticmethod
+    def to_mel(hz):
+        return 2595 * np.log10(1 + hz / 700)
+
+    @staticmethod
+    def to_hz(mel):
+        return 700 * (10 ** (mel / 2595) - 1)
+
+    def __init__(
+        self, out_channels=40, sample_rate=16000, min_low_hz=50, min_band_hz=50
+    ):
+        super(SincConvFFT, self).__init__()
+
+        self.out_channels = out_channels
+        self.sample_rate = sample_rate
+        self.min_low_hz = min_low_hz
+        self.min_band_hz = min_band_hz
+
+        # initializing filter banks in audible frequency range
+        low_hz = self.min_low_hz
+        high_hz = sample_rate / 2 - (self.min_band_hz + self.min_low_hz)
+
+        mel = np.linspace(
+            self.to_mel(low_hz), self.to_mel(high_hz), self.out_channels + 1
+        )
+        hz = self.to_hz(mel)
+
+        self.low_freq_ = nn.Parameter(torch.Tensor(hz[:-1]).view(-1, 1))
+        self.band_freq_ = nn.Parameter(torch.Tensor(np.diff(hz)).view(-1, 1))
+
+    def forward(self, x):
+        spectrogram = torch.stft(x.squeeze(1), n_fft=160, hop_length=160)
+        spectrogram = spectrogram[:, :, :, 0]
+
+        f_low = torch.abs(self.low_freq_) + self.min_low_hz
+        f_high = torch.clamp(
+            f_low + self.min_band_hz + torch.abs(self.band_freq_),
+            self.min_low_hz,
+            self.sample_rate / 2,
+        )
+        band_width = self.sample_rate / (2 * spectrogram.shape[1])
+        f_low_idx = f_low.div(band_width).floor()
+        f_high_idx = f_high.div(band_width).ceil()
+        channels = [
+            spectrogram[:, f_low_idx.int()[i] : f_high_idx.int()[i], :].sum(dim=1)
+            for i in range(self.out_channels)
+        ]
+        sinc_test_features = torch.stack(channels, dim=1)
+        sinc_test_features = sinc_test_features.div(sinc_test_features.max())
+
+        return sinc_test_features
