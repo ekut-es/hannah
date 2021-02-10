@@ -275,26 +275,30 @@ class PAMAP2_Dataset(data.Dataset):
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
 
+        input_length = config["input_length"]
+
         folder = os.path.join(config["data_folder"],
                               "pamap2",
-                              "pamap2_prepared")
+                              "pamap2_prepared",
+                              f"input_length_{input_length}")
 
         sets = [[], [], []]
 
-        for file_name in os.listdir(folder):
-            path = os.path.join(folder, file_name)
-            max_no_files = 2 ** 27 - 1
-            bucket = int(hashlib.sha1(path.encode()).hexdigest(),
-                         16)
-            bucket = (bucket % (max_no_files + 1)) * (
-                    100.0 / max_no_files)
-            if bucket < dev_pct:
-                tag = DatasetType.DEV
-            elif bucket < test_pct + dev_pct:
-                tag = DatasetType.TEST
-            else:
-                tag = DatasetType.TRAIN
-            sets[tag.value] += [path]
+        for root, dirs, files in os.walk(folder):
+            for file_name in files:
+                path = os.path.join(root, file_name)
+                max_no_files = 2 ** 27 - 1
+                bucket = int(hashlib.sha1(path.encode()).hexdigest(),
+                             16)
+                bucket = (bucket % (max_no_files + 1)) * (
+                        100.0 / max_no_files)
+                if bucket < dev_pct:
+                    tag = DatasetType.DEV
+                elif bucket < test_pct + dev_pct:
+                    tag = DatasetType.TEST
+                else:
+                    tag = DatasetType.TRAIN
+                sets[tag.value] += [path]
 
         datasets = (
             cls(sets[DatasetType.TRAIN.value], DatasetType.TRAIN, config),
@@ -341,7 +345,11 @@ class PAMAP2_Dataset(data.Dataset):
                 clear_download=clear_download,
             )
 
-        folder_prepared = os.path.join(target_folder, "pamap2_prepared")
+        input_length = config["input_length"]
+
+        folder_prepared = os.path.join(target_folder,
+                                       "pamap2_prepared",
+                                       f"input_length_{input_length}")
 
         if not os.path.isdir(folder_prepared):
             cls.prepare_files(config, folder_prepared, target_folder)
@@ -350,39 +358,51 @@ class PAMAP2_Dataset(data.Dataset):
     def prepare_files(cls, config, folder_prepared, folder_source):
         os.makedirs(folder_prepared)
         input_length = config["input_length"]
-        folder_samples = os.path.join(folder_source,
-                                      "PAMAP2_Dataset",
-                                      "Protocol")
-        for file in os.listdir(folder_samples):
-            path = os.path.join(folder_samples, file)
-            datapoints = list()
-            with open(path, "r") as f:
-                print(f"Now processing {file}...")
-                for line in f:
-                    datapoint = PAMAP2_DataPoint.from_line(line)
-                    if datapoint is not None:
-                        datapoints += [datapoint]
-            print("Now grouping...")
-            groups = list()
-            old_activityID = None
-            for datapoint in datapoints:
-                if not datapoint.activityID == old_activityID:
-                    groups += [[]]
-                groups[-1] += [datapoint]
-                old_activityID = datapoint.activityID
-            print("Now writing...")
-            for nr, group in enumerate(groups):
-                start = 0
-                stop = len(group)
-                step = input_length
 
-                for i in range(start, stop, step):
-                    if i+input_length < stop - 1:
-                        chunk = group[i:i+input_length]
-                        data_chunk = PAMAP2_DataChunk(chunk)
-                        data_chunk.to_file(
-                            os.path.join(folder_prepared,
-                                         f"{file}_{nr}_{i}.hdf5"))
+        folder_conf = ["Protocol", "Optional"]
+        for conf in folder_conf:
+            folder_samples = os.path.join(folder_source,
+                                          "PAMAP2_Dataset",
+                                          conf)
+            for file in sorted(os.listdir(folder_samples)):
+                path = os.path.join(folder_samples, file)
+                datapoints = list()
+                with open(path, "r") as f:
+                    print(f"Now processing {path}...")
+                    for line in f:
+                        datapoint = PAMAP2_DataPoint.from_line(line)
+                        if datapoint is not None:
+                            datapoints += [datapoint]
+                print("Now grouping...")
+                groups = list()
+                old_activityID = None
+                for datapoint in datapoints:
+                    if not datapoint.activityID == old_activityID:
+                        groups += [[]]
+                    groups[-1] += [datapoint]
+                    old_activityID = datapoint.activityID
+                print("Now writing...")
+                for nr, group in enumerate(groups):
+                    start = 0
+                    stop = len(group)
+                    step = input_length
+
+                    subfolder = f"label_{str(group[0].to_label()).zfill(2)}" \
+                                f"_activityID_{str(group[0].activityID).zfill(2)}" \
+                                f"_{PAMAP2_DataPoint.ACTIVITY_MAPPING[group[0].activityID]}"
+
+                    subfolder_path = os.path.join(folder_prepared, subfolder)
+                    if not os.path.isdir(subfolder_path):
+                        os.mkdir(subfolder_path)
+
+                    for i in range(start, stop, step):
+                        if i+input_length < stop - 1:
+                            chunk = group[i:i+input_length]
+                            data_chunk = PAMAP2_DataChunk(chunk)
+                            data_chunk.to_file(
+                                os.path.join(folder_prepared,
+                                             subfolder,
+                                             f"{conf}_{file}_{nr}_{i}.hdf5"))
 
 
 
