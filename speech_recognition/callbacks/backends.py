@@ -3,6 +3,8 @@ import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import distiller
+
 from collections import OrderedDict
 
 import torch.onnx
@@ -215,17 +217,20 @@ class TRaxUltraTrailBackend(Callback):
         self.use_acc_statistic_model  = use_acc_statistic_model
         self.use_acc_analytical_model = use_acc_analytical_model
         self.use_acc_teda_data        = False
-        self.performance = 0.0
+        # Performance in clock cycles
+        # Power in W
+        # Area in µm^2
+        self.clock_cycles = 1000000000.0
         self.power = 1000000000.0
         self.area = 1000000000.0
         self.accuracy = 0.0
         
-    # TODO: Channel input length is not always correct. Would be good to do it like the backend with onnx or have a look at lightning/Distiller
-    def get_analytical_performance(self, pl_module):
-        performance = 0
-        # Set initial channel length for main branch and parallel/residual connections
-        C_w = pl_module.example_feature_array.size()[2]
-        C_w_parallel = C_w
+    def get_analytical_clock_cycles(self, pl_module):
+        model = pl_module.model
+        dummy_input = pl_module.example_feature_array
+        df = distiller.model_performance_summary(model, dummy_input, dummy_input.shape[0])
+
+        clock_cycles = 0
         for name, layer in pl_module.model.named_modules():
             if isinstance(layer, torch.nn.Conv1d) or isinstance(layer, torch.nn.Linear):
                 if isinstance(layer, torch.nn.Linear):
@@ -236,18 +241,15 @@ class TRaxUltraTrailBackend(Callback):
                     s   = 1
                     pad = 0
                 else:
+                    df_index = df[df['Name'] == name].index[0]
+                    layer_ifm = df["IFM"][df_index]
+                    C_w = int(layer_ifm.split(',')[2][:-1])
                     C   = layer.in_channels
                     K   = layer.out_channels
                     F   = layer.kernel_size[0]
                     s   = layer.stride[0]
                     pad = 1 if layer.padding[0] > 0 else 0
-                    
-                # Undo previous input channel length reduction from main branch. 
-                #After this layer input channel length is set to value from main branch again. 
-                #Assumption: Only in first layer of main branch stride > 1 is applied.
-                if 'parallel' in name:
-                    C_w = C_w * s
-                    
+                                       
                 C_w_mod   = C_w + pad * 2 * (F//2)
                 a_w       = math.floor(((C_w_mod - F) // s) + 1)
                 C_w_b     = F//2
@@ -264,30 +266,27 @@ class TRaxUltraTrailBackend(Callback):
                     MAC_not_e += (F//2) - s*i -(C_w_b - C_w_e)
                     
                 t_l = 1 + math.ceil(C/self.rows) * math.ceil(K/self.cols) * (a_w * F - MAC_not_b - MAC_not_e)
-                performance += t_l
+                clock_cycles += t_l
 
                 #Updating channel length - see TODO
-                if pad:
-                    C_w = math.ceil(C_w / s)
-                else:
-                    C_w = math.ceil(C_w / s) - math.ceil(F/2)
-        return performance
+        return clock_cycles
         
     def _do_summary(self, pl_module):
         res = OrderedDict()
         if self.use_acc_statistic_model:
-            self.performance = 1457.2   *self.cols**2 -33736.2  *self.cols -6.5      *self.bw_w**2 +65       *self.bw_w +170720.2
-            self.power       = 1.469e-07*self.cols**2 +3.133e-06*self.cols +2.937e-07*self.bw_w**2 +2.175e-06*self.bw_w -1.514e-05
-            self.area        = 792.9    *self.cols**2 +1026.6   *self.cols -122.5    *self.bw_w**2 +18941.7  *self.bw_w -63560.6
-            self.accuracy    = 1.0
+            self.clock_cycles = 1457.2   *self.cols**2 -33736.2  *self.cols -6.5      *self.bw_w**2 +65       *self.bw_w +170720.2
+            self.power        = 1.469e-07*self.cols**2 +3.133e-06*self.cols +2.937e-07*self.bw_w**2 +2.175e-06*self.bw_w -1.514e-05
+            self.area         = 792.9    *self.cols**2 +1026.6   *self.cols -122.5    *self.bw_w**2 +18941.7  *self.bw_w -63560.6
+            self.accuracy     = 1.0
 
         # Assumption: Analytical model is more precise than statistical
         if self.use_acc_analytical_model:
-            self.performance = self.get_analytical_performance(pl_module)
-          
+            self.clock_cycles = self.get_analytical_clock_cycles(pl_module)
+
+        # Wait for movement of the whole code to the backend
         #if self.use_acc_teda_data:
         
-        res["acc_performance"] = self.performance
+        res["acc_clock_cycles"] = self.clock_cycles
         res["acc_power"]       = self.power
         res["acc_area"]        = self.area
         res["acc_accuracy"]    = self.accuracy
