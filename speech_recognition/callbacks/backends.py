@@ -1,3 +1,4 @@
+import math
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -192,6 +193,7 @@ class TRaxUltraTrailBackend(Callback):
         period,
         macro_type,
         use_acc_statistic_model,
+        use_acc_analytical_model,
     ):
         self.backend_dir = backend_dir
         self.teda_dir = Path(teda_dir)
@@ -211,23 +213,79 @@ class TRaxUltraTrailBackend(Callback):
         self.xs = []
         self.ys = []
         self.use_acc_statistic_model  = use_acc_statistic_model
-        self.use_acc_analytical_model = False
+        self.use_acc_analytical_model = use_acc_analytical_model
         self.use_acc_teda_data        = False
-        self.performance = 1000000000.0
+        self.performance = 0.0
         self.power = 1000000000.0
         self.area = 1000000000.0
         self.accuracy = 0.0
         
-    def _do_summary(self, pl_module, print=True):
-        res = OrderedDict()
+    # TODO: Channel input length is not always correct. Would be good to do it like the backend with onnx or have a look at lightning/Distiller
+    def get_analytical_performance(self, pl_module):
+        performance = 0
+        # Set initial channel length for main branch and parallel/residual connections
+        C_w = pl_module.example_feature_array.size()[2]
+        C_w_parallel = C_w
+        for name, layer in pl_module.model.named_modules():
+            if isinstance(layer, torch.nn.Conv1d) or isinstance(layer, torch.nn.Linear):
+                if isinstance(layer, torch.nn.Linear):
+                    C   = layer.in_features
+                    K   = layer.out_features
+                    F   = 1
+                    C_w = 1
+                    s   = 1
+                    pad = 0
+                else:
+                    C   = layer.in_channels
+                    K   = layer.out_channels
+                    F   = layer.kernel_size[0]
+                    s   = layer.stride[0]
+                    pad = 1 if layer.padding[0] > 0 else 0
+                    
+                # Undo previous input channel length reduction from main branch. 
+                #After this layer input channel length is set to value from main branch again. 
+                #Assumption: Only in first layer of main branch stride > 1 is applied.
+                if 'parallel' in name:
+                    C_w = C_w * s
+                    
+                C_w_mod   = C_w + pad * 2 * (F//2)
+                a_w       = math.floor(((C_w_mod - F) // s) + 1)
+                C_w_b     = F//2
+                a_p_b     = pad * math.floor(((C_w_b - 1) / s) + 1)
+                MAC_not_b = 0
+                for i in range(a_p_b): 
+                    MAC_not_b += (F//2) - s*i
+                    
+                F_w       = a_w * s + F -s
+                C_w_e     = F_w - C_w - C_w_b
+                a_p_e     = pad * math.floor(((C_w_e - 1)/s) + 1)
+                MAC_not_e = 0
+                for i in range(a_p_e):
+                    MAC_not_e += (F//2) - s*i -(C_w_b - C_w_e)
+                    
+                t_l = 1 + math.ceil(C/self.rows) * math.ceil(K/self.cols) * (a_w * F - MAC_not_b - MAC_not_e)
+                performance += t_l
 
+                #Updating channel length - see TODO
+                if pad:
+                    C_w = math.ceil(C_w / s)
+                else:
+                    C_w = math.ceil(C_w / s) - math.ceil(F/2)
+        return performance
+        
+    def _do_summary(self, pl_module):
+        res = OrderedDict()
         if self.use_acc_statistic_model:
             self.performance = 1457.2   *self.cols**2 -33736.2  *self.cols -6.5      *self.bw_w**2 +65       *self.bw_w +170720.2
             self.power       = 1.469e-07*self.cols**2 +3.133e-06*self.cols +2.937e-07*self.bw_w**2 +2.175e-06*self.bw_w -1.514e-05
             self.area        = 792.9    *self.cols**2 +1026.6   *self.cols -122.5    *self.bw_w**2 +18941.7  *self.bw_w -63560.6
             self.accuracy    = 1.0
-       # if use_acc_analytical_model:
-       #     self.performance = Formula from the UltraTrail paper
+
+        # Assumption: Analytical model is more precise than statistical
+        if self.use_acc_analytical_model:
+            self.performance = self.get_analytical_performance(pl_module)
+          
+        #if self.use_acc_teda_data:
         
         res["acc_performance"] = self.performance
         res["acc_power"]       = self.power
@@ -236,7 +294,7 @@ class TRaxUltraTrailBackend(Callback):
         return res
         
     def on_validation_epoch_end(self, trainer, pl_module):
-        res = self._do_summary(pl_module, print=False)
+        res = self._do_summary(pl_module)
         for k, v in res.items():
             pl_module.log(k, v)
         

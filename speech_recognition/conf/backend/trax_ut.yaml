@@ -19,3 +19,4 @@ rows: 8
 period: 1000
 macro_type: "RTL"
 use_acc_statistic_model: True
+use_acc_analytical_model: True
