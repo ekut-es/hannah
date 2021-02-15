@@ -25,7 +25,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         normalizer: Optional[DictConfig] = None,
         teacher_checkpoint: Union[str, List[str], None] = None,
         freeze_teachers: bool = True,
-        distillation_loss: str = "MSE",
+        distillation_loss: str = "DGKD",
         temp: float = 10.0,
         distil_weight: float = 0.5,
         alpha: float = 0.5,
@@ -280,15 +280,8 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
 
         n = len(teacher_logits[1:])
 
-        # pop t random elements from logits
-        # works as kind of regularizer (not mandatory)
-        # TODO how to pass t to the func?
-        # for k in range(t):
-        #     logits.pop(random.randrange(len(logits)))
-
         # build specific loss:
 
-        # TODO missing temperature T
         softmax = torch.nn.Softmax(dim=1)  # adds to one along dim 1
         cross_entropy = torch.nn.CrossEntropyLoss()
         kl_div = torch.nn.KLDivLoss(
@@ -297,23 +290,32 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
 
         l_ce_s = cross_entropy(student_logits, y)
 
-        y_hat_s = softmax(student_logits.squeeze(1))
-        y_hat_t = softmax(teacher_logits[0].squeeze(1))
+        student_logits_scaled = student_logits / self.temp
+        teacher_logits_scaled = teacher_logits[0] / self.temp
+        y_hat_s = softmax(student_logits_scaled.squeeze(1))
+        y_hat_t = softmax(teacher_logits_scaled.squeeze(1))
 
-        # TODO missing temperature T
-        kl_div_t_s = kl_div(y_hat_t, y_hat_s)
+        kl_div_t_s = (self.temp ** 2) * kl_div(y_hat_t, y_hat_s)
 
         # TODO is there a smarter (numpy) way to sum?
         sum_kl_div_assis_s = 0
         # removing teacher logits
         assi_logits = teacher_logits[1:]
+
+        # pop t random elements from logits
+        # works as kind of regularizer (not mandatory)
+
+        # TODO how to pass t to the func?
+        for k in range(1):
+            assi_logits.pop(random.randrange(len(assi_logits)))
+
         for logits in assi_logits:
             y_hat_assi = softmax(logits)
-            sum_kl_div_assis_s += kl_div(y_hat_assi, y_hat_s)
+            sum_kl_div_assis_s += (self.temp ** 2) * kl_div(y_hat_assi, y_hat_s)
 
         # balancing cross entropy of student and Kullback-Leibler div
         # NOTE: higher lambda reduces the loss significant (it weights the high student loss lower) but does not improve test accuracy as significant
-        lam = 0.5
+        lam = self.alpha
         # equation (7) in paper
         loss = (n + 1) * (1 - lam) * l_ce_s + lam * (kl_div_t_s + sum_kl_div_assis_s)
 

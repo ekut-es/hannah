@@ -4,9 +4,9 @@ _target_: speech_recognition.modules.SpeechKDClassifierModule
 num_workers: 0
 batch_size: 128
 
-temp: 10.0
+temp: 1 # used in "DGKD"
 distil_weight: 0.5
-alpha: 0.5
+alpha: 0.6 # works also as lambda for "DGKD"
 noise_variance: 0.1
 correct_prob: 0.9
 
