@@ -306,8 +306,8 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
         # works as kind of regularizer (not mandatory)
 
         # TODO how to pass t to the func?
-        for k in range(1):
-            assi_logits.pop(random.randrange(len(assi_logits)))
+        # for k in range(1):
+        #     assi_logits.pop(random.randrange(len(assi_logits)))
 
         for logits in assi_logits:
             y_hat_assi = softmax(logits)
