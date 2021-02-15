@@ -275,12 +275,11 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
     """
     # densely guided knowledge distillation using multiple teachers
     def densely_guided_kd(self, student_logits, teacher_logits, y):
+
         # setup
-        assert len(teacher_logits) >= 2
+        assert len(teacher_logits) >= 2  # at least one teacher and one assistant
 
         n = len(teacher_logits[1:])
-
-        # build specific loss:
 
         softmax = torch.nn.Softmax(dim=1)  # adds to one along dim 1
         cross_entropy = torch.nn.CrossEntropyLoss()
@@ -288,34 +287,38 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
             reduction="batchmean"
         )  # TODO batchmean removes warning but unsure whether good desicion
 
+        # specific loss:
+
         l_ce_s = cross_entropy(student_logits, y)
 
-        student_logits_scaled = student_logits / self.temp
-        teacher_logits_scaled = teacher_logits[0] / self.temp
+        temp = self.temp
+        student_logits_scaled = student_logits / temp
+        teacher_logits_scaled = teacher_logits[0] / temp
         y_hat_s = softmax(student_logits_scaled.squeeze(1))
         y_hat_t = softmax(teacher_logits_scaled.squeeze(1))
 
-        kl_div_t_s = (self.temp ** 2) * kl_div(y_hat_t, y_hat_s)
+        kl_div_t_s = (temp ** 2) * kl_div(y_hat_t, y_hat_s)
 
-        # TODO is there a smarter (numpy) way to sum?
-        sum_kl_div_assis_s = 0
         # removing teacher logits
         assi_logits = teacher_logits[1:]
 
-        # pop t random elements from logits
+        # pop del_n random elements from assistant logits
         # works as kind of regularizer (not mandatory)
+        del_n = self.alpha
+        assert isinstance(del_n, int)
+        if del_n > 0:
+            assert del_n < n
+            for k in range(del_n):
+                assi_logits.pop(random.randrange(len(assi_logits)))
 
-        # TODO how to pass t to the func?
-        # for k in range(1):
-        #     assi_logits.pop(random.randrange(len(assi_logits)))
-
+        # TODO is there a smarter (numpy) way to sum?
+        sum_kl_div_assis_s = 0
         for logits in assi_logits:
             y_hat_assi = softmax(logits)
-            sum_kl_div_assis_s += (self.temp ** 2) * kl_div(y_hat_assi, y_hat_s)
+            sum_kl_div_assis_s += (temp ** 2) * kl_div(y_hat_assi, y_hat_s)
 
         # balancing cross entropy of student and Kullback-Leibler div
-        # NOTE: higher lambda reduces the loss significant (it weights the high student loss lower) but does not improve test accuracy as significant
-        lam = self.alpha
+        lam = self.distil_weight
         # equation (7) in paper
         loss = (n + 1) * (1 - lam) * l_ce_s + lam * (kl_div_t_s + sum_kl_div_assis_s)
 
