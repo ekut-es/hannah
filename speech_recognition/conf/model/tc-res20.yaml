@@ -1,0 +1,56 @@
+# @package _group_
+
+cls: speech_recognition.models.tc.models.TCResNetModel
+name: tc-res20
+separable:
+- 0
+- 0
+block1_conv_size: 9
+block1_stride: 2
+block1_output_channels: 24
+block2_conv_size: 9
+block2_stride: 1
+block2_output_channels: 24
+block3_conv_size: 9
+block3_stride: 2
+block3_output_channels: 32
+block4_conv_size: 9
+block4_stride: 1
+block4_output_channels: 32
+block5_conv_size: 9
+block5_stride: 2
+block5_output_channels: 48
+block6_conv_size: 9
+block6_stride: 1
+block6_output_channels: 48
+block7_conv_size: 9
+block7_stride: 2
+block7_output_channels: 64
+block8_conv_size: 9
+block8_stride: 1
+block8_output_channels: 64
+block9_conv_size: 9
+block9_stride: 2
+block9_output_channels: 80
+bottleneck:
+- 0
+- 0
+channel_division:
+- 2
+- 4
+conv1_output_channels: 16
+conv1_size: 3
+conv1_stride: 1
+dropout_prob: 0.5
+fully_convolutional: false
+inputlayer: true
+width_multiplier: 1.0
+dilation: 1
+clipping_value: 100000.0
+small: false
+
+
+# Set by LigthningModule
+width: 101
+height: 40
+n_labels: 12

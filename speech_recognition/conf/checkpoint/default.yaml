@@ -1,9 +1,9 @@
 # @package _group_
 
 _target_: pytorch_lightning.callbacks.ModelCheckpoint
-filepath: "checkpoint"
+dirpath: "checkpoints"
 save_top_k: 5
 verbose: False
-monitor: val_loss
+monitor: "val_loss"
 mode: min
 prefix: ""

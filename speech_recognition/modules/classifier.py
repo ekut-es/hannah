@@ -4,6 +4,7 @@ import random
 import logging
 import numpy as np
 import sys
+import re
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.functional import accuracy, f1, recall
@@ -24,6 +25,7 @@ from ..datasets.Downsample import Downsample
 
 
 from omegaconf import DictConfig
+from typing import Union
 
 
 class StreamClassifierModule(LightningModule):
@@ -56,7 +58,7 @@ class StreamClassifierModule(LightningModule):
             Downsample.downsample(self.hparams.dataset)
 
     def setup(self, stage):
-
+        # TODO stage variable is not used!
         self.msglogger.info("Setting up model")
 
         if self.initialized:
