@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 
-from .classifier import SpeechClassifierModule
+from .classifier import StreamClassifierModule
 from omegaconf import DictConfig
 from typing import Optional
 import torch.nn as nn
@@ -12,7 +12,7 @@ from typing import Union, List
 import math
 
 
-class SpeechKDClassifierModule(SpeechClassifierModule):
+class SpeechKDClassifierModule(StreamClassifierModule):
     def __init__(
         self,
         dataset: DictConfig,
@@ -125,7 +125,7 @@ class SpeechKDClassifierModule(SpeechClassifierModule):
 
                 # Overwrite dataset
                 hparams["dataset"] = self.hparams["dataset"]
-                teacher_module = SpeechClassifierModule(**hparams)
+                teacher_module = StreamClassifierModule(**hparams)
                 teacher_module.trainer = self.trainer
                 teacher_module.setup("fit")
                 teacher_module.load_state_dict(checkpoint["state_dict"])
