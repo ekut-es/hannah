@@ -311,11 +311,25 @@ Hydra supports simple grid search using the parameter multirun. For example run:
 For more advanced exploration techniques hydra supports sweeper plugins. The one based on nevergrad (https://facebookresearch.github.io/nevergrad/)  is installed by default.
 
 
-   python -m speech_recognition.train --multirun hydra/sweeper=nevergrad  scheduler.step.lr='interval(0.0001,1.0)' scheduler.step.stepsize='interval(0.0001, 1.0)'
+    python -m speech_recognition.train --multirun hydra/sweeper=nevergrad  optimizer.lr='interval(0.0001,0.1)' optimizer.eps='interval(1.0e-09, 1.0e-05)' optimizer.weight_decay='interval(0, 0.1)'
 
-Sweeps over the stepsize and initial learning rate of the step learning rate scheduler.
+Sweeps over optimizer learning rate parameters.
 
+# Parallel Launchers
 
+To launch multiple optimizations in parallel you can use a hydra launcher
+
+Submitit launcher is installed by default:
+
+    python -m speech_recognition.train --multirun hydra/sweeper=nevergrad  hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.eps='interval(1.0e-09, 1.0e-05)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
+
+Launches optimizer hyerparameter optimization with 5 parallel jobs.
+
+# Early stopping
+
+To stop training early when a validation metric does not improve, you can use lignings early stopping callback:
+
+    python -m speech_recognition.train early_stopping=default
 
 
 # Showing graphical results

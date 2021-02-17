@@ -1,0 +1,8 @@
+# @package _group_
+
+_target_: pytorch_lightning.callbacks.EarlyStopping
+monitor: val_error
+min_delta: 0.0
+patience: 10
+verbose: true
+mode:  min

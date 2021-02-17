@@ -59,7 +59,7 @@ def train(config=DictConfig):
     callbacks = []
 
     # TODO distiller only available without auto_lr because compatibility issues
-    if "compress" in config:
+    if config.get("compress", None):
         if config["auto_lr"]:
             raise Exception(
                 "Automated learning rate finder is not compatible with compression"
@@ -71,7 +71,7 @@ def train(config=DictConfig):
         CSVLogger(".", name=""),
     ]
 
-    if "backend" in config:
+    if config.get("backend", None):
         backend = instantiate(config.backend)
         callbacks.append(backend)
 
@@ -80,22 +80,26 @@ def train(config=DictConfig):
     logging.info("Starting training")
 
     profiler = None
-    if "profiler" in config:
+    if config.get("profiler", None):
         profiler = instantiate(config.profiler)
 
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
 
-    if "gpu_stats" in config and config.gpu_stats:
+    if config.get("gpu_stats", None):
         gpu_stats = GPUStatsMonitor()
         callbacks.append(gpu_stats)
 
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
 
-    opt_monitor = config.get("monitor", ["val_loss"])
+    opt_monitor = config.get("monitor", ["val_error"])
     opt_callback = HydraOptCallback(monitor=opt_monitor)
     callbacks.append(opt_callback)
+
+    if config.get("early_stopping", None):
+        stop_callback = instantiate(config.early_stopping)
+        callbacks.append(stop_callback)
 
     # INIT PYTORCH-LIGHTNING
     lit_trainer = Trainer(
@@ -122,7 +126,7 @@ def train(config=DictConfig):
     lit_trainer.fit(lit_module)
 
     # PL TEST
-    lit_trainer.test(ckpt_path=None)
+    lit_trainer.test()
 
     return opt_callback.result()
 
