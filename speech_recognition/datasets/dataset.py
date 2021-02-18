@@ -24,7 +24,7 @@ from ..utils import list_all_files, extract_from_download_cache
 msglogger = logging.getLogger()
 
 
-def factor(snr, psig, pnoise):
+def snr_factor(snr, psig, pnoise):
     y = 10 ** (snr / 10)
     return np.sqrt(psig / (pnoise * y))
 
@@ -318,8 +318,8 @@ class SpeechDataset(data.Dataset):
         n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
         self.max_feature = 0
-        self.train_snr_low = config["train_snr_low"]
-        self.train_snr_high = config["train_snr_high"]
+        self.train_snr_low = min(config["train_snr_low"], config["train_snr_high"])
+        self.train_snr_high = max(config["train_snr_low"], config["train_snr_high"])
         self.test_snr = config["test_snr"]
         self.channels = 1  # FIXME: add config option
 
@@ -420,7 +420,7 @@ class SpeechDataset(data.Dataset):
             data = bg_noise
         else:
             if snr != float("inf"):
-                f = factor(snr, psig, pnoise)
+                f = snr_factor(snr, psig, pnoise)
                 data = data + f * bg_noise
 
                 if np.amax(np.absolute(data)) > 1:
