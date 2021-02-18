@@ -20,6 +20,9 @@ before_script:
   - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
   - export PATH=${POETRY_HOME}/bin:${PATH}
 
+  # Work around: https://github.com/python-poetry/poetry/issues/3199
+  - poetry config experimental.new-installer false
+
   # install and manage dependencies with poetry
   - poetry install
 
