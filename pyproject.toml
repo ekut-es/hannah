@@ -2,12 +2,15 @@
 name = "speech_recognition"
 version = "0.1.0"
 description = ""
-authors = ["Felix Lorenz <felix.lorenz@student.uni-tuebingen.de>"]
+authors = [
+    "Christoph Gerum <christoph.gerum@uni-tuebingen.de>",
+    "Felix Lorenz <felix.lorenz@student.uni-tuebingen.de>"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.6.1, <3.9.0"
 pwlf = "^2.0.0"
-distiller = {path = "./external/distiller"}
+distiller = {path = "./external/distiller", develop=true}
 gitdb2 = "2.0.6"
 chainmap = "^1.0.3"
 redis = "^3.4.1"
