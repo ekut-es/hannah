@@ -98,7 +98,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             params.pop("alpha")
             params.pop("noise_variance")
             params.pop("correct_prob")
-            teacher_module = SpeechClassifierModule(**params)
+            teacher_module = StreamClassifierModule(**params)
             teacher_module.trainer = deepcopy(self.trainer)
             teacher_module.model = deepcopy(self.model)
             teacher_module.setup("fit")
@@ -306,8 +306,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         # works as kind of regularizer (not mandatory)
         del_n = self.alpha
         assert isinstance(del_n, int)
+        if del_n >= n:
+            del_n = n - 1
         if del_n > 0:
-            assert del_n < n
             for k in range(del_n):
                 assi_logits.pop(random.randrange(len(assi_logits)))
 
