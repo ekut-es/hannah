@@ -13,8 +13,10 @@ datasets/vad_speech/
 datasets/getrennt/
 datasets/downloads/
 datasets/noise_files/
-datasets/speech_files/
 datasets/hey_snips_research_6k_en_train_eval_clean_ter/
+datasets/atrial_fibrillation
+datasets/atrial_fibrillation_prepared
+.vscode/.ropeproject
 trained_models
 \#*
 tcml_config.json
@@ -23,6 +25,9 @@ tcml_config.json
 speech_recognition.egg-info/
 .coverage
 .idea/
+.envrc
+.ropeproject
+.ModelCheckpoint
 
 venv/
 srf-venv/

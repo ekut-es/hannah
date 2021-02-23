@@ -225,7 +225,23 @@ class IntervalParameter(Parameter):
         self.random_state = random_state
 
     def get_random(self):
-        return IntervalParameterState(self.random_state.random())
+        print(self.config)
+        if self.config.lower and self.config.upper:
+            if self.config.integer:
+                return IntervalParameterState(
+                    self.random_state.random_integers(
+                        self.config.lower, self.config.upper
+                    )
+                )
+            else:
+                return IntervalParameterState(
+                    self.random_state.uniform(self.config.lower, self.config.upper)
+                )
+        else:
+            res = self.random_state.random()
+            if self.config.integer:
+                res = int(res)
+            return IntervalParameterState(res)
 
 
 @dataclass

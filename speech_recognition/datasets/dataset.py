@@ -6,6 +6,9 @@ import logging
 import hashlib
 import sys
 
+import pickle
+import wfdb
+
 import torchaudio
 import numpy as np
 import scipy.signal as signal
@@ -90,12 +93,14 @@ class PAMPAP2_IMUData:
 
     last_temperature = 25.0
 
-    def __init__(self,
-                 temperature=25.0,
-                 high_range_acceleration_data=Data3D(),
-                 low_range_acceleration_data=Data3D(),
-                 gyroscope_data=Data3D(),
-                 magnetometer_data=Data3D(),):
+    def __init__(
+        self,
+        temperature=25.0,
+        high_range_acceleration_data=Data3D(),
+        low_range_acceleration_data=Data3D(),
+        gyroscope_data=Data3D(),
+        magnetometer_data=Data3D(),
+    ):
         if temperature is None:
             self.temperature = PAMPAP2_IMUData.last_temperature
         else:
@@ -110,21 +115,24 @@ class PAMPAP2_IMUData:
 
     def to_array(self):
         temperature_tensor = np.array([self.temperature])
-        tensor_tuple = (temperature_tensor,
-                        self.high_range_acceleration_data.to_array(),
-                        self.low_range_acceleration_data.to_array(),
-                        self.gyroscope_data.to_array(),
-                        self.magnetometer_data.to_array(),
-                        )
+        tensor_tuple = (
+            temperature_tensor,
+            self.high_range_acceleration_data.to_array(),
+            self.low_range_acceleration_data.to_array(),
+            self.gyroscope_data.to_array(),
+            self.magnetometer_data.to_array(),
+        )
         return np.concatenate(tensor_tuple)
 
     @staticmethod
     def from_elements(elements):
-        return PAMPAP2_IMUData(temperature=elements[0],
-                               high_range_acceleration_data=Data3D(triple=elements[1:4]),
-                               low_range_acceleration_data=Data3D(triple=elements[4:7]),
-                               gyroscope_data=Data3D(triple=elements[7:10]),
-                               magnetometer_data=Data3D(triple=elements[10:13]),)
+        return PAMPAP2_IMUData(
+            temperature=elements[0],
+            high_range_acceleration_data=Data3D(triple=elements[1:4]),
+            low_range_acceleration_data=Data3D(triple=elements[4:7]),
+            gyroscope_data=Data3D(triple=elements[7:10]),
+            magnetometer_data=Data3D(triple=elements[10:13]),
+        )
 
 
 class PAMAP2_DataPoint:
@@ -154,13 +162,9 @@ class PAMAP2_DataPoint:
 
     last_heart_rate = 0
 
-    def __init__(self,
-                 timestamp,
-                 activityID,
-                 heart_rate,
-                 imu_hand,
-                 imu_chest,
-                 imu_ankle):
+    def __init__(
+        self, timestamp, activityID, heart_rate, imu_hand, imu_chest, imu_ankle
+    ):
 
         if timestamp is None:
             raise Exception("timestamp must not be NaN")
@@ -190,10 +194,12 @@ class PAMAP2_DataPoint:
 
     def to_array(self):
         heart_rate_tensor = np.array([self.heart_rate])
-        tensor_tuple = (heart_rate_tensor,
-                        self.imu_hand.to_array(),
-                        self.imu_chest.to_array(),
-                        self.imu_ankle.to_array(),)
+        tensor_tuple = (
+            heart_rate_tensor,
+            self.imu_hand.to_array(),
+            self.imu_chest.to_array(),
+            self.imu_ankle.to_array(),
+        )
 
         return np.concatenate(tensor_tuple)
 
@@ -206,16 +212,16 @@ class PAMAP2_DataPoint:
         line = line.rstrip("\n\r")
         elements = line.split(split_character)
 
-        elements = [None if element == nan_string else element
-                    for element in elements]
+        elements = [None if element == nan_string else element for element in elements]
 
-        return PAMAP2_DataPoint.\
-            from_elements(timestamp=elements[0],
-                          activityID=elements[1],
-                          heart_rate=elements[2],
-                          imu_hand=PAMPAP2_IMUData.from_elements(elements[3:19]),
-                          imu_chest=PAMPAP2_IMUData.from_elements(elements[20:36]),
-                          imu_ankle=PAMPAP2_IMUData.from_elements(elements[37:53]))
+        return PAMAP2_DataPoint.from_elements(
+            timestamp=elements[0],
+            activityID=elements[1],
+            heart_rate=elements[2],
+            imu_hand=PAMPAP2_IMUData.from_elements(elements[3:19]),
+            imu_chest=PAMPAP2_IMUData.from_elements(elements[20:36]),
+            imu_ankle=PAMPAP2_IMUData.from_elements(elements[37:53]),
+        )
 
 
 class PAMAP2_DataChunk:
@@ -256,12 +262,14 @@ class PAMAP2_Dataset(data.Dataset):
         self.data_files = data_files
         self.channels = 40
         self.input_length = config["input_length"]
-        self.label_names = [PAMAP2_DataPoint.ACTIVITY_MAPPING[index]
-                            for index in sorted(list(PAMAP2_DataPoint.ACTIVITY_MAPPING.keys()))]
+        self.label_names = [
+            PAMAP2_DataPoint.ACTIVITY_MAPPING[index]
+            for index in sorted(list(PAMAP2_DataPoint.ACTIVITY_MAPPING.keys()))
+        ]
 
     def __getitem__(self, item):
         path, start = self.data_files[item]
-        chunk = PAMAP2_DataChunk(path, start=start, stop=start+self.input_length)
+        chunk = PAMAP2_DataChunk(path, start=start, stop=start + self.input_length)
         data = chunk.get_tensor().transpose(1, 0)
         label = chunk.get_label_tensor()
         return data, data.shape[0], label, label.shape[0]
@@ -277,9 +285,7 @@ class PAMAP2_Dataset(data.Dataset):
 
         input_length = config["input_length"]
 
-        folder = os.path.join(config["data_folder"],
-                              "pamap2",
-                              "pamap2_prepared")
+        folder = os.path.join(config["data_folder"], "pamap2", "pamap2_prepared")
 
         sets = [[], [], []]
 
@@ -293,13 +299,11 @@ class PAMAP2_Dataset(data.Dataset):
                 stop = length
                 step = input_length
                 for i in range(start, stop, step):
-                    if i+step >= stop - 1:
+                    if i + step >= stop - 1:
                         continue
                     chunk_hash = f"{path}{i}"
-                    bucket = int(hashlib.sha1(chunk_hash.encode()).hexdigest(),
-                                 16)
-                    bucket = (bucket % (max_no_files + 1)) * (
-                            100.0 / max_no_files)
+                    bucket = int(hashlib.sha1(chunk_hash.encode()).hexdigest(), 16)
+                    bucket = (bucket % (max_no_files + 1)) * (100.0 / max_no_files)
                     if bucket < dev_pct:
                         tag = DatasetType.DEV
                     elif bucket < test_pct + dev_pct:
@@ -353,8 +357,7 @@ class PAMAP2_Dataset(data.Dataset):
                 clear_download=clear_download,
             )
 
-        folder_prepared = os.path.join(target_folder,
-                                       "pamap2_prepared")
+        folder_prepared = os.path.join(target_folder, "pamap2_prepared")
 
         if not os.path.isdir(folder_prepared):
             cls.prepare_files(config, folder_prepared, target_folder)
@@ -365,19 +368,17 @@ class PAMAP2_Dataset(data.Dataset):
 
         folder_conf = ["Protocol", "Optional"]
         for conf in folder_conf:
-            folder_samples = os.path.join(folder_source,
-                                          "PAMAP2_Dataset",
-                                          conf)
+            folder_samples = os.path.join(folder_source, "PAMAP2_Dataset", conf)
             for file in sorted(os.listdir(folder_samples)):
                 path = os.path.join(folder_samples, file)
                 datapoints = list()
                 with open(path, "r") as f:
-                    print(f"Now processing {path}...")
+                    msglogger.info(f"Now processing {path}...")
                     for line in f:
                         datapoint = PAMAP2_DataPoint.from_line(line)
                         if datapoint is not None:
                             datapoints += [datapoint]
-                print("Now grouping...")
+                msglogger.info("Now grouping...")
                 groups = list()
                 old_activityID = None
                 for datapoint in datapoints:
@@ -385,12 +386,14 @@ class PAMAP2_Dataset(data.Dataset):
                         groups += [[]]
                     groups[-1] += [datapoint]
                     old_activityID = datapoint.activityID
-                print("Now writing...")
+                msglogger.info("Now writing...")
                 for nr, group in enumerate(groups):
 
-                    subfolder = f"label_{str(group[0].to_label()).zfill(2)}" \
-                                f"_activityID_{str(group[0].activityID).zfill(2)}" \
-                                f"_{PAMAP2_DataPoint.ACTIVITY_MAPPING[group[0].activityID]}"
+                    subfolder = (
+                        f"label_{str(group[0].to_label()).zfill(2)}"
+                        f"_activityID_{str(group[0].activityID).zfill(2)}"
+                        f"_{PAMAP2_DataPoint.ACTIVITY_MAPPING[group[0].activityID]}"
+                    )
 
                     subfolder_path = os.path.join(folder_prepared, subfolder)
                     if not os.path.isdir(subfolder_path):
@@ -398,11 +401,239 @@ class PAMAP2_Dataset(data.Dataset):
 
                     data_chunk = PAMAP2_DataChunk(group)
                     data_chunk.to_file(
-                        os.path.join(folder_prepared,
-                                     subfolder,
-                                     f"{conf}_{file}_{nr}.hdf5"))
+                        os.path.join(
+                            folder_prepared, subfolder, f"{conf}_{file}_{nr}.hdf5"
+                        )
+                    )
 
 
+class PhysioDataset(data.Dataset):
+    def __init__(self, data, set_type, config):
+        super().__init__()
+        self.physio_files = list(data.keys())
+        self.set_type = set_type
+        self.physio_labels = list(data.values())
+
+        self.samplingrate = config["samplingrate"]
+
+        self.input_length = config["input_length"]
+
+        self.channels = config["num_channels"]
+
+    def __getitem__(self, index):
+        label = torch.Tensor([self.physio_labels[index]]).long()
+        with open(self.physio_files[index], "rb") as f:
+            data = pickle.load(f)
+        data = torch.from_numpy(data)
+        data = data.transpose(1, 0).float()
+        if self.channels == 1:
+            data = data[0]
+        return data, data.shape[0], label, label.shape[0]
+
+    def get_label_list(self):
+        return self.physio_labels
+
+    def get_categories_distribution(self):
+        distribution = defaultdict(int)
+        for label in self.get_label_list():
+            distribution[label] += 1
+        return distribution
+
+    def __len__(self):
+        return len(self.physio_files)
+
+
+class AtrialFibrillationDataset(PhysioDataset):
+    """ Atrial Fibrillation Database (https://physionet.org/content/afdb/1.0.0/)"""
+
+    LABEL_ATRIAL_FIBRILLATION = "atrial_fibrillation"
+    LABEL_ATRIAL_FLUTTER = "atrial_flutter"
+    LABEL_JUNCTIONAL_RYTHM = "junctional_rythm"
+    LABEL_OTHER_RYTHM = "other"
+
+    ANN_ATRIAL_FIBRILLATION = "(AFIB"
+    ANN_ATRIAL_FLUTTER = "(AFL"
+    ANN_JUNCTIONAL_RYTHM = "(J"
+    ANN_OTHER_RYTHM = "(N"
+
+    def __init__(self, data, set_type, config):
+        self.label_names = self.get_label_names()
+
+        self.annotation_names = self.get_annotation_names()
+        super().__init__(data, set_type, config)
+
+        self.channels = config["num_channels"]
+
+    @classmethod
+    def get_annotation_names(cls):
+        return {
+            cls.ANN_ATRIAL_FIBRILLATION: 0,
+            cls.ANN_ATRIAL_FLUTTER: 1,
+            cls.ANN_JUNCTIONAL_RYTHM: 2,
+            cls.ANN_OTHER_RYTHM: 3,
+        }
+
+    @classmethod
+    def get_label_mapping(cls):
+        return {
+            cls.LABEL_ATRIAL_FIBRILLATION: 0,
+            cls.LABEL_ATRIAL_FLUTTER: 1,
+            cls.LABEL_JUNCTIONAL_RYTHM: 2,
+            cls.LABEL_OTHER_RYTHM: 3,
+        }
+
+    @classmethod
+    def get_label_names(cls):
+        return {
+            0: cls.LABEL_ATRIAL_FIBRILLATION,
+            1: cls.LABEL_ATRIAL_FLUTTER,
+            2: cls.LABEL_JUNCTIONAL_RYTHM,
+            3: cls.LABEL_OTHER_RYTHM,
+        }
+
+    @classmethod
+    def get_physiological_pattern(cls):
+        return cls.get_annotation_names()[cls.ANN_OTHER_RYTHM]
+
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+
+        if len(downloadfolder_tmp) == 0:
+            downloadfolder_tmp = os.path.join(
+                sys.argv[0].replace("speech_recognition/train.py", ""),
+                "datasets/downloads",
+            )
+
+        if not os.path.isdir(downloadfolder_tmp):
+            os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".zip")
+
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+
+        variants = config["variants"]
+
+        target_folder = os.path.join(data_folder, "atrial_fibrillation")
+
+        # download atrial fibrillation dataset
+        filename = "mit-bih-atrial-fibrillation-database-1.0.0.zip"
+
+        if "atrial_fibrillation" in variants:
+            extract_from_download_cache(
+                filename,
+                "https://physionet.org/static/published-projects/afdb/mit-bih-atrial-fibrillation-database-1.0.0.zip",
+                cached_files,
+                os.path.join(downloadfolder_tmp, "atrial_fibrillation"),
+                target_folder,
+                clear_download=clear_download,
+            )
+
+        cls.prepare_files(config)
+
+    @classmethod
+    def prepare_files(cls, config):
+        msglogger.info("Preparing files...")
+        files_list = list()
+        data_folder = config["data_folder"]
+        raw_folder = os.path.join(data_folder, "atrial_fibrillation", "files")
+        output_folder = os.path.join(data_folder, "atrial_fibrillation_prepared")
+        if os.path.isdir(output_folder):
+            msglogger.info("Preparation folder already exists, skipping...")
+            return
+        os.makedirs(output_folder)
+        for label in cls.get_label_mapping().keys():
+            os.makedirs(os.path.join(output_folder, label))
+
+        for filename in os.listdir(raw_folder):
+            file_path = os.path.join(raw_folder, filename)
+            if os.path.isfile(file_path) and ".dat" in filename:
+                name, extension = filename.split(".")
+                annotation_path = os.path.join(raw_folder, name + ".atr")
+                if os.path.isfile(annotation_path):
+                    files_list += [name]
+
+        raw_data = list()
+
+        for name in files_list:
+            sample_path = os.path.join(raw_folder, name)
+            annotations = wfdb.rdann(
+                sample_path,
+                extension="atr",
+                return_label_elements=["symbol", "label_store", "description"],
+            )
+            samples, _ = wfdb.rdsamp(sample_path)
+            raw_data += [{"name": name, "annotations": annotations, "samples": samples}]
+
+        sample_length = config["input_length"]
+
+        for experiment_nr, element in enumerate(raw_data):
+            samples = element["samples"]
+            annotations = element["annotations"]
+            for i, (typus, start_sample) in enumerate(
+                zip(annotations.aux_note, annotations.sample)
+            ):
+
+                label_number = cls.get_annotation_names()[typus]
+                if i < len(annotations.sample) - 1:
+                    stop_sample = annotations.sample[i + 1]
+                else:
+                    stop_sample = len(samples) - 1
+                start = start_sample
+                stop = stop_sample
+                step = int(sample_length * (1 - config["overlap_ratio"]))
+                for i in range(start, stop, step):
+                    if start_sample + sample_length < stop_sample:
+                        chunk = samples[start_sample : start_sample + sample_length]
+                    else:
+                        chunk = samples[
+                            stop_sample - sample_length - 1 : stop_sample - 1
+                        ]
+                    path = os.path.join(
+                        output_folder,
+                        cls.get_label_names()[label_number],
+                        f"ex{experiment_nr}_{i}",
+                    )
+
+                    with open(path, "wb") as f:
+                        pickle.dump(chunk, f)
+
+    @classmethod
+    def splits(cls, config):
+
+        dev_pct = config["dev_pct"]
+        test_pct = config["test_pct"]
+
+        folder = os.path.join(config["data_folder"], "atrial_fibrillation_prepared")
+
+        train_files = dict()
+        test_files = dict()
+        dev_files = dict()
+
+        for subfolder in os.listdir(folder):
+            subpath = os.path.join(folder, subfolder)
+            for filename in os.listdir(subpath):
+                path = os.path.join(folder, subfolder, filename)
+                max_no_files = 2 ** 27 - 1
+                bucket = int(hashlib.sha1(path.encode()).hexdigest(), 16)
+                bucket = (bucket % (max_no_files + 1)) * (100.0 / max_no_files)
+                if bucket < dev_pct:
+                    dev_files[path] = cls.get_label_mapping()[subfolder]
+                elif bucket < test_pct + dev_pct:
+                    test_files[path] = cls.get_label_mapping()[subfolder]
+                else:
+                    train_files[path] = cls.get_label_mapping()[subfolder]
+
+        datasets = (
+            cls(train_files, DatasetType.TRAIN, config),
+            cls(dev_files, DatasetType.DEV, config),
+            cls(test_files, DatasetType.TEST, config),
+        )
+        return datasets
 
 
 class SpeechDataset(data.Dataset):

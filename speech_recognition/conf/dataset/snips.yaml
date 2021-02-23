@@ -29,3 +29,4 @@ test_snr: .inf
 train_snr_high: 1000.0
 train_snr_low: 0.0
 clear_download: false
+sampler: random

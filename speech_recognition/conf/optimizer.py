@@ -56,7 +56,7 @@ class AdamWConf:
     amsgrad: Any = False
 
 
-cs.store(group="optimizer", name="adamw", node=AdamConf())
+cs.store(group="optimizer", name="adamw", node=AdamWConf())
 
 
 @dataclass
@@ -69,7 +69,7 @@ class ASGDConf:
     weight_decay: Any = 0
 
 
-cs.store(group="optimizer", name="asgd", node=AdamConf())
+cs.store(group="optimizer", name="asgd", node=ASGDConf())
 
 
 @dataclass
