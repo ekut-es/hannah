@@ -106,6 +106,12 @@ e.g. for GPU 2 use:
 
 Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
+## Training - PAMAP2
+
+Training of PAMAP2 human activity detection dataset is invoked by:
+
+    python -m speech_recognition.train dataset=pamap2 features=raw
+
 ### Data Creation at the beginning
 
 Selection of other Voice Dataset use  `dataset.variants="[UWNU, de, en, it, fr, es]" `
