@@ -21,7 +21,7 @@ output_dir: trained_models
 auto_lr: false
 seed: 1234
 
-monitor: ["val_loss", "total_weights", "acc_clock_cycles", "acc_power", "acc_area"]
+monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_clock_cycles", "acc_power", "acc_area"]
 model:
   major_blocks: []
 
@@ -33,21 +33,19 @@ hydra:
   sweeper:
     optim:
       optimizer: aging_evolution
-      population_size: 15
-      #population_size: 25
-      sample_size: 5
-      #sample_size: 10
-      budget:  30
-      #budget:  2000
+      population_size: 25
+      sample_size: 10
+      budget:  2000
       seed: 1234
-      num_workers:  3
-      #num_workers:  10
+      num_workers:  10
       bounds:
         val_loss: 0.2
+        total_macs: 500000
         total_weights: 20000
+        est_act: 8000
         acc_clock_cycles: 20000
         acc_power: 0.00001
-        acc_area: 200000
+        acc_area: 150000
 
 
 
