@@ -21,7 +21,7 @@ output_dir: trained_models
 auto_lr: false
 seed: 1234
 
-monitor: ["val_loss", "total_weights", "est_act", "total_macs"]
+monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_clock_cycles", "acc_power", "acc_area"]
 model:
   major_blocks: []
 
@@ -43,6 +43,11 @@ hydra:
         total_macs: 500000
         total_weights: 20000
         est_act: 8000
+        acc_clock_cycles: 20000
+        acc_power: 0.00001
+        acc_area: 150000
+
+
 
 
     # default parametrization of the search space
@@ -75,3 +80,13 @@ hydra:
                       batchnorm: [true, false]
                       activation: [true, false]
                       parallel: [true, false]
+      backend:
+              bw_w: [4,6,8]
+              #bw_b: [2,4,8] Not yet included in analytical or statistical model
+              #bw_f: [2,4,8]
+              cols: [2,4,8,16]
+              #rows: [2,4,8,16]
+              #period:
+              #  integer: true
+              #  lower: 2.0
+              #  upper: 1000.0
