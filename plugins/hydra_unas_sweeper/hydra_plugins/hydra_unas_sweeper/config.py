@@ -3,16 +3,29 @@ from typing import Any, Dict, Optional, Union, List
 
 from hydra.core.config_store import ConfigStore
 
+@dataclass
+class Choice:
+    choices: List[Any]
+
+@dataclass
+class Partition:
+    choices: List[Any]
+    partitions: int 
+
+@dataclass
+class Subset:
+    choices: List[Any]
+    size: int
 
 @dataclass
 class ChoiceList:
     choices: List[Any]
-    min: int = 4
-    max: int = 10
+    min: int
+    max: int
 
 
 @dataclass
-class ScalarConfigSpec:
+class Scalar:
     """Representation of all the options to define
     a scalar.
     """
@@ -34,10 +47,21 @@ class ScalarConfigSpec:
     # logarithmically distributed
     log: bool = False
 
+@dataclass
+class XGBoostSurrogate:
+    candidates: int = 25
+    booster: str = "gboost"
+    objective: str = "reg:squarederror"
+    eta: float = 1.0
+    gamma: float = 1.0
+    min_child_weight: float = 1.0
+    max_depth: int = 25
+    
 
 @dataclass
 class OptimConf:
     optimizer: str = "aging_evolution"
+    surrogate: Optional[XGBoostSurrogate] = None
     population_size: int = 100
     sample_size: int = 25
     budget: int = 2000

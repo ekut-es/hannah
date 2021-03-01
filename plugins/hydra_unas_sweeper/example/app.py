@@ -1,4 +1,5 @@
 import logging
+import math
 
 from typing import Dict
 
@@ -27,10 +28,18 @@ def main(cfg: DictConfig) -> Dict[str, float]:
         weights += layer.channels * old_channels * layer.size
         old_channels = layer.channels
 
+    communication_overhead = 0.1 * math.sqrt(len(cfg.cpus)-1)
+    cpi = 0.0
+    for cpu in cfg.cpus:
+        cpi += 1.0 if cpu < 2 else 2.0
+    cpi -= communication_overhead
+        
+
     return {
         "val_loss": float(loss),
         "tot_mem": float(mem),
         "tot_weights": float(weights),
+        "cpi": float(cpi)
     }
 
 
