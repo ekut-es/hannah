@@ -12,6 +12,8 @@ python = "^3.6.1"
 hydra-core = "^1.0.3"
 tabulate = "^0.8.0"
 numpy = "^1.18.0"
+xgboost = "^1.3.3"
+dtreeviz = {version = "^1.1.4", extras = ["boost"]}
 
 [tool.poetry.dev-dependencies]
 

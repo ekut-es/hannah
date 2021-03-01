@@ -6,6 +6,8 @@ lr: 2.0
 dropout: 0.5
 batch_size: 32
 conv_layers: []
+cpus: [1]
+memory: [[1], [2,3,4]]
 
 hydra:
   sweeper:
@@ -20,10 +22,20 @@ hydra:
         val_loss: 0.15
         tot_mem: 2000.0
         tot_weights: 1000.0
+        cpi: 2
 
 
     # default parametrization of the search space
     parametrization:
+      #Use a subset of available cpus:
+      cpus: 
+        choices: [1,2,3,4]
+        size: 2
+
+      memory:
+        choices: [1,2,3,4]
+        partitions: 2
+
       # either one or the other
       db:
         - mnist
@@ -46,10 +58,11 @@ hydra:
         integer: true
 
       conv_layers:
-        min: 4
-        max: 10
+        min: 2
+        max: 4
         choices:
           - channels: [8,16,24,32,40,48,56,64]
             stride: [0,1,3]
             size: [1,3,9]
             parallel: [true, false]
+            

@@ -1,11 +1,10 @@
-from typing import Dict, Any, MutableMapping, MutableSequence, Union
+from typing import Dict, Any, MutableMapping, MutableSequence
 from dataclasses import dataclass
 from copy import deepcopy
 
-from omegaconf import DictConfig
-
-from .config import OptimConf, ScalarConfigSpec, ChoiceList
+from .config import Scalar, ChoiceList, Partition, Subset
 from .utils import get_pareto_points
+
 
 import numpy as np
 
@@ -41,18 +40,21 @@ class Parameter:
         if isinstance(config, MutableSequence):
             return ChoiceParameter(config, random_state=random_state)
         elif isinstance(config, MutableMapping):
-            try:
-                config = ScalarConfigSpec(**config)
-            except:
+            for config_class in [Scalar, ChoiceList, Partition, Subset]:
                 try:
-                    config = ChoiceList(**config)
-                except:
-                    config = config
+                    config = config_class(**config)
+                except TypeError:
+                    continue
+                break
 
-            if isinstance(config, ScalarConfigSpec):
+            if isinstance(config, Scalar):
                 res = IntervalParameter(config, random_state)
             elif isinstance(config, ChoiceList):
                 res = ChoiceListParameter(config, random_state)
+            elif isinstance(config, Subset):
+                res = SubsetParameter(config, random_state)
+            elif isinstance(config, Partition):
+                res = PartitionParameter(config, random_state)
             else:
                 res = SearchSpace(config, random_state)
 
@@ -68,6 +70,68 @@ class Parameter:
             state.value = value
 
         return [mutate_random]
+
+@dataclass
+class SubsetParameterState(ParameterState):
+    selection: MutableSequence[int]
+
+    def flatten(self):
+        return [v.flatten() for v in self.value]
+
+class SubsetParameter(Parameter):
+    def __init__(self, config, random_state):
+        self.choices = config.choices
+        self.size = config.size
+        self.random_state = random_state
+
+    def get_random(self):
+        subset = self.random_state.choice(len(self.choices), size=self.size)
+        subset_choices = []
+        subset_selection = []
+        for choice_idx in subset:
+            choice = self.choices[int(choice_idx)]
+            if isinstance(choice, Parameter):
+                choice = choice.get_random()
+            else:
+                choice = ParameterState(choice)
+            subset_choices.append(choice)
+            subset_selection.append(choice_idx)
+
+        return SubsetParameterState(subset_choices, subset_selection)
+
+
+@dataclass
+class PartitionParameterState(ParameterState):
+    pass
+
+    def flatten(self):
+        res = []
+        for v in self.value:
+            res.append([e.flatten() for e in v])
+        return res
+
+class PartitionParameter(Parameter):
+    def __init__(self, config, random_state):
+        self.choices = config.choices
+        self.partitions = config.partitions
+        self.random_state = random_state
+
+    def get_random(self):
+        partitions = []
+        for p in range(self.partitions):
+            partitions.append([])
+        for choice in self.choices:
+            partition = self.random_state.randint(0, len(partitions))
+
+            if isinstance(choice, Parameter):
+                choice = choice.get_random()
+            else:
+                choice = ParameterState(choice)
+            partitions[partition].append(choice)
+
+        print("Partitions:", partitions)
+
+        return PartitionParameterState(partitions)
 
 
 @dataclass
@@ -130,7 +194,7 @@ class ChoiceParameter(Parameter):
 
         choice = self.choices[choice_num]
         if isinstance(choice, Parameter):
-            mutations.extend(choice.mutattions(state.value))
+            mutations.extend(choice.mutations(state.value))
 
         return mutations
 
@@ -280,7 +344,6 @@ class SearchSpace(Parameter):
         return mutations
 
     def mutate(self, config):
-        print("mutate")
         config = deepcopy(config)
 
         mutations = self.mutations(config)
