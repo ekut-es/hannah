@@ -49,6 +49,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         self.alpha = alpha
         self.noise_variance = noise_variance
         self.correct_prob = correct_prob
+        self.teacher_loaded = False
 
         if distillation_loss == "MSE":
             self.loss_func = nn.MSELoss()
@@ -87,7 +88,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
     def setup(self, stage):
         super().setup(stage)
         super().prepare_data()
-        if len(self.teachers) == 0 and self.distillation_loss == "TFself":
+        if not self.teacher_loaded and self.distillation_loss == "TFself":
             # TODO Multiple Teacher could maybe done here
             params = deepcopy(self.hparams)
             params.pop("teacher_checkpoint")
@@ -106,7 +107,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             teacher_module.trainer.test(ckpt_path=None)
             self.teachers.append(teacher_module)
 
-        else:
+        elif not self.teacher_loaded:
             for checkpoint_file in self.teacher_checkpoints:
                 checkpoint = torch.load(
                     checkpoint_file, map_location=torch.device("cpu")
@@ -136,6 +137,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
                         param.requires_grad = False
 
                 self.teachers.append(teacher_module)
+        self.teacher_loaded = True
 
     """
     Code taken from Paper: "KD-Lib: A PyTorch library for Knowledge Distillation, Pruning and Quantization"
