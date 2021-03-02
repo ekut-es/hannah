@@ -392,7 +392,3 @@ class PAMAP2_Dataset(AbstractDataset):
                             folder_prepared, subfolder, f"{conf}_{file}_{nr}.hdf5"
                         )
                     )
-<<<<<<< HEAD
-=======
-
->>>>>>> 969a560... Add back pamap2 dataset
