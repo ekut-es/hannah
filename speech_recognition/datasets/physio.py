@@ -40,7 +40,7 @@ class PhysioDataset(AbstractDataset):
         return self.label_names.values()
 
     @property
-    def class_count(self):
+    def class_counts(self):
         return self.get_categories_distribution()
 
     def __getitem__(self, index):
@@ -119,6 +119,11 @@ class AtrialFibrillationDataset(PhysioDataset):
         return cls.get_annotation_names()[cls.ANN_OTHER_RYTHM]
 
     @classmethod
+    def prepare(cls, config):
+        cls.download(config)
+        cls.prepare_files(config)
+
+    @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
@@ -155,8 +160,6 @@ class AtrialFibrillationDataset(PhysioDataset):
                 target_folder,
                 clear_download=clear_download,
             )
-
-        cls.prepare_files(config)
 
     @classmethod
     def prepare_files(cls, config):
