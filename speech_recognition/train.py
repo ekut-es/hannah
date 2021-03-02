@@ -113,8 +113,10 @@ def train(config=DictConfig):
         callbacks.append(stop_callback)
 
     if config.get("pruning", None):
-        pruning_scheduler = PruningAmountScheduler(0.9, config.trainer.max_epochs)
-        pruning_callback = instantiate(config.pruning, amount=pruning_scheduler)
+        pruning_scheduler = PruningAmountScheduler(config.pruning.amount, config.trainer.max_epochs)
+        pruning_config = dict(config.pruning)
+        del pruning_config["amount"]
+        pruning_callback = instantiate(pruning_config, amount=pruning_scheduler)
         callbacks.append(pruning_callback)
 
     # INIT PYTORCH-LIGHTNING
