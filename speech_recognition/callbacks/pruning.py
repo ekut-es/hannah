@@ -16,9 +16,9 @@ class PruningAmountScheduler:
 
     def __call__(self, current_epoch) -> float:
         if current_epoch == 0:
-            return 0.01
+            return 0.00
         else:
-            return self.target_amount * current_epoch / self.max_epochs
+            return self.target_amount / (self.max_epochs - 1.0)
 
 
 class FilteredPruning(ModelPruning):
