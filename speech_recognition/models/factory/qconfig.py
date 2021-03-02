@@ -55,13 +55,13 @@ class GlobalMovingAverageMinMaxObserver(ObserverBase):
         device = self.global_statistics.min_val.device
         min_val = self.global_statistics.min_val.clone().detach()
         max_val = self.global_statistics.max_val.clone().detach()
-        zero_points = torch.Tensor([0], device=device)
+        zero_points = torch.as_tensor([0], device=device)
         if min_val < 0.0:
             max_val = torch.max(-min_val, max_val)
 
         quant_factor = (float(self.quant_max + 1  - self.quant_min) / 2)
         # TODO: use max_val
-        scales = torch.tensor([1.0]) / quant_factor
+        scales = torch.as_tensor([1.0], device=device) / quant_factor
         #print(scales)
         #scales = torch.Tensor([1/128], device=device)
         

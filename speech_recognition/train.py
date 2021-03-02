@@ -14,7 +14,7 @@ from .callbacks.distiller import DistillerCallback
 from .callbacks.summaries import MacSummaryCallback
 
 from .callbacks.optimization import HydraOptCallback
-
+from .callbacks.pruning import PruningAmountScheduler
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
@@ -113,7 +113,8 @@ def train(config=DictConfig):
         callbacks.append(stop_callback)
 
     if config.get("pruning", None):
-        pruning_callback = instantiate(config.pruning)
+        pruning_scheduler = PruningAmountScheduler(0.9, config.trainer.max_epochs)
+        pruning_callback = instantiate(config.pruning, amount=pruning_scheduler)
         callbacks.append(pruning_callback)
 
     # INIT PYTORCH-LIGHTNING
