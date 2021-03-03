@@ -170,12 +170,11 @@ class StreamClassifierModule(LightningModule):
                     optimizer=optimizer,
                     total_steps=self.total_training_steps,
                 )
-                retval["scheduler"] = scheduler
-                retval["interval"] = "epoch"
+                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
             else:
                 scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
 
-                retval["scheduler"] = scheduler
+                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="epoch")
 
         return retval
 
