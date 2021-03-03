@@ -1,8 +1,8 @@
 defaults:
     - dataset: kws
     - model: tc-res4 # tc-res4 and res6 student model
-    - scheduler: null
-    - optimizer: adam
+    - scheduler: 1cycle
+    - optimizer: sgd
     - features: mfcc
     - normalizer: null
     - module: distilling_speech_classifier
