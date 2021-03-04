@@ -63,22 +63,22 @@ class MinorBlockConfig:
     "execute block in parallel with preceding block"
     out_channels: int = 32
     "number of output channels"
-    kernel_size: Any = 3 # Union[int, Tuple[int], Tuple[int, int]]
+    kernel_size: Any = 3  # Union[int, Tuple[int], Tuple[int, int]]
     "kernel size of this Operation (if applicable)"
-    stride: Any = 1 # Union[None, int, Tuple[int], Tuple[int, int]]
+    stride: Any = 1  # Union[None, int, Tuple[int], Tuple[int, int]]
     "stride for this operation use"
     padding: bool = True
     "use padding for this operation (padding will always try to keep input dimensions / stride)"
-    dilation: Any = 1 # Union[int, Tuple[int], Tuple[int, int]]
+    dilation: Any = 1  # Union[int, Tuple[int], Tuple[int, int]]
     "dilation factor to use for this operation"
     groups: int = 1
     "number of groups for this operation"
     padding_mode: str = "zeros"
     "padding mode argument for this function"
-    norm: Any = False # Union[NormConfig, bool]
+    norm: Any = False  # Union[NormConfig, bool]
     "normalization to use (true uses networks default configs)"
-    act: Any = False # Union[ActConfig, bool]
-    "activation to use (true uses default configs)"    
+    act: Any = False  # Union[ActConfig, bool]
+    "activation to use (true uses default configs)"
 
 
 @dataclass
@@ -86,14 +86,14 @@ class MajorBlockConfig:
     target: str = "residual"
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
-    stride: Any = 3 # Union[None, int, Tuple[int], Tuple[int, int]]
+    stride: Any = 3  # Union[None, int, Tuple[int], Tuple[int, int]]
 
 
 @dataclass
 class LinearConfig:
     outputs: int = 128
-    norm: Any = False # Union[bool, NormConfig]
-    act: Any = False # Union[bool, ActConfig]
+    norm: Any = False  # Union[bool, NormConfig]
+    act: Any = False  # Union[bool, ActConfig]
     qconfig: Optional[Any] = None
 
 
@@ -185,7 +185,6 @@ class NetworkFactory:
             act = self.default_act
 
         qconfig = self.default_qconfig
-        
 
         if not qconfig:
             layers = []
@@ -274,7 +273,7 @@ class NetworkFactory:
                     padding_mode=padding_mode,
                     qconfig=qconfig,
                 )
-        
+
         return output_shape, layers
 
     def conv1d(
@@ -316,7 +315,6 @@ class NetworkFactory:
             act = self.default_act
 
         qconfig = self.default_qconfig
-        
 
         print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
@@ -410,8 +408,6 @@ class NetworkFactory:
                     dilation=dilation,
                     groups=groups,
                     padding_mode=padding_mode,
-                    eps=norm.eps,
-                    momentum=norm.momentum,
                     qconfig=qconfig,
                 )
             else:
@@ -431,7 +427,7 @@ class NetworkFactory:
             #     nn.init.kaiming_uniform(layers.weights, mode="fan_in", act="relu")
             # except ValueError as e:
             #     logging.critical("Error during kaiming initialization: %s", e)
-        
+
         return output_shape, layers
 
     def minor(self, input_shape, config: MinorBlockConfig, major_stride=None):
@@ -529,7 +525,6 @@ class NetworkFactory:
                         groups=groups,
                         norm=False,
                         act=False,
-                        
                     )
                 elif dimension == 2:
                     downsampler = self.conv2d(
@@ -563,8 +558,8 @@ class NetworkFactory:
         """Create a forward neural network block without parallelism
 
         If parallel is set to [True, False, True, False]
-                       
-        Input: ------->|---> parallel: False --->  parallel: False ---> | --> output                                              
+
+        Input: ------->|---> parallel: False --->  parallel: False ---> | --> output
         """
 
         main_configs = []
@@ -572,14 +567,11 @@ class NetworkFactory:
         for block_config in config.blocks:
             main_configs.append(block_config)
 
-        
         main_chain = self._build_chain(input_shape, main_configs, config.stride)
         output_shape = main_chain[-1][0]
         major_block = nn.Sequential(*[x[1] for x in main_chain])
-        
+
         return output_shape, major_block
-
-
 
     def residual(self, input_shape: Tuple[int], config: MajorBlockConfig):
         """Create a neural network block with with residual parallelism
@@ -656,7 +648,7 @@ class NetworkFactory:
             out_shape, layers = self.parallel(input_shape, config)
         elif config.target == "forward":
             out_shape, layers = self.forward(input_shape, config)
-        else: 
+        else:
             raise Exception("Unknown major block target: {major_block.target}")
 
         return out_shape, layers
@@ -672,7 +664,6 @@ class NetworkFactory:
             norm = self.default_norm
 
         qconfig = self.default_qconfig
-       
 
         out_shape = (input_shape[0], config.outputs)
         layers = []
@@ -685,7 +676,6 @@ class NetworkFactory:
 
         if act:
             layers.append(self.act(act))
-    
 
         layers = nn.Sequential(*layers)
 
@@ -694,7 +684,9 @@ class NetworkFactory:
     def network(self, input_shape, labels: int, network_config: NetworkConfig):
         self.default_norm = network_config.norm
         self.default_act = network_config.act
-        self.default_qconfig = instantiate(network_config.qconfig) if network_config.qconfig else None
+        self.default_qconfig = (
+            instantiate(network_config.qconfig) if network_config.qconfig else None
+        )
 
         conv_layers = []
         for block in network_config.conv:
@@ -717,7 +709,10 @@ class NetworkFactory:
         input_shape, last_linear = self.linear(
             input_shape,
             LinearConfig(
-                outputs=labels, norm=False, act=False, qconfig= True if self.default_qconfig else False
+                outputs=labels,
+                norm=False,
+                act=False,
+                qconfig=True if self.default_qconfig else False,
             ),
         )
 
@@ -758,15 +753,18 @@ def create_cnn(
 
     # FIXME: this does not full validate models at the moment
     #        as Omegaconf does not support Unions atm
-    structured_config = OmegaConf.merge(schema, dict(
-        name=name, 
-        conv=conv,
-        linear=linear,
-        norm = norm, 
-        act = act, 
-        qconfig = qconfig, 
-        dropout = dropout, 
-    ))
+    structured_config = OmegaConf.merge(
+        schema,
+        dict(
+            name=name,
+            conv=conv,
+            linear=linear,
+            norm=norm,
+            act=act,
+            qconfig=qconfig,
+            dropout=dropout,
+        ),
+    )
     output_shape, model = factory.network(input_shape, labels, structured_config)
 
     return model
