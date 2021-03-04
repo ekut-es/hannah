@@ -251,6 +251,9 @@ class StreamClassifierModule(LightningModule):
 
         return train_loader
 
+    def on_train_epoch_end(self, outputs):
+        self._log_weight_distribution()
+
     # VALIDATION CODE
     def validation_step(self, batch, batch_idx):
 
@@ -356,15 +359,29 @@ class StreamClassifierModule(LightningModule):
 
     # CALLBACKS
     def on_fit_end(self):
+        loggers = self._logger_iterator()
+        for logger in loggers:
+            if isinstance(logger, TensorBoardLogger):
+                items = map(lambda x: (x[0], x[1].compute()), self.val_metrics.items())
+                logger.log_hyperparams(self.hparams, metrics=dict(items))
+
+    def _log_weight_distribution(self):
+        for name, params in self.named_parameters():
+            loggers = self._logger_iterator()
+            for logger in loggers:
+                if hasattr(logger.experiment, "add_histogram"):
+                    if params.numel() > 10:
+                        logger.experiment.add_histogram(
+                            name, params, self.current_epoch
+                        )
+
+    def _logger_iterator(self):
         if isinstance(self.logger, LoggerCollection):
             loggers = self.logger
         else:
             loggers = [self.logger]
 
-        for logger in loggers:
-            if isinstance(logger, TensorBoardLogger):
-                items = map(lambda x: (x[0], x[1].compute()), self.val_metrics.items())
-                logger.log_hyperparams(self.hparams, metrics=dict(items))
+        return loggers
 
 
 class SpeechClassifierModule(LightningModule):
