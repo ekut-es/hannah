@@ -86,7 +86,7 @@ class SpeechDataset(AbstractDataset):
 
     @property
     def class_names(self):
-        return self.label_names.values()
+        return list(self.label_names.values())
 
     @property
     def class_counts(self):

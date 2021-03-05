@@ -18,7 +18,7 @@ from hydra.utils import instantiate, get_class
 from ..datasets.NoiseDataset import NoiseDataset
 from ..datasets.DatasetSplit import DatasetSplit
 from ..datasets.Downsample import Downsample
-from ..datasets.async_dataloader import AsynchronousLoader
+from ..datasets import AsynchronousLoader, SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 
 from omegaconf import DictConfig
@@ -44,6 +44,7 @@ class StreamClassifierModule(LightningModule):
         self.train_set = None
         self.test_set = None
         self.dev_set = None
+        self.logged_samples = 0
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -301,6 +302,9 @@ class StreamClassifierModule(LightningModule):
         self.test_confusion(logits, y)
         self.test_roc(logits, y)
 
+        if isinstance(self.test_set, SpeechDataset):
+            self._log_audio(x, logits, y)
+
         return loss
 
     def test_dataloader(self):
@@ -370,10 +374,29 @@ class StreamClassifierModule(LightningModule):
             loggers = self._logger_iterator()
             for logger in loggers:
                 if hasattr(logger.experiment, "add_histogram"):
-                    if params.numel() > 10:
+                    try:
                         logger.experiment.add_histogram(
                             name, params, self.current_epoch
                         )
+                    except ValueError as e:
+                        logging.critical("Could not add histogram for param %s", name)
+
+    def _log_audio(self, x, logits, y):
+        prediction = torch.argmax(logits, dim=1)
+        correct = prediction == y
+        for num, result in enumerate(correct):
+            if not result and self.logged_samples < 10:
+                loggers = self._logger_iterator()
+                class_names = self.test_set.class_names
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_audio"):
+                        logger.experiment.add_audio(
+                            f"sample{self.logged_samples}_{class_names[prediction[num]]}_{class_names[y[num]]}",
+                            x[num],
+                            self.current_epoch,
+                            self.test_set.samplingrate,
+                        )
+                self.logged_samples += 1
 
     def _logger_iterator(self):
         if isinstance(self.logger, LoggerCollection):
