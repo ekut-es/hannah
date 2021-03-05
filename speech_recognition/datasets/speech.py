@@ -194,6 +194,8 @@ class SpeechDataset(AbstractDataset):
         else:
             if snr != float("inf"):
                 f = factor(snr, psig, pnoise)
+                if f > 10:
+                    f = 10
                 data = data + f * bg_noise
 
                 if np.amax(np.absolute(data)) > 1:
