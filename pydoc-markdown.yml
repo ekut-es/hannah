@@ -1,0 +1,40 @@
+loaders:
+  - type: python
+processors:
+  - type: filter
+  - type: smart
+  - type: crossref
+renderer:
+  type: mkdocs
+  pages:
+    - title: Home
+      name: index
+      source: README.md
+    - title: Configuration
+      name: configuration
+      children:
+        - title: Overview
+          name: configuration/overview
+          source: doc/configuration/configuration.md
+    - title: Optimization
+      children:
+        - title: Hyperparamter Optimization
+          name: optimization/hyperparamter
+          source: doc/optimization/hyperparameters.md
+        - title: Neural Architecture Search
+          name: optimization/nas
+          source: doc/optimization/nas.md
+    - title: Quantization
+      name: quantization
+      source: doc/quantization.md
+
+    - title: API Documentation
+      contents:
+        - '*'
+  mkdocs_config:
+    mkdocs_config:
+      site_name: HANNAH
+      theme: readthedocs
+    markdown_extensions:
+      - def_list
+      - admonition
