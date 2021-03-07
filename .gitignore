@@ -50,3 +50,6 @@ lightning_logs/
 srf-poetry/README.rst
 srf-poetry/srf_poetry/
 srf-poetry/tests/
+
+#doc
+doc/_build/
