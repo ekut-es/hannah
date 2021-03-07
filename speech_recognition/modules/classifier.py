@@ -45,6 +45,7 @@ class StreamClassifierModule(LightningModule):
         self.test_set = None
         self.dev_set = None
         self.logged_samples = 0
+        print(dataset.data_folder)
 
     def prepare_data(self):
         # get all the necessary data stuff
