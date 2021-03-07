@@ -44,49 +44,70 @@ Common configuration options for datasets are:
 
 data_folder
 : base folder for data (actual data will usually be stored in $data_folder/dataset_name)
+
 cls
 : speech_recognition.dataset.SpeechCommandsDataset
+
 dataset
 : name of the dataset
+
 group_speakers_by_id
 : true group the data by user id before splitting if available
+
 use_default_split
 : false if the dataset has a predefined split, use it (ignores *_pct, and group by id parameters)
+
 test_pct
 : Percentage of dataset used for test
+
 dev_pct
 :  Percentage of dataset used for validation
+
 train_pct
 : Percentage of dataset used for training
+
 wanted_words
 : Wanted words for keyword datasets
 
 input_length
 : Length of input in number of samples
+
 samplingrate
 : Sampling rate of data in Hz
+
 clear_download
 : "Remove downloaded archive after dataset has been extracted
+
 variants
 : Variant of dataset to use for multilanguage datasets
+
 timeshift_ms
 : "Timeshift the input data by +- given ms"
+
 extract
 : loudest
+
 silence_prob
 : % dataset samples that are silence
+
 unknown_prob
 : % dataset samples that are unknown
+
 test_snr
 : SNR used for test
+
 train_snr_high
 : minimal SNR for training data
+
 train_snr_low
 : maximal SNR for test data
+
 noise_dataset
 : ["TUT", "FSDKaggle", "FSDnoisy"] Downlaods all the specified datasets. Use TUT + one other
+
 data_split
 : initial split after downloading the datasets(Possibilities: "vad", "vad_speech", "vad_balanced", "getrennt")
+
 downsample
 : samplerate DESTRUCTIVE! change the samplerate of the real files to the target samplerate.  Use better parameter samplingrate
 
@@ -175,23 +196,33 @@ Default options are:
 
 `gpus`
 : 1
+
 `auto_select_gpus`
 : True
+
 `limit_train_batches`
 : 1.0
+
 `limit_val_batches`
 : 1.0
+
 `limit_test_batches`
 : 1.0
+
 `max_epochs`
 : 80
+
 `default_root_dir`
 : .
+
 `fast_dev_run`
 : false
+
 `overfit_batches`
 : 0.0
+
 `benchmark`
 : True
+
 `deterministic`
 : True

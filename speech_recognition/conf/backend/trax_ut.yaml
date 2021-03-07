@@ -2,8 +2,8 @@
 
 _target_: speech_recognition.callbacks.backends.TRaxUltraTrailBackend
 
-backend_dir: "/local/frischkn/neural_networks/teda/rtl/tc-resnet8-accelerator"
-teda_dir: "/local/frischkn/neural_networks/teda"
+teda_dir: ${env:TEDA_HOME,/local/frischkn/neural_networks/teda}
+backend_dir: "${tead_dir}/rtl/tc-resnet8-accelerator"
 
 standalone: False
 rtl_simulation: False

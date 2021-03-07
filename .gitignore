@@ -38,13 +38,8 @@ distillation/lorenzfe/
 # eclipse
 .settings/
 
-# vs code
-# .vscode/
-
 # lightning
 lightning_logs/
-
-
 
 # poetry
 srf-poetry/README.rst

@@ -27,14 +27,27 @@ renderer:
     - title: Quantization
       name: quantization
       source: doc/quantization.md
+    - title: Backends
+      children:
+        - title: Torch Mobile
+          name: backends/torchmobile
+          source: doc/backends/torchmobile.md
+        - title: T-Rax Ultratrail
+          name: backends/trax-Ultratrail
+          source: doc/backends/ultratrail.md
 
-    - title: API Documentation
-      contents:
-        - '*'
+    - title: Development
+      children:
+        - title: Profiling
+          name: profiling
+          source: doc/profiling.md
+        - title: API Documentation
+          contents:
+            - 'speech_recognition.*'
+
   mkdocs_config:
-    mkdocs_config:
-      site_name: HANNAH
-      theme: readthedocs
+    site_name: HANNAH
+    theme: readthedocs
     markdown_extensions:
       - def_list
       - admonition
