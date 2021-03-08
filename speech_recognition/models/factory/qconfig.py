@@ -120,7 +120,6 @@ class FixedpointObserver(ObserverBase):
         zero_points = torch.as_tensor([0], device=device)
         quant_factor = float(self.quant_max + 1 - self.quant_min) / 2
         scales = torch.ones(1, device=device) / quant_factor
-
         return scales, zero_points
 
 
@@ -138,11 +137,13 @@ def get_trax_qat_qconfig(config):
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_activation - 1),
             quant_max=2 ** (bits_activation - 1) - 1,
+            obs_quant_min=-2 ** (bits_activation - 1),
+            obs_quant_max=2 ** (bits_activation - 1) - 1,
         ),
         FakeQuantize.with_args(
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_weight - 1),
-            obs_quant_min=2 ** (bits_weight - 1),
+            obs_quant_min=-2 ** (bits_weight - 1),
             quant_max=2 ** (bits_weight - 1) - 1,
             obs_quant_max=2 ** (bits_weight - 1) - 1,
         ),
@@ -150,6 +151,8 @@ def get_trax_qat_qconfig(config):
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_bias - 1),
             quant_max=2 ** (bits_bias - 1) - 1,
+            obs_quant_min=-2 ** (bits_bias - 1),
+            obs_quant_max=2 ** (bits_bias - 1) - 1,
         ),
     )
 

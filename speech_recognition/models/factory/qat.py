@@ -70,7 +70,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         output_padding=0,
         groups=1,
         bias=False,
-        padding_mode='zeros',
+        padding_mode="zeros",
         # BatchNormNd args
         eps=1e-05,
         momentum=0.1,
@@ -147,9 +147,16 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         self.bn.training = False
         return self
 
-    def _forward(self, input):
+    @property
+    def scale_factor(self):
         running_std = torch.sqrt(self.bn.running_var + self.bn.eps)
         scale_factor = self.bn.weight / running_std
+
+        return scale_factor
+
+    @property
+    def scaled_weight(self):
+        scale_factor = self.scale_factor
         weight_shape = [1] * len(self.weight.shape)
         weight_shape[0] = -1
         bias_shape = [1] * len(self.weight.shape)
@@ -157,6 +164,15 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         scaled_weight = self.weight_fake_quant(
             self.weight * scale_factor.reshape(weight_shape)
         )
+
+        return scaled_weight
+
+    def _forward(self, input):
+        bias_shape = [1] * len(self.weight.shape)
+        bias_shape[1] = -1
+
+        scale_factor = self.scale_factor
+        scaled_weight = self.scaled_weight
         # using zero bias here since the bias for original conv
         # will be added later
         if self.bias is not None:
@@ -165,12 +181,16 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
         conv = self._real_conv_forward(input, scaled_weight, zero_bias)
         if not self.bn.track_running_stats:
-            bias = self.bias_fake_quant(self.bias * scale_factor.reshape(bias_shape) - self.bn.bias)
+            bias = self.bias_fake_quant(
+                self.bias * scale_factor.reshape(bias_shape) - self.bn.bias
+            )
             conv = conv + bias
         else:
             conv_orig = conv / scale_factor.reshape(bias_shape)
             if self.bias is not None:
-                conv_orig = conv_orig + self.bias_fake_quant(self.bias.reshape(bias_shape))
+                conv_orig = conv_orig + self.bias_fake_quant(
+                    self.bias.reshape(bias_shape)
+                )
             conv = self.bn(conv_orig)
         return conv
 
@@ -436,7 +456,8 @@ class ConvBnReLU1d(ConvBn1d):
         y = self.act_fake_quant(F.relu(ConvBn1d._forward(self, input)))
         # print(y.shape)
 
-        return y 
+        return y
+
     @classmethod
     def from_float(cls, mod):
         return super(ConvBnReLU1d, cls).from_float(mod)
@@ -492,7 +513,7 @@ class ConvBn2d(_ConvBnNd):
             padding=padding,
             dilation=dilation,
             transposed=False,
-            output_padding=(0,0),
+            output_padding=(0, 0),
             groups=groups,
             bias=bias,
             padding_mode=padding_mode,
@@ -717,7 +738,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
         self.act_fake_quant = self.qconfig.activation()
-        if hasattr(qconfig, 'bias'):
+        if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
             self.bias_fake_quant = nn.Identity()
@@ -761,21 +782,26 @@ class Linear(nn.Linear):
     """
     _FLOAT_MODULE = nn.Linear
 
-    def __init__(self, in_features, out_features, bias=True,
-                 qconfig=None):
+    def __init__(self, in_features, out_features, bias=True, qconfig=None):
         super().__init__(in_features, out_features, bias)
-        assert qconfig, 'qconfig must be provided for QAT module'
+        assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
         self.weight_fake_quant = qconfig.weight()
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = qconfig.bias()
         else:
             self.bias_fake_quant = qconfig.activation()
-        
+
         self.act_fake_quant = qconfig.activation()
 
     def forward(self, input):
-        return self.act_fake_quant(F.linear(input, self.weight_fake_quant(self.weight), self.bias_fake_quant(self.bias)))
+        return self.act_fake_quant(
+            F.linear(
+                input,
+                self.weight_fake_quant(self.weight),
+                self.bias_fake_quant(self.bias),
+            )
+        )
 
     @classmethod
     def from_float(cls, mod):
@@ -784,15 +810,24 @@ class Linear(nn.Linear):
             Args: `mod` a float module, either produced by torch.quantization utilities
             or directly from user
         """
-        assert type(mod) == cls._FLOAT_MODULE, ' qat.' + cls.__name__ + '.from_float only works for ' + \
-            cls._FLOAT_MODULE.__name__
-        assert hasattr(mod, 'qconfig'), 'Input float module must have qconfig defined'
-        assert mod.qconfig, 'Input float module must have a valid qconfig'
+        assert type(mod) == cls._FLOAT_MODULE, (
+            " qat."
+            + cls.__name__
+            + ".from_float only works for "
+            + cls._FLOAT_MODULE.__name__
+        )
+        assert hasattr(mod, "qconfig"), "Input float module must have qconfig defined"
+        assert mod.qconfig, "Input float module must have a valid qconfig"
         if type(mod) == LinearReLU:
             mod = mod[0]
 
         qconfig = mod.qconfig
-        qat_linear = cls(mod.in_features, mod.out_features, bias=mod.bias is not None, qconfig=qconfig)
+        qat_linear = cls(
+            mod.in_features,
+            mod.out_features,
+            bias=mod.bias is not None,
+            qconfig=qconfig,
+        )
         qat_linear.weight = mod.weight
         qat_linear.bias = mod.bias
         return qat_linear
@@ -801,6 +836,7 @@ class Linear(nn.Linear):
 def update_bn_stats(mod):
     if type(mod) in set([ConvBnReLU1d, ConvBnReLU2d, ConvBn1d, ConvBn2d]):
         mod.update_bn_stats()
+
 
 def freeze_bn_stats(mod):
     if type(mod) in set([ConvBnReLU1d, ConvBnReLU2d, ConvBn1d, ConvBn2d]):

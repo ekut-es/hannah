@@ -374,6 +374,7 @@ class StreamClassifierModule(LightningModule):
     def _log_weight_distribution(self):
         for name, params in self.named_parameters():
             loggers = self._logger_iterator()
+
             for logger in loggers:
                 if hasattr(logger.experiment, "add_histogram"):
                     try:
@@ -382,6 +383,22 @@ class StreamClassifierModule(LightningModule):
                         )
                     except ValueError as e:
                         logging.critical("Could not add histogram for param %s", name)
+
+        for name, module in self.named_modules():
+            loggers = self._logger_iterator()
+            if hasattr(module, "scaled_weight"):
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_histogram"):
+                        try:
+                            logger.experiment.add_histogram(
+                                f"{name}.scaled_weight",
+                                module.scaled_weight,
+                                self.current_epoch,
+                            )
+                        except ValueError as e:
+                            logging.critical(
+                                "Could not add histogram for param %s", name
+                            )
 
     def _log_audio(self, x, logits, y):
         prediction = torch.argmax(logits, dim=1)
