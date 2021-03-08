@@ -3,8 +3,6 @@ import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import distiller
-
 from collections import OrderedDict
 
 import torch.onnx

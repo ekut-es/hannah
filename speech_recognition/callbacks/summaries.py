@@ -129,6 +129,7 @@ class MacSummaryCallback(Callback):
 
     def _do_summary(self, pl_module, print=True):
         dummy_input = pl_module.example_feature_array
+        dummy_input = dummy_input.to(pl_module.device)
 
         total_macs = 0.0
         total_acts = 0.0
