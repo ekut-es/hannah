@@ -47,7 +47,7 @@ cs.store(group="optimizer", name="adamax", node=AdamaxConf())
 @dataclass
 class AdamWConf:
     _target_: str = "torch.optim.adamw.AdamW"
-    lr: Any = 0.005
+    lr: Any = 0.001
     betas: Any = (0.9, 0.999)
     eps: Any = 1e-08
     weight_decay: Any = 1e-05
