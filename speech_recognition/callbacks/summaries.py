@@ -134,7 +134,6 @@ class MacSummaryCallback(Callback):
             df = self.walk_model(pl_module.model, dummy_input)
             t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
             total_macs = df["MACs"].sum()
-            #breakpoint()
             total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
             total_weights = df["Weights volume"].sum()
             estimated_acts = 2 * max(df["IFM volume"].max(), df["OFM volume"].max())
