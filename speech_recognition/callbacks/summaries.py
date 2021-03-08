@@ -1,7 +1,6 @@
 import logging
 from collections import OrderedDict
 
-import distiller
 
 from pytorch_lightning.callbacks import Callback
 from tabulate import tabulate

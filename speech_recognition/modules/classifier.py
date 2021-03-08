@@ -71,9 +71,7 @@ class StreamClassifierModule(LightningModule):
         ).splits(self.hparams.dataset)
 
         # Create example input
-        device = (
-            self.trainer.root_gpu if self.trainer.root_gpu is not None else self.device
-        )
+        device = self.device
         self.example_input_array = torch.zeros(
             1, self.train_set.channels, self.train_set.input_length
         )

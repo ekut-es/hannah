@@ -10,7 +10,6 @@ from torch.nn.modules import module
 
 from .utils import log_execution_env_state
 
-from .callbacks.distiller import DistillerCallback
 from .callbacks.summaries import MacSummaryCallback
 
 from .callbacks.optimization import HydraOptCallback
@@ -113,7 +112,9 @@ def train(config=DictConfig):
         callbacks.append(stop_callback)
 
     if config.get("pruning", None):
-        pruning_scheduler = PruningAmountScheduler(config.pruning.amount, config.trainer.max_epochs)
+        pruning_scheduler = PruningAmountScheduler(
+            config.pruning.amount, config.trainer.max_epochs
+        )
         pruning_config = dict(config.pruning)
         del pruning_config["amount"]
         pruning_callback = instantiate(pruning_config, amount=pruning_scheduler)
