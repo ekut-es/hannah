@@ -40,22 +40,23 @@ class MacSummaryCallback(Callback):
                     return module_name
 
         def collect(module, input, output):
-            volume_ifm = prod(input[0].size())
-            volume_ofm = prod(output.size())
-            extra = get_extra(module, volume_ofm)
-            if extra is not None:
-                weights, macs, attrs = extra
-            else:
-                return
-            data["Name"] += [get_name_by_module(module)]
-            data["Type"] += [module.__class__.__name__]
-            data["Attrs"] += [attrs]
-            data["IFM"] += [tuple(input[0].size())]
-            data["IFM volume"] += [volume_ifm]
-            data["OFM"] += [tuple(output.size())]
-            data["OFM volume"] += [volume_ofm]
-            data["Weights volume"] += [int(weights)]
-            data["MACs"] += [int(macs)]
+            if module.__class__.__name__ not in ('Sequential', 'TCResidualBlock'):
+                volume_ifm = prod(input[0].size())
+                volume_ofm = prod(output.size())
+                extra = get_extra(module, volume_ofm)
+                if extra is not None:
+                    weights, macs, attrs = extra
+                else:
+                    return
+                data["Name"] += [get_name_by_module(module)]
+                data["Type"] += [module.__class__.__name__]
+                data["Attrs"] += [attrs]
+                data["IFM"] += [tuple(input[0].size())]
+                data["IFM volume"] += [volume_ifm]
+                data["OFM"] += [tuple(output.size())]
+                data["OFM volume"] += [volume_ofm]
+                data["Weights volume"] += [int(weights)]
+                data["MACs"] += [int(macs)]
 
         def get_extra(module, volume_ofm):
             classes = {torch.nn.Conv1d: get_conv,
@@ -120,7 +121,7 @@ class MacSummaryCallback(Callback):
         df = pd.DataFrame(data=data)
         return df
 
-    def _do_summary(self, pl_module, print=True):
+    def _do_summary(self, pl_module, print_log=True):
         dummy_input = pl_module.example_feature_array
 
         total_macs = 0.0
@@ -132,10 +133,11 @@ class MacSummaryCallback(Callback):
             df = self.walk_model(pl_module.model, dummy_input)
             t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
             total_macs = df["MACs"].sum()
+            #breakpoint()
             total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
             total_weights = df["Weights volume"].sum()
             estimated_acts = 2 * max(df["IFM volume"].max(), df["OFM volume"].max())
-            if print:
+            if print_log:
                 msglogger.info("\n" + str(t))
                 msglogger.info("Total MACs: " + "{:,}".format(total_macs))
                 msglogger.info("Total Weights: " + "{:,}".format(total_weights))
@@ -144,7 +146,7 @@ class MacSummaryCallback(Callback):
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
         except RuntimeError as e:
-            if print:
+            if print_log:
                 msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
@@ -162,6 +164,6 @@ class MacSummaryCallback(Callback):
         pl_module.train()
 
     def on_validation_epoch_end(self, trainer, pl_module):
-        res = self._do_summary(pl_module, print=False)
+        res = self._do_summary(pl_module, print_log=False)
         for k, v in res.items():
             pl_module.log(k, v)
