@@ -1,9 +1,9 @@
 defaults:
     - dataset: kws
-    - model: tc-res8
-    - scheduler: null
-    - optimizer: adam
     - features: mfcc
+    - model: tc-res8
+    - scheduler: null #1cycle
+    - optimizer: adamw # sgd
     - normalizer: null
     - module: stream_classifier
     - compress: null
@@ -12,7 +12,8 @@ defaults:
     - backend: null
     - early_stopping: null
     - profiler: null
-    - dataset/features: ${defaults.0.dataset}_${defaults.4.features}
+    - pruning: null
+    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
       optional: true
 
 type: train
@@ -25,7 +26,9 @@ hydra:
     run:
       dir: ${output_dir}/${experiment_id}/${model.name}/
     sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+
+
 
 #TODO:
 dump_test: false

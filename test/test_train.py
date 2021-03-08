@@ -36,6 +36,10 @@ topdir = Path(__file__).parent.absolute() / ".."
         ("lstm", "melspec"),
         ("wavenet", "mfcc"),
         ("nas-tc", "mfcc"),
+        ("conv-net-factory", "mfcc"),
+        ("conv-net-factory", "spectrogram"),
+        ("conv-net-fbgemm", "mfcc"),
+        ("conv-net-trax", "mfcc"),
     ],
 )
 def test_models(model, features):
@@ -61,23 +65,26 @@ def test_backend(model, backend):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
-@pytest.mark.skip(reason="These tests do not run reliably on build servers, due to their high disk memory consumption")
+@pytest.mark.skip(
+    reason="These tests do not run reliably on build servers, due to their high disk memory consumption"
+)
 @pytest.mark.parametrize(
     "model,dataset,split",
     [
         ("tc-res8", "snips", ""),
         ("tc-res8", "vad", "vad_balanced"),
         ("tc-res8", "kws", ""),
+        ("tc-res8", "atrial_fibrillation", ""),
     ],
 )
 def test_datasets(model, dataset, split):
-    download_folder = os.getenv(
-        "TEST_DOWNLOAD_FOLDER", "/net/rausch1/export/lucille/datasets/"
+    data_folder = os.getenv(
+        "HANNAH_DATA_FOLDER", "/net/rausch1/export/lucille/datasets/"
     )
-    if not os.path.exists(download_folder):
-        logging.warning("Could not find download folder, skipping datased tests")
+    if not os.path.exists(data_folder):
+        logging.warning("Could not find data folder, skipping datased tests")
         return
 
-    command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.download_folder={download_folder} dataset.data_split={split}"
+    command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.data_folder={data_folder} dataset.data_split={split}"
 
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)

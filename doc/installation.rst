@@ -1,5 +1,0 @@
-Installation
-============
-
-
-See **README.md**

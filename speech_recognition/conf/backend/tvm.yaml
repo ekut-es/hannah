@@ -1,0 +1,6 @@
+# @package _group_
+
+_target_: tvm_backend.TVMBackend
+val_batches: 10
+test_batches: 10
+val_frequency: 10

@@ -2,7 +2,7 @@ defaults:
     - dataset: kws
     - model: nas-tc
     - scheduler: null
-    - optimizer: adam
+    - optimizer: adamw
     - features: mfcc
     - normalizer: null
     - module: stream_classifier
@@ -22,6 +22,7 @@ auto_lr: false
 seed: 1234
 
 monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_clock_cycles", "acc_power", "acc_area"]
+
 model:
   major_blocks: []
 
@@ -29,20 +30,23 @@ hydra:
   run:
     dir: ${output_dir}/${experiment_id}/${model.name}/
   sweep:
-    dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+    dir: ${output_dir}/${experiment_id}/${model.name}/
+
+  job_logging:
+      handlers:
+        console:
+          level: CRITICAL
+
   sweeper:
     optim:
       optimizer: aging_evolution
-      population_size: 25
+      population_size: 100
       sample_size: 10
       budget:  2000
       seed: 1234
       num_workers:  10
       bounds:
-        val_loss: 0.2
-        total_macs: 500000
-        total_weights: 20000
-        est_act: 8000
+        val_error: 0.05
         acc_clock_cycles: 20000
         acc_power: 0.00001
         acc_area: 150000
@@ -63,8 +67,8 @@ hydra:
           upper: 2.0
 
         major_blocks:
-            min: 4
-            max: 10
+            min: 2
+            max: 6
             choices:
               - _target_: speech_recognition.models.nas.tc_model.MajorBlock
                 output_channels: [8,16,24,32,40,48,56,64]

@@ -12,7 +12,7 @@ import numpy as np
 import pyaudio
     
 
-from .process_audio import *
+from .process_audio import preprocess_audio, calculate_feature_shape
 
 
 def set_speech_format(f):

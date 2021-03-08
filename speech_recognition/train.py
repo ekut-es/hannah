@@ -1,9 +1,12 @@
 import os
 import logging
+import shutil
+import pathlib
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
+from torch.nn.modules import module
 
 from .utils import log_execution_env_state
 
@@ -11,7 +14,7 @@ from .callbacks.distiller import DistillerCallback
 from .callbacks.summaries import MacSummaryCallback
 
 from .callbacks.optimization import HydraOptCallback
-
+from .callbacks.pruning import PruningAmountScheduler
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
@@ -40,6 +43,14 @@ def train(config=DictConfig):
     if not torch.cuda.is_available():
         config.trainer.gpus = None
 
+    if not config.trainer.fast_dev_run:
+        current_path = pathlib.Path(".")
+        for component in current_path.iterdir():
+            if component.name == "checkpoints":
+                shutil.rmtree(component)
+            elif component.name.startswith("version_"):
+                shutil.rmtree(component)
+
     log_execution_env_state()
 
     logging.info("Configuration: ")
@@ -67,8 +78,8 @@ def train(config=DictConfig):
         callbacks.append(DistillerCallback(config.compress))
 
     logger = [
-        TensorBoardLogger(".", name="", default_hp_metric=False),
-        CSVLogger(".", name=""),
+        TensorBoardLogger(".", version=None, name="", default_hp_metric=False),
+        CSVLogger(".", version=None, name=""),
     ]
 
     if config.get("backend", None):
@@ -101,6 +112,13 @@ def train(config=DictConfig):
         stop_callback = instantiate(config.early_stopping)
         callbacks.append(stop_callback)
 
+    if config.get("pruning", None):
+        pruning_scheduler = PruningAmountScheduler(config.pruning.amount, config.trainer.max_epochs)
+        pruning_config = dict(config.pruning)
+        del pruning_config["amount"]
+        pruning_callback = instantiate(pruning_config, amount=pruning_scheduler)
+        callbacks.append(pruning_callback)
+
     # INIT PYTORCH-LIGHTNING
     lit_trainer = Trainer(
         **config.trainer,
@@ -124,9 +142,20 @@ def train(config=DictConfig):
 
     # PL TRAIN
     lit_trainer.fit(lit_module)
+    ckpt_path = "best"
+
+    if lit_trainer.fast_dev_run:
+        logging.warning(
+            "Trainer is in fast dev run mode, switching off loading of best model for test"
+        )
+        ckpt_path = None
 
     # PL TEST
-    lit_trainer.test()
+    lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+    if not lit_trainer.fast_dev_run:
+        lit_module.save()
+        if checkpoint_callback and checkpoint_callback.best_model_path:
+            shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
 
     return opt_callback.result()
 

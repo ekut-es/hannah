@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch
 from torch.autograd import Variable
 from ..utils import SerializableModule, next_power_of2
+from ..factory.act import DummyActivation
+from ..factory.pooling import ApproximateGlobalAveragePooling1D
 from hydra.utils import instantiate
 
 msglogger = logging.getLogger()
@@ -16,32 +18,6 @@ def create_act(act, clipping_value):
         return nn.Hardtanh(0.0, clipping_value)
     else:
         raise ("Unknown activation function: %s", act)
-
-
-class DummyActivation(nn.Identity):
-    """Dummy class that instantiated to mark a missing activation.
-
-       This can be used to mark requantization of activations for convolutional layers without
-       activation functions.
-    """
-
-    pass
-
-
-class ApproximateGlobalAveragePooling1D(nn.Module):
-    """A global average pooling layer, that divides by the next power of 2 instead of true number of elements"""
-
-    def __init__(self, size):
-        super().__init__()
-
-        self.size = size
-        self.divisor = next_power_of2(size)
-
-    def forward(self, x):
-        x = torch.sum(x, dim=2, keepdim=True)
-        x = x / self.divisor
-
-        return x
 
 
 class MajorBlock(nn.Module):
@@ -174,9 +150,6 @@ class MajorBlock(nn.Module):
         act_input = main_feed
 
         if self.is_residual_block:
-            #                |---> parallel: True  --->  parallel: True  ---> |
-            # Residual:  --->|                                                +--->
-            #                |---> parallel: False --->  parallel: False ---> |
             if self.has_parallel:
                 for layer in self.parallel_modules:
                     parallel_feed = layer(parallel_feed)
@@ -290,11 +263,11 @@ class TCCandidateModel(SerializableModule):
         self.eval()
 
         # iterate over the layers of the main branch to get dummy output
-        print("!!! TCCandidateModel layers:")
+        logging.info("!!! TCCandidateModel layers:")
         for layer in self.modules_list:
-            print(layer)
+            logging.info(str(layer))
             x = layer(x)
-        print("------------------------------")
+        logging.info("------------------------------")
 
         # APPEND average pooling
         shape = x.shape
@@ -310,7 +283,7 @@ class TCCandidateModel(SerializableModule):
         shape = x.shape
         self.fc = nn.Linear(shape[1], n_labels, bias=False)
 
-        print("Model created.")
+        logging.info("Model created.")
 
     def forward(self, x):
         for layer in self.modules_list:
