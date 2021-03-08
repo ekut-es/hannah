@@ -44,7 +44,7 @@ class InferenceBackendBase(Callback):
         self.val_frequency = val_frequency
         self.validation_epoch = 0
 
-    def run_batch(self, batch):
+    def run_batch(self, inputs=None):
         raise NotImplementedError("run_batch is an abstract method")
 
     def prepare(self, module):

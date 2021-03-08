@@ -9,10 +9,10 @@ It should not be used for serious optimizations, as measurements are much to noi
 ## Configuration
 
 val_batches
-:1 (number of batches used for validation)
+: 1 (number of batches used for validation)
 
 test_batches
-:1 (number of batches used for test)
+: 1 (number of batches used for test)
 
 val_frequency
-:10 (run backend every n validation epochs)
+: 10 (run backend every n validation epochs)

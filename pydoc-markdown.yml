@@ -35,7 +35,9 @@ renderer:
         - title: T-Rax Ultratrail
           name: backends/trax-Ultratrail
           source: doc/backends/ultratrail.md
-
+        - title: TVM
+          name: backends/tvm
+          source: doc/backends/tvm.md
     - title: Development
       children:
         - title: Profiling
