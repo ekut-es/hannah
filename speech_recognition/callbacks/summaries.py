@@ -40,23 +40,24 @@ class MacSummaryCallback(Callback):
                     return module_name
 
         def collect(module, input, output):
-            if module.__class__.__name__ not in ('Sequential', 'TCResidualBlock'):
-                volume_ifm = prod(input[0].size())
-                volume_ofm = prod(output.size())
-                extra = get_extra(module, volume_ofm)
-                if extra is not None:
-                    weights, macs, attrs = extra
-                else:
-                    return
-                data["Name"] += [get_name_by_module(module)]
-                data["Type"] += [module.__class__.__name__]
-                data["Attrs"] += [attrs]
-                data["IFM"] += [tuple(input[0].size())]
-                data["IFM volume"] += [volume_ifm]
-                data["OFM"] += [tuple(output.size())]
-                data["OFM volume"] += [volume_ofm]
-                data["Weights volume"] += [int(weights)]
-                data["MACs"] += [int(macs)]
+            if len(list(module.children())) != 0:
+                return
+            volume_ifm = prod(input[0].size())
+            volume_ofm = prod(output.size())
+            extra = get_extra(module, volume_ofm)
+            if extra is not None:
+                weights, macs, attrs = extra
+            else:
+                return
+            data["Name"] += [get_name_by_module(module)]
+            data["Type"] += [module.__class__.__name__]
+            data["Attrs"] += [attrs]
+            data["IFM"] += [tuple(input[0].size())]
+            data["IFM volume"] += [volume_ifm]
+            data["OFM"] += [tuple(output.size())]
+            data["OFM volume"] += [volume_ofm]
+            data["Weights volume"] += [int(weights)]
+            data["MACs"] += [int(macs)]
 
         def get_extra(module, volume_ofm):
             classes = {torch.nn.Conv1d: get_conv,
