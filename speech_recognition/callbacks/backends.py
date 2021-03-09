@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from callbacks.summaries import walk_model
+from speech_recognition.callbacks.summaries import walk_model
 
 from collections import OrderedDict
 
