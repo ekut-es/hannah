@@ -29,14 +29,6 @@ before_script:
   # Show limits
   - ulimit -a
 
-test:
-  image: python:3.6
-  script:
-    - set -e
-    - poetry run python3 -m pytest  -v --cov=speech_recognition test
-  tags:
-    - docker
-  interruptible: true
 
 test_python_37:
   image: python:3.7
@@ -46,8 +38,6 @@ test_python_37:
   tags:
     - docker
   interruptible: true
-  except:
-    - branches
 
 test_python_38:
   image: python:3.8
