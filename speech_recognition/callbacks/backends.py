@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import distiller
+from speech_recognition.callbacks.summaries import walk_model
 
 from collections import OrderedDict
 
@@ -231,9 +231,7 @@ class TRaxUltraTrailBackend(Callback):
     def get_analytical_clock_cycles(self, pl_module):
         model = pl_module.model
         dummy_input = pl_module.example_feature_array
-        df = distiller.model_performance_summary(
-            model, dummy_input, dummy_input.shape[0]
-        )
+        df = walk_model(pl_module.model, dummy_input)
 
         clock_cycles = 0
         for name, layer in pl_module.model.named_modules():
@@ -248,11 +246,11 @@ class TRaxUltraTrailBackend(Callback):
                 else:
                     df_index = df[df["Name"] == name].index[0]
                     layer_ifm = df["IFM"][df_index]
-                    C_w = int(layer_ifm.split(",")[2][:-1])
-                    C = layer.in_channels
-                    K = layer.out_channels
-                    F = layer.kernel_size[0]
-                    s = layer.stride[0]
+                    C_w = layer_ifm[2]
+                    C   = layer.in_channels
+                    K   = layer.out_channels
+                    F   = layer.kernel_size[0]
+                    s   = layer.stride[0]
                     pad = 1 if layer.padding[0] > 0 else 0
 
                 C_w_mod = C_w + pad * 2 * (F // 2)
@@ -274,8 +272,6 @@ class TRaxUltraTrailBackend(Callback):
                     a_w * F - MAC_not_b - MAC_not_e
                 )
                 clock_cycles += t_l
-
-                # Updating channel length - see TODO
         return clock_cycles
 
     def _do_summary(self, pl_module):
