@@ -43,7 +43,7 @@ class MacSummaryCallback(Callback):
             if len(list(module.children())) != 0:
                 return
             volume_ifm = prod(input[0].size())
-            volume_ofm = prod(output.size())
+            volume_ofm = prod(output[0].size())
             extra = get_extra(module, volume_ofm)
             if extra is not None:
                 weights, macs, attrs = extra
@@ -54,7 +54,7 @@ class MacSummaryCallback(Callback):
             data["Attrs"] += [attrs]
             data["IFM"] += [tuple(input[0].size())]
             data["IFM volume"] += [volume_ifm]
-            data["OFM"] += [tuple(output.size())]
+            data["OFM"] += [tuple(output[0].size())]
             data["OFM volume"] += [volume_ofm]
             data["Weights volume"] += [int(weights)]
             data["MACs"] += [int(macs)]
