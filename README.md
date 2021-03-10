@@ -10,11 +10,12 @@ Dependencies and virtual environments are managed using [poetry](https://python-
 - libsndfile and development headers
 - libsox and development headers
 - a blas implementation and development headers
+- git-lfs
 
 ### Ubuntu 18.04+
 
     sudo apt update
-    sudo apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev
+    sudo apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev git-lfs
 
 ### Centos / RHEL / Scientific Linux: 7+
 
