@@ -309,7 +309,7 @@ class StreamClassifierModule(LightningModule):
     def test_dataloader(self):
         test_loader = data.DataLoader(
             self.test_set,
-            batch_size=1,
+            batch_size=min(len(self.dev_set), 16),
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
