@@ -354,12 +354,6 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         assert len(teacher_logits) >= 1
         loss = self.calculate_loss(student_logits, teacher_logits, y)
 
-        # --- after loss
-        for callback in self.trainer.callbacks:
-            if hasattr(callback, "on_before_backward"):
-                callback.on_before_backward(self.trainer, self, loss)
-        # --- before backward
-
         # METRICS
         self.calculate_batch_metrics(
             student_logits, y, loss, self.train_metrics, "train"

@@ -73,12 +73,12 @@ class MinorBlockConfig:
     "dilation factor to use for this operation"
     groups: int = 1
     "number of groups for this operation"
-    padding_mode: str = "zeros"
-    "padding mode argument for this function"
     norm: Any = False  # Union[NormConfig, bool]
     "normalization to use (true uses networks default configs)"
     act: Any = False  # Union[ActConfig, bool]
     "activation to use (true uses default configs)"
+    upsampling: Any = 1.0
+    "Upsampling factor for mbconv layers"
 
 
 @dataclass
@@ -140,7 +140,6 @@ class NetworkFactory:
         padding: Union[int, Tuple[int], bool] = True,
         dilation: int = 0,
         groups: int = 1,
-        padding_mode: str = "zeros",
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
     ) -> None:
@@ -196,7 +195,6 @@ class NetworkFactory:
                 padding,
                 dilation,
                 groups,
-                padding_mode,
             )
             layers.append(conv_module)
             if norm:
@@ -228,7 +226,6 @@ class NetworkFactory:
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
-                    padding_mode=padding_mode,
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
@@ -242,7 +239,6 @@ class NetworkFactory:
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
-                    padding_mode=padding,
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
@@ -256,7 +252,6 @@ class NetworkFactory:
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
-                    padding_mode=padding_mode,
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
@@ -270,11 +265,47 @@ class NetworkFactory:
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
-                    padding_mode=padding_mode,
                     qconfig=qconfig,
                 )
 
         return output_shape, layers
+
+    def mbconv1d(
+        self,
+        input_shape: Tuple[int, int, int],
+        out_channels: int,
+        kernel_size: int,
+        dilation: int = 1,
+        stride: int = 1,
+        padding: Union[int, bool] = True,
+        upsampling: float = 1.0,
+        groups: int = 1,
+        norm: Union[BNConfig, bool] = False,
+        act: Union[ActConfig, bool] = False,
+    ):
+
+        up_channels = int(out_channels * upsampling)
+
+        output_shape, upsample_conv = self.conv1d(
+            input_shape, up_channels, 1, norm=norm, act=act
+        )
+        output_shape, grouped_conv = self.conv1d(
+            output_shape,
+            up_channels,
+            kernel_size,
+            stride=stride,
+            padding=True,
+            groups=up_channels,
+            norm=norm,
+            dilation=dilation,
+        )
+        output_shape, downsample_conv = self.conv1d(
+            output_shape, out_channels, 1, act=act, norm=norm
+        )
+
+        mbconv = nn.Sequential(upsample_conv, grouped_conv, downsample_conv)
+
+        return output_shape, mbconv
 
     def conv1d(
         self,
@@ -283,9 +314,8 @@ class NetworkFactory:
         kernel_size: int,
         stride: int = 1,
         padding: Union[int, bool] = True,
-        dilation: int = 0,
+        dilation: int = 1,
         groups: int = 1,
-        padding_mode: str = "zeros",
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
     ) -> None:
@@ -335,7 +365,6 @@ class NetworkFactory:
                 padding,
                 dilation,
                 groups,
-                padding_mode,
             )
             layers.append(conv_module)
             if norm:
@@ -379,7 +408,6 @@ class NetworkFactory:
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
-                    padding_mode=padding_mode,
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
@@ -393,7 +421,6 @@ class NetworkFactory:
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
-                    padding_mode=padding_mode,
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
@@ -407,7 +434,6 @@ class NetworkFactory:
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
-                    padding_mode=padding_mode,
                     qconfig=qconfig,
                 )
             else:
@@ -419,7 +445,6 @@ class NetworkFactory:
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
-                    padding_mode=padding_mode,
                     qconfig=qconfig,
                 )
 
@@ -435,7 +460,6 @@ class NetworkFactory:
             config.stride = major_stride
 
         if config.target == "conv1d":
-            print(config.padding_mode)
             return self.conv1d(
                 input_shape,
                 config.out_channels,
@@ -444,9 +468,21 @@ class NetworkFactory:
                 padding=config.padding,
                 dilation=config.dilation,
                 groups=config.groups,
-                padding_mode=config.padding_mode,
                 act=config.act,
                 norm=config.norm,
+            )
+        elif config.target == "mbconv1d":
+            return self.mbconv1d(
+                input_shape,
+                config.out_channels,
+                kernel_size=config.kernel_size,
+                stride=config.stride,
+                padding=config.padding,
+                dilation=config.dilation,
+                groups=config.groups,
+                act=config.act,
+                norm=config.norm,
+                upsampling=config.upsampling,
             )
         elif config.target == "conv2d":
             return self.conv2d(
@@ -457,7 +493,6 @@ class NetworkFactory:
                 padding=config.padding,
                 dilation=config.dilation,
                 groups=config.groups,
-                padding_mode=config.padding_mode,
                 act=config.act,
                 norm=config.norm,
             )
@@ -497,22 +532,29 @@ class NetworkFactory:
             output_shapes.append(chain[-1][0] if len(chain) > 0 else input_shape)
 
         minimum_output_shape = tuple(map(min, zip(*output_shapes)))
+        maximum_output_shape = tuple(map(max, zip(*output_shapes)))
+        target_output_shape = maximum_output_shape[:2] + minimum_output_shape[2:]
 
         for output_shape, chain in zip(output_shapes, input_chains):
-            if output_shape != minimum_output_shape:
-                logging.critical("Adding reduction cell")
+            if output_shape != target_output_shape:
+                logging.info("Adding reduction cell")
 
                 groups = output_shape[1]
                 output_channels = output_shape[1]
 
                 if reduction == "add":
-                    output_channels = minimum_output_shape[1]
-                    groups = math.gcd(output_channels, groups)
+                    output_channels = target_output_shape[1]
+                    groups = (
+                        1
+                    )  # For now do not use grouped convs for resamplingmath.gcd(output_channels, groups)
 
                 stride = tuple(
-                    (y // x for x, y in zip(minimum_output_shape[2:], output_shape[2:]))
+                    (
+                        round(y / x)
+                        for x, y in zip(target_output_shape[2:], output_shape[2:])
+                    )
                 )
-                print("stride:", stride)
+
                 dimension = len(stride)
                 if dimension == 1:
                     downsampler = self.conv1d(
@@ -523,7 +565,7 @@ class NetworkFactory:
                         padding=True,
                         dilation=1,
                         groups=groups,
-                        norm=False,
+                        norm=True,
                         act=False,
                     )
                 elif dimension == 2:
@@ -535,7 +577,7 @@ class NetworkFactory:
                         padding=True,
                         dilation=1,
                         groups=groups,
-                        norm=False,
+                        norm=True,
                         act=False,
                     )
 
@@ -543,12 +585,12 @@ class NetworkFactory:
 
         inputs = [nn.Sequential(*[x[1] for x in chain]) for chain in input_chains]
         if reduction == "add":
-            return minimum_output_shape, ReductionBlockAdd(*inputs)
+            return target_output_shape, ReductionBlockAdd(*inputs)
         elif reduction == "concat":
             output_channels = sum((x[1] for x in output_shapes))
 
             return (
-                (minimum_output_shape[0], output_channels) + minimum_output_shape[2:],
+                (target_output_shape[0], output_channels) + target_output_shape[2:],
                 ReductionBlockConcat(*inputs),
             )
         else:

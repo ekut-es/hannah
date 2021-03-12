@@ -212,12 +212,6 @@ class StreamClassifierModule(LightningModule):
         y = y.view(-1)
         loss = self.criterion(output, y)
 
-        # --- after loss
-        for callback in self.trainer.callbacks:
-            if hasattr(callback, "on_before_backward"):
-                callback.on_before_backward(self.trainer, self, loss)
-        # --- before backward
-
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
