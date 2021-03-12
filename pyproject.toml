@@ -53,10 +53,6 @@ pydoc-markdown = "^3.10.0"
 tf-backend = ["onnx-tf", "tensorflow-addons"]
 onnxrt-backend = ["onnxruntime"]
 
-# [[tool.poetry.source]]
-# name = "gerum"
-# url = "https://atreus.informatik.uni-tuebingen.de/~gerum/dist"
-
 
 [tool.poetry.scripts]
 hannah-train = 'speech_recognition.train:main'
