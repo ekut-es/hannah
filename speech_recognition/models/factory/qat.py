@@ -110,8 +110,10 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         else:
             self.bias_fake_quant = nn.Identity()
 
-        # Always add bias
-        self.bias = Parameter(torch.Tensor(out_channels))
+        if bias:
+            self.bias = Parameter(torch.Tensor(out_channels))
+        else:
+            self.bias = None
 
         self.reset_bn_parameters()
 
@@ -184,18 +186,21 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
         conv = self._real_conv_forward(input, scaled_weight, zero_bias)
-        if not self.training:
-            bias = self.bias_fake_quant(
-                self.bias * scale_factor.reshape(bias_shape) - self.bn.bias
-            )
-            conv = conv + bias
-        else:
+        if self.training:
             conv_orig = conv / scale_factor.reshape(bias_shape)
             if self.bias is not None:
-                conv_orig = conv_orig + self.bias_fake_quant(
-                    self.bias.reshape(bias_shape)
-                )
+                conv_orig = conv_orig + self.bias.reshape(bias_shape)
             conv = self.bn(conv_orig)
+            # conv = conv - (self.bn.bias - self.bn.running_mean).reshape(bias_shape)
+        else:
+            bias = zero_bias
+            if self.bias is not None:
+                bias = self.bias
+            bias = self.bias_fake_quant(
+                (bias - self.bn.running_mean) * scale_factor + self.bn.bias
+            ).reshape(bias_shape)
+            conv = conv + bias
+
         return conv
 
     def extra_repr(self):
