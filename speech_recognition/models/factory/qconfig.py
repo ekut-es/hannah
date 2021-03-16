@@ -46,18 +46,14 @@ class GlobalObserverStatistics(nn.Module):
 
 class GlobalMovingAverageMinMaxObserver(ObserverBase):
     def __init__(
-        self,
-        global_statistics=None,
-        obs_quant_min=-128,
-        obs_quant_max=127,
-        verbose=False,
+        self, global_statistics=None, quant_min=-128, quant_max=127, verbose=False
     ):
         super().__init__(torch.qint32)
         self.global_statistics = global_statistics
         self.qscheme = torch.per_tensor_symmetric
         self.averaging_constant = 0.0001
-        self.quant_min = obs_quant_min
-        self.quant_max = obs_quant_max
+        self.quant_min = quant_min
+        self.quant_max = quant_max
         self.verbose = verbose
 
     @torch.jit.export
@@ -101,12 +97,11 @@ class GlobalMovingAverageMinMaxObserver(ObserverBase):
 
 
 class FixedpointObserver(ObserverBase):
-    def __init__(self, obs_quant_min=-128, obs_quant_max=127):
-        super().__init__(torch.qint32)
+    def __init__(self, quant_min=-128, quant_max=127):
+        super().__init__(torch.qint8)
         self.qscheme = torch.per_tensor_symmetric
-        self.averaging_constant = 0.0001
-        self.quant_min = obs_quant_min
-        self.quant_max = obs_quant_max
+        self.quant_min = quant_min
+        self.quant_max = quant_max
         self.device = None
 
     @torch.jit.export
@@ -137,22 +132,16 @@ def get_trax_qat_qconfig(config):
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_activation - 1),
             quant_max=2 ** (bits_activation - 1) - 1,
-            obs_quant_min=-2 ** (bits_activation - 1),
-            obs_quant_max=2 ** (bits_activation - 1) - 1,
         ),
         FakeQuantize.with_args(
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_weight - 1),
-            obs_quant_min=-2 ** (bits_weight - 1),
             quant_max=2 ** (bits_weight - 1) - 1,
-            obs_quant_max=2 ** (bits_weight - 1) - 1,
         ),
         FakeQuantize.with_args(
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_bias - 1),
             quant_max=2 ** (bits_bias - 1) - 1,
-            obs_quant_min=-2 ** (bits_bias - 1),
-            obs_quant_max=2 ** (bits_bias - 1) - 1,
         ),
     )
 

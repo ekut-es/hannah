@@ -1,11 +1,14 @@
 import logging
+import os
+import json
+import copy
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.classification.precision_recall import Precision
 from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
 from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
 from pytorch_lightning.metrics.metric import MetricCollection
-from .config_utils import get_loss_function, get_model, save_model
+from .config_utils import get_loss_function, get_model
 from typing import Optional
 
 from speech_recognition.datasets.base import ctc_collate_fn
@@ -20,6 +23,8 @@ from ..datasets.DatasetSplit import DatasetSplit
 from ..datasets.Downsample import Downsample
 from ..datasets import AsynchronousLoader, SpeechDataset
 from .metrics import Error, plot_confusion_matrix
+from ..models.factory.qat import QAT_MODULE_MAPPINGS
+
 
 from omegaconf import DictConfig
 
@@ -353,7 +358,41 @@ class StreamClassifierModule(LightningModule):
         return x
 
     def save(self):
-        save_model(".", self)
+
+        logging.info("saving weights to json...")
+        output_dir = "."
+        filename = os.path.join(output_dir, "model.json")
+        state_dict = self.model.state_dict()
+        with open(filename, "w") as f:
+            json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
+
+        quantized_model = copy.deepcopy(self.model)
+        quantized_model.cpu()
+        if hasattr(self.model, "qconfig") and self.model.qconfig:
+            print(self.model)
+            quantized_model = torch.quantization.convert(
+                quantized_model, mapping=QAT_MODULE_MAPPINGS
+            )
+            print(quantized_model)
+
+            # for parameter in quantized_model.parameters():
+            #     name = "unknown"
+            #     print(name, parameter)
+
+        logging.info("saving onnx...")
+        try:
+            dummy_input = copy.deepcopy(self.example_feature_array)
+            dummy_input.cpu()
+
+            torch.onnx.export(
+                quantized_model,
+                dummy_input,
+                os.path.join(output_dir, "model.onnx"),
+                verbose=False,
+                opset_version=13,
+            )
+        except Exception as e:
+            logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
     # CALLBACKS
     def on_fit_end(self):

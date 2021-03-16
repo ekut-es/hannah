@@ -247,10 +247,10 @@ class TRaxUltraTrailBackend(Callback):
                     df_index = df[df["Name"] == name].index[0]
                     layer_ifm = df["IFM"][df_index]
                     C_w = layer_ifm[2]
-                    C   = layer.in_channels
-                    K   = layer.out_channels
-                    F   = layer.kernel_size[0]
-                    s   = layer.stride[0]
+                    C = layer.in_channels
+                    K = layer.out_channels
+                    F = layer.kernel_size[0]
+                    s = layer.stride[0]
                     pad = 1 if layer.padding[0] > 0 else 0
 
                 C_w_mod = C_w + pad * 2 * (F // 2)

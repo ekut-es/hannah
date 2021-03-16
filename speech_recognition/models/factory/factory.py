@@ -79,6 +79,7 @@ class MinorBlockConfig:
     "activation to use (true uses default configs)"
     upsampling: Any = 1.0
     "Upsampling factor for mbconv layers"
+    bias: bool = False
 
 
 @dataclass
@@ -142,6 +143,7 @@ class NetworkFactory:
         groups: int = 1,
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
+        bias: bool = False,
     ) -> None:
 
         in_channels = input_shape[1]
@@ -764,9 +766,9 @@ class NetworkFactory:
 
         dropout = nn.Dropout(network_config.dropout)
 
-        model = ConvNet(conv_layers, global_pooling, linear_layers, dropout)
-
-        print(model)
+        model = ConvNet(
+            conv_layers, global_pooling, linear_layers, dropout, self.default_qconfig
+        )
 
         return output_shape, model
 
