@@ -184,7 +184,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
         conv = self._real_conv_forward(input, scaled_weight, zero_bias)
-        if not self.bn.track_running_stats:
+        if not self.training:
             bias = self.bias_fake_quant(
                 self.bias * scale_factor.reshape(bias_shape) - self.bn.bias
             )
