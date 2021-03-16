@@ -48,7 +48,7 @@ class GlobalMovingAverageMinMaxObserver(ObserverBase):
     def __init__(
         self, global_statistics=None, quant_min=-128, quant_max=127, verbose=False
     ):
-        super().__init__(torch.qint32)
+        super().__init__(torch.int32)
         self.global_statistics = global_statistics
         self.qscheme = torch.per_tensor_symmetric
         self.averaging_constant = 0.0001
@@ -98,7 +98,7 @@ class GlobalMovingAverageMinMaxObserver(ObserverBase):
 
 class FixedpointObserver(ObserverBase):
     def __init__(self, quant_min=-128, quant_max=127):
-        super().__init__(torch.qint8)
+        super().__init__(torch.int32)
         self.qscheme = torch.per_tensor_symmetric
         self.quant_min = quant_min
         self.quant_max = quant_max

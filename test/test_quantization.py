@@ -1,3 +1,4 @@
+import pytest
 from speech_recognition.models.factory.qat import (
     ConvBnReLU1d,
     ConvBnReLU2d,
@@ -14,7 +15,10 @@ import torch
 import torch.nn as nn
 
 
-def test_fused_conv1d():
+@pytest.mark.parametrize(
+    "conv_cls", [(Conv1d), (ConvBn1d), (ConvReLU1d), (ConvBnReLU1d)]
+)
+def test_fused_conv1d(conv_cls):
     class Config:
         bw_b = 8
         bw_f = 8
@@ -23,30 +27,28 @@ def test_fused_conv1d():
     config = Config()
     qconfig = get_trax_qat_qconfig(config)
 
+    conv = conv_cls(in_channels=1, out_channels=1, kernel_size=3, qconfig=qconfig)
+
     class Model(nn.Module):
-        def __init__(self, qconfig):
+        def __init__(self, qconfig, conv):
             super().__init__()
             self.qconfig = qconfig
-            self.conv = Conv1d(
-                in_channels=1, out_channels=1, kernel_size=3, qconfig=qconfig
-            )
+            self.conv = conv
 
         def forward(self, x):
             x = self.conv(x)
             return x
 
     input = torch.rand(8, 1, 3)
-    model = Model(qconfig)
-    print(model)
+    model = Model(qconfig, conv)
+    model.eval()
     output = model(input)
 
-    quantized_model = convert(model, mapping=QAT_MODULE_MAPPINGS)
-    print(quantized_model)
-
-    print(quantized_model.conv.weight)
+    quantized_model = convert(model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=False)
 
     quantized_output = quantized_model(input)
-    print(output, quantized_output)
+
+    assert torch.equal(output, quantized_output)
 
 
 def test_fused_bn_relu_1d():
@@ -56,7 +58,7 @@ def test_fused_bn_relu_1d():
         in_channels=1, out_channels=1, kernel_size=3, qconfig=default_qconfig
     )
     output = layer(input)
-    assert torch.equal(output, layer.act_fake_quant(output))
+    assert torch.equal(output, layer.activation_post_process(output))
 
 
 def test_fused_bn_relu_2d():
@@ -65,7 +67,7 @@ def test_fused_bn_relu_2d():
         in_channels=1, out_channels=1, kernel_size=3, qconfig=default_qconfig
     )
     output = layer(input)
-    assert torch.equal(output, layer.act_fake_quant(output))
+    assert torch.equal(output, layer.activation_post_process(output))
 
 
 def test_fused_bn_1d():
@@ -74,7 +76,7 @@ def test_fused_bn_1d():
         in_channels=1, out_channels=1, kernel_size=3, qconfig=default_qconfig
     )
     output = layer(input)
-    assert torch.equal(output, layer.act_fake_quant(output))
+    assert torch.equal(output, layer.activation_post_process(output))
 
 
 def test_fused_bn_2d():
@@ -83,7 +85,7 @@ def test_fused_bn_2d():
         in_channels=1, out_channels=1, kernel_size=3, qconfig=default_qconfig
     )
     output = layer(input)
-    assert torch.equal(output, layer.act_fake_quant(output))
+    assert torch.equal(output, layer.activation_post_process(output))
 
 
 def test_fused_relu_1d():
@@ -92,7 +94,7 @@ def test_fused_relu_1d():
         in_channels=1, out_channels=1, kernel_size=3, qconfig=default_qconfig
     )
     output = layer(input)
-    assert torch.equal(output, layer.act_fake_quant(output))
+    assert torch.equal(output, layer.activation_post_process(output))
 
 
 def test_fused_relu_2d():
@@ -101,7 +103,7 @@ def test_fused_relu_2d():
         in_channels=1, out_channels=1, kernel_size=3, qconfig=default_qconfig
     )
     output = layer(input)
-    assert torch.equal(output, layer.act_fake_quant(output))
+    assert torch.equal(output, layer.activation_post_process(output))
 
 
 if __name__ == "__main__":

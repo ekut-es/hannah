@@ -916,10 +916,10 @@ QAT_MODULE_MAPPINGS: Dict[Callable, Any] = {
     # Intrinsic modules:
     ConvBn1d: q.Conv1d,
     ConvBn2d: nnq.Conv2d,
-    ConvBnReLU1d: nniq.ConvReLU1d,
+    ConvBnReLU1d: q.ConvReLU1d,
     ConvBnReLU2d: nniq.ConvReLU2d,
-    ConvReLU1d: nniq.ConvReLU1d,
+    ConvReLU1d: q.ConvReLU1d,
     ConvReLU2d: nniq.ConvReLU2d,
-    torch.quantization.stubs.QuantStub: nnq.Quantize,
-    torch.quantization.stubs.DeQuantStub: nnq.DeQuantize,
+    torch.quantization.stubs.QuantStub: nn.Identity,
+    torch.quantization.stubs.DeQuantStub: nn.Identity,
 }

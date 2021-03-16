@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
@@ -35,6 +37,9 @@ class Conv1d(nn.Module):
         self.bias = None
         self.weight = None
         self.activation_post_process = None
+
+    def _get_name(self):
+        return "QuantizedConv1d"
 
     def forward(self, input):
         print("Qat conv1d forward")
@@ -106,7 +111,9 @@ class Conv1d(nn.Module):
             )
         quant_module.weight = quant_weight
         quant_module.bias = quant_bias
-        quant_module.activation_post_process = float_module.activation_post_process
+        quant_module.activation_post_process = copy.deepcopy(
+            float_module.activation_post_process
+        )
 
         print(dir(quant_module))
 
