@@ -330,8 +330,8 @@ class TRaxUltraTrailBackend(Callback):
             x = x.cpu()
             x = x.cpu().split(x.size(0))
             y = y.cpu().split(y.size(0))
-            self.xs.append(x)
-            self.ys.append(y)
+            self.xs.extend(x)
+            self.ys.extend(y)
 
     def on_test_end(self, trainer, pl_module):
         logging.info("Preparing ultratrail")
