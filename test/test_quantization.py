@@ -114,7 +114,7 @@ def test_quantized_conv2d(conv_cls, quant):
 
     # Run a few times in training mode to update batch norm statistics
     model.train()
-    for _i in range(5):
+    for _i in range(30):
         input = torch.rand(8, 1, 81, 81)
         model(input)
 

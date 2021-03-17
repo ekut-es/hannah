@@ -208,10 +208,8 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         return super(_ConvBnNd, self).extra_repr()
 
     def forward(self, input):
-        # print(f"forward {self.stride}")
-        # print(input.shape)
         y = self._forward(input)
-        # print(y.shape)
+
         return y
 
     def train(self, mode=True):
@@ -535,7 +533,7 @@ class ConvBn2d(_ConvBnNd):
         self.activation_post_process = qconfig.activation()
 
     def forward(self, input):
-        return self.activation_post_process(super(ConvBn2d, self).forward(input))
+        return self.activation_post_process(super(ConvBn2d, self)._forward(input))
 
 
 class ConvBnReLU2d(ConvBn2d):
@@ -593,7 +591,7 @@ class ConvBnReLU2d(ConvBn2d):
 
     def forward(self, input):
         return self.activation_post_process(
-            F.relu(super(ConvBnReLU2d, self).forward(input))
+            F.relu(super(ConvBnReLU2d, self)._forward(input))
         )
 
     @classmethod

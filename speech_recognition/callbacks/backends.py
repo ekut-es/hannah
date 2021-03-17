@@ -323,12 +323,13 @@ class TRaxUltraTrailBackend(Callback):
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if batch_idx < self.num_inferences:
+        if len(self.xs) < self.num_inferences:
             x = pl_module._extract_features(batch[0].cuda())
             x = pl_module.normalizer(x)
             y = pl_module.model(x)
             x = x.cpu()
-            y = y.cpu()
+            x = x.cpu().split(x.size(0))
+            y = y.cpu().split(y.size(0))
             self.xs.append(x)
             self.ys.append(y)
 

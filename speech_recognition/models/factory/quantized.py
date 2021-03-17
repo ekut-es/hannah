@@ -178,17 +178,18 @@ class Conv2d(QuantizedConvModule):
         return "QuantizedConv1d"
 
     def forward(self, input):
-        output = self.activation_post_process(
-            f.conv2d(
-                input,
-                self.weight,
-                self.bias,
-                self.stride,
-                self.padding,
-                self.dilation,
-                self.groups,
-            )
+        output = f.conv2d(
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
         )
+
+        if hasattr(self, "activation_post_process"):
+            output = self.activation_post_process(output)
 
         return output
 
