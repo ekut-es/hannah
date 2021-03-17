@@ -12,7 +12,62 @@ def _quantize(tensor, qconfig):
     return fake_quantized
 
 
-class Conv1d(nn.Module):
+class QuantizedModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    @classmethod
+    def from_float(cls, float_module):
+        assert hasattr(float_module, "weight_fake_quant")
+        assert hasattr(float_module, "activation_post_process")
+
+        if hasattr(float_module, "bn"):
+            float_module.weight, float_module.bias = fuse_conv_bn_weights(
+                float_module.weight,
+                float_module.bias,
+                float_module.bn.running_mean,
+                float_module.bn.running_var,
+                float_module.bn.eps,
+                float_module.bn.weight,
+                float_module.bn.bias,
+            )
+
+        quant_module = cls(
+            float_module.in_channels,
+            float_module.out_channels,
+            float_module.kernel_size,
+            float_module.stride,
+            float_module.padding,
+            float_module.dilation,
+            float_module.groups,
+            float_module.padding_mode,
+        )
+
+        quant_weight = nn.parameter.Parameter(
+            _quantize(float_module.weight, float_module.weight_fake_quant)
+        )
+        quant_bias = None
+        if float_module.bias is not None:
+            if hasattr(float_module, "bias_fake_quant"):
+                quant_bias = nn.parameter.Parameter(
+                    _quantize(float_module.bias, float_module.bias_fake_quant)
+                )
+            else:
+                quant_bias = nn.parameter.Parameter(
+                    _quantize(float_module.bias, float_module.activation_post_process)
+                )
+        quant_module.weight = quant_weight
+        quant_module.bias = quant_bias
+        quant_module.activation_post_process = copy.deepcopy(
+            float_module.activation_post_process
+        )
+
+        print(dir(quant_module))
+
+        return quant_module
+
+
+class Conv1d(QuantizedModule):
     def __init__(
         self,
         in_channels,
@@ -42,9 +97,6 @@ class Conv1d(nn.Module):
         return "QuantizedConv1d"
 
     def forward(self, input):
-        print("Qat conv1d forward")
-        print(dir(self))
-        print(self.weight)
         output = self.activation_post_process(
             f.conv1d(
                 input,
@@ -74,56 +126,21 @@ class Conv1d(nn.Module):
             s += ", bias=False"
         return s.format(**self.__dict__)
 
-    @staticmethod
-    def from_float(float_module):
-        assert hasattr(float_module, "weight_fake_quant")
-        assert hasattr(float_module, "activation_post_process")
 
-        if hasattr(float_module, "bn"):
-            float_module.weight, float_module.bias = fuse_conv_bn_weights(
-                float_module.weight,
-                float_module.bias,
-                float_module.bn.running_mean,
-                float_module.bn.running_var,
-                float_module.bn.eps,
-                float_module.bn.weight,
-                float_module.bn.bias,
-            )
+class ConvReLU1d(Conv1d):
+    def _get_name(self):
+        return "QuantizedConvReLU1d"
 
-        quant_module = Conv1d(
-            float_module.in_channels,
-            float_module.out_channels,
-            float_module.kernel_size,
-            float_module.stride,
-            float_module.padding,
-            float_module.dilation,
-            float_module.groups,
-            float_module.padding_mode,
+    def forward(self, input):
+        output = f.conv1d(
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
         )
+        output = self.activation_post_process(f.relu(output))
 
-        quant_weight = nn.parameter.Parameter(
-            _quantize(float_module.weight, float_module.weight_fake_quant)
-        )
-        quant_bias = None
-        if float_module.bias is not None:
-            quant_bias = nn.parameter.Parameter(
-                _quantize(float_module.bias, float_module.bias_fake_quant)
-            )
-        quant_module.weight = quant_weight
-        quant_module.bias = quant_bias
-        quant_module.activation_post_process = copy.deepcopy(
-            float_module.activation_post_process
-        )
-
-        print(dir(quant_module))
-
-        return quant_module
-
-
-class ConvReLU1d(nn.Module):
-    def __init__():
-        super().__init__()
-
-    @staticmethod
-    def from_float(float_module):
-        return float_module
+        return output

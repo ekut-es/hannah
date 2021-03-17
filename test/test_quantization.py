@@ -1,4 +1,5 @@
 import pytest
+from torch.quantization.qconfig import get_default_qconfig
 from speech_recognition.models.factory.qat import (
     ConvBnReLU1d,
     ConvBnReLU2d,
@@ -16,16 +17,29 @@ import torch.nn as nn
 
 
 @pytest.mark.parametrize(
-    "conv_cls", [(Conv1d), (ConvBn1d), (ConvReLU1d), (ConvBnReLU1d)]
+    "conv_cls,quant",
+    [
+        (Conv1d, "trax"),
+        (ConvBn1d, "trax"),
+        (ConvReLU1d, "trax"),
+        (ConvBnReLU1d, "trax"),
+        (Conv1d, "fbgemm"),
+        (ConvBn1d, "fbgemm"),
+        (ConvReLU1d, "fbgemm"),
+        (ConvBnReLU1d, "fbgemm"),
+    ],
 )
-def test_fused_conv1d(conv_cls):
+def test_fused_conv1d(conv_cls, quant):
     class Config:
         bw_b = 8
         bw_f = 8
         bw_w = 6
 
-    config = Config()
-    qconfig = get_trax_qat_qconfig(config)
+    if quant == "trax":
+        config = Config()
+        qconfig = get_trax_qat_qconfig(config)
+    else:
+        qconfig = get_default_qconfig(quant)
 
     conv = conv_cls(in_channels=1, out_channels=1, kernel_size=3, qconfig=qconfig)
 
@@ -39,8 +53,15 @@ def test_fused_conv1d(conv_cls):
             x = self.conv(x)
             return x
 
-    input = torch.rand(8, 1, 3)
     model = Model(qconfig, conv)
+
+    # Run a few times in training mode to update batch norm statistics
+    model.train()
+    for _i in range(5):
+        input = torch.rand(8, 1, 3)
+        model(input)
+
+    input = torch.rand(8, 1, 3)
     model.eval()
     output = model(input)
 
@@ -48,7 +69,7 @@ def test_fused_conv1d(conv_cls):
 
     quantized_output = quantized_model(input)
 
-    assert torch.equal(output, quantized_output)
+    assert torch.allclose(output, quantized_output)
 
 
 def test_fused_bn_relu_1d():
