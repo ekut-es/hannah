@@ -59,10 +59,10 @@ def test_quantized_conv1d(conv_cls, quant):
     # Run a few times in training mode to update batch norm statistics
     model.train()
     for _i in range(5):
-        input = torch.rand(8, 1, 3)
+        input = torch.rand(8, 1, 81)
         model(input)
 
-    input = torch.rand(8, 1, 3)
+    input = torch.rand(8, 1, 81)
     model.eval()
     output = model(input)
 
@@ -86,7 +86,7 @@ def test_quantized_conv1d(conv_cls, quant):
         (ConvBnReLU2d, "fbgemm"),
     ],
 )
-def test_qunatized_conv2d(conv_cls, quant):
+def test_quantized_conv2d(conv_cls, quant):
     class Config:
         bw_b = 8
         bw_f = 8
@@ -115,10 +115,10 @@ def test_qunatized_conv2d(conv_cls, quant):
     # Run a few times in training mode to update batch norm statistics
     model.train()
     for _i in range(5):
-        input = torch.rand(8, 1, 9, 9)
+        input = torch.rand(8, 1, 81, 81)
         model(input)
 
-    input = torch.rand(8, 1, 9, 9)
+    input = torch.rand(8, 1, 81, 81)
     model.eval()
     output = model(input)
 
@@ -126,7 +126,7 @@ def test_qunatized_conv2d(conv_cls, quant):
 
     quantized_output = quantized_model(input)
 
-    assert torch.allclose(output, quantized_output)
+    assert torch.allclose(output, quantized_output, rtol=1e-5, atol=1e-8)
 
 
 def test_fused_bn_relu_1d():

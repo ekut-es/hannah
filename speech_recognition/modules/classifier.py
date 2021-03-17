@@ -371,7 +371,7 @@ class StreamClassifierModule(LightningModule):
         if hasattr(self.model, "qconfig") and self.model.qconfig:
             print(self.model)
             quantized_model = torch.quantization.convert(
-                quantized_model, mapping=QAT_MODULE_MAPPINGS
+                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=False
             )
             print(quantized_model)
 

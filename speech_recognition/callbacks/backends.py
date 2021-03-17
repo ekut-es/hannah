@@ -25,6 +25,8 @@ try:
 except ModuleNotFoundError:
     onnxrt_backend = None
 
+from ..models.factory.qat import QAT_MODULE_MAPPINGS
+
 
 def symbolic_batch_dim(model):
     sym_batch_dim = "N"
@@ -338,6 +340,13 @@ class TRaxUltraTrailBackend(Callback):
         sys.path.append(self.backend_dir)
         from backend.backend import UltraTrailBackend
 
+        model = pl_module.model
+        if hasattr(model, "qconfig"):
+            # Removing qconfig produces a normal FloatModule
+            model = torch.quantization.convert(
+                model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
+            )
+
         # execute backend
         backend = UltraTrailBackend(
             teda=self.teda_dir,
@@ -350,7 +359,7 @@ class TRaxUltraTrailBackend(Callback):
             macro_type=self.macro_type,
         )
         backend.set_model(
-            pl_module.model, pl_module.example_feature_array, verbose=True
+            model.cpu(), pl_module.example_feature_array.cpu(), verbose=True
         )
         backend.set_inputs_and_outputs(self.xs, self.ys)
         backend.prepare()

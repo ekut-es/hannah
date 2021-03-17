@@ -108,7 +108,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         if hasattr(self.qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
 
         if bias:
             self.bias = Parameter(torch.Tensor(out_channels))
@@ -644,7 +644,7 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
 
     def forward(self, input):
         return self.activation_post_process(
@@ -700,7 +700,7 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
 
     def forward(self, input):
         output = self._real_conv_forward(
@@ -752,7 +752,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
         self.dim = 1
 
     def forward(self, input):
@@ -814,7 +814,7 @@ class Conv2d(nn.Conv2d, _ConvForwardMixin):
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
         self.dim = 2
 
     def forward(self, input):
