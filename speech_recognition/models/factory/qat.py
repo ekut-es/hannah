@@ -772,7 +772,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         return super(ConvReLU2d, cls).from_float(mod)
 
 
-class Conv2d(nn.Conv1d, _ConvForwardMixin):
+class Conv2d(nn.Conv2d, _ConvForwardMixin):
     r"""A Conv2d module is a Conv2d module , attached with
     FakeQuantize modules for weight for
     quantization aware training.
@@ -796,7 +796,7 @@ class Conv2d(nn.Conv1d, _ConvForwardMixin):
         padding_mode="zeros",
         qconfig=None,
     ):
-        super(Conv1d, self).__init__(
+        super(Conv2d, self).__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -819,12 +819,10 @@ class Conv2d(nn.Conv1d, _ConvForwardMixin):
 
     def forward(self, input):
         y = self.activation_post_process(
-            F.relu(
-                self._real_conv_forward(
-                    input,
-                    self.weight_fake_quant(self.weight),
-                    self.bias_fake_quant(self.bias),
-                )
+            self._real_conv_forward(
+                input,
+                self.weight_fake_quant(self.weight),
+                self.bias_fake_quant(self.bias),
             )
         )
 
@@ -916,15 +914,15 @@ def freeze_bn_stats(mod):
 # Default map for swapping float module to qat modules
 QAT_MODULE_MAPPINGS: Dict[Callable, Any] = {
     Conv1d: q.Conv1d,
-    Conv2d: nnq.Conv2d,
-    Linear: nnq.Linear,
+    Conv2d: q.Conv2d,
+    Linear: q.Linear,
     # Intrinsic modules:
     ConvBn1d: q.Conv1d,
-    ConvBn2d: nnq.Conv2d,
+    ConvBn2d: q.Conv2d,
     ConvBnReLU1d: q.ConvReLU1d,
-    ConvBnReLU2d: nniq.ConvReLU2d,
+    ConvBnReLU2d: q.ConvReLU2d,
     ConvReLU1d: q.ConvReLU1d,
-    ConvReLU2d: nniq.ConvReLU2d,
+    ConvReLU2d: q.ConvReLU2d,
     torch.quantization.stubs.QuantStub: nn.Identity,
     torch.quantization.stubs.DeQuantStub: nn.Identity,
 }

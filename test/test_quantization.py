@@ -8,6 +8,7 @@ from speech_recognition.models.factory.qat import (
     ConvReLU1d,
     ConvReLU2d,
     Conv1d,
+    Conv2d,
     QAT_MODULE_MAPPINGS,
 )
 from speech_recognition.models.factory.qconfig import get_trax_qat_qconfig
@@ -29,7 +30,7 @@ import torch.nn as nn
         (ConvBnReLU1d, "fbgemm"),
     ],
 )
-def test_fused_conv1d(conv_cls, quant):
+def test_quantized_conv1d(conv_cls, quant):
     class Config:
         bw_b = 8
         bw_f = 8
@@ -72,8 +73,63 @@ def test_fused_conv1d(conv_cls, quant):
     assert torch.allclose(output, quantized_output)
 
 
-def test_fused_bn_relu_1d():
+@pytest.mark.parametrize(
+    "conv_cls,quant",
+    [
+        (Conv2d, "trax"),
+        (ConvBn2d, "trax"),
+        (ConvReLU2d, "trax"),
+        (ConvBnReLU2d, "trax"),
+        (Conv2d, "fbgemm"),
+        (ConvBn2d, "fbgemm"),
+        (ConvReLU2d, "fbgemm"),
+        (ConvBnReLU2d, "fbgemm"),
+    ],
+)
+def test_qunatized_conv2d(conv_cls, quant):
+    class Config:
+        bw_b = 8
+        bw_f = 8
+        bw_w = 6
 
+    if quant == "trax":
+        config = Config()
+        qconfig = get_trax_qat_qconfig(config)
+    else:
+        qconfig = get_default_qconfig(quant)
+
+    conv = conv_cls(in_channels=1, out_channels=1, kernel_size=3, qconfig=qconfig)
+
+    class Model(nn.Module):
+        def __init__(self, qconfig, conv):
+            super().__init__()
+            self.qconfig = qconfig
+            self.conv = conv
+
+        def forward(self, x):
+            x = self.conv(x)
+            return x
+
+    model = Model(qconfig, conv)
+
+    # Run a few times in training mode to update batch norm statistics
+    model.train()
+    for _i in range(5):
+        input = torch.rand(8, 1, 9, 9)
+        model(input)
+
+    input = torch.rand(8, 1, 9, 9)
+    model.eval()
+    output = model(input)
+
+    quantized_model = convert(model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=False)
+
+    quantized_output = quantized_model(input)
+
+    assert torch.allclose(output, quantized_output)
+
+
+def test_fused_bn_relu_1d():
     input = torch.rand(8, 1, 3)
     layer = ConvBnReLU1d(
         in_channels=1, out_channels=1, kernel_size=3, qconfig=default_qconfig

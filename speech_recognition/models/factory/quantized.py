@@ -144,3 +144,105 @@ class ConvReLU1d(Conv1d):
         output = self.activation_post_process(f.relu(output))
 
         return output
+
+
+class Conv2d(QuantizedModule):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        padding_mode="zeros",
+    ):
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.groups = int(groups)
+        self.padding_mode = padding_mode
+        self.bias = None
+        self.weight = None
+        self.activation_post_process = None
+
+    def _get_name(self):
+        return "QuantizedConv1d"
+
+    def forward(self, input):
+        output = self.activation_post_process(
+            f.conv2d(
+                input,
+                self.weight,
+                self.bias,
+                self.stride,
+                self.padding,
+                self.dilation,
+                self.groups,
+            )
+        )
+
+        return output
+
+    def extra_repr(self):
+        s = (
+            "{in_channels}, {out_channels}, kernel_size={kernel_size}"
+            ", stride={stride}, "
+        )  # scale={scale}, zero_point={zero_point}')
+        if self.padding != (0,) * len(self.padding):
+            s += ", padding={padding}"
+        # if self.dilation != (1,) * len(self.dilation):
+        #    s += ', dilation={dilation}'
+        # if self.groups != 1:
+        #    s += ', groups={groups}'
+        if self.bias is None:
+            s += ", bias=False"
+        return s.format(**self.__dict__)
+
+
+class ConvReLU2d(Conv2d):
+    def _get_name(self):
+        return "QuantizedConvReLU1d"
+
+    def forward(self, input):
+        output = f.conv2d(
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+        )
+        output = self.activation_post_process(f.relu(output))
+
+        return output
+
+
+class Linear(QuantizedModule):
+    def __init__(self, in_features, out_features):
+        super().__init__()
+
+        self.in_features = in_features
+        self.out_features = out_features
+        self.bias = None
+        self.weight = None
+        self.activation_post_process = None
+
+    def _get_name(self):
+        return "QuantizedLinear"
+
+    def forward(self, input):
+        output = self.activation_post_process(f.linear(input, self.weight, self.bias))
+
+        return output
+
+    def extra_repr(self):
+        s = "{in_features}, {out_features}"
+        return s.format(**self.__dict__)
