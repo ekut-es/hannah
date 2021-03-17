@@ -328,8 +328,8 @@ class TRaxUltraTrailBackend(Callback):
             x = pl_module.normalizer(x)
             y = pl_module.model(x)
 
-            x = x.cpu().split(x.size(0))
-            y = y.cpu().split(y.size(0))
+            x = x.cpu().split(1)
+            y = y.cpu().split(1)
             y = [t.squeeze() for t in y]
 
             self.xs.extend(x)
