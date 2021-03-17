@@ -327,9 +327,11 @@ class TRaxUltraTrailBackend(Callback):
             x = pl_module._extract_features(batch[0].cuda())
             x = pl_module.normalizer(x)
             y = pl_module.model(x)
-            x = x.cpu()
+
             x = x.cpu().split(x.size(0))
             y = y.cpu().split(y.size(0))
+            y = [t.squeeze() for t in y]
+
             self.xs.extend(x)
             self.ys.extend(y)
 
