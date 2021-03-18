@@ -32,6 +32,8 @@ conv:
         out_channels: 24
       - target: conv1d
         kernel_size: 1
+        act: true
+        norm: true
         parallel: true
         out_channels: 24
       - target: conv1d
@@ -49,8 +51,9 @@ conv:
         out_channels: 32
       - target: conv1d
         kernel_size: 1
-        parallel: true
+        act: true
         norm: true
+        parallel: true
         out_channels: 32
       - target: conv1d
         kernel_size: 9
@@ -67,8 +70,9 @@ conv:
         out_channels: 48
       - target: conv1d
         kernel_size: 1
-        parallel: true
+        act: true
         norm: true
+        parallel: true
         out_channels: 48
       - target: conv1d
         kernel_size: 9
