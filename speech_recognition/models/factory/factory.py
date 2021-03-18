@@ -712,9 +712,11 @@ class NetworkFactory:
         out_shape = (input_shape[0], config.outputs)
         layers = []
         if not qconfig:
-            layers.append(nn.Linear(input_shape[1], config.outputs))
+            layers.append(nn.Linear(input_shape[1], config.outputs, bias=False))
         else:
-            layers.append(qat.Linear(input_shape[1], config.outputs, qconfig=qconfig))
+            layers.append(
+                qat.Linear(input_shape[1], config.outputs, qconfig=qconfig, bias=False)
+            )
         if norm:
             layers.append(self.norm(norm))
 
