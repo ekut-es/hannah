@@ -324,7 +324,7 @@ class TRaxUltraTrailBackend(Callback):
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
         if len(self.xs) < self.num_inferences:
-            x = pl_module._extract_features(batch[0])
+            x = pl_module._extract_features(batch[0].to(pl_module.device))
             x = pl_module.normalizer(x)
             y = pl_module.model(x)
 
