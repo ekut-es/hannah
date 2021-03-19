@@ -80,10 +80,10 @@ def test_quantized_conv1d(conv_cls, quant):
         (ConvBn2d, "trax"),
         (ConvReLU2d, "trax"),
         (ConvBnReLU2d, "trax"),
-        (Conv2d, "fbgemm"),
-        (ConvBn2d, "fbgemm"),
-        (ConvReLU2d, "fbgemm"),
-        (ConvBnReLU2d, "fbgemm"),
+        # (Conv2d, "fbgemm"),
+        # (ConvBn2d, "fbgemm"),
+        # (ConvReLU2d, "fbgemm"),
+        # (ConvBnReLU2d, "fbgemm"),
     ],
 )
 def test_quantized_conv2d(conv_cls, quant):
