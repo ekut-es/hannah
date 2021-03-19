@@ -21,6 +21,10 @@ Dependencies and virtual environments are managed using [poetry](https://python-
     sudo yum install python36 python36-devel -y
     sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
 
+### Mac os
+Python 3.9 should be installed. Possible way are Homebrew
+
+    brew install python@3.9
 
 ### Install poetry
 
@@ -31,6 +35,11 @@ For alternative installation methods see:  https://python-poetry.org/docs/#insta
 **Caution**: this usually install poetry to ~/.local/bin if this folder is not in your path you might need to run poetry as:
 
     ~/.local/bin/poetry
+
+#### Mac OS
+Install poetry from pip
+
+    pip3 install poetry
 
 ## Software installation
 
