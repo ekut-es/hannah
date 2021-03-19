@@ -8,6 +8,7 @@ interface.
 import collections.abc
 import logging
 import math
+from speech_recognition.models.factory import pooling
 from typing import Dict, Sequence, Union, Optional, List, Any, Tuple
 
 from hydra.utils import instantiate
@@ -193,10 +194,11 @@ class NetworkFactory:
                 in_channels,
                 out_channels,
                 kernel_size,
-                stride,
-                padding,
-                dilation,
-                groups,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=groups,
+                bias=bias,
             )
             layers.append(conv_module)
             if norm:
@@ -226,6 +228,7 @@ class NetworkFactory:
                     kernel_size,
                     stride=stride,
                     padding=padding,
+                    bias=bias,
                     dilation=dilation,
                     groups=groups,
                     eps=norm.eps,
@@ -239,6 +242,7 @@ class NetworkFactory:
                     kernel_size,
                     stride=stride,
                     padding=padding,
+                    bias=bias,
                     dilation=dilation,
                     groups=groups,
                     eps=norm.eps,
@@ -252,6 +256,7 @@ class NetworkFactory:
                     kernel_size,
                     stride=stride,
                     padding=padding,
+                    bias=bias,
                     dilation=dilation,
                     groups=groups,
                     eps=norm.eps,
@@ -263,6 +268,7 @@ class NetworkFactory:
                     in_channels,
                     out_channels,
                     kernel_size,
+                    bias=bias,
                     stride=stride,
                     padding=padding,
                     dilation=dilation,
@@ -280,6 +286,7 @@ class NetworkFactory:
         dilation: int = 1,
         stride: int = 1,
         padding: Union[int, bool] = True,
+        bias=False,
         upsampling: float = 1.0,
         groups: int = 1,
         norm: Union[BNConfig, bool] = False,
@@ -297,8 +304,10 @@ class NetworkFactory:
             kernel_size,
             stride=stride,
             padding=True,
+            bias=bias,
             groups=up_channels,
-            norm=norm,
+            norm=False,
+            act=False,
             dilation=dilation,
         )
         output_shape, downsample_conv = self.conv1d(
@@ -315,6 +324,7 @@ class NetworkFactory:
         out_channels: int,
         kernel_size: int,
         stride: int = 1,
+        bias: bool = False,
         padding: Union[int, bool] = True,
         dilation: int = 1,
         groups: int = 1,
@@ -363,10 +373,11 @@ class NetworkFactory:
                 in_channels,
                 out_channels,
                 kernel_size,
-                stride,
-                padding,
-                dilation,
-                groups,
+                stride=stride,
+                padding=padding,
+                bias=bias,
+                dilation=dilation,
+                groups=groups,
             )
             layers.append(conv_module)
             if norm:
@@ -407,6 +418,7 @@ class NetworkFactory:
                     out_channels,
                     kernel_size,
                     stride=stride,
+                    bias=bias,
                     padding=padding,
                     dilation=dilation,
                     groups=groups,
@@ -421,6 +433,7 @@ class NetworkFactory:
                     kernel_size,
                     stride=stride,
                     padding=padding,
+                    bias=bias,
                     dilation=dilation,
                     groups=groups,
                     eps=norm.eps,
@@ -434,6 +447,7 @@ class NetworkFactory:
                     kernel_size,
                     stride=stride,
                     padding=padding,
+                    bias=bias,
                     dilation=dilation,
                     groups=groups,
                     qconfig=qconfig,
@@ -445,6 +459,7 @@ class NetworkFactory:
                     kernel_size,
                     stride=stride,
                     padding=padding,
+                    bias=bias,
                     dilation=dilation,
                     groups=groups,
                     qconfig=qconfig,
@@ -472,6 +487,7 @@ class NetworkFactory:
                 groups=config.groups,
                 act=config.act,
                 norm=config.norm,
+                bias=config.bias,
             )
         elif config.target == "mbconv1d":
             return self.mbconv1d(
@@ -480,6 +496,7 @@ class NetworkFactory:
                 kernel_size=config.kernel_size,
                 stride=config.stride,
                 padding=config.padding,
+                bias=config.bias,
                 dilation=config.dilation,
                 groups=config.groups,
                 act=config.act,
@@ -497,6 +514,7 @@ class NetworkFactory:
                 groups=config.groups,
                 act=config.act,
                 norm=config.norm,
+                bias=config.bias,
             )
         elif config.target == "max_pool1d":
             raise NotImplementedError(
@@ -569,6 +587,7 @@ class NetworkFactory:
                         groups=groups,
                         norm=True,
                         act=False,
+                        bias=False,
                     )
                 elif dimension == 2:
                     downsampler = self.conv2d(
@@ -581,6 +600,7 @@ class NetworkFactory:
                         groups=groups,
                         norm=True,
                         act=False,
+                        bias=False,
                     )
 
                 chain.append(downsampler)
@@ -741,7 +761,12 @@ class NetworkFactory:
         conv_layers = nn.Sequential(*conv_layers)
 
         if len(input_shape) == 3:
-            global_pooling = nn.AvgPool1d(kernel_size=input_shape[2])
+            if self.default_qconfig:
+                global_pooling = pooling.ApproximateGlobalAveragePooling1D(
+                    input_shape[2], qconfig=self.default_qconfig
+                )
+            else:
+                global_pooling = nn.AvgPool1d(kernel_size=input_shape[2])
         elif len(input_shape) == 4:
             global_pooling = nn.AvgPool2d(kernel_size=input_shape[2:])
 

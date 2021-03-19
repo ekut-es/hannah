@@ -243,8 +243,8 @@ class StreamClassifierModule(LightningModule):
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
-        if self.device.type == "cuda":
-            train_loader = AsynchronousLoader(train_loader, device=self.device)
+        # if self.device.type == "cuda":
+        #    train_loader = AsynchronousLoader(train_loader, device=self.device)
 
         self.batches_per_epoch = len(train_loader)
 
@@ -279,8 +279,8 @@ class StreamClassifierModule(LightningModule):
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
-        if self.device.type == "cuda":
-            dev_loader = AsynchronousLoader(dev_loader, device=self.device)
+        # if self.device.type == "cuda":
+        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
 
         return dev_loader
 
@@ -315,8 +315,8 @@ class StreamClassifierModule(LightningModule):
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
-        if self.device.type == "cuda":
-            test_loader = AsynchronousLoader(test_loader, device=self.device)
+        # if self.device.type == "cuda":
+        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
 
         return test_loader
 
@@ -369,15 +369,9 @@ class StreamClassifierModule(LightningModule):
         quantized_model = copy.deepcopy(self.model)
         quantized_model.cpu()
         if hasattr(self.model, "qconfig") and self.model.qconfig:
-            print(self.model)
             quantized_model = torch.quantization.convert(
                 quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=False
             )
-            print(quantized_model)
-
-            # for parameter in quantized_model.parameters():
-            #     name = "unknown"
-            #     print(name, parameter)
 
         logging.info("saving onnx...")
         try:

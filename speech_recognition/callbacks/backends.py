@@ -63,7 +63,7 @@ class InferenceBackendBase(Callback):
         if batch_idx < self.val_batches:
             if self.validation_epoch % self.val_frequency == 0:
                 result = self.run_batch(inputs=batch[0])
-                target = pl_module.forward(batch[0])
+                target = pl_module.forward(batch[0].to(pl_module.device))
 
                 mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
                 pl_module.log("val_backend_mse", mse)
@@ -77,7 +77,7 @@ class InferenceBackendBase(Callback):
     ):
         if batch_idx < self.test_batches:
             result = self.run_batch(inputs=batch[0])
-            target = pl_module(batch[0])
+            target = pl_module(batch[0].to(pl_module.device))
 
             mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
             pl_module.log("test_backend_mse", mse)
@@ -324,7 +324,7 @@ class TRaxUltraTrailBackend(Callback):
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
         if len(self.xs) < self.num_inferences:
-            x = pl_module._extract_features(batch[0].cuda())
+            x = pl_module._extract_features(batch[0])
             x = pl_module.normalizer(x)
             y = pl_module.model(x)
 

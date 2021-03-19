@@ -68,14 +68,6 @@ def train(config=DictConfig):
     )
     callbacks = []
 
-    # TODO distiller only available without auto_lr because compatibility issues
-    if config.get("compress", None):
-        if config["auto_lr"]:
-            raise Exception(
-                "Automated learning rate finder is not compatible with compression"
-            )
-        callbacks.append(DistillerCallback(config.compress))
-
     logger = [
         TensorBoardLogger(".", version=None, name="", default_hp_metric=False),
         CSVLogger(".", version=None, name=""),

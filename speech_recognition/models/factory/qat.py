@@ -12,8 +12,6 @@ from typing import Callable, Dict, Any
 import torch
 import torch.nn as nn
 import torch.nn.intrinsic as nni
-import torch.nn.intrinsic.quantized as nniq
-import torch.nn.quantized as nnq
 import torch.nn.functional as F
 from torch.nn import init
 from torch.nn.modules.utils import _single, _pair
@@ -702,7 +700,9 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
 
     def forward(self, input):
         output = self._real_conv_forward(
-            input, self.weight_fake_quant(self.weight), self.bias_fake_quant(self.bias)
+            input,
+            self.weight_fake_quant(self.weight),
+            self.bias_fake_quant(self.bias) if self.bias else None,
         )
         output = F.relu(output)
         return self.activation_post_process(output)
@@ -760,7 +760,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
             self._real_conv_forward(
                 input,
                 self.weight_fake_quant(self.weight),
-                self.bias_fake_quant(self.bias),
+                self.bias_fake_quant(self.bias) if self.bias else None,
             )
         )
         return y
