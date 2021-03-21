@@ -12,6 +12,7 @@ import numpy as np
 
 
 from ..utils import ConfigType, SerializableModule, next_power_of2
+from ..snn.LayerFactory import build1DConvolution, buildLinearLayer
 
 
 def create_act(act, clipping_value):
@@ -49,17 +50,28 @@ class TCResidualBlock(nn.Module):
         separable,
         small,
         act,
+        conv_type,
+        flattenoutput,
     ):
         super().__init__()
         self.stride = stride
         self.clipping_value = clipping_value
+        self.conv_type = conv_type
         if stride > 1:
             # No dilation needed: 1x1 kernel
             act = create_act(act, clipping_value)
             self.downsample = nn.Sequential(
-                nn.Conv1d(input_channels, output_channels, 1, stride, bias=False),
-                nn.BatchNorm1d(output_channels),
-                act,
+                build1DConvolution(
+                    self.conv_type,
+                    in_channels=input_channels,
+                    out_channels=output_channels,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                    flatten_output=flattenoutput,
+                ),
+                # nn.BatchNorm1d(output_channels),
+                # act,
             )
 
         pad_x = size // 2
@@ -127,43 +139,47 @@ class TCResidualBlock(nn.Module):
         elif small:
             act = create_act(act, clipping_value)
             self.convs = nn.Sequential(
-                nn.Conv1d(
-                    input_channels,
-                    output_channels,
-                    size,
-                    stride,
+                build1DConvolution(
+                    self.conv_type,
+                    in_channels=input_channels,
+                    out_channels=output_channels,
+                    kernel_size=size,
+                    stride=stride,
                     padding=dilation * pad_x,
                     dilation=dilation,
                     bias=False,
                 ),
-                nn.BatchNorm1d(output_channels),
-                act,
-                nn.BatchNorm1d(output_channels),
+                # nn.BatchNorm1d(output_channels),
+                # act,
+                # nn.BatchNorm1d(output_channels),
             )
         else:
             act = create_act(act, clipping_value)
             self.convs = nn.Sequential(
-                nn.Conv1d(
-                    input_channels,
-                    output_channels,
-                    size,
-                    stride,
+                build1DConvolution(
+                    self.conv_type,
+                    in_channels=input_channels,
+                    out_channels=output_channels,
+                    kernel_size=size,
+                    stride=stride,
                     padding=dilation * pad_x,
                     dilation=dilation,
                     bias=False,
                 ),
-                nn.BatchNorm1d(output_channels),
-                act,
-                nn.Conv1d(
-                    output_channels,
-                    output_channels,
-                    size,
-                    1,
+                # nn.BatchNorm1d(output_channels),
+                # act,
+                build1DConvolution(
+                    self.conv_type,
+                    in_channels=output_channels,
+                    out_channels=output_channels,
+                    kernel_size=size,
+                    stride=1,
                     padding=dilation * pad_x,
                     dilation=dilation,
                     bias=False,
+                    flatten_output=flattenoutput,
                 ),
-                nn.BatchNorm1d(output_channels),
+                # nn.BatchNorm1d(output_channels),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
 
@@ -173,9 +189,10 @@ class TCResidualBlock(nn.Module):
         y = self.convs(x)
         if self.stride > 1:
             x = self.downsample(x)
-
-        res = self.act(y + x)
-
+        if self.conv_type != "SNN":
+            res = self.act(y + x)
+        elif self.conv_type == "SNN":
+            res = y + x
         return res
 
 
@@ -196,6 +213,7 @@ class TCResNetModel(SerializableModule):
         separable = config["separable"]
         small = config["small"]
         use_inputlayer = config["inputlayer"]
+        self.conv_type = config["conv_type"]
         act = config.get("act", "relu")
 
         self.layers = nn.ModuleList()
@@ -248,8 +266,13 @@ class TCResNetModel(SerializableModule):
                 self.layers.append(conv2)
                 self.layers.append(conv3)
             elif use_inputlayer:
-                conv = nn.Conv1d(
-                    input_channels, output_channels, size, stride, bias=False
+                conv = build1DConvolution(
+                    self.conv_type,
+                    in_channels=input_channels,
+                    out_channels=output_channels,
+                    kernel_size=size,
+                    stride=stride,
+                    bias=False,
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
@@ -262,10 +285,12 @@ class TCResNetModel(SerializableModule):
             output_channels_name = "block{}_output_channels".format(count)
             size_name = "block{}_conv_size".format(count)
             stride_name = "block{}_stride".format(count)
+            flattendoutput_name = "block{}_flattendoutput".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
+            flattendoutput = config[flattendoutput_name]
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -280,6 +305,8 @@ class TCResNetModel(SerializableModule):
                 separable[1],
                 small,
                 act,
+                self.conv_type,
+                flattendoutput,
             )
             self.layers.append(block)
 
@@ -288,16 +315,16 @@ class TCResNetModel(SerializableModule):
 
         for layer in self.layers:
             x = layer(x)
+        if self.conv_type != "SNN":
+            shape = x.shape
+            average_pooling = ApproximateGlobalAveragePooling1D(
+                x.shape[2]
+            )  # nn.AvgPool1d((shape[2]))
+            self.layers.append(average_pooling)
 
-        shape = x.shape
-        average_pooling = ApproximateGlobalAveragePooling1D(
-            x.shape[2]
-        )  # nn.AvgPool1d((shape[2]))
-        self.layers.append(average_pooling)
+            x = average_pooling(x)
 
-        x = average_pooling(x)
-
-        if not self.fully_convolutional:
+        if not self.fully_convolutional and not self.conv_type == "SNN":
             x = x.view(1, -1)
 
         shape = x.shape
@@ -307,14 +334,25 @@ class TCResNetModel(SerializableModule):
         if self.fully_convolutional:
             self.fc = nn.Conv1d(shape[1], n_labels, 1, bias=False)
         else:
-            self.fc = nn.Linear(shape[1], n_labels, bias=False)
+            if self.conv_type == "SNN":
+                tmp_shape = shape[2]
+            else:
+                tmp_shape = shape[1]
+
+            self.fc = buildLinearLayer(
+                self.conv_type,
+                input_shape=tmp_shape,
+                output_shape=n_labels,
+                bias=False,
+                readout=True,
+            )
 
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
 
         x = self.dropout(x)
-        if not self.fully_convolutional:
+        if not self.fully_convolutional and not self.conv_type == "SNN":
             x = x.view(x.size(0), -1)
         x = self.fc(x)
 

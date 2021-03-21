@@ -8,12 +8,15 @@ separable:
 block1_conv_size: 9
 block1_output_channels: 24
 block1_stride: 2
+block1_flattendoutput: False
 block2_conv_size: 9
 block2_output_channels: 32
+block2_flattendoutput: False
 block2_stride: 2
 block3_conv_size: 9
 block3_output_channels: 48
 block3_stride: 2
+block3_flattendoutput: True
 bottleneck:
 - 0
 - 0
@@ -30,7 +33,7 @@ width_multiplier: 1.0
 dilation: 1
 clipping_value: 100000.0
 small: false
-
+conv_type: SNN
 
 # Set by LigthningModule
 width: 101

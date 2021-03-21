@@ -1,4 +1,3 @@
-from .models import *
 from .SNNLayers import *
 from .RAdamoptim import *
 from .LayerFactory import *
