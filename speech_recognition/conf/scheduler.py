@@ -11,7 +11,7 @@ cs = ConfigStore.instance()
 @dataclass
 class StepLRConf:
     _target_: str = "torch.optim.lr_scheduler.StepLR"
-    step_size: int = 20
+    step_size: int = 10
     gamma: float = 0.1
     last_epoch: int = -1
 
@@ -102,11 +102,9 @@ cs.store(group="scheduler", name="cosine_warm", node="CosineAnnealingWarmRestart
 
 @dataclass
 class OneCycleLRConf:
+    "Config for one cycle lr total steps are configured from module"
     _target_: str = "torch.optim.lr_scheduler.OneCycleLR"
-    max_lr: Any = MISSING
-    total_steps: Any = None
-    epochs: Any = None
-    steps_per_epoch: Any = None
+    max_lr: Any = 0.5
     pct_start: Any = 0.3
     anneal_strategy: str = "cos"
     cycle_momentum: Any = True

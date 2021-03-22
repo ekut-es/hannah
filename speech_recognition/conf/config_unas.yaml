@@ -1,8 +1,8 @@
 defaults:
     - dataset: kws
-    - model: nas-tc
+    - model: conv-net-trax
     - scheduler: null
-    - optimizer: adam
+    - optimizer: adamw
     - features: mfcc
     - normalizer: null
     - module: stream_classifier
@@ -12,7 +12,7 @@ defaults:
     - backend: null
     - early_stopping: null
     - profiler: null
-    - hydra/sweeper: unas
+    - hydra/sweeper: hannah
 
 
 type: train
@@ -21,57 +21,67 @@ output_dir: trained_models
 auto_lr: false
 seed: 1234
 
-monitor: ["val_loss", "total_weights", "est_act", "total_macs"]
-model:
-  major_blocks: []
+monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_clock_cycles", "acc_power", "acc_area"]
+
 
 hydra:
   run:
     dir: ${output_dir}/${experiment_id}/${model.name}/
   sweep:
-    dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+    dir: ${output_dir}/${experiment_id}/${model.name}/
+
+  job_logging:
+      handlers:
+        console:
+          level: CRITICAL
+
   sweeper:
     optim:
       optimizer: aging_evolution
-      population_size: 25
+      population_size: 100
       sample_size: 10
       budget:  2000
       seed: 1234
       num_workers:  10
       bounds:
-        val_loss: 0.2
-        total_macs: 500000
-        total_weights: 20000
-        est_act: 8000
+        val_error: 0.05
+        acc_clock_cycles: 20000
+        acc_power: 0.00001
+        acc_area: 150000
+
+
 
 
     # default parametrization of the search space
     parametrization:
       model:
-        # a linearly-distributed scalar between 0 and 1
-        dropout_prob:
-          lower: 0.0
-          upper: 1.0
+        conv:
+          min: 2
+          max: 6
+          choices:
+            - target: forward
+              stride: 1
+              blocks:
+                min: 1
+                max: 4
+                choices:
+                  - target: conv1d
+                    kernel_size: [1,3,5]
+                    stride: [1,2,3]
+                    act: [false, true]
+                    norm: true
+                    out_channels: [8,16,24,32,40,48,56,64]
 
-        width_multiplier:
-          lower: 0.5
-          upper: 2.0
 
-        major_blocks:
-            min: 4
-            max: 10
-            choices:
-              - _target_: speech_recognition.models.nas.tc_model.MajorBlock
-                output_channels: [8,16,24,32,40,48,56,64]
-                stride: [1,2,3]
-                branch: "residual"
-                minor_blocks:
-                  min: 1
-                  max: 6
-                  choices:
-                    - _target_: speech_recognition.models.nas.tc_model.MinorBlock
-                      size: [1, 3, 5, 7, 9]
-                      padding: true
-                      batchnorm: [true, false]
-                      activation: [true, false]
-                      parallel: [true, false]
+            #- target: residual
+            #  stride: [2,3]
+            #  blocks:
+            #    min: 1
+            #    max: 4
+            #    choices:
+            #      - target: conv1d
+            #        kernel_size: [1,3,5,7,9]
+            #        stride: [1,2,3]
+            #        act: true
+            #        norm: true
+            #        out_channels: [8,16,24,32,40,48,56,64]

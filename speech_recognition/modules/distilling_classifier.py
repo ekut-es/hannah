@@ -7,7 +7,6 @@ from typing import Optional
 import torch.nn as nn
 import torch
 import random
-from pytorch_lightning.callbacks import ModelCheckpoint
 from typing import Union, List
 import math
 
@@ -49,6 +48,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         self.alpha = alpha
         self.noise_variance = noise_variance
         self.correct_prob = correct_prob
+        self.teacher_loaded = False
 
         if distillation_loss == "MSE":
             self.loss_func = nn.MSELoss()
@@ -87,7 +87,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
     def setup(self, stage):
         super().setup(stage)
         super().prepare_data()
-        if len(self.teachers) == 0 and self.distillation_loss == "TFself":
+        if not self.teacher_loaded and self.distillation_loss == "TFself":
             # TODO Multiple Teacher could maybe done here
             params = deepcopy(self.hparams)
             params.pop("teacher_checkpoint")
@@ -98,7 +98,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             params.pop("alpha")
             params.pop("noise_variance")
             params.pop("correct_prob")
-            teacher_module = SpeechClassifierModule(**params)
+            teacher_module = StreamClassifierModule(**params)
             teacher_module.trainer = deepcopy(self.trainer)
             teacher_module.model = deepcopy(self.model)
             teacher_module.setup("fit")
@@ -106,7 +106,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             teacher_module.trainer.test(ckpt_path=None)
             self.teachers.append(teacher_module)
 
-        else:
+        elif not self.teacher_loaded:
             for checkpoint_file in self.teacher_checkpoints:
                 checkpoint = torch.load(
                     checkpoint_file, map_location=torch.device("cpu")
@@ -136,6 +136,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
                         param.requires_grad = False
 
                 self.teachers.append(teacher_module)
+        self.teacher_loaded = True
 
     """
     Code taken from Paper: "KD-Lib: A PyTorch library for Knowledge Distillation, Pruning and Quantization"
@@ -306,8 +307,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         # works as kind of regularizer (not mandatory)
         del_n = self.alpha
         assert isinstance(del_n, int)
+        if del_n >= n:
+            del_n = n - 1
         if del_n > 0:
-            assert del_n < n
             for k in range(del_n):
                 assi_logits.pop(random.randrange(len(assi_logits)))
 
@@ -344,21 +346,17 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         teacher_logits = []
         for teacher in self.teachers:
             teacher.eval()
-            teacher_logits.append(teacher(x))
+            with torch.no_grad():
+                teacher_logits.append(teacher(x))
 
-        self.forward(x)
         y = y.view(-1)
 
         assert len(teacher_logits) >= 1
         loss = self.calculate_loss(student_logits, teacher_logits, y)
 
-        # --- after loss
-        for callback in self.trainer.callbacks:
-            if hasattr(callback, "on_before_backward"):
-                callback.on_before_backward(self.trainer, self, loss)
-        # --- before backward
-
         # METRICS
-        self.get_batch_metrics(student_logits, y, loss, "train")
+        self.calculate_batch_metrics(
+            student_logits, y, loss, self.train_metrics, "train"
+        )
 
         return loss

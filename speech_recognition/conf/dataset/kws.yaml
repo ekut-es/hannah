@@ -1,7 +1,7 @@
 # @package _group_
 
 data_folder: ${hydra:runtime.cwd}/datasets/
-cls: speech_recognition.datasets.dataset.SpeechCommandsDataset
+cls: speech_recognition.datasets.speech.SpeechCommandsDataset
 dataset: keywords
 
 group_speakers_by_id: true
@@ -35,6 +35,6 @@ download_folder: ""
 silence_prob: 0.1
 unknown_prob: 0.1
 test_snr: .inf
-train_snr_high: 1000.0
-train_snr_low: 0.0
+train_snr_high: 500
+train_snr_low: 5.0
 sampler: random
