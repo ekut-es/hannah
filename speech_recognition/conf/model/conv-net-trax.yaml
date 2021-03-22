@@ -10,7 +10,7 @@ qconfig:
   _target_: speech_recognition.models.factory.qconfig.get_trax_qat_qconfig
   config:
     bw_b: 8
-    bw_w: 8
+    bw_w: 6
     bw_f: 8
 conv:
   - target: forward
