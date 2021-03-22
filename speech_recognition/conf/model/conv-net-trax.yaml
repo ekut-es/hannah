@@ -20,6 +20,7 @@ conv:
         kernel_size: 3
         act: false
         norm: true
+        bias: false
         out_channels: 16
   - target: residual
     stride: 2
@@ -31,11 +32,13 @@ conv:
         out_channels: 24
       - target: conv1d
         kernel_size: 1
+        act: true
+        norm: true
         parallel: true
         out_channels: 24
       - target: conv1d
         kernel_size: 9
-        act: true
+        act: false
         norm: true
         out_channels: 24
   - target: residual
@@ -43,13 +46,14 @@ conv:
     blocks:
       - target: conv1d
         kernel_size: 9
-        act: false
+        act: true
         norm: true
         out_channels: 32
       - target: conv1d
         kernel_size: 1
-        parallel: true
+        act: true
         norm: true
+        parallel: true
         out_channels: 32
       - target: conv1d
         kernel_size: 9
@@ -66,8 +70,9 @@ conv:
         out_channels: 48
       - target: conv1d
         kernel_size: 1
-        parallel: true
+        act: true
         norm: true
+        parallel: true
         out_channels: 48
       - target: conv1d
         kernel_size: 9

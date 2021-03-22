@@ -12,3 +12,6 @@
 	url = ../distiller.git
 	branch = ekut_master
 
+[submodule "plugins/hannah-optimizer"]
+	path = plugins/hannah-optimizer
+	url = ../hannah-optimizer.git

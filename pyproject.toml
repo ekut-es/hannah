@@ -8,26 +8,25 @@ authors = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6.1, <3.9.0"
+python = ">=3.7 <4.0"
 pwlf = "^2.0.0"
 gitdb2 = "2.0.6"
 chainmap = "^1.0.3"
 redis = "^3.4.1"
-torch = "1.6.0"
-pytorch-lightning = "^1.0.3"
+torch = "1.8.0"
+pytorch-lightning = "^1.2.2"
 SoundFile = "^0.10.3"
-torchaudio = "^0.6.0"
+torchaudio = "^0.8.0"
 zipp = "^3.3.1"
 bitstring = "^3.1.7"
 wfdb = "^3.2.0"
 typing-extensions = "^3.7.4"
 fsspec = "^0.8.5"
-distiller = {path = "./external/distiller", develop=true}
 
 hydra-core = "^1.0.6"
 hydra-nevergrad-sweeper = "^1.1.0-rc.1"
 hydra-joblib-launcher = "^1.1.0"
-hydra-unas-sweeper = {path = "plugins/hydra_unas_sweeper", develop=true}
+hannah-optimizer = {path = "plugins/hannah-optimizer", develop=true}
 hydra-submitit-launcher = "^1.1.0"
 
 # optional dependencies
@@ -35,6 +34,9 @@ onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
 tensorflow-addons = {version = "^0.11.2", optional = true}
 onnxruntime = {version = "^1.4.0", optional = true}
 tabulate = "^0.8.3"
+torchvision = "^0.9.0"
+GitPython = "^3.1.14"
+h5py = "^3.2.1"
 
 
 [tool.poetry.dev-dependencies]
@@ -50,10 +52,6 @@ pydoc-markdown = "^3.10.0"
 [tool.poetry.extras]
 tf-backend = ["onnx-tf", "tensorflow-addons"]
 onnxrt-backend = ["onnxruntime"]
-
-# [[tool.poetry.source]]
-# name = "gerum"
-# url = "https://atreus.informatik.uni-tuebingen.de/~gerum/dist"
 
 
 [tool.poetry.scripts]

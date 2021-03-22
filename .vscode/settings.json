@@ -4,5 +4,14 @@
     "git.ignoreLimitWarning": true,
     "python.linting.flake8Enabled": true,
     "python.formatting.provider": "black",
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/.hg/store/**": true,
+        "**/.venv/**": true,
+        "**/trained_models/**": true,
+        "datasets/**": true
+    }
 }

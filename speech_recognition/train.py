@@ -10,7 +10,6 @@ from torch.nn.modules import module
 
 from .utils import log_execution_env_state
 
-from .callbacks.distiller import DistillerCallback
 from .callbacks.summaries import MacSummaryCallback
 
 from .callbacks.optimization import HydraOptCallback
@@ -69,14 +68,6 @@ def train(config=DictConfig):
     )
     callbacks = []
 
-    # TODO distiller only available without auto_lr because compatibility issues
-    if config.get("compress", None):
-        if config["auto_lr"]:
-            raise Exception(
-                "Automated learning rate finder is not compatible with compression"
-            )
-        callbacks.append(DistillerCallback(config.compress))
-
     logger = [
         TensorBoardLogger(".", version=None, name="", default_hp_metric=False),
         CSVLogger(".", version=None, name=""),
@@ -113,7 +104,9 @@ def train(config=DictConfig):
         callbacks.append(stop_callback)
 
     if config.get("pruning", None):
-        pruning_scheduler = PruningAmountScheduler(config.pruning.amount, config.trainer.max_epochs)
+        pruning_scheduler = PruningAmountScheduler(
+            config.pruning.amount, config.trainer.max_epochs
+        )
         pruning_config = dict(config.pruning)
         del pruning_config["amount"]
         pruning_callback = instantiate(pruning_config, amount=pruning_scheduler)

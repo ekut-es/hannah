@@ -6,15 +6,18 @@
 """
 
 import math
+
+from typing import Callable, Dict, Any
+
 import torch
 import torch.nn as nn
 import torch.nn.intrinsic as nni
-import torch.nn.qat as nnqat
 import torch.nn.functional as F
 from torch.nn import init
 from torch.nn.modules.utils import _single, _pair
 from torch.nn.parameter import Parameter
 
+from . import quantized as q
 
 _BN_CLASS_MAP = {1: nn.BatchNorm1d, 2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
 
@@ -97,18 +100,19 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         self.freeze_bn = freeze_bn if self.training else True
         self.bn = _BN_CLASS_MAP[dim](out_channels, eps, momentum, True, True)
         self.weight_fake_quant = self.qconfig.weight()
-        self.act_fake_quant = self.qconfig.activation()
+        self.activation_post_process = self.qconfig.activation()
         self.dim = dim
 
         if hasattr(self.qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
 
         if bias:
             self.bias = Parameter(torch.Tensor(out_channels))
         else:
-            self.register_parameter("bias", None)
+            self.bias = None
+
         self.reset_bn_parameters()
 
         # this needs to be called after reset_bn_parameters,
@@ -180,18 +184,21 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
         conv = self._real_conv_forward(input, scaled_weight, zero_bias)
-        if not self.bn.track_running_stats:
-            bias = self.bias_fake_quant(
-                self.bias * scale_factor.reshape(bias_shape) - self.bn.bias
-            )
-            conv = conv + bias
-        else:
+        if self.training:
             conv_orig = conv / scale_factor.reshape(bias_shape)
             if self.bias is not None:
-                conv_orig = conv_orig + self.bias_fake_quant(
-                    self.bias.reshape(bias_shape)
-                )
+                conv_orig = conv_orig + self.bias.reshape(bias_shape)
             conv = self.bn(conv_orig)
+            # conv = conv - (self.bn.bias - self.bn.running_mean).reshape(bias_shape)
+        else:
+            bias = zero_bias
+            if self.bias is not None:
+                bias = self.bias
+            bias = self.bias_fake_quant(
+                (bias - self.bn.running_mean) * scale_factor + self.bn.bias
+            ).reshape(bias_shape)
+            conv = conv + bias
+
         return conv
 
     def extra_repr(self):
@@ -199,10 +206,8 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         return super(_ConvBnNd, self).extra_repr()
 
     def forward(self, input):
-        # print(f"forward {self.stride}")
-        # print(input.shape)
         y = self._forward(input)
-        # print(y.shape)
+
         return y
 
     def train(self, mode=True):
@@ -389,11 +394,11 @@ class ConvBn1d(_ConvBnNd):
             dim=1,
         )
 
-        self.act_fake_quant = qconfig.activation()
+        self.activation_post_process = qconfig.activation()
 
     def forward(self, input):
         y = super(ConvBn1d, self).forward(input)
-        return self.act_fake_quant(y)
+        return self.activation_post_process(y)
 
 
 class ConvBnReLU1d(ConvBn1d):
@@ -448,12 +453,12 @@ class ConvBnReLU1d(ConvBn1d):
             freeze_bn=freeze_bn,
             qconfig=qconfig,
         )
-        self.act_fake_quant = qconfig.activation()
+        self.activation_post_process = qconfig.activation()
 
     def forward(self, input):
         # print(f"ConvBnRelu1d {self.stride}")
         # print(input.shape)
-        y = self.act_fake_quant(F.relu(ConvBn1d._forward(self, input)))
+        y = self.activation_post_process(F.relu(ConvBn1d._forward(self, input)))
         # print(y.shape)
 
         return y
@@ -523,10 +528,10 @@ class ConvBn2d(_ConvBnNd):
             qconfig=qconfig,
             dim=2,
         )
-        self.act_fake_quant = qconfig.activation()
+        self.activation_post_process = qconfig.activation()
 
     def forward(self, input):
-        return self.act_fake_quant(super(ConvBn2d, self).forward(input))
+        return self.activation_post_process(super(ConvBn2d, self)._forward(input))
 
 
 class ConvBnReLU2d(ConvBn2d):
@@ -580,10 +585,12 @@ class ConvBnReLU2d(ConvBn2d):
             freeze_bn,
             qconfig,
         )
-        self.act_fake_quant = qconfig.activation()
+        self.activation_post_process = qconfig.activation()
 
     def forward(self, input):
-        return self.act_fake_quant(F.relu(super(ConvBnReLU2d, self).forward(input)))
+        return self.activation_post_process(
+            F.relu(super(ConvBnReLU2d, self)._forward(input))
+        )
 
     @classmethod
     def from_float(cls, mod):
@@ -629,14 +636,14 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
         self.dim = 2
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.act_fake_quant = self.qconfig.activation()
+        self.activation_post_process = self.qconfig.activation()
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
 
     def forward(self, input):
-        return self.act_fake_quant(
+        return self.activation_post_process(
             F.relu(
                 self._real_conv_forward(
                     input,
@@ -653,7 +660,7 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
 
 class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
     r"""A ConvReLU1d module is fused module of Conv1d and ReLU, attached with
-     FakeQuantize modules for quantization aware trainting"""
+     FakeQuantize modules for quantization aware training"""
 
     _FLOAT_MODULE = nn.Conv1d
 
@@ -685,18 +692,20 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
         self.dim = 1
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.act_fake_quant = self.qconfig.activation()
+        self.activation_post_process = self.qconfig.activation()
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
 
     def forward(self, input):
         output = self._real_conv_forward(
-            input, self.weight_fake_quant(self.weight), self.bias_fake_quant(self.bias)
+            input,
+            self.weight_fake_quant(self.weight),
+            self.bias_fake_quant(self.bias) if self.bias else None,
         )
         output = F.relu(output)
-        return self.act_fake_quant(output)
+        return self.activation_post_process(output)
 
 
 class Conv1d(nn.Conv1d, _ConvForwardMixin):
@@ -706,7 +715,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
     Attributes:
         weight_fake_quant: fake quant module for weight
         bias_fake_quant: fake quant module for bias
-        act_fake_quant: fake_quant_module for activations
+        activation_post_process: fake_quant_module for activations
     """
     _FLOAT_MODULE = nn.Conv1d
 
@@ -737,32 +746,89 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.act_fake_quant = self.qconfig.activation()
+        self.activation_post_process = self.qconfig.activation()
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
-            self.bias_fake_quant = nn.Identity()
+            self.bias_fake_quant = self.qconfig.activation()
         self.dim = 1
 
     def forward(self, input):
-        # print(f"ConvRelu1D {self.stride}")
+        # print(f"Conv1D {self.stride}")
         # print(input.shape)
-        y = self.act_fake_quant(
-            F.relu(
-                self._real_conv_forward(
-                    input,
-                    self.weight_fake_quant(self.weight),
-                    self.bias_fake_quant(self.bias),
-                )
+        y = self.activation_post_process(
+            self._real_conv_forward(
+                input,
+                self.weight_fake_quant(self.weight),
+                self.bias_fake_quant(self.bias) if self.bias else None,
             )
         )
-        # print(y.shape)
-
         return y
 
     @classmethod
     def from_float(cls, mod):
         return super(ConvReLU2d, cls).from_float(mod)
+
+
+class Conv2d(nn.Conv2d, _ConvForwardMixin):
+    r"""A Conv2d module is a Conv2d module , attached with
+    FakeQuantize modules for weight for
+    quantization aware training.
+    Attributes:
+        weight_fake_quant: fake quant module for weight
+        bias_fake_quant: fake quant module for bias
+        activation_post_process: fake_quant_module for activations
+    """
+    _FLOAT_MODULE = nn.Conv2d
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
+        qconfig=None,
+    ):
+        super(Conv2d, self).__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            padding_mode=padding_mode,
+        )
+        assert qconfig, "qconfig must be provided for QAT module"
+        self.qconfig = qconfig
+        self.weight_fake_quant = self.qconfig.weight()
+        self.activation_post_process = self.qconfig.activation()
+        if hasattr(qconfig, "bias"):
+            self.bias_fake_quant = self.qconfig.bias()
+        else:
+            self.bias_fake_quant = self.qconfig.activation()
+        self.dim = 2
+
+    def forward(self, input):
+        y = self.activation_post_process(
+            self._real_conv_forward(
+                input,
+                self.weight_fake_quant(self.weight),
+                self.bias_fake_quant(self.bias),
+            )
+        )
+
+        return y
+
+    @classmethod
+    def from_float(cls, mod):
+        return super(Conv2d, cls).from_float(mod)
 
 
 class Linear(nn.Linear):
@@ -792,14 +858,14 @@ class Linear(nn.Linear):
         else:
             self.bias_fake_quant = qconfig.activation()
 
-        self.act_fake_quant = qconfig.activation()
+        self.activation_post_process = qconfig.activation()
 
     def forward(self, input):
-        return self.act_fake_quant(
+        return self.activation_post_process(
             F.linear(
                 input,
                 self.weight_fake_quant(self.weight),
-                self.bias_fake_quant(self.bias),
+                self.bias_fake_quant(self.bias) if self.bias is not None else self.bias,
             )
         )
 
@@ -841,3 +907,20 @@ def update_bn_stats(mod):
 def freeze_bn_stats(mod):
     if type(mod) in set([ConvBnReLU1d, ConvBnReLU2d, ConvBn1d, ConvBn2d]):
         mod.freeze_bn_stats()
+
+
+# Default map for swapping float module to qat modules
+QAT_MODULE_MAPPINGS: Dict[Callable, Any] = {
+    Conv1d: q.Conv1d,
+    Conv2d: q.Conv2d,
+    Linear: q.Linear,
+    # Intrinsic modules:
+    ConvBn1d: q.Conv1d,
+    ConvBn2d: q.Conv2d,
+    ConvBnReLU1d: q.ConvReLU1d,
+    ConvBnReLU2d: q.ConvReLU2d,
+    ConvReLU1d: q.ConvReLU1d,
+    ConvReLU2d: q.ConvReLU2d,
+    torch.quantization.stubs.QuantStub: nn.Identity,
+    torch.quantization.stubs.DeQuantStub: nn.Identity,
+}

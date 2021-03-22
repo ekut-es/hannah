@@ -1,6 +1,6 @@
 defaults:
     - dataset: kws
-    - model: nas-tc
+    - model: conv-net-trax
     - scheduler: null
     - optimizer: adamw
     - features: mfcc
@@ -12,7 +12,7 @@ defaults:
     - backend: null
     - early_stopping: null
     - profiler: null
-    - hydra/sweeper: unas
+    - hydra/sweeper: hannah
 
 
 type: train
@@ -23,8 +23,6 @@ seed: 1234
 
 monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_clock_cycles", "acc_power", "acc_area"]
 
-model:
-  major_blocks: []
 
 hydra:
   run:
@@ -57,30 +55,33 @@ hydra:
     # default parametrization of the search space
     parametrization:
       model:
-        # a linearly-distributed scalar between 0 and 1
-        dropout_prob:
-          lower: 0.0
-          upper: 1.0
+        conv:
+          min: 2
+          max: 6
+          choices:
+            - target: forward
+              stride: 1
+              blocks:
+                min: 1
+                max: 4
+                choices:
+                  - target: conv1d
+                    kernel_size: [1,3,5]
+                    stride: [1,2,3]
+                    act: [false, true]
+                    norm: true
+                    out_channels: [8,16,24,32,40,48,56,64]
 
-        width_multiplier:
-          lower: 0.5
-          upper: 2.0
 
-        major_blocks:
-            min: 2
-            max: 6
-            choices:
-              - _target_: speech_recognition.models.nas.tc_model.MajorBlock
-                output_channels: [8,16,24,32,40,48,56,64]
-                stride: [1,2,3]
-                branch: "residual"
-                minor_blocks:
-                  min: 1
-                  max: 6
-                  choices:
-                    - _target_: speech_recognition.models.nas.tc_model.MinorBlock
-                      size: [1, 3, 5, 7, 9]
-                      padding: true
-                      batchnorm: [true, false]
-                      activation: [true, false]
-                      parallel: [true, false]
+            #- target: residual
+            #  stride: [2,3]
+            #  blocks:
+            #    min: 1
+            #    max: 4
+            #    choices:
+            #      - target: conv1d
+            #        kernel_size: [1,3,5,7,9]
+            #        stride: [1,2,3]
+            #        act: true
+            #        norm: true
+            #        out_channels: [8,16,24,32,40,48,56,64]

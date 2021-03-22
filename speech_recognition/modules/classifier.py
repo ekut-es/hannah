@@ -1,11 +1,14 @@
 import logging
+import os
+import json
+import copy
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.classification.precision_recall import Precision
 from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
 from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
 from pytorch_lightning.metrics.metric import MetricCollection
-from .config_utils import get_loss_function, get_model, save_model
+from .config_utils import get_loss_function, get_model
 from typing import Optional
 
 from speech_recognition.datasets.base import ctc_collate_fn
@@ -20,6 +23,8 @@ from ..datasets.DatasetSplit import DatasetSplit
 from ..datasets.Downsample import Downsample
 from ..datasets import AsynchronousLoader, SpeechDataset
 from .metrics import Error, plot_confusion_matrix
+from ..models.factory.qat import QAT_MODULE_MAPPINGS
+
 
 from omegaconf import DictConfig
 
@@ -71,9 +76,7 @@ class StreamClassifierModule(LightningModule):
         ).splits(self.hparams.dataset)
 
         # Create example input
-        device = (
-            self.trainer.root_gpu if self.trainer.root_gpu is not None else self.device
-        )
+        device = self.device
         self.example_input_array = torch.zeros(
             1, self.train_set.channels, self.train_set.input_length
         )
@@ -214,12 +217,6 @@ class StreamClassifierModule(LightningModule):
         y = y.view(-1)
         loss = self.criterion(output, y)
 
-        # --- after loss
-        for callback in self.trainer.callbacks:
-            if hasattr(callback, "on_before_backward"):
-                callback.on_before_backward(self.trainer, self, loss)
-        # --- before backward
-
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
@@ -246,8 +243,8 @@ class StreamClassifierModule(LightningModule):
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
-        if self.device.type == "cuda":
-            train_loader = AsynchronousLoader(train_loader, device=self.device)
+        # if self.device.type == "cuda":
+        #    train_loader = AsynchronousLoader(train_loader, device=self.device)
 
         self.batches_per_epoch = len(train_loader)
 
@@ -282,8 +279,8 @@ class StreamClassifierModule(LightningModule):
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
-        if self.device.type == "cuda":
-            dev_loader = AsynchronousLoader(dev_loader, device=self.device)
+        # if self.device.type == "cuda":
+        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
 
         return dev_loader
 
@@ -311,15 +308,15 @@ class StreamClassifierModule(LightningModule):
     def test_dataloader(self):
         test_loader = data.DataLoader(
             self.test_set,
-            batch_size=1,
+            batch_size=min(len(self.dev_set), 16),
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
-        if self.device.type == "cuda":
-            test_loader = AsynchronousLoader(test_loader, device=self.device)
+        # if self.device.type == "cuda":
+        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
 
         return test_loader
 
@@ -361,7 +358,35 @@ class StreamClassifierModule(LightningModule):
         return x
 
     def save(self):
-        save_model(".", self)
+
+        logging.info("saving weights to json...")
+        output_dir = "."
+        filename = os.path.join(output_dir, "model.json")
+        state_dict = self.model.state_dict()
+        with open(filename, "w") as f:
+            json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
+
+        quantized_model = copy.deepcopy(self.model)
+        quantized_model.cpu()
+        if hasattr(self.model, "qconfig") and self.model.qconfig:
+            quantized_model = torch.quantization.convert(
+                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=False
+            )
+
+        logging.info("saving onnx...")
+        try:
+            dummy_input = copy.deepcopy(self.example_feature_array)
+            dummy_input.cpu()
+
+            torch.onnx.export(
+                quantized_model,
+                dummy_input,
+                os.path.join(output_dir, "model.onnx"),
+                verbose=False,
+                opset_version=13,
+            )
+        except Exception as e:
+            logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
     # CALLBACKS
     def on_fit_end(self):

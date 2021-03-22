@@ -25,6 +25,8 @@ try:
 except ModuleNotFoundError:
     onnxrt_backend = None
 
+from ..models.factory.qat import QAT_MODULE_MAPPINGS
+
 
 def symbolic_batch_dim(model):
     sym_batch_dim = "N"
@@ -61,7 +63,7 @@ class InferenceBackendBase(Callback):
         if batch_idx < self.val_batches:
             if self.validation_epoch % self.val_frequency == 0:
                 result = self.run_batch(inputs=batch[0])
-                target = pl_module.forward(batch[0])
+                target = pl_module.forward(batch[0].to(pl_module.device))
 
                 mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
                 pl_module.log("val_backend_mse", mse)
@@ -75,7 +77,7 @@ class InferenceBackendBase(Callback):
     ):
         if batch_idx < self.test_batches:
             result = self.run_batch(inputs=batch[0])
-            target = pl_module(batch[0])
+            target = pl_module(batch[0].to(pl_module.device))
 
             mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
             pl_module.log("test_backend_mse", mse)
@@ -247,10 +249,10 @@ class TRaxUltraTrailBackend(Callback):
                     df_index = df[df["Name"] == name].index[0]
                     layer_ifm = df["IFM"][df_index]
                     C_w = layer_ifm[2]
-                    C   = layer.in_channels
-                    K   = layer.out_channels
-                    F   = layer.kernel_size[0]
-                    s   = layer.stride[0]
+                    C = layer.in_channels
+                    K = layer.out_channels
+                    F = layer.kernel_size[0]
+                    s = layer.stride[0]
                     pad = 1 if layer.padding[0] > 0 else 0
 
                 C_w_mod = C_w + pad * 2 * (F // 2)
@@ -321,14 +323,17 @@ class TRaxUltraTrailBackend(Callback):
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if batch_idx < self.num_inferences:
-            x = pl_module._extract_features(batch[0].cuda())
+        if len(self.xs) < self.num_inferences:
+            x = pl_module._extract_features(batch[0].to(pl_module.device))
             x = pl_module.normalizer(x)
             y = pl_module.model(x)
-            x = x.cpu()
-            y = y.cpu()
-            self.xs.append(x)
-            self.ys.append(y)
+
+            x = x.cpu().split(1)
+            y = y.cpu().split(1)
+            y = [t.squeeze() for t in y]
+
+            self.xs.extend(x)
+            self.ys.extend(y)
 
     def on_test_end(self, trainer, pl_module):
         logging.info("Preparing ultratrail")
@@ -337,6 +342,13 @@ class TRaxUltraTrailBackend(Callback):
 
         sys.path.append(self.backend_dir)
         from backend.backend import UltraTrailBackend
+
+        model = pl_module.model
+        if hasattr(model, "qconfig"):
+            # Removing qconfig produces a normal FloatModule
+            model = torch.quantization.convert(
+                model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
+            )
 
         # execute backend
         backend = UltraTrailBackend(
@@ -350,7 +362,7 @@ class TRaxUltraTrailBackend(Callback):
             macro_type=self.macro_type,
         )
         backend.set_model(
-            pl_module.model, pl_module.example_feature_array, verbose=True
+            model.cpu(), pl_module.example_feature_array.cpu(), verbose=True
         )
         backend.set_inputs_and_outputs(self.xs, self.ys)
         backend.prepare()

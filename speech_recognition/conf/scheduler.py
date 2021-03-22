@@ -11,7 +11,7 @@ cs = ConfigStore.instance()
 @dataclass
 class StepLRConf:
     _target_: str = "torch.optim.lr_scheduler.StepLR"
-    step_size: int = 20
+    step_size: int = 10
     gamma: float = 0.1
     last_epoch: int = -1
 
