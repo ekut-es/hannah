@@ -22,6 +22,7 @@ class STE(autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_outputs):
+        print("grad_outputs:", grad_outputs)
         values, = ctx.saved_tensors
         gate = (torch.abs(values) <= 1).float()
         grad_inputs = grad_outputs * gate
@@ -103,10 +104,21 @@ class PowerOf2Quantization:
 
     def __call__(self, x):
         sign_x = torch.sign(x)
-        log_x = torch.round(torch.log2(torch.abs(x)))
+        abs_x = torch.abs(x)
+        print(abs_x)
+        mask_x = torch.lt(abs_x, 1 / 2 ** (self.bits - 1)).int()
+        print(mask_x)
+        reverse_mask = torch.ones(x.shape, device=x.device).int() - mask_x
+        abs_x = abs_x * reverse_mask + mask_x * torch.full(
+            abs_x.shape, 1 / 2 ** (self.bits - 1), device=x.device
+        )
+        print(abs_x)
+        log_x = torch.round(torch.log2(abs_x))
+        print(log_x)
         log_x = torch.clamp(log_x, -2 ** (self.bits - 1), 0.0)
 
         x = torch.pow(torch.tensor(2, device=x.device), log_x)
+
         return x * sign_x
 
 
