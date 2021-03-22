@@ -8,6 +8,7 @@ from pytorch_lightning.metrics.classification.precision_recall import Precision
 from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
 from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
 from pytorch_lightning.metrics.metric import MetricCollection
+from torch._C import Value
 from .config_utils import get_loss_function, get_model
 from typing import Optional
 
@@ -191,10 +192,12 @@ class StreamClassifierModule(LightningModule):
                 self.log_dict(metrics)
 
         else:
-            output = torch.nn.functional.softmax(output, dim=1)
-            metrics(output, y)
-            self.log_dict(metrics)
-
+            try:
+                output = torch.nn.functional.softmax(output, dim=1)
+                metrics(output, y)
+                self.log_dict(metrics)
+            except ValueError:
+                logging.critical("Could not calculate batch metrics: {outputs}")
         self.log(f"{prefix}_loss", loss)
 
     @staticmethod
@@ -251,7 +254,9 @@ class StreamClassifierModule(LightningModule):
         return train_loader
 
     def on_train_epoch_end(self, outputs):
+        self.eval()
         self._log_weight_distribution()
+        self.train()
 
     # VALIDATION CODE
     def validation_step(self, batch, batch_idx):
@@ -308,7 +313,7 @@ class StreamClassifierModule(LightningModule):
     def test_dataloader(self):
         test_loader = data.DataLoader(
             self.test_set,
-            batch_size=min(len(self.dev_set), 16),
+            batch_size=min(len(self.test_set), 16),
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
