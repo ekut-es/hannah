@@ -11,6 +11,7 @@ Dependencies and virtual environments are managed using [poetry](https://python-
 - libsox and development headers
 - a blas implementation and development headers
 - git-lfs for management of checkpoints
+
 ### Ubuntu 18.04+
 
     sudo apt update
@@ -21,6 +22,10 @@ Dependencies and virtual environments are managed using [poetry](https://python-
     sudo yum install python36 python36-devel -y
     sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
 
+### Mac os
+Python 3.9 should be installed. Possible way are Homebrew
+
+    brew install python@3.9
 
 ### Install poetry
 
@@ -31,6 +36,11 @@ For alternative installation methods see:  https://python-poetry.org/docs/#insta
 **Caution**: this usually install poetry to ~/.local/bin if this folder is not in your path you might need to run poetry as:
 
     ~/.local/bin/poetry
+
+#### Mac OS
+Install poetry from pip
+
+    pip3 install poetry
 
 ## Software installation
 
@@ -71,6 +81,24 @@ Put the following in `.config/pip/pip.conf` until
 And you might need to deactivate your conda environement:
 
     conda deactivate
+
+3.) Pytorch 1.8.0 cuda 10.2 incompatibility workaround
+
+The default pytorch 1.8.0 packages unfortunately have a bug when running on newer graphics cards (sm_75).
+
+This results in an error message similar to the following:
+
+      File "/local/gerum/speech_recognition/.venv/lib/python3.7/site-packages/torchaudio/transforms.py", line 297, in forward
+        mel_specgram = torch.matmul(specgram.transpose(1, 2), self.fb).transpose(1, 2)
+    RuntimeError: CUDA error: CUBLAS_STATUS_INTERNAL_ERROR when calling `cublasCreate(handle)
+
+You can work around this bug using:
+
+    poetry shell
+    ./scripts/install_cu11.sh
+
+Unfortunately this command must be rerun after each poetry update.
+
 
 ## Installing the datasets
 
