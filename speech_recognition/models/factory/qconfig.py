@@ -173,16 +173,16 @@ def get_trax_qat_qconfig(config):
 
     qconfig = QConfig(
         TrainableFakeQuantize.with_args(
-            bits=bits_activation, noise_prob=config.get("noise_prob", False)
+            bits=bits_activation, noise_prob=config.get("noise_prob", 1.0)
         ),
         TrainableFakeQuantize.with_args(
             bits=bits_weight,
             power_of_2=config.get("power_of_2", True),
-            noise_prob=config.get("noise_prob", False),
+            noise_prob=config.get("noise_prob", 1.0),
             debug=False,
         ),
         TrainableFakeQuantize.with_args(
-            bits=bits_bias, noise_prob=config.get("noise_prob", False)
+            bits=bits_bias, noise_prob=config.get("noise_prob", 1.0)
         ),
     )
 
