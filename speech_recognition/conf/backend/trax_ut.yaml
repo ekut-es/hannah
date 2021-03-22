@@ -11,7 +11,7 @@ synthesis: False
 postsyn_simulation: False
 power_estimation: False
 num_inferences: 1
-bw_w: 8
+bw_w: 6
 bw_b: 8
 bw_f: 8
 cols: 8
