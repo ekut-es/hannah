@@ -13,7 +13,7 @@ qconfig:
     bw_w: 6
     bw_f: 8
     power_of_2: false # Use power of two quantization for weights
-    noise_prob: 0.3   # Probability of quantizing a value during training
+    noise_prob: 0.2   # Probability of quantizing a value during training
 conv:
   - target: forward
     stride: 1

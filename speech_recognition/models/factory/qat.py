@@ -860,6 +860,10 @@ class Linear(nn.Linear):
 
         self.activation_post_process = qconfig.activation()
 
+    @property
+    def scaled_weight(self):
+        return self.weight_fake_quant(self.weight)
+
     def forward(self, input):
         return self.activation_post_process(
             F.linear(
