@@ -81,6 +81,9 @@ class MinorBlockConfig:
     upsampling: Any = 1.0
     "Upsampling factor for mbconv layers"
     bias: bool = False
+    "use bias for this operation"
+    out_quant: bool = True
+    "use output quantization for this operation"
 
 
 @dataclass
@@ -331,6 +334,7 @@ class NetworkFactory:
         groups: int = 1,
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
+        out_quant: bool = True,
     ) -> None:
 
         in_channels = input_shape[1]
@@ -426,6 +430,7 @@ class NetworkFactory:
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
+                    out_quant=out_quant,
                 )
             elif norm:
                 layers = qat.ConvBn1d(
@@ -440,6 +445,7 @@ class NetworkFactory:
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
+                    out_quant=out_quant,
                 )
             elif act:
                 layers = qat.ConvReLU1d(
@@ -452,6 +458,7 @@ class NetworkFactory:
                     dilation=dilation,
                     groups=groups,
                     qconfig=qconfig,
+                    out_quant=out_quant,
                 )
             else:
                 layers = qat.Conv1d(
@@ -464,6 +471,7 @@ class NetworkFactory:
                     dilation=dilation,
                     groups=groups,
                     qconfig=qconfig,
+                    out_quant=out_quant,
                 )
 
             # try:
@@ -489,6 +497,7 @@ class NetworkFactory:
                 act=config.act,
                 norm=config.norm,
                 bias=config.bias,
+                out_quant=config.out_quant,
             )
         elif config.target == "mbconv1d":
             return self.mbconv1d(

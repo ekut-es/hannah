@@ -79,6 +79,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         freeze_bn=False,
         qconfig=None,
         dim=2,
+        out_quant=True,
     ):
         nn.modules.conv._ConvNd.__init__(
             self,
@@ -99,7 +100,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         self.freeze_bn = freeze_bn if self.training else True
         self.bn = _BN_CLASS_MAP[dim](out_channels, eps, momentum, True, True)
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation()
+        self.activation_post_process = self.qconfig.activation() if out_quant else nn.Identity
         self.dim = dim
 
         if hasattr(self.qconfig, "bias"):
@@ -367,6 +368,7 @@ class ConvBn1d(_ConvBnNd):
         # Args for this module
         freeze_bn=False,
         qconfig=None,
+        out_quant=True,
     ):
         kernel_size = _single(kernel_size)
         stride = _single(stride)
@@ -391,9 +393,10 @@ class ConvBn1d(_ConvBnNd):
             freeze_bn=freeze_bn,
             qconfig=qconfig,
             dim=1,
+            out_quant=True,
         )
 
-        self.activation_post_process = qconfig.activation()
+        self.activation_post_process = qconfig.activation() if out_quant else nn.Identity()
 
     def forward(self, input):
         y = super(ConvBn1d, self).forward(input)
@@ -435,6 +438,7 @@ class ConvBnReLU1d(ConvBn1d):
         # Args for this module
         freeze_bn=False,
         qconfig=None,
+        out_quant=True,
     ):
 
         super().__init__(
@@ -451,8 +455,9 @@ class ConvBnReLU1d(ConvBn1d):
             momentum=momentum,
             freeze_bn=freeze_bn,
             qconfig=qconfig,
+            out_quant=True,
         )
-        self.activation_post_process = qconfig.activation()
+        self.activation_post_process = qconfig.activation() if out_quant else nn.Identity()
 
     def forward(self, input):
         # print(f"ConvBnRelu1d {self.stride}")
@@ -675,6 +680,7 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
         bias=True,
         padding_mode="zeros",
         qconfig=None,
+        out_quant=True,
     ):
         super(ConvReLU1d, self).__init__(
             in_channels,
@@ -691,7 +697,7 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
         self.dim = 1
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation()
+        self.activation_post_process = self.qconfig.activation() if out_quant else nn.Identity()
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
@@ -730,6 +736,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         bias=True,
         padding_mode="zeros",
         qconfig=None,
+        out_quant=True,
     ):
         super(Conv1d, self).__init__(
             in_channels,
@@ -745,7 +752,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation()
+        self.activation_post_process = self.qconfig.activation() if out_quant else nn.Identity()
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
