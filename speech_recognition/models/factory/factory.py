@@ -99,7 +99,7 @@ class LinearConfig:
     outputs: int = 128
     norm: Any = False  # Union[bool, NormConfig]
     act: Any = False  # Union[bool, ActConfig]
-    last: bool = False
+    out_quant: bool = False
     qconfig: Optional[Any] = None
 
 
@@ -747,7 +747,7 @@ class NetworkFactory:
             layers.append(nn.Linear(input_shape[1], config.outputs, bias=False))
         else:
             layers.append(
-                qat.Linear(input_shape[1], config.outputs, qconfig=qconfig, bias=False, last=config.last)
+                qat.Linear(input_shape[1], config.outputs, qconfig=qconfig, bias=False, out_quant=config.out_quant)
             )
         if norm:
             layers.append(self.norm(norm))
@@ -805,7 +805,7 @@ class NetworkFactory:
                 outputs=labels,
                 norm=False,
                 act=False,
-                last=True,
+                out_quant=True,
                 qconfig=True if self.default_qconfig else False,
             ),
         )

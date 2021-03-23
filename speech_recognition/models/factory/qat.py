@@ -854,10 +854,10 @@ class Linear(nn.Linear):
     """
     _FLOAT_MODULE = nn.Linear
 
-    def __init__(self, in_features, out_features, bias=True, last=False, qconfig=None):
+    def __init__(self, in_features, out_features, bias=True, out_quant=False, qconfig=None):
         super().__init__(in_features, out_features, bias)
         assert qconfig, "qconfig must be provided for QAT module"
-        self.last = last
+        self.out_quant = out_quant
         self.qconfig = qconfig
         self.weight_fake_quant = qconfig.weight()
         if hasattr(qconfig, "bias"):
@@ -868,7 +868,7 @@ class Linear(nn.Linear):
         self.activation_post_process = qconfig.activation()
 
     def forward(self, input):
-        if self.last:
+        if self.out_quant:
             return F.linear(
                     input,
                     self.weight_fake_quant(self.weight),
