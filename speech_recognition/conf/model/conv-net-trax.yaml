@@ -43,6 +43,7 @@ conv:
         act: false
         norm: true
         out_channels: 24
+        out_quant: false
   - target: residual
     stride: 2
     blocks:
@@ -62,6 +63,7 @@ conv:
         act: false
         norm: true
         out_channels: 32
+        out_quant: false
   - target: residual
     stride: 2
     blocks:
@@ -81,3 +83,4 @@ conv:
         act: false
         norm: true
         out_channels: 48
+        out_quant: false

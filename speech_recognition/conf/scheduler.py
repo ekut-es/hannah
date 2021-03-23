@@ -104,7 +104,7 @@ cs.store(group="scheduler", name="cosine_warm", node="CosineAnnealingWarmRestart
 class OneCycleLRConf:
     "Config for one cycle lr total steps are configured from module"
     _target_: str = "torch.optim.lr_scheduler.OneCycleLR"
-    max_lr: Any = 0.5
+    max_lr: Any = 0.1
     pct_start: Any = 0.3
     anneal_strategy: str = "cos"
     cycle_momentum: Any = True
