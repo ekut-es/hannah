@@ -923,6 +923,7 @@ class Identity(nn.Identity):
     def __init__(self, qconfig=None):
         super().__init__()
         assert qconfig, "qconfig must be provided for QAT module"
+        self.qconfig = qconfig
 
         self.activation_post_process = qconfig.activation()
 
