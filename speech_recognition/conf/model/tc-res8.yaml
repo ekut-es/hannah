@@ -9,14 +9,17 @@ block1_conv_size: 9
 block1_output_channels: 24
 block1_stride: 2
 block1_flattendoutput: False
+block1_combination_type: OR
 block2_conv_size: 9
 block2_output_channels: 32
 block2_flattendoutput: False
+block2_combination_type: OR
 block2_stride: 2
 block3_conv_size: 9
 block3_output_channels: 48
 block3_stride: 2
 block3_flattendoutput: True
+block3_combination_type: OR
 bottleneck:
 - 0
 - 0

@@ -52,11 +52,13 @@ class TCResidualBlock(nn.Module):
         act,
         conv_type,
         flattenoutput,
+        combtype,
     ):
         super().__init__()
         self.stride = stride
         self.clipping_value = clipping_value
         self.conv_type = conv_type
+        self.comb_type = combtype
         if stride > 1:
             # No dilation needed: 1x1 kernel
             act = create_act(act, clipping_value)
@@ -192,7 +194,27 @@ class TCResidualBlock(nn.Module):
         if self.conv_type != "SNN":
             res = self.act(y + x)
         elif self.conv_type == "SNN":
-            res = y + x
+            if self.comb_type == "ADD":
+                res = y + x
+            elif self.comb_type == "AND":
+                res = y * x
+            elif self.comb_type == "OR":
+                res = (y + x) - (y * x)
+            elif self.comb_type == "NAND":
+                res = torch.ones(y.shape, device=y.device) - (y * x)
+                print(res.shape)
+            elif self.comb_type == "NOR":
+                res = torch.ones(y.shape) - ((y + x) - (y * x))
+            elif self.comb_type == "XOR":
+                device = y.device
+                A = y
+                B = x
+                notA = torch.ones(y.shape, device=device) - A
+                notB = torch.ones(y.shape, device=device) - B
+                left = (notA * B).to(device=device)
+                right = (A * notB).to(device=device)
+                res = ((left + right) - (left * right)).to(device=device)
+
         return res
 
 
@@ -286,11 +308,13 @@ class TCResNetModel(SerializableModule):
             size_name = "block{}_conv_size".format(count)
             stride_name = "block{}_stride".format(count)
             flattendoutput_name = "block{}_flattendoutput".format(count)
+            combination_type = "block{}_combination_type".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
             flattendoutput = config[flattendoutput_name]
+            combtype = config[combination_type]
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -307,6 +331,7 @@ class TCResNetModel(SerializableModule):
                 act,
                 self.conv_type,
                 flattendoutput,
+                combtype,
             )
             self.layers.append(block)
 
