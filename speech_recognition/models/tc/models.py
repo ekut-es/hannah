@@ -12,7 +12,7 @@ import numpy as np
 
 
 from ..utils import ConfigType, SerializableModule, next_power_of2
-from ..snn.LayerFactory import build1DConvolution, buildLinearLayer
+from ..snn.LayerFactory import build1DConvolution, buildLinearLayer, build1DBatchNorm
 
 
 def create_act(act, clipping_value):
@@ -72,7 +72,12 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                     flatten_output=flattenoutput,
                 ),
-                # nn.BatchNorm1d(output_channels),
+                build1DBatchNorm(
+                    type,
+                    out_channels=output_channels,
+                    flatten_output=flattenoutput,
+                    bntt=False,
+                ),
                 # act,
             )
 
@@ -151,7 +156,12 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                 ),
-                # nn.BatchNorm1d(output_channels),
+                build1DBatchNorm(
+                    type,
+                    out_channels=output_channels,
+                    flatten_output=flattenoutput,
+                    bntt=False,
+                ),
                 # act,
                 # nn.BatchNorm1d(output_channels),
             )
@@ -168,7 +178,13 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                 ),
-                # nn.BatchNorm1d(output_channels),
+                build1DBatchNorm(
+                    type,
+                    out_channels=output_channels,
+                    flatten_output=flattenoutput,
+                    bntt=False,
+                ),
+                nn.BatchNorm1d(output_channels),
                 # act,
                 build1DConvolution(
                     self.conv_type,
@@ -181,7 +197,12 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                     flatten_output=flattenoutput,
                 ),
-                # nn.BatchNorm1d(output_channels),
+                build1DBatchNorm(
+                    type,
+                    out_channels=output_channels,
+                    flatten_output=flattenoutput,
+                    bntt=False,
+                ),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
 

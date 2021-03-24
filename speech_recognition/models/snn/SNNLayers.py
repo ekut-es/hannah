@@ -32,6 +32,26 @@ class SNN(torch.nn.Module):
             l.reset_parameters()
 
 
+class DummyLayer(torch.nn.Module):
+    def __init__(self,):
+
+        super(DummyLayer, self).__init__()
+
+    def forward(self, x):
+
+        return x
+
+
+class BNTT(torch.nn.Module):
+    def __init__(self,):
+
+        super(BNTT, self).__init__()
+
+    def forward(self, x):
+
+        return x
+
+
 class SpikingDenseLayer(torch.nn.Module):
     def __init__(
         self,

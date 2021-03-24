@@ -3,6 +3,8 @@ from .SNNLayers import (
     SpikingConv1DLayer,
     ReadoutLayer,
     SurrogateHeaviside,
+    DummyLayer,
+    BNTT,
 )
 import torch.nn as nn
 
@@ -92,5 +94,18 @@ def buildLinearLayer(
         )
     elif type == "NN":
         return nn.Linear(in_features=input_shape, out_features=output_shape, bias=bias)
+    else:
+        print("Error wrong type Parameter")
+
+
+def build1DBatchNorm(
+    type, out_channels, flatten_output: bool = False, bntt: bool = False
+):
+    if flatten_output:
+        return DummyLayer()
+    elif bntt:
+        return BNTT()
+    elif not bntt:
+        return nn.BatchNorm1d(out_channels)
     else:
         print("Error wrong type Parameter")
