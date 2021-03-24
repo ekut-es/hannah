@@ -1,12 +1,10 @@
 from collections import namedtuple
-from torch.quantization.fake_quantize import FakeQuantize, FakeQuantizeBase
-from torch.quantization.observer import (
-    MovingAverageMinMaxObserver,
-    ObserverBase,
-    _with_args,
-)
+
 import torch
 import torch.nn as nn
+from torch.quantization.fake_quantize import FakeQuantize, FakeQuantizeBase
+from torch.quantization.observer import (MovingAverageMinMaxObserver,
+                                         ObserverBase, _with_args)
 
 # FIXME: accumulator is not used at the moment
 QConfig = namedtuple("QConfig", ["activation", "weight", "bias"])
@@ -36,11 +34,11 @@ class QuantizationLoss(nn.Module):
 
 
 class FixedpointObserver(ObserverBase):
-    def __init__(self, quant_min=-128, quant_max=127):
+    def __init__(self, observer_quant_min=-128, observer_quant_max=127):
         super().__init__(torch.int32)
         self.qscheme = torch.per_tensor_symmetric
-        self.quant_min = quant_min
-        self.quant_max = quant_max
+        self.quant_min = observer_quant_min
+        self.quant_max = observer_quant_max
         self.device = None
 
     @torch.jit.export
@@ -90,16 +88,22 @@ def get_trax_qat_qconfig(config):
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_activation - 1),
             quant_max=2 ** (bits_activation - 1) - 1,
+            observer_quant_min=-2 ** (bits_activation - 1),
+            observer_quant_max=2 ** (bits_activation - 1) - 1,
         ),
         FakeQuantize.with_args(
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_weight - 1),
             quant_max=2 ** (bits_weight - 1) - 1,
+            observer_quant_min=-2 ** (bits_weight - 1),
+            observer_quant_max=2 ** (bits_weight - 1) - 1,
         ),
         FakeQuantize.with_args(
             observer=FixedpointObserver,
             quant_min=-2 ** (bits_bias - 1),
             quant_max=2 ** (bits_bias - 1) - 1,
+            observer_quant_min=-2 ** (bits_bias - 1),
+            observer_quant_max=2 ** (bits_bias - 1) - 1,
         ),
     )
 

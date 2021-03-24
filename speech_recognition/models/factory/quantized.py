@@ -294,3 +294,37 @@ class Linear(nn.Module):
         )
 
         return quant_module
+
+
+class Identity(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.activation_post_process = None
+
+    def _get_name(self):
+        return "QuantizedIdentity"
+
+    def forward(self, input):
+        output = input
+
+        if hasattr(self, "activation_post_process"):
+            output = self.activation_post_process(output)
+
+        return output
+
+    def extra_repr(self):
+        s = ""
+        return s.format(**self.__dict__)
+
+    @classmethod
+    def from_float(cls, float_module):
+        assert hasattr(float_module, "activation_post_process")
+
+        quant_module = cls()
+
+        quant_module.activation_post_process = copy.deepcopy(
+            float_module.activation_post_process
+        )
+
+        return quant_module

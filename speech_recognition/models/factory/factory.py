@@ -8,19 +8,19 @@ interface.
 import collections.abc
 import logging
 import math
-from speech_recognition.models.factory import pooling
-from typing import Dict, Sequence, Union, Optional, List, Any, Tuple
-
-from hydra.utils import instantiate
 from dataclasses import dataclass, field
-from .act import DummyActivation
-from .network import ConvNet
-from omegaconf import MISSING, OmegaConf
-
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
 import torch.quantization as tqant
+from hydra.utils import instantiate
+from omegaconf import MISSING, OmegaConf
+
+from speech_recognition.models.factory import pooling
+
 from . import qat
+from .act import DummyActivation
+from .network import ConvNet
 from .reduction import ReductionBlockAdd, ReductionBlockConcat
 
 
@@ -81,6 +81,9 @@ class MinorBlockConfig:
     upsampling: Any = 1.0
     "Upsampling factor for mbconv layers"
     bias: bool = False
+    "use bias for this operation"
+    out_quant: bool = True
+    "use output quantization for this operation"
 
 
 @dataclass
@@ -96,6 +99,7 @@ class LinearConfig:
     outputs: int = 128
     norm: Any = False  # Union[bool, NormConfig]
     act: Any = False  # Union[bool, ActConfig]
+    out_quant: bool = False
     qconfig: Optional[Any] = None
 
 
@@ -330,6 +334,7 @@ class NetworkFactory:
         groups: int = 1,
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
+        out_quant: bool = True,
     ) -> None:
 
         in_channels = input_shape[1]
@@ -425,6 +430,7 @@ class NetworkFactory:
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
+                    out_quant=out_quant,
                 )
             elif norm:
                 layers = qat.ConvBn1d(
@@ -439,6 +445,7 @@ class NetworkFactory:
                     eps=norm.eps,
                     momentum=norm.momentum,
                     qconfig=qconfig,
+                    out_quant=out_quant,
                 )
             elif act:
                 layers = qat.ConvReLU1d(
@@ -451,6 +458,7 @@ class NetworkFactory:
                     dilation=dilation,
                     groups=groups,
                     qconfig=qconfig,
+                    out_quant=out_quant,
                 )
             else:
                 layers = qat.Conv1d(
@@ -463,6 +471,7 @@ class NetworkFactory:
                     dilation=dilation,
                     groups=groups,
                     qconfig=qconfig,
+                    out_quant=out_quant,
                 )
 
             # try:
@@ -488,6 +497,7 @@ class NetworkFactory:
                 act=config.act,
                 norm=config.norm,
                 bias=config.bias,
+                out_quant=config.out_quant,
             )
         elif config.target == "mbconv1d":
             return self.mbconv1d(
@@ -607,7 +617,9 @@ class NetworkFactory:
 
         inputs = [nn.Sequential(*[x[1] for x in chain]) for chain in input_chains]
         if reduction == "add":
-            return target_output_shape, ReductionBlockAdd(*inputs)
+            reduction = ReductionBlockAdd(*inputs)
+            reduction_quant = self.identity()
+            return target_output_shape, nn.Sequential(reduction, reduction_quant)
         elif reduction == "concat":
             output_channels = sum((x[1] for x in output_shapes))
 
@@ -735,7 +747,7 @@ class NetworkFactory:
             layers.append(nn.Linear(input_shape[1], config.outputs, bias=False))
         else:
             layers.append(
-                qat.Linear(input_shape[1], config.outputs, qconfig=qconfig, bias=False)
+                qat.Linear(input_shape[1], config.outputs, qconfig=qconfig, bias=False, out_quant=config.out_quant)
             )
         if norm:
             layers.append(self.norm(norm))
@@ -746,6 +758,16 @@ class NetworkFactory:
         layers = nn.Sequential(*layers)
 
         return out_shape, layers
+
+    def identity(self):
+        qconfig = self.default_qconfig
+
+        if not qconfig:
+            identity = nn.Identity()
+        else:
+            identity = qat.Identity(qconfig=qconfig)
+
+        return identity
 
     def network(self, input_shape, labels: int, network_config: NetworkConfig):
         self.default_norm = network_config.norm
@@ -783,6 +805,7 @@ class NetworkFactory:
                 outputs=labels,
                 norm=False,
                 act=False,
+                out_quant=True,
                 qconfig=True if self.default_qconfig else False,
             ),
         )

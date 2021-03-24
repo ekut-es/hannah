@@ -22,7 +22,7 @@ from ..utils import list_all_files, extract_from_download_cache
 msglogger = logging.getLogger()
 
 
-def factor(snr, psig, pnoise):
+def snr_factor(snr, psig, pnoise):
     y = 10 ** (snr / 10)
     return np.sqrt(psig / (pnoise * y))
 
@@ -79,8 +79,8 @@ class SpeechDataset(AbstractDataset):
         n_unk = len(list(filter(lambda x: x == self.unknown_class, self.audio_labels)))
         self.n_silence = int(self.silence_prob * (len(self.audio_labels) - n_unk))
         self.max_feature = 0
-        self.train_snr_low = config["train_snr_low"]
-        self.train_snr_high = config["train_snr_high"]
+        self.train_snr_low = min(config["train_snr_low"], config["train_snr_high"])
+        self.train_snr_high = max(config["train_snr_low"], config["train_snr_high"])
         self.test_snr = config["test_snr"]
         self.channels = 1  # FIXME: add config option
 
@@ -193,7 +193,7 @@ class SpeechDataset(AbstractDataset):
             data = bg_noise
         else:
             if snr != float("inf"):
-                f = factor(snr, psig, pnoise)
+                f = snr_factor(snr, psig, pnoise)
                 if f > 10:
                     f = 10
                 data = data + f * bg_noise
@@ -424,8 +424,6 @@ class SpeechHotwordDataset(SpeechDataset):
     def splits(cls, config):
         """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
-
-        msglogger = logging.getLogger()
 
         folder = config["data_folder"]
         folder = os.path.join(folder, "hey_snips_research_6k_en_train_eval_clean_ter")

@@ -1,11 +1,6 @@
-import math
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-
-from speech_recognition.callbacks.summaries import walk_model
-
-from collections import OrderedDict
 
 import torch.onnx
 from pytorch_lightning import Callback
@@ -201,6 +196,7 @@ class TRaxUltraTrailBackend(Callback):
         macro_type,
         use_acc_statistic_model,
         use_acc_analytical_model,
+        use_acc_teda_data,
     ):
         self.backend_dir = backend_dir
         self.teda_dir = Path(teda_dir)
@@ -221,104 +217,7 @@ class TRaxUltraTrailBackend(Callback):
         self.ys = []
         self.use_acc_statistic_model = use_acc_statistic_model
         self.use_acc_analytical_model = use_acc_analytical_model
-        self.use_acc_teda_data = False
-        # Performance in clock cycles
-        # Power in W
-        # Area in µm^2
-        self.clock_cycles = 1000000000.0
-        self.power = 1000000000.0
-        self.area = 1000000000.0
-        self.accuracy = 0.0
-
-    def get_analytical_clock_cycles(self, pl_module):
-        model = pl_module.model
-        dummy_input = pl_module.example_feature_array
-        df = walk_model(pl_module.model, dummy_input)
-
-        clock_cycles = 0
-        for name, layer in pl_module.model.named_modules():
-            if isinstance(layer, torch.nn.Conv1d) or isinstance(layer, torch.nn.Linear):
-                if isinstance(layer, torch.nn.Linear):
-                    C = layer.in_features
-                    K = layer.out_features
-                    F = 1
-                    C_w = 1
-                    s = 1
-                    pad = 0
-                else:
-                    df_index = df[df["Name"] == name].index[0]
-                    layer_ifm = df["IFM"][df_index]
-                    C_w = layer_ifm[2]
-                    C = layer.in_channels
-                    K = layer.out_channels
-                    F = layer.kernel_size[0]
-                    s = layer.stride[0]
-                    pad = 1 if layer.padding[0] > 0 else 0
-
-                C_w_mod = C_w + pad * 2 * (F // 2)
-                a_w = math.floor(((C_w_mod - F) // s) + 1)
-                C_w_b = F // 2
-                a_p_b = pad * math.floor(((C_w_b - 1) / s) + 1)
-                MAC_not_b = 0
-                for i in range(a_p_b):
-                    MAC_not_b += (F // 2) - s * i
-
-                F_w = a_w * s + F - s
-                C_w_e = F_w - C_w - C_w_b
-                a_p_e = pad * math.floor(((C_w_e - 1) / s) + 1)
-                MAC_not_e = 0
-                for i in range(a_p_e):
-                    MAC_not_e += (F // 2) - s * i - (C_w_b - C_w_e)
-
-                t_l = 1 + math.ceil(C / self.rows) * math.ceil(K / self.cols) * (
-                    a_w * F - MAC_not_b - MAC_not_e
-                )
-                clock_cycles += t_l
-        return clock_cycles
-
-    def _do_summary(self, pl_module):
-        res = OrderedDict()
-        if self.use_acc_statistic_model:
-            self.clock_cycles = (
-                1457.2 * self.cols ** 2
-                - 33736.2 * self.cols
-                - 6.5 * self.bw_w ** 2
-                + 65 * self.bw_w
-                + 170720.2
-            )
-            self.power = (
-                1.469e-07 * self.cols ** 2
-                + 3.133e-06 * self.cols
-                + 2.937e-07 * self.bw_w ** 2
-                + 2.175e-06 * self.bw_w
-                - 1.514e-05
-            )
-            self.area = (
-                792.9 * self.cols ** 2
-                + 1026.6 * self.cols
-                - 122.5 * self.bw_w ** 2
-                + 18941.7 * self.bw_w
-                - 63560.6
-            )
-            self.accuracy = 1.0
-
-        # Assumption: Analytical model is more precise than statistical
-        if self.use_acc_analytical_model:
-            self.clock_cycles = self.get_analytical_clock_cycles(pl_module)
-
-        # Wait for movement of the whole code to the backend
-        # if self.use_acc_teda_data:
-
-        res["acc_clock_cycles"] = self.clock_cycles
-        res["acc_power"] = self.power
-        res["acc_area"] = self.area
-        res["acc_accuracy"] = self.accuracy
-        return res
-
-    def on_validation_epoch_end(self, trainer, pl_module):
-        res = self._do_summary(pl_module)
-        for k, v in res.items():
-            pl_module.log(k, v)
+        self.use_acc_teda_data = use_acc_teda_data
 
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
@@ -335,7 +234,7 @@ class TRaxUltraTrailBackend(Callback):
             self.xs.extend(x)
             self.ys.extend(y)
 
-    def on_test_end(self, trainer, pl_module):
+    def on_test_epoch_end(self, trainer, pl_module):
         logging.info("Preparing ultratrail")
         # load backend package
         import sys
@@ -373,3 +272,16 @@ class TRaxUltraTrailBackend(Callback):
             self.postsyn_simulation,
             self.power_estimation,
         )
+
+        res = backend._do_summary(
+            self.use_acc_statistic_model,
+            self.use_acc_analytical_model,
+            self.use_acc_teda_data,
+            self.rtl_simulation,
+            self.synthesis,
+            self.power_estimation,
+            pl_module
+        )
+        
+        for k, v in res.items():
+            pl_module.log(k, v)
