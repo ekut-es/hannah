@@ -15,7 +15,6 @@ from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
 from pytorch_lightning.utilities.seed import seed_everything
@@ -113,8 +112,8 @@ def train(config=DictConfig):
         callbacks.append(pruning_callback)
 
     # INIT PYTORCH-LIGHTNING
-    lit_trainer = Trainer(
-        **config.trainer,
+    lit_trainer = instantiate(
+        config.trainer,
         profiler=profiler,
         callbacks=callbacks,
         checkpoint_callback=checkpoint_callback,
