@@ -2,6 +2,9 @@ import math
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import re
+import numpy as np
+import pandas as pd
 
 from speech_recognition.callbacks.summaries import walk_model
 
@@ -221,7 +224,7 @@ class TRaxUltraTrailBackend(Callback):
         self.ys = []
         self.use_acc_statistic_model = use_acc_statistic_model
         self.use_acc_analytical_model = use_acc_analytical_model
-        self.use_acc_teda_data = False
+        self.use_acc_teda_data = True
         # Performance in clock cycles
         # Power in W
         # Area in µm^2
@@ -229,6 +232,36 @@ class TRaxUltraTrailBackend(Callback):
         self.power = 1000000000.0
         self.area = 1000000000.0
         self.accuracy = 0.0
+
+    def check_teda_area_result(self, logfile):
+        with open(logfile, "r") as f:
+            lns = f.readlines()
+
+        # Find start of area data
+        for ln in lns:
+            if re.search("Instance", lns[0]) is None:
+                del lns[0]
+
+        del lns[1]                                              # Delete empty line
+        columns = lns[0]
+        columns = re.split(r'\s{2,}',columns)                   # Split when at least two whitespaces follow
+        del columns[0]                                          # Remove unnecessary elements
+        del columns[-1]
+        lns_split = list(map(lambda elem: elem.split(), lns))
+        del lns_split[0]                                        # Remove line with already extracted columns
+
+        # Collect indexs
+        index = []
+        for elem in lns_split:
+            index.append(elem[0])
+
+        lns_split[0].insert(1, 'accelerator')                   # Handle special case - Missing value
+
+        df = pd.DataFrame(data=lns_split,
+                          index=index,
+                          columns=columns)
+
+        return float(df['Cell Area']['accelerator'])
 
     def get_analytical_clock_cycles(self, pl_module):
         model = pl_module.model
@@ -307,7 +340,8 @@ class TRaxUltraTrailBackend(Callback):
             self.clock_cycles = self.get_analytical_clock_cycles(pl_module)
 
         # Wait for movement of the whole code to the backend
-        # if self.use_acc_teda_data:
+        if self.use_acc_teda_data:
+            self.area = self.check_teda_area_result(self.teda_dir / 'output/synthesis/tc_resnet8_accelerator/reports/area.rpt')
 
         res["acc_clock_cycles"] = self.clock_cycles
         res["acc_power"] = self.power
@@ -315,7 +349,8 @@ class TRaxUltraTrailBackend(Callback):
         res["acc_accuracy"] = self.accuracy
         return res
 
-    def on_validation_epoch_end(self, trainer, pl_module):
+    def on_test_epoch_end(self, trainer, pl_module):
+        breakpoint()
         res = self._do_summary(pl_module)
         for k, v in res.items():
             pl_module.log(k, v)
