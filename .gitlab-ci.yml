@@ -51,7 +51,6 @@ test_python_38:
     - branches
 
 test_python_39:
-   allow_failure: true
    image: python:3.9
    script:
      - set -e
