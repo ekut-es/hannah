@@ -276,7 +276,7 @@ class SpikingConv1DLayer(torch.nn.Module):
             spk_rec[:, :, t] = spk
 
         # save spk_rec for plotting
-        self.spk_rec_hist = spk_rec.detach().cpu().numpy()
+        #        self.spk_rec_hist = spk_rec.detach().cpu().numpy()
 
         if self.flatten_output:
 
@@ -703,7 +703,7 @@ class ReadoutLayer(torch.nn.Module):
             output = torch.mean(mem_rec, 1) / (norm + 1e-8) - self.b
 
         # save mem_rec for plotting
-        self.mem_rec_hist = mem_rec.detach().cpu().numpy()
+        # self.mem_rec_hist = mem_rec.detach().cpu().numpy()
 
         return output
 
