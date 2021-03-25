@@ -27,7 +27,14 @@ Power of 2 Quantization can currently only be enabled for weights.
 
 ## Noisy Quantization
 
-Noisy Quantization es described in
+As described in https://openreview.net/pdf?id=dV19Yyi1fS3 qunatizing only a subset of model weights during training
+can improve accuracies of quantized networks compared to full quantization aware training.
+
+The probability of quantizing a weight can be given as parameter noise_prob in in the qconfig.
+Unfortunately this introduces an additional hyperparameter in the quantization space, good values
+for noise prob seem to be in the range of 0.7 to 0.9.
+
+Even when using noisy quantization eval and test are always run on fully quantized networks.
 
 ## Configuration
 
