@@ -73,13 +73,6 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                     flatten_output=flattenoutput,
                 ),
-                build1DBatchNorm(
-                    type,
-                    out_channels=output_channels,
-                    flatten_output=flattenoutput,
-                    bntt=False,
-                    timesteps_bn=timesteps_bn,
-                ),
                 # act,
             )
 
@@ -158,12 +151,6 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                 ),
-                build1DBatchNorm(
-                    type,
-                    out_channels=output_channels,
-                    flatten_output=flattenoutput,
-                    bntt=False,
-                ),
                 # act,
                 # nn.BatchNorm1d(output_channels),
             )
@@ -180,7 +167,6 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                 ),
-                build1DBatchNorm(type, out_channels=output_channels, bntt=False),
                 # act,
                 build1DConvolution(
                     self.conv_type,
@@ -192,13 +178,6 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                     flatten_output=flattenoutput,
-                ),
-                build1DBatchNorm(
-                    type,
-                    out_channels=output_channels,
-                    flatten_output=flattenoutput,
-                    bntt=False,
-                    timesteps_bn=timesteps_bn,
                 ),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
