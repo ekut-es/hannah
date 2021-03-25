@@ -32,10 +32,10 @@ class SNN(torch.nn.Module):
             l.reset_parameters()
 
 
-class DummyLayer(torch.nn.Module):
+class EmptyLayer(torch.nn.Module):
     def __init__(self,):
 
-        super(DummyLayer, self).__init__()
+        super(EmptyLayer, self).__init__()
 
     def forward(self, x):
 

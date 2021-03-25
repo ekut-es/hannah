@@ -53,6 +53,7 @@ class TCResidualBlock(nn.Module):
         conv_type,
         flattenoutput,
         combtype,
+        timesteps_bn,
     ):
         super().__init__()
         self.stride = stride
@@ -77,6 +78,7 @@ class TCResidualBlock(nn.Module):
                     out_channels=output_channels,
                     flatten_output=flattenoutput,
                     bntt=False,
+                    timesteps_bn=timesteps_bn,
                 ),
                 # act,
             )
@@ -178,13 +180,7 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                 ),
-                build1DBatchNorm(
-                    type,
-                    out_channels=output_channels,
-                    flatten_output=flattenoutput,
-                    bntt=False,
-                ),
-                nn.BatchNorm1d(output_channels),
+                build1DBatchNorm(type, out_channels=output_channels, bntt=False),
                 # act,
                 build1DConvolution(
                     self.conv_type,
@@ -202,6 +198,7 @@ class TCResidualBlock(nn.Module):
                     out_channels=output_channels,
                     flatten_output=flattenoutput,
                     bntt=False,
+                    timesteps_bn=timesteps_bn,
                 ),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
@@ -223,9 +220,8 @@ class TCResidualBlock(nn.Module):
                 res = (y + x) - (y * x)
             elif self.comb_type == "NAND":
                 res = torch.ones(y.shape, device=y.device) - (y * x)
-                print(res.shape)
             elif self.comb_type == "NOR":
-                res = torch.ones(y.shape) - ((y + x) - (y * x))
+                res = torch.ones(y.shape, device=y.device) - ((y + x) - (y * x))
             elif self.comb_type == "XOR":
                 device = y.device
                 A = y
@@ -330,12 +326,14 @@ class TCResNetModel(SerializableModule):
             stride_name = "block{}_stride".format(count)
             flattendoutput_name = "block{}_flattendoutput".format(count)
             combination_type = "block{}_combination_type".format(count)
+            timesteps_flattened = "block{}_timesteps_flattened".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
             flattendoutput = config[flattendoutput_name]
             combtype = config[combination_type]
+            timesteps_bn = config.get(timesteps_flattened, 0)
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -353,6 +351,7 @@ class TCResNetModel(SerializableModule):
                 self.conv_type,
                 flattendoutput,
                 combtype,
+                timesteps_bn,
             )
             self.layers.append(block)
 

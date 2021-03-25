@@ -20,6 +20,7 @@ block3_output_channels: 48
 block3_stride: 2
 block3_flattendoutput: True
 block3_combination_type: ADD
+block3_timesteps_flattened: 13
 bottleneck:
 - 0
 - 0
