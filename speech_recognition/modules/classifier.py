@@ -17,6 +17,7 @@ from speech_recognition.datasets.base import ctc_collate_fn
 import tabulate
 import torch
 import torch.utils.data as data
+from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
 from hydra.utils import instantiate, get_class
 
 from ..datasets.NoiseDataset import NoiseDataset
@@ -39,6 +40,8 @@ class StreamClassifierModule(LightningModule):
         features: DictConfig,
         num_workers: int = 0,
         batch_size: int = 128,
+        time_masking: int = 0,
+        frequency_masking: int = 0,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
     ):
@@ -141,6 +144,17 @@ class StreamClassifierModule(LightningModule):
 
         self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
         self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
+
+        augmentation_passes = []
+        if self.hparams.time_masking > 0:
+            augmentation_passes.append(TimeMasking(self.hparams.time_masking))
+        if self.hparams.frequency_masking > 0:
+            augmentation_passes.append(TimeMasking(self.hparams.frequency_masking))
+
+        if augmentation_passes:
+            self.augmentation = torch.nn.Sequential(*augmentation_passes)
+        else:
+            self.augmentation = torch.nn.Identity()
 
     @property
     def total_training_steps(self) -> int:
@@ -358,6 +372,8 @@ class StreamClassifierModule(LightningModule):
 
     def forward(self, x):
         x = self._extract_features(x)
+        if self.training:
+            x = self.augmentation(x)
         x = self.normalizer(x)
         x = self.model(x)
         return x
