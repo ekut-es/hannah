@@ -102,7 +102,7 @@ def build1DBatchNorm(
     type, out_channels, flatten_output: bool = False, bntt: bool = False, timesteps_bn=0
 ):
     if bntt:
-        return BNTT()
+        return BNTT(timesteps_bn, chanels=out_channels)
     elif not bntt and timesteps_bn > 0 and flatten_output:
         return nn.BatchNorm1d(timesteps_bn)
     elif not bntt and timesteps_bn == 0 and not flatten_output:

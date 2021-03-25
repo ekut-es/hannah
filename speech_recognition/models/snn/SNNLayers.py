@@ -43,11 +43,16 @@ class EmptyLayer(torch.nn.Module):
 
 
 class BNTT(torch.nn.Module):
-    def __init__(self,):
-
+    def __init__(self, timesteps, chanels):
         super(BNTT, self).__init__()
+        self.bnttlayer = torch.nn.ModuleList()
+        self.timesteps = timesteps
+        for i in range(timesteps):
+            self.bnttlayer.append(torch.nn.BatchNorm1d(chanels, eps=1e-4, momentum=0.1))
 
     def forward(self, x):
+        for t in range(self.timesteps):
+            bntt = self.bnttlayer[t]
 
         return x
 
