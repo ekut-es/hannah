@@ -53,3 +53,7 @@ renderer:
     markdown_extensions:
       - def_list
       - admonition
+      - pymdownx.arithmatex:
+          generic: true
+    extra_javascript:
+      - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
