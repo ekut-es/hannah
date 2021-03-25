@@ -40,6 +40,7 @@ class StreamClassifierModule(LightningModule):
         batch_size: int = 128,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
+        export_onnx: bool = True,
     ):
         super().__init__()
 
@@ -50,6 +51,7 @@ class StreamClassifierModule(LightningModule):
         self.test_set = None
         self.dev_set = None
         self.logged_samples = 0
+        self.export_onnx = export_onnx
         print(dataset.data_folder)
 
     def prepare_data(self):
@@ -372,21 +374,21 @@ class StreamClassifierModule(LightningModule):
             quantized_model = torch.quantization.convert(
                 quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=False
             )
+        if self.export_onnx:
+            logging.info("saving onnx...")
+            try:
+                dummy_input = copy.deepcopy(self.example_feature_array)
+                dummy_input.cpu()
 
-        logging.info("saving onnx...")
-        try:
-            dummy_input = copy.deepcopy(self.example_feature_array)
-            dummy_input.cpu()
-
-            torch.onnx.export(
-                quantized_model,
-                dummy_input,
-                os.path.join(output_dir, "model.onnx"),
-                verbose=False,
-                opset_version=13,
-            )
-        except Exception as e:
-            logging.error("Could not export onnx model ...\n {}")
+                torch.onnx.export(
+                    quantized_model,
+                    dummy_input,
+                    os.path.join(output_dir, "model.onnx"),
+                    verbose=False,
+                    opset_version=13,
+                )
+            except Exception as e:
+                logging.error("Could not export onnx model ...\n {}")
 
     # CALLBACKS
     def on_fit_end(self):
