@@ -4,7 +4,9 @@ version = "0.1.0"
 description = ""
 authors = [
     "Christoph Gerum <christoph.gerum@uni-tuebingen.de>",
-    "Felix Lorenz <felix.lorenz@student.uni-tuebingen.de>"
+    "Adrian Frischknecht <adrian.frischknecht@uni-tuebingen.de>",
+    "Felix Lorenz <felix.lorenz@student.uni-tuebingen.de>",
+    "Tobias Hald <tobias.hald@student.uni-tuebingen.de>"
 ]
 
 [tool.poetry.dependencies]
@@ -56,7 +58,7 @@ onnxrt-backend = ["onnxruntime"]
 
 [tool.poetry.scripts]
 hannah-train = 'speech_recognition.train:main'
-
+hannah-eval = 'speech_recognition.eval:main'
 
 [build-system]
 requires = ["poetry>=0.12"]
