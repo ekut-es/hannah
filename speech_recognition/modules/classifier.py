@@ -386,7 +386,7 @@ class StreamClassifierModule(LightningModule):
                 opset_version=13,
             )
         except Exception as e:
-            logging.error("Could not export onnx model ...\n {}".format(str(e)))
+            logging.error("Could not export onnx model ...\n {}")
 
     # CALLBACKS
     def on_fit_end(self):
