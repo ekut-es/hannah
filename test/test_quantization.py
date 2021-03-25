@@ -35,6 +35,8 @@ import torch.nn as nn
     ],
 )
 def test_quantized_conv1d(conv_cls, quant):
+    torch.manual_seed(0)
+
     class Config:
         bw_b = 8
         bw_f = 8
@@ -94,6 +96,8 @@ def test_quantized_conv1d(conv_cls, quant):
     ],
 )
 def test_quantized_conv2d(conv_cls, quant):
+    torch.manual_seed(0)
+
     class Config:
         bw_b = 8
         bw_f = 8

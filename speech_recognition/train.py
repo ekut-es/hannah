@@ -172,7 +172,6 @@ def eval(model_name, config):
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config=DictConfig):
-
     if config["type"] == "train":
         return train(config)
     elif config["type"] == "eval":

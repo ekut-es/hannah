@@ -30,7 +30,7 @@ clear_download: False
 variants: ["speech_command"]
 data_split: []
 noise_dataset: []
-download_folder: ""
+download_folder: ${dataset.data_folder}/downloads
 
 silence_prob: 0.1
 unknown_prob: 0.1

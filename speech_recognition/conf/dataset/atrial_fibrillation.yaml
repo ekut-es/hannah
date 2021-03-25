@@ -18,5 +18,6 @@ clear_download: False
 variants: ["atrial_fibrillation"]
 data_split: []
 noise_dataset: []
-download_folder: ""
+download_folder: ${dataset.data_folder}/downloads
+
 sampler: weighted
