@@ -730,6 +730,26 @@ class ReadoutLayer(torch.nn.Module):
             self.beta.data.clamp_(0.0, 1.0)
 
 
+class Surrogate_BP_Function(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        ctx.save_for_backward(input)
+        out = torch.zeros_like(input).cuda()
+        out[input > 0] = 1.0
+        return out
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        grad = (
+            grad_input
+            * 0.3
+            * torch.nn.functional.threshold(1.0 - torch.abs(input), 0, 0)
+        )
+        return grad
+
+
 class SurrogateHeaviside(torch.autograd.Function):
 
     # Activation function with surrogate gradient
