@@ -72,6 +72,7 @@ build_docs:
     - source venv/bin/activate
     - pip install --upgrade pydoc-markdown
     - pip install --upgrade mkdocs
+    - pip install --upgrade pymdown-extensions
 
   allow_failure: true
   script:
