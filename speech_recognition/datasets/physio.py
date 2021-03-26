@@ -1,8 +1,4 @@
 import os
-import random
-import re
-import json
-import logging
 import hashlib
 import sys
 

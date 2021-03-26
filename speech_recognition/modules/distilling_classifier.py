@@ -1,14 +1,17 @@
 import logging
-from copy import deepcopy
+import math
+import random
 
-from .classifier import StreamClassifierModule
-from omegaconf import DictConfig
-from typing import Optional
+from copy import deepcopy
+from typing import Optional, Union, List
+
 import torch.nn as nn
 import torch
-import random
-from typing import Union, List
-import math
+
+from omegaconf import DictConfig
+from pytorch_lightning.metrics import Accuracy
+
+from .classifier import StreamClassifierModule
 
 
 class SpeechKDClassifierModule(StreamClassifierModule):
@@ -20,6 +23,8 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         features: DictConfig,
         num_workers: int = 0,
         batch_size: int = 128,
+        time_masking: int = 0,
+        frequency_masking: int = 0,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
         teacher_checkpoint: Union[str, List[str], None] = None,
@@ -32,14 +37,16 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         correct_prob: float = 0.9,
     ):
         super().__init__(
-            dataset,
-            model,
-            optimizer,
-            features,
-            num_workers,
-            batch_size,
-            scheduler,
-            normalizer,
+            dataset=dataset,
+            model=model,
+            optimizer=optimizer,
+            features=features,
+            num_workers=num_workers,
+            batch_size=batch_size,
+            scheduler=scheduler,
+            normalizer=normalizer,
+            time_masking=time_masking,
+            frequency_masking=frequency_masking,
         )
         self.save_hyperparameters()
         self.distillation_loss = distillation_loss
@@ -50,9 +57,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         self.correct_prob = correct_prob
         self.teacher_loaded = False
 
-        if distillation_loss == "MSE":
-            self.loss_func = nn.MSELoss()
-        elif distillation_loss == "TFself":
+        if distillation_loss == "TFself":
             self.loss_func = self.teacher_free_selfkd_loss
         elif distillation_loss == "TFself_Loss":
             self.loss_func = self.teacher_free_selfkd_loss
@@ -60,15 +65,10 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             self.loss_func = self.teacher_free_virtual_loss
         elif distillation_loss == "noisyTeacher":
             self.loss_func = self.noisyTeacher_loss
-        elif distillation_loss == "KLLoss":
-            self.loss_func = self.KLloss
         elif distillation_loss == "DGKD":
             self.loss_func = self.densely_guided_kd
         else:
-            logging.warning(
-                "Distillation loss %s unknown falling back to MSE", distillation_loss
-            )
-            self.loss_func = nn.MSELoss()
+            raise Exception("Distillation loss %s unknown", distillation_loss)
 
         self.teachers = nn.ModuleList()
 
@@ -111,11 +111,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
                 checkpoint = torch.load(
                     checkpoint_file, map_location=torch.device("cpu")
                 )
-
-                print(checkpoint.keys())
-
                 hparams = checkpoint["hyper_parameters"]
-                print(hparams)
 
                 # TODO: train new teacher checkpoints and remove from model
                 if "teacher_model" in hparams:
@@ -136,6 +132,8 @@ class SpeechKDClassifierModule(StreamClassifierModule):
                         param.requires_grad = False
 
                 self.teachers.append(teacher_module)
+
+        self.teacher_accuracies = nn.ModuleList([Accuracy() for t in self.teachers])
         self.teacher_loaded = True
 
     """
@@ -219,10 +217,12 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             y_pred_student, y_true
         )
 
-        loss += (self.distil_weight * self.temp * self.temp) * local_loss(
+        teacher_loss = local_loss(
             torch.nn.functional.log_softmax(y_pred_student / self.temp, dim=1),
             torch.nn.functional.softmax(y_pred_teacher / self.temp, dim=1),
         )
+
+        loss += (self.distil_weight * self.temp * self.temp) * teacher_loss
 
         return loss
 
@@ -249,26 +249,6 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         Code taken from Paper: "MEAL V2: Boosting Vanilla ResNet-50 to 80%+ Top-1 Accuracy on ImageNet without Tricks"
         arxiv: https://arxiv.org/abs/2009.08453
     """
-
-    def KLloss(self, student, teacher):
-        # Target is ignored at training time. Loss is defined as KL divergence
-        # between the model output and the soft labels.
-        soft_labels = torch.nn.functional.softmax(teacher, dim=1)
-
-        model_output_log_prob = torch.nn.functional.log_softmax(student, dim=1)
-
-        # Loss is -dot(model_output_log_prob, soft_labels). Prepare tensors
-        # for batch matrix multiplicatio
-        soft_labels = soft_labels.unsqueeze(1)
-        model_output_log_prob = model_output_log_prob.unsqueeze(2)
-
-        # Compute the loss, and average for the batch.
-        cross_entropy_loss = -torch.bmm(soft_labels, model_output_log_prob)
-        cross_entropy_loss = cross_entropy_loss.mean()
-        # Return a pair of (loss_output, model_output). Model output will be
-        # used for top-1 and top-5 evaluation.
-        model_output_log_prob = model_output_log_prob.squeeze(2)
-        return cross_entropy_loss  # , model_output_log_prob)
 
     """
         Original idea coverd in: "Densely Guided Knowledge Distillation using Multiple Teacher Assistants"
@@ -328,9 +308,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
 
     def calculate_loss(self, student_logits, teacher_logits, y):
         loss = math.inf
-        if (self.distillation_loss == "MSE") | (self.distillation_loss == "KLLoss"):
-            loss = self.loss_func(student_logits, teacher_logits[0])
-        elif self.distillation_loss == "TFVirtual":
+        if self.distillation_loss == "TFVirtual":
             loss = self.loss_func(student_logits, y)
         elif self.distillation_loss == "DGKD":
             loss = self.loss_func(student_logits, teacher_logits, y)
@@ -359,4 +337,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             student_logits, y, loss, self.train_metrics, "train"
         )
 
+        num = 0
+        for teacher_output, acc in zip(teacher_logits, self.teacher_accuracies):
+            acc(torch.nn.functional.softmax(teacher_output, dim=1), y)
+            self.log(f"teacher_acc/{num}", acc, on_epoch=True, on_step=False)
+            num += 1
         return loss

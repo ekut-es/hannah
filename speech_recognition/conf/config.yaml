@@ -16,7 +16,6 @@ defaults:
     - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
       optional: true
 
-type: train
 experiment_id: test
 output_dir: trained_models
 auto_lr: false

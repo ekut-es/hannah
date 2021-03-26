@@ -5,7 +5,7 @@ To debug training inefficiencies we support the following profiling tools:
 
 ## Simple Profiler:
 
-     python -m speech_recognition.train profiler=simple trainer.max_epochs=1 profiler=simple
+     hannah-train profiler=simple trainer.max_epochs=1 profiler=simple
 
 Generates a summary of the durations of the individual training steps:
 
@@ -50,7 +50,7 @@ Generates a summary of the durations of the individual training steps:
 
 ## Advanced Profiler
 
-    python -m speech_recognition.train profiler=simple trainer.max_epochs=1 profiler=advanced
+    hannah-train profiler=simple trainer.max_epochs=1 profiler=advanced
 
 Creates python level performance summaries for the individual Training steps:
 

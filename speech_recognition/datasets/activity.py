@@ -1,17 +1,10 @@
 import os
-import random
-import re
-import json
 import logging
 import hashlib
 import sys
 
 from typing import Any, Dict, List, Optional
 
-import pickle
-import wfdb
-
-import torchaudio
 import numpy as np
 import scipy.signal as signal
 import torch
@@ -20,12 +13,12 @@ import h5py
 
 from enum import Enum
 from collections import defaultdict
-from chainmap import ChainMap
 
 from ..utils import list_all_files, extract_from_download_cache
 from .base import AbstractDataset, DatasetType
 
 msglogger = logging.getLogger()
+
 
 class Data3D:
     """ 3D-Data """
@@ -249,7 +242,6 @@ class PAMAP2_Dataset(AbstractDataset):
     def prepare(cls, config: Dict[str, Any]) -> None:
         cls.download(config)
 
-
     @property
     def class_names(self) -> List[str]:
         return list(self.label_names)
@@ -262,7 +254,6 @@ class PAMAP2_Dataset(AbstractDataset):
             label = chunk.get_label()
             counts[label] += 1
         return counts
-
 
     @classmethod
     def splits(cls, config):
