@@ -82,22 +82,6 @@ And you might need to deactivate your conda environement:
 
     conda deactivate
 
-3.) Pytorch 1.8.0 cuda 10.2 incompatibility workaround
-
-The default pytorch 1.8.0 packages unfortunately have a bug when running on newer graphics cards (sm_75).
-
-This results in an error message similar to the following:
-
-      File "/local/gerum/speech_recognition/.venv/lib/python3.7/site-packages/torchaudio/transforms.py", line 297, in forward
-        mel_specgram = torch.matmul(specgram.transpose(1, 2), self.fb).transpose(1, 2)
-    RuntimeError: CUDA error: CUBLAS_STATUS_INTERNAL_ERROR when calling `cublasCreate(handle)
-
-You can work around this bug using:
-
-    poetry shell
-    ./scripts/install_cu11.sh
-
-Unfortunately this command must be rerun after each poetry update.
 
 
 ## Installing the datasets
