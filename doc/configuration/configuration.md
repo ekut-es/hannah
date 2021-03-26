@@ -4,7 +4,7 @@ Configurations are managed by [hydra](http://hydra.cc). And follow a structured 
 
 The currently used configuration can be shown with:
 
-    python -m speech_recognition.train  -c job
+    hannah-train  -c job
 
 The default configurations are located under `speech_recognition/conf/config.yaml`.
 

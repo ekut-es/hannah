@@ -38,6 +38,9 @@ renderer:
         - title: TVM
           name: backends/tvm
           source: doc/backends/tvm.md
+    - titel: "Evaluation"
+      name: eval
+      source: doc/eval.md
     - title: Development
       children:
         - title: Profiling

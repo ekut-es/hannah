@@ -108,12 +108,12 @@ Datasets are downloaded automatically to the datasets datafolder by default this
 
 Training is invoked by
 
-    python -m speech_recognition.train
+   hannah-train
 
 If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.gpus=[number]
 e.g. for GPU 2 use:
 
-    python -m speech_recognition.train trainer.gpus=[2]
+   hannah-train trainer.gpus=[2]
 
 Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
@@ -121,16 +121,16 @@ Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
 Training of VAD is invoked by
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2
+   hannah-train dataset=vad model.n_labels=2
 
 Training of VAD_Extended is invoked by
 
-    python -m speech_recognition.train dataset=vad_extended model.n_labels=2
+   hannah-train dataset=vad_extended model.n_labels=2
 
 If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.gpus=[number]
 e.g. for GPU 2 use:
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2 trainer.gpus=[2]
+   hannah-train dataset=vad model.n_labels=2 trainer.gpus=[2]
 
 Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
@@ -138,29 +138,29 @@ Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
 Training of PAMAP2 human activity detection dataset is invoked by:
 
-    python -m speech_recognition.train dataset=pamap2 features=raw
+   hannah-train dataset=pamap2 features=raw
 
 ### Data Creation at the beginning
 
 Selection of other Voice Dataset use  `dataset.variants="[UWNU, de, en, it, fr, es]" `
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU, de, en, it, fr, es]"
+   hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, de, en, it, fr, es]"
 
 Selection of other Noise Datasets use  `dataset.noise_dataset="[TUT]" `
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.noise_dataset="[TUT]"
+   hannah-train dataset=vad model.n_labels=2 dataset.noise_dataset="[TUT]"
 
 Selection of dataset Split use  `dataset.data_split="vad_balanced" `
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.data_split="vad_balanced"
+   hannah-train dataset=vad model.n_labels=2 dataset.data_split="vad_balanced"
 
 Create Vad_small Dataset
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU]" dataset.noise_dataset="[TUT]" dataset.data_split="vad_balanced"
+   hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU]" dataset.noise_dataset="[TUT]" dataset.data_split="vad_balanced"
 
 Create VAD_big Dataset
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU, en, de, fr, es, it]" dataset.noise_dataset="[TUT, FSD50K]" dataset.data_split="vad_balanced"
+   hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, en, de, fr, es, it]" dataset.noise_dataset="[TUT, FSD50K]" dataset.data_split="vad_balanced"
 
 # Parallel Launchers
 
@@ -168,7 +168,7 @@ To launch multiple optimizations in parallel you can use a hydra launcher
 
 Submitit launcher is installed by default:
 
-    python -m speech_recognition.train --multirun hydra/sweeper=nevergrad  hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.eps='interval(1.0e-09, 1.0e-05)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
+   hannah-train --multirun hydra/sweeper=nevergrad  hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.eps='interval(1.0e-09, 1.0e-05)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
 
 Launches optimizer hyerparameter optimization with 5 parallel jobs.
 
@@ -176,7 +176,7 @@ Launches optimizer hyerparameter optimization with 5 parallel jobs.
 
 To stop training early when a validation metric does not improve, you can use lignings early stopping callback:
 
-    python -m speech_recognition.train early_stopping=default
+   hannah-train early_stopping=default
 
 
 # Showing graphical results
