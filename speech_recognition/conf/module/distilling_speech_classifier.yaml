@@ -4,14 +4,18 @@ _target_: speech_recognition.modules.SpeechKDClassifierModule
 num_workers: 0
 batch_size: 128
 
-temp: 1 # used in "DGKD" (1 recommended)
+distillation_loss: noisyTeacher
+temp: 10 # used in "DGKD" (1 recommended)
 distil_weight: 0.6 # used as lambda for "DGKD" (0.6 recommended)
-alpha: 0 # used in "DGKD" as regualrizer (integer < #teacher_checkpoint-1) (0 recommended)
+alpha: 0.5 # used in "DGKD" as regualrizer (integer < #teacher_checkpoint-1) (0 recommended)
 noise_variance: 0.1
 correct_prob: 0.9
 
 teacher_checkpoint:
-  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res20_pytorch18.ckpt
-  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res16_pytorch18.ckpt
-  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res8_pytorch18.ckpt
-  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res6_pytorch18.ckpt
+  #- ${hydra:runtime.cwd}/teachers/speech_commands/tc-res20.ckpt
+  #- ${hydra:runtime.cwd}/teachers/speech_commands/tc-res16.ckpt
+  - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res8.ckpt
+  #- ${hydra:runtime.cwd}/teachers/speech_commands/tc-res6.ckpt
+
+ # - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res8.ckpt
+ # - ${hydra:runtime.cwd}/teachers/speech_commands/tc-res16.ckpt

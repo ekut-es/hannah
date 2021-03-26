@@ -99,7 +99,10 @@ class SpeechDataset(AbstractDataset):
     def _timeshift_audio(self, data):
         """Shifts data by a random amount of ms given by parameter timeshift_ms"""
         shift = (self.samplingrate * self.timeshift_ms) // 1000
-        shift = random.randint(-shift, shift)
+        if self.set_type == DatasetType.TRAIN:
+            shift = random.randint(-shift, shift)
+        else:
+            shift = random.randint(0, shift)
         a = -min(0, shift)
         b = max(0, shift)
         data = np.pad(data, (a, b), "constant")
@@ -429,7 +432,6 @@ class SpeechHotwordDataset(SpeechDataset):
         folder = os.path.join(folder, "hey_snips_research_6k_en_train_eval_clean_ter")
 
         descriptions = ["train.json", "dev.json", "test.json"]
-        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
         datasets = [{}, {}, {}]
 
         for num, desc in enumerate(descriptions):

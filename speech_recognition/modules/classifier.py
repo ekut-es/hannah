@@ -54,7 +54,6 @@ class StreamClassifierModule(LightningModule):
         self.test_set = None
         self.dev_set = None
         self.logged_samples = 0
-        print(dataset.data_folder)
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -67,7 +66,8 @@ class StreamClassifierModule(LightningModule):
     def setup(self, stage):
         # TODO stage variable is not used!
         self.msglogger.info("Setting up model")
-        self.logger.log_hyperparams(self.hparams)
+        if self.logger:
+            self.logger.log_hyperparams(self.hparams)
 
         if self.initialized:
             return
@@ -101,8 +101,8 @@ class StreamClassifierModule(LightningModule):
 
         # Instantiate Model
         self.num_classes = len(self.train_set.label_names)
-        if hasattr(self.hparams.model, "_target_"):
-            print(self.hparams.model)
+        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+            print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
