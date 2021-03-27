@@ -212,8 +212,7 @@ class Spiking1DLayer(torch.nn.Module):
         self.timesteps = timesteps
         self.bntt = bntt
         self.bnttlayer = torch.nn.ModuleList()
-        self.one = torch.nn.parameter(torch.tensor(1.0), requires_grad=False)
-        
+
         if recurrent:
             self.v = torch.nn.Parameter(
                 torch.empty((out_channels, out_channels)), requires_grad=True
@@ -235,7 +234,7 @@ class Spiking1DLayer(torch.nn.Module):
     def forward(self, x):
 
         batch_size = x.shape[0]
-        
+
         nb_steps = x.shape[2]
 
         # membrane potential
@@ -272,8 +271,10 @@ class Spiking1DLayer(torch.nn.Module):
             # membrane potential update
             if self.bntt and batch_size > 1:
                 self.bnttlayer[t].training = self.training
-                mem = torch.subtract(mem, rst) * self.beta + self.bnttlayer[t](input_) * torch.subtract(), self.beta)
-            else:    
+                mem = torch.subtract(mem, rst) * self.beta + self.bnttlayer[t](
+                    input_
+                ) * (1 - self.beta)
+            else:
                 mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
             mthr = torch.einsum("ab,b->ab", mem, 1.0 / (norm + self.eps)) - b
 
@@ -293,7 +294,7 @@ class Spiking1DLayer(torch.nn.Module):
         return output
 
     def reset_parameters(self):
-        
+
         if self.recurrent:
             torch.nn.init.normal_(
                 self.v,
