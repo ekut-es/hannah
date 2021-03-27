@@ -10,17 +10,19 @@ block1_output_channels: 24
 block1_stride: 2
 block1_flattendoutput: False
 block1_combination_type: ADD
+block1_timesteps: 50
 block2_conv_size: 9
 block2_output_channels: 32
 block2_flattendoutput: False
 block2_combination_type: ADD
 block2_stride: 2
+block2_timesteps: 25
 block3_conv_size: 9
 block3_output_channels: 48
 block3_stride: 2
 block3_flattendoutput: True
 block3_combination_type: ADD
-block3_timesteps_flattened: 13
+block3_timesteps: 13
 bottleneck:
 - 0
 - 0

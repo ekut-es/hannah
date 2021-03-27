@@ -53,7 +53,7 @@ class TCResidualBlock(nn.Module):
         conv_type,
         flattenoutput,
         combtype,
-        timesteps_bn,
+        timesteps,
     ):
         super().__init__()
         self.stride = stride
@@ -72,6 +72,8 @@ class TCResidualBlock(nn.Module):
                     stride=stride,
                     bias=False,
                     flatten_output=flattenoutput,
+                    bntt=True,
+                    timesteps=timesteps,
                 ),
                 # act,
             )
@@ -166,6 +168,8 @@ class TCResidualBlock(nn.Module):
                     padding=dilation * pad_x,
                     dilation=dilation,
                     bias=False,
+                    bntt=True,
+                    timesteps=timesteps,
                 ),
                 # act,
                 build1DConvolution(
@@ -178,7 +182,10 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                     flatten_output=flattenoutput,
+                    bntt=True,
+                    timesteps=timesteps,
                 ),
+                
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
 
@@ -305,14 +312,14 @@ class TCResNetModel(SerializableModule):
             stride_name = "block{}_stride".format(count)
             flattendoutput_name = "block{}_flattendoutput".format(count)
             combination_type = "block{}_combination_type".format(count)
-            timesteps_flattened = "block{}_timesteps_flattened".format(count)
+            timesteps = "block{}_timesteps".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
             flattendoutput = config[flattendoutput_name]
             combtype = config[combination_type]
-            timesteps_bn = config.get(timesteps_flattened, 0)
+            timesteps = config.get(timesteps, 0)
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -330,7 +337,7 @@ class TCResNetModel(SerializableModule):
                 self.conv_type,
                 flattendoutput,
                 combtype,
-                timesteps_bn,
+                timesteps=timesteps
             )
             self.layers.append(block)
 

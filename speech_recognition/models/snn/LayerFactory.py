@@ -1,10 +1,10 @@
 from .SNNLayers import (
     SpikingDenseLayer,
-    SpikingConv1DLayer,
+    Spiking1DLayer,
     ReadoutLayer,
     SurrogateHeaviside,
     EmptyLayer,
-    BNTT,
+    Surrogate_BP_Function
 )
 import torch.nn as nn
 
@@ -15,7 +15,7 @@ def build1DConvolution(
     out_channels,
     kernel_size=3,
     dilation=1,
-    spike_fn=SurrogateHeaviside.apply,
+    spike_fn=Surrogate_BP_Function.apply,
     stride=1,
     padding=0,
     w_init_mean=0.0,
@@ -26,21 +26,67 @@ def build1DConvolution(
     groups: int = 1,
     bias: bool = True,
     padding_mode: str = "zeros",
+    timesteps: int = 0,
+    bntt: bool = False,
 ):
     if type == "SNN":
-        return SpikingConv1DLayer(
-            in_channels,
-            out_channels,
-            kernel_size,
-            dilation,
-            spike_fn,
+        conv = nn.Conv1d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
             stride=stride,
-            w_init_mean=w_init_mean,
-            w_init_std=w_init_std,
-            recurrent=recurrent,
-            lateral_connections=lateral_connections,
-            flatten_output=flatten_output,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            padding_mode=padding_mode,
         )
+        if bntt:
+            return nn.Sequential(
+                conv,
+                Spiking1DLayer(
+                    in_channels,
+                    out_channels,
+                    kernel_size,
+                    dilation,
+                    spike_fn,
+                    stride=stride,
+                    w_init_mean=w_init_mean,
+                    w_init_std=w_init_std,
+                    recurrent=recurrent,
+                    lateral_connections=lateral_connections,
+                    flatten_output=flatten_output,
+                    convolution_layer=conv,
+                    bntt=bntt,
+                    timesteps=timesteps,
+                ),
+            )
+        else:
+            return nn.Sequential(
+                conv,
+                build1DBatchNorm(
+                    type,
+                    out_channels=out_channels,
+                    flatten_output=flatten_output,
+                    timesteps_bn=timesteps
+                ),
+                Spiking1DLayer(
+                    in_channels,
+                    out_channels,
+                    kernel_size,
+                    dilation,
+                    spike_fn,
+                    stride=stride,
+                    w_init_mean=w_init_mean,
+                    w_init_std=w_init_std,
+                    recurrent=recurrent,
+                    lateral_connections=lateral_connections,
+                    flatten_output=flatten_output,
+                    convolution_layer=conv,
+                    bntt=bntt,
+                    timesteps=timesteps,
+                ),
+            )
     elif type == "NN":
         return nn.Conv1d(
             in_channels=in_channels,
@@ -64,7 +110,7 @@ def buildLinearLayer(
     w_init_mean=0.0,
     w_init_std=0.15,
     eps=1e-8,
-    spike_fn=SurrogateHeaviside.apply,
+    spike_fn=Surrogate_BP_Function.apply,
     time_reduction="mean",
     readout=False,
     recurrent=False,
@@ -101,13 +147,11 @@ def buildLinearLayer(
 def build1DBatchNorm(
     type, out_channels, flatten_output: bool = False, bntt: bool = False, timesteps_bn=0
 ):
-    if bntt:
-        return BNTT(timesteps_bn, chanels=out_channels)
-    elif not bntt and timesteps_bn > 0 and flatten_output:
+    if timesteps_bn > 0 and flatten_output:
         return nn.BatchNorm1d(timesteps_bn)
-    elif not bntt and timesteps_bn == 0 and not flatten_output:
+    elif timesteps_bn == 0 and not flatten_output:
         return nn.BatchNorm1d(out_channels)
-    elif not bntt and timesteps_bn == 0 and flatten_output:
+    elif timesteps_bn == 0 and flatten_output:
         return EmptyLayer()
     else:
         print("Error wrong type Parameter")

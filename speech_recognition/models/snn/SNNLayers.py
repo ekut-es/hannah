@@ -173,7 +173,7 @@ class SpikingDenseLayer(torch.nn.Module):
         self.b.data.clamp_(min=0.0)
 
 
-class SpikingConv1DLayer(torch.nn.Module):
+class Spiking1DLayer(torch.nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -188,9 +188,12 @@ class SpikingConv1DLayer(torch.nn.Module):
         eps=1e-8,
         stride: _size_1_t = 1,
         flatten_output=False,
+        convolution_layer=None,
+        timesteps=0,
+        bntt=False,
     ):
 
-        super(SpikingConv1DLayer, self).__init__()
+        super(Spiking1DLayer, self).__init__()
 
         self.kernel_size = kernel_size
         self.dilation = dilation
@@ -205,12 +208,12 @@ class SpikingConv1DLayer(torch.nn.Module):
 
         self.flatten_output = flatten_output
 
-        self.w_init_mean = w_init_mean
-        self.w_init_std = w_init_std
-
-        self.w = torch.nn.Parameter(
-            torch.empty((out_channels, in_channels, kernel_size)), requires_grad=True
-        )
+        self.convolution = convolution_layer
+        self.timesteps = timesteps
+        self.bntt = bntt
+        self.bnttlayer = torch.nn.ModuleList()
+        self.one = torch.nn.parameter(torch.tensor(1.0), requires_grad=False)
+        
         if recurrent:
             self.v = torch.nn.Parameter(
                 torch.empty((out_channels, out_channels)), requires_grad=True
@@ -225,20 +228,15 @@ class SpikingConv1DLayer(torch.nn.Module):
 
         self.training = True
 
+        if self.bntt:
+            for _ in range(self.timesteps):
+                self.bnttlayer.append(torch.nn.BatchNorm1d(out_channels))
+
     def forward(self, x):
 
         batch_size = x.shape[0]
-
-        conv_x = torch.nn.functional.conv1d(
-            x,
-            self.w,
-            padding=(
-                np.ceil(((self.kernel_size - 1) * self.dilation) / 2).astype(int),
-            ),
-            dilation=(self.dilation,),
-            stride=(self.stride,),
-        )
-        nb_steps = conv_x.shape[2]
+        
+        nb_steps = x.shape[2]
 
         # membrane potential
         mem = torch.zeros(
@@ -257,8 +255,7 @@ class SpikingConv1DLayer(torch.nn.Module):
         if self.lateral_connections:
             d = torch.einsum("abc, ebc -> ae", self.w, self.w)
         b = self.b
-
-        norm = (self.w ** 2).sum((1, 2))
+        norm = (self.convolution.weight ** 2).sum((1, 2))
 
         for t in range(nb_steps):
 
@@ -268,12 +265,16 @@ class SpikingConv1DLayer(torch.nn.Module):
             else:
                 rst = torch.einsum("ab,b,b->ab", spk, self.b, norm)
 
-            input_ = conv_x[:, :, t]
+            input_ = x[:, :, t]
             if self.recurrent:
                 input_ = input_ + torch.einsum("ab,bd->ad", spk, self.v)
 
             # membrane potential update
-            mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
+            if self.bntt and batch_size > 1:
+                self.bnttlayer[t].training = self.training
+                mem = torch.subtract(mem, rst) * self.beta + self.bnttlayer[t](input_) * torch.subtract(), self.beta)
+            else:    
+                mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
             mthr = torch.einsum("ab,b->ab", mem, 1.0 / (norm + self.eps)) - b
 
             spk = self.spike_fn(mthr)
@@ -292,13 +293,7 @@ class SpikingConv1DLayer(torch.nn.Module):
         return output
 
     def reset_parameters(self):
-
-        torch.nn.init.normal_(
-            self.w,
-            mean=self.w_init_mean,
-            std=self.w_init_std
-            * np.sqrt(1.0 / (self.in_channels * np.prod(self.kernel_size))),
-        )
+        
         if self.recurrent:
             torch.nn.init.normal_(
                 self.v,
@@ -734,7 +729,7 @@ class Surrogate_BP_Function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input):
         ctx.save_for_backward(input)
-        out = torch.zeros_like(input).cuda()
+        out = torch.zeros_like(input)
         out[input > 0] = 1.0
         return out
 
