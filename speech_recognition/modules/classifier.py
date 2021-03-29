@@ -468,6 +468,36 @@ class CrossValidationStreamClassifierModule(StreamClassifierModule):
         self.train_sets, self.dev_sets, self.test_sets = [], [], []
         self.prepare_dataloaders()
         self.metrics_list = []
+        self.wrapper_instance = None
+        self.num_classes = len(self.sets_by_criteria[0].label_names)
+        # Metrics
+        self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
+        self.val_metrics = MetricCollection(
+            {
+                "val_accuracy": Accuracy(),
+                "val_error": Error(),
+                "val_recall": Recall(num_classes=self.num_classes,
+                                     average="weighted"),
+                "val_precision": Precision(
+                    num_classes=self.num_classes, average="weighted"
+                ),
+                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
+            }
+        )
+        self.test_metrics = MetricCollection(
+            {
+                "test_accuracy": Accuracy(),
+                "test_error": Error(),
+                "test_recall": Recall(num_classes=self.num_classes,
+                                      average="weighted"),
+                "test_precision": Precision(
+                    num_classes=self.num_classes, average="weighted"
+                ),
+                "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
+            }
+        )
+        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+        self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
 
     def setup(self, stage):
         # TODO stage variable is not used!
@@ -502,7 +532,6 @@ class CrossValidationStreamClassifierModule(StreamClassifierModule):
             self.normalizer = torch.nn.Identity()
 
         # Instantiate Model
-        self.num_classes = len(self.sets_by_criteria[0].label_names)
         if hasattr(self.hparams.model, "_target_"):
             print(self.hparams.model)
             self.model = instantiate(
@@ -518,36 +547,6 @@ class CrossValidationStreamClassifierModule(StreamClassifierModule):
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
-
-        # Metrics
-        self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
-        self.val_metrics = MetricCollection(
-            {
-                "val_accuracy": Accuracy(),
-                "val_error": Error(),
-                "val_recall": Recall(num_classes=self.num_classes,
-                                     average="weighted"),
-                "val_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
-                ),
-                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
-            }
-        )
-        self.test_metrics = MetricCollection(
-            {
-                "test_accuracy": Accuracy(),
-                "test_error": Error(),
-                "test_recall": Recall(num_classes=self.num_classes,
-                                      average="weighted"),
-                "test_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
-                ),
-                "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
-            }
-        )
-
-        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
-        self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
 
     def prepare_dataloaders(self):
         assert self.k_fold >= len(["train", "val", "test"])
@@ -639,10 +638,50 @@ class CrossValidationStreamClassifierModule(StreamClassifierModule):
         # if self.device.type == "cuda":
         #    test_loader = AsynchronousLoader(test_loader, device=self.device)
 
-    def on_test_end(self) -> None:
-        super().on_test_end()
-        self.metrics_list += [self.test_metrics]
+    def register_wrapper_instance(self, wrapper):
+        self.wrapper_instance = wrapper
 
+    def on_test_end(self) -> None:
+        pass
+
+    def on_wrapper_end(self) -> None:
+        if self.trainer and self.trainer.fast_dev_run:
+            return
+
+        metric_table = []
+        for name, metric in self.test_metrics.items():
+            metric_table.append((name, metric.compute().item()))
+
+        logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
+
+        confusion_matrix = self.test_confusion.compute()
+        self.test_confusion.reset()
+
+        confusion_plot = plot_confusion_matrix(
+            confusion_matrix.cpu().numpy(), self.test_set.class_names
+        )
+        confusion_plot.savefig("test_confusion.png")
+        confusion_plot.savefig("test_confusion.pdf")
+
+        # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
+        self.test_roc.reset()
+
+    def test_step(self, batch, batch_idx):
+
+        # dataloader provides these four entries per batch
+        x, x_length, y, y_length = batch
+
+        output = self(x)
+        y = y.view(-1)
+        loss = self.criterion(output, y)
+
+        # METRICS
+        self.wrapper_instance.calculate_batch_metrics(output, y, loss, self.wrapper_instance.test_metrics, "test")
+        logits = torch.nn.functional.softmax(output, dim=1)
+        self.wrapper_instance.test_confusion(logits, y)
+        self.wrapper_instance.test_roc(logits, y)
+
+        return loss
 
 class SpeechClassifierModule(LightningModule):
     def __init__(self, *args, **kwargs):

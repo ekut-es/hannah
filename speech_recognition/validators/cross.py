@@ -10,15 +10,6 @@ class CrossValidator(BaseValidator):
     def training_core(self, lit_module, profiler,
                       callbacks, checkpoint_callback, opt_callback,
                       logger):
-        # INIT PYTORCH-LIGHTNING
-        lit_trainer = instantiate(
-            self.config.trainer,
-            profiler=profiler,
-            callbacks=callbacks,
-            checkpoint_callback=checkpoint_callback,
-            logger=logger,
-        )
-
         results = list()
 
         for i, (train, val, test) in enumerate(zip(lit_module.train_dataloader(),
@@ -33,6 +24,17 @@ class CrossValidator(BaseValidator):
                 features=self.config.features,
                 scheduler=self.config.get("scheduler", None),
                 normalizer=self.config.get("normalizer", None),
+            )
+
+            lit_module_cross_val.register_wrapper_instance(lit_module)
+
+            # INIT PYTORCH-LIGHTNING
+            lit_trainer = instantiate(
+                self.config.trainer,
+                profiler=profiler,
+                callbacks=callbacks,
+                checkpoint_callback=checkpoint_callback,
+                logger=logger,
             )
 
             if self.config["auto_lr"]:
@@ -61,14 +63,15 @@ class CrossValidator(BaseValidator):
             # PL TEST
             lit_trainer.test(test_dataloaders=test,
                              ckpt_path=ckpt_path, verbose=False)
-            if not lit_trainer.fast_dev_run:
-                lit_module_cross_val.save()
-                if checkpoint_callback and checkpoint_callback.best_model_path:
-                    shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
+            # if not lit_trainer.fast_dev_run:
+            #     lit_module_cross_val.save()
+            #     if checkpoint_callback and checkpoint_callback.best_model_path:
+            #         shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
 
-            results += [opt_callback.result()]
+            # results += [opt_callback.result()]
 
-        return results
+        lit_module.on_wrapper_end()
+        # return results
 
     def eval(self, model_name):
         lit_trainer, lit_module, profiler = build_trainer(model_name,
