@@ -42,13 +42,13 @@ def train(config=DictConfig):
     if not torch.cuda.is_available():
         config.trainer.gpus = None
 
-    if not config.trainer.fast_dev_run:
-        current_path = pathlib.Path(".")
-        for component in current_path.iterdir():
-            if component.name == "checkpoints":
-                shutil.rmtree(component)
-            elif component.name.startswith("version_"):
-                shutil.rmtree(component)
+    # if not config.trainer.fast_dev_run:
+    #     current_path = pathlib.Path(".")
+    #     for component in current_path.iterdir():
+    #         if component.name == "checkpoints":
+    #             shutil.rmtree(component)
+    #         elif component.name.startswith("version_"):
+    #             shutil.rmtree(component)
 
     log_execution_env_state()
 
