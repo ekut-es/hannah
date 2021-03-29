@@ -5,6 +5,7 @@ from .SNNLayers import (
     SurrogateHeaviside,
     EmptyLayer,
     Surrogate_BP_Function,
+    BatchNormalizationThroughTime1D,
 )
 import torch.nn as nn
 
@@ -65,11 +66,7 @@ def build1DConvolution(
         else:
             return nn.Sequential(
                 conv,
-                build1DBatchNorm(
-                    out_channels=out_channels,
-                    flatten_output=flatten_output,
-                    timesteps=timesteps,
-                ),
+                build1DBatchNorm(out_channels=out_channels, timesteps=timesteps),
                 Spiking1DLayer(
                     in_channels,
                     out_channels,
@@ -100,11 +97,7 @@ def build1DConvolution(
                 bias=bias,
                 padding_mode=padding_mode,
             ),
-            build1DBatchNorm(
-                out_channels=out_channels,
-                flatten_output=flatten_output,
-                timesteps=timesteps,
-            ),
+            build1DBatchNorm(out_channels=out_channels, timesteps=timesteps),
             activation,
         )
     elif type == "NN" and activation == None:
@@ -120,11 +113,7 @@ def build1DConvolution(
                 bias=bias,
                 padding_mode=padding_mode,
             ),
-            build1DBatchNorm(
-                out_channels=out_channels,
-                flatten_output=flatten_output,
-                timesteps=timesteps,
-            ),
+            build1DBatchNorm(out_channels=out_channels, timesteps=timesteps),
         )
 
     else:
@@ -172,8 +161,13 @@ def buildLinearLayer(
         print("Error wrong type Parameter")
 
 
-def build1DBatchNorm(out_channels, flatten_output: bool = False, timesteps: int = 0):
-    return nn.BatchNorm1d(out_channels)
+def build1DBatchNorm(out_channels, type="BN", timesteps: int = 0):
+    if type == "BN":
+        return nn.BatchNorm1d(out_channels)
+    elif type == "BNTT":
+        return BatchNormalizationThroughTime1D(
+            channels=out_channels, timesteps=timesteps
+        )
 
 
 # else:
