@@ -44,7 +44,12 @@ class EmptyLayer(torch.nn.Module):
 
 class BatchNormalizationThroughTime1D(torch.nn.Module):
     def __init__(
-        self, channels, timesteps: int = 0, eps=1e-4, momentum=0.1, variant="v1"
+        self,
+        channels,
+        timesteps: int = 0,
+        eps: float = 1e-4,
+        momentum: float = 0.1,
+        variant="v1",
     ):
         super(BatchNormalizationThroughTime1D, self).__init__()
         self.variant = variant
