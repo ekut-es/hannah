@@ -42,18 +42,27 @@ class EmptyLayer(torch.nn.Module):
         return x
 
 
-class BNTT(torch.nn.Module):
-    def __init__(self, timesteps, chanels):
-        super(BNTT, self).__init__()
+class BatchNormalizationThroughTime1D(torch.nn.Module):
+    def __init__(
+        self, channels, timesteps: int = 0, eps=1e-4, momentum=0.1, variant="v1"
+    ):
+        super(BatchNormalizationThroughTime1D, self).__init__()
+        self.variant = variant
         self.bnttlayer = torch.nn.ModuleList()
-        self.timesteps = timesteps
-        for i in range(timesteps):
-            self.bnttlayer.append(torch.nn.BatchNorm1d(chanels, eps=1e-4, momentum=0.1))
+        for _ in range(timesteps):
+            self.bnttlayer.append(
+                torch.nn.BatchNorm1d(channels, eps=eps, momentum=momentum)
+            )
 
     def forward(self, x):
-        for t in range(self.timesteps):
-            bntt = self.bnttlayer[t]
-
+        timesteps = x.shape[2]
+        new = x.clone()
+        for t in range(timesteps):
+            if self.variant == "v1":
+                new[:, :, t] = self.bnttlayer[t](x)[:, :, t]
+            else:
+                new[:, :, t] = self.bnttlayer[t](x[:, :, t])
+        x = new
         return x
 
 
