@@ -15,6 +15,7 @@ defaults:
     - pruning: null
     - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
       optional: true
+    - validator: single
 
 type: train
 experiment_id: test

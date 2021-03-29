@@ -17,6 +17,7 @@ import tabulate
 import torch
 import torch.utils.data as data
 from hydra.utils import instantiate, get_class
+import numpy as np
 
 from ..datasets.NoiseDataset import NoiseDataset
 from ..datasets.DatasetSplit import DatasetSplit
@@ -449,6 +450,198 @@ class StreamClassifierModule(LightningModule):
             loggers = [self.logger]
 
         return loggers
+
+
+class CrossValidationStreamClassifierModule(StreamClassifierModule):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ):
+
+        self.k_fold = kwargs["k_fold"]
+        del kwargs["k_fold"]
+        super().__init__(*args, **kwargs)
+        self.sets_by_criteria = self.sets_by_criteria = get_class(
+            self.hparams.dataset.cls
+        ).splits_cv(self.hparams.dataset)
+        self.train_sets, self.dev_sets, self.test_sets = [], [], []
+        self.prepare_dataloaders()
+        self.metrics_list = []
+
+    def setup(self, stage):
+        # TODO stage variable is not used!
+        self.msglogger.info("Setting up model")
+        self.logger.log_hyperparams(self.hparams)
+
+        if self.initialized:
+            return
+
+        self.initialized = True
+
+        # Create example input
+        device = self.device
+        self.example_input_array = torch.zeros(
+            1,
+            self.sets_by_criteria[0].channels,
+            self.sets_by_criteria[0].input_length
+        )
+        dummy_input = self.example_input_array.to(device)
+
+        # Instantiate features
+        self.features = instantiate(self.hparams.features)
+        self.features.to(device)
+
+        features = self._extract_features(dummy_input)
+        self.example_feature_array = features
+
+        # Instantiate normalizer
+        if self.hparams.normalizer is not None:
+            self.normalizer = instantiate(self.hparams.normalizer)
+        else:
+            self.normalizer = torch.nn.Identity()
+
+        # Instantiate Model
+        self.num_classes = len(self.sets_by_criteria[0].label_names)
+        if hasattr(self.hparams.model, "_target_"):
+            print(self.hparams.model)
+            self.model = instantiate(
+                self.hparams.model,
+                input_shape=self.example_feature_array.shape,
+                labels=self.num_classes,
+            )
+        else:
+            self.hparams.model.width = self.example_feature_array.size(2)
+            self.hparams.model.height = self.example_feature_array.size(1)
+            self.hparams.model.n_labels = self.num_classes
+            self.model = get_model(self.hparams.model)
+
+        # loss function
+        self.criterion = get_loss_function(self.model, self.hparams)
+
+        # Metrics
+        self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
+        self.val_metrics = MetricCollection(
+            {
+                "val_accuracy": Accuracy(),
+                "val_error": Error(),
+                "val_recall": Recall(num_classes=self.num_classes,
+                                     average="weighted"),
+                "val_precision": Precision(
+                    num_classes=self.num_classes, average="weighted"
+                ),
+                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
+            }
+        )
+        self.test_metrics = MetricCollection(
+            {
+                "test_accuracy": Accuracy(),
+                "test_error": Error(),
+                "test_recall": Recall(num_classes=self.num_classes,
+                                      average="weighted"),
+                "test_precision": Precision(
+                    num_classes=self.num_classes, average="weighted"
+                ),
+                "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
+            }
+        )
+
+        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+        self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
+
+    def prepare_dataloaders(self):
+        assert self.k_fold >= len(["train", "val", "test"])
+
+        rng = np.random.default_rng()
+        subsets = np.arange(len(self.sets_by_criteria))
+        rng.shuffle(subsets)
+        splits = np.array_split(subsets, self.k_fold)
+
+        for i in range(self.k_fold):
+            test_split = splits[0]
+            dev_split = splits[1]
+            train_split = np.concatenate(splits[2:]).ravel()
+
+            self.train_sets += [torch.utils.data.ConcatDataset(
+                [self.sets_by_criteria[i] for i in train_split])]
+            self.dev_sets += [torch.utils.data.ConcatDataset(
+                [self.sets_by_criteria[i] for i in dev_split])]
+            self.test_sets += [torch.utils.data.ConcatDataset(
+                [self.sets_by_criteria[i] for i in test_split])]
+
+            splits = splits[1:] + [splits[-1]]
+
+        self.train_set, self.dev_set, self.test_set = self.train_sets[0].datasets[0], \
+                                                      self.dev_sets[0].datasets[0], \
+                                                      self.test_sets[0].datasets[0]
+
+    def train_dataloader(self):
+
+        for train_set in self.train_sets:
+
+            train_batch_size = self.hparams["batch_size"]
+            dataset_conf = self.hparams.dataset
+            sampler_type = dataset_conf.get("sampler", "random")
+            if sampler_type == "weighted":
+                sampler = self.get_balancing_sampler(train_set)
+            else:
+                sampler = data.RandomSampler(train_set)
+
+            train_loader = data.DataLoader(
+                train_set,
+                batch_size=train_batch_size,
+                drop_last=True,
+                pin_memory=True,
+                num_workers=self.hparams["num_workers"],
+                collate_fn=ctc_collate_fn,
+                sampler=sampler,
+                multiprocessing_context="fork" if self.hparams[
+                                                      "num_workers"] > 0 else None,
+            )
+
+            # if self.device.type == "cuda":
+            #    train_loader = AsynchronousLoader(train_loader, device=self.device)
+
+            self.batches_per_epoch = len(train_loader)
+            yield train_loader
+
+    def val_dataloader(self):
+
+        for dev_set in self.dev_sets:
+            dev_loader = data.DataLoader(
+                dev_set,
+                batch_size=min(len(self.dev_set), 16),
+                shuffle=False,
+                num_workers=self.hparams["num_workers"],
+                collate_fn=ctc_collate_fn,
+                multiprocessing_context="fork" if self.hparams[
+                                                      "num_workers"] > 0 else None,
+            )
+            yield dev_loader
+
+        # if self.device.type == "cuda":
+        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
+
+    def test_dataloader(self):
+
+        for test_set in self.test_sets:
+            test_loader = data.DataLoader(
+                test_set,
+                batch_size=min(len(self.dev_set), 16),
+                shuffle=False,
+                num_workers=self.hparams["num_workers"],
+                collate_fn=ctc_collate_fn,
+                multiprocessing_context="fork" if self.hparams[
+                                                      "num_workers"] > 0 else None,
+            )
+            yield test_loader
+
+        # if self.device.type == "cuda":
+        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
+
+    def on_test_end(self) -> None:
+        super().on_test_end()
+        self.metrics_list += [self.test_metrics]
 
 
 class SpeechClassifierModule(LightningModule):
