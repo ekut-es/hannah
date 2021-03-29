@@ -154,6 +154,7 @@ class TCResidualBlock(nn.Module):
                     padding=dilation * pad_x,
                     dilation=dilation,
                     bias=False,
+                    flatten_output=flattenoutput,
                     batchnorm=batchnorm,
                     activation=act,
                 ),
@@ -312,8 +313,8 @@ class TCResNetModel(SerializableModule):
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
-
-            input_channels = output_channels
+            if use_inputlayer:
+                input_channels = output_channels
             count += 1
 
         count = 1
