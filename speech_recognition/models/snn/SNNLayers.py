@@ -203,8 +203,6 @@ class Spiking1DLayer(torch.nn.Module):
         stride: _size_1_t = 1,
         flatten_output=False,
         convolution_layer=None,
-        timesteps=0,
-        bntt=False,
     ):
 
         super(Spiking1DLayer, self).__init__()
@@ -223,9 +221,6 @@ class Spiking1DLayer(torch.nn.Module):
         self.flatten_output = flatten_output
 
         self.convolution = convolution_layer
-        self.timesteps = timesteps
-        self.bntt = bntt
-        self.bnttlayer = torch.nn.ModuleList()
 
         if recurrent:
             self.v = torch.nn.Parameter(
@@ -240,10 +235,6 @@ class Spiking1DLayer(torch.nn.Module):
         self.spk_rec_hist = None
 
         self.training = True
-
-        if self.bntt:
-            for _ in range(self.timesteps):
-                self.bnttlayer.append(torch.nn.BatchNorm1d(out_channels))
 
     def forward(self, x):
 
@@ -283,13 +274,7 @@ class Spiking1DLayer(torch.nn.Module):
                 input_ = input_ + torch.einsum("ab,bd->ad", spk, self.v)
 
             # membrane potential update
-            if self.bntt and batch_size > 1:
-                self.bnttlayer[t].training = self.training
-                mem = torch.subtract(mem, rst) * self.beta + self.bnttlayer[t](
-                    input_
-                ) * (1 - self.beta)
-            else:
-                mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
+            mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
             mthr = torch.einsum("ab,b->ab", mem, 1.0 / (norm + self.eps)) - b
 
             spk = self.spike_fn(mthr)

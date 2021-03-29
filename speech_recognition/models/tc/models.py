@@ -265,7 +265,7 @@ class TCResNetModel(SerializableModule):
             size = config[size_name]
             stride = config[stride_name]
             timesteps = config.get(timesteps_name, 0)
-            batchnorm = config.get(batchnomr_name, "BN")
+            batchnorm = config.get(batchnomr_name, None)
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -333,7 +333,7 @@ class TCResNetModel(SerializableModule):
             flattendoutput = config[flattendoutput_name]
             combtype = config[combination_type]
             timesteps = config.get(timesteps, 0)
-            batchnorm = config.get(batchnorm_type, "BN")
+            batchnorm = config.get(batchnorm_type, None)
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
