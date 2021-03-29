@@ -54,6 +54,7 @@ class TCResidualBlock(nn.Module):
         flattenoutput,
         combtype,
         timesteps,
+        batchnorm,
     ):
         super().__init__()
         self.stride = stride
@@ -72,8 +73,9 @@ class TCResidualBlock(nn.Module):
                     stride=stride,
                     bias=False,
                     flatten_output=flattenoutput,
-                    bntt=True,
                     timesteps=timesteps,
+                    batchnorm=batchnorm,
+                    activation=act,
                 ),
                 # act,
             )
@@ -152,6 +154,8 @@ class TCResidualBlock(nn.Module):
                     padding=dilation * pad_x,
                     dilation=dilation,
                     bias=False,
+                    batchnorm=batchnorm,
+                    activation=act,
                 ),
                 # act,
                 # nn.BatchNorm1d(output_channels),
@@ -168,8 +172,9 @@ class TCResidualBlock(nn.Module):
                     padding=dilation * pad_x,
                     dilation=dilation,
                     bias=False,
-                    bntt=True,
+                    batchnorm=batchnorm,
                     timesteps=timesteps,
+                    activation=act,
                 ),
                 # act,
                 build1DConvolution(
@@ -182,10 +187,10 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                     flatten_output=flattenoutput,
-                    bntt=True,
+                    batchnorm=batchnorm,
                     timesteps=timesteps,
+                    activation=act,
                 ),
-                
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
 
@@ -252,10 +257,14 @@ class TCResNetModel(SerializableModule):
             output_channels_name = "conv{}_output_channels".format(count)
             size_name = "conv{}_size".format(count)
             stride_name = "conv{}_stride".format(count)
+            batchnomr_name = "conv{}_batchnorm".format(count)
+            timesteps_name = "conv{}_timesteps".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
+            timesteps = config.get(timesteps_name, 0)
+            batchnorm = config.get(batchnomr_name, "BN")
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -298,6 +307,8 @@ class TCResNetModel(SerializableModule):
                     kernel_size=size,
                     stride=stride,
                     bias=False,
+                    batchnorm=batchnorm,
+                    timesteps=timesteps,
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
@@ -313,6 +324,7 @@ class TCResNetModel(SerializableModule):
             flattendoutput_name = "block{}_flattendoutput".format(count)
             combination_type = "block{}_combination_type".format(count)
             timesteps = "block{}_timesteps".format(count)
+            batchnorm_type = "block{}_batchnorm".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -320,6 +332,7 @@ class TCResNetModel(SerializableModule):
             flattendoutput = config[flattendoutput_name]
             combtype = config[combination_type]
             timesteps = config.get(timesteps, 0)
+            batchnorm = config.get(batchnorm_type, "BN")
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -337,7 +350,8 @@ class TCResNetModel(SerializableModule):
                 self.conv_type,
                 flattendoutput,
                 combtype,
-                timesteps=timesteps
+                timesteps=timesteps,
+                batchnorm=batchnorm,
             )
             self.layers.append(block)
 

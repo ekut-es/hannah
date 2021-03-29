@@ -4,7 +4,7 @@ from .SNNLayers import (
     ReadoutLayer,
     SurrogateHeaviside,
     EmptyLayer,
-    Surrogate_BP_Function
+    Surrogate_BP_Function,
 )
 import torch.nn as nn
 
@@ -27,7 +27,8 @@ def build1DConvolution(
     bias: bool = True,
     padding_mode: str = "zeros",
     timesteps: int = 0,
-    bntt: bool = False,
+    batchnorm="BN",
+    activation=None,
 ):
     if type == "SNN":
         conv = nn.Conv1d(
@@ -41,7 +42,7 @@ def build1DConvolution(
             bias=bias,
             padding_mode=padding_mode,
         )
-        if bntt:
+        if batchnorm == "BNTT":
             return nn.Sequential(
                 conv,
                 Spiking1DLayer(
@@ -57,7 +58,7 @@ def build1DConvolution(
                     lateral_connections=lateral_connections,
                     flatten_output=flatten_output,
                     convolution_layer=conv,
-                    bntt=bntt,
+                    bntt=True,
                     timesteps=timesteps,
                 ),
             )
@@ -65,10 +66,9 @@ def build1DConvolution(
             return nn.Sequential(
                 conv,
                 build1DBatchNorm(
-                    type,
                     out_channels=out_channels,
                     flatten_output=flatten_output,
-                    timesteps_bn=timesteps
+                    timesteps=timesteps,
                 ),
                 Spiking1DLayer(
                     in_channels,
@@ -83,22 +83,50 @@ def build1DConvolution(
                     lateral_connections=lateral_connections,
                     flatten_output=flatten_output,
                     convolution_layer=conv,
-                    bntt=bntt,
+                    bntt=False,
                     timesteps=timesteps,
                 ),
             )
-    elif type == "NN":
-        return nn.Conv1d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            groups=groups,
-            bias=bias,
-            padding_mode=padding_mode,
+    elif type == "NN" and activation != None:
+        return nn.Sequential(
+            nn.Conv1d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=groups,
+                bias=bias,
+                padding_mode=padding_mode,
+            ),
+            build1DBatchNorm(
+                out_channels=out_channels,
+                flatten_output=flatten_output,
+                timesteps=timesteps,
+            ),
+            activation,
         )
+    elif type == "NN" and activation == None:
+        return nn.Sequential(
+            nn.Conv1d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=groups,
+                bias=bias,
+                padding_mode=padding_mode,
+            ),
+            build1DBatchNorm(
+                out_channels=out_channels,
+                flatten_output=flatten_output,
+                timesteps=timesteps,
+            ),
+        )
+
     else:
         print("Error wrong type Parameter")
 
@@ -144,14 +172,9 @@ def buildLinearLayer(
         print("Error wrong type Parameter")
 
 
-def build1DBatchNorm(
-    type, out_channels, flatten_output: bool = False, bntt: bool = False, timesteps_bn=0
-):
-    if timesteps_bn > 0 and flatten_output:
-        return nn.BatchNorm1d(timesteps_bn)
-    elif timesteps_bn == 0 and not flatten_output:
-        return nn.BatchNorm1d(out_channels)
-    elif timesteps_bn == 0 and flatten_output:
-        return EmptyLayer()
-    else:
-        print("Error wrong type Parameter")
+def build1DBatchNorm(out_channels, flatten_output: bool = False, timesteps: int = 0):
+    return nn.BatchNorm1d(out_channels)
+
+
+# else:
+#    print("Error wrong type Parameter")

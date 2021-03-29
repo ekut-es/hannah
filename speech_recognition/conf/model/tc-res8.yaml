@@ -8,21 +8,24 @@ separable:
 block1_conv_size: 9
 block1_output_channels: 24
 block1_stride: 2
+block1_timesteps: 50
 block1_flattendoutput: False
 block1_combination_type: ADD
-block1_timesteps: 50
+block1_batchnorm: BN
 block2_conv_size: 9
 block2_output_channels: 32
-block2_flattendoutput: False
-block2_combination_type: ADD
 block2_stride: 2
 block2_timesteps: 25
+block2_flattendoutput: False
+block2_combination_type: ADD
+block2_batchnorm: BN
 block3_conv_size: 9
 block3_output_channels: 48
 block3_stride: 2
+block3_timesteps: 13
 block3_flattendoutput: True
 block3_combination_type: ADD
-block3_timesteps: 13
+block3_batchnorm: BN
 bottleneck:
 - 0
 - 0
@@ -32,6 +35,8 @@ channel_division:
 conv1_output_channels: 16
 conv1_size: 3
 conv1_stride: 1
+conv1_batchnorm: BN
+conv1_timesteps: 99
 dropout_prob: 0.5
 fully_convolutional: false
 inputlayer: true
@@ -39,7 +44,7 @@ width_multiplier: 1.0
 dilation: 1
 clipping_value: 100000.0
 small: false
-conv_type: SNN
+conv_type: NN
 
 # Set by LigthningModule
 width: 101
