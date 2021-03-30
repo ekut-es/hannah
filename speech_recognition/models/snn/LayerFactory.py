@@ -46,7 +46,7 @@ def build1DConvolution(
         if batchnorm is not None:
             return nn.Sequential(
                 conv,
-                build1DBatchNorm(out_channels, batchnorm, timesteps=timesteps),
+                build1DBatchNorm(out_channels, type=batchnorm, timesteps=timesteps),
                 Spiking1DLayer(
                     in_channels,
                     out_channels,
@@ -80,7 +80,7 @@ def build1DConvolution(
                     convolution_layer=conv,
                 ),
             )
-    elif type == "NN" and activation is not None:
+    elif type == "NN" and activation is not None and batchnorm is not None:
         return nn.Sequential(
             nn.Conv1d(
                 in_channels=in_channels,
@@ -93,23 +93,10 @@ def build1DConvolution(
                 bias=bias,
                 padding_mode=padding_mode,
             ),
-            build1DBatchNorm(out_channels=out_channels, timesteps=timesteps),
+            build1DBatchNorm(
+                out_channels=out_channels, type=batchnorm, timesteps=timesteps
+            ),
             activation,
-        )
-    elif type == "NN" and activation is None and batchnorm is None:
-        return nn.Sequential(
-            nn.Conv1d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                dilation=dilation,
-                groups=groups,
-                bias=bias,
-                padding_mode=padding_mode,
-            ),
-            build1DBatchNorm(out_channels=out_channels, timesteps=timesteps),
         )
     elif type == "NN" and activation is None and batchnorm is None:
         return nn.Sequential(

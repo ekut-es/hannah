@@ -308,8 +308,8 @@ class TCResNetModel(SerializableModule):
                     kernel_size=size,
                     stride=stride,
                     bias=False,
-                    batchnorm=batchnorm,
                     timesteps=timesteps,
+                    batchnorm=batchnorm,
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
