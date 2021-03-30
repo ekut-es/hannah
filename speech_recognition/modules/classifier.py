@@ -8,6 +8,7 @@ from pytorch_lightning.metrics.classification.precision_recall import Precision
 from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
 from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
 from pytorch_lightning.metrics.metric import MetricCollection
+from torch._C import Value
 from .config_utils import get_loss_function, get_model
 from typing import Optional
 
@@ -16,6 +17,7 @@ from speech_recognition.datasets.base import ctc_collate_fn
 import tabulate
 import torch
 import torch.utils.data as data
+from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
 from hydra.utils import instantiate, get_class
 
 from ..datasets.NoiseDataset import NoiseDataset
@@ -38,6 +40,8 @@ class StreamClassifierModule(LightningModule):
         features: DictConfig,
         num_workers: int = 0,
         batch_size: int = 128,
+        time_masking: int = 0,
+        frequency_masking: int = 0,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
         export_onnx: bool = True,
@@ -65,7 +69,8 @@ class StreamClassifierModule(LightningModule):
     def setup(self, stage):
         # TODO stage variable is not used!
         self.msglogger.info("Setting up model")
-        self.logger.log_hyperparams(self.hparams)
+        if self.logger:
+            self.logger.log_hyperparams(self.hparams)
 
         if self.initialized:
             return
@@ -99,8 +104,8 @@ class StreamClassifierModule(LightningModule):
 
         # Instantiate Model
         self.num_classes = len(self.train_set.label_names)
-        if hasattr(self.hparams.model, "_target_"):
-            print(self.hparams.model)
+        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+            print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
@@ -142,6 +147,17 @@ class StreamClassifierModule(LightningModule):
 
         self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
         self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
+
+        augmentation_passes = []
+        if self.hparams.time_masking > 0:
+            augmentation_passes.append(TimeMasking(self.hparams.time_masking))
+        if self.hparams.frequency_masking > 0:
+            augmentation_passes.append(TimeMasking(self.hparams.frequency_masking))
+
+        if augmentation_passes:
+            self.augmentation = torch.nn.Sequential(*augmentation_passes)
+        else:
+            self.augmentation = torch.nn.Identity()
 
     @property
     def total_training_steps(self) -> int:
@@ -193,10 +209,12 @@ class StreamClassifierModule(LightningModule):
                 self.log_dict(metrics)
 
         else:
-            output = torch.nn.functional.softmax(output, dim=1)
-            metrics(output, y)
-            self.log_dict(metrics)
-
+            try:
+                output = torch.nn.functional.softmax(output, dim=1)
+                metrics(output, y)
+                self.log_dict(metrics)
+            except ValueError:
+                logging.critical("Could not calculate batch metrics: {outputs}")
         self.log(f"{prefix}_loss", loss)
 
     @staticmethod
@@ -253,7 +271,9 @@ class StreamClassifierModule(LightningModule):
         return train_loader
 
     def on_train_epoch_end(self, outputs):
+        self.eval()
         self._log_weight_distribution()
+        self.train()
 
     # VALIDATION CODE
     def validation_step(self, batch, batch_idx):
@@ -310,7 +330,7 @@ class StreamClassifierModule(LightningModule):
     def test_dataloader(self):
         test_loader = data.DataLoader(
             self.test_set,
-            batch_size=min(len(self.dev_set), 16),
+            batch_size=min(len(self.test_set), 16),
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
@@ -355,6 +375,8 @@ class StreamClassifierModule(LightningModule):
 
     def forward(self, x):
         x = self._extract_features(x)
+        if self.training:
+            x = self.augmentation(x)
         x = self.normalizer(x)
         x = self.model(x)
         return x

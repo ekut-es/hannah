@@ -42,13 +42,13 @@ def train(config=DictConfig):
     if not torch.cuda.is_available():
         config.trainer.gpus = None
 
-    if not config.trainer.fast_dev_run:
-        current_path = pathlib.Path(".")
-        for component in current_path.iterdir():
-            if component.name == "checkpoints":
-                shutil.rmtree(component)
-            elif component.name.startswith("version_"):
-                shutil.rmtree(component)
+    # if not config.trainer.fast_dev_run:
+    #     current_path = pathlib.Path(".")
+    #     for component in current_path.iterdir():
+    #         if component.name == "checkpoints":
+    #             shutil.rmtree(component)
+    #         elif component.name.startswith("version_"):
+    #             shutil.rmtree(component)
 
     log_execution_env_state()
 
@@ -76,8 +76,6 @@ def train(config=DictConfig):
     if config.get("backend", None):
         backend = instantiate(config.backend)
         callbacks.append(backend)
-
-    logging.info("type: '%s'", config.type)
 
     logging.info("Starting training")
 
@@ -153,35 +151,9 @@ def train(config=DictConfig):
     return opt_callback.result()
 
 
-def eval(model_name, config):
-    lit_trainer, lit_module, profiler = build_trainer(model_name, config)
-    test_loader = lit_module.test_dataloader()
-
-    lit_module.eval()
-    lit_module.freeze()
-
-    results = None
-    for batch in test_loader:
-        result = lit_module.forward(batch[0])
-        if results is None:
-            results = result
-        else:
-            results = torch.cat([results, result])
-    return results
-
-
 @hydra.main(config_name="config", config_path="conf")
-def main(config=DictConfig):
-
-    if config["type"] == "train":
-        return train(config)
-    elif config["type"] == "eval":
-        return eval(config)
-    elif config["type"] == "eval_vad_keyword":
-        logging.error("eval_vad_keyword is not supported at the moment")
-    elif config["type"] == "dataset":
-        print("Only the dataset will be created and downloaded")
-        handleDataset(config)
+def main(config: DictConfig):
+    return train(config)
 
 
 if __name__ == "__main__":

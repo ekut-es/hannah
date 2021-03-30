@@ -100,7 +100,9 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         self.freeze_bn = freeze_bn if self.training else True
         self.bn = _BN_CLASS_MAP[dim](out_channels, eps, momentum, True, True)
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation() if out_quant else nn.Identity
+        self.activation_post_process = (
+            self.qconfig.activation() if out_quant else nn.Identity
+        )
         self.dim = dim
 
         if hasattr(self.qconfig, "bias"):
@@ -396,7 +398,9 @@ class ConvBn1d(_ConvBnNd):
             out_quant=True,
         )
 
-        self.activation_post_process = qconfig.activation() if out_quant else nn.Identity()
+        self.activation_post_process = (
+            qconfig.activation() if out_quant else nn.Identity()
+        )
 
     def forward(self, input):
         y = super(ConvBn1d, self).forward(input)
@@ -457,7 +461,9 @@ class ConvBnReLU1d(ConvBn1d):
             qconfig=qconfig,
             out_quant=True,
         )
-        self.activation_post_process = qconfig.activation() if out_quant else nn.Identity()
+        self.activation_post_process = (
+            qconfig.activation() if out_quant else nn.Identity()
+        )
 
     def forward(self, input):
         # print(f"ConvBnRelu1d {self.stride}")
@@ -697,7 +703,9 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
         self.dim = 1
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation() if out_quant else nn.Identity()
+        self.activation_post_process = (
+            self.qconfig.activation() if out_quant else nn.Identity()
+        )
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
@@ -752,7 +760,9 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation() if out_quant else nn.Identity()
+        self.activation_post_process = (
+            self.qconfig.activation() if out_quant else nn.Identity()
+        )
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
@@ -867,19 +877,25 @@ class Linear(nn.Linear):
 
         self.activation_post_process = qconfig.activation()
 
+    @property
+    def scaled_weight(self):
+        return self.weight_fake_quant(self.weight)
+
     def forward(self, input):
         if self.out_quant:
             return F.linear(
-                    input,
-                    self.weight_fake_quant(self.weight),
-                    self.bias_fake_quant(self.bias) if self.bias is not None else self.bias,
-                )
+                input,
+                self.weight_fake_quant(self.weight),
+                self.bias_fake_quant(self.bias) if self.bias is not None else self.bias,
+            )
         else:
             return self.activation_post_process(
                 F.linear(
                     input,
                     self.weight_fake_quant(self.weight),
-                    self.bias_fake_quant(self.bias) if self.bias is not None else self.bias,
+                    self.bias_fake_quant(self.bias)
+                    if self.bias is not None
+                    else self.bias,
                 )
             )
 
@@ -954,9 +970,7 @@ class Identity(nn.Identity):
         assert mod.qconfig, "Input float module must have a valid qconfig"
 
         qconfig = mod.qconfig
-        qat_identity = cls(
-            qconfig=qconfig
-        )
+        qat_identity = cls(qconfig=qconfig)
         return qat_identity
 
 

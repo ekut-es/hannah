@@ -7,7 +7,7 @@ To use the ultratrail backend use
 
 To run it use:
 
-     python -m speech_recognition.train compress=fp_8_8_8 backend=trax_ut
+     hannah-train compress=fp_8_8_8 backend=trax_ut
 
 ## Configuration
 

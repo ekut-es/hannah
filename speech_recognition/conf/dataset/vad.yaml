@@ -15,7 +15,7 @@ variants: ["UWNU"]
 data_split: ""
 noise_dataset: ["TUT"]
 clear_split: False
-download_folder: ""
+download_folder: ${dataset.data_folder}/downloads
 downsample: 0
 
 silence_prob: 0.1
