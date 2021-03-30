@@ -29,6 +29,7 @@ def build1DConvolution(
     padding_mode: str = "zeros",
     timesteps: int = 0,
     batchnorm=None,
+    bntt_variant="v1",
     activation=None,
 ):
     if type == "SNN":
@@ -46,7 +47,12 @@ def build1DConvolution(
         if batchnorm is not None:
             return nn.Sequential(
                 conv,
-                build1DBatchNorm(out_channels, type=batchnorm, timesteps=timesteps),
+                build1DBatchNorm(
+                    out_channels,
+                    type=batchnorm,
+                    timesteps=timesteps,
+                    bntt_variant=bntt_variant,
+                ),
                 Spiking1DLayer(
                     in_channels,
                     out_channels,
@@ -94,9 +100,32 @@ def build1DConvolution(
                 padding_mode=padding_mode,
             ),
             build1DBatchNorm(
-                out_channels=out_channels, type=batchnorm, timesteps=timesteps
+                out_channels=out_channels,
+                type=batchnorm,
+                timesteps=timesteps,
+                bntt_variant=bntt_variant,
             ),
             activation,
+        )
+    elif type == "NN" and activation is None and batchnorm is not None:
+        return nn.Sequential(
+            nn.Conv1d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=groups,
+                bias=bias,
+                padding_mode=padding_mode,
+            ),
+            build1DBatchNorm(
+                out_channels=out_channels,
+                type=batchnorm,
+                timesteps=timesteps,
+                bntt_variant=bntt_variant,
+            ),
         )
     elif type == "NN" and activation is None and batchnorm is None:
         return nn.Sequential(
@@ -158,12 +187,12 @@ def buildLinearLayer(
         print("Error wrong type Parameter")
 
 
-def build1DBatchNorm(out_channels, type=None, timesteps: int = 0):
+def build1DBatchNorm(out_channels, type=None, timesteps: int = 0, bntt_variant="v1"):
     if type == "BN":
         return nn.BatchNorm1d(out_channels)
     elif type == "BNTT":
         return BatchNormalizationThroughTime1D(
-            channels=out_channels, timesteps=timesteps
+            channels=out_channels, timesteps=timesteps, variant=bntt_variant
         )
 
 

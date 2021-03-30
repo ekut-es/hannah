@@ -55,6 +55,7 @@ class TCResidualBlock(nn.Module):
         combtype,
         timesteps,
         batchnorm,
+        bntt_variant="v1",
     ):
         super().__init__()
         self.stride = stride
@@ -76,8 +77,7 @@ class TCResidualBlock(nn.Module):
                     timesteps=timesteps,
                     batchnorm=batchnorm,
                     activation=act,
-                ),
-                # act,
+                )
             )
 
         pad_x = size // 2
@@ -156,10 +156,9 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                     flatten_output=flattenoutput,
                     batchnorm=batchnorm,
+                    bntt_variant=bntt_variant,
                     activation=act,
-                ),
-                # act,
-                # nn.BatchNorm1d(output_channels),
+                )
             )
         else:
             act = create_act(act, clipping_value)
@@ -174,10 +173,10 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                     batchnorm=batchnorm,
+                    bntt_variant=bntt_variant,
                     timesteps=timesteps,
                     activation=act,
                 ),
-                # act,
                 build1DConvolution(
                     self.conv_type,
                     in_channels=output_channels,
@@ -189,6 +188,7 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                     flatten_output=flattenoutput,
                     batchnorm=batchnorm,
+                    bntt_variant=bntt_variant,
                     timesteps=timesteps,
                     activation=act,
                 ),
@@ -258,14 +258,16 @@ class TCResNetModel(SerializableModule):
             output_channels_name = "conv{}_output_channels".format(count)
             size_name = "conv{}_size".format(count)
             stride_name = "conv{}_stride".format(count)
-            batchnomr_name = "conv{}_batchnorm".format(count)
+            batchnorm_name = "conv{}_batchnorm".format(count)
+            bntt_variant_name = "conv{}_bntt_variant".format(count)
             timesteps_name = "conv{}_timesteps".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
             timesteps = config.get(timesteps_name, 0)
-            batchnorm = config.get(batchnomr_name, None)
+            batchnorm = config.get(batchnorm_name, None)
+            bntt_variant = config.get(bntt_variant_name, "v1")
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -310,6 +312,7 @@ class TCResNetModel(SerializableModule):
                     bias=False,
                     timesteps=timesteps,
                     batchnorm=batchnorm,
+                    bntt_variant=bntt_variant,
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
@@ -326,6 +329,7 @@ class TCResNetModel(SerializableModule):
             combination_type = "block{}_combination_type".format(count)
             timesteps = "block{}_timesteps".format(count)
             batchnorm_type = "block{}_batchnorm".format(count)
+            bntt_variant_name = "block{}_bntt_variant".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -334,6 +338,7 @@ class TCResNetModel(SerializableModule):
             combtype = config[combination_type]
             timesteps = config.get(timesteps, 0)
             batchnorm = config.get(batchnorm_type, None)
+            bntt_variant = config.get(bntt_variant_name, "v1")
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -353,6 +358,7 @@ class TCResNetModel(SerializableModule):
                 combtype,
                 timesteps=timesteps,
                 batchnorm=batchnorm,
+                bntt_variant=bntt_variant,
             )
             self.layers.append(block)
 
