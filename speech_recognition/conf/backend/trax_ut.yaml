@@ -11,13 +11,10 @@ synthesis: False
 postsyn_simulation: False
 power_estimation: False
 num_inferences: 1
-bw_w: 6
-bw_b: 8
-bw_f: 8
 cols: 8
 rows: 8
 period: 1000
 macro_type: "RTL"
 use_acc_statistic_model: True
-use_acc_analytical_model: True
-use_acc_teda_data: True
+use_acc_analytical_model: False
+use_acc_teda_data: False
