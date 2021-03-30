@@ -261,6 +261,7 @@ class TCResNetModel(SerializableModule):
             batchnorm_name = "conv{}_batchnorm".format(count)
             bntt_variant_name = "conv{}_bntt_variant".format(count)
             timesteps_name = "conv{}_timesteps".format(count)
+            conv_type_name = "conv{}_conv_type".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -268,6 +269,7 @@ class TCResNetModel(SerializableModule):
             timesteps = config.get(timesteps_name, 0)
             batchnorm = config.get(batchnorm_name, None)
             bntt_variant = config.get(bntt_variant_name, "v1")
+            conv_type = config.get(conv_type_name, "NN")
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -304,7 +306,7 @@ class TCResNetModel(SerializableModule):
                 self.layers.append(conv3)
             elif use_inputlayer:
                 conv = build1DConvolution(
-                    self.conv_type,
+                    conv_type,
                     in_channels=input_channels,
                     out_channels=output_channels,
                     kernel_size=size,
@@ -330,6 +332,7 @@ class TCResNetModel(SerializableModule):
             timesteps = "block{}_timesteps".format(count)
             batchnorm_type = "block{}_batchnorm".format(count)
             bntt_variant_name = "block{}_bntt_variant".format(count)
+            conv_type_name = "block{}_conv_type".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -339,6 +342,7 @@ class TCResNetModel(SerializableModule):
             timesteps = config.get(timesteps, 0)
             batchnorm = config.get(batchnorm_type, None)
             bntt_variant = config.get(bntt_variant_name, "v1")
+            conv_type = config.get(conv_type_name, "NN")
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -353,7 +357,7 @@ class TCResNetModel(SerializableModule):
                 separable[1],
                 small,
                 act,
-                self.conv_type,
+                conv_type,
                 flattendoutput,
                 combtype,
                 timesteps=timesteps,

@@ -13,6 +13,7 @@ block1_flattendoutput: False
 block1_combination_type: ADD
 block1_batchnorm: BN
 block1_bntt_variant: v1
+block1_conv_type: SNN
 block2_conv_size: 9
 block2_output_channels: 32
 block2_stride: 2
@@ -21,6 +22,7 @@ block2_flattendoutput: False
 block2_combination_type: ADD
 block2_batchnorm: BN
 block2_bntt_variant: v1
+block2_conv_type: NN
 block3_conv_size: 9
 block3_output_channels: 48
 block3_stride: 2
@@ -29,6 +31,7 @@ block3_flattendoutput: True
 block3_combination_type: ADD
 block3_batchnorm: BN
 block3_bntt_variant: v1
+block3_conv_type: SNN
 bottleneck:
 - 0
 - 0
@@ -41,6 +44,7 @@ conv1_stride: 1
 conv1_timesteps: 99
 conv1_batchnorm: BN
 conv1_bntt_variant: v1
+conv1_conv_type: NN
 dropout_prob: 0.5
 fully_convolutional: false
 inputlayer: true
