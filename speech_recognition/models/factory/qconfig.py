@@ -111,7 +111,9 @@ class PowerOf2Quantization:
         mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
 
         log_x = torch.ceil(torch.log2(abs_x))
-        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 2, 0.0)
+        log_x = torch.clamp(log_x, -7.0, -1.0) # This value should match the maxium internal representation (WIDE_BW) of UltraTrail.
+        #log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 2, 0.0) # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0) is occupied by the weight value 0.
+
         x = torch.pow(torch.tensor(2, device=x.device), log_x) * mask_x
         x = x * sign_x
         return x
