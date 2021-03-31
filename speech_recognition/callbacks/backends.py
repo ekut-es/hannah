@@ -187,9 +187,6 @@ class TRaxUltraTrailBackend(Callback):
         postsyn_simulation,
         power_estimation,
         num_inferences,
-        bw_w,
-        bw_b,
-        bw_f,
         cols,
         rows,
         period,
@@ -206,9 +203,9 @@ class TRaxUltraTrailBackend(Callback):
         self.postsyn_simulation = postsyn_simulation
         self.power_estimation = power_estimation
         self.num_inferences = num_inferences
-        self.bw_w = bw_w
-        self.bw_b = bw_b
-        self.bw_f = bw_f
+        self.bw_w = 6
+        self.bw_b = 8
+        self.bw_f = 8
         self.cols = cols
         self.rows = rows
         self.period = period
@@ -243,11 +240,21 @@ class TRaxUltraTrailBackend(Callback):
         from backend.backend import UltraTrailBackend
 
         model = pl_module.model
+        mac_mode = "FIXED_POINT"
         if hasattr(model, "qconfig"):
+            # Set UltraTrail mac and bit configuration depending on qconfig
+            mac_mode = "POWER_OF_TWO" if model.qconfig.weight.p.keywords["power_of_2"] else "FIXED_POINT"
+            self.bw_w = model.qconfig.weight.p.keywords["bits"]
+            self.bw_b = model.qconfig.bias.p.keywords["bits"]
+            self.bw_f = model.qconfig.activation.p.keywords["bits"]
             # Removing qconfig produces a normal FloatModule
             model = torch.quantization.convert(
                 model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
+            
+        if mac_mode == "POWER_OF_TWO":
+            logging.critical("PO2 quantization is enabled. Check that quantization range matches bw_wide_q")
+            
 
         # execute backend
         backend = UltraTrailBackend(
@@ -258,8 +265,10 @@ class TRaxUltraTrailBackend(Callback):
             cols=self.cols,
             rows=self.rows,
             period=self.period,
+            mac_mode=mac_mode,
             macro_type=self.macro_type,
         )
+
         backend.set_model(
             model.cpu(), pl_module.example_feature_array.cpu(), verbose=True
         )
