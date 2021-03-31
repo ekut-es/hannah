@@ -244,9 +244,9 @@ class TRaxUltraTrailBackend(Callback):
         if hasattr(model, "qconfig"):
             # Set UltraTrail mac and bit configuration depending on qconfig
             mac_mode = "POWER_OF_TWO" if model.qconfig.weight.p.keywords["power_of_2"] else "FIXED_POINT"
-            bw_w = model.qconfig.weight.p.keywords["bits"]
-            bw_b = model.qconfig.bias.p.keywords["bits"]
-            bw_f = model.qconfig.activation.p.keywords["bits"]
+            self.bw_w = model.qconfig.weight.p.keywords["bits"]
+            self.bw_b = model.qconfig.bias.p.keywords["bits"]
+            self.bw_f = model.qconfig.activation.p.keywords["bits"]
             # Removing qconfig produces a normal FloatModule
             model = torch.quantization.convert(
                 model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
