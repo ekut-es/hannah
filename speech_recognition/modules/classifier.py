@@ -403,22 +403,17 @@ class StreamClassifierModule(LightningModule):
         if self.export_onnx:
             logging.info("saving onnx...")
             try:
-                dummy_input = copy.deepcopy(self.example_feature_array)
-                dummy_input.cpu()
+                dummy_input = self.example_feature_array.cpu()
 
-        logging.info("saving onnx...")
-        try:
-            dummy_input = self.example_feature_array.cpu()
-
-            torch.onnx.export(
-                quantized_model,
-                dummy_input,
-                os.path.join(output_dir, "model.onnx"),
-                verbose=False,
-                opset_version=13,
-            )
-        except Exception as e:
-            logging.error("Could not export onnx model ...\n {}".format(str(e)))
+                torch.onnx.export(
+                    quantized_model,
+                    dummy_input,
+                    os.path.join(output_dir, "model.onnx"),
+                    verbose=False,
+                    opset_version=13,
+                )
+            except Exception as e:
+                logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
         # logging.info("Saving torchscript model ...")
         # try:
