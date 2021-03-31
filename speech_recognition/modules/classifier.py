@@ -2,6 +2,7 @@ import logging
 import os
 import json
 import copy
+import platform
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.classification.precision_recall import Precision
@@ -88,13 +89,17 @@ class StreamClassifierModule(LightningModule):
             1, self.train_set.channels, self.train_set.input_length
         )
         dummy_input = self.example_input_array.to(device)
+        if platform.machine() == 'ppc64le':
+            dummy_input = dummy_input.cuda()
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
+        if platform.machine() == 'ppc64le':
+            self.features.cuda()
 
         features = self._extract_features(dummy_input)
-        self.example_feature_array = features
+        self.example_feature_array = features.to(self.device)
 
         # Instantiate normalizer
         if self.hparams.normalizer is not None:
@@ -207,7 +212,6 @@ class StreamClassifierModule(LightningModule):
                 out = torch.nn.functional.softmax(out, dim=1)
                 metrics(out, y)
                 self.log_dict(metrics)
-
         else:
             try:
                 output = torch.nn.functional.softmax(output, dim=1)
@@ -394,7 +398,7 @@ class StreamClassifierModule(LightningModule):
         quantized_model.cpu()
         if hasattr(self.model, "qconfig") and self.model.qconfig:
             quantized_model = torch.quantization.convert(
-                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=False
+                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
         if self.export_onnx:
             logging.info("saving onnx...")
@@ -402,15 +406,28 @@ class StreamClassifierModule(LightningModule):
                 dummy_input = copy.deepcopy(self.example_feature_array)
                 dummy_input.cpu()
 
-                torch.onnx.export(
-                    quantized_model,
-                    dummy_input,
-                    os.path.join(output_dir, "model.onnx"),
-                    verbose=False,
-                    opset_version=13,
-                )
-            except Exception as e:
-                logging.error("Could not export onnx model ...\n {}")
+        logging.info("saving onnx...")
+        try:
+            dummy_input = self.example_feature_array.cpu()
+
+            torch.onnx.export(
+                quantized_model,
+                dummy_input,
+                os.path.join(output_dir, "model.onnx"),
+                verbose=False,
+                opset_version=13,
+            )
+        except Exception as e:
+            logging.error("Could not export onnx model ...\n {}".format(str(e)))
+
+        # logging.info("Saving torchscript model ...")
+        # try:
+        #     dummy_input = self.example_feature_array.cpu()
+        #     traced_model = torch.jit.trace(quantized_model, (dummy_input,))
+        #     traced_model.save(os.path.join(output_dir, "model.pt"))
+
+        # except Exception as e:
+        #     logging.error("Could not export torchscript model ...\n {}".format(str(e)))
 
     # CALLBACKS
     def on_fit_end(self):
