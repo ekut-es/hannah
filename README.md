@@ -78,6 +78,11 @@ Put the following in `.config/pip/pip.conf` until
     timeout = 60
     extra-index-url = https://atreus.informatik.uni-tuebingen.de/~gerum/dist/
 
+And install pytorch manually in your poetry env. 
+
+    poetry shell 
+    pip install torch==1.8.1 torchvision torchaudio
+
 And you might need to deactivate your conda environement:
 
     conda deactivate

@@ -2,6 +2,7 @@ import logging
 import os
 import json
 import copy
+import platform
 
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.classification.precision_recall import Precision
@@ -85,13 +86,17 @@ class StreamClassifierModule(LightningModule):
             1, self.train_set.channels, self.train_set.input_length
         )
         dummy_input = self.example_input_array.to(device)
+        if platform.machine() == 'ppc64le':
+            dummy_input = dummy_input.cuda()
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
+        if platform.machine() == 'ppc64le':
+            self.features.cuda()
 
         features = self._extract_features(dummy_input)
-        self.example_feature_array = features
+        self.example_feature_array = features.to(self.device)
 
         # Instantiate normalizer
         if self.hparams.normalizer is not None:
