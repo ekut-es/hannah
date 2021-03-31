@@ -28,10 +28,10 @@ import torch.nn as nn
         (ConvBn1d, "trax"),
         (ConvReLU1d, "trax"),
         (ConvBnReLU1d, "trax"),
-        (Conv1d, "fbgemm"),
-        (ConvBn1d, "fbgemm"),
-        (ConvReLU1d, "fbgemm"),
-        (ConvBnReLU1d, "fbgemm"),
+        # (Conv1d, "fbgemm"),
+        # (ConvBn1d, "fbgemm"),
+        # (ConvReLU1d, "fbgemm"),
+        # (ConvBnReLU1d, "fbgemm"),
     ],
 )
 def test_quantized_conv1d(conv_cls, quant):
