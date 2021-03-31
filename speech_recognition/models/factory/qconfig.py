@@ -116,14 +116,16 @@ class PowerOf2Quantization:
         # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0) 
         # is occupied by the weight value 0. But seems to have no negative 
         # effect on the contrary this raises the accuracy.
-        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 2, -1.0)
+        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
 
         # This value should match the maxium internal representation of UltraTrail.
         # This is the number of digits after the radix point of WIDE_BW.
         # Currently this is set to 2*(BASE_BW-1) = 14. This can be changed
         # by bw_wide_i in the UltraTrail backend. Therefore the maximum shift is -7.
         # Which achieves quiete good results for TC-Res8
-        log_x = torch.clamp(log_x, -7.0, -1.0)
+        # -7 is equal to use 4 bits for quantization using sign and magnitude represenation.
+        # FIXME: Should only be active when UltraTrail is used with correct WIDE_BW
+        #log_x = torch.clamp(log_x, -7.0, -1.0)
 
         x = torch.pow(torch.tensor(2, device=x.device), log_x) * mask_x
         x = x * sign_x

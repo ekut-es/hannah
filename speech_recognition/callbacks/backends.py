@@ -251,6 +251,10 @@ class TRaxUltraTrailBackend(Callback):
             model = torch.quantization.convert(
                 model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
+            
+        if mac_mode == "POWER_OF_TWO":
+            logging.critical("PO2 quantization is enabled. Check that quantization range matches bw_wide_q")
+            
 
         # execute backend
         backend = UltraTrailBackend(
