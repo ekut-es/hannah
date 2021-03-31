@@ -120,8 +120,9 @@ class PowerOf2Quantization:
 
         # This value should match the maxium internal representation of UltraTrail.
         # This is the number of digits after the radix point of WIDE_BW.
-        # Currently this is set to 2*(BASE_BW-1) = 14. Therefore the maximum
-        # shift is -7. Which achieves quiete good results for TC-Res8
+        # Currently this is set to 2*(BASE_BW-1) = 14. This can be changed
+        # by bw_wide_i in the UltraTrail backend. Therefore the maximum shift is -7.
+        # Which achieves quiete good results for TC-Res8
         log_x = torch.clamp(log_x, -7.0, -1.0)
 
         x = torch.pow(torch.tensor(2, device=x.device), log_x) * mask_x
