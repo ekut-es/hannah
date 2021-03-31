@@ -204,7 +204,6 @@ class StreamClassifierModule(LightningModule):
                 out = torch.nn.functional.softmax(out, dim=1)
                 metrics(out, y)
                 self.log_dict(metrics)
-
         else:
             try:
                 output = torch.nn.functional.softmax(output, dim=1)
@@ -391,13 +390,12 @@ class StreamClassifierModule(LightningModule):
         quantized_model.cpu()
         if hasattr(self.model, "qconfig") and self.model.qconfig:
             quantized_model = torch.quantization.convert(
-                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=False
+                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
 
         logging.info("saving onnx...")
         try:
-            dummy_input = copy.deepcopy(self.example_feature_array)
-            dummy_input.cpu()
+            dummy_input = self.example_feature_array.cpu()
 
             torch.onnx.export(
                 quantized_model,
@@ -408,6 +406,15 @@ class StreamClassifierModule(LightningModule):
             )
         except Exception as e:
             logging.error("Could not export onnx model ...\n {}".format(str(e)))
+
+        # logging.info("Saving torchscript model ...")
+        # try:
+        #     dummy_input = self.example_feature_array.cpu()
+        #     traced_model = torch.jit.trace(quantized_model, (dummy_input,))
+        #     traced_model.save(os.path.join(output_dir, "model.pt"))
+
+        # except Exception as e:
+        #     logging.error("Could not export torchscript model ...\n {}".format(str(e)))
 
     # CALLBACKS
     def on_fit_end(self):
