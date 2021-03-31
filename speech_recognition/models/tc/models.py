@@ -158,6 +158,7 @@ class TCResidualBlock(nn.Module):
                     batchnorm=batchnorm,
                     bntt_variant=bntt_variant,
                     activation=act,
+                    timesteps=timesteps
                 )
             )
         else:
