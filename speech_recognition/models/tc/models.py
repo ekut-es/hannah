@@ -262,6 +262,7 @@ class TCResNetModel(SerializableModule):
             bntt_variant_name = "conv{}_bntt_variant".format(count)
             timesteps_name = "conv{}_timesteps".format(count)
             conv_type_name = "conv{}_conv_type".format(count)
+            flattenoutput_name = "conv{}_flattenoutput".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -270,6 +271,7 @@ class TCResNetModel(SerializableModule):
             batchnorm = config.get(batchnorm_name, None)
             bntt_variant = config.get(bntt_variant_name, "v1")
             conv_type = config.get(conv_type_name, "NN")
+            flattenoutput = config.get(flattenoutput_name, False)
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -315,6 +317,7 @@ class TCResNetModel(SerializableModule):
                     timesteps=timesteps,
                     batchnorm=batchnorm,
                     bntt_variant=bntt_variant,
+                    flatten_output=flattenoutput
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
