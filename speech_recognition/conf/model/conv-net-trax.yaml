@@ -20,6 +20,7 @@ conv:
     blocks:
       - target: conv1d
         kernel_size: 3
+        padding: false
         act: false
         norm: true
         bias: false
