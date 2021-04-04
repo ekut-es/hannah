@@ -11,7 +11,7 @@ block1_output_channels: 24
 block1_timesteps: 50
 block1_flattendoutput: False
 block1_combination_type: ADD
-block1_batchnorm: BN
+block1_batchnorm: BNTT
 block1_bntt_variant: v1
 block1_conv_type: SNN
 block2_conv_size: 9
@@ -20,7 +20,7 @@ block2_output_channels: 24
 block2_timesteps: 50
 block2_flattendoutput: False
 block2_combination_type: ADD
-block2_batchnorm: BN
+block2_batchnorm: BNTT
 block2_bntt_variant: v1
 block2_conv_type: SNN
 block3_conv_size: 9
@@ -29,7 +29,7 @@ block3_output_channels: 32
 block3_timesteps: 25
 block3_flattendoutput: False
 block3_combination_type: ADD
-block3_batchnorm: BN
+block3_batchnorm: BNTT
 block3_bntt_variant: v1
 block3_conv_type: SNN
 block4_conv_size: 9
@@ -38,7 +38,7 @@ block4_output_channels: 32
 block4_timesteps: 25
 block4_flattendoutput: False
 block4_combination_type: ADD
-block4_batchnorm: BN
+block4_batchnorm: BNTT
 block4_bntt_variant: v1
 block4_conv_type: SNN
 block5_conv_size: 9
@@ -47,7 +47,7 @@ block5_output_channels: 48
 block5_timesteps: 13
 block5_flattendoutput: False
 block5_combination_type: ADD
-block5_batchnorm: BN
+block5_batchnorm: BNTT
 block5_bntt_variant: v1
 block5_conv_type: SNN
 block6_conv_size: 9
@@ -56,7 +56,7 @@ block6_output_channels: 48
 block6_timesteps: 13
 block6_flattendoutput: False
 block6_combination_type: ADD
-block6_batchnorm: BN
+block6_batchnorm: BNTT
 block6_bntt_variant: v1
 block6_conv_type: SNN
 bottleneck:
