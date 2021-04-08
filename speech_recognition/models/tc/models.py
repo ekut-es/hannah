@@ -250,9 +250,13 @@ class TCResNetModel(SerializableModule):
         separable = config["separable"]
         small = config["small"]
         use_inputlayer = config["inputlayer"]
-        self.conv_type = config["conv_type"]
+        self.conv_type = config.get("conv_type", "NN")
         act = config.get("act", "relu")
         self.spike_fn = create_spike_fn(config.get("spike_fn", "Sheaviside"))
+        general_bn = config.get("general_BN", None)
+        general_conv_type = config.get("general_conv_type", None)
+        if general_conv_type is not None:
+            self.conv_type = general_conv_type
 
         self.layers = nn.ModuleList()
 
@@ -279,6 +283,10 @@ class TCResNetModel(SerializableModule):
             bntt_variant = config.get(bntt_variant_name, "v1")
             conv_type = config.get(conv_type_name, "NN")
             flattenoutput = config.get(flattenoutput_name, False)
+            if general_bn is not None and batchnorm is not None:
+                batchnorm = general_bn
+            if general_conv_type is not None:
+                conv_type = general_conv_type
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -353,6 +361,10 @@ class TCResNetModel(SerializableModule):
             batchnorm = config.get(batchnorm_type, None)
             bntt_variant = config.get(bntt_variant_name, "v1")
             conv_type = config.get(conv_type_name, "NN")
+            if general_bn is not None and batchnorm is not None:
+                batchnorm = general_bn
+            if general_conv_type is not None:
+                conv_type = general_conv_type
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
