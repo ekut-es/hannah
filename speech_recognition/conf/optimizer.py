@@ -39,10 +39,10 @@ class RAdamConf:
     betas: Any = (0.9, 0.999)
     eps: Any = 1e-08
     weight_decay: Any = 0
-    amsgrad: Any = False
+    degenerated_to_sgd = False
 
 
-cs.store(group="optimizer", name="RAdam", node=AdamConf())
+cs.store(group="optimizer", name="RAdam", node=RAdamConf())
 
 
 @dataclass
