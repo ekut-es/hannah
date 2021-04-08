@@ -12,7 +12,7 @@ import numpy as np
 
 
 from ..utils import ConfigType, SerializableModule, next_power_of2
-from ..snn.LayerFactory import build1DConvolution, buildLinearLayer, build1DBatchNorm
+from ..snn.LayerFactory import build1DConvolution, buildLinearLayer, create_spike_fn
 
 
 def create_act(act, clipping_value):
@@ -56,6 +56,7 @@ class TCResidualBlock(nn.Module):
         timesteps,
         batchnorm,
         bntt_variant="v1",
+        spike_fn=None,
     ):
         super().__init__()
         self.stride = stride
@@ -77,6 +78,7 @@ class TCResidualBlock(nn.Module):
                     timesteps=timesteps,
                     batchnorm=batchnorm,
                     activation=act,
+                    spike_fn=spike_fn,
                 )
             )
 
@@ -157,8 +159,9 @@ class TCResidualBlock(nn.Module):
                     flatten_output=flattenoutput,
                     batchnorm=batchnorm,
                     bntt_variant=bntt_variant,
+                    spike_fn=spike_fn,
                     activation=act,
-                    timesteps=timesteps
+                    timesteps=timesteps,
                 )
             )
         else:
@@ -177,6 +180,7 @@ class TCResidualBlock(nn.Module):
                     bntt_variant=bntt_variant,
                     timesteps=timesteps,
                     activation=act,
+                    spike_fn=spike_fn,
                 ),
                 build1DConvolution(
                     self.conv_type,
@@ -192,6 +196,7 @@ class TCResidualBlock(nn.Module):
                     bntt_variant=bntt_variant,
                     timesteps=timesteps,
                     activation=act,
+                    spike_fn=spike_fn,
                 ),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
@@ -247,6 +252,7 @@ class TCResNetModel(SerializableModule):
         use_inputlayer = config["inputlayer"]
         self.conv_type = config["conv_type"]
         act = config.get("act", "relu")
+        self.spike_fn = create_spike_fn(config.get("spike_fn", "Sheaviside"))
 
         self.layers = nn.ModuleList()
 
@@ -318,7 +324,7 @@ class TCResNetModel(SerializableModule):
                     timesteps=timesteps,
                     batchnorm=batchnorm,
                     bntt_variant=bntt_variant,
-                    flatten_output=flattenoutput
+                    flatten_output=flattenoutput,
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
@@ -367,6 +373,7 @@ class TCResNetModel(SerializableModule):
                 timesteps=timesteps,
                 batchnorm=batchnorm,
                 bntt_variant=bntt_variant,
+                spike_fn=self.spike_fn,
             )
             self.layers.append(block)
 

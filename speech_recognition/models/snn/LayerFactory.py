@@ -10,13 +10,22 @@ from .SNNLayers import (
 import torch.nn as nn
 
 
+def create_spike_fn(spike_fn_name="SHeaviside"):
+    if spike_fn_name == "SHeaviside":
+        return SurrogateHeaviside.apply
+    elif spike_fn_name == "SBPHeaviside":
+        return Surrogate_BP_Function.apply
+    else:
+        return None
+
+
 def build1DConvolution(
     type,
     in_channels,
     out_channels,
     kernel_size=3,
     dilation=1,
-    spike_fn=Surrogate_BP_Function.apply,
+    spike_fn=None,
     stride=1,
     padding=0,
     w_init_mean=0.0,
@@ -32,116 +41,68 @@ def build1DConvolution(
     bntt_variant="v1",
     activation=None,
 ):
-    if type == "SNN":
-        conv = nn.Conv1d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            groups=groups,
-            bias=bias,
-            padding_mode=padding_mode,
-        )
-        if batchnorm is not None:
-            return nn.Sequential(
-                conv,
-                build1DBatchNorm(
-                    out_channels,
-                    type=batchnorm,
-                    timesteps=timesteps,
-                    bntt_variant=bntt_variant,
-                ),
-                Spiking1DLayer(
-                    in_channels,
-                    out_channels,
-                    kernel_size,
-                    dilation,
-                    spike_fn,
-                    stride=stride,
-                    w_init_mean=w_init_mean,
-                    w_init_std=w_init_std,
-                    recurrent=recurrent,
-                    lateral_connections=lateral_connections,
-                    flatten_output=flatten_output,
-                    convolution_layer=conv,
-                ),
-            )
-        else:
-            return nn.Sequential(
-                conv,
-                Spiking1DLayer(
-                    in_channels,
-                    out_channels,
-                    kernel_size,
-                    dilation,
-                    spike_fn,
-                    stride=stride,
-                    w_init_mean=w_init_mean,
-                    w_init_std=w_init_std,
-                    recurrent=recurrent,
-                    lateral_connections=lateral_connections,
-                    flatten_output=flatten_output,
-                    convolution_layer=conv,
-                ),
-            )
-    elif type == "NN" and activation is not None and batchnorm is not None:
-        return nn.Sequential(
-            nn.Conv1d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                dilation=dilation,
-                groups=groups,
-                bias=bias,
-                padding_mode=padding_mode,
-            ),
-            build1DBatchNorm(
-                out_channels=out_channels,
-                type=batchnorm,
-                timesteps=timesteps,
-                bntt_variant=bntt_variant,
-            ),
-            activation,
-        )
-    elif type == "NN" and activation is None and batchnorm is not None:
-        return nn.Sequential(
-            nn.Conv1d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                dilation=dilation,
-                groups=groups,
-                bias=bias,
-                padding_mode=padding_mode,
-            ),
-            build1DBatchNorm(
-                out_channels=out_channels,
-                type=batchnorm,
-                timesteps=timesteps,
-                bntt_variant=bntt_variant,
-            ),
-        )
-    elif type == "NN" and activation is None and batchnorm is None:
-        return nn.Sequential(
-            nn.Conv1d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                dilation=dilation,
-                groups=groups,
-                bias=bias,
-                padding_mode=padding_mode,
-            )
-        )
+    conv = nn.Conv1d(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        dilation=dilation,
+        groups=groups,
+        bias=bias,
+        padding_mode=padding_mode,
+    )
+    bn = build1DBatchNorm(
+        out_channels, type=batchnorm, timesteps=timesteps, bntt_variant=bntt_variant
+    )
 
+    if batchnorm is None and activation is None and spike_fn is None:
+        return nn.Sequential(conv)
+    elif batchnorm is None and (activation is not None or spike_fn is not None):
+        if type == "SNN":
+            return nn.Sequential(
+                conv,
+                Spiking1DLayer(
+                    in_channels,
+                    out_channels,
+                    kernel_size,
+                    dilation,
+                    spike_fn=spike_fn,
+                    stride=stride,
+                    w_init_mean=w_init_mean,
+                    w_init_std=w_init_std,
+                    recurrent=recurrent,
+                    lateral_connections=lateral_connections,
+                    flatten_output=flatten_output,
+                    convolution_layer=conv,
+                ),
+            )
+        elif type == "NN":
+            return nn.Sequential(conv, activation)
+    elif batchnorm is not None and activation is None and spike_fn is None:
+        return nn.Sequential(conv, bn)
+    elif batchnorm is not None and (activation is not None or spike_fn is not None):
+        if type == "SNN":
+            return nn.Sequential(
+                conv,
+                bn,
+                Spiking1DLayer(
+                    in_channels,
+                    out_channels,
+                    kernel_size,
+                    dilation,
+                    spike_fn=spike_fn,
+                    stride=stride,
+                    w_init_mean=w_init_mean,
+                    w_init_std=w_init_std,
+                    recurrent=recurrent,
+                    lateral_connections=lateral_connections,
+                    flatten_output=flatten_output,
+                    convolution_layer=conv,
+                ),
+            )
+        elif type == "NN":
+            return nn.Sequential(conv, bn, activation)
     else:
         print("Error wrong type Parameter")
 
@@ -153,7 +114,7 @@ def buildLinearLayer(
     w_init_mean=0.0,
     w_init_std=0.15,
     eps=1e-8,
-    spike_fn=Surrogate_BP_Function.apply,
+    spike_fn=None,
     time_reduction="mean",
     readout=False,
     recurrent=False,
@@ -194,6 +155,8 @@ def build1DBatchNorm(out_channels, type=None, timesteps: int = 0, bntt_variant="
         return BatchNormalizationThroughTime1D(
             channels=out_channels, timesteps=timesteps, variant=bntt_variant
         )
+    else:
+        return None
 
 
 # else:

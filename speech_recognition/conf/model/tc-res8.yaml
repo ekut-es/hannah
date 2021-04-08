@@ -13,7 +13,7 @@ block1_flattendoutput: False
 block1_combination_type: ADD
 block1_batchnorm: BN
 block1_bntt_variant: v1
-block1_conv_type: SNN
+block1_conv_type: NN
 block2_conv_size: 9
 block2_output_channels: 32
 block2_stride: 2
@@ -31,7 +31,7 @@ block3_flattendoutput: True
 block3_combination_type: ADD
 block3_batchnorm: BN
 block3_bntt_variant: v1
-block3_conv_type: SNN
+block3_conv_type: NN
 bottleneck:
 - 0
 - 0
@@ -54,6 +54,7 @@ dilation: 1
 clipping_value: 100000.0
 small: false
 conv_type: NN
+spike_fn: SBPHeaviside
 
 # Set by LigthningModule
 width: 101
