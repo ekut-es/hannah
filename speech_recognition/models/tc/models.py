@@ -252,7 +252,7 @@ class TCResNetModel(SerializableModule):
         use_inputlayer = config["inputlayer"]
         self.conv_type = config.get("conv_type", "NN")
         act = config.get("act", "relu")
-        self.spike_fn = create_spike_fn(config.get("spike_fn", "Sheaviside"))
+        self.spike_fn = create_spike_fn(config.get("spike_fn", "SHeaviside"))
         general_bn = config.get("general_BN", None)
         general_conv_type = config.get("general_conv_type", None)
         if general_conv_type is not None:
