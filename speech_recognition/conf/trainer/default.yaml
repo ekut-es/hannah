@@ -12,4 +12,4 @@ overfit_batches: 0.0
 benchmark: False
 deterministic: True
 gradient_clip_val: 0.5
-accelerator: ddp
+#accelerator: ddp
