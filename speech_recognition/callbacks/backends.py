@@ -288,8 +288,7 @@ class TRaxUltraTrailBackend(Callback):
             self.use_acc_teda_data,
             self.rtl_simulation,
             self.synthesis,
-            self.power_estimation,
-            pl_module
+            self.power_estimation
         )
         
         for k, v in res.items():
