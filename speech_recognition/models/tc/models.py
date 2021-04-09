@@ -199,6 +199,7 @@ class TCResNetModel(SerializableModule):
         act = config.get("act", "relu")
 
         self.layers = nn.ModuleList()
+        self.feat = None
 
         input_channels = height
 
@@ -312,10 +313,14 @@ class TCResNetModel(SerializableModule):
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
+        self.feat = x.clone()
+        if not self.fully_convolutional:
+            self.feat = x = x.view(x.size(0), -1)
 
         x = self.dropout(x)
         if not self.fully_convolutional:
             x = x.view(x.size(0), -1)
+
         x = self.fc(x)
 
         return x
