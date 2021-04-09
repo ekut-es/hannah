@@ -50,11 +50,11 @@ class TCResidualBlock(nn.Module):
         separable,
         small,
         act,
-        conv_type,
-        flattenoutput,
-        combtype,
-        timesteps,
-        batchnorm,
+        conv_type="NN",
+        flattenoutput=False,
+        combtype="ADD",
+        timesteps=0,
+        batchnorm="BN",
         bntt_variant="v1",
         spike_fn=None,
     ):
@@ -355,10 +355,10 @@ class TCResNetModel(SerializableModule):
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
-            flattendoutput = config[flattendoutput_name]
-            combtype = config[combination_type]
+            flattendoutput = config.get(flattendoutput_name, "False")
+            combtype = config.get(combination_type, "ADD")
             timesteps = config.get(timesteps, 0)
-            batchnorm = config.get(batchnorm_type, None)
+            batchnorm = config.get(batchnorm_type, "BN")
             bntt_variant = config.get(bntt_variant_name, "v1")
             conv_type = config.get(conv_type_name, "NN")
             if general_bn is not None and batchnorm is not None:
