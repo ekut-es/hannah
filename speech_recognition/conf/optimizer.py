@@ -124,6 +124,18 @@ cs.store(group="optimizer", name="sgd", node=SGDConf())
 
 
 @dataclass
+class MADGRADConf:
+    _target_: str = "speech_recognition.torch_extensions.optim.madgrad.MADGRAD"
+    lr: Any = 0.1  # _RequiredParameter
+    momentum: Any = 0.9
+    eps: Any = 1e-6
+    weight_decay: Any = 0
+
+
+cs.store(group="optimizer", name="madgrad", node=MADGRADConf())
+
+
+@dataclass
 class SparseAdamConf:
     _target_: str = "torch.optim.sparse_adam.SparseAdam"
     lr: Any = 0.001
