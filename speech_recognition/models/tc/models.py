@@ -313,7 +313,7 @@ class TCResNetModel(SerializableModule):
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
-        self.feat = x.clone()
+        self.feat = x
         if not self.fully_convolutional:
             self.feat = x = x.view(x.size(0), -1)
 
