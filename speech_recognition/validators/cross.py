@@ -1,4 +1,3 @@
-import shutil
 import logging
 import torch
 from hydra.utils import instantiate
@@ -10,7 +9,6 @@ class CrossValidator(BaseValidator):
     def training_core(self, lit_module, profiler,
                       callbacks, checkpoint_callback, opt_callback,
                       logger):
-        results = list()
 
         for i, (train, val, test) in enumerate(zip(lit_module.train_dataloader(),
                                                    lit_module.val_dataloader(),
@@ -68,10 +66,7 @@ class CrossValidator(BaseValidator):
             #     if checkpoint_callback and checkpoint_callback.best_model_path:
             #         shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
 
-            # results += [opt_callback.result()]
-
         lit_module.on_wrapper_end()
-        # return results
 
     def eval(self, model_name):
         lit_trainer, lit_module, profiler = build_trainer(model_name,

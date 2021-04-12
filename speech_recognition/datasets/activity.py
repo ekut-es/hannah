@@ -254,7 +254,47 @@ class PAMAP2_Dataset(AbstractDataset):
 
     @classmethod
     def splits(cls, config):
-        pass
+        dev_pct = config["dev_pct"]
+        test_pct = config["test_pct"]
+
+        input_length = config["input_length"]
+
+        folder = os.path.join(config["data_folder"], "pamap2",
+                              "pamap2_prepared")
+
+        sets = [[], [], []]
+
+        for root, dirs, files in os.walk(folder):
+            for file_name in files:
+                path = os.path.join(root, file_name)
+                with h5py.File(path, "r") as f:
+                    length = len(f["dataset"][()])
+                max_no_files = 2 ** 27 - 1
+                start = 0
+                stop = length
+                step = input_length
+                for i in range(start, stop, step):
+                    if i + step >= stop - 1:
+                        continue
+                    chunk_hash = f"{path}{i}"
+                    bucket = int(hashlib.sha1(chunk_hash.encode()).hexdigest(),
+                                 16)
+                    bucket = (bucket % (max_no_files + 1)) * (
+                            100.0 / max_no_files)
+                    if bucket < dev_pct:
+                        tag = DatasetType.DEV
+                    elif bucket < test_pct + dev_pct:
+                        tag = DatasetType.TEST
+                    else:
+                        tag = DatasetType.TRAIN
+                    sets[tag.value] += [(path, i)]
+
+        datasets = (
+            cls(sets[DatasetType.TRAIN.value], DatasetType.TRAIN, config),
+            cls(sets[DatasetType.DEV.value], DatasetType.DEV, config),
+            cls(sets[DatasetType.TEST.value], DatasetType.TEST, config),
+        )
+        return datasets
 
     @classmethod
     def splits_cv(cls, config):
