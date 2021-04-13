@@ -568,7 +568,7 @@ class CrossValidationStreamClassifierModule(StreamClassifierModule):
             self.test_sets += [torch.utils.data.ConcatDataset(
                 [self.sets_by_criteria[i] for i in test_split])]
 
-            splits = splits[1:] + [splits[-1]]
+            splits = splits[1:] + [splits[0]]
 
         self.train_set, self.dev_set, self.test_set = self.train_sets[0].datasets[0], \
                                                       self.dev_sets[0].datasets[0], \
