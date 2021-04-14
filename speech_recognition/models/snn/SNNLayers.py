@@ -195,10 +195,6 @@ class Spiking1DLayer(torch.nn.Module):
         kernel_size: _size_1_t,
         dilation: _size_1_t,
         spike_fn,
-        w_init_mean,
-        w_init_std,
-        recurrent=False,
-        lateral_connections=True,
         eps=1e-8,
         stride: _size_1_t = 1,
         flatten_output=False,
@@ -214,18 +210,12 @@ class Spiking1DLayer(torch.nn.Module):
         self.out_channels = out_channels
 
         self.spike_fn = spike_fn
-        self.recurrent = recurrent
-        self.lateral_connections = lateral_connections
         self.eps = eps
 
         self.flatten_output = flatten_output
 
         self.convolution = convolution_layer
 
-        if recurrent:
-            self.v = torch.nn.Parameter(
-                torch.empty((out_channels, out_channels)), requires_grad=True
-            )
         self.beta = torch.nn.Parameter(torch.empty(1), requires_grad=True)
         self.b = torch.nn.Parameter(torch.empty(out_channels), requires_grad=True)
 
@@ -256,22 +246,15 @@ class Spiking1DLayer(torch.nn.Module):
             (batch_size, self.out_channels, nb_steps), dtype=x.dtype, device=x.device
         )
 
-        if self.lateral_connections:
-            d = torch.einsum("abc, ebc -> ae", self.w, self.w)
         b = self.b
         norm = (self.convolution.weight ** 2).sum((1, 2))
 
         for t in range(nb_steps):
 
             # reset term
-            if self.lateral_connections:
-                rst = torch.einsum("ab,bd ->ad", spk, d)
-            else:
-                rst = torch.einsum("ab,b,b->ab", spk, self.b, norm)
+            rst = torch.einsum("ab,b,b->ab", spk, self.b, norm)
 
             input_ = x[:, :, t]
-            if self.recurrent:
-                input_ = input_ + torch.einsum("ab,bd->ad", spk, self.v)
 
             # membrane potential update
             mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
@@ -285,7 +268,6 @@ class Spiking1DLayer(torch.nn.Module):
         #        self.spk_rec_hist = spk_rec.detach().cpu().numpy()
 
         if self.flatten_output:
-
             output = torch.transpose(spk_rec, 1, 2).contiguous()
         else:
             output = spk_rec
@@ -294,12 +276,6 @@ class Spiking1DLayer(torch.nn.Module):
 
     def reset_parameters(self):
 
-        if self.recurrent:
-            torch.nn.init.normal_(
-                self.v,
-                mean=self.w_init_mean,
-                std=self.w_init_std * np.sqrt(1.0 / self.out_channels),
-            )
         torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
         torch.nn.init.normal_(self.b, mean=1.0, std=0.01)
 
