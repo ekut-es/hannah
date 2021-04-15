@@ -85,7 +85,8 @@ class SymmetricQuantization:
         self.scale = 1.0 / 2 ** (bits - 1)
         self.debug = debug
 
-    def __call__(self, x):
+    def quantize(self, x):
+
         if self.debug:
             print("x", x)
         x = x / self.scale
@@ -93,7 +94,13 @@ class SymmetricQuantization:
         if self.debug:
             print("rounded", x)
         x = torch.clamp(x, self.min, self.max)
+
+        return x
+
+    def __call__(self, x):
+        x = self.quantize(x)
         x = x * self.scale
+
         if self.debug:
             print("fake quantized:", x)
 
@@ -105,6 +112,22 @@ class PowerOf2Quantization:
         self.bits = bits
         self.debug = debug
 
+    def quantize(self, x):
+        sign_x = torch.sign(x)
+        abs_x = torch.abs(x)
+        mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
+
+        log_x = torch.ceil(torch.log2(abs_x))
+
+        # This takes care that the number of bits is considered
+        # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0)
+        # is occupied by the weight value 0. But seems to have no negative
+        # effect on the contrary this raises the accuracy.
+        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
+        return log_x * sign_x * mask_x
+
+        return log_x
+
     def __call__(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
@@ -113,8 +136,8 @@ class PowerOf2Quantization:
         log_x = torch.ceil(torch.log2(abs_x))
 
         # This takes care that the number of bits is considered
-        # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0) 
-        # is occupied by the weight value 0. But seems to have no negative 
+        # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0)
+        # is occupied by the weight value 0. But seems to have no negative
         # effect on the contrary this raises the accuracy.
         log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
 
@@ -125,11 +148,12 @@ class PowerOf2Quantization:
         # Which achieves quiete good results for TC-Res8
         # -7 is equal to use 4 bits for quantization using sign and magnitude represenation.
         # FIXME: Should only be active when UltraTrail is used with correct WIDE_BW
-        #log_x = torch.clamp(log_x, -7.0, -1.0)
+        # log_x = torch.clamp(log_x, -7.0, -1.0)
 
         x = torch.pow(torch.tensor(2, device=x.device), log_x) * mask_x
         x = x * sign_x
         return x
+
 
 class TrainableFakeQuantize(FakeQuantizeBase):
     def __init__(
