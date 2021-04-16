@@ -1,4 +1,5 @@
 stages:
+  - build
   - test
   - deploy
 
@@ -92,7 +93,7 @@ build_docs:
     - master
 
 build_image:
-  stage: deploy
+  stage: build
   before_script:
     - echo build
   image:
