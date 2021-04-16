@@ -97,7 +97,9 @@ build_image:
     - echo build
   image:
     name: quay.io/singularity/singularity:v3.7.3
-    entrypoint: [""]
+    entrypoint:
+      - cd ml_cloud
+      - singularity build ml_cloud.simg ml_cloud.recipe
   script: ""
   only:
     - master
