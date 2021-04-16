@@ -108,6 +108,7 @@ build_image:
     - docker
     - privileged
   script: 
+    - set -e 
     - cd ml_cloud
     - singularity build ml_cloud.simg ml_cloud.recipe
     - scp ml_cloud.simg cgerum05@134.2.168.52:/home/bringmann/cgerum05
