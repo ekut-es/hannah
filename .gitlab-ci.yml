@@ -94,7 +94,7 @@ build_docs:
 build_image:
   stage: deploy
   before_script:
-    - echo "Preparing build"
+    - echo Build
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
