@@ -169,6 +169,7 @@ class TrainableFakeQuantize(FakeQuantizeBase):
         self.bits = bits
         self.noise_prob = noise_prob
         self.debug = debug
+        self.power_of_2 = power_of_2 
 
         if power_of_2:
             self.quantization_function = PowerOf2Quantization(bits, debug=self.debug)
@@ -189,6 +190,10 @@ class TrainableFakeQuantize(FakeQuantizeBase):
             quantized_x = quantized_x * mask + x * reverse_mask
 
         return quantized_x
+
+
+    def quantize(self, x):
+        return self.quantization_function.quantize(x)
 
     def calculate_qparams(self):
         raise NotImplementedError(

@@ -466,11 +466,8 @@ class ConvBnReLU1d(ConvBn1d):
         )
 
     def forward(self, input):
-        # print(f"ConvBnRelu1d {self.stride}")
-        # print(input.shape)
         y = self.activation_post_process(F.relu(ConvBn1d._forward(self, input)))
-        # print(y.shape)
-
+        
         return y
 
     @classmethod

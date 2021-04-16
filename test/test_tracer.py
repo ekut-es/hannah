@@ -1,9 +1,11 @@
+import pytest
+
 import torch
 import torch.nn as nn
 from torchaudio.transforms import Spectrogram, MFCC
 
 from speech_recognition.models.factory.tracer import QuantizationTracer, RelayConverter
-from speech_recognition.models.factory.qat import ConvBn1d
+from speech_recognition.models.factory.qat import ConvBn1d, ConvBn2d, ConvBnReLU1d, ConvBnReLU2d
 from speech_recognition.models.factory.qconfig import get_trax_qat_qconfig
 
 
@@ -17,25 +19,46 @@ class Config:
 
 
 class TestCell(nn.Module):
-    def __init__(self):
+    def __init__(self, dim=1, act=False):
         super().__init__()
-        self.conv = ConvBn1d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
-
+        if dim == 1:
+            if act:
+                self.conv = ConvBn1d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
+            else:
+                self.conv = ConvBnReLU1d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
+        elif dim == 2:
+            if act:
+                self.conv = ConvBnReLU2d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
+            else:
+                self.conv = ConvBn2d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
     def forward(self, x):
         return self.conv(x)
 
 
-def test_tracer():
-    cell = TestCell()
+@pytest.mark.parametrize(
+    "dim,act",
+    [
+        (1,False),
+        (1,True),
+        (2,False),
+        (2,True)
+    ]
+)
+def test_tracer(dim, act):
+    cell = TestCell(dim=dim, act=act)
     tracer = QuantizationTracer()
 
     traced_graph = tracer.trace(cell)
-    print(traced_graph)
-
+    
     converter = RelayConverter(torch.fx.GraphModule(cell, traced_graph))
-    input = torch.rand((1, 8, 12))
+    if dim == 1:
+        input = torch.rand((1, 8, 12))
+    elif dim == 2:
+        input = torch.rand((1,8,12,12))
     converter.run(input)
 
 
+
 if __name__ == "__main__":
-    test_tracer()
+    test_tracer(1, False)
+    test_tracer(2, True)

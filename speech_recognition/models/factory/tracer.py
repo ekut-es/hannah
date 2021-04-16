@@ -33,7 +33,6 @@ class QuantizationTracer(torch.fx.Tracer):
 
         return super().is_leaf_module(module, module_qualified_name)
 
-
 class RelayConverter(torch.fx.Interpreter):
     def __init__(self, graph_module):
         super().__init__(graph_module)
@@ -51,6 +50,7 @@ class RelayConverter(torch.fx.Interpreter):
         self.outputs = {}
         self.func_args = []
         self.returns = []
+        self.params = []
 
         self.module_map = {
             qat.Conv1d: self._handle_qat_conv,
@@ -61,46 +61,80 @@ class RelayConverter(torch.fx.Interpreter):
             qat.ConvBnReLU2d: self._handle_qat_conv,
         }
 
-    def _handle_qat_conv(self, module, result):
+    def _handle_qat_conv(self, node, module, result):
         weight = module.weight
         bias = module.bias
 
         if hasattr(module, "bn"):
-            weight, bias = torch.nn.utils.fuse_batch_norm(
-                module.in_channels,
-                module.out_channels,
-                module.kernel_size,
-                module.stride,
-                module.padding,
-                module.dilation,
-                module.groups,
-                module.padding_mode,
+            weight, bias = torch.nn.utils.fuse_conv_bn_weights(
+                module.weight,
+                module.bias,
+                module.bn.running_mean,
+                module.bn.running_var,
+                module.bn.eps,
+                module.bn.weight,
+                module.bn.bias,
             )
 
         padding = tuple(module.padding)
-        strides = tuple(module.strides)
+        stride = tuple(module.stride)
         dilation = tuple(module.dilation)
-        out_channels = module.channels
-        in_channels = module.size[1]
-
-        weight_quant = module.weight_fake_quant
-        activation_quant = module.activation_post_process
-        bias_quant = module.activation_post_process
-
-        if module.bias_fake_quant:
-            bias_quant = module.bias_fake_quant
+        groups = module.groups
+        out_channels = module.out_channels
 
         quant_weight = module.weight_fake_quant.quantize(weight)
         quant_bias = module.bias_fake_quant.quantize(bias)
 
-        print(quantize)
+        weight = tvm.relay.Var(f"{node.name}.weight", tvm.relay.TensorType(quant_weight.shape, dtype=f'int{module.weight_fake_quant.bits}'))
+        bias = tvm.relay.Var(f"{node.name}.bias", tvm.relay.TensorType(quant_bias.shape, dtype=f'int{module.bias_fake_quant.bits}'))
 
-        return True
+        inputs = list(node.all_input_nodes)
+        data = self.outputs[inputs[0].name]
+
+        if quant_weight.dim() == 3:
+            conv_out = tvm.relay.nn.conv1d(data, 
+                                           weight, 
+                                           strides=stride, 
+                                           padding=padding, 
+                                           dilation=dilation, 
+                                           groups=groups, 
+                                           channels=out_channels,
+                                           kernel_size=quant_weight.size(2),
+                                           data_layout='NCW',
+                                           kernel_layout='OIW',
+                                           out_dtype='int32') #FIXME use proper out dtype
+        elif quant_weight.dim() == 4:
+            conv_out = tvm.relay.nn.conv2d(data,
+                                           weight, 
+                                           strides=stride,
+                                           padding=padding,
+                                           dilation=dilation,
+                                           groups=groups,
+                                           channels=out_channels,
+                                           kernel_size=(quant_weight.size(2), quant_weight.size(3)),
+                                           data_layout='NCHW',
+                                           kernel_layout='OIHW',
+                                           out_dtype='int32')
+        else:
+            raise Exception(f"Quantized weights of dimension {quant_weight.dim()} are not supported")
+
+        if bias is not None:
+            conv_out = tvm.relay.nn.bias_add(conv_out, bias)
+
+
+        if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
+            conv_out = tvm.relay.nn.relu(conv_out)
+
+        conv_out = tvm.relay.right_shift(conv_out, tvm.relay.const(module.weight_fake_quant.bits, dtype='int32'))
+        conv_out = tvm.relay.cast(conv_out, dtype=f'int{module.activation_post_process.bits}')
+            
+        self.outputs[node.name] = conv_out
+
 
     def _handle_module(self, node, result):
         module = self.modules[node.target]
         if type(module) in self.module_map:
-            self.module_map[type(module)](module, result)
+            self.module_map[type(module)](node, module, result)
         else:
             raise Exception(f"Support for module: {module} is not supported")
 
@@ -110,12 +144,13 @@ class RelayConverter(torch.fx.Interpreter):
         self.func_args.append(var)
 
     def _handle_output(self, node, result):
-        print(node.target)
+        inputs = list(node.all_input_nodes)
+        
+        for input in inputs:
+            self.returns.append(self.outputs[input.name])
 
     def run_node(self, node):
         result = super().run_node(node)
-
-        print(node, node.op, node.args, node.kwargs, node.type)
 
         if node.op == "call_module":
             self._handle_module(node, result)
@@ -136,10 +171,12 @@ class RelayConverter(torch.fx.Interpreter):
 
         super().run(input)
 
-        ret = relay.const(1, dtype="int8")
-        function = relay.Function(self.func_args, ret)
+        ret = self.returns[0] if len(self.returns) == 1 else tvm.relay.Tuple(self.returns)
+        free_vars = relay.analysis.free_vars(ret)
+
+        function = relay.Function(free_vars, ret)
         tvm_mod["main"] = function
 
         print(tvm_mod)
 
-        return tvm_mod
+        return tvm_mod, self.params 
