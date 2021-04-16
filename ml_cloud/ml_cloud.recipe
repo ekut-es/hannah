@@ -1,0 +1,22 @@
+Bootstrap: docker
+From: ubuntu:focal
+
+%files
+   .. /opt/speech_recognition
+
+%post
+    echo "Hello from inside the container"
+    chmod -R 777 /opt/speech_recognition
+    apt update
+    apt install -y python3 python3-distutils python3-apt curl libblas-dev liblapack-dev  libsox-dev git-lfs
+    ln -s /usr/bin/python3 /usr/bin/python
+    export POETRY_HOME=/opt/poetry
+    curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
+    chmod -R 777 $POETRY_HOME
+    export PATH="$POETRY_HOME/bin:$PATH"
+    cd /opt/speech_recognition
+    poetry config virtualenvs.path /opt/poetry_env
+    poetry install
+    rm -rf /opt/speech_recognition
+    
+    
