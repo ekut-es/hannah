@@ -1,3 +1,7 @@
+stages:
+  - test
+  - deploy
+
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
@@ -32,6 +36,7 @@ before_script:
 
 test_python_37:
   image: python:3.7
+  stage: test
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=speech_recognition test
@@ -40,6 +45,7 @@ test_python_37:
   interruptible: true
 
 test_python_38:
+  stage: test
   image: python:3.8
   script:
     - set -e
@@ -51,15 +57,17 @@ test_python_38:
     - branches
 
 test_python_39:
-   image: python:3.9
-   script:
-     - set -e
-     - poetry run python3 -m pytest -v --cov=speech_recognition test
-   tags:
-     - docker
-   interruptible: true
+  stage: test
+  image: python:3.9
+  script:
+    - set -e
+    - poetry run python3 -m pytest -v --cov=speech_recognition test
+  tags:
+    - docker
+  interruptible: true
 
 build_docs:
+  stage: deploy
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
@@ -82,3 +90,19 @@ build_docs:
     - native
   only:
     - master
+
+build_image:
+  stage: deploy
+  before_script:
+    - echo "Preparing build"
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - #/kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+  only:
+    - master
+  
+  
