@@ -99,7 +99,10 @@ build_image:
   image:
     name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
-      
+  
+  tags:
+    - docker
+    - privileged
   script: 
     - cd ml_cloud
     - singularity build ml_cloud.simg ml_cloud.recipe
