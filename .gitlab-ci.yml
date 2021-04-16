@@ -95,7 +95,7 @@ build_docs:
 build_image:
   stage: build
   before_script:
-     - eval $(ssh-agent -s)
+    - eval $(ssh-agent -s)
     - ssh-add <(echo "$ML_CLOUD_KEY")
     - mkdir -p ~/.ssh
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
@@ -110,6 +110,7 @@ build_image:
   script: 
     - cd ml_cloud
     - singularity build ml_cloud.simg ml_cloud.recipe
+    - scp ml_cloud.simg cgerum05@134.2.168.52:/home/bringmann/cgerum05
   only:
     - master
   
