@@ -1,0 +1,23 @@
+# @package _group_
+
+data_folder: ${hydra:runtime.cwd}/datasets/kitti/
+cls: speech_recognition.datasets.Kitti.Kitti
+dataset: kitti
+
+clear_download: False
+download_folder: ${dataset.data_folder}/downloads
+
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+
+input_length: 100
+samplingrate: 100
+
+img_folder: ${dataset.data_folder}/kitti
+img_size: (1242, 375)
+
+
+variants: ["kitti"]
+data_split: []
+noise_dataset: []

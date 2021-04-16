@@ -21,6 +21,8 @@ import torch.utils.data as data
 from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
 from hydra.utils import instantiate, get_class
 
+from pl_bolts.datamodules.kitti_datamodule import KittiDataModule
+
 from ..datasets.NoiseDataset import NoiseDataset
 from ..datasets.DatasetSplit import DatasetSplit
 from ..datasets.Downsample import Downsample
@@ -490,3 +492,8 @@ class SpeechClassifierModule(LightningModule):
             "SpeechClassifierModule has been renamed to StreamClassifierModule"
         )
         super(SpeechClassifierModule, self).__init__(*args, **kwargs)
+
+
+class KittiModule(KittiDataModule):
+    def __init__(self):
+        super(self)
