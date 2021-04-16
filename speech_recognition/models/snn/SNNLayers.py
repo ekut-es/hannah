@@ -199,6 +199,10 @@ class Spiking1DLayer(torch.nn.Module):
         stride: _size_1_t = 1,
         flatten_output=False,
         convolution_layer=None,
+        neuron_type="eLIF",
+        alpha=0.75,
+        beta=0.75,
+
     ):
 
         super(Spiking1DLayer, self).__init__()
@@ -210,15 +214,20 @@ class Spiking1DLayer(torch.nn.Module):
         self.out_channels = out_channels
 
         self.spike_fn = spike_fn
-        self.eps = eps
 
         self.flatten_output = flatten_output
 
         self.convolution = convolution_layer
+        self.neuron_type = neuron_type
 
-        self.beta = torch.nn.Parameter(torch.empty(1), requires_grad=True)
-        self.b = torch.nn.Parameter(torch.empty(out_channels), requires_grad=True)
-
+        if neuron_type == "s2net":
+            self.eps = eps
+            self.beta = torch.nn.Parameter(torch.empty(1), requires_grad=True)
+            self.b = torch.nn.Parameter(torch.empty(out_channels), requires_grad=True)
+        elif neuron_type in ["eLIF", "LIF"]:
+            self.alpha = torch.nn.Parameter(torch.ones(1), requires_grad=False) * alpha
+            self.beta = torch.nn.Parameter(torch.ones(1), requires_grad=False) * beta
+            self.Vth = torch.nn.Parameter(torch.ones(out_channels), requires_grad=False)
         self.reset_parameters()
         self.clamp()
 
@@ -229,7 +238,6 @@ class Spiking1DLayer(torch.nn.Module):
     def forward(self, x):
 
         batch_size = x.shape[0]
-
         nb_steps = x.shape[2]
 
         # membrane potential
@@ -240,32 +248,73 @@ class Spiking1DLayer(torch.nn.Module):
         spk = torch.zeros(
             (batch_size, self.out_channels), dtype=x.dtype, device=x.device
         )
-
         # output spikes recording
         spk_rec = torch.zeros(
             (batch_size, self.out_channels, nb_steps), dtype=x.dtype, device=x.device
         )
 
-        b = self.b
-        norm = (self.convolution.weight ** 2).sum((1, 2))
+        if self.neuron_type == "s2net":
+            b = self.b
+            norm = (self.convolution.weight ** 2).sum((1, 2))
 
-        for t in range(nb_steps):
+            for t in range(nb_steps):
 
-            # reset term
-            rst = torch.einsum("ab,b,b->ab", spk, self.b, norm)
+                # reset term
+                rst = torch.einsum("ab,b,b->ab", spk, self.b, norm)
 
-            input_ = x[:, :, t]
+                input_ = x[:, :, t]
 
-            # membrane potential update
-            mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
-            mthr = torch.einsum("ab,b->ab", mem, 1.0 / (norm + self.eps)) - b
+                # membrane potential update
+                mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
+                mthr = torch.einsum("ab,b->ab", mem, 1.0 / (norm + self.eps)) - b
 
-            spk = self.spike_fn(mthr)
+                spk = self.spike_fn(mthr)
 
-            spk_rec[:, :, t] = spk
+                spk_rec[:, :, t] = spk
 
-        # save spk_rec for plotting
-        #        self.spk_rec_hist = spk_rec.detach().cpu().numpy()
+            # save spk_rec for plotting
+            #        self.spk_rec_hist = spk_rec.detach().cpu().numpy()
+        elif self.neuron_type in  ["eLIF", "LIF"]:
+            for t in range(nb_steps):
+                rst = torch.einsum("ab,b->ab", spk, self.Vth)
+
+                if self.neuron_type == "LIF":
+                    input_ = x[:, :, t]
+                else:
+                    input_ = x[:, :, t] * self.alpha
+
+                mem = (mem - rst) * self.beta + input_
+
+                spk = self.spike_fn(mem - self.Vth)
+
+                spk_rec[:, :, t] = spk
+        elif self.neuron_type == "eALIF":
+
+            Athpot = torch.ones(
+                (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+            )
+
+            thadapt = torch.zeros(
+                (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+            )
+
+            for t in range(nb_steps):
+                rst = torch.einsum("ab,b->ab", spk, self.Vth)
+
+                if self.neuron_type == "LIF":
+                    input_ = x[:, :, t]
+                else:
+                    input_ = x[:, :, t] * self.alpha
+
+                mem = (mem - rst) * self.beta + input_
+
+                spk = self.spike_fn(mem - Athpot)
+
+                Athpot = self.vth + 0.75 * thadapt #gamma
+
+                spk_rec[:, :, t] = spk
+        else:
+            print("Wrong Neuron Type used")
 
         if self.flatten_output:
             output = torch.transpose(spk_rec, 1, 2).contiguous()
@@ -275,14 +324,14 @@ class Spiking1DLayer(torch.nn.Module):
         return output
 
     def reset_parameters(self):
-
-        torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
-        torch.nn.init.normal_(self.b, mean=1.0, std=0.01)
+        if self.neuron_type == "s2net":
+            torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.b, mean=1.0, std=0.01)
 
     def clamp(self):
-
-        self.beta.data.clamp_(0.0, 1.0)
-        self.b.data.clamp_(min=0.0)
+        if self.neuron_type == "s2net":
+            self.beta.data.clamp_(0.0, 1.0)
+            self.b.data.clamp_(min=0.0)
 
 
 class SpikingConv2DLayer(torch.nn.Module):
