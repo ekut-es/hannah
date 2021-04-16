@@ -95,7 +95,11 @@ build_docs:
 build_image:
   stage: build
   before_script:
-    - echo build
+     - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    
   image:
     name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
