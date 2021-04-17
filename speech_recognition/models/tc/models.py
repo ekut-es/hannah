@@ -431,8 +431,8 @@ class TCResNetModel(SerializableModule):
         for layer in self.layers:
             x = layer(x)
         self.feat = x
-        if not self.fully_convolutional:
-            self.feat = x = x.view(x.size(0), -1)
+        if not self.fully_convolutional and not self.conv_type == "SNN":
+            self.feat = x.view(x.size(0), -1)
 
         x = self.dropout(x)
         if not self.fully_convolutional and not self.conv_type == "SNN":
