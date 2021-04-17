@@ -228,6 +228,15 @@ class Spiking1DLayer(torch.nn.Module):
             self.alpha = torch.nn.Parameter(torch.ones(1), requires_grad=False) * alpha
             self.beta = torch.nn.Parameter(torch.ones(1), requires_grad=False) * beta
             self.Vth = torch.nn.Parameter(torch.ones(out_channels), requires_grad=False)
+        elif neuron_type == "eALIF":
+            self.alpha = torch.nn.Parameter(torch.ones(1),
+                                            requires_grad=False) * alpha
+            self.beta = torch.nn.Parameter(torch.ones(1),
+                                           requires_grad=False) * beta
+            self.gamma = torch.nn.Parameter(torch.ones(1),
+                                           requires_grad=False)
+            self.Vth = torch.nn.Parameter(torch.ones(out_channels),
+                                          requires_grad=False)
         self.reset_parameters()
         self.clamp()
 
@@ -310,7 +319,7 @@ class Spiking1DLayer(torch.nn.Module):
 
                 spk = self.spike_fn(mem - Athpot)
 
-                Athpot = self.vth + 0.75 * thadapt #gamma
+                Athpot = self.vth + self.gamma * thadapt #gamma
 
                 spk_rec[:, :, t] = spk
         else:
