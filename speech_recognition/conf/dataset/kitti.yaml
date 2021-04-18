@@ -14,8 +14,8 @@ train_pct: 80
 input_length: 100
 samplingrate: 100
 
-img_folder: ${dataset.data_folder}/kitti
-img_size: (1242, 375)
+kitti_folder: ${dataset.data_folder}/kitti
+img_size: 1242, 375
 
 
 variants: ["kitti"]

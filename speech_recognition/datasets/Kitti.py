@@ -18,7 +18,9 @@ else:  # pragma: no cover
 class Kitti(Dataset):
     ""
 
-    IMAGE_PATH = os.path.join("training", "image_2")
+    IMAGE_PATH = os.path.join("training", "image_2/")
+
+    LABEL_PATH = os.path.join("training", "label_2/")
 
     def __init__(self, data, set_type, config):
         if not _PIL_AVAILABLE:  # pragma: no cover
@@ -26,29 +28,23 @@ class Kitti(Dataset):
                 "You want to use `PIL` which is not installed yet."
             )
 
-        self.img_size = config["img_size"]
-        self.data_dir = config["img_folder"]
-        self.img_path = os.path.join(self.data_dir, self.IMAGE_PATH)
-        self.img_list = self.get_filenames(self.img_path)
+        self.img_size = tuple(map(int, config["img_size"].split(",")))
+        self.kitti_dir = config["kitti_folder"]
+        self.img_path = os.path.join(self.kitti_dir, self.IMAGE_PATH)
+        self.label_path = os.path.join(self.kitti_dir, self.LABEL_PATH)
+        self.set_type = set_type
+        self.img_files = list(data.keys())
+        self.img_labels = list(data.values())
 
     def __len__(self):
-        return len(self.img_list)
+        return len(self.img_files)
 
     def __getitem__(self, idx):
-        img = Image.open(self.img_list[idx])
+        img = Image.open(self.img_path + self.img_files[idx])
         img = img.resize(self.img_size)
         img = np.array(img)
 
         return img
-
-    def get_filenames(self, path):
-        """
-        Returns a list of absolute paths to images inside given `path`
-        """
-        files_list = list()
-        for filename in os.listdir(path):
-            files_list.append(os.path.join(path, filename))
-        return files_list
 
     @classmethod
     def splits(cls, config):
@@ -65,13 +61,10 @@ class Kitti(Dataset):
             descs = os.path.join(folder, desc)
             f = open(descs, "r")
 
-            img_files = []
-
             for line in f:
-                img_files.append(line.rstrip("\n") + ".png")
+                file_name = line.rstrip("\n")
+                datasets[num][line.rstrip("\n") + ".png"] = file_name + ".txt"
             f.close
-
-            datasets[num] = img_files
 
         res_datasets = (
             cls(datasets[0], DatasetType.TRAIN, config),
