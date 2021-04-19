@@ -8,12 +8,6 @@ from omegaconf import DictConfig, OmegaConf
 import torch
 from torch.nn.modules import module
 
-from .utils import log_execution_env_state
-
-from .callbacks.summaries import MacSummaryCallback
-
-from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
@@ -22,6 +16,10 @@ from pytorch_lightning.utilities.seed import seed_everything
 from hydra.utils import instantiate
 
 from . import conf  # noqa
+from .callbacks.summaries import MacSummaryCallback
+from .callbacks.optimization import HydraOptCallback
+from .callbacks.pruning import PruningAmountScheduler
+from .utils import log_execution_env_state, auto_select_gpus
 
 
 def handleDataset(config=DictConfig):
@@ -41,6 +39,9 @@ def train(config=DictConfig):
     seed_everything(config.seed)
     if not torch.cuda.is_available():
         config.trainer.gpus = None
+
+    if isinstance(config.trainer.gpus, int):
+        config.trainer.gpus = auto_select_gpus(config.trainer.gpus)
 
     if not config.trainer.fast_dev_run:
         current_path = pathlib.Path(".")
