@@ -4,6 +4,8 @@
 *.pyc
 .DS_Store
 *.tar.gz
+*.err
+*.out
 datasets/speech_commands_v0.02/
 datasets/speech_files/
 datasets/noise_files/
