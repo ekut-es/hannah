@@ -19,10 +19,10 @@
 #SBATCH --mem=12G
 # the job will need 12GB of memory equally distributed on 4 cpus.
 
-#SBATCH --gres=gpu:rtx2080ti:1
+#SBATCH --gres=gpu:rtx2080ti:5
 #the job can use and see 1 GPUs (8 GPUs are available in total on one node)
 
-#SBATCH --time=100
+#SBATCH --time=4320
 # the maximum time the scripts needs to run (5 minutes)
 
 #SBATCH --error=job_%j.err
@@ -57,7 +57,7 @@ cp -r datasets $SCRATCH
 ls $SCRATCH
 
 echo "Running training"
-singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt /home/bringmann/cgerum05/ml_cloud.simg dataset.data_folder=/mnt/datasets trainer.num_workers=4 -m 
+singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt /home/bringmann/cgerum05/ml_cloud.simg --config-name=config_unas dataset.data_folder=/mnt/datasets trainer.num_workers=4 experiment_id=nas1 hydra/launcher=joblib -m 
 
 echo DONE!
 
