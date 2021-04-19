@@ -31,6 +31,7 @@ class TestCell(nn.Module):
                 self.conv = ConvBnReLU2d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
             else:
                 self.conv = ConvBn2d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
+
     def forward(self, x):
         return self.conv(x)
 
