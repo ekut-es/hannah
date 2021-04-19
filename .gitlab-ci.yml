@@ -99,20 +99,18 @@ build_image:
     - ssh-add <(echo "$ML_CLOUD_KEY")
     - mkdir -p ~/.ssh
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-    
+
   image:
     name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
-  
+
   tags:
     - docker
     - privileged
-  script: 
-    - set -e 
+  script:
+    - set -e
     - cd ml_cloud
-    - singularity build ml_cloud.simg ml_cloud.recipe
+    - ./build_image.sh
     - scp ml_cloud.simg cgerum05@134.2.168.52:/home/bringmann/cgerum05
   only:
     - master
-  
-  
