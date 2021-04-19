@@ -8,6 +8,6 @@
 
 rm -rf ml_cloud.simg
 sudo -E /usr/local/bin/singularity build --sandbox ml_cloud ml_cloud.recipe
-singularity exec -w -f --bind $PWD/..:/opt/speech_recognition ml_cloud /bin/bash -c "cd /opt/speech_recognition && poetry install"
+sudo singularity exec -w  --bind $PWD/..:/opt/speech_recognition ml_cloud /bin/bash -c "cd /opt/speech_recognition && poetry install"
 sudo singularity build ml_cloud.simg ml_cloud/
 sudo rm -rf ml_cloud/
