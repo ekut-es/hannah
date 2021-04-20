@@ -94,7 +94,7 @@ build_docs:
 
 build_image:
   stage: build
-  before_script: ""
+  before_script:  [""]
   image:
     name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
