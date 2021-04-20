@@ -19,7 +19,7 @@ type: train
 experiment_id: nas
 output_dir: trained_models
 auto_lr: false
-seed: 1234
+seed: [1234]
 
 monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_clock_cycles", "acc_power", "acc_area"]
 

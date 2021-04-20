@@ -1,9 +1,6 @@
 Bootstrap: docker
 From: ubuntu:focal
 
-#%files
-#   .. /opt/speech_recognition
-
 %environment
    PATH=/opt/poetry/bin:$PATH
 
@@ -32,8 +29,10 @@ From: ubuntu:focal
    chmod -R 777 $POETRY_HOME
    export PATH="$POETRY_HOME/bin:$PATH"
    mkdir -p /opt/speech_recognition
+
    mkdir -p /opt/poetry_env
    chmod 777 /opt/poetry_env
+
    poetry config virtualenvs.create true
    poetry config virtualenvs.path /opt/poetry_env
    poetry config --list
