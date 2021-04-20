@@ -94,6 +94,26 @@ build_docs:
 
 build_image:
   stage: build
+  before_script: ""
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+    - privileged
+  script:
+    - set -e
+    - cd ml_cloud
+    - ./build_image.sh
+  artifacts:
+    - ml_cloud/ml_cloud.simg
+  only:
+    - master
+
+
+deploy_image:
+  stage: deploy
   before_script:
     - eval $(ssh-agent -s)
     - ssh-add <(echo "$ML_CLOUD_KEY")
@@ -108,9 +128,9 @@ build_image:
     - docker
     - privileged
   script:
-    - set -e
     - cd ml_cloud
-    - ./build_image.sh
     - scp ml_cloud.simg cgerum05@134.2.168.52:/home/bringmann/cgerum05
+  dependencies:
+    - build_image
   only:
     - master
