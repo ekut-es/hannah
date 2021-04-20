@@ -107,7 +107,9 @@ build_image:
     - cd ml_cloud
     - ./build_image.sh
   artifacts:
-    - ml_cloud/ml_cloud.simg
+    paths:
+      - ml_cloud/ml_cloud.simg
+    expire_in: 1 day
   only:
     - master
 
