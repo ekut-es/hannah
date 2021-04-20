@@ -1,10 +1,10 @@
 defaults:
     - dataset: kws
     - model: conv-net-trax
-    - scheduler: null
-    - optimizer: adamw
+    - scheduler: 1cycle
+    - optimizer: sgd
     - features: mfcc
-    - normalizer: null
+    - normalizer: fixedpoint
     - module: stream_classifier
     - compress: null
     - trainer: default
@@ -39,10 +39,10 @@ hydra:
     optim:
       optimizer: aging_evolution
       population_size: 100
-      sample_size: 10
+      sample_size: 5
       budget:  2000
       seed: 1234
-      num_workers:  10
+      num_workers:  5
       bounds:
         val_error: 0.05
         acc_clock_cycles: 20000
@@ -67,7 +67,7 @@ hydra:
                 choices:
                   - target: conv1d
                     kernel_size: [1,3,5,7,9]
-                    stride: [0,1,2,4,6,8]
+                    stride: [1]
                     act: [false, true]
                     norm: true
                     out_channels: [8,16,24,32,40,48,56,64]
