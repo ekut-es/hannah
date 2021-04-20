@@ -38,6 +38,9 @@ def handleDataset(config=DictConfig):
 def train(config=DictConfig):
     test_output = []
     results = []
+    if isinstance(config.seed, int):
+        config.seed = [config.seed]
+
     for seed in config.seed:
         seed_everything(seed)
         if not torch.cuda.is_available():
