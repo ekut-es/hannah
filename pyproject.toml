@@ -10,7 +10,7 @@ authors = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7 <4.0"
+python = ">=3.7.1 <4.0"
 pwlf = "^2.0.0"
 gitdb2 = "2.0.6"
 chainmap = "^1.0.3"
