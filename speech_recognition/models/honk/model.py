@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 import numpy as np
 
-from ..utils import ConfigType, SerializableModule 
+from ..utils import ConfigType, SerializableModule
 
 
 def truncated_normal(tensor, std_dev=0.01):
@@ -29,11 +29,22 @@ class SpeechResModel(SerializableModule):
         self.n_layers = n_layers = config["n_layers"]
         dilation = config["use_dilation"]
         if dilation:
-            self.convs = [nn.Conv2d(n_maps, n_maps, (3, 3), padding=int(2**(i // 3)), dilation=int(2**(i // 3)), 
-                bias=False) for i in range(n_layers)]
+            self.convs = [
+                nn.Conv2d(
+                    n_maps,
+                    n_maps,
+                    (3, 3),
+                    padding=int(2 ** (i // 3)),
+                    dilation=int(2 ** (i // 3)),
+                    bias=False,
+                )
+                for i in range(n_layers)
+            ]
         else:
-            self.convs = [nn.Conv2d(n_maps, n_maps, (3, 3), padding=1, dilation=1, 
-                bias=False) for _ in range(n_layers)]
+            self.convs = [
+                nn.Conv2d(n_maps, n_maps, (3, 3), padding=1, dilation=1, bias=False)
+                for _ in range(n_layers)
+            ]
         for i, conv in enumerate(self.convs):
             self.add_module("bn{}".format(i + 1), nn.BatchNorm2d(n_maps, affine=False))
             self.add_module("conv{}".format(i + 1), conv)
@@ -54,9 +65,10 @@ class SpeechResModel(SerializableModule):
                 x = y
             if i > 0:
                 x = getattr(self, "bn{}".format(i))(x)
-        x = x.view(x.size(0), x.size(1), -1) # shape: (batch, feats, o3)
+        x = x.view(x.size(0), x.size(1), -1)  # shape: (batch, feats, o3)
         x = torch.mean(x, 2)
         return self.output(x)
+
 
 class SpeechModel(SerializableModule):
     def __init__(self, config):
@@ -64,7 +76,7 @@ class SpeechModel(SerializableModule):
         n_labels = config["n_labels"]
         n_featmaps1 = config["n_feature_maps1"]
 
-        conv1_size = config["conv1_size"] # (time, frequency)
+        conv1_size = config["conv1_size"]  # (time, frequency)
         conv1_pool = config["conv1_pool"]
         conv1_stride = tuple(config["conv1_stride"])
         dropout_prob = config["dropout_prob"]
@@ -89,7 +101,9 @@ class SpeechModel(SerializableModule):
             conv2_pool = config["conv2_pool"]
             conv2_stride = tuple(config["conv2_stride"])
             n_featmaps2 = config["n_feature_maps2"]
-            self.conv2 = nn.Conv2d(n_featmaps1, n_featmaps2, conv2_size, stride=conv2_stride)
+            self.conv2 = nn.Conv2d(
+                n_featmaps1, n_featmaps2, conv2_size, stride=conv2_stride
+            )
             if tf_variant:
                 truncated_normal(self.conv2.weight.data)
                 self.conv2.bias.data.zero_()
@@ -98,7 +112,7 @@ class SpeechModel(SerializableModule):
             conv_net_size = x.view(1, -1).size(1)
             last_size = conv_net_size
         if not tf_variant:
-            self.lin = nn.Linear(conv_net_size, 32) 
+            self.lin = nn.Linear(conv_net_size, 32)
 
         if "dnn1_size" in config:
             dnn1_size = config["dnn1_size"]
@@ -123,21 +137,21 @@ class SpeechModel(SerializableModule):
         self.dropout = nn.Dropout(dropout_prob)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x.unsqueeze(1))) # shape: (batch, channels, i1, o1)
+        x = F.relu(self.conv1(x.unsqueeze(1)))  # shape: (batch, channels, i1, o1)
         x = self.dropout(x)
         x = self.pool1(x)
         if hasattr(self, "conv2"):
-            x = F.relu(self.conv2(x)) # shape: (batch, o1, i2, o2)
+            x = F.relu(self.conv2(x))  # shape: (batch, o1, i2, o2)
             x = self.dropout(x)
             x = self.pool2(x)
-        x = x.view(x.size(0), -1) # shape: (batch, o3)
+        x = x.view(x.size(0), -1)  # shape: (batch, o3)
         if hasattr(self, "lin"):
             x = self.lin(x)
         if hasattr(self, "dnn1"):
             x = self.dnn1(x)
             if not self.tf_variant:
                 x = F.relu(x)
-            x = self.dropout(x)        
+            x = self.dropout(x)
         if hasattr(self, "dnn2"):
             x = self.dnn2(x)
             x = self.dropout(x)
@@ -145,139 +159,136 @@ class SpeechModel(SerializableModule):
 
 
 configs = {
-    ConfigType.HONK_CNN_TRAD_POOL2.value: dict(dropout_prob=0.5,
-                                               n_feature_maps1=64,
-                                               n_feature_maps2=64,
-                                               conv1_size=(20, 8),
-                                               conv2_size=(10, 4),
-                                               conv1_pool=(2, 2),
-                                               conv1_stride=(1, 1),
-                                               conv2_stride=(1, 1),
-                                               conv2_pool=(1, 1),
-                                               tf_variant=True),
-
-    ConfigType.HONK_CNN_ONE_STRIDE1.value: dict(dropout_prob=0.5,
-                                                n_feature_maps1=186,
-                                                conv1_size=(101, 8),
-                                                conv1_pool=(1, 1),
-                                                conv1_stride=(1, 1),
-                                                dnn1_size=128,
-                                                dnn2_size=128,
-                                                tf_variant=True),
-
-    ConfigType.HONK_CNN_TSTRIDE2.value: dict(dropout_prob=0.5,
-                                             n_feature_maps1=78,
-                                             n_feature_maps2=78,
-                                             conv1_size=(16, 8),
-                                             conv2_size=(9, 4),
-                                             conv1_pool=(1, 3),
-                                             conv1_stride=(2, 1),
-                                             conv2_stride=(1, 1),
-                                             conv2_pool=(1, 1),
-                                             dnn1_size=128,
-                                             dnn2_size=128),
-
-    ConfigType.HONK_CNN_TSTRIDE4.value: dict(dropout_prob=0.5,
-                                             n_feature_maps1=100,
-                                             n_feature_maps2=78,
-                                             conv1_size=(16, 8),
-                                             conv2_size=(5, 4),
-                                             conv1_pool=(1, 3),
-                                             conv1_stride=(4, 1),
-                                             conv2_stride=(1, 1),
-                                             conv2_pool=(1, 1),
-                                             dnn1_size=128,
-                                             dnn2_size=128),
-
-    ConfigType.HONK_CNN_TSTRIDE8.value: dict(dropout_prob=0.5,
-                                             n_feature_maps1=126,
-                                             n_feature_maps2=78,
-                                             conv1_size=(16, 8),
-                                             conv2_size=(5, 4),
-                                             conv1_pool=(1, 3),
-                                             conv1_stride=(8, 1),
-                                             conv2_stride=(1, 1),
-                                             conv2_pool=(1, 1),
-                                             dnn1_size=128,
-                                             dnn2_size=128),
-
-    ConfigType.HONK_CNN_TPOOL2.value: dict(dropout_prob=0.5,
-                                           n_feature_maps1=94,
-                                           n_feature_maps2=94,
-                                           conv1_size=(21, 8),
-                                           conv2_size=(6, 4),
-                                           conv1_pool=(2, 3),
-                                           conv1_stride=(1, 1),
-                                           conv2_stride=(1, 1),
-                                           conv2_pool=(1, 1),
-                                           dnn1_size=128,
-                                           dnn2_size=128),
-
-    ConfigType.HONK_CNN_TPOOL3.value: dict(dropout_prob=0.5,
-                                           n_feature_maps1=94,
-                                           n_feature_maps2=94,
-                                           conv1_size=(15, 8),
-                                           conv2_size=(6, 4),
-                                           conv1_pool=(3, 3),
-                                           conv1_stride=(1, 1),
-                                           conv2_stride=(1, 1),
-                                           conv2_pool=(1, 1),
-                                           dnn1_size=128,
-                                           dnn2_size=128),
-
-    ConfigType.HONK_CNN_ONE_FPOOL3.value: dict(dropout_prob=0.5,
-                                               n_feature_maps1=54,
-                                               conv1_size=(101, 8),
-                                               conv1_pool=(1, 3),
-                                               conv1_stride=(1, 1),
-                                               dnn1_size=128,
-                                               dnn2_size=128),
-
-    ConfigType.HONK_CNN_ONE_FSTRIDE4.value: dict(dropout_prob=0.5,
-                                                 n_feature_maps1=186,
-                                                 conv1_size=(101, 8),
-                                                 conv1_pool=(1, 1),
-                                                 conv1_stride=(1, 4),
-                                                 dnn1_size=128,
-                                                 dnn2_size=128),
-
-    ConfigType.HONK_CNN_ONE_FSTRIDE8.value: dict(dropout_prob=0.5,
-                                                 n_feature_maps1=336,
-                                                 conv1_size=(101, 8),
-                                                 conv1_pool=(1, 1),
-                                                 conv1_stride=(1, 8),
-                                                 dnn1_size=128,
-                                                 dnn2_size=128),
-
-    ConfigType.HONK_RES15.value: dict(use_dilation=True,
-                                      n_layers=13,
-                                      n_feature_maps=45),
-
+    ConfigType.HONK_CNN_TRAD_POOL2.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=64,
+        n_feature_maps2=64,
+        conv1_size=(20, 8),
+        conv2_size=(10, 4),
+        conv1_pool=(2, 2),
+        conv1_stride=(1, 1),
+        conv2_stride=(1, 1),
+        conv2_pool=(1, 1),
+        tf_variant=True,
+    ),
+    ConfigType.HONK_CNN_ONE_STRIDE1.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=186,
+        conv1_size=(101, 8),
+        conv1_pool=(1, 1),
+        conv1_stride=(1, 1),
+        dnn1_size=128,
+        dnn2_size=128,
+        tf_variant=True,
+    ),
+    ConfigType.HONK_CNN_TSTRIDE2.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=78,
+        n_feature_maps2=78,
+        conv1_size=(16, 8),
+        conv2_size=(9, 4),
+        conv1_pool=(1, 3),
+        conv1_stride=(2, 1),
+        conv2_stride=(1, 1),
+        conv2_pool=(1, 1),
+        dnn1_size=128,
+        dnn2_size=128,
+    ),
+    ConfigType.HONK_CNN_TSTRIDE4.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=100,
+        n_feature_maps2=78,
+        conv1_size=(16, 8),
+        conv2_size=(5, 4),
+        conv1_pool=(1, 3),
+        conv1_stride=(4, 1),
+        conv2_stride=(1, 1),
+        conv2_pool=(1, 1),
+        dnn1_size=128,
+        dnn2_size=128,
+    ),
+    ConfigType.HONK_CNN_TSTRIDE8.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=126,
+        n_feature_maps2=78,
+        conv1_size=(16, 8),
+        conv2_size=(5, 4),
+        conv1_pool=(1, 3),
+        conv1_stride=(8, 1),
+        conv2_stride=(1, 1),
+        conv2_pool=(1, 1),
+        dnn1_size=128,
+        dnn2_size=128,
+    ),
+    ConfigType.HONK_CNN_TPOOL2.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=94,
+        n_feature_maps2=94,
+        conv1_size=(21, 8),
+        conv2_size=(6, 4),
+        conv1_pool=(2, 3),
+        conv1_stride=(1, 1),
+        conv2_stride=(1, 1),
+        conv2_pool=(1, 1),
+        dnn1_size=128,
+        dnn2_size=128,
+    ),
+    ConfigType.HONK_CNN_TPOOL3.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=94,
+        n_feature_maps2=94,
+        conv1_size=(15, 8),
+        conv2_size=(6, 4),
+        conv1_pool=(3, 3),
+        conv1_stride=(1, 1),
+        conv2_stride=(1, 1),
+        conv2_pool=(1, 1),
+        dnn1_size=128,
+        dnn2_size=128,
+    ),
+    ConfigType.HONK_CNN_ONE_FPOOL3.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=54,
+        conv1_size=(101, 8),
+        conv1_pool=(1, 3),
+        conv1_stride=(1, 1),
+        dnn1_size=128,
+        dnn2_size=128,
+    ),
+    ConfigType.HONK_CNN_ONE_FSTRIDE4.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=186,
+        conv1_size=(101, 8),
+        conv1_pool=(1, 1),
+        conv1_stride=(1, 4),
+        dnn1_size=128,
+        dnn2_size=128,
+    ),
+    ConfigType.HONK_CNN_ONE_FSTRIDE8.value: dict(
+        dropout_prob=0.5,
+        n_feature_maps1=336,
+        conv1_size=(101, 8),
+        conv1_pool=(1, 1),
+        conv1_stride=(1, 8),
+        dnn1_size=128,
+        dnn2_size=128,
+    ),
+    ConfigType.HONK_RES15.value: dict(
+        use_dilation=True, n_layers=13, n_feature_maps=45
+    ),
     ConfigType.HONK_RES8.value: dict(
-                                     n_layers=6,
-                                     n_feature_maps=45,
-                                     res_pool=(4, 3),
-                                     use_dilation=False),
-
+        n_layers=6, n_feature_maps=45, res_pool=(4, 3), use_dilation=False
+    ),
     ConfigType.HONK_RES26.value: dict(
-                                      n_layers=24,
-                                      n_feature_maps=45,
-                                      res_pool=(2, 2),
-                                      use_dilation=False),
-
+        n_layers=24, n_feature_maps=45, res_pool=(2, 2), use_dilation=False
+    ),
     ConfigType.HONK_RES15_NARROW.value: dict(
-                                             use_dilation=True,
-                                             n_layers=13,
-                                             n_feature_maps=19),
-
+        use_dilation=True, n_layers=13, n_feature_maps=19
+    ),
     ConfigType.HONK_RES8_NARROW.value: dict(
-                                            n_layers=6,
-                                            n_feature_maps=19,
-                                            res_pool=(4, 3),
-                                            use_dilation=False),
-
-    ConfigType.HONK_RES26_NARROW.value: dict(n_layers=24,
-                                             n_feature_maps=19,
-                                             res_pool=(2, 2),
-                                             use_dilation=False)
+        n_layers=6, n_feature_maps=19, res_pool=(4, 3), use_dilation=False
+    ),
+    ConfigType.HONK_RES26_NARROW.value: dict(
+        n_layers=24, n_feature_maps=19, res_pool=(2, 2), use_dilation=False
+    ),
 }
