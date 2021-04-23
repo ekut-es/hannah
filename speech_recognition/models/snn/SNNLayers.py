@@ -202,7 +202,6 @@ class Spiking1DLayer(torch.nn.Module):
         neuron_type="eLIF",
         alpha=0.75,
         beta=0.75,
-
     ):
 
         super(Spiking1DLayer, self).__init__()
@@ -225,18 +224,15 @@ class Spiking1DLayer(torch.nn.Module):
             self.beta = torch.nn.Parameter(torch.empty(1), requires_grad=True)
             self.b = torch.nn.Parameter(torch.empty(out_channels), requires_grad=True)
         elif neuron_type in ["eLIF", "LIF"]:
-            self.alpha = torch.nn.Parameter(torch.ones(1), requires_grad=False) * alpha
-            self.beta = torch.nn.Parameter(torch.ones(1), requires_grad=False) * beta
-            self.Vth = torch.nn.Parameter(torch.ones(out_channels), requires_grad=False)
+            self.alpha = torch.tensor(alpha)
+            self.beta = torch.tensor(beta)
+            self.Vth = torch.ones(out_channels)
         elif neuron_type == "eALIF":
-            self.alpha = torch.nn.Parameter(torch.ones(1),
-                                            requires_grad=False) * alpha
-            self.beta = torch.nn.Parameter(torch.ones(1),
-                                           requires_grad=False) * beta
-            self.gamma = torch.nn.Parameter(torch.ones(1),
-                                           requires_grad=False)
-            self.Vth = torch.nn.Parameter(torch.ones(out_channels),
-                                          requires_grad=False)
+            self.alpha = torch.tensor(alpha)
+            self.beta = torch.tensor(beta)
+            self.gamma = torch.nn.Parameter(torch.ones(1), requires_grad=False)
+            self.Vth = torch.ones(out_channels)
+
         self.reset_parameters()
         self.clamp()
 
@@ -245,6 +241,16 @@ class Spiking1DLayer(torch.nn.Module):
         self.training = True
 
     def forward(self, x):
+
+        if self.neuron_type in ["eLIF", "LIF"]:
+            self.alpha = self.alpha.to(device=x.device)
+            self.beta = self.beta.to(device=x.device)
+            self.Vth = self.Vth.to(device=x.device)
+        elif self.neuron_type == "eALIF":
+            self.alpha = self.alpha.to(device=x.device)
+            self.beta = self.beta.to(device=x.device)
+            self.gamma = self.gamma.to(device=x.device)
+            self.Vth = self.Vth.to(device=x.device)
 
         batch_size = x.shape[0]
         nb_steps = x.shape[2]
@@ -283,14 +289,14 @@ class Spiking1DLayer(torch.nn.Module):
 
             # save spk_rec for plotting
             #        self.spk_rec_hist = spk_rec.detach().cpu().numpy()
-        elif self.neuron_type in  ["eLIF", "LIF"]:
+        elif self.neuron_type in ["eLIF", "LIF"]:
             for t in range(nb_steps):
                 rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
                 if self.neuron_type == "LIF":
-                    input_ = x[:, :, t]
-                else:
                     input_ = x[:, :, t] * self.alpha
+                else:
+                    input_ = x[:, :, t]
 
                 mem = (mem - rst) * self.beta + input_
 
@@ -311,15 +317,15 @@ class Spiking1DLayer(torch.nn.Module):
                 rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
                 if self.neuron_type == "LIF":
-                    input_ = x[:, :, t]
-                else:
                     input_ = x[:, :, t] * self.alpha
+                else:
+                    input_ = x[:, :, t]
 
                 mem = (mem - rst) * self.beta + input_
 
                 spk = self.spike_fn(mem - Athpot)
 
-                Athpot = self.vth + self.gamma * thadapt #gamma
+                Athpot = self.vth + self.gamma * thadapt
 
                 spk_rec[:, :, t] = spk
         else:
