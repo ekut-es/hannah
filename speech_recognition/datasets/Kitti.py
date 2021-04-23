@@ -73,7 +73,3 @@ class Kitti(Dataset):
         )
 
         return res_datasets
-
-    @classmethod
-    def download(cls, config):
-        return

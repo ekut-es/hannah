@@ -4,6 +4,8 @@ import json
 import copy
 import platform
 
+from abc import abstractmethod
+
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.classification.precision_recall import Precision
 from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
@@ -34,7 +36,7 @@ from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from omegaconf import DictConfig
 
 
-class StreamClassifierModule(LightningModule):
+class ClassifierModule(LightningModule):
     def __init__(
         self,
         dataset: DictConfig,
@@ -58,14 +60,6 @@ class StreamClassifierModule(LightningModule):
         self.dev_set = None
         self.logged_samples = 0
 
-    def prepare_data(self):
-        # get all the necessary data stuff
-        if not self.train_set or not self.test_set or not self.dev_set:
-            get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
-            NoiseDataset.download_noise(self.hparams.dataset)
-            DatasetSplit.split_data(self.hparams.dataset)
-            Downsample.downsample(self.hparams.dataset)
-
     def setup(self, stage):
         # TODO stage variable is not used!
         self.msglogger.info("Setting up model")
@@ -82,23 +76,11 @@ class StreamClassifierModule(LightningModule):
             self.hparams.dataset.cls
         ).splits(self.hparams.dataset)
 
-        # Create example input
-        device = self.device
-        self.example_input_array = torch.zeros(
-            1, self.train_set.channels, self.train_set.input_length
-        )
-        dummy_input = self.example_input_array.to(device)
-        if platform.machine() == 'ppc64le':
-            dummy_input = dummy_input.cuda()
-
         # Instantiate features
         self.features = instantiate(self.hparams.features)
-        self.features.to(device)
-        if platform.machine() == 'ppc64le':
+        self.features.to(self.device)
+        if platform.machine() == "ppc64le":
             self.features.cuda()
-
-        features = self._extract_features(dummy_input)
-        self.example_feature_array = features.to(self.device)
 
         # Instantiate normalizer
         if self.hparams.normalizer is not None:
@@ -108,21 +90,6 @@ class StreamClassifierModule(LightningModule):
 
         # Instantiate Model
         self.num_classes = len(self.train_set.label_names)
-        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            print(self.hparams.model._target_)
-            self.model = instantiate(
-                self.hparams.model,
-                input_shape=self.example_feature_array.shape,
-                labels=self.num_classes,
-            )
-        else:
-            self.hparams.model.width = self.example_feature_array.size(2)
-            self.hparams.model.height = self.example_feature_array.size(1)
-            self.hparams.model.n_labels = self.num_classes
-            self.model = get_model(self.hparams.model)
-
-        # loss function
-        self.criterion = get_loss_function(self.model, self.hparams)
 
         # Metrics
         self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
@@ -162,6 +129,24 @@ class StreamClassifierModule(LightningModule):
             self.augmentation = torch.nn.Sequential(*augmentation_passes)
         else:
             self.augmentation = torch.nn.Identity()
+
+    @abstractmethod
+    def prepare_data(self):
+        # get all the necessary data stuff
+        pass
+
+    # TRAINING CODE
+    def training_step(self, batch, batch_idx):
+        x, x_len, y, y_len = batch
+
+        output = self(x)
+        y = y.view(-1)
+        loss = self.criterion(output, y)
+
+        # METRICS
+        self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
+
+        return loss
 
     @property
     def total_training_steps(self) -> int:
@@ -231,19 +216,6 @@ class StreamClassifierModule(LightningModule):
 
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
-
-    # TRAINING CODE
-    def training_step(self, batch, batch_idx):
-        x, x_len, y, y_len = batch
-
-        output = self(x)
-        y = y.view(-1)
-        loss = self.criterion(output, y)
-
-        # METRICS
-        self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
-
-        return loss
 
     def train_dataloader(self):
         train_batch_size = self.hparams["batch_size"]
@@ -486,14 +458,87 @@ class StreamClassifierModule(LightningModule):
         return loggers
 
 
+class StreamClassifierModule(ClassifierModule):
+    def __init__(
+        self,
+        dataset: DictConfig,
+        model: DictConfig,
+        optimizer: DictConfig,
+        features: DictConfig,
+        num_workers: int = 0,
+        batch_size: int = 128,
+        time_masking: int = 0,
+        frequency_masking: int = 0,
+        scheduler: Optional[DictConfig] = None,
+        normalizer: Optional[DictConfig] = None,
+    ):
+        super().__init__(dataset, model, optimizer, features)
+
+    def setup(self, stage):
+        super().setup(stage)
+
+        # Create example input
+        device = self.device
+        self.example_input_array = torch.zeros(
+            1, self.train_set.channels, self.train_set.input_length
+        )
+        dummy_input = self.example_input_array.to(device)
+        if platform.machine() == "ppc64le":
+            dummy_input = dummy_input.cuda()
+
+        features = self._extract_features(dummy_input)
+        self.example_feature_array = features.to(self.device)
+
+        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+            print(self.hparams.model._target_)
+            self.model = instantiate(
+                self.hparams.model,
+                input_shape=self.example_feature_array.shape,
+                labels=self.num_classes,
+            )
+        else:
+            self.hparams.model.width = self.example_feature_array.size(2)
+            self.hparams.model.height = self.example_feature_array.size(1)
+            self.hparams.model.n_labels = self.num_classes
+            self.model = get_model(self.hparams.model)
+
+        # loss function
+        self.criterion = get_loss_function(self.model, self.hparams)
+
+    def prepare_data(self):
+        if not self.train_set or not self.test_set or not self.dev_set:
+            get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
+            NoiseDataset.download_noise(self.hparams.dataset)
+            DatasetSplit.split_data(self.hparams.dataset)
+            Downsample.downsample(self.hparams.dataset)
+
+
+class ObjectDetectionModule(ClassifierModule):
+    def __init__(
+        self,
+        dataset: DictConfig,
+        model: DictConfig,
+        optimizer: DictConfig,
+        features: DictConfig,
+        num_workers: int = 0,
+        batch_size: int = 128,
+        time_masking: int = 0,
+        frequency_masking: int = 0,
+        scheduler: Optional[DictConfig] = None,
+        normalizer: Optional[DictConfig] = None,
+    ):
+        super().__init__(dataset, model, optimizer, features)
+
+    def setup(self, stage):
+        super().setup(stage)
+
+    def prepare_data(self):
+        pass
+
+
 class SpeechClassifierModule(LightningModule):
     def __init__(self, *args, **kwargs):
         logging.critical(
             "SpeechClassifierModule has been renamed to StreamClassifierModule"
         )
         super(SpeechClassifierModule, self).__init__(*args, **kwargs)
-
-
-class KittiModule(KittiDataModule):
-    def __init__(self):
-        super(self)
