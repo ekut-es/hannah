@@ -199,9 +199,10 @@ class Spiking1DLayer(torch.nn.Module):
         stride: _size_1_t = 1,
         flatten_output=False,
         convolution_layer=None,
-        neuron_type="eLIF",
+        neuron_type="eALIF",
         alpha=0.75,
-        beta=0.75,
+        beta=0.65,
+        gamma=0.75,
     ):
 
         super(Spiking1DLayer, self).__init__()
@@ -227,10 +228,10 @@ class Spiking1DLayer(torch.nn.Module):
             self.alpha = torch.tensor(alpha)
             self.beta = torch.tensor(beta)
             self.Vth = torch.ones(out_channels)
-        elif neuron_type == "eALIF":
+        elif neuron_type in ["eALIF", "ALIF"]:
             self.alpha = torch.tensor(alpha)
             self.beta = torch.tensor(beta)
-            self.gamma = torch.nn.Parameter(torch.ones(1), requires_grad=False)
+            self.gamma = torch.tensor(gamma)
             self.Vth = torch.ones(out_channels)
 
         self.reset_parameters()
@@ -303,7 +304,7 @@ class Spiking1DLayer(torch.nn.Module):
                 spk = self.spike_fn(mem - self.Vth)
 
                 spk_rec[:, :, t] = spk
-        elif self.neuron_type == "eALIF":
+        elif self.neuron_type in ["eALIF", "ALIF"]:
 
             Athpot = torch.ones(
                 (batch_size, self.out_channels), dtype=x.dtype, device=x.device
@@ -316,16 +317,18 @@ class Spiking1DLayer(torch.nn.Module):
             for t in range(nb_steps):
                 rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
-                if self.neuron_type == "LIF":
+                if self.neuron_type == "ALIF":
                     input_ = x[:, :, t] * self.alpha
                 else:
                     input_ = x[:, :, t]
 
                 mem = (mem - rst) * self.beta + input_
 
-                spk = self.spike_fn(mem - Athpot)
+                thadapt = self.gamma * thadapt + spk_rec[:, :, t - 1]
 
-                Athpot = self.vth + self.gamma * thadapt
+                Athpot = self.Vth + self.gamma * thadapt
+
+                spk = self.spike_fn(mem - Athpot)
 
                 spk_rec[:, :, t] = spk
         else:
