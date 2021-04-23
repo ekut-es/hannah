@@ -685,7 +685,7 @@ class NetworkFactory:
         return output_shape, major_block
 
     def input(self, in_channels: int, config: MajorBlockConfig):
-        """ Create a neural network block with input parallelism
+        """Create a neural network block with input parallelism
 
         If parallel is set to [True, False, True, False]
                         |---> parallel: True  ---> |
@@ -701,7 +701,7 @@ class NetworkFactory:
         return out_channels, block
 
     def full(self, in_channels: int, config: MajorBlockConfig):
-        """ Create a neural network block with full parallelism
+        """Create a neural network block with full parallelism
 
         If parallel is set to [True, False, True, False]
                   |---> parallel: True  ---------------------------------- -|
@@ -747,7 +747,13 @@ class NetworkFactory:
             layers.append(nn.Linear(input_shape[1], config.outputs, bias=False))
         else:
             layers.append(
-                qat.Linear(input_shape[1], config.outputs, qconfig=qconfig, bias=False, out_quant=config.out_quant)
+                qat.Linear(
+                    input_shape[1],
+                    config.outputs,
+                    qconfig=qconfig,
+                    bias=False,
+                    out_quant=config.out_quant,
+                )
             )
         if norm:
             layers.append(self.norm(norm))
