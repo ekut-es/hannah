@@ -208,11 +208,18 @@ class TCResidualBlock(nn.Module):
         if self.stride > 1:
             x = self.downsample(x)
         if self.conv_type != "SNN":
-            res = self.act(y + x)
-        elif self.conv_type == "SNN":
             if self.comb_type == "ADD":
-                res = y + x
-            elif self.comb_type == "AND":
+                res = self.act(y + x)
+            elif self.comb_type == "SUB":
+                res = self.act(y - x)
+            elif self.comb_type == "MUL":
+                res = self.act(y * x)
+            elif self.comb_type == "DIV":
+                res = self.act(y / x)
+            else:
+                res = self.act(y + x)
+        elif self.conv_type == "SNN":
+            if self.comb_type == "AND":
                 res = y * x
             elif self.comb_type == "OR":
                 res = (y + x) - (y * x)
@@ -229,6 +236,8 @@ class TCResidualBlock(nn.Module):
                 left = (notA * B).to(device=device)
                 right = (A * notB).to(device=device)
                 res = ((left + right) - (left * right)).to(device=device)
+            else:
+                res = y + x
 
         return res
 
