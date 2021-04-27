@@ -6,10 +6,15 @@ import logging
 import os
 import sys
 import platform
+import nvsmi
+import time
+import random
 from pathlib import Path
 from typing import Any, Callable
 
 from git import Repo, InvalidGitRepositoryError
+
+import hydra
 
 from torchvision.datasets.utils import (
     list_files,
@@ -209,3 +214,22 @@ def extract_from_download_cache(
             target_folder,
             remove_finished=clear_download,
         )
+
+
+def auto_select_gpus(gpus=1):
+    num_gpus = gpus
+
+    gpus = list(nvsmi.get_gpus())
+
+    gpus = list(
+        sorted(gpus, key=lambda gpu: (gpu.mem_free, 1.0 - gpu.gpu_util), reverse=True)
+    )
+
+    job_num = hydra.core.hydra_config.HydraConfig.get().job.get("num", 0)
+
+    result = []
+    for i in range(num_gpus):
+        num = (i + job_num) % len(gpus)
+        result.append(int(gpus[num].id))
+
+    return result

@@ -19,7 +19,7 @@ defaults:
 experiment_id: test
 output_dir: trained_models
 auto_lr: false
-seed: 1234
+seed: [1234]
 
 hydra:
     run:

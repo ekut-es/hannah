@@ -62,7 +62,7 @@ class StreamClassifierModule(LightningModule):
     def prepare_data(self):
         # get all the necessary data stuff
         if not self.train_set or not self.test_set or not self.dev_set:
-            get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
+            get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
             NoiseDataset.download_noise(self.hparams.dataset)
             DatasetSplit.split_data(self.hparams.dataset)
             Downsample.downsample(self.hparams.dataset)
@@ -89,13 +89,13 @@ class StreamClassifierModule(LightningModule):
             1, self.train_set.channels, self.train_set.input_length
         )
         dummy_input = self.example_input_array.to(device)
-        if platform.machine() == 'ppc64le':
+        if platform.machine() == "ppc64le":
             dummy_input = dummy_input.cuda()
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
-        if platform.machine() == 'ppc64le':
+        if platform.machine() == "ppc64le":
             self.features.cuda()
 
         features = self._extract_features(dummy_input)
