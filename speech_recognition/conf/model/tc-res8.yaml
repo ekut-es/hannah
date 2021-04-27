@@ -14,6 +14,10 @@ block1_combination_type: ADD
 block1_batchnorm: BN
 block1_bntt_variant: v1
 block1_conv_type: NN
+block1_alpha: 0.75
+block1_beta: 0.65
+block1_gamma: 0.75
+block1_neuron_type: eLIF
 block2_conv_size: 9
 block2_output_channels: 32
 block2_stride: 2
@@ -23,6 +27,10 @@ block2_combination_type: ADD
 block2_batchnorm: BN
 block2_bntt_variant: v1
 block2_conv_type: NN
+block2_alpha: 0.75
+block2_beta: 0.65
+block2_gamma: 0.75
+block2_neuron_type: eLIF
 block3_conv_size: 9
 block3_output_channels: 48
 block3_stride: 2
@@ -32,6 +40,10 @@ block3_combination_type: ADD
 block3_batchnorm: BN
 block3_bntt_variant: v1
 block3_conv_type: NN
+block3_alpha: 0.75
+block3_beta: 0.65
+block3_gamma: 0.75
+block3_neuron_type: eLIF
 bottleneck:
 - 0
 - 0
@@ -46,6 +58,10 @@ conv1_batchnorm: BN
 conv1_bntt_variant: v1
 conv1_conv_type: NN
 conv1_flattendoutput: False
+conv1_alpha: 0.75
+conv1_beta: 0.65
+conv1_gamma: 0.75
+conv1_neuron_type: eLIF
 dropout_prob: 0.5
 fully_convolutional: false
 inputlayer: true
