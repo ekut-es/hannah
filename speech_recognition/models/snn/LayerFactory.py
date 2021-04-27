@@ -36,6 +36,10 @@ def build1DConvolution(
     batchnorm=None,
     bntt_variant="v1",
     activation=None,
+    alpha=0.75,
+    beta=0.75,
+    gamma=0.75,
+    neuron_type="eLIF",
 ):
     conv = nn.Conv1d(
         in_channels=in_channels,
@@ -67,6 +71,10 @@ def build1DConvolution(
                     stride=stride,
                     flatten_output=flatten_output,
                     convolution_layer=conv,
+                    alpha=alpha,
+                    beta=beta,
+                    gamma=gamma,
+                    neuron_type=neuron_type,
                 ),
             )
         elif type == "NN":
@@ -87,6 +95,10 @@ def build1DConvolution(
                     stride=stride,
                     flatten_output=flatten_output,
                     convolution_layer=conv,
+                    alpha=alpha,
+                    beta=beta,
+                    gamma=gamma,
+                    neuron_type=neuron_type,
                 ),
             )
         elif type == "NN":

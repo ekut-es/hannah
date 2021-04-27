@@ -199,7 +199,7 @@ class Spiking1DLayer(torch.nn.Module):
         stride: _size_1_t = 1,
         flatten_output=False,
         convolution_layer=None,
-        neuron_type="eALIF",
+        neuron_type="eLIF",
         alpha=0.75,
         beta=0.65,
         gamma=0.75,

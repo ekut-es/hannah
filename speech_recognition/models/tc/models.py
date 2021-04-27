@@ -57,6 +57,10 @@ class TCResidualBlock(nn.Module):
         batchnorm="BN",
         bntt_variant="v1",
         spike_fn=None,
+        alpha=0.75,
+        beta=0.75,
+        gamma=0.75,
+        neuron_type="eLIF",
     ):
         super().__init__()
         self.stride = stride
@@ -79,6 +83,10 @@ class TCResidualBlock(nn.Module):
                     batchnorm=batchnorm,
                     activation=act,
                     spike_fn=spike_fn,
+                    alpha=alpha,
+                    beta=beta,
+                    gamma=gamma,
+                    neuron_type=neuron_type,
                 )
             )
 
@@ -162,6 +170,10 @@ class TCResidualBlock(nn.Module):
                     spike_fn=spike_fn,
                     activation=act,
                     timesteps=timesteps,
+                    alpha=alpha,
+                    beta=beta,
+                    gamma=gamma,
+                    neuron_type=neuron_type,
                 )
             )
         else:
@@ -181,6 +193,10 @@ class TCResidualBlock(nn.Module):
                     timesteps=timesteps,
                     activation=act,
                     spike_fn=spike_fn,
+                    alpha=alpha,
+                    beta=beta,
+                    gamma=gamma,
+                    neuron_type=neuron_type,
                 ),
                 build1DConvolution(
                     self.conv_type,
@@ -197,6 +213,10 @@ class TCResidualBlock(nn.Module):
                     timesteps=timesteps,
                     activation=act,
                     spike_fn=spike_fn,
+                    alpha=alpha,
+                    beta=beta,
+                    gamma=gamma,
+                    neuron_type=neuron_type,
                 ),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
@@ -214,8 +234,6 @@ class TCResidualBlock(nn.Module):
                 res = self.act(y - x)
             elif self.comb_type == "MUL":
                 res = self.act(y * x)
-            elif self.comb_type == "DIV":
-                res = self.act(y / x)
             else:
                 res = self.act(y + x)
         elif self.conv_type == "SNN":
@@ -284,6 +302,10 @@ class TCResNetModel(SerializableModule):
             timesteps_name = "conv{}_timesteps".format(count)
             conv_type_name = "conv{}_conv_type".format(count)
             flattenoutput_name = "conv{}_flattenoutput".format(count)
+            alpha_name = "conv{}_alpha".format(count)
+            beta_name = "conv{}_beta".format(count)
+            gamma_name = "conv{}_gamma".format(count)
+            neurontype_name = "conv{}_neuron_type".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -293,6 +315,11 @@ class TCResNetModel(SerializableModule):
             bntt_variant = config.get(bntt_variant_name, "v1")
             conv_type = config.get(conv_type_name, "NN")
             flattenoutput = config.get(flattenoutput_name, False)
+            alpha = config.get(alpha_name, 1)
+            beta = config.get(beta_name, 1)
+            gamma = config.get(gamma_name, 1)
+            neuron_type = config.get(neurontype_name, "eLIF")
+
             if general_bn is not None and batchnorm is not None:
                 batchnorm = general_bn
             if general_conv_type is not None:
@@ -343,6 +370,10 @@ class TCResNetModel(SerializableModule):
                     batchnorm=batchnorm,
                     bntt_variant=bntt_variant,
                     flatten_output=flattenoutput,
+                    alpha=alpha,
+                    beta=beta,
+                    gamma=gamma,
+                    neuron_type=neuron_type,
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
@@ -361,6 +392,10 @@ class TCResNetModel(SerializableModule):
             batchnorm_type = "block{}_batchnorm".format(count)
             bntt_variant_name = "block{}_bntt_variant".format(count)
             conv_type_name = "block{}_conv_type".format(count)
+            alpha_name = "block{}_alpha".format(count)
+            beta_name = "block{}_beta".format(count)
+            gamma_name = "block{}_gamma".format(count)
+            neurontype_name = "block{}_neuron_type".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -371,6 +406,11 @@ class TCResNetModel(SerializableModule):
             batchnorm = config.get(batchnorm_type, "BN")
             bntt_variant = config.get(bntt_variant_name, "v1")
             conv_type = config.get(conv_type_name, "NN")
+            alpha = config.get(alpha_name, 1)
+            beta = config.get(beta_name, 1)
+            gamma = config.get(gamma_name, 1)
+            neuron_type = config.get(neurontype_name, "eLIF")
+
             if general_bn is not None and batchnorm is not None:
                 batchnorm = general_bn
             if general_conv_type is not None:
@@ -396,6 +436,10 @@ class TCResNetModel(SerializableModule):
                 batchnorm=batchnorm,
                 bntt_variant=bntt_variant,
                 spike_fn=self.spike_fn,
+                alpha=alpha,
+                beta=beta,
+                gamma=gamma,
+                neuron_type=neuron_type,
             )
             self.layers.append(block)
 
