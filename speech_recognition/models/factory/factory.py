@@ -91,7 +91,7 @@ class MajorBlockConfig:
     target: str = "residual"
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
-    stride: Any = 3  # Union[None, int, Tuple[int], Tuple[int, int]]
+    stride: Optional[int] = None  # Union[None, int, Tuple[int], Tuple[int, int]]
 
 
 @dataclass
@@ -363,7 +363,7 @@ class NetworkFactory:
 
         qconfig = self.default_qconfig
 
-        print(input_shape, kernel_size, stride, padding, dilation)
+        # print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
             input_shape[0],
             out_channels,
@@ -400,14 +400,6 @@ class NetworkFactory:
             act_module = DummyActivation()
             if act:
                 act_module = self.act(act)
-
-            # try:
-            #     act_target = act.target if act else 'relu'
-            #     nn.init.kaiming_uniform(
-            #         conv_module.weight, mode="fan_in", nonlinearity=act_target
-            #     )
-            # except ValueError as e:
-            #     logging.critical("Error during kaiming initialization: %s", e)
 
             layers.append(act_module)
             layers = nn.Sequential(*layers)
@@ -473,11 +465,6 @@ class NetworkFactory:
                     qconfig=qconfig,
                     out_quant=out_quant,
                 )
-
-            # try:
-            #     nn.init.kaiming_uniform(layers.weights, mode="fan_in", act="relu")
-            # except ValueError as e:
-            #     logging.critical("Error during kaiming initialization: %s", e)
 
         return output_shape, layers
 
@@ -553,7 +540,9 @@ class NetworkFactory:
                 self.minor(block_input_shape, block_config, major_stride)
             )
             block_input_shape = result_chain[-1][0]
-            major_stride = None
+            if major_stride is not None:
+                major_stride = 1
+
         return result_chain
 
     def _build_reduction(self, reduction, input_shape, *input_chains):
@@ -576,7 +565,7 @@ class NetworkFactory:
                     output_channels = target_output_shape[1]
                     groups = (
                         1
-                    )  # For now do not use grouped convs for resamplingmath.gcd(output_channels, groups)
+                    )  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
 
                 stride = tuple(
                     (
