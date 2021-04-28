@@ -306,6 +306,9 @@ class PAMAP2_Dataset(AbstractDataset):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
         downloadfolder_tmp = config["download_folder"]
+        target_folder = os.path.join(data_folder, "pamap2")
+        if os.path.isdir(target_folder):
+            return
 
         if len(downloadfolder_tmp) == 0:
             download_folder = os.path.join(data_folder, "downloads")
@@ -320,8 +323,6 @@ class PAMAP2_Dataset(AbstractDataset):
             os.makedirs(data_folder)
 
         variants = config["variants"]
-
-        target_folder = os.path.join(data_folder, "pamap2")
 
         # download speech_commands dataset
         filename = "PAMAP2_Dataset.zip"

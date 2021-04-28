@@ -125,6 +125,10 @@ class AtrialFibrillationDataset(PhysioDataset):
         clear_download = config["clear_download"]
         downloadfolder_tmp = config["download_folder"]
 
+        target_folder = os.path.join(data_folder, "atrial_fibrillation")
+        if os.path.isdir(target_folder):
+            return
+
         if len(downloadfolder_tmp) == 0:
             download_folder = os.path.join(data_folder, "downloads")
 
@@ -138,8 +142,6 @@ class AtrialFibrillationDataset(PhysioDataset):
             os.makedirs(data_folder)
 
         variants = config["variants"]
-
-        target_folder = os.path.join(data_folder, "atrial_fibrillation")
 
         # download atrial fibrillation dataset
         filename = "mit-bih-atrial-fibrillation-database-1.0.0.zip"
