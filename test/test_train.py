@@ -66,6 +66,7 @@ def test_backend(model, backend):
         ("tc-res8", "vad", "vad_balanced"),
         ("tc-res8", "kws", ""),
         ("tc-res8", "atrial_fibrillation", ""),
+        ("tc-res8", "pamap2", ""), 
     ],
 )
 def test_datasets(model, dataset, split):
