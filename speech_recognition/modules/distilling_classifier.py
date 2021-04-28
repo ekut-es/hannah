@@ -37,6 +37,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         alpha: float = 0.5,
         noise_variance: float = 0.1,
         correct_prob: float = 0.9,
+        export_onnx: bool = True,
     ):
         super().__init__(
             dataset=dataset,
@@ -49,6 +50,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             normalizer=normalizer,
             time_masking=time_masking,
             frequency_masking=frequency_masking,
+            export_onnx=export_onnx,
         )
         self.model = model
         self.save_hyperparameters()
