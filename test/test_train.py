@@ -78,5 +78,7 @@ def test_datasets(model, dataset, split):
         return
 
     command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.data_folder={data_folder} dataset.data_split={split}"
+    if dataset == "pamap2":
+        command_line += " features=raw"
 
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
