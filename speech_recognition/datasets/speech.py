@@ -19,6 +19,10 @@ from chainmap import ChainMap
 from .base import AbstractDataset, DatasetType
 from ..utils import list_all_files, extract_from_download_cache
 
+from .NoiseDataset import NoiseDataset
+from .DatasetSplit import DatasetSplit
+from .Downsample import Downsample
+
 msglogger = logging.getLogger()
 
 
@@ -361,12 +365,16 @@ class SpeechCommandsDataset(SpeechDataset):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
         downloadfolder_tmp = config["download_folder"]
+        variants = config["variants"]
+
+        target_folder = os.path.join(data_folder, "speech_commands_v0.02")
+        if "v1" in variants:
+            target_folder = os.path.join(data_folder, "speech_commands_v0.01")
+        if os.path.isdir(target_folder):
+            return
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            downloadfolder_tmp = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
@@ -376,12 +384,6 @@ class SpeechCommandsDataset(SpeechDataset):
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
-
-        variants = config["variants"]
-
-        target_folder = os.path.join(data_folder, "speech_commands_v0.02")
-        if "v1" in variants:
-            target_folder = os.path.join(data_folder, "speech_commands_v0.01")
 
         # download speech_commands dataset
         filename = "speech_commands_v0.02.tar.gz"
@@ -478,11 +480,14 @@ class SpeechHotwordDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
         variants = config["variants"]
 
+        snips_target = os.path.join(
+            data_folder, "hey_snips_research_6k_en_train_eval_clean_ter"
+        )
+        if os.path.isdir(snips_target):
+            return
+
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
@@ -493,22 +498,18 @@ class SpeechHotwordDataset(SpeechDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        snips_target = os.path.join(
-            data_folder, "hey_snips_research_6k_en_train_eval_clean_ter"
-        )
         snips_filename = "hey_snips_kws_4.0.tar.gz"
         url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1"
 
-        if "snips" in variants:
-            extract_from_download_cache(
-                snips_filename,
-                url,
-                cached_files,
-                downloadfolder_tmp,
-                data_folder,
-                snips_target,
-                clear_download=clear_download,
-            )
+        extract_from_download_cache(
+            snips_filename,
+            url,
+            cached_files,
+            downloadfolder_tmp,
+            data_folder,
+            snips_target,
+            clear_download=clear_download,
+        )
 
 
 class VadDataset(SpeechDataset):
@@ -516,6 +517,13 @@ class VadDataset(SpeechDataset):
         super().__init__(data, set_type, config)
 
         self.label_names = {0: "noise", 1: "speech"}
+
+    @classmethod
+    def prepare(cls, config):
+        cls.download(config)
+        NoiseDataset.download_noise(config)
+        DatasetSplit.split_data(config)
+        Downsample.downsample(config)
 
     @classmethod
     def splits(cls, config):
@@ -578,16 +586,15 @@ class VadDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
             cached_files = list()
         else:
             cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
+
+        data_folder = config["data_folder"]
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
@@ -780,10 +787,7 @@ class KeyWordDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)

@@ -21,9 +21,6 @@ import torch.utils.data as data
 from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
 from hydra.utils import instantiate, get_class
 
-from ..datasets.NoiseDataset import NoiseDataset
-from ..datasets.DatasetSplit import DatasetSplit
-from ..datasets.Downsample import Downsample
 from ..datasets import AsynchronousLoader, SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
@@ -60,9 +57,6 @@ class StreamClassifierModule(LightningModule):
         # get all the necessary data stuff
         if not self.train_set or not self.test_set or not self.dev_set:
             get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
-            NoiseDataset.download_noise(self.hparams.dataset)
-            DatasetSplit.split_data(self.hparams.dataset)
-            Downsample.downsample(self.hparams.dataset)
 
     def setup(self, stage):
         # TODO stage variable is not used!
@@ -82,10 +76,9 @@ class StreamClassifierModule(LightningModule):
 
         # Create example input
         device = self.device
-        self.example_input_array = torch.zeros(
-            1, self.train_set.channels, self.train_set.input_length
-        )
+        self.example_input_array = torch.zeros(1, *self.train_set.size())
         dummy_input = self.example_input_array.to(device)
+        logging.info("Example input array shape: %s", str(dummy_input.shape))
         if platform.machine() == "ppc64le":
             dummy_input = dummy_input.cuda()
 
@@ -105,7 +98,7 @@ class StreamClassifierModule(LightningModule):
             self.normalizer = torch.nn.Identity()
 
         # Instantiate Model
-        self.num_classes = len(self.train_set.label_names)
+        self.num_classes = len(self.train_set.class_names)
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
             self.model = instantiate(
@@ -376,9 +369,12 @@ class StreamClassifierModule(LightningModule):
 
     def forward(self, x):
         x = self._extract_features(x)
+
         if self.training:
             x = self.augmentation(x)
+
         x = self.normalizer(x)
+
         x = self.model(x)
         return x
 

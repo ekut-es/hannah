@@ -10,7 +10,7 @@ import librosa
 import numpy as np
 
 import pyaudio
-    
+
 
 from .process_audio import preprocess_audio, calculate_feature_shape
 
@@ -23,6 +23,7 @@ def set_speech_format(f):
 
 class AudioSnippet(object):
     _dct_filters = librosa.filters.dct(40, 40)
+
     def __init__(self, byte_data=b"", dtype=np.int16):
         self.byte_data = byte_data
         self.dtype = dtype
@@ -39,7 +40,9 @@ class AudioSnippet(object):
         phoneme_chunks2 = snippet.chunk_phonemes(factor=0.8, group_threshold=500)
         joined_chunks = []
         for i in range(len(phoneme_chunks) - 1):
-            joined_chunks.append(AudioSnippet.join([phoneme_chunks[i], phoneme_chunks[i + 1]]))
+            joined_chunks.append(
+                AudioSnippet.join([phoneme_chunks[i], phoneme_chunks[i + 1]])
+            )
         if len(joined_chunks) == 1:
             joined_chunks = []
         if len(phoneme_chunks) == 1:
@@ -60,9 +63,20 @@ class AudioSnippet(object):
 
     def chunk_phonemes(self, factor=1.0, group_threshold=1000):
         audio_data, _ = librosa.effects.trim(self.amplitudes, top_db=16)
-        data = librosa.feature.melspectrogram(audio_data, sr=16000, n_mels=40, hop_length=160, n_fft=480, fmin=20, fmax=4000)
+        data = librosa.feature.melspectrogram(
+            audio_data,
+            sr=16000,
+            n_mels=40,
+            hop_length=160,
+            n_fft=480,
+            fmin=20,
+            fmax=4000,
+        )
         data[data > 0] = np.log(data[data > 0])
-        data = [np.matmul(AudioSnippet._dct_filters, x) for x in np.split(data, data.shape[1], axis=1)]
+        data = [
+            np.matmul(AudioSnippet._dct_filters, x)
+            for x in np.split(data, data.shape[1], axis=1)
+        ]
         data = np.array(data, order="F").squeeze(2).astype(np.float32)
         data = data[:, 1:25]
         a = []
@@ -81,7 +95,9 @@ class AudioSnippet(object):
                     i = j - 1
                     break
         segments = np.delete(segments, delete_idx)
-        audio_segments = [audio_data[segments[i]:segments[i + 1]] for i in range(len(segments) - 1)]
+        audio_segments = [
+            audio_data[segments[i] : segments[i + 1]] for i in range(len(segments) - 1)
+        ]
         audio_segments = [AudioSnippet.from_amps(seg) for seg in audio_segments]
         return audio_segments
 
@@ -99,7 +115,7 @@ class AudioSnippet(object):
         chunks = []
         i = 0
         while i + size < len(self.byte_data):
-            chunks.append(AudioSnippet(self.byte_data[i:i + size]))
+            chunks.append(AudioSnippet(self.byte_data[i : i + size]))
             i += stride
         return chunks
 
@@ -107,7 +123,9 @@ class AudioSnippet(object):
         space = total_length - len(self.byte_data)
         len_a = (random.randint(0, space)) // 2 * 2
         len_b = space - len_a
-        self.byte_data = b"".join([b"".join([b"\x00"] * len_a), self.byte_data, b"".join([b"\x00"] * len_b)])
+        self.byte_data = b"".join(
+            [b"".join([b"\x00"] * len_a), self.byte_data, b"".join([b"\x00"] * len_b)]
+        )
         self._compute_amps()
 
     def repeat_fill(self, length):
@@ -125,9 +143,9 @@ class AudioSnippet(object):
         clip_energy2 = np.correlate(clip_energy, smooth_window)
         window_i = int(np.argmax(clip_energy2) * scale)
         window_i = max(0, window_i - window_i % nbytes)
-        self.amplitudes = self.amplitudes[window_i:window_i + window_size]
+        self.amplitudes = self.amplitudes[window_i : window_i + window_size]
         window_i *= nbytes
-        self.byte_data = self.byte_data[window_i:window_i + window_size * nbytes]
+        self.byte_data = self.byte_data[window_i : window_i + window_size * nbytes]
 
     def ltrim(self, limit=0.1):
         if not self.byte_data:
@@ -139,7 +157,7 @@ class AudioSnippet(object):
         nbytes = len(self.byte_data) // len(self.amplitudes)
         i = max(0, i - i % nbytes)
         self.amplitudes = self.amplitudes[i:]
-        self.byte_data = self.byte_data[i * nbytes:]
+        self.byte_data = self.byte_data[i * nbytes :]
         return self
 
     def trim(self, limit=0.1):
@@ -157,7 +175,7 @@ class AudioSnippet(object):
         nbytes = len(self.byte_data) // len(self.amplitudes)
         i = min(len(self.amplitudes), i + (nbytes - i % nbytes))
         self.amplitudes = self.amplitudes[:i]
-        self.byte_data = self.byte_data[:i * nbytes]
+        self.byte_data = self.byte_data[: i * nbytes]
         return self
 
     @classmethod
@@ -166,15 +184,19 @@ class AudioSnippet(object):
         return cls(byte_data)
 
     def _compute_amps(self):
-        self.amplitudes = np.frombuffer(self.byte_data, self.dtype).astype(float) / np.iinfo(self.dtype).max
+        self.amplitudes = (
+            np.frombuffer(self.byte_data, self.dtype).astype(float)
+            / np.iinfo(self.dtype).max
+        )
 
     def append(self, snippet):
-        self.byte_data = b''.join([self.byte_data, snippet.byte_data])
+        self.byte_data = b"".join([self.byte_data, snippet.byte_data])
         self._compute_amps()
         return self
 
     def amplitude_rms(self, start=0, end=-1):
         return np.sqrt(np.mean([a * a for a in self.amplitudes[start:end]]))
+
 
 class AudioSnippetGenerator(object):
     def __init__(self, sr=16000, fmt=pyaudio.paInt16, chunk_size=1024, channels=1):
@@ -186,8 +208,13 @@ class AudioSnippetGenerator(object):
 
     def __enter__(self):
         self.audio = pyaudio.PyAudio()
-        self.stream = self.audio.open(format=self.fmt, channels=self.channels, rate=self.sr, input=True, 
-          frames_per_buffer=self.chunk_size)
+        self.stream = self.audio.open(
+            format=self.fmt,
+            channels=self.channels,
+            rate=self.sr,
+            input=True,
+            frames_per_buffer=self.chunk_size,
+        )
         return self
 
     def __exit__(self, *args):
@@ -204,10 +231,12 @@ class AudioSnippetGenerator(object):
     def __next__(self):
         return AudioSnippet(self.stream.read(self.chunk_size))
 
+
 def print_sound_level():
     with AudioSnippetGenerator() as generator:
         for audio in generator:
             print("Sound level: {}".format(audio.amplitude_rms()), end="\r")
+
 
 def generate_dir(directory):
     for filename in os.listdir(directory):
@@ -225,8 +254,9 @@ def generate_dir(directory):
         except (wave.Error, IsADirectoryError, PermissionError) as e:
             pass
 
+
 def clean_dir(directory=".", cutoff_ms=1000):
-    """Trims all audio in directory to the loudest window of length cutoff_ms. 1 second is consistent 
+    """Trims all audio in directory to the loudest window of length cutoff_ms. 1 second is consistent
     with the speech command dataset.
 
     Args:
@@ -252,13 +282,16 @@ def clean_dir(directory=".", cutoff_ms=1000):
         except (wave.Error, IsADirectoryError, PermissionError) as e:
             pass
 
+
 def main():
     parser = argparse.ArgumentParser()
     commands = dict(trim=clean_dir, listen=print_sound_level)
     commands["generate-contrastive"] = generate_dir
     parser.add_argument("subcommand")
+
     def print_sub_commands():
         print("Subcommands: {}".format(", ".join(commands.keys())))
+
     if len(sys.argv) <= 1:
         print_sub_commands()
         return
@@ -268,7 +301,8 @@ def main():
             "directory",
             type=str,
             default=".",
-            help="Generate from the directory's audio files")
+            help="Generate from the directory's audio files",
+        )
         flags, _ = parser.parse_known_args()
         generate_dir(flags.directory)
     elif subcommand == "trim":
@@ -277,13 +311,15 @@ def main():
             type=str,
             nargs="?",
             default=".",
-            help="Trim the directory's audio files")
+            help="Trim the directory's audio files",
+        )
         flags, _ = parser.parse_known_args()
         clean_dir(flags.directory)
     elif subcommand == "listen":
         print_sound_level()
     else:
         print_sub_commands()
+
 
 if __name__ == "__main__":
     main()

@@ -71,6 +71,17 @@ class AbstractDataset(Dataset, ABC):
 
         pass
 
+    @abstractmethod
+    def __len__(self) -> int:
+        """Returns number of samples in dataset"""
+
+        pass
+
+    def size(self) -> List[int]:
+        """Returns dimension of output output without batch dimension"""
+
+        return [self.channels, self.input_length]
+
 
 def ctc_collate_fn(data):
     """Creates mini-batch tensors from the list of tuples (src_seq, trg_seq).

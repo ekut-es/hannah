@@ -49,4 +49,3 @@ indent_style = tab
 # Batch files use tabs for indentation
 [*.bat]
 indent_style = tab
-
