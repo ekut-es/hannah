@@ -264,7 +264,7 @@ class DatasetSplit:
     @classmethod
     def split_data(cls, config):
         data_splits = config.get("data_split", [])
-        if isinstance(str(data_splits)):
+        if isinstance(data_splits, str):
             if data_splits:
                 data_splits = [data_splits]
             else:

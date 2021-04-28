@@ -518,9 +518,9 @@ class VadDataset(SpeechDataset):
     @classmethod
     def prepare(cls, config):
         cls.download(config)
-        NoiseDataset.download_noise(self.hparams.dataset)
-        DatasetSplit.split_data(self.hparams.dataset)
-        Downsample.downsample(self.hparams.dataset)
+        NoiseDataset.download_noise(config)
+        DatasetSplit.split_data(config)
+        Downsample.downsample(config)
 
     @classmethod
     def splits(cls, config):
