@@ -43,6 +43,7 @@ test_python_37:
     - poetry run python3 -m pytest  -v --cov=speech_recognition test
   tags:
     - docker
+    - nfs
   interruptible: true
 
 test_python_38:
