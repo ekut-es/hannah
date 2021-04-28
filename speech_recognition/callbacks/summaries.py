@@ -124,7 +124,6 @@ def walk_model(model, dummy_input):
     hooks = list()
 
     for name, module in model.named_modules():
-        print(name)
         if module != model:
             hooks += [module.register_forward_hook(collect)]
 

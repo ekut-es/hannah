@@ -159,9 +159,6 @@ class NetworkFactory:
         if isinstance(dilation, int):
             dilation = (dilation, dilation)
 
-        if isinstance(padding, int):
-            padding = (padding, padding)
-
         if isinstance(stride, int):
             stride = (stride, stride)
 
@@ -172,6 +169,8 @@ class NetworkFactory:
             padding = (padding_x, padding_y)
         if padding is False:
             padding = (0, 0)
+        if isinstance(padding, int):
+            padding = (padding, padding)
 
         output_shape = (
             input_shape[0],

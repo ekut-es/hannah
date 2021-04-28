@@ -369,9 +369,12 @@ class StreamClassifierModule(LightningModule):
 
     def forward(self, x):
         x = self._extract_features(x)
+
         if self.training:
             x = self.augmentation(x)
+
         x = self.normalizer(x)
+
         x = self.model(x)
         return x
 

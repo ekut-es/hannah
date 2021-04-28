@@ -479,6 +479,12 @@ class SpeechHotwordDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
         variants = config["variants"]
 
+        snips_target = os.path.join(
+            data_folder, "hey_snips_research_6k_en_train_eval_clean_ter"
+        )
+        if os.path.isdir(snips_target):
+            return
+
         if len(downloadfolder_tmp) == 0:
             download_folder = os.path.join(data_folder, "downloads")
 
@@ -491,22 +497,18 @@ class SpeechHotwordDataset(SpeechDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        snips_target = os.path.join(
-            data_folder, "hey_snips_research_6k_en_train_eval_clean_ter"
-        )
         snips_filename = "hey_snips_kws_4.0.tar.gz"
         url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1"
 
-        if "snips" in variants:
-            extract_from_download_cache(
-                snips_filename,
-                url,
-                cached_files,
-                downloadfolder_tmp,
-                data_folder,
-                snips_target,
-                clear_download=clear_download,
-            )
+        extract_from_download_cache(
+            snips_filename,
+            url,
+            cached_files,
+            downloadfolder_tmp,
+            data_folder,
+            snips_target,
+            clear_download=clear_download,
+        )
 
 
 class VadDataset(SpeechDataset):
