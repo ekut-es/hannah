@@ -361,7 +361,7 @@ class StreamClassifierModule(LightningModule):
     def _extract_features(self, x):
         x = self.features(x)
 
-        if x.dim() == 4:
+        if x.dim() == 4 and self.example_input_array.dim() == 3:
             new_channels = x.size(1) * x.size(2)
             x = torch.reshape(x, (x.size(0), new_channels, x.size(3)))
 

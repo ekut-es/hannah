@@ -2,4 +2,4 @@
 
 data_folder: ${hydra:runtime.cwd}/datasets/
 cls: speech_recognition.datasets.vision.Cifar10Dataset
-dataset: keywords
+dataset: cifar10

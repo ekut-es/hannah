@@ -209,7 +209,6 @@ class SpeechDataset(AbstractDataset):
                     data = data / np.amax(np.absolute(data))
 
         data = torch.from_numpy(data)
-        data = torch.unsqueeze(data, 0)
 
         return data
 
