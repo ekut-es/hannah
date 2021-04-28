@@ -365,6 +365,7 @@ class SpeechCommandsDataset(SpeechDataset):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
         downloadfolder_tmp = config["download_folder"]
+        variants = config["variants"]
 
         target_folder = os.path.join(data_folder, "speech_commands_v0.02")
         if "v1" in variants:
@@ -383,8 +384,6 @@ class SpeechCommandsDataset(SpeechDataset):
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
-
-        variants = config["variants"]
 
         # download speech_commands dataset
         filename = "speech_commands_v0.02.tar.gz"
