@@ -298,6 +298,10 @@ class PAMAP2_Dataset(AbstractDataset):
         return datasets
 
     @classmethod
+    def prepare(cls, config):
+        cls.download(config)
+
+    @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
