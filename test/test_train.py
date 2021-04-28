@@ -63,10 +63,10 @@ def test_backend(model, backend):
     "model,dataset,split",
     [
         ("tc-res8", "snips", ""),
-        ("tc-res8", "vad", "vad_balanced"),
+        #        ("tc-res8", "vad", "vad_balanced"),
         ("tc-res8", "kws", ""),
         ("tc-res8", "atrial_fibrillation", ""),
-        ("tc-res8", "pamap2", ""), 
+        ("tc-res8", "pamap2", ""),
     ],
 )
 def test_datasets(model, dataset, split):

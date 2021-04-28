@@ -76,10 +76,9 @@ class StreamClassifierModule(LightningModule):
 
         # Create example input
         device = self.device
-        self.example_input_array = torch.zeros(
-            1, self.train_set.channels, self.train_set.input_length
-        )
+        self.example_input_array = torch.zeros(1, *self.train_set.size())
         dummy_input = self.example_input_array.to(device)
+        logging.info("Example input array shape: %s", str(dummy_input.shape))
         if platform.machine() == "ppc64le":
             dummy_input = dummy_input.cuda()
 
@@ -99,7 +98,7 @@ class StreamClassifierModule(LightningModule):
             self.normalizer = torch.nn.Identity()
 
         # Instantiate Model
-        self.num_classes = len(self.train_set.label_names)
+        self.num_classes = len(self.train_set.class_names)
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
             self.model = instantiate(
