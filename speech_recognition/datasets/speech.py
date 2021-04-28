@@ -19,6 +19,10 @@ from chainmap import ChainMap
 from .base import AbstractDataset, DatasetType
 from ..utils import list_all_files, extract_from_download_cache
 
+from .NoiseDataset import NoiseDataset
+from .DatasetSplit import DatasetSplit
+from .Downsample import Downsample
+
 msglogger = logging.getLogger()
 
 
@@ -510,6 +514,13 @@ class VadDataset(SpeechDataset):
         super().__init__(data, set_type, config)
 
         self.label_names = {0: "noise", 1: "speech"}
+
+    @classmethod
+    def prepare(cls, config):
+        cls.download(config)
+        NoiseDataset.download_noise(self.hparams.dataset)
+        DatasetSplit.split_data(self.hparams.dataset)
+        Downsample.downsample(self.hparams.dataset)
 
     @classmethod
     def splits(cls, config):

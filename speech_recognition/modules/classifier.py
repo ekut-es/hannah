@@ -21,9 +21,6 @@ import torch.utils.data as data
 from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
 from hydra.utils import instantiate, get_class
 
-from ..datasets.NoiseDataset import NoiseDataset
-from ..datasets.DatasetSplit import DatasetSplit
-from ..datasets.Downsample import Downsample
 from ..datasets import AsynchronousLoader, SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
@@ -60,9 +57,6 @@ class StreamClassifierModule(LightningModule):
         # get all the necessary data stuff
         if not self.train_set or not self.test_set or not self.dev_set:
             get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
-            NoiseDataset.download_noise(self.hparams.dataset)
-            DatasetSplit.split_data(self.hparams.dataset)
-            Downsample.downsample(self.hparams.dataset)
 
     def setup(self, stage):
         # TODO stage variable is not used!
