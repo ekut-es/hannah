@@ -7,6 +7,7 @@ from .NoiseDataset import NoiseDataset
 from torchvision.datasets.utils import list_dir
 from pandas import DataFrame
 import pandas as pd
+import logging
 
 
 class DatasetSplit:
@@ -271,9 +272,7 @@ class DatasetSplit:
             DatasetSplit.getrennt,
         ]
 
-        print(data_split)
-
-        print("split data begins")
+        logging.info("split data begins current_split: %s", data_split)
         data_folder = config["data_folder"]
         target_folder = os.path.join(data_folder, data_split)
 
