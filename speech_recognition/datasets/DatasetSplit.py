@@ -263,7 +263,13 @@ class DatasetSplit:
 
     @classmethod
     def split_data(cls, config):
-        data_split = config["data_split"]
+        data_splits = config.get("data_split", [])
+        if isinstance(str(data_splits)):
+            if data_splits:
+                data_splits = [data_splits]
+            else:
+                data_splits = []
+
         splits = ["vad", "vad_speech", "vad_balanced", "getrennt"]
         split_methods = [
             DatasetSplit.vad,
@@ -272,29 +278,30 @@ class DatasetSplit:
             DatasetSplit.getrennt,
         ]
 
-        logging.info("split data begins current_split: %s", data_split)
-        data_folder = config["data_folder"]
-        target_folder = os.path.join(data_folder, data_split)
+        for data_split in data_splits:
+            logging.info("split data begins current_split: %s", data_split)
+            data_folder = config["data_folder"]
+            target_folder = os.path.join(data_folder, data_split)
 
-        # remove old folders
-        if config["clear_split"]:
-            for name in ["train", "dev", "test"]:
-                oldpath = os.path.join(target_folder, name)
-                if os.path.isdir(oldpath):
-                    shutil.rmtree(oldpath)
-        elif os.path.isdir(target_folder):
-            return
+            # remove old folders
+            if config["clear_split"]:
+                for name in ["train", "dev", "test"]:
+                    oldpath = os.path.join(target_folder, name)
+                    if os.path.isdir(oldpath):
+                        shutil.rmtree(oldpath)
+            elif os.path.isdir(target_folder):
+                return
 
-        destination_dict = split_methods[splits.index(data_split)](config)
+            destination_dict = split_methods[splits.index(data_split)](config)
 
-        dest_dir = os.path.join(data_folder, data_split)
+            dest_dir = os.path.join(data_folder, data_split)
 
-        for key, value in destination_dict.items():
-            data_dir = os.path.join(dest_dir, key)
-            if not os.path.exists(data_dir):
-                os.makedirs(data_dir)
-            for f in value:
-                shutil.copy2(f, data_dir)
+            for key, value in destination_dict.items():
+                data_dir = os.path.join(dest_dir, key)
+                if not os.path.exists(data_dir):
+                    os.makedirs(data_dir)
+                for f in value:
+                    shutil.copy2(f, data_dir)
 
     @classmethod
     def read_UWNU(cls, config):

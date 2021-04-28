@@ -12,7 +12,7 @@ extract: trim_borders
 clear_download: False
 
 variants: ["UWNU"]
-data_split: ""
+data_split: "vad_balanced"
 noise_dataset: ["TUT"]
 clear_split: False
 download_folder: ${dataset.data_folder}/downloads
