@@ -304,10 +304,7 @@ class PAMAP2_Dataset(AbstractDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)

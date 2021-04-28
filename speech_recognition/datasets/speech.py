@@ -363,10 +363,7 @@ class SpeechCommandsDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
@@ -479,10 +476,7 @@ class SpeechHotwordDataset(SpeechDataset):
         variants = config["variants"]
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
@@ -578,16 +572,15 @@ class VadDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
             cached_files = list()
         else:
             cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
+
+        data_folder = config["data_folder"]
 
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
@@ -780,10 +773,7 @@ class KeyWordDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)

@@ -271,39 +271,31 @@ class DatasetSplit:
             DatasetSplit.getrennt,
         ]
 
-        if data_split in splits:
-            print("split data begins")
-            data_folder = config["data_folder"]
-            target_folder = os.path.join(data_folder, data_split)
+        print(data_split)
 
-            # remove old folders
+        print("split data begins")
+        data_folder = config["data_folder"]
+        target_folder = os.path.join(data_folder, data_split)
+
+        # remove old folders
+        if config["clear_split"]:
             for name in ["train", "dev", "test"]:
                 oldpath = os.path.join(target_folder, name)
                 if os.path.isdir(oldpath):
                     shutil.rmtree(oldpath)
+        elif os.path.isdir(target_folder):
+            return
 
-            destination_dict = split_methods[splits.index(data_split)](config)
+        destination_dict = split_methods[splits.index(data_split)](config)
 
-            dest_dir = os.path.join(data_folder, data_split)
+        dest_dir = os.path.join(data_folder, data_split)
 
-            for key, value in destination_dict.items():
-                data_dir = os.path.join(dest_dir, key)
-                if not os.path.exists(data_dir):
-                    os.makedirs(data_dir)
-                for f in value:
-                    shutil.copy2(f, data_dir)
-
-            if config["clear_split"]:
-                # remove old folders
-                for name in [
-                    "noise_files",
-                    "speech_files",
-                    "speech_commands_v0.02",
-                    "hey_snips_research_6k_en_train_eval_clean_ter",
-                ]:
-                    oldpath = os.path.join(data_folder, name)
-                    if os.path.isdir(oldpath):
-                        shutil.rmtree(oldpath)
+        for key, value in destination_dict.items():
+            data_dir = os.path.join(dest_dir, key)
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
+            for f in value:
+                shutil.copy2(f, data_dir)
 
     @classmethod
     def read_UWNU(cls, config):
