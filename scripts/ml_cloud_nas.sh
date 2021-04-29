@@ -8,7 +8,7 @@
 
 #resources:
 
-#SBATCH --cpus-per-task=12
+#SBATCH --cpus-per-task=20
 
 #SBATCH --partition=gpu-2080ti-preemptable
 # the slurm partition the job is queued to.
@@ -16,11 +16,13 @@
 #SBATCH --nodes=1
 # requests that the cores are all on one node
 
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 # the job will need 12GB of memory equally distributed on 4 cpus.
 
 #SBATCH --gres=gpu:rtx2080ti:5
-#the job can use and see 1 GPUs (8 GPUs are available in total on one node)
+#the job can use and see 5 GPUs (8 GPUs are available in total on one node)
+
+#SBATCH --gres-flags=enforce-binding
 
 #SBATCH --time=4320
 # the maximum time the scripts needs to run (5 minutes)
@@ -50,14 +52,15 @@ scontrol show job $SLURM_JOB_ID
 #mkdir -p /scratch/$SLURM_JOB_ID/$tcml_data_dir
 
 
-#cp -R $tcml_wd/$tcml_data_dir /scratch/$SLURM_JOB_ID/
 echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
-ls $SCRATCH
+#ls $SCRATCH
 cp -r datasets $SCRATCH
-ls $SCRATCH
+#ls $SCRATCH
+
+cp /home/bringmann/cgerum05/ml_cloud.simg $SCRATCH
 
 echo "Running training"
-singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt /home/bringmann/cgerum05/ml_cloud.simg --config-name=config_unas dataset.data_folder=/mnt/datasets module.num_workers=4 experiment_id=nas2 hydra/launcher=joblib trainer.max_epochs=30  -m 
+singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=config_unas dataset.data_folder=/mnt/datasets module.num_workers=4 experiment_id=nas3 hydra/launcher=joblib trainer.max_epochs=30  -m 
 
 
 echo DONE!

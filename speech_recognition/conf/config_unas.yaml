@@ -9,19 +9,19 @@ defaults:
     - compress: null
     - trainer: default
     - checkpoint: default
-    - backend: null
+    - backend: trax_ut
     - early_stopping: null
     - profiler: null
     - hydra/sweeper: hannah
 
 
 type: train
-experiment_id: nas
+experiment_id: nas3
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
 
-monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_clock_cycles", "acc_power", "acc_area"]
+monitor: ["val_error", "acc_clock_cycles", "acc_power", "acc_area"]
 
 
 hydra:
@@ -39,10 +39,10 @@ hydra:
     optim:
       optimizer: aging_evolution
       population_size: 100
-      sample_size: 5
+      sample_size: 10
       budget:  2000
       seed: 1234
-      num_workers:  5
+      num_workers:  10
       bounds:
         val_error: 0.05
         acc_clock_cycles: 20000
@@ -55,6 +55,12 @@ hydra:
     # default parametrization of the search space
     parametrization:
       model:
+        qconfig:
+          config:
+            bw_b: 8
+            bw_w: [3,4,5,6]
+            bw_f: [3,4,5,6,7,8]
+            power_of_2: [true, false]  # Use power of two quantization for weights
         conv:
           min: 2
           max: 6
