@@ -1,7 +1,7 @@
 defaults:
     - dataset: kitti
-    - features: mfcc
-    - model: tc-res8
+    - features: raw
+    - model: fasterrcnn_resnet50
     - scheduler: 1cycle
     - optimizer: sgd
     - normalizer: null

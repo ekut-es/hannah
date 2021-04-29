@@ -15,7 +15,11 @@ from torch._C import Value
 from .config_utils import get_loss_function, get_model
 from typing import Optional
 
+import torch.nn as nn
+import torchvision
+
 from speech_recognition.datasets.base import ctc_collate_fn
+from speech_recognition.datasets.Kitti import object_collate_fn
 
 import tabulate
 import torch
@@ -148,27 +152,6 @@ class ClassifierModule(LightningModule):
 
         return loss
 
-    @property
-    def total_training_steps(self) -> int:
-        """Total training steps inferred from datamodule and devices."""
-        if self.trainer.max_steps:
-            return self.trainer.max_steps
-
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
-
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
-
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
 
@@ -189,6 +172,103 @@ class ClassifierModule(LightningModule):
                 retval["lr_scheduler"] = dict(scheduler=scheduler, interval="epoch")
 
         return retval
+
+    # TEST CODE
+    def test_step(self, batch, batch_idx):
+
+        # dataloader provides these four entries per batch
+        x, x_length, y, y_length = batch
+
+        output = self(x)
+        y = y.view(-1)
+        loss = self.criterion(output, y)
+
+        # METRICS
+        self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
+        logits = torch.nn.functional.softmax(output, dim=1)
+        self.test_confusion(logits, y)
+        self.test_roc(logits, y)
+
+        if isinstance(self.test_set, SpeechDataset):
+            self._log_audio(x, logits, y)
+
+        return loss
+
+
+class StreamClassifierModule(ClassifierModule):
+    def __init__(
+        self,
+        dataset: DictConfig,
+        model: DictConfig,
+        optimizer: DictConfig,
+        features: DictConfig,
+        num_workers: int = 0,
+        batch_size: int = 128,
+        time_masking: int = 0,
+        frequency_masking: int = 0,
+        scheduler: Optional[DictConfig] = None,
+        normalizer: Optional[DictConfig] = None,
+    ):
+        super().__init__(dataset, model, optimizer, features)
+
+    def setup(self, stage):
+        super().setup(stage)
+
+        # Create example input
+        device = self.device
+        self.example_input_array = torch.zeros(
+            1, self.train_set.channels, self.train_set.input_length
+        )
+        dummy_input = self.example_input_array.to(device)
+        if platform.machine() == "ppc64le":
+            dummy_input = dummy_input.cuda()
+
+        features = self._extract_features(dummy_input)
+        self.example_feature_array = features.to(self.device)
+
+        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+            print(self.hparams.model._target_)
+            self.model = instantiate(
+                self.hparams.model,
+                input_shape=self.example_feature_array.shape,
+                labels=self.num_classes,
+            )
+        else:
+            self.hparams.model.width = self.example_feature_array.size(2)
+            self.hparams.model.height = self.example_feature_array.size(1)
+            self.hparams.model.n_labels = self.num_classes
+            self.model = get_model(self.hparams.model)
+
+        # loss function
+        self.criterion = get_loss_function(self.model, self.hparams)
+
+    def prepare_data(self):
+        if not self.train_set or not self.test_set or not self.dev_set:
+            get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
+            NoiseDataset.download_noise(self.hparams.dataset)
+            DatasetSplit.split_data(self.hparams.dataset)
+            Downsample.downsample(self.hparams.dataset)
+
+    @property
+    def total_training_steps(self) -> int:
+        """Total training steps inferred from datamodule and devices."""
+        if self.trainer.max_steps:
+            return self.trainer.max_steps
+
+        limit_batches = self.trainer.limit_train_batches
+        batches = len(self.train_dataloader())
+        batches = (
+            min(batches, limit_batches)
+            if isinstance(limit_batches, int)
+            else int(limit_batches * batches)
+        )
+
+        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
+        if self.trainer.tpu_cores:
+            num_devices = max(num_devices, self.trainer.tpu_cores)
+
+        effective_accum = self.trainer.accumulate_grad_batches * num_devices
+        return int((batches // effective_accum) * self.trainer.max_epochs)
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
         if isinstance(output, list):
@@ -281,26 +361,13 @@ class ClassifierModule(LightningModule):
 
         return dev_loader
 
-    # TEST CODE
-    def test_step(self, batch, batch_idx):
-
-        # dataloader provides these four entries per batch
-        x, x_length, y, y_length = batch
-
-        output = self(x)
-        y = y.view(-1)
-        loss = self.criterion(output, y)
-
-        # METRICS
-        self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
-        logits = torch.nn.functional.softmax(output, dim=1)
-        self.test_confusion(logits, y)
-        self.test_roc(logits, y)
-
-        if isinstance(self.test_set, SpeechDataset):
-            self._log_audio(x, logits, y)
-
-        return loss
+    def forward(self, x):
+        x = self._extract_features(x)
+        if self.training:
+            x = self.augmentation(x)
+        x = self.normalizer(x)
+        x = self.model(x)
+        return x
 
     def test_dataloader(self):
         test_loader = data.DataLoader(
@@ -346,14 +413,6 @@ class ClassifierModule(LightningModule):
             new_channels = x.size(1) * x.size(2)
             x = torch.reshape(x, (x.size(0), new_channels, x.size(3)))
 
-        return x
-
-    def forward(self, x):
-        x = self._extract_features(x)
-        if self.training:
-            x = self.augmentation(x)
-        x = self.normalizer(x)
-        x = self.model(x)
         return x
 
     def save(self):
@@ -458,61 +517,6 @@ class ClassifierModule(LightningModule):
         return loggers
 
 
-class StreamClassifierModule(ClassifierModule):
-    def __init__(
-        self,
-        dataset: DictConfig,
-        model: DictConfig,
-        optimizer: DictConfig,
-        features: DictConfig,
-        num_workers: int = 0,
-        batch_size: int = 128,
-        time_masking: int = 0,
-        frequency_masking: int = 0,
-        scheduler: Optional[DictConfig] = None,
-        normalizer: Optional[DictConfig] = None,
-    ):
-        super().__init__(dataset, model, optimizer, features)
-
-    def setup(self, stage):
-        super().setup(stage)
-
-        # Create example input
-        device = self.device
-        self.example_input_array = torch.zeros(
-            1, self.train_set.channels, self.train_set.input_length
-        )
-        dummy_input = self.example_input_array.to(device)
-        if platform.machine() == "ppc64le":
-            dummy_input = dummy_input.cuda()
-
-        features = self._extract_features(dummy_input)
-        self.example_feature_array = features.to(self.device)
-
-        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            print(self.hparams.model._target_)
-            self.model = instantiate(
-                self.hparams.model,
-                input_shape=self.example_feature_array.shape,
-                labels=self.num_classes,
-            )
-        else:
-            self.hparams.model.width = self.example_feature_array.size(2)
-            self.hparams.model.height = self.example_feature_array.size(1)
-            self.hparams.model.n_labels = self.num_classes
-            self.model = get_model(self.hparams.model)
-
-        # loss function
-        self.criterion = get_loss_function(self.model, self.hparams)
-
-    def prepare_data(self):
-        if not self.train_set or not self.test_set or not self.dev_set:
-            get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
-            NoiseDataset.download_noise(self.hparams.dataset)
-            DatasetSplit.split_data(self.hparams.dataset)
-            Downsample.downsample(self.hparams.dataset)
-
-
 class ObjectDetectionModule(ClassifierModule):
     def __init__(
         self,
@@ -531,9 +535,121 @@ class ObjectDetectionModule(ClassifierModule):
 
     def setup(self, stage):
         super().setup(stage)
+        self.example_input_array = torch.zeros(
+            1, 3, self.train_set.img_size[0], self.train_set.img_size[1]
+        )
+
+        self.example_feature_array = self.example_input_array
+
+        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+            print(self.hparams.model._target_)
+            self.model = instantiate(
+                self.hparams.model,
+                input_shape=self.example_feature_array.shape,
+                labels=self.num_classes,
+            )
+        else:
+            self.hparams.model.width = self.example_feature_array.size(2)
+            self.hparams.model.height = self.example_feature_array.size(1)
+            self.hparams.model.n_labels = self.num_classes
+            self.model = get_model(self.hparams.model)
+
+        # loss function
+        self.criterion = get_loss_function(self.model, self.hparams)
 
     def prepare_data(self):
         pass
+
+    def forward(self, x):
+        x = self.model(x)
+        return x
+
+    def train_dataloader(self):
+        train_batch_size = self.hparams["batch_size"]
+        dataset_conf = self.hparams.dataset
+        sampler = None
+        sampler_type = dataset_conf.get("sampler", "random")
+        if sampler_type == "weighted":
+            sampler = self.get_balancing_sampler(self.train_set)
+        else:
+            sampler = data.RandomSampler(self.train_set)
+
+        train_loader = data.DataLoader(
+            self.train_set,
+            batch_size=min(len(self.train_set), train_batch_size),
+            drop_last=True,
+            pin_memory=True,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=object_collate_fn,
+            sampler=sampler,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+
+        # if self.device.type == "cuda":
+        #    train_loader = AsynchronousLoader(train_loader, device=self.device)
+
+        self.batches_per_epoch = len(train_loader)
+
+        return train_loader
+
+    def val_dataloader(self):
+
+        dev_loader = data.DataLoader(
+            self.dev_set,
+            batch_size=min(len(self.dev_set), 9),
+            shuffle=False,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=object_collate_fn,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+
+        # if self.device.type == "cuda":
+        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
+
+        return dev_loader
+
+    def test_dataloader(self):
+        test_loader = data.DataLoader(
+            self.test_set,
+            batch_size=min(len(self.test_set), 9),
+            shuffle=False,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=object_collate_fn,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+
+        # if self.device.type == "cuda":
+        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
+
+        return test_loader
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+
+        self.model(x)
+        # Identisch zum test_step (außer Metrik loggen test und val unterscheiden)
+
+    # TRAINING CODE
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+
+        output = self.model(x, y)
+        loss = sum(output.values())
+
+        return loss
+
+    def test_step(self, batch, batch_idx):
+
+        # dataloader provides these four entries per batch
+        x, y = batch
+
+        output = self(x)
+
+        # Metrics
+        for box_pred, box_target in zip(
+            (o["boxes"] for o in output), (y_b["boxes"] for y_b in y)
+        ):
+            print("Metric: ", torchvision.ops.box_iou(box_pred, box_target))
 
 
 class SpeechClassifierModule(LightningModule):
