@@ -13,9 +13,6 @@ def _quantize(tensor, qconfig):
 
 
 class QuantizedConvModule(nn.Module):
-    def __init__(self):
-        super().__init__()
-
     @classmethod
     def from_float(cls, float_module):
         assert hasattr(float_module, "weight_fake_quant")

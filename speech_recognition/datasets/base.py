@@ -43,12 +43,12 @@ class AbstractDataset(Dataset, ABC):
             config ([type]): [description]
         """
 
-        pass
+        pass  # pytype: disable=bad-return-type
 
     @abstractproperty
     def class_names(self) -> List[str]:
         """ Returns the names of the classes in the classification dataset """
-        pass
+        pass  # pytype: disable=bad-return-type
 
     @abstractproperty
     def class_counts(self) -> Optional[Dict[int, int]]:
@@ -69,13 +69,13 @@ class AbstractDataset(Dataset, ABC):
             index (int): the index of the data item
         """
 
-        pass
+        pass  # pytype: disable=bad-return-type
 
     @abstractmethod
     def __len__(self) -> int:
         """Returns number of samples in dataset"""
 
-        pass
+        pass  # pytype: disable=bad-return-type
 
     def size(self) -> List[int]:
         """Returns dimension of output output without batch dimension"""
