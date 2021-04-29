@@ -568,7 +568,7 @@ class NetworkFactory:
 
                 stride = tuple(
                     (
-                        round(y / x)
+                        math.ceil(y / x)
                         for x, y in zip(target_output_shape[2:], output_shape[2:])
                     )
                 )
