@@ -9,7 +9,7 @@ defaults:
     - compress: null
     - trainer: default
     - checkpoint: default
-    - backend: null
+    - backend: trax_ut
     - early_stopping: null
     - profiler: null
     - hydra/sweeper: hannah
@@ -21,7 +21,7 @@ output_dir: trained_models
 auto_lr: false
 seed: [1234]
 
-monitor: ["val_loss", "total_weights", "est_act", "total_macs", "acc_clock_cycles", "acc_power", "acc_area"]
+monitor: ["val_error", "total_weights",  "acc_clock_cycles", "acc_power", "acc_area"]
 
 
 hydra:
@@ -45,6 +45,7 @@ hydra:
       num_workers:  5
       bounds:
         val_error: 0.05
+        total_weights: 100000
         acc_clock_cycles: 20000
         acc_power: 0.00001
         acc_area: 150000
@@ -57,9 +58,9 @@ hydra:
       model:
         conv:
           min: 2
-          max: 6
+          max: 4
           choices:
-            - target: residual
+            - target: [forward]
               stride: [1,2,3,4,5,6,7]
               blocks:
                 min: 1
