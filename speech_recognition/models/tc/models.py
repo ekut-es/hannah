@@ -10,9 +10,12 @@ msglogger = logging.getLogger()
 import pwlf
 import numpy as np
 
-
 from ..utils import ConfigType, SerializableModule, next_power_of2
-from ..snn.LayerFactory import build1DConvolution, buildLinearLayer, create_spike_fn
+from ...torch_extensions.nn.LayerFactory import (
+    build1DConvolution,
+    buildLinearLayer,
+    create_spike_fn,
+)
 
 
 def create_act(act, clipping_value):

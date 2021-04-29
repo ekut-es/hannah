@@ -34,7 +34,7 @@ cs.store(group="optimizer", name="adam", node=AdamConf())
 
 @dataclass
 class RAdamConf:
-    _target_: str = "speech_recognition.models.snn.RAdamoptim.RAdam"
+    _target_: str = "speech_recognition.torch_extensions.optim.RAdam.RAdam"
     lr: Any = 0.001
     betas: Any = (0.9, 0.999)
     eps: Any = 1e-08
