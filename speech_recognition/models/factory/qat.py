@@ -296,8 +296,8 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
     @classmethod
     def from_float(cls, mod):
         r"""Create a qat module from a float module or qparams_dict
-            Args: `mod` a float module, either produced by torch.quantization utilities
-            or directly from user
+        Args: `mod` a float module, either produced by torch.quantization utilities
+        or directly from user
         """
         assert type(mod) == cls._FLOAT_MODULE, (
             "qat."
@@ -670,7 +670,7 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
 
 class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
     r"""A ConvReLU1d module is fused module of Conv1d and ReLU, attached with
-     FakeQuantize modules for quantization aware training"""
+    FakeQuantize modules for quantization aware training"""
 
     _FLOAT_MODULE = nn.Conv1d
 
@@ -864,7 +864,9 @@ class Linear(nn.Linear):
     """
     _FLOAT_MODULE = nn.Linear
 
-    def __init__(self, in_features, out_features, bias=True, out_quant=False, qconfig=None):
+    def __init__(
+        self, in_features, out_features, bias=True, out_quant=False, qconfig=None
+    ):
         super().__init__(in_features, out_features, bias)
         assert qconfig, "qconfig must be provided for QAT module"
         self.out_quant = out_quant
@@ -903,8 +905,8 @@ class Linear(nn.Linear):
     def from_float(cls, mod):
         r"""Create a qat module from a float module or qparams_dict
 
-            Args: `mod` a float module, either produced by torch.quantization utilities
-            or directly from user
+        Args: `mod` a float module, either produced by torch.quantization utilities
+        or directly from user
         """
         assert type(mod) == cls._FLOAT_MODULE, (
             " qat."
@@ -957,8 +959,8 @@ class Identity(nn.Identity):
     def from_float(cls, mod):
         r"""Create a qat module from a float module or qparams_dict
 
-            Args: `mod` a float module, either produced by torch.quantization utilities
-            or directly from user
+        Args: `mod` a float module, either produced by torch.quantization utilities
+        or directly from user
         """
         assert type(mod) == cls._FLOAT_MODULE, (
             " qat."

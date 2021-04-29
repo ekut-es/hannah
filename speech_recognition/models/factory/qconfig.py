@@ -24,7 +24,7 @@ class STE(autograd.Function):
     @staticmethod
     def backward(ctx, grad_outputs):
         # print("grad_outputs:", grad_outputs)
-        values, = ctx.saved_tensors
+        (values,) = ctx.saved_tensors
         gate = (torch.abs(values) <= 1).float()
         grad_inputs = grad_outputs * gate
         # print("grad_inputs", grad_inputs)
@@ -81,7 +81,7 @@ class SymmetricQuantization:
     def __init__(self, bits, debug=False):
         self.bits = bits
         self.max = 2.0 ** (bits - 1) - 1
-        self.min = -2.0 ** (bits - 1)
+        self.min = -(2.0 ** (bits - 1))
         self.scale = 1.0 / 2 ** (bits - 1)
         self.debug = debug
 
@@ -113,10 +113,10 @@ class PowerOf2Quantization:
         log_x = torch.ceil(torch.log2(abs_x))
 
         # This takes care that the number of bits is considered
-        # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0) 
-        # is occupied by the weight value 0. But seems to have no negative 
+        # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0)
+        # is occupied by the weight value 0. But seems to have no negative
         # effect on the contrary this raises the accuracy.
-        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
+        log_x = torch.clamp(log_x, -(2 ** (self.bits - 1)) + 1, -1.0)
 
         # This value should match the maxium internal representation of UltraTrail.
         # This is the number of digits after the radix point of WIDE_BW.
@@ -125,11 +125,12 @@ class PowerOf2Quantization:
         # Which achieves quiete good results for TC-Res8
         # -7 is equal to use 4 bits for quantization using sign and magnitude represenation.
         # FIXME: Should only be active when UltraTrail is used with correct WIDE_BW
-        #log_x = torch.clamp(log_x, -7.0, -1.0)
+        # log_x = torch.clamp(log_x, -7.0, -1.0)
 
         x = torch.pow(torch.tensor(2, device=x.device), log_x) * mask_x
         x = x * sign_x
         return x
+
 
 class TrainableFakeQuantize(FakeQuantizeBase):
     def __init__(

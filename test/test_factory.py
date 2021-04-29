@@ -53,7 +53,9 @@ def test_minor():
         ),
         (
             (128, 8, 16),
-            MinorBlockConfig(kernel_size=3, out_channels=16, act=ELUConfig(), norm=True),
+            MinorBlockConfig(
+                kernel_size=3, out_channels=16, act=ELUConfig(), norm=True
+            ),
             nn.Sequential(
                 nn.Conv1d(8, 16, 3, padding=1), nn.BatchNorm1d(16), nn.ELU(alpha=1.0)
             ),
@@ -157,7 +159,7 @@ def test_minor_quantized():
                 dilation=2,
                 qconfig=quantization.default_qat_qconfig,
             ),
-        ),
+        )
     ]:
         res_shape, res = factory.minor(input_shape, config)
         print(res, expected_result)

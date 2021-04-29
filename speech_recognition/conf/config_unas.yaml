@@ -66,7 +66,7 @@ hydra:
           max: 6
           choices:
             - target: residual
-              stride: 1
+              stride: [1,2,3,4,5,6,7]
               blocks:
                 min: 1
                 max: 4

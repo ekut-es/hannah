@@ -62,6 +62,4 @@ cp /home/bringmann/cgerum05/ml_cloud.simg $SCRATCH
 echo "Running training"
 singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=config_unas dataset.data_folder=/mnt/datasets module.num_workers=4 experiment_id=nas3 hydra/launcher=joblib trainer.max_epochs=30  -m 
 
-
 echo DONE!
-
