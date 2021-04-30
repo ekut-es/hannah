@@ -258,7 +258,7 @@ class TCResidualBlock(nn.Module):
                 right = (A * notB).to(device=device)
                 res = ((left + right) - (left * right)).to(device=device)
             else:
-                res = y + x
+                res = y * x
 
         return res
 
