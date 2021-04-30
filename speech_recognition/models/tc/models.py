@@ -285,8 +285,25 @@ class TCResNetModel(SerializableModule):
         self.spike_fn = create_spike_fn(config.get("spike_fn", "SHeaviside"))
         general_bn = config.get("general_BN", None)
         general_conv_type = config.get("general_conv_type", None)
+        general_neuron_type = config.get("general_neuron_type", None)
+        general_alpha = config.get("general_alpha", None)
+        general_beta = config.get("general_beta", None)
+        general_gamma = config.get("general_gamma", None)
+
         if general_conv_type is not None:
             self.conv_type = general_conv_type
+
+        if general_neuron_type is not None:
+            self.neuron_type = general_neuron_type
+
+        if general_alpha is not None:
+            self.alpha = general_alpha
+
+        if general_beta is not None:
+            self.beta = general_beta
+
+        if general_gamma is not None:
+            self.gamma = general_gamma
 
         self.layers = nn.ModuleList()
         self.feat = None
@@ -327,6 +344,14 @@ class TCResNetModel(SerializableModule):
                 batchnorm = general_bn
             if general_conv_type is not None:
                 conv_type = general_conv_type
+            if self.neuron_type is not None:
+                neuron_type = self.neuron_type
+            if self.alpha is not None:
+                alpha = self.alpha
+            if self.beta is not None:
+                beta = self.beta
+            if self.gamma is not None:
+                gamma = self.gamma
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -418,6 +443,14 @@ class TCResNetModel(SerializableModule):
                 batchnorm = general_bn
             if general_conv_type is not None:
                 conv_type = general_conv_type
+            if self.neuron_type is not None:
+                neuron_type = self.neuron_type
+            if self.alpha is not None:
+                alpha = self.alpha
+            if self.beta is not None:
+                beta = self.beta
+            if self.gamma is not None:
+                gamma = self.gamma
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
