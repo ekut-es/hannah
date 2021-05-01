@@ -58,7 +58,6 @@ class TCResidualBlock(nn.Module):
         combtype="ADD",
         timesteps=0,
         batchnorm="BN",
-        bntt_variant="v1",
         spike_fn=None,
         alpha=0.75,
         beta=0.75,
@@ -169,7 +168,6 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                     flatten_output=flattenoutput,
                     batchnorm=batchnorm,
-                    bntt_variant=bntt_variant,
                     spike_fn=spike_fn,
                     activation=act,
                     timesteps=timesteps,
@@ -192,7 +190,6 @@ class TCResidualBlock(nn.Module):
                     dilation=dilation,
                     bias=False,
                     batchnorm=batchnorm,
-                    bntt_variant=bntt_variant,
                     timesteps=timesteps,
                     activation=act,
                     spike_fn=spike_fn,
@@ -212,7 +209,6 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                     flatten_output=flattenoutput,
                     batchnorm=batchnorm,
-                    bntt_variant=bntt_variant,
                     timesteps=timesteps,
                     activation=act,
                     spike_fn=spike_fn,
@@ -332,7 +328,6 @@ class TCResNetModel(SerializableModule):
             stride = config[stride_name]
             timesteps = config.get(timesteps_name, 0)
             batchnorm = config.get(batchnorm_name, None)
-            bntt_variant = config.get(bntt_variant_name, "v1")
             conv_type = config.get(conv_type_name, "NN")
             flattenoutput = config.get(flattenoutput_name, False)
             alpha = config.get(alpha_name, 1)
@@ -396,7 +391,6 @@ class TCResNetModel(SerializableModule):
                     bias=False,
                     timesteps=timesteps,
                     batchnorm=batchnorm,
-                    bntt_variant=bntt_variant,
                     flatten_output=flattenoutput,
                     alpha=alpha,
                     beta=beta,
@@ -418,7 +412,6 @@ class TCResNetModel(SerializableModule):
             combination_type = "block{}_combination_type".format(count)
             timesteps = "block{}_timesteps".format(count)
             batchnorm_type = "block{}_batchnorm".format(count)
-            bntt_variant_name = "block{}_bntt_variant".format(count)
             conv_type_name = "block{}_conv_type".format(count)
             alpha_name = "block{}_alpha".format(count)
             beta_name = "block{}_beta".format(count)
@@ -432,7 +425,6 @@ class TCResNetModel(SerializableModule):
             combtype = config.get(combination_type, "ADD")
             timesteps = config.get(timesteps, 0)
             batchnorm = config.get(batchnorm_type, "BN")
-            bntt_variant = config.get(bntt_variant_name, "v1")
             conv_type = config.get(conv_type_name, "NN")
             alpha = config.get(alpha_name, 1)
             beta = config.get(beta_name, 1)
@@ -470,7 +462,6 @@ class TCResNetModel(SerializableModule):
                 combtype,
                 timesteps=timesteps,
                 batchnorm=batchnorm,
-                bntt_variant=bntt_variant,
                 spike_fn=self.spike_fn,
                 alpha=alpha,
                 beta=beta,

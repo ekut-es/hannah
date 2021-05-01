@@ -49,7 +49,7 @@ class BatchNormalizationThroughTime1D(torch.nn.Module):
         timesteps: int = 0,
         eps: float = 1e-4,
         momentum: float = 0.1,
-        variant="v1",
+        variant="BNTTv1",
     ):
         super(BatchNormalizationThroughTime1D, self).__init__()
         self.variant = variant
@@ -63,7 +63,7 @@ class BatchNormalizationThroughTime1D(torch.nn.Module):
         timesteps = x.shape[2]
         new = x.clone()
         for t in range(timesteps):
-            if self.variant == "v1":
+            if self.variant == "BNTTv1":
                 new[:, :, t] = self.bnttlayer[t](x)[:, :, t]
             else:
                 new[:, :, t] = self.bnttlayer[t](x[:, :, t])

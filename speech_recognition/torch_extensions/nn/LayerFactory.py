@@ -34,7 +34,6 @@ def build1DConvolution(
     padding_mode: str = "zeros",
     timesteps: int = 0,
     batchnorm=None,
-    bntt_variant="v1",
     activation=None,
     alpha=0.75,
     beta=0.75,
@@ -52,9 +51,7 @@ def build1DConvolution(
         bias=bias,
         padding_mode=padding_mode,
     )
-    bn = build1DBatchNorm(
-        out_channels, type=batchnorm, timesteps=timesteps, bntt_variant=bntt_variant
-    )
+    bn = build1DBatchNorm(out_channels, type=batchnorm, timesteps=timesteps)
 
     if batchnorm is None and activation is None and spike_fn is None:
         return nn.Sequential(conv)
@@ -148,12 +145,12 @@ def buildLinearLayer(
         print("Error wrong type Parameter")
 
 
-def build1DBatchNorm(out_channels, type=None, timesteps: int = 0, bntt_variant="v1"):
+def build1DBatchNorm(out_channels, type=None, timesteps: int = 0):
     if type == "BN":
         return nn.BatchNorm1d(out_channels)
-    elif type == "BNTT":
+    elif type in ["BNTTv1", "BNTTv2"]:
         return BatchNormalizationThroughTime1D(
-            channels=out_channels, timesteps=timesteps, variant=bntt_variant
+            channels=out_channels, timesteps=timesteps, variant=type
         )
     else:
         return None
