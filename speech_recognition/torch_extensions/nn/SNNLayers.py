@@ -768,6 +768,16 @@ class ReadoutLayer(torch.nn.Module):
             self.beta.data.clamp_(0.0, 1.0)
 
 
+class ActivationLayer(torch.nn.Module):
+    def __init__(self, act=None):
+        assert act is not None, "Activation not set"
+        super(ActivationLayer, self).__init__()
+        self.act = act
+
+    def forward(self, x):
+        return self.act(x)
+
+
 class Surrogate_BP_Function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input):

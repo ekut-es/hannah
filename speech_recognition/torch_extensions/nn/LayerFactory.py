@@ -6,6 +6,7 @@ from .SNNLayers import (
     EmptyLayer,
     Surrogate_BP_Function,
     BatchNormalizationThroughTime1D,
+    ActivationLayer,
 )
 import torch.nn as nn
 
@@ -154,6 +155,10 @@ def build1DBatchNorm(out_channels, type=None, timesteps: int = 0):
         )
     else:
         return None
+
+
+def buildActivationLayer(spike_fn_name="SHeaviside"):
+    return ActivationLayer(create_spike_fn(spike_fn_name))
 
 
 # else:
