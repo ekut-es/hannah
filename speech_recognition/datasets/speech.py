@@ -209,7 +209,6 @@ class SpeechDataset(AbstractDataset):
                     data = data / np.amax(np.absolute(data))
 
         data = torch.from_numpy(data)
-        data = torch.unsqueeze(data, 0)
 
         return data
 
@@ -247,7 +246,7 @@ class SpeechDataset(AbstractDataset):
         else:
             data = self.preprocess(self.audio_files[index])
 
-        return data, data.shape[0], label, label.shape[0]
+        return data.unsqueeze(dim=0), data.shape[0], label, label.shape[0]
 
     def __len__(self):
         return len(self.audio_labels) + self.n_silence

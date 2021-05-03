@@ -6,17 +6,17 @@ import torch.onnx
 from pytorch_lightning import Callback
 
 try:
-    import onnx
+    import onnx  # pytype: disable=import-error
 except ModuleNotFoundError:
     onnx = None
 
 try:
-    import onnx_tf.backend as tf_backend
+    import onnx_tf.backend as tf_backend  # pytype: disable=import-error
 except ModuleNotFoundError:
     tf_backend = None
 
 try:
-    import onnxruntime.backend as onnxrt_backend
+    import onnxruntime.backend as onnxrt_backend  # pytype: disable=import-error
 except ModuleNotFoundError:
     onnxrt_backend = None
 
@@ -237,7 +237,7 @@ class TRaxUltraTrailBackend(Callback):
         import sys
 
         sys.path.append(self.backend_dir)
-        from backend.backend import UltraTrailBackend
+        from backend.backend import UltraTrailBackend  # pytype: disable=import-error
 
         model = pl_module.model
         mac_mode = "FIXED_POINT"
