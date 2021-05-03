@@ -3,14 +3,15 @@ from collections import OrderedDict
 
 import pandas as pd
 import torch
-from speech_recognition.models.sinc import SincNet
+from ..models.sinc import SincNet
+from ..models.factory import qat
 
 import torchvision
 
 from pytorch_lightning.callbacks import Callback
 from tabulate import tabulate
 
-msglogger = logging.getLogger()
+msglogger = logging.getLogger("mac_summary")
 
 
 def walk_model(model, dummy_input):
@@ -40,8 +41,8 @@ def walk_model(model, dummy_input):
                 return module_name
 
     def collect(module, input, output):
-        if len(list(module.children())) != 0:
-            return
+        # if len(list(module.children())) != 0:
+        #    return
         if isinstance(output, tuple):
             output = output[0]
 
@@ -57,7 +58,7 @@ def walk_model(model, dummy_input):
         if extra is not None:
             weights, macs, attrs = extra
         else:
-            return
+            weights, macs, attrs = 0, 0, 0
         data["Name"] += [get_name_by_module(module)]
         data["Type"] += [module.__class__.__name__]
         data["Attrs"] += [attrs]
@@ -72,6 +73,12 @@ def walk_model(model, dummy_input):
         classes = {
             torch.nn.Conv1d: get_conv,
             torch.nn.Conv2d: get_conv,
+            qat.Conv1d: get_conv,
+            qat.Conv2d: get_conv,
+            qat.ConvBn1d: get_conv,
+            qat.ConvBn2d: get_conv,
+            qat.ConvBnReLU1d: get_conv,
+            qat.ConvBnReLU2d: get_conv,
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
         }
@@ -140,6 +147,8 @@ def walk_model(model, dummy_input):
 
 class MacSummaryCallback(Callback):
     def _do_summary(self, pl_module, print_log=True):
+        print("Mac summary callback:")
+
         dummy_input = pl_module.example_feature_array
         dummy_input = dummy_input.to(pl_module.device)
 
@@ -178,10 +187,20 @@ class MacSummaryCallback(Callback):
 
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
-        self._do_summary(pl_module)
+        try:
+            self._do_summary(pl_module)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
         pl_module.train()
 
     def on_validation_epoch_end(self, trainer, pl_module):
-        res = self._do_summary(pl_module, print_log=False)
+        res = {}
+        try:
+            res = self._do_summary(pl_module, print_log=False)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
+
         for k, v in res.items():
             pl_module.log(k, v)

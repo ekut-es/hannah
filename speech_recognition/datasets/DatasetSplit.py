@@ -7,6 +7,7 @@ from .NoiseDataset import NoiseDataset
 from torchvision.datasets.utils import list_dir
 from pandas import DataFrame
 import pandas as pd
+import logging
 
 
 class DatasetSplit:
@@ -262,7 +263,13 @@ class DatasetSplit:
 
     @classmethod
     def split_data(cls, config):
-        data_split = config["data_split"]
+        data_splits = config.get("data_split", [])
+        if isinstance(data_splits, str):
+            if data_splits:
+                data_splits = [data_splits]
+            else:
+                data_splits = []
+
         splits = ["vad", "vad_speech", "vad_balanced", "getrennt"]
         split_methods = [
             DatasetSplit.vad,
@@ -271,16 +278,19 @@ class DatasetSplit:
             DatasetSplit.getrennt,
         ]
 
-        if data_split in splits:
-            print("split data begins")
+        for data_split in data_splits:
+            logging.info("split data begins current_split: %s", data_split)
             data_folder = config["data_folder"]
             target_folder = os.path.join(data_folder, data_split)
 
             # remove old folders
-            for name in ["train", "dev", "test"]:
-                oldpath = os.path.join(target_folder, name)
-                if os.path.isdir(oldpath):
-                    shutil.rmtree(oldpath)
+            if config["clear_split"]:
+                for name in ["train", "dev", "test"]:
+                    oldpath = os.path.join(target_folder, name)
+                    if os.path.isdir(oldpath):
+                        shutil.rmtree(oldpath)
+            elif os.path.isdir(target_folder):
+                return
 
             destination_dict = split_methods[splits.index(data_split)](config)
 
@@ -292,18 +302,6 @@ class DatasetSplit:
                     os.makedirs(data_dir)
                 for f in value:
                     shutil.copy2(f, data_dir)
-
-            if config["clear_split"]:
-                # remove old folders
-                for name in [
-                    "noise_files",
-                    "speech_files",
-                    "speech_commands_v0.02",
-                    "hey_snips_research_6k_en_train_eval_clean_ter",
-                ]:
-                    oldpath = os.path.join(data_folder, name)
-                    if os.path.isdir(oldpath):
-                        shutil.rmtree(oldpath)
 
     @classmethod
     def read_UWNU(cls, config):

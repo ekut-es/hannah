@@ -29,13 +29,10 @@ from hydra.utils import instantiate, get_class
 
 from pl_bolts.datamodules.kitti_datamodule import KittiDataModule
 
-from ..datasets.NoiseDataset import NoiseDataset
-from ..datasets.DatasetSplit import DatasetSplit
-from ..datasets.Downsample import Downsample
+
 from ..datasets import AsynchronousLoader, SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
-
 
 from omegaconf import DictConfig
 
@@ -64,6 +61,11 @@ class ClassifierModule(LightningModule):
         self.dev_set = None
         self.logged_samples = 0
 
+    def prepare_data(self):
+        # get all the necessary data stuff
+        if not self.train_set or not self.test_set or not self.dev_set:
+            get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
+
     def setup(self, stage):
         # TODO stage variable is not used!
         self.msglogger.info("Setting up model")
@@ -83,6 +85,18 @@ class ClassifierModule(LightningModule):
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(self.device)
+
+        # Create example input
+        device = self.device
+        self.example_input_array = torch.zeros(1, *self.train_set.size())
+        dummy_input = self.example_input_array.to(device)
+        logging.info("Example input array shape: %s", str(dummy_input.shape))
+        if platform.machine() == "ppc64le":
+            dummy_input = dummy_input.cuda()
+
+        # Instantiate features
+        self.features = instantiate(self.hparams.features)
+        self.features.to(device)
         if platform.machine() == "ppc64le":
             self.features.cuda()
 
@@ -93,7 +107,22 @@ class ClassifierModule(LightningModule):
             self.normalizer = torch.nn.Identity()
 
         # Instantiate Model
-        self.num_classes = len(self.train_set.label_names)
+        self.num_classes = len(self.train_set.class_names)
+        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+            print(self.hparams.model._target_)
+            self.model = instantiate(
+                self.hparams.model,
+                input_shape=self.example_feature_array.shape,
+                labels=self.num_classes,
+            )
+        else:
+            self.hparams.model.width = self.example_feature_array.size(2)
+            self.hparams.model.height = self.example_feature_array.size(1)
+            self.hparams.model.n_labels = self.num_classes
+            self.model = get_model(self.hparams.model)
+
+        # loss function
+        self.criterion = get_loss_function(self.model, self.hparams)
 
         # Metrics
         self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
@@ -195,7 +224,7 @@ class ClassifierModule(LightningModule):
         return loss
 
 
-class StreamClassifierModule(ClassifierModule):
+class StreamClassifierModule(LightningModule):
     def __init__(
         self,
         dataset: DictConfig,
@@ -209,23 +238,62 @@ class StreamClassifierModule(ClassifierModule):
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
     ):
-        super().__init__(dataset, model, optimizer, features)
+        super().__init__()
+
+        self.save_hyperparameters()
+        self.msglogger = logging.getLogger()
+        self.initialized = False
+        self.train_set = None
+        self.test_set = None
+        self.dev_set = None
+        self.logged_samples = 0
+
+    def prepare_data(self):
+        # get all the necessary data stuff
+        if not self.train_set or not self.test_set or not self.dev_set:
+            get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
 
     def setup(self, stage):
-        super().setup(stage)
+        # TODO stage variable is not used!
+        self.msglogger.info("Setting up model")
+        if self.logger:
+            self.logger.log_hyperparams(self.hparams)
+
+        if self.initialized:
+            return
+
+        self.initialized = True
+
+        # trainset needed to set values in hparams
+        self.train_set, self.dev_set, self.test_set = get_class(
+            self.hparams.dataset.cls
+        ).splits(self.hparams.dataset)
 
         # Create example input
         device = self.device
-        self.example_input_array = torch.zeros(
-            1, self.train_set.channels, self.train_set.input_length
-        )
+        self.example_input_array = torch.zeros(1, *self.train_set.size())
         dummy_input = self.example_input_array.to(device)
+        logging.info("Example input array shape: %s", str(dummy_input.shape))
         if platform.machine() == "ppc64le":
             dummy_input = dummy_input.cuda()
+
+        # Instantiate features
+        self.features = instantiate(self.hparams.features)
+        self.features.to(device)
+        if platform.machine() == "ppc64le":
+            self.features.cuda()
 
         features = self._extract_features(dummy_input)
         self.example_feature_array = features.to(self.device)
 
+        # Instantiate normalizer
+        if self.hparams.normalizer is not None:
+            self.normalizer = instantiate(self.hparams.normalizer)
+        else:
+            self.normalizer = torch.nn.Identity()
+
+        # Instantiate Model
+        self.num_classes = len(self.train_set.class_names)
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
             self.model = instantiate(
@@ -242,12 +310,44 @@ class StreamClassifierModule(ClassifierModule):
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
 
-    def prepare_data(self):
-        if not self.train_set or not self.test_set or not self.dev_set:
-            get_class(self.hparams.dataset.cls).download(self.hparams.dataset)
-            NoiseDataset.download_noise(self.hparams.dataset)
-            DatasetSplit.split_data(self.hparams.dataset)
-            Downsample.downsample(self.hparams.dataset)
+        # Metrics
+        self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
+        self.val_metrics = MetricCollection(
+            {
+                "val_accuracy": Accuracy(),
+                "val_error": Error(),
+                "val_recall": Recall(num_classes=self.num_classes, average="weighted"),
+                "val_precision": Precision(
+                    num_classes=self.num_classes, average="weighted"
+                ),
+                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
+            }
+        )
+        self.test_metrics = MetricCollection(
+            {
+                "test_accuracy": Accuracy(),
+                "test_error": Error(),
+                "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
+                "test_precision": Precision(
+                    num_classes=self.num_classes, average="weighted"
+                ),
+                "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
+            }
+        )
+
+        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+        self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
+
+        augmentation_passes = []
+        if self.hparams.time_masking > 0:
+            augmentation_passes.append(TimeMasking(self.hparams.time_masking))
+        if self.hparams.frequency_masking > 0:
+            augmentation_passes.append(TimeMasking(self.hparams.frequency_masking))
+
+        if augmentation_passes:
+            self.augmentation = torch.nn.Sequential(*augmentation_passes)
+        else:
+            self.augmentation = torch.nn.Identity()
 
     @property
     def total_training_steps(self) -> int:
@@ -269,6 +369,27 @@ class StreamClassifierModule(ClassifierModule):
 
         effective_accum = self.trainer.accumulate_grad_batches * num_devices
         return int((batches // effective_accum) * self.trainer.max_epochs)
+
+    def configure_optimizers(self):
+        optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
+
+        retval = {}
+        retval["optimizer"] = optimizer
+
+        if self.hparams.scheduler is not None:
+            if self.hparams.scheduler._target_ == "torch.optim.lr_scheduler.OneCycleLR":
+                scheduler = instantiate(
+                    self.hparams.scheduler,
+                    optimizer=optimizer,
+                    total_steps=self.total_training_steps,
+                )
+                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
+            else:
+                scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
+
+                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="epoch")
+
+        return retval
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
         if isinstance(output, list):
@@ -296,6 +417,19 @@ class StreamClassifierModule(ClassifierModule):
 
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
+
+    # TRAINING CODE
+    def training_step(self, batch, batch_idx):
+        x, x_len, y, y_len = batch
+
+        output = self(x)
+        y = y.view(-1)
+        loss = self.criterion(output, y)
+
+        # METRICS
+        self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
+
+        return loss
 
     def train_dataloader(self):
         train_batch_size = self.hparams["batch_size"]
@@ -361,13 +495,26 @@ class StreamClassifierModule(ClassifierModule):
 
         return dev_loader
 
-    def forward(self, x):
-        x = self._extract_features(x)
-        if self.training:
-            x = self.augmentation(x)
-        x = self.normalizer(x)
-        x = self.model(x)
-        return x
+    # TEST CODE
+    def test_step(self, batch, batch_idx):
+
+        # dataloader provides these four entries per batch
+        x, x_length, y, y_length = batch
+
+        output = self(x)
+        y = y.view(-1)
+        loss = self.criterion(output, y)
+
+        # METRICS
+        self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
+        logits = torch.nn.functional.softmax(output, dim=1)
+        self.test_confusion(logits, y)
+        self.test_roc(logits, y)
+
+        if isinstance(self.test_set, SpeechDataset):
+            self._log_audio(x, logits, y)
+
+        return loss
 
     def test_dataloader(self):
         test_loader = data.DataLoader(
@@ -413,6 +560,17 @@ class StreamClassifierModule(ClassifierModule):
             new_channels = x.size(1) * x.size(2)
             x = torch.reshape(x, (x.size(0), new_channels, x.size(3)))
 
+        return x
+
+    def forward(self, x):
+        x = self._extract_features(x)
+
+        if self.training:
+            x = self.augmentation(x)
+
+        x = self.normalizer(x)
+
+        x = self.model(x)
         return x
 
     def save(self):

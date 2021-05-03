@@ -133,10 +133,7 @@ class NoiseDataset:
 
         if len(noisedatasets) > 0:
             if len(downloadfolder_tmp) == 0:
-                downloadfolder_tmp = os.path.join(
-                    sys.argv[0].replace("speech_recognition/train.py", ""),
-                    "datasets/downloads",
-                )
+                download_folder = os.path.join(data_folder, "downloads")
 
             if not os.path.isdir(data_folder):
                 os.makedirs(data_folder)
