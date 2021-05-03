@@ -28,5 +28,17 @@
                 "model=tc-res4"
             ]
         },
+        {
+            "name": "object_detection",
+            "type": "python",
+            "request": "launch",
+            "module": "speech_recognition.train",
+            "justMyCode": false,
+            "args": [
+                "--config-name",
+                "config_object_detection",
+                "dataset.data_folder=/local/datasets"
+            ]
+        },
     ]
 }

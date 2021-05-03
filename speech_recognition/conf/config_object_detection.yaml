@@ -1,0 +1,34 @@
+defaults:
+    - dataset: kitti
+    - features: raw
+    - model: fasterrcnn_resnet50
+    - scheduler: 1cycle
+    - optimizer: sgd
+    - normalizer: null
+    - module: object_detection
+    - compress: null
+    - trainer: default
+    - checkpoint: default
+    - backend: null
+    - early_stopping: null
+    - profiler: null
+    - pruning: null
+    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
+      optional: true
+
+experiment_id: test
+output_dir: trained_models
+auto_lr: false
+seed: 1234
+
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+
+
+
+#TODO:
+dump_test: false
+input_file: ''
