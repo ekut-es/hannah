@@ -194,22 +194,31 @@ class ClassifierModule(LightningModule):
 
         return loss
 
+    @property
+    def total_training_steps(self) -> int:
+        """Total training steps inferred from datamodule and devices."""
+        if self.trainer.max_steps:
+            return self.trainer.max_steps
+
+        limit_batches = self.trainer.limit_train_batches
+        batches = len(self.train_dataloader())
+        batches = (
+            min(batches, limit_batches)
+            if isinstance(limit_batches, int)
+            else int(limit_batches * batches)
+        )
+
+        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
+        if self.trainer.tpu_cores:
+            num_devices = max(num_devices, self.trainer.tpu_cores)
+
+        effective_accum = self.trainer.accumulate_grad_batches * num_devices
+        return int((batches // effective_accum) * self.trainer.max_epochs)
+
 
 class StreamClassifierModule(ClassifierModule):
-    def __init__(
-        self,
-        dataset: DictConfig,
-        model: DictConfig,
-        optimizer: DictConfig,
-        features: DictConfig,
-        num_workers: int = 0,
-        batch_size: int = 128,
-        time_masking: int = 0,
-        frequency_masking: int = 0,
-        scheduler: Optional[DictConfig] = None,
-        normalizer: Optional[DictConfig] = None,
-    ):
-        super().__init__(dataset, model, optimizer, features)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def setup(self, stage):
         super().setup(stage)
@@ -518,20 +527,8 @@ class StreamClassifierModule(ClassifierModule):
 
 
 class ObjectDetectionModule(ClassifierModule):
-    def __init__(
-        self,
-        dataset: DictConfig,
-        model: DictConfig,
-        optimizer: DictConfig,
-        features: DictConfig,
-        num_workers: int = 0,
-        batch_size: int = 128,
-        time_masking: int = 0,
-        frequency_masking: int = 0,
-        scheduler: Optional[DictConfig] = None,
-        normalizer: Optional[DictConfig] = None,
-    ):
-        super().__init__(dataset, model, optimizer, features)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def setup(self, stage):
         super().setup(stage)

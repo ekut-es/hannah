@@ -7,6 +7,8 @@ from torch.utils.data import Dataset
 import torch
 import torch.nn.functional as F
 
+import math
+
 from torchvision import transforms
 
 from pl_bolts.utils import _PIL_AVAILABLE
@@ -93,23 +95,32 @@ class Kitti(Dataset):
 
         folder = config["data_folder"]
         folder = os.path.join(folder, "kitti")
+        num_imgs = config["number_imgs"]
+        num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
+        num_dev_imgs = math.floor(num_imgs * (config["dev_pct"] / 100))
 
-        descriptions = ["train.txt", "dev.txt", "test.txt"]
         datasets = [{}, {}, {}]
 
-        for num, desc in enumerate(descriptions):
-            descs = os.path.join(folder, desc)
-            f = open(descs, "r")
+        if num_imgs > 7480:
+            raise Exception("Number of images for Kitti dataset too large")
+        elif num_test_imgs < 1 or num_dev_imgs < 1:
+            raise Exception("Each step must have at least 1 Kitti image")
 
-            for line in f:
-                file_name = line.rstrip("\n")
-                datasets[num][line.rstrip("\n") + ".png"] = file_name + ".txt"
-            f.close
+        for i in range(num_imgs):
+            # first test_pct into test dataset
+            if i < num_test_imgs:
+                datasets[0][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
+            # next images into dev dataset
+            elif i < num_test_imgs + num_dev_imgs:
+                datasets[1][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
+            # last images into train dataset
+            else:
+                datasets[2][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
 
         res_datasets = (
-            cls(datasets[0], DatasetType.TRAIN, config),
+            cls(datasets[2], DatasetType.TRAIN, config),
             cls(datasets[1], DatasetType.DEV, config),
-            cls(datasets[2], DatasetType.TEST, config),
+            cls(datasets[0], DatasetType.TEST, config),
         )
 
         return res_datasets
@@ -117,30 +128,3 @@ class Kitti(Dataset):
 
 def object_collate_fn(data):
     return tuple(zip(*data))
-    """
-    def merge(sequences):
-        lengths = [seq.shape[-1] for seq in sequences]
-        max_length = max(lengths)
-
-        padded_seqs = []
-
-        for item in sequences:
-            padded = torch.nn.functional.pad(
-                input=item,
-                pad=(0, max_length - item.shape[-1]),
-                mode="constant",
-                value=0,
-            )
-            padded_seqs.append(padded)
-
-        return padded_seqs, lengths
-
-    # seperate source and target sequences
-    src_seqs, trg_seqs = zip(*data)
-
-    # merge sequences (from tuple of 1D tensor to 2D tensor)
-    src_seqs, src_lengths = merge(src_seqs)
-    # trg_seqs, trg_lengths = merge(trg_seqs)
-
-    return (torch.stack(src_seqs), trg_seqs)
-    """
