@@ -147,8 +147,6 @@ def walk_model(model, dummy_input):
 
 class MacSummaryCallback(Callback):
     def _do_summary(self, pl_module, print_log=True):
-        print("Mac summary callback:")
-
         dummy_input = pl_module.example_feature_array
         dummy_input = dummy_input.to(pl_module.device)
 
@@ -173,8 +171,7 @@ class MacSummaryCallback(Callback):
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
         except RuntimeError as e:
-            if print_log:
-                msglogger.warning("Could not create performance summary: %s", str(e))
+            msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
         res = OrderedDict()
