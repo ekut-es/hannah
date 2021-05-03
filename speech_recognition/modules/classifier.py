@@ -38,148 +38,32 @@ from omegaconf import DictConfig
 
 
 class ClassifierModule(LightningModule):
-    def __init__(
-        self,
-        dataset: DictConfig,
-        model: DictConfig,
-        optimizer: DictConfig,
-        features: DictConfig,
-        num_workers: int = 0,
-        batch_size: int = 128,
-        time_masking: int = 0,
-        frequency_masking: int = 0,
-        scheduler: Optional[DictConfig] = None,
-        normalizer: Optional[DictConfig] = None,
-    ):
-        super().__init__()
-
-        self.save_hyperparameters()
-        self.msglogger = logging.getLogger()
-        self.initialized = False
-        self.train_set = None
-        self.test_set = None
-        self.dev_set = None
-        self.logged_samples = 0
-
     def prepare_data(self):
-        # get all the necessary data stuff
-        if not self.train_set or not self.test_set or not self.dev_set:
-            get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
-
-    def setup(self, stage):
-        # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
-
-        if self.initialized:
-            return
-
-        self.initialized = True
-
-        # trainset needed to set values in hparams
-        self.train_set, self.dev_set, self.test_set = get_class(
-            self.hparams.dataset.cls
-        ).splits(self.hparams.dataset)
-
-        # Instantiate features
-        self.features = instantiate(self.hparams.features)
-        self.features.to(self.device)
-
-        # Create example input
-        device = self.device
-        self.example_input_array = torch.zeros(1, *self.train_set.size())
-        dummy_input = self.example_input_array.to(device)
-        logging.info("Example input array shape: %s", str(dummy_input.shape))
-        if platform.machine() == "ppc64le":
-            dummy_input = dummy_input.cuda()
-
-        # Instantiate features
-        self.features = instantiate(self.hparams.features)
-        self.features.to(device)
-        if platform.machine() == "ppc64le":
-            self.features.cuda()
-
-        # Instantiate normalizer
-        if self.hparams.normalizer is not None:
-            self.normalizer = instantiate(self.hparams.normalizer)
-        else:
-            self.normalizer = torch.nn.Identity()
-
-        # Instantiate Model
-        self.num_classes = len(self.train_set.class_names)
-        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            print(self.hparams.model._target_)
-            self.model = instantiate(
-                self.hparams.model,
-                input_shape=self.example_feature_array.shape,
-                labels=self.num_classes,
-            )
-        else:
-            self.hparams.model.width = self.example_feature_array.size(2)
-            self.hparams.model.height = self.example_feature_array.size(1)
-            self.hparams.model.n_labels = self.num_classes
-            self.model = get_model(self.hparams.model)
-
-        # loss function
-        self.criterion = get_loss_function(self.model, self.hparams)
-
-        # Metrics
-        self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
-        self.val_metrics = MetricCollection(
-            {
-                "val_accuracy": Accuracy(),
-                "val_error": Error(),
-                "val_recall": Recall(num_classes=self.num_classes, average="weighted"),
-                "val_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
-                ),
-                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
-            }
-        )
-        self.test_metrics = MetricCollection(
-            {
-                "test_accuracy": Accuracy(),
-                "test_error": Error(),
-                "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
-                "test_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
-                ),
-                "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
-            }
-        )
-
-        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
-        self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
-
-        augmentation_passes = []
-        if self.hparams.time_masking > 0:
-            augmentation_passes.append(TimeMasking(self.hparams.time_masking))
-        if self.hparams.frequency_masking > 0:
-            augmentation_passes.append(TimeMasking(self.hparams.frequency_masking))
-
-        if augmentation_passes:
-            self.augmentation = torch.nn.Sequential(*augmentation_passes)
-        else:
-            self.augmentation = torch.nn.Identity()
-
-    @abstractmethod
-    def prepare_data(self):
-        # get all the necessary data stuff
         pass
 
-    # TRAINING CODE
-    def training_step(self, batch, batch_idx):
-        x, x_len, y, y_len = batch
+    def setup(self, stage):
+        pass
 
-        output = self(x)
-        y = y.view(-1)
-        loss = self.criterion(output, y)
+    @property
+    def total_training_steps(self) -> int:
+        """Total training steps inferred from datamodule and devices."""
+        if self.trainer.max_steps:
+            return self.trainer.max_steps
 
-        # METRICS
-        self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
+        limit_batches = self.trainer.limit_train_batches
+        batches = len(self.train_dataloader())
+        batches = (
+            min(batches, limit_batches)
+            if isinstance(limit_batches, int)
+            else int(limit_batches * batches)
+        )
 
-        return loss
+        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
+        if self.trainer.tpu_cores:
+            num_devices = max(num_devices, self.trainer.tpu_cores)
+
+        effective_accum = self.trainer.accumulate_grad_batches * num_devices
+        return int((batches // effective_accum) * self.trainer.max_epochs)
 
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
@@ -202,29 +86,65 @@ class ClassifierModule(LightningModule):
 
         return retval
 
-    # TEST CODE
-    def test_step(self, batch, batch_idx):
+    @staticmethod
+    def get_balancing_sampler(dataset):
+        distribution = dataset.class_counts
+        weights = 1.0 / torch.tensor(
+            [distribution[i] for i in range(len(distribution))], dtype=torch.float
+        )
 
-        # dataloader provides these four entries per batch
-        x, x_length, y, y_length = batch
+        sampler_weights = weights[dataset.get_label_list()]
 
-        output = self(x)
-        y = y.view(-1)
-        loss = self.criterion(output, y)
+        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
+        return sampler
 
-        # METRICS
-        self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
-        logits = torch.nn.functional.softmax(output, dim=1)
-        self.test_confusion(logits, y)
-        self.test_roc(logits, y)
+    # CALLBACKS
+    def on_fit_end(self):
+        loggers = self._logger_iterator()
+        for logger in loggers:
+            if isinstance(logger, TensorBoardLogger):
+                items = map(lambda x: (x[0], x[1].compute()), self.val_metrics.items())
+                logger.log_hyperparams(self.hparams, metrics=dict(items))
 
-        if isinstance(self.test_set, SpeechDataset):
-            self._log_audio(x, logits, y)
+    def _log_weight_distribution(self):
+        for name, params in self.named_parameters():
+            loggers = self._logger_iterator()
 
-        return loss
+            for logger in loggers:
+                if hasattr(logger.experiment, "add_histogram"):
+                    try:
+                        logger.experiment.add_histogram(
+                            name, params, self.current_epoch
+                        )
+                    except ValueError as e:
+                        logging.critical("Could not add histogram for param %s", name)
+
+        for name, module in self.named_modules():
+            loggers = self._logger_iterator()
+            if hasattr(module, "scaled_weight"):
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_histogram"):
+                        try:
+                            logger.experiment.add_histogram(
+                                f"{name}.scaled_weight",
+                                module.scaled_weight,
+                                self.current_epoch,
+                            )
+                        except ValueError as e:
+                            logging.critical(
+                                "Could not add histogram for param %s", name
+                            )
+
+    def _logger_iterator(self):
+        if isinstance(self.logger, LoggerCollection):
+            loggers = self.logger
+        else:
+            loggers = [self.logger]
+
+        return loggers
 
 
-class StreamClassifierModule(LightningModule):
+class StreamClassifierModule(ClassifierModule):
     def __init__(
         self,
         dataset: DictConfig,
@@ -349,48 +269,6 @@ class StreamClassifierModule(LightningModule):
         else:
             self.augmentation = torch.nn.Identity()
 
-    @property
-    def total_training_steps(self) -> int:
-        """Total training steps inferred from datamodule and devices."""
-        if self.trainer.max_steps:
-            return self.trainer.max_steps
-
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
-
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
-
-    def configure_optimizers(self):
-        optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
-
-        retval = {}
-        retval["optimizer"] = optimizer
-
-        if self.hparams.scheduler is not None:
-            if self.hparams.scheduler._target_ == "torch.optim.lr_scheduler.OneCycleLR":
-                scheduler = instantiate(
-                    self.hparams.scheduler,
-                    optimizer=optimizer,
-                    total_steps=self.total_training_steps,
-                )
-                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
-            else:
-                scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
-
-                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="epoch")
-
-        return retval
-
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
         if isinstance(output, list):
             for idx, out in enumerate(output):
@@ -405,18 +283,6 @@ class StreamClassifierModule(LightningModule):
             except ValueError:
                 logging.critical("Could not calculate batch metrics: {outputs}")
         self.log(f"{prefix}_loss", loss)
-
-    @staticmethod
-    def get_balancing_sampler(dataset):
-        distribution = dataset.class_counts
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
-        )
-
-        sampler_weights = weights[dataset.get_label_list()]
-
-        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
-        return sampler
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
@@ -612,43 +478,6 @@ class StreamClassifierModule(LightningModule):
         # except Exception as e:
         #     logging.error("Could not export torchscript model ...\n {}".format(str(e)))
 
-    # CALLBACKS
-    def on_fit_end(self):
-        loggers = self._logger_iterator()
-        for logger in loggers:
-            if isinstance(logger, TensorBoardLogger):
-                items = map(lambda x: (x[0], x[1].compute()), self.val_metrics.items())
-                logger.log_hyperparams(self.hparams, metrics=dict(items))
-
-    def _log_weight_distribution(self):
-        for name, params in self.named_parameters():
-            loggers = self._logger_iterator()
-
-            for logger in loggers:
-                if hasattr(logger.experiment, "add_histogram"):
-                    try:
-                        logger.experiment.add_histogram(
-                            name, params, self.current_epoch
-                        )
-                    except ValueError as e:
-                        logging.critical("Could not add histogram for param %s", name)
-
-        for name, module in self.named_modules():
-            loggers = self._logger_iterator()
-            if hasattr(module, "scaled_weight"):
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.scaled_weight",
-                                module.scaled_weight,
-                                self.current_epoch,
-                            )
-                        except ValueError as e:
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
     def _log_audio(self, x, logits, y):
         prediction = torch.argmax(logits, dim=1)
         correct = prediction == y
@@ -665,14 +494,6 @@ class StreamClassifierModule(LightningModule):
                             self.test_set.samplingrate,
                         )
                 self.logged_samples += 1
-
-    def _logger_iterator(self):
-        if isinstance(self.logger, LoggerCollection):
-            loggers = self.logger
-        else:
-            loggers = [self.logger]
-
-        return loggers
 
 
 class ObjectDetectionModule(ClassifierModule):
@@ -714,9 +535,6 @@ class ObjectDetectionModule(ClassifierModule):
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
-
-    def prepare_data(self):
-        pass
 
     def forward(self, x):
         x = self.model(x)
