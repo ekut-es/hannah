@@ -142,6 +142,18 @@ class ClassifierModule(LightningModule):
 
         return loggers
 
+    @staticmethod
+    def get_balancing_sampler(dataset):
+        distribution = dataset.class_counts
+        weights = 1.0 / torch.tensor(
+            [distribution[i] for i in range(len(distribution))], dtype=torch.float
+        )
+
+        sampler_weights = weights[dataset.get_label_list()]
+
+        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
+        return sampler
+
 
 class StreamClassifierModule(ClassifierModule):
     def __init__(self, *args, **kwargs):
