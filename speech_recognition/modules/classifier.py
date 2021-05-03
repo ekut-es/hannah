@@ -27,9 +27,6 @@ import torch.utils.data as data
 from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
 from hydra.utils import instantiate, get_class
 
-from pl_bolts.datamodules.kitti_datamodule import KittiDataModule
-
-
 from ..datasets import AsynchronousLoader, SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
@@ -38,32 +35,33 @@ from omegaconf import DictConfig
 
 
 class ClassifierModule(LightningModule):
+    def __init__(
+        self,
+        dataset: DictConfig,
+        model: DictConfig,
+        optimizer: DictConfig,
+        features: DictConfig,
+        num_workers: int = 0,
+        batch_size: int = 128,
+        time_masking: int = 0,
+        frequency_masking: int = 0,
+        scheduler: Optional[DictConfig] = None,
+        normalizer: Optional[DictConfig] = None,
+    ):
+        super().__init__()
+
+        self.save_hyperparameters()
+        self.msglogger = logging.getLogger()
+        self.initialized = False
+        self.train_set = None
+        self.test_set = None
+        self.dev_set = None
+        self.logged_samples = 0
+
+    @abstractmethod
     def prepare_data(self):
+        # get all the necessary data stuff
         pass
-
-    def setup(self, stage):
-        pass
-
-    @property
-    def total_training_steps(self) -> int:
-        """Total training steps inferred from datamodule and devices."""
-        if self.trainer.max_steps:
-            return self.trainer.max_steps
-
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
-
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
 
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
@@ -86,25 +84,26 @@ class ClassifierModule(LightningModule):
 
         return retval
 
-    @staticmethod
-    def get_balancing_sampler(dataset):
-        distribution = dataset.class_counts
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
+    @property
+    def total_training_steps(self) -> int:
+        """Total training steps inferred from datamodule and devices."""
+        if self.trainer.max_steps:
+            return self.trainer.max_steps
+
+        limit_batches = self.trainer.limit_train_batches
+        batches = len(self.train_dataloader())
+        batches = (
+            min(batches, limit_batches)
+            if isinstance(limit_batches, int)
+            else int(limit_batches * batches)
         )
 
-        sampler_weights = weights[dataset.get_label_list()]
+        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
+        if self.trainer.tpu_cores:
+            num_devices = max(num_devices, self.trainer.tpu_cores)
 
-        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
-        return sampler
-
-    # CALLBACKS
-    def on_fit_end(self):
-        loggers = self._logger_iterator()
-        for logger in loggers:
-            if isinstance(logger, TensorBoardLogger):
-                items = map(lambda x: (x[0], x[1].compute()), self.val_metrics.items())
-                logger.log_hyperparams(self.hparams, metrics=dict(items))
+        effective_accum = self.trainer.accumulate_grad_batches * num_devices
+        return int((batches // effective_accum) * self.trainer.max_epochs)
 
     def _log_weight_distribution(self):
         for name, params in self.named_parameters():
@@ -145,28 +144,8 @@ class ClassifierModule(LightningModule):
 
 
 class StreamClassifierModule(ClassifierModule):
-    def __init__(
-        self,
-        dataset: DictConfig,
-        model: DictConfig,
-        optimizer: DictConfig,
-        features: DictConfig,
-        num_workers: int = 0,
-        batch_size: int = 128,
-        time_masking: int = 0,
-        frequency_masking: int = 0,
-        scheduler: Optional[DictConfig] = None,
-        normalizer: Optional[DictConfig] = None,
-    ):
-        super().__init__()
-
-        self.save_hyperparameters()
-        self.msglogger = logging.getLogger()
-        self.initialized = False
-        self.train_set = None
-        self.test_set = None
-        self.dev_set = None
-        self.logged_samples = 0
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -422,7 +401,7 @@ class StreamClassifierModule(ClassifierModule):
     def _extract_features(self, x):
         x = self.features(x)
 
-        if x.dim() == 4:
+        if x.dim() == 4 and self.example_input_array.dim() == 3:
             new_channels = x.size(1) * x.size(2)
             x = torch.reshape(x, (x.size(0), new_channels, x.size(3)))
 
@@ -469,15 +448,6 @@ class StreamClassifierModule(ClassifierModule):
         except Exception as e:
             logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
-        # logging.info("Saving torchscript model ...")
-        # try:
-        #     dummy_input = self.example_feature_array.cpu()
-        #     traced_model = torch.jit.trace(quantized_model, (dummy_input,))
-        #     traced_model.save(os.path.join(output_dir, "model.pt"))
-
-        # except Exception as e:
-        #     logging.error("Could not export torchscript model ...\n {}".format(str(e)))
-
     def _log_audio(self, x, logits, y):
         prediction = torch.argmax(logits, dim=1)
         correct = prediction == y
@@ -497,20 +467,8 @@ class StreamClassifierModule(ClassifierModule):
 
 
 class ObjectDetectionModule(ClassifierModule):
-    def __init__(
-        self,
-        dataset: DictConfig,
-        model: DictConfig,
-        optimizer: DictConfig,
-        features: DictConfig,
-        num_workers: int = 0,
-        batch_size: int = 128,
-        time_masking: int = 0,
-        frequency_masking: int = 0,
-        scheduler: Optional[DictConfig] = None,
-        normalizer: Optional[DictConfig] = None,
-    ):
-        super().__init__(dataset, model, optimizer, features)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def setup(self, stage):
         super().setup(stage)
