@@ -8,3 +8,4 @@ from .speech import (
     VadDataset,
 )
 from .async_dataloader import AsynchronousLoader
+from .Kitti import Kitti

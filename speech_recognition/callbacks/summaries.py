@@ -6,6 +6,8 @@ import torch
 from ..models.sinc import SincNet
 from ..models.factory import qat
 
+import torchvision
+
 from pytorch_lightning.callbacks import Callback
 from tabulate import tabulate
 
@@ -43,6 +45,13 @@ def walk_model(model, dummy_input):
         #    return
         if isinstance(output, tuple):
             output = output[0]
+
+        if isinstance(output, torchvision.models.detection.image_list.ImageList):
+            return
+
+        if not isinstance(output, torch.Tensor) or not isinstance(input, torch.Tensor):
+            return
+
         volume_ifm = prod(input[0].size())
         volume_ofm = prod(output.size())
         extra = get_extra(module, volume_ofm)
@@ -178,10 +187,20 @@ class MacSummaryCallback(Callback):
 
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
-        self._do_summary(pl_module)
+        try:
+            self._do_summary(pl_module)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
         pl_module.train()
 
     def on_validation_epoch_end(self, trainer, pl_module):
-        res = self._do_summary(pl_module, print_log=False)
+        res = {}
+        try:
+            res = self._do_summary(pl_module, print_log=False)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
+
         for k, v in res.items():
             pl_module.log(k, v)
