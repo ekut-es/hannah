@@ -16,10 +16,11 @@ defaults:
 
 
 type: train
-experiment_id: nas
+experiment_id: nas3
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
+
 
 monitor: ["val_error", "total_weights",  "acc_clock_cycles", "acc_power", "acc_area"]
 
@@ -58,10 +59,17 @@ hydra:
       model:
         qconfig:
           config:
+<<<<<<< HEAD
+            bw_b: 8
+            bw_w: [3,4,5,6]
+            bw_f: [3,4,5,6,7,8]
+            power_of_2: [true, false]  # Use power of two quantization for weights
+=======
             bw_b: [4,6,8]
             bw_w: [4,6,8]
             bw_f: [4,6,8]
             power_of_2: false
+>>>>>>> 83f5867cbb22e0f711f938e124a1effb791db2e8
         conv:
           min: 2
           max: 4
