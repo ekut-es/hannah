@@ -21,6 +21,7 @@ from . import quantized as q
 _BN_CLASS_MAP = {1: nn.BatchNorm1d, 2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
 
 
+# pytype: disable=attribute-error
 class _ConvForwardMixin:
     def _real_conv_forward(self, input, weight, bias):
         if self.dim == 1:
@@ -55,7 +56,12 @@ class _ConvForwardMixin:
             )
 
 
-class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
+# pytype: enable=attribute-error
+
+
+class _ConvBnNd(
+    nn.modules.conv._ConvNd, _ConvForwardMixin
+):  # pytype: disable=module-attr
 
     _version = 2
 
@@ -81,7 +87,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         dim=2,
         out_quant=True,
     ):
-        nn.modules.conv._ConvNd.__init__(
+        nn.modules.conv._ConvNd.__init__(  # pytype: disable=module-attr
             self,
             in_channels,
             out_channels,
@@ -898,6 +904,95 @@ class Linear(nn.Linear):
                     self.bias_fake_quant(self.bias)
                     if self.bias is not None
                     else self.bias,
+                )
+            )
+
+    @classmethod
+    def from_float(cls, mod):
+        r"""Create a qat module from a float module or qparams_dict
+
+        Args: `mod` a float module, either produced by torch.quantization utilities
+        or directly from user
+        """
+        assert type(mod) == cls._FLOAT_MODULE, (
+            " qat."
+            + cls.__name__
+            + ".from_float only works for "
+            + cls._FLOAT_MODULE.__name__
+        )
+        assert hasattr(mod, "qconfig"), "Input float module must have qconfig defined"
+        assert mod.qconfig, "Input float module must have a valid qconfig"
+        if type(mod) == LinearReLU:
+            mod = mod[0]
+
+        qconfig = mod.qconfig
+        qat_linear = cls(
+            mod.in_features,
+            mod.out_features,
+            bias=mod.bias is not None,
+            qconfig=qconfig,
+        )
+        qat_linear.weight = mod.weight
+        qat_linear.bias = mod.bias
+        return qat_linear
+
+
+class LinearReLU(nn.Linear):
+    r"""
+    A linear module attached with FakeQuantize modules and ReLU for weight,
+    used for quantization aware training.
+
+    We adopt the same interface as `torch.nn.Linear`, please see
+    https://pytorch.org/docs/stable/nn.html#torch.nn.Linear
+    for documentation.
+
+    Similar to `torch.nn.Linear`, with FakeQuantize modules initialized to
+    default.
+
+    Attributes:
+        weight: fake quant module for weight
+    """
+
+    def __init__(
+        self, in_features, out_features, bias=True, out_quant=False, qconfig=None
+    ):
+        super().__init__(in_features, out_features, bias)
+        assert qconfig, "qconfig must be provided for QAT module"
+        self.out_quant = out_quant
+        self.qconfig = qconfig
+        self.weight_fake_quant = qconfig.weight()
+        if hasattr(qconfig, "bias"):
+            self.bias_fake_quant = qconfig.bias()
+        else:
+            self.bias_fake_quant = qconfig.activation()
+
+        self.activation_post_process = qconfig.activation()
+
+    @property
+    def scaled_weight(self):
+        return self.weight_fake_quant(self.weight)
+
+    def forward(self, input):
+        if self.out_quant:
+            return F.relu(
+                F.linear(
+                    input,
+                    self.weight_fake_quant(self.weight),
+                    self.bias_fake_quant(self.bias)
+                    if self.bias is not None
+                    else self.bias,
+                )
+            )
+        else:
+            return self.activation_post_process(
+                F.relu(
+                    F.linear(
+                        input,
+                        self.weight_fake_quant(self.weight),
+                        self.bias_fake_quant(self.bias)
+                        if self.bias is not None
+                        else self.bias,
+                    )
                 )
             )
 

@@ -568,7 +568,7 @@ class NetworkFactory:
 
                 stride = tuple(
                     (
-                        round(y / x)
+                        math.ceil(y / x)
                         for x, y in zip(target_output_shape[2:], output_shape[2:])
                     )
                 )
@@ -659,6 +659,10 @@ class NetworkFactory:
                 residual_configs.append(block_config)
             else:
                 main_configs.append(block_config)
+
+        if len(residual_configs) == 0:
+            # If skip connection is empty, use forward block
+            return self.forward(input_shape, config)
 
         if len(residual_configs) > len(main_configs):
             residual_configs, main_configs = main_configs, residual_configs

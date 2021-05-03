@@ -1,0 +1,6 @@
+# @package _group_
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: speech_recognition.datasets.vision.FakeDataset
+dataset: fake2d
+num_classes: 10
