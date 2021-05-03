@@ -15,7 +15,7 @@ from pl_bolts.utils import _PIL_AVAILABLE
 from pl_bolts.utils.warnings import warn_missing_pkg
 
 # from .util import KittiLabel
-from .base import DatasetType
+from .base import DatasetType, AbstractDataset
 
 if _PIL_AVAILABLE:
     from PIL import Image
@@ -23,7 +23,7 @@ else:  # pragma: no cover
     warn_missing_pkg("PIL", pypi_name="Pillow")
 
 
-class Kitti(Dataset):
+class Kitti(AbstractDataset):
     ""
 
     IMAGE_PATH = os.path.join("training", "image_2/")
@@ -45,6 +45,18 @@ class Kitti(Dataset):
         self.img_files = list(data.keys())
         self.label_files = list(data.values())
         self.transform = transforms.Compose([transforms.ToTensor()])
+
+    @classmethod
+    def prepare(cls, config):
+        pass
+
+    @property
+    def class_names(self):
+        return list(self.label_names.keys())
+
+    @property
+    def class_counts(self):
+        return None
 
     def __len__(self):
         return len(self.img_files)

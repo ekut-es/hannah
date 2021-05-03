@@ -63,6 +63,24 @@ class ClassifierModule(LightningModule):
         # get all the necessary data stuff
         pass
 
+    def setup(self, stage):
+        # TODO stage variable is not used!
+        self.msglogger.info("Setting up model")
+        if self.logger:
+            self.logger.log_hyperparams(self.hparams)
+
+        if self.initialized:
+            return
+
+        self.initialized = True
+
+        # trainset needed to set values in hparams
+        self.train_set, self.dev_set, self.test_set = get_class(
+            self.hparams.dataset.cls
+        ).splits(self.hparams.dataset)
+
+        self.num_classes = len(self.train_set.class_names)
+
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
 
@@ -165,20 +183,7 @@ class StreamClassifierModule(ClassifierModule):
             get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
 
     def setup(self, stage):
-        # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
-
-        if self.initialized:
-            return
-
-        self.initialized = True
-
-        # trainset needed to set values in hparams
-        self.train_set, self.dev_set, self.test_set = get_class(
-            self.hparams.dataset.cls
-        ).splits(self.hparams.dataset)
+        super().setup(stage)
 
         # Create example input
         device = self.device
@@ -204,7 +209,6 @@ class StreamClassifierModule(ClassifierModule):
             self.normalizer = torch.nn.Identity()
 
         # Instantiate Model
-        self.num_classes = len(self.train_set.class_names)
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
             self.model = instantiate(
@@ -482,6 +486,9 @@ class ObjectDetectionModule(ClassifierModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def prepare_data(self):
+        pass
+
     def setup(self, stage):
         super().setup(stage)
         self.example_input_array = torch.zeros(
@@ -598,7 +605,7 @@ class ObjectDetectionModule(ClassifierModule):
             print("Metric: ", torchvision.ops.box_iou(box_pred, box_target))
 
 
-class SpeechClassifierModule(LightningModule):
+class SpeechClassifierModule(StreamClassifierModule):
     def __init__(self, *args, **kwargs):
         logging.critical(
             "SpeechClassifierModule has been renamed to StreamClassifierModule"
