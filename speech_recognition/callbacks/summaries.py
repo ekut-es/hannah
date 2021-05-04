@@ -46,12 +46,6 @@ def walk_model(model, dummy_input):
         if isinstance(output, tuple):
             output = output[0]
 
-        if isinstance(output, torchvision.models.detection.image_list.ImageList):
-            return
-
-        if not isinstance(output, torch.Tensor) or not isinstance(input, torch.Tensor):
-            return
-
         volume_ifm = prod(input[0].size())
         volume_ofm = prod(output.size())
         extra = get_extra(module, volume_ofm)

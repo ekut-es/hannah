@@ -74,12 +74,14 @@ class ClassifierModule(LightningModule):
 
         self.initialized = True
 
-        # trainset needed to set values in hparams
-        self.train_set, self.dev_set, self.test_set = get_class(
-            self.hparams.dataset.cls
-        ).splits(self.hparams.dataset)
+        if self.hparams.dataset is not None:
 
-        self.num_classes = len(self.train_set.class_names)
+            # trainset needed to set values in hparams
+            self.train_set, self.dev_set, self.test_set = get_class(
+                self.hparams.dataset.cls
+            ).splits(self.hparams.dataset)
+
+            self.num_classes = len(self.train_set.class_names)
 
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
@@ -368,6 +370,7 @@ class StreamClassifierModule(ClassifierModule):
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
+
         logits = torch.nn.functional.softmax(output, dim=1)
         self.test_confusion(logits, y)
         self.test_roc(logits, y)
