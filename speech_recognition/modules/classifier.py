@@ -63,25 +63,9 @@ class ClassifierModule(LightningModule):
         # get all the necessary data stuff
         pass
 
+    @abstractmethod
     def setup(self, stage):
-        # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
-
-        if self.initialized:
-            return
-
-        self.initialized = True
-
-        if self.hparams.dataset is not None:
-
-            # trainset needed to set values in hparams
-            self.train_set, self.dev_set, self.test_set = get_class(
-                self.hparams.dataset.cls
-            ).splits(self.hparams.dataset)
-
-            self.num_classes = len(self.train_set.class_names)
+        pass
 
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
@@ -185,7 +169,25 @@ class StreamClassifierModule(ClassifierModule):
             get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
 
     def setup(self, stage):
-        super().setup(stage)
+
+        # TODO stage variable is not used!
+        self.msglogger.info("Setting up model")
+        if self.logger:
+            self.logger.log_hyperparams(self.hparams)
+
+        if self.initialized:
+            return
+
+        self.initialized = True
+
+        if self.hparams.dataset is not None:
+
+            # trainset needed to set values in hparams
+            self.train_set, self.dev_set, self.test_set = get_class(
+                self.hparams.dataset.cls
+            ).splits(self.hparams.dataset)
+
+            self.num_classes = len(self.train_set.class_names)
 
         # Create example input
         device = self.device
@@ -493,7 +495,26 @@ class ObjectDetectionModule(ClassifierModule):
         pass
 
     def setup(self, stage):
-        super().setup(stage)
+
+        # TODO stage variable is not used!
+        self.msglogger.info("Setting up model")
+        if self.logger:
+            self.logger.log_hyperparams(self.hparams)
+
+        if self.initialized:
+            return
+
+        self.initialized = True
+
+        if self.hparams.dataset is not None:
+
+            # trainset needed to set values in hparams
+            self.train_set, self.dev_set, self.test_set = get_class(
+                self.hparams.dataset.cls
+            ).splits(self.hparams.dataset)
+
+            self.num_classes = len(self.train_set.class_names)
+
         self.example_input_array = torch.zeros(
             1, 3, self.train_set.img_size[0], self.train_set.img_size[1]
         )
