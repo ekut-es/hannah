@@ -91,7 +91,7 @@ class MajorBlockConfig:
     target: str = "residual"
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
-    stride: Any = 3  # Union[None, int, Tuple[int], Tuple[int, int]]
+    stride: Optional[int] = None  # Union[None, int, Tuple[int], Tuple[int, int]]
 
 
 @dataclass
@@ -159,9 +159,6 @@ class NetworkFactory:
         if isinstance(dilation, int):
             dilation = (dilation, dilation)
 
-        if isinstance(padding, int):
-            padding = (padding, padding)
-
         if isinstance(stride, int):
             stride = (stride, stride)
 
@@ -172,6 +169,8 @@ class NetworkFactory:
             padding = (padding_x, padding_y)
         if padding is False:
             padding = (0, 0)
+        if isinstance(padding, int):
+            padding = (padding, padding)
 
         output_shape = (
             input_shape[0],
@@ -363,7 +362,7 @@ class NetworkFactory:
 
         qconfig = self.default_qconfig
 
-        print(input_shape, kernel_size, stride, padding, dilation)
+        # print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
             input_shape[0],
             out_channels,
@@ -400,14 +399,6 @@ class NetworkFactory:
             act_module = DummyActivation()
             if act:
                 act_module = self.act(act)
-
-            # try:
-            #     act_target = act.target if act else 'relu'
-            #     nn.init.kaiming_uniform(
-            #         conv_module.weight, mode="fan_in", nonlinearity=act_target
-            #     )
-            # except ValueError as e:
-            #     logging.critical("Error during kaiming initialization: %s", e)
 
             layers.append(act_module)
             layers = nn.Sequential(*layers)
@@ -473,11 +464,6 @@ class NetworkFactory:
                     qconfig=qconfig,
                     out_quant=out_quant,
                 )
-
-            # try:
-            #     nn.init.kaiming_uniform(layers.weights, mode="fan_in", act="relu")
-            # except ValueError as e:
-            #     logging.critical("Error during kaiming initialization: %s", e)
 
         return output_shape, layers
 
@@ -553,7 +539,9 @@ class NetworkFactory:
                 self.minor(block_input_shape, block_config, major_stride)
             )
             block_input_shape = result_chain[-1][0]
-            major_stride = None
+            if major_stride is not None:
+                major_stride = 1
+
         return result_chain
 
     def _build_reduction(self, reduction, input_shape, *input_chains):
@@ -576,7 +564,7 @@ class NetworkFactory:
                     output_channels = target_output_shape[1]
                     groups = (
                         1
-                    )  # For now do not use grouped convs for resamplingmath.gcd(output_channels, groups)
+                    )  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
 
                 stride = tuple(
                     (
@@ -685,7 +673,7 @@ class NetworkFactory:
         return output_shape, major_block
 
     def input(self, in_channels: int, config: MajorBlockConfig):
-        """ Create a neural network block with input parallelism
+        """Create a neural network block with input parallelism
 
         If parallel is set to [True, False, True, False]
                         |---> parallel: True  ---> |
@@ -701,7 +689,7 @@ class NetworkFactory:
         return out_channels, block
 
     def full(self, in_channels: int, config: MajorBlockConfig):
-        """ Create a neural network block with full parallelism
+        """Create a neural network block with full parallelism
 
         If parallel is set to [True, False, True, False]
                   |---> parallel: True  ---------------------------------- -|
@@ -747,7 +735,13 @@ class NetworkFactory:
             layers.append(nn.Linear(input_shape[1], config.outputs, bias=False))
         else:
             layers.append(
-                qat.Linear(input_shape[1], config.outputs, qconfig=qconfig, bias=False, out_quant=config.out_quant)
+                qat.Linear(
+                    input_shape[1],
+                    config.outputs,
+                    qconfig=qconfig,
+                    bias=False,
+                    out_quant=config.out_quant,
+                )
             )
         if norm:
             layers.append(self.norm(norm))

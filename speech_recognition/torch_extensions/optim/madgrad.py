@@ -42,7 +42,12 @@ class MADGRAD(torch.optim.Optimizer):
     """
 
     def __init__(
-        self, params: _params_t, lr: float = 1e-2, momentum: float = 0.9, weight_decay: float = 0, eps: float = 1e-6,
+        self,
+        params: _params_t,
+        lr: float = 1e-2,
+        momentum: float = 0.9,
+        weight_decay: float = 0,
+        eps: float = 1e-6,
     ):
         if momentum < 0 or momentum >= 1:
             raise ValueError(f"Momentum {momentum} must be in the range [0,1]")
@@ -76,9 +81,9 @@ class MADGRAD(torch.optim.Optimizer):
 
         # step counter must be stored in state to ensure correct behavior under
         # optimizer sharding
-        if 'k' not in self.state:
-            self.state['k'] = torch.tensor([0], dtype=torch.long)
-        k = self.state['k'].item()
+        if "k" not in self.state:
+            self.state["k"] = torch.tensor([0], dtype=torch.long)
+        k = self.state["k"].item()
 
         for group in self.param_groups:
             eps = group["eps"]
@@ -102,7 +107,9 @@ class MADGRAD(torch.optim.Optimizer):
                         state["x0"] = torch.clone(p.data).detach()
 
                 if momentum != 0.0 and grad.is_sparse:
-                    raise RuntimeError("momentum != 0 is not compatible with sparse gradients")
+                    raise RuntimeError(
+                        "momentum != 0 is not compatible with sparse gradients"
+                    )
 
                 grad_sum_sq = state["grad_sum_sq"]
                 s = state["s"]
@@ -110,7 +117,9 @@ class MADGRAD(torch.optim.Optimizer):
                 # Apply weight decay
                 if decay != 0:
                     if grad.is_sparse:
-                        raise RuntimeError("weight_decay option is not compatible with sparse gradients")
+                        raise RuntimeError(
+                            "weight_decay option is not compatible with sparse gradients"
+                        )
 
                     grad.add_(p.data, alpha=decay)
 
@@ -124,7 +133,9 @@ class MADGRAD(torch.optim.Optimizer):
 
                     # Compute x_0 from other known quantities
                     rms_masked_vals = grad_sum_sq_masked._values().pow(1 / 3).add_(eps)
-                    x0_masked_vals = p_masked._values().addcdiv(s_masked._values(), rms_masked_vals, value=1)
+                    x0_masked_vals = p_masked._values().addcdiv(
+                        s_masked._values(), rms_masked_vals, value=1
+                    )
 
                     # Dense + sparse op
                     grad_sq = grad * grad
@@ -137,7 +148,9 @@ class MADGRAD(torch.optim.Optimizer):
                     s_masked._values().add_(grad_val, alpha=lamb)
 
                     # update masked copy of p
-                    p_kp1_masked_vals = x0_masked_vals.addcdiv(s_masked._values(), rms_masked_vals, value=-1)
+                    p_kp1_masked_vals = x0_masked_vals.addcdiv(
+                        s_masked._values(), rms_masked_vals, value=-1
+                    )
                     # Copy updated masked p to dense p using an add operation
                     p_masked._values().add_(p_kp1_masked_vals, alpha=-1)
                     p.data.add_(p_masked, alpha=-1)
@@ -165,6 +178,5 @@ class MADGRAD(torch.optim.Optimizer):
                         # p is a moving average of z
                         p.data.mul_(1 - ck).add_(z, alpha=ck)
 
-
-        self.state['k'] += 1
+        self.state["k"] += 1
         return loss

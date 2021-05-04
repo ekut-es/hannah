@@ -24,7 +24,7 @@ class STE(autograd.Function):
     @staticmethod
     def backward(ctx, grad_outputs):
         # print("grad_outputs:", grad_outputs)
-        values, = ctx.saved_tensors
+        (values,) = ctx.saved_tensors
         gate = (torch.abs(values) <= 1).float()
         grad_inputs = grad_outputs * gate
         # print("grad_inputs", grad_inputs)
@@ -81,7 +81,7 @@ class SymmetricQuantization:
     def __init__(self, bits, debug=False):
         self.bits = bits
         self.max = 2.0 ** (bits - 1) - 1
-        self.min = -2.0 ** (bits - 1)
+        self.min = -(2.0 ** (bits - 1))
         self.scale = 1.0 / 2 ** (bits - 1)
         self.debug = debug
 
@@ -139,7 +139,7 @@ class PowerOf2Quantization:
         # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0)
         # is occupied by the weight value 0. But seems to have no negative
         # effect on the contrary this raises the accuracy.
-        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
+        log_x = torch.clamp(log_x, -(2 ** (self.bits - 1)) + 1, -1.0)
 
         # This value should match the maxium internal representation of UltraTrail.
         # This is the number of digits after the radix point of WIDE_BW.
@@ -169,7 +169,7 @@ class TrainableFakeQuantize(FakeQuantizeBase):
         self.bits = bits
         self.noise_prob = noise_prob
         self.debug = debug
-        self.power_of_2 = power_of_2 
+        self.power_of_2 = power_of_2
 
         if power_of_2:
             self.quantization_function = PowerOf2Quantization(bits, debug=self.debug)
@@ -190,7 +190,6 @@ class TrainableFakeQuantize(FakeQuantizeBase):
             quantized_x = quantized_x * mask + x * reverse_mask
 
         return quantized_x
-
 
     def quantize(self, x):
         return self.quantization_function.quantize(x)

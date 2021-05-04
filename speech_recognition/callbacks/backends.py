@@ -243,7 +243,11 @@ class TRaxUltraTrailBackend(Callback):
         mac_mode = "FIXED_POINT"
         if hasattr(model, "qconfig"):
             # Set UltraTrail mac and bit configuration depending on qconfig
-            mac_mode = "POWER_OF_TWO" if model.qconfig.weight.p.keywords["power_of_2"] else "FIXED_POINT"
+            mac_mode = (
+                "POWER_OF_TWO"
+                if model.qconfig.weight.p.keywords["power_of_2"]
+                else "FIXED_POINT"
+            )
             self.bw_w = model.qconfig.weight.p.keywords["bits"]
             self.bw_b = model.qconfig.bias.p.keywords["bits"]
             self.bw_f = model.qconfig.activation.p.keywords["bits"]
@@ -251,10 +255,11 @@ class TRaxUltraTrailBackend(Callback):
             model = torch.quantization.convert(
                 model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
-            
+
         if mac_mode == "POWER_OF_TWO":
-            logging.critical("PO2 quantization is enabled. Check that quantization range matches bw_wide_q")
-            
+            logging.critical(
+                "PO2 quantization is enabled. Check that quantization range matches bw_wide_q"
+            )
 
         # execute backend
         backend = UltraTrailBackend(
@@ -288,8 +293,8 @@ class TRaxUltraTrailBackend(Callback):
             self.use_acc_teda_data,
             self.rtl_simulation,
             self.synthesis,
-            self.power_estimation
+            self.power_estimation,
         )
-        
+
         for k, v in res.items():
             pl_module.log(k, v)
