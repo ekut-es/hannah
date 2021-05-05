@@ -2,7 +2,7 @@ import os
 import logging
 import shutil
 import pathlib
-
+import numpy as np
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
@@ -184,11 +184,13 @@ def train(config=DictConfig):
         "rest_f1",
     ]:
         logging.info(telement + " : " + str(test_sum[telement] / len(test_output)))
+
+    logging.info("validation_accuracy : " + str(np.sum(results) / len(results)))
     # TODO Change in diverse Backends as unas!
     if len(results) == 1:
         return results[0]
     else:
-        return results
+        return np.sum(results) / len(results)
 
 
 @hydra.main(config_name="config", config_path="conf")
