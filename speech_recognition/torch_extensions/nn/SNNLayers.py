@@ -63,9 +63,9 @@ class BatchNormalizationThroughTime1D(torch.nn.Module):
         timesteps = x.shape[2]
         new = x.clone()
         for t in range(timesteps):
-            if self.variant == "BNTTv1":
+            if self.variant == "BNTTv1" or x.shape[0] == 1:
                 new[:, :, t] = self.bnttlayer[t](x)[:, :, t]
-            else:
+            elif self.variant == "BNTTv2":
                 new[:, :, t] = self.bnttlayer[t](x[:, :, t])
         x = new
         return x
