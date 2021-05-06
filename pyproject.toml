@@ -26,7 +26,6 @@ typing-extensions = "^3.7.4"
 fsspec = "^0.8.5"
 lightning-bolts = "^0.3.2"
 wandb = "^0.10.26"
-gym = "^0.18.0"
 
 hydra-core = "^1.0.6"
 hydra-nevergrad-sweeper = "^1.1.0-rc.1"
