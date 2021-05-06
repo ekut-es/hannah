@@ -59,23 +59,9 @@ class ClassifierModule(LightningModule):
         # get all the necessary data stuff
         pass
 
+    @abstractmethod
     def setup(self, stage):
-        # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
-
-        if self.initialized:
-            return
-
-        self.initialized = True
-
-        # trainset needed to set values in hparams
-        self.train_set, self.dev_set, self.test_set = get_class(
-            self.hparams.dataset.cls
-        ).splits(self.hparams.dataset)
-
-        self.num_classes = len(self.train_set.class_names)
+        pass
 
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
@@ -179,7 +165,25 @@ class StreamClassifierModule(ClassifierModule):
             get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
 
     def setup(self, stage):
-        super().setup(stage)
+
+        # TODO stage variable is not used!
+        self.msglogger.info("Setting up model")
+        if self.logger:
+            self.logger.log_hyperparams(self.hparams)
+
+        if self.initialized:
+            return
+
+        self.initialized = True
+
+        if self.hparams.dataset is not None:
+
+            # trainset needed to set values in hparams
+            self.train_set, self.dev_set, self.test_set = get_class(
+                self.hparams.dataset.cls
+            ).splits(self.hparams.dataset)
+
+            self.num_classes = len(self.train_set.class_names)
 
         # Create example input
         device = self.device
@@ -364,6 +368,7 @@ class StreamClassifierModule(ClassifierModule):
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
+
         logits = torch.nn.functional.softmax(output, dim=1)
         self.test_confusion(logits, y)
         self.test_roc(logits, y)

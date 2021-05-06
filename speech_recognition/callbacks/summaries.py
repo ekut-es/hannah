@@ -43,31 +43,28 @@ def walk_model(model, dummy_input):
     def collect(module, input, output):
         # if len(list(module.children())) != 0:
         #    return
-        if isinstance(output, tuple):
-            output = output[0]
+        try:
+            if isinstance(output, tuple):
+                output = output[0]
 
-        if isinstance(output, torchvision.models.detection.image_list.ImageList):
-            return
-
-        if not isinstance(output, torch.Tensor) or not isinstance(input, torch.Tensor):
-            return
-
-        volume_ifm = prod(input[0].size())
-        volume_ofm = prod(output.size())
-        extra = get_extra(module, volume_ofm)
-        if extra is not None:
-            weights, macs, attrs = extra
-        else:
-            weights, macs, attrs = 0, 0, 0
-        data["Name"] += [get_name_by_module(module)]
-        data["Type"] += [module.__class__.__name__]
-        data["Attrs"] += [attrs]
-        data["IFM"] += [tuple(input[0].size())]
-        data["IFM volume"] += [volume_ifm]
-        data["OFM"] += [tuple(output.size())]
-        data["OFM volume"] += [volume_ofm]
-        data["Weights volume"] += [int(weights)]
-        data["MACs"] += [int(macs)]
+            volume_ifm = prod(input[0].size())
+            volume_ofm = prod(output.size())
+            extra = get_extra(module, volume_ofm)
+            if extra is not None:
+                weights, macs, attrs = extra
+            else:
+                weights, macs, attrs = 0, 0, 0
+            data["Name"] += [get_name_by_module(module)]
+            data["Type"] += [module.__class__.__name__]
+            data["Attrs"] += [attrs]
+            data["IFM"] += [tuple(input[0].size())]
+            data["IFM volume"] += [volume_ifm]
+            data["OFM"] += [tuple(output.size())]
+            data["OFM volume"] += [volume_ofm]
+            data["Weights volume"] += [int(weights)]
+            data["MACs"] += [int(macs)]
+        except Exception as e:
+            pass
 
     def get_extra(module, volume_ofm):
         classes = {
