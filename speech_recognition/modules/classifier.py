@@ -154,6 +154,29 @@ class ClassifierModule(LightningModule):
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
 
+    def save(self):
+        output_dir = "."
+        quantized_model = copy.deepcopy(self.model)
+        quantized_model.cpu()
+        if hasattr(self.model, "qconfig") and self.model.qconfig:
+            quantized_model = torch.quantization.convert(
+                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
+            )
+
+        logging.info("saving onnx...")
+        try:
+            dummy_input = self.example_feature_array.cpu()
+
+            torch.onnx.export(
+                quantized_model,
+                dummy_input,
+                os.path.join(output_dir, "model.onnx"),
+                verbose=False,
+                opset_version=13,
+            )
+        except Exception as e:
+            logging.error("Could not export onnx model ...\n {}".format(str(e)))
+
 
 class StreamClassifierModule(ClassifierModule):
     def __init__(self, *args, **kwargs):
@@ -434,36 +457,6 @@ class StreamClassifierModule(ClassifierModule):
 
         x = self.model(x)
         return x
-
-    def save(self):
-
-        logging.info("saving weights to json...")
-        output_dir = "."
-        filename = os.path.join(output_dir, "model.json")
-        state_dict = self.model.state_dict()
-        with open(filename, "w") as f:
-            json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
-
-        quantized_model = copy.deepcopy(self.model)
-        quantized_model.cpu()
-        if hasattr(self.model, "qconfig") and self.model.qconfig:
-            quantized_model = torch.quantization.convert(
-                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
-            )
-
-        logging.info("saving onnx...")
-        try:
-            dummy_input = self.example_feature_array.cpu()
-
-            torch.onnx.export(
-                quantized_model,
-                dummy_input,
-                os.path.join(output_dir, "model.onnx"),
-                verbose=False,
-                opset_version=13,
-            )
-        except Exception as e:
-            logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
     def _log_audio(self, x, logits, y):
         prediction = torch.argmax(logits, dim=1)

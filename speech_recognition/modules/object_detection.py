@@ -190,3 +190,6 @@ class ObjectDetectionModule(ClassifierModule):
         metric["test_ar_100dets"] = cocoEval.stats[8].item()
 
         self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
+
+    def save(self):
+        logging.warning("Onnx export currently not supported for detection modules")
