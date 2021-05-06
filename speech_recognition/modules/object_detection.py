@@ -140,10 +140,24 @@ class ObjectDetectionModule(ClassifierModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
+        cocoGt = self.test_set.getCocoGt()
+        cocoGt.createIndex()
 
-        output = self.model(x)
+        output = self(x)
+        cocoDt = cocoGt.transformOutput(output)
+        cocoDt = cocoGt.loadRes(cocoDt)
+        cocoEval = COCOeval(cocoGt, cocoDt, "bbox")
+        cocoEval.evaluate()
+        cocoEval.accumulate()
+        cocoEval.summarize()
 
-        # Identisch zum test_step (außer Metrik loggen test und val unterscheiden)
+        metric = dict()
+        metric["val_ap"] = cocoEval.stats[0].item()
+        metric["val_ap_75"] = cocoEval.stats[2].item()
+        metric["val_ar"] = cocoEval.stats[6].item()
+        metric["val_ar_100dets"] = cocoEval.stats[8].item()
+
+        self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
@@ -169,24 +183,10 @@ class ObjectDetectionModule(ClassifierModule):
         cocoEval.accumulate()
         cocoEval.summarize()
 
-        """
-        # Metrics
-        for box_pred, box_target in zip(output, y):
+        metric = dict()
+        metric["test_ap"] = cocoEval.stats[0].item()
+        metric["test_ap_75"] = cocoEval.stats[2].item()
+        metric["test_ar"] = cocoEval.stats[6].item()
+        metric["test_ar_100dets"] = cocoEval.stats[8].item()
 
-            eval = ObjectDetectionEval(cocoDt=box_pred, cocoGt=box_target)
-            eval.evaluate()
-            print(
-                "Metric: ",
-                torchvision.ops.box_iou(box_pred["boxes"], box_target["boxes"]),
-            )
-        """
-        """
-        self.log(
-            "test_error",
-            metrics,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            logger=True,
-        )
-        """
+        self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
