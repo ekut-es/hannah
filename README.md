@@ -6,7 +6,7 @@
 
 Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
 
-- python3.6+ and development headers
+- python (>=3.7.1 <3.10) and development headers
 - libsndfile and development headers
 - libsox and development headers
 - a blas implementation and development headers
@@ -93,16 +93,16 @@ And you might need to deactivate your conda environement:
 
 Datasets are downloaded automatically to the datasets datafolder by default this is a subfolder of the datasets data folder.
 
-## Training - KWS
+## Training - Keyword Spotting
 
 Training is invoked by
 
-   hannah-train
+    hannah-train
 
-If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.gpus=[number]
+If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.`gpus=[number]`
 e.g. for GPU 2 use:
 
-   hannah-train trainer.gpus=[2]
+    hannah-train trainer.gpus=[2]
 
 Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
@@ -110,46 +110,40 @@ Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
 Training of VAD is invoked by
 
-   hannah-train dataset=vad model.n_labels=2
+    hannah-train dataset=vad model.n_labels=2
 
 Training of VAD_Extended is invoked by
 
-   hannah-train dataset=vad_extended model.n_labels=2
-
-If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.gpus=[number]
-e.g. for GPU 2 use:
-
-   hannah-train dataset=vad model.n_labels=2 trainer.gpus=[2]
-
-Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
-
-## Training - PAMAP2
-
-Training of PAMAP2 human activity detection dataset is invoked by:
-
-   hannah-train dataset=pamap2 features=raw
+    hannah-train dataset=vad_extended model.n_labels=2
 
 ### Data Creation at the beginning
 
 Selection of other Voice Dataset use  `dataset.variants="[UWNU, de, en, it, fr, es]" `
 
-   hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, de, en, it, fr, es]"
+    hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, de, en, it, fr, es]"
 
 Selection of other Noise Datasets use  `dataset.noise_dataset="[TUT]" `
 
-   hannah-train dataset=vad model.n_labels=2 dataset.noise_dataset="[TUT]"
+    hannah-train dataset=vad model.n_labels=2 dataset.noise_dataset="[TUT]"
 
 Selection of dataset Split use  `dataset.data_split="vad_balanced" `
 
-   hannah-train dataset=vad model.n_labels=2 dataset.data_split="vad_balanced"
+    hannah-train dataset=vad model.n_labels=2 dataset.data_split="vad_balanced"
 
 Create Vad_small Dataset
 
-   hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU]" dataset.noise_dataset="[TUT]" dataset.data_split="vad_balanced"
+    hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU]" dataset.noise_dataset="[TUT]" dataset.data_split="vad_balanced"
 
 Create VAD_big Dataset
 
-   hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, en, de, fr, es, it]" dataset.noise_dataset="[TUT, FSD50K]" dataset.data_split="vad_balanced"
+    hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, en, de, fr, es, it]" dataset.noise_dataset="[TUT, FSD50K]" dataset.data_split="vad_balanced"
+
+
+## Training - PAMAP2
+
+Training of PAMAP2 human activity detection dataset is invoked by:
+
+    hannah-train dataset=pamap2 features=raw
 
 # Parallel Launchers
 
