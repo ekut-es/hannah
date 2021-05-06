@@ -1,4 +1,4 @@
-# HANNAH - Deep Neural Networks
+# HANNAH - Hardware Acccelerator and Neural network searcH
 
 # Getting Started
 
