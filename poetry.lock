@@ -249,6 +249,14 @@ python-versions = "*"
 six = "*"
 
 [[package]]
+name = "cython"
+version = "0.29.23"
+description = "The Cython compiler for writing C extensions for the Python language."
+category = "main"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
+
+[[package]]
 name = "distlib"
 version = "0.3.1"
 description = "Distribution utilities"
@@ -1126,6 +1134,18 @@ python-versions = "*"
 pyasn1 = ">=0.4.6,<0.5.0"
 
 [[package]]
+name = "pycocotools"
+version = "2.0.2"
+description = "Official APIs for the MS-COCO dataset"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+cython = ">=0.27.3"
+matplotlib = ">=2.1.0"
+
+[[package]]
 name = "pycodestyle"
 version = "2.7.0"
 description = "Python style guide checker"
@@ -1254,7 +1274,7 @@ six = ">=1.5"
 
 [[package]]
 name = "pytorch-lightning"
-version = "1.2.8"
+version = "1.2.10"
 description = "PyTorch Lightning is the lightweight PyTorch wrapper for ML researchers. Scale your models. Write less boilerplate."
 category = "main"
 optional = false
@@ -1264,10 +1284,11 @@ python-versions = ">=3.6"
 fsspec = {version = ">=0.8.1", extras = ["http"]}
 future = ">=0.17.1"
 numpy = ">=1.16.6"
+packaging = "*"
 PyYAML = ">=5.1,<5.4.0 || >=5.5.0"
-tensorboard = ">=2.2.0"
+tensorboard = ">=2.2.0,<2.5.0 || >2.5.0"
 torch = ">=1.4"
-torchmetrics = ">=0.2.0"
+torchmetrics = "0.2.0"
 tqdm = ">=4.41.0"
 
 [package.extras]
@@ -1525,7 +1546,7 @@ widechars = ["wcwidth"]
 
 [[package]]
 name = "tensorboard"
-version = "2.5.0"
+version = "2.4.1"
 description = "TensorBoard lets you watch Tensors Flow"
 category = "main"
 optional = false
@@ -1540,17 +1561,9 @@ markdown = ">=2.6.8"
 numpy = ">=1.12.0"
 protobuf = ">=3.6.0"
 requests = ">=2.21.0,<3"
-tensorboard-data-server = ">=0.6.0,<0.7.0"
+six = ">=1.10.0"
 tensorboard-plugin-wit = ">=1.6.0"
 werkzeug = ">=0.11.15"
-
-[[package]]
-name = "tensorboard-data-server"
-version = "0.6.0"
-description = "Fast data loading for TensorBoard"
-category = "main"
-optional = false
-python-versions = ">=3.6"
 
 [[package]]
 name = "tensorboard-plugin-wit"
@@ -1626,15 +1639,13 @@ torch = "1.8.1"
 
 [[package]]
 name = "torchmetrics"
-version = "0.3.1"
+version = "0.2.0"
 description = "PyTorch native Metrics"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
-numpy = "*"
-packaging = "*"
 torch = ">=1.3.1"
 
 [[package]]
@@ -1728,7 +1739,7 @@ testing = ["coverage (>=4)", "coverage-enable-subprocess (>=1)", "flaky (>=3)", 
 
 [[package]]
 name = "wandb"
-version = "0.10.28"
+version = "0.10.29"
 description = "A CLI and library for interacting with the Weights and Biases API."
 category = "main"
 optional = false
@@ -1851,7 +1862,7 @@ tf-backend = ["onnx-tf", "tensorflow-addons"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1 <4.0"
-content-hash = "c856c867e2293bffd44212ba30e7f4b7a4875ee851e5b3ec016e1f6363cbe9da"
+content-hash = "5f2de90ded8eb2e439f30f807891286977a9fba6894b052d24076984d24bd8aa"
 
 [metadata.files]
 absl-py = [
@@ -2065,6 +2076,43 @@ coverage = [
 cycler = [
     {file = "cycler-0.10.0-py2.py3-none-any.whl", hash = "sha256:1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d"},
     {file = "cycler-0.10.0.tar.gz", hash = "sha256:cd7b2d1018258d7247a71425e9f26463dfb444d411c39569972f4ce586b0c9d8"},
+]
+cython = [
+    {file = "Cython-0.29.23-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:ff885f18d169759b57f116d3956e45cd2b9cba989fde348bba091544c668dc11"},
+    {file = "Cython-0.29.23-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:3b29224eb62309a10819d923dc6262f769e4f3facfee3cd06372c355e5b38b33"},
+    {file = "Cython-0.29.23-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:355a6e768d91e21fbf477b61881bab64b7a2da386a166898997bccefd532cf5d"},
+    {file = "Cython-0.29.23-cp27-cp27m-win32.whl", hash = "sha256:2af52d312e96b38ded38b34d06e22685c226b1b0e58278bd27209f5d2385d115"},
+    {file = "Cython-0.29.23-cp27-cp27m-win_amd64.whl", hash = "sha256:519fccf526d26b377e1db22f22aa44889b28bc5833ec106588cb13557e8ba2da"},
+    {file = "Cython-0.29.23-cp27-cp27mu-manylinux1_i686.whl", hash = "sha256:625a16103770fd92b487b701fb0c07e5790b080f40fa11ce572a2d56d9e9fcca"},
+    {file = "Cython-0.29.23-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:7b7a766726d207d7cd57aff0fcb4b35ce042d3cc88a421fcdb45eeb61a5b9d12"},
+    {file = "Cython-0.29.23-cp34-cp34m-win32.whl", hash = "sha256:474c1a29ab43e29d990df279e2cf6aa96baa9208f5cd4bc76ac87ffcdf1e2945"},
+    {file = "Cython-0.29.23-cp34-cp34m-win_amd64.whl", hash = "sha256:f4aca6bffb1c1c3c4ada3347d0b162a699c18a66e097ee08b63b3a35118fdfcc"},
+    {file = "Cython-0.29.23-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:58dc06871bfdb0592542d779714fe9f918e11ba20ac07757dd63b198bdc704fe"},
+    {file = "Cython-0.29.23-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:2a3bbce689a2fddb85aa66712d93875c99bf7f64ac82b1d149ecce522a7a4e0c"},
+    {file = "Cython-0.29.23-cp35-cp35m-win32.whl", hash = "sha256:3ef530f975e3a760e7282fce2a25f900fa63f96d17321b4aa5f5542eb9859cdf"},
+    {file = "Cython-0.29.23-cp35-cp35m-win_amd64.whl", hash = "sha256:ef21c51350462160456eb71df31b0869e5141e940f22c61c358bdb6e3ebc3388"},
+    {file = "Cython-0.29.23-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:20402ef316393168909926ab21848aa6e08e39bed5003b657139774e66166cd0"},
+    {file = "Cython-0.29.23-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:4858043ac5f96a8f0277cf63760bb39b9521c1f897678cf1d22423f3e758f4ed"},
+    {file = "Cython-0.29.23-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:4d7c3b0882d8757c601eaf288fc0d321d5c7ac6c3afb8c42eddf9325a3419cf5"},
+    {file = "Cython-0.29.23-cp36-cp36m-win32.whl", hash = "sha256:37ff66039e3d138ec968ee1d1e12441fa5fb4e6a9c5458bc3c3a232f01be4a7d"},
+    {file = "Cython-0.29.23-cp36-cp36m-win_amd64.whl", hash = "sha256:5be3ae3189cf7d0e9bbeafb854496dc7030c6f6a5602d809435fab8223543a41"},
+    {file = "Cython-0.29.23-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:b0699f0dc90181f2458fdb8170455e7798a309e18f41379eda7a2dc8c7aadee0"},
+    {file = "Cython-0.29.23-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:41cd0dd2ff5d78466e73409db509887a84449b400074d4f217980cedbb18e4be"},
+    {file = "Cython-0.29.23-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:aa3bb0928fb2aa3a8828801eb8b29af2261c199f805ae835467489e2bdd00372"},
+    {file = "Cython-0.29.23-cp37-cp37m-win32.whl", hash = "sha256:20cb50d9fede8029bdb50875458f07a27f909289aeed4cdb9c19544dd9a9bc45"},
+    {file = "Cython-0.29.23-cp37-cp37m-win_amd64.whl", hash = "sha256:c4b82461edbbcf90f19b319006345b77474a2d7514e1476d49a14bbd55d6b797"},
+    {file = "Cython-0.29.23-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:794e3df0b57e16bce7583ac909126f4cb381fe566adadb20484d89095855eedb"},
+    {file = "Cython-0.29.23-cp38-cp38-manylinux1_i686.whl", hash = "sha256:0c4b9f7e3aa004cf3f364e3e772f55fec5740485bafea99d1f13bdc9bbd8a545"},
+    {file = "Cython-0.29.23-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:ceccc03b633113ede1f14ad914a6db5c278ce108c8ddb308a5c01c1567d8a02a"},
+    {file = "Cython-0.29.23-cp38-cp38-win32.whl", hash = "sha256:4b0bcf2e06a9063fc78c3243ed4003228375d532ef13b9e5d7183be8f0a52cf5"},
+    {file = "Cython-0.29.23-cp38-cp38-win_amd64.whl", hash = "sha256:5a6792153b728a0240e55bbb5b643f4f7e45c76319e03abf15bf367471ea1d1a"},
+    {file = "Cython-0.29.23-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:a8eed9c82e8fe07b8a8ffbd36018871a17458903fc25c9d015f37b54513a3efd"},
+    {file = "Cython-0.29.23-cp39-cp39-manylinux1_i686.whl", hash = "sha256:266459c7e48fe3c6c492b297e4033e42d4c6863cc1a1ff7cc4034949fc574fa6"},
+    {file = "Cython-0.29.23-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:4b6824b58d4373224fc76ee8bee6b35c2d17c91a1ed0fa67b88440f63daebe50"},
+    {file = "Cython-0.29.23-cp39-cp39-win32.whl", hash = "sha256:7d6a33c8a11f05f698e215bfdb837f32c27f63c20f3af863557ed91c748dc2be"},
+    {file = "Cython-0.29.23-cp39-cp39-win_amd64.whl", hash = "sha256:2365f3b5e6451b6bc6dcd262230656f4ade1d862ec2f6c22154deebef37c08b6"},
+    {file = "Cython-0.29.23-py2.py3-none-any.whl", hash = "sha256:282263628c5d601b313d5920f7b6d7e08c7fedbddacd080c4858aa04d86b6b4b"},
+    {file = "Cython-0.29.23.tar.gz", hash = "sha256:6a0d31452f0245daacb14c979c77e093eb1a546c760816b5eed0047686baad8e"},
 ]
 distlib = [
     {file = "distlib-0.3.1-py2.py3-none-any.whl", hash = "sha256:8c09de2c67b3e7deef7184574fc060ab8a793e7adbb183d942c389c8b13c52fb"},
@@ -2664,6 +2712,9 @@ pyasn1-modules = [
     {file = "pyasn1_modules-0.2.8-py3.6.egg", hash = "sha256:cbac4bc38d117f2a49aeedec4407d23e8866ea4ac27ff2cf7fb3e5b570df19e0"},
     {file = "pyasn1_modules-0.2.8-py3.7.egg", hash = "sha256:c29a5e5cc7a3f05926aff34e097e84f8589cd790ce0ed41b67aed6857b26aafd"},
 ]
+pycocotools = [
+    {file = "pycocotools-2.0.2.tar.gz", hash = "sha256:24717a12799b4471c2e54aa210d642e6cd4028826a1d49fcc2b0e3497e041f1a"},
+]
 pycodestyle = [
     {file = "pycodestyle-2.7.0-py2.py3-none-any.whl", hash = "sha256:514f76d918fcc0b55c6680472f0a37970994e07bbb80725808c17089be302068"},
     {file = "pycodestyle-2.7.0.tar.gz", hash = "sha256:c389c1d06bf7904078ca03399a4816f974a1d590090fecea0c63ec26ebaf1cef"},
@@ -2704,8 +2755,8 @@ python-dateutil = [
     {file = "python_dateutil-2.8.1-py2.py3-none-any.whl", hash = "sha256:75bb3f31ea686f1197762692a9ee6a7550b59fc6ca3a1f4b5d7e32fb98e2da2a"},
 ]
 pytorch-lightning = [
-    {file = "pytorch-lightning-1.2.8.tar.gz", hash = "sha256:382963a1500444a5efa755278c40ad074391c63bb45c7e55a7427c6ced1dd694"},
-    {file = "pytorch_lightning-1.2.8-py3-none-any.whl", hash = "sha256:907a238b2dd2778c6c07f9b42c4b432aad4de4ebc2bc62a63d564f19d541420f"},
+    {file = "pytorch-lightning-1.2.10.tar.gz", hash = "sha256:2d8365e30ded0c20e73ce6e5b6028478ae460b8fd33727df2275666df005a301"},
+    {file = "pytorch_lightning-1.2.10-py3-none-any.whl", hash = "sha256:52d05dda39e6ddd7ab6775c4ca8943e7881000acd9c9218c7e3c9feae43489b2"},
 ]
 pytz = [
     {file = "pytz-2021.1-py2.py3-none-any.whl", hash = "sha256:eb10ce3e7736052ed3623d49975ce333bcd712c7bb19a58b9e2089d4057d0798"},
@@ -2889,12 +2940,7 @@ tabulate = [
     {file = "tabulate-0.8.9.tar.gz", hash = "sha256:eb1d13f25760052e8931f2ef80aaf6045a6cceb47514db8beab24cded16f13a7"},
 ]
 tensorboard = [
-    {file = "tensorboard-2.5.0-py3-none-any.whl", hash = "sha256:e167460085b6528956b33bab1c970c989cdce47a6616273880733f5e7bde452e"},
-]
-tensorboard-data-server = [
-    {file = "tensorboard_data_server-0.6.0-py3-none-any.whl", hash = "sha256:a4b8e1c3fc85237b3afeef450db06c9a9b25f5854ad27c21667a90808acd1822"},
-    {file = "tensorboard_data_server-0.6.0-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:2d723d73e3a3b0a4498f56c64c39e2e26ac192414891df22c9f152b7058fd6bc"},
-    {file = "tensorboard_data_server-0.6.0-py3-none-manylinux2010_x86_64.whl", hash = "sha256:b620e520d3d535ceb896557acca0029fd7fd2f9f408af35abc2d2dad91f0345d"},
+    {file = "tensorboard-2.4.1-py3-none-any.whl", hash = "sha256:7b8c53c396069b618f6f276ec94fc45d17e3282d668979216e5d30be472115e4"},
 ]
 tensorboard-plugin-wit = [
     {file = "tensorboard_plugin_wit-1.8.0-py3-none-any.whl", hash = "sha256:2a80d1c551d741e99b2f197bb915d8a133e24adb8da1732b840041860f91183a"},
@@ -2958,8 +3004,8 @@ torchaudio = [
     {file = "torchaudio-0.8.1-cp39-none-win_amd64.whl", hash = "sha256:1305db89ddb58a612728533dd444f2822edd11385679555d309c67374d1a7c3f"},
 ]
 torchmetrics = [
-    {file = "torchmetrics-0.3.1-py3-none-any.whl", hash = "sha256:bf6162b56c9466fdfa8f185e8bbd48c7740c4f46d1335bc4db87ac1efcdad0e2"},
-    {file = "torchmetrics-0.3.1.tar.gz", hash = "sha256:78f4057db53f7c219fdf9ec9eed151adad18dd43488a44e5c780806d218e3f1d"},
+    {file = "torchmetrics-0.2.0-py3-none-any.whl", hash = "sha256:16a8ceac8e579828aa8a5a4f8830fc207a18e0fbc8774257fbb1cbfb95248faf"},
+    {file = "torchmetrics-0.2.0.tar.gz", hash = "sha256:481a28759acd2d77cc088acba6bc7dc4a356c7cb767da2e1495e91e612e2d548"},
 ]
 torchvision = [
     {file = "torchvision-0.9.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:da4c4f7363b60b0637354974ea0a29dbc301f66c9f25d92ed5f10637909f3500"},
@@ -3033,8 +3079,8 @@ virtualenv = [
     {file = "virtualenv-20.4.4.tar.gz", hash = "sha256:09c61377ef072f43568207dc8e46ddeac6bcdcaf288d49011bda0e7f4d38c4a2"},
 ]
 wandb = [
-    {file = "wandb-0.10.28-py2.py3-none-any.whl", hash = "sha256:609f2605ec82f846490a2bdd9d01fa947b1892a76133cbb80c41501e5dfda763"},
-    {file = "wandb-0.10.28.tar.gz", hash = "sha256:b48aa55f147717e197d38b0dd9d9ef3662efe54fefc0be2909f93e8a5c0cc71b"},
+    {file = "wandb-0.10.29-py2.py3-none-any.whl", hash = "sha256:14de6caae6c906f78149b7329595d744355542fb1537179fbc51941809b662cc"},
+    {file = "wandb-0.10.29.tar.gz", hash = "sha256:a60baad343571e282fc2b4bd870ebd0ce5372969ec6aba4271e867e2f45895e8"},
 ]
 watchdog = [
     {file = "watchdog-1.0.2-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:e2a531e71be7b5cc3499ae2d1494d51b6a26684bcc7c3146f63c810c00e8a3cc"},

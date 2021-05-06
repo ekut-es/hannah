@@ -9,12 +9,13 @@ import torch.nn.functional as F
 
 import math
 
+from pycocotools.coco import COCO
+
 from torchvision import transforms
 
 from pl_bolts.utils import _PIL_AVAILABLE
 from pl_bolts.utils.warnings import warn_missing_pkg
 
-# from .util import KittiLabel
 from .base import DatasetType, AbstractDataset
 
 if _PIL_AVAILABLE:
@@ -45,6 +46,7 @@ class Kitti(AbstractDataset):
         self.img_files = list(data.keys())
         self.label_files = list(data.values())
         self.transform = transforms.Compose([transforms.ToTensor()])
+        self.cocoGt = KittiCOCO(self.img_files, self.img_size, self.label_names)
 
     @classmethod
     def prepare(cls, config):
@@ -72,14 +74,18 @@ class Kitti(AbstractDataset):
         labels = []
         boxes = []
 
-        for i in range(len(label)):
-            boxes.append(torch.Tensor(label[i].get("bbox")))
-            labels.append(torch.tensor(label[i].get("type"), dtype=torch.long))
+        for la in label:
+            boxes.append(torch.Tensor(la.get("bbox")))
+            labels.append(torch.tensor(la.get("type"), dtype=torch.long))
+            self.cocoGt.addAnn(idx, la.get("type"), la.get("bbox"))
 
         target["boxes"] = torch.stack(boxes)
         target["labels"] = torch.stack(labels)
 
         return pil_img, target
+
+    def getCocoGt(self):
+        return self.cocoGt
 
     def _parse_label(self, idx: int):
         label = []
@@ -136,6 +142,69 @@ class Kitti(AbstractDataset):
         )
 
         return res_datasets
+
+
+class KittiCOCO(COCO):
+    def __init__(self, img_files, img_size, label_names):
+        super().__init__()
+        dataset = dict()
+        dataset["images"] = []
+        dataset["categories"] = []
+        dataset["annotations"] = []
+
+        i = 0
+        for img in img_files:
+            img_dict = dict()
+            img_dict["id"] = i
+            img_dict["width"] = img_size[1]
+            img_dict["height"] = img_size[0]
+            img_dict["filename"] = img
+            dataset["images"].append(img_dict)
+            i += 1
+
+        for label, no in zip(label_names, range(len(label_names))):
+            label_dict = dict()
+            label_dict["id"] = no
+            label_dict["name"] = label
+            dataset["categories"].append(label_dict)
+
+        self.dataset = dataset
+
+    def addAnn(self, idx, catId, bbox):
+        ann_dict = dict()
+        coco_bbox = [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]]
+        ann_dict["id"] = len(self.dataset["annotations"]) + 1
+        ann_dict["image_id"] = idx
+        ann_dict["category_id"] = catId
+        ann_dict["segmentation"] = "polygon"
+        ann_dict["bbox"] = coco_bbox
+        ann_dict["iscrowd"] = 0
+        ann_dict["area"] = bbox[2] * bbox[3]
+
+        self.dataset["annotations"].append(ann_dict)
+
+    def transformOutput(self, output):
+        retval = []
+
+        img = 0
+        for boxes, labels, scores in zip(
+            (out["boxes"] for out in output),
+            (out["labels"] for out in output),
+            (out["scores"] for out in output),
+        ):
+            for box, label, score in zip(boxes, labels, scores):
+                img_dict = dict()
+                x1 = box[0].item()
+                y1 = box[1].item()
+                img_dict["image_id"] = img
+                img_dict["category_id"] = label.item()
+                img_dict["bbox"] = [x1, y1, box[2].item() - x1, box[3].item() - y1]
+                img_dict["score"] = score.item()
+                retval.append(img_dict)
+
+            img += 1
+
+        return retval
 
 
 def object_collate_fn(data):
