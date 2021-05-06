@@ -116,7 +116,7 @@ Training of VAD_Extended is invoked by
 
     hannah-train dataset=vad_extended model.n_labels=2
 
-### Data Creation at the beginning
+### VAD dataset variants
 
 Selection of other Voice Dataset use  `dataset.variants="[UWNU, de, en, it, fr, es]" `
 
@@ -159,7 +159,7 @@ Launches optimizer hyerparameter optimization with 5 parallel jobs.
 
 To stop training early when a validation metric does not improve, you can use lignings early stopping callback:
 
-   hannah-train early_stopping=default
+    hannah-train early_stopping=default
 
 
 # Showing graphical results
@@ -175,4 +175,7 @@ or a subdirectory of trained models if only one experiment or model is of intere
 This project uses pre commit hooks for auto formatting and static code analysis.
 To enable pre commit hooks run the following command in a `poetry shell`.
 
-    pre-commit install
+     pre-commit install
+
+Try to follow (pep8)[https://pep8.org/#naming-conventions] and the rest of pep8 to the
+best of your abilities.
