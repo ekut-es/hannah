@@ -33,7 +33,26 @@ class ObjectDetectionModule(ClassifierModule):
         pass
 
     def setup(self, stage):
-        super().setup(stage)
+        # TODO stage variable is not used!
+        self.msglogger.info("Setting up model")
+        if self.logger:
+            self.logger.log_hyperparams(self.hparams)
+
+        if self.initialized:
+            return
+
+        self.initialized = True
+
+        if self.hparams.dataset is not None:
+
+            # trainset needed to set values in hparams
+            self.train_set, self.dev_set, self.test_set = get_class(
+                self.hparams.dataset.cls
+            ).splits(self.hparams.dataset)
+
+            self.num_classes = len(self.train_set.class_names)
+
+        # Create example input
         self.example_input_array = torch.zeros(
             1, 3, self.train_set.img_size[0], self.train_set.img_size[1]
         )
