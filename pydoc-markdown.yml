@@ -16,6 +16,17 @@ renderer:
         - title: Overview
           name: configuration/overview
           source: doc/configuration/configuration.md
+    - title: Compression
+      children:
+      - title: Quantization
+        name: compression/quantization
+        source: doc/compression/quantization.md
+      - title: Pruning
+        name: compression/pruning
+        source: doc/compression/pruning.md
+      - title: Knowledge Distillation
+        name: compresseion/knowledge_distillation
+        source: doc/compression/knowledge_distillation.md
     - title: Optimization
       children:
         - title: Hyperparamter Optimization
@@ -24,28 +35,30 @@ renderer:
         - title: Neural Architecture Search
           name: optimization/nas
           source: doc/optimization/nas.md
-    - title: Quantization
-      name: quantization
-      source: doc/quantization.md
-    - title: Backends
+    - title: Deployment
       children:
         - title: Torch Mobile
-          name: backends/torchmobile
-          source: doc/backends/torchmobile.md
+          name: deployment/torchmobile
+          source: doc/deployment/torchmobile.md
         - title: T-Rax Ultratrail
-          name: backends/trax-Ultratrail
-          source: doc/backends/ultratrail.md
+          name: deployment/trax-Ultratrail
+          source: doc/deployment/ultratrail.md
         - title: TVM
-          name: backends/tvm
-          source: doc/backends/tvm.md
+          name: deployment/tvm
+          source: doc/deployment/tvm.md
     - title: "Evaluation"
-      name: eval
-      source: doc/eval.md
+      children:
+        - title: "Evaluation"
+          name: eval
+          source: doc/eval.md
     - title: Development
       children:
+        - title: Overview
+          name: devel/overview
+          source: doc/devel/overview.md
         - title: Profiling
-          name: profiling
-          source: doc/profiling.md
+          name: devel/profiling
+          source: doc/devel/profiling.md
         - title: API Documentation
           contents:
             - 'speech_recognition.*'
