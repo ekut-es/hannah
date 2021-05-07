@@ -10,7 +10,6 @@ train_pct: 80
 
 kitti_folder: ${dataset.data_folder}/kitti
 img_size: 375, 1242
-number_imgs: 10
 
 
 variants: ["kitti"]

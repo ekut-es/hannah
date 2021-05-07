@@ -1,6 +1,5 @@
 import os
 import csv
-
 import numpy as np
 from torch.utils.data import Dataset
 
@@ -8,6 +7,10 @@ import torch
 import torch.nn.functional as F
 
 import math
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import matplotlib.patches as patches
 
 from pycocotools.coco import COCO
 
@@ -46,7 +49,13 @@ class Kitti(AbstractDataset):
         self.img_files = list(data.keys())
         self.label_files = list(data.values())
         self.transform = transforms.Compose([transforms.ToTensor()])
-        self.cocoGt = KittiCOCO(self.img_files, self.img_size, self.label_names)
+        self.cocoGt = KittiCOCO(
+            self.img_files,
+            self.img_size,
+            self.label_names,
+            self.img_path,
+            self.kitti_dir,
+        )
 
     @classmethod
     def prepare(cls, config):
@@ -81,6 +90,7 @@ class Kitti(AbstractDataset):
 
         target["boxes"] = torch.stack(boxes)
         target["labels"] = torch.stack(labels)
+        target["filename"] = self.img_files[idx]
 
         return pil_img, target
 
@@ -113,7 +123,7 @@ class Kitti(AbstractDataset):
 
         folder = config["data_folder"]
         folder = os.path.join(folder, "kitti")
-        num_imgs = config["number_imgs"]
+        num_imgs = 500  # 7479
         num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
         num_dev_imgs = math.floor(num_imgs * (config["dev_pct"] / 100))
 
@@ -145,8 +155,11 @@ class Kitti(AbstractDataset):
 
 
 class KittiCOCO(COCO):
-    def __init__(self, img_files, img_size, label_names):
+    def __init__(self, img_files, img_size, label_names, img_path, kitti_dir):
         super().__init__()
+        self.img_path = img_path
+        self.kitti_dir = kitti_dir
+
         dataset = dict()
         dataset["images"] = []
         dataset["categories"] = []
@@ -183,28 +196,83 @@ class KittiCOCO(COCO):
 
         self.dataset["annotations"].append(ann_dict)
 
-    def transformOutput(self, output):
+    def clearBatch(self):
+        self.dataset["annotations"] = []
+
+    def _getImgId(self, filename):
+        for img in range(len(self.imgs)):
+            if self.imgs[img]["filename"] == filename:
+                return self.imgs[img]["id"]
+
+    def transformOutput(self, output, y):
         retval = []
 
-        img = 0
-        for boxes, labels, scores in zip(
+        for boxes, labels, scores, y_img in zip(
             (out["boxes"] for out in output),
             (out["labels"] for out in output),
             (out["scores"] for out in output),
+            y,
         ):
             for box, label, score in zip(boxes, labels, scores):
                 img_dict = dict()
                 x1 = box[0].item()
                 y1 = box[1].item()
-                img_dict["image_id"] = img
+                img_dict["image_id"] = self._getImgId(y_img["filename"])
                 img_dict["category_id"] = label.item()
                 img_dict["bbox"] = [x1, y1, box[2].item() - x1, box[3].item() - y1]
                 img_dict["score"] = score.item()
                 retval.append(img_dict)
 
-            img += 1
+        if len(retval) == 0:
+            return COCO()
+        return self.loadRes(retval)
 
-        return retval
+    def saveImg(self, cocoDt, y):
+
+        for y_img in y:
+            filename = y_img["filename"]
+            cocoImg = self._getImgId(filename)
+            img = mpimg.imread(self.img_path + filename)
+            fig, ax = plt.subplots()
+            ax.imshow(img)
+
+            annsGt = self.loadAnns(self.getAnnIds(imgIds=cocoImg))
+            annsDt = cocoDt.loadAnns(cocoDt.getAnnIds(imgIds=cocoImg))
+
+            if annsDt == []:
+                print("")
+
+            for ann in annsGt:
+                # if ann["category_id"] != 0:
+                box = ann["bbox"]
+                rect = patches.Rectangle(
+                    (box[0], box[1]),
+                    box[2],
+                    box[3],
+                    linewidth=1,
+                    edgecolor="b",
+                    facecolor="none",
+                )
+                ax.add_patch(rect)
+
+            for ann in annsDt:
+                box = ann["bbox"]
+                rect = patches.Rectangle(
+                    (box[0], box[1]),
+                    box[2],
+                    box[3],
+                    linewidth=1,
+                    edgecolor="r",
+                    facecolor="none",
+                )
+                ax.add_patch(rect)
+
+            if not os.path.exists("./ann"):
+                os.makedirs("./ann")
+
+            plt.show()
+            plt.savefig("./ann/" + filename)
+            plt.close()
 
 
 def object_collate_fn(data):

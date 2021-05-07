@@ -140,12 +140,12 @@ class ObjectDetectionModule(ClassifierModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        cocoGt = self.test_set.getCocoGt()
+        cocoGt = self.dev_set.getCocoGt()
         cocoGt.createIndex()
 
         output = self(x)
-        cocoDt = cocoGt.transformOutput(output)
-        cocoDt = cocoGt.loadRes(cocoDt)
+        cocoDt = cocoGt.transformOutput(output, y)
+        cocoGt.saveImg(cocoDt, y)
         cocoEval = COCOeval(cocoGt, cocoDt, "bbox")
         cocoEval.evaluate()
         cocoEval.accumulate()
@@ -158,6 +158,7 @@ class ObjectDetectionModule(ClassifierModule):
         metric["val_ar_100dets"] = cocoEval.stats[8].item()
 
         self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
+        cocoGt.clearBatch()
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
@@ -165,6 +166,14 @@ class ObjectDetectionModule(ClassifierModule):
 
         output = self.model(x, y)
         loss = sum(output.values())
+
+        self.log(
+            name="training_loss",
+            value=loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         return loss
 
@@ -176,8 +185,8 @@ class ObjectDetectionModule(ClassifierModule):
         cocoGt.createIndex()
 
         output = self(x)
-        cocoDt = cocoGt.transformOutput(output)
-        cocoDt = cocoGt.loadRes(cocoDt)
+        cocoDt = cocoGt.transformOutput(output, y)
+        cocoGt.saveImg(cocoDt, y)
         cocoEval = COCOeval(cocoGt, cocoDt, "bbox")
         cocoEval.evaluate()
         cocoEval.accumulate()
@@ -190,6 +199,7 @@ class ObjectDetectionModule(ClassifierModule):
         metric["test_ar_100dets"] = cocoEval.stats[8].item()
 
         self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
+        cocoGt.clearBatch()
 
     def save(self):
         logging.warning("Onnx export currently not supported for detection modules")
