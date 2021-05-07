@@ -192,7 +192,7 @@ class KittiCOCO(COCO):
         ann_dict["segmentation"] = "polygon"
         ann_dict["bbox"] = coco_bbox
         ann_dict["iscrowd"] = 0
-        ann_dict["area"] = bbox[2] * bbox[3]
+        ann_dict["area"] = coco_bbox[2] * coco_bbox[3]
 
         self.dataset["annotations"].append(ann_dict)
 
