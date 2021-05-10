@@ -87,3 +87,15 @@ def test_datasets(model, dataset, split):
 def test_2d():
     command_line = "hannah-train dataset=cifar10 features=identity trainer.gpus=[1] model=conv-net-2d trainer.max_epochs=30 scheduler.max_lr=2.5"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
+def test_kitti():
+    data_folder = os.getenv(
+        "HANNAH_DATA_FOLDER", "/net/rausch1/export/lucille/datasets/"
+    )
+    if not os.path.exists(data_folder):
+        logging.warning("Could not find data folder, skipping datased tests")
+        return
+
+    command_line = f"hannah-train --config-name config_object_detection dataset.data_folder={data_folder}"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
