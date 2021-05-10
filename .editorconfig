@@ -41,7 +41,6 @@ indent_size = 2
 insert_final_newline = ignore
 
 
-
 # Makefiles always use tabs for indentation
 [Makefile]
 indent_style = tab
