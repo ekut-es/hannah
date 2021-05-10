@@ -24,7 +24,7 @@ from torchvision.datasets.utils import (
 )
 
 try:
-    import lsb_release
+    import lsb_release  # pytype: disable=import-error
 
     HAVE_LSB = True
 except ImportError:
@@ -138,16 +138,6 @@ def log_execution_env_state(distiller_gitroot="."):
     log_git_state(os.path.join(os.path.dirname(__file__), ".."))
     logger.info("  Command line: %s", " ".join(sys.argv))
     logger.info("  ")
-
-
-def load_module(path):
-    """small utility to automatically load modules from path"""
-    path = Path(path)
-    name = path.stem
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def list_all_files(path, file_suffix, file_prefix=False, remove_file_beginning=""):

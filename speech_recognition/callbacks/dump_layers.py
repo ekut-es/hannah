@@ -1,7 +1,6 @@
 import os
 import json
 
-import distiller
 import torch.nn as nn
 
 from pytorch_lightning import Callback
@@ -42,14 +41,9 @@ class TestDumperCallback(Callback):
 
                     self.count += 1
 
-            for num, module in enumerate(model.modules()):
+            for module_name, module in model.named_modules():
 
-                module_name = distiller.model_find_module_name(model, module)
-                if type(module) in [
-                    distiller.quantization.ClippedLinearQuantization,
-                    nn.ReLU,
-                    nn.Hardtanh,
-                ]:
+                if type(module) in [nn.ReLU, nn.Hardtanh]:
 
                     module.register_forward_hook(
                         DumpForwardHook(

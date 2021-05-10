@@ -21,6 +21,10 @@ class HydraOptCallback(Callback):
         ]:
             self.tests[telement] = callback_metrics[telement]
 
+        for monitor in self.monitor:
+            if monitor in callback_metrics:
+                self.values[monitor] = callback_metrics[monitor]
+
     def on_validation_end(self, trainer, pl_module):
         callback_metrics = trainer.callback_metrics
 

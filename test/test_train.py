@@ -82,3 +82,8 @@ def test_datasets(model, dataset, split):
         command_line += " features=raw"
 
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
+def test_2d():
+    command_line = "hannah-train dataset=cifar10 features=identity trainer.gpus=[1] model=conv-net-2d trainer.max_epochs=30 scheduler.max_lr=2.5"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)

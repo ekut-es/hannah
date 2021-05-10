@@ -12,10 +12,9 @@ class ReductionBlockAdd(nn.Module):
 
     def forward(self, x):
         chain_outputs = [f(x) for f in self.chains]
-        result = torch.zeros_like(chain_outputs[0])
-        for out in chain_outputs:
-            result += out
-
+        result = chain_outputs[0]
+        for y in chain_outputs[1:]:
+            result += y
         result = self.act(result)
 
         return result
