@@ -1,0 +1,74 @@
+# @package _group_
+_target_: speech_recognition.models.factory.factory.create_cnn
+name: conv_net_nas1
+norm:
+  target: bn
+act:
+  target: relu
+qconfig:
+  _target_: speech_recognition.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 4
+    bw_w: 6
+    bw_f: 4
+    power_of_2: false
+    noise_prob: 0.7
+conv:
+- blocks:
+  - act: false
+    kernel_size: 5
+    norm: true
+    out_channels: 16
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 32
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 40
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 4
+  target: residual
+- blocks:
+  - target: conv1d
+    kernel_size: 7
+    stride: 1
+    act: true
+    parallel: false
+    norm: true
+    out_channels: 32
+  stride: 2
+  target: forward
+- blocks:
+  - act: true
+    kernel_size: 5
+    norm: true
+    out_channels: 24
+    parallel: false
+    stride: 1
+    target: conv1d
+  - target: conv1d
+    kernel_size: 1
+    stride: 1
+    act: true
+    parallel: false
+    norm: true
+    out_channels: 24
+  - target: conv1d
+    kernel_size: 7
+    stride: 1
+    act: false
+    parallel: false
+    norm: true
+    out_channels: 40
+  stride: 1
+  target: residual

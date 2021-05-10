@@ -22,7 +22,7 @@ Dependencies and virtual environments are managed using [poetry](https://python-
     sudo yum install python36 python36-devel -y
     sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
 
-### Mac os
+### Mac OS
 Python 3.9 should be installed. Possible way are Homebrew
 
     brew install python@3.9
@@ -91,7 +91,7 @@ And you might need to deactivate your conda environement:
 
 ## Installing the datasets
 
-Datasets are downloaded automatically to the datasets datafolder by default this is a subfolder of the datasets data folder.
+Datasets are downloaded automatically to the datasets data folder by default this is a subfolder of the dataset's data folder.
 
 ## Training - Keyword Spotting
 
@@ -157,7 +157,7 @@ Launches optimizer hyerparameter optimization with 5 parallel jobs.
 
 # Early stopping
 
-To stop training early when a validation metric does not improve, you can use lignings early stopping callback:
+To stop training early when a validation metric does not improve, you can use lighning's early stopping callback:
 
     hannah-train early_stopping=default
 
@@ -172,8 +172,8 @@ or a subdirectory of trained models if only one experiment or model is of intere
 
 # Development
 
-This project uses pre commit hooks for auto formatting and static code analysis.
-To enable pre commit hooks run the following command in a `poetry shell`.
+This project uses precommit hooks for auto formatting and static code analysis.
+To enable precommit hooks run the following command in a `poetry shell`.
 
      pre-commit install
 
