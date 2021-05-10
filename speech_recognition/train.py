@@ -65,7 +65,6 @@ def train(config=DictConfig):
         logging.info(OmegaConf.to_yaml(config))
         logging.info("Current working directory %s", os.getcwd())
 
-        checkpoint_callback = instantiate(config.checkpoint)
         lit_module = instantiate(
             config.module,
             dataset=config.dataset,
@@ -76,6 +75,9 @@ def train(config=DictConfig):
             normalizer=config.get("normalizer", None),
         )
         callbacks = []
+
+        checkpoint_callback = instantiate(config.checkpoint)
+        callbacks.append(checkpoint_callback)
 
         logger = [
             TensorBoardLogger(".", version=None, name="", default_hp_metric=False),
@@ -121,11 +123,7 @@ def train(config=DictConfig):
 
         # INIT PYTORCH-LIGHTNING
         lit_trainer = Trainer(
-            **config.trainer,
-            profiler=profiler,
-            callbacks=callbacks,
-            checkpoint_callback=checkpoint_callback,
-            logger=logger,
+            **config.trainer, profiler=profiler, callbacks=callbacks, logger=logger
         )
 
         if config["auto_lr"]:
@@ -159,6 +157,7 @@ def train(config=DictConfig):
 
         test_output.append(opt_callback.test_result())
         results.append(opt_callback.result())
+
     test_sum = defaultdict(int)
     for output in test_output:
         for k, v in output.items():
