@@ -9,3 +9,4 @@ from .speech import (
 )
 from .async_dataloader import AsynchronousLoader
 from .Kitti import Kitti
+from .Kitti import KittiCOCO

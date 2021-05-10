@@ -3,6 +3,8 @@ import logging
 import shutil
 import pathlib
 
+from collections import defaultdict
+
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
@@ -157,34 +159,19 @@ def train(config=DictConfig):
 
         test_output.append(opt_callback.test_result())
         results.append(opt_callback.result())
-    test_sum = {
-        "test_accuracy": 0,
-        "test_error": 0,
-        "test_recall": 0,
-        "test_precision": 0,
-        "rest_f1": 0,
-    }
+    test_sum = defaultdict(int)
     for output in test_output:
-        for telement in [
-            "test_accuracy",
-            "test_error",
-            "test_recall",
-            "test_precision",
-            "rest_f1",
-        ]:
-            test_sum[telement] += output[telement].item()
+        for k, v in output.items():
+            if v.numel() == 1:
+                test_sum[k] += v.item()
+            else:
+                test_sum[k] += v
 
     logging.info("Averaged Test Metrics:")
 
-    for telement in [
-        "test_accuracy",
-        "test_error",
-        "test_recall",
-        "test_precision",
-        "rest_f1",
-    ]:
-        logging.info(telement + " : " + str(test_sum[telement] / len(test_output)))
-    # TODO Change in diverse Backends as unas!
+    for k, v in test_sum.items():
+        logging.info(k + " : " + str(v / len(test_output)))
+
     if len(results) == 1:
         return results[0]
     else:
