@@ -15,11 +15,7 @@ from torch._C import Value
 from .config_utils import get_loss_function, get_model
 from typing import Optional
 
-import torch.nn as nn
-import torchvision
-
 from speech_recognition.datasets.base import ctc_collate_fn
-from speech_recognition.datasets.Kitti import object_collate_fn
 
 import tabulate
 import torch
@@ -157,6 +153,29 @@ class ClassifierModule(LightningModule):
 
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
+
+    def save(self):
+        output_dir = "."
+        quantized_model = copy.deepcopy(self.model)
+        quantized_model.cpu()
+        if hasattr(self.model, "qconfig") and self.model.qconfig:
+            quantized_model = torch.quantization.convert(
+                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
+            )
+
+        logging.info("saving onnx...")
+        try:
+            dummy_input = self.example_feature_array.cpu()
+
+            torch.onnx.export(
+                quantized_model,
+                dummy_input,
+                os.path.join(output_dir, "model.onnx"),
+                verbose=False,
+                opset_version=13,
+            )
+        except Exception as e:
+            logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
 
 class StreamClassifierModule(ClassifierModule):
@@ -439,36 +458,6 @@ class StreamClassifierModule(ClassifierModule):
         x = self.model(x)
         return x
 
-    def save(self):
-
-        logging.info("saving weights to json...")
-        output_dir = "."
-        filename = os.path.join(output_dir, "model.json")
-        state_dict = self.model.state_dict()
-        with open(filename, "w") as f:
-            json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
-
-        quantized_model = copy.deepcopy(self.model)
-        quantized_model.cpu()
-        if hasattr(self.model, "qconfig") and self.model.qconfig:
-            quantized_model = torch.quantization.convert(
-                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
-            )
-
-        logging.info("saving onnx...")
-        try:
-            dummy_input = self.example_feature_array.cpu()
-
-            torch.onnx.export(
-                quantized_model,
-                dummy_input,
-                os.path.join(output_dir, "model.onnx"),
-                verbose=False,
-                opset_version=13,
-            )
-        except Exception as e:
-            logging.error("Could not export onnx model ...\n {}".format(str(e)))
-
     def _log_audio(self, x, logits, y):
         prediction = torch.argmax(logits, dim=1)
         correct = prediction == y
@@ -485,148 +474,6 @@ class StreamClassifierModule(ClassifierModule):
                             self.test_set.samplingrate,
                         )
                 self.logged_samples += 1
-
-
-class ObjectDetectionModule(ClassifierModule):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def prepare_data(self):
-        pass
-
-    def setup(self, stage):
-
-        # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
-
-        if self.initialized:
-            return
-
-        self.initialized = True
-
-        if self.hparams.dataset is not None:
-
-            # trainset needed to set values in hparams
-            self.train_set, self.dev_set, self.test_set = get_class(
-                self.hparams.dataset.cls
-            ).splits(self.hparams.dataset)
-
-            self.num_classes = len(self.train_set.class_names)
-
-        self.example_input_array = torch.zeros(
-            1, 3, self.train_set.img_size[0], self.train_set.img_size[1]
-        )
-
-        self.example_feature_array = self.example_input_array
-
-        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            print(self.hparams.model._target_)
-            self.model = instantiate(
-                self.hparams.model,
-                input_shape=self.example_feature_array.shape,
-                labels=self.num_classes,
-            )
-        else:
-            self.hparams.model.width = self.example_feature_array.size(2)
-            self.hparams.model.height = self.example_feature_array.size(1)
-            self.hparams.model.n_labels = self.num_classes
-            self.model = get_model(self.hparams.model)
-
-        # loss function
-        self.criterion = get_loss_function(self.model, self.hparams)
-
-    def forward(self, x):
-        x = self.model(x)
-        return x
-
-    def train_dataloader(self):
-        train_batch_size = self.hparams["batch_size"]
-        dataset_conf = self.hparams.dataset
-        sampler = None
-        sampler_type = dataset_conf.get("sampler", "random")
-        if sampler_type == "weighted":
-            sampler = self.get_balancing_sampler(self.train_set)
-        else:
-            sampler = data.RandomSampler(self.train_set)
-
-        train_loader = data.DataLoader(
-            self.train_set,
-            batch_size=min(len(self.train_set), train_batch_size),
-            drop_last=True,
-            pin_memory=True,
-            num_workers=self.hparams["num_workers"],
-            collate_fn=object_collate_fn,
-            sampler=sampler,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-
-        # if self.device.type == "cuda":
-        #    train_loader = AsynchronousLoader(train_loader, device=self.device)
-
-        self.batches_per_epoch = len(train_loader)
-
-        return train_loader
-
-    def val_dataloader(self):
-
-        dev_loader = data.DataLoader(
-            self.dev_set,
-            batch_size=min(len(self.dev_set), 9),
-            shuffle=False,
-            num_workers=self.hparams["num_workers"],
-            collate_fn=object_collate_fn,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-
-        # if self.device.type == "cuda":
-        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
-
-        return dev_loader
-
-    def test_dataloader(self):
-        test_loader = data.DataLoader(
-            self.test_set,
-            batch_size=min(len(self.test_set), 9),
-            shuffle=False,
-            num_workers=self.hparams["num_workers"],
-            collate_fn=object_collate_fn,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-
-        # if self.device.type == "cuda":
-        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
-
-        return test_loader
-
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-
-        self.model(x)
-        # Identisch zum test_step (außer Metrik loggen test und val unterscheiden)
-
-    # TRAINING CODE
-    def training_step(self, batch, batch_idx):
-        x, y = batch
-
-        output = self.model(x, y)
-        loss = sum(output.values())
-
-        return loss
-
-    def test_step(self, batch, batch_idx):
-
-        # dataloader provides these four entries per batch
-        x, y = batch
-
-        output = self(x)
-
-        # Metrics
-        for box_pred, box_target in zip(
-            (o["boxes"] for o in output), (y_b["boxes"] for y_b in y)
-        ):
-            print("Metric: ", torchvision.ops.box_iou(box_pred, box_target))
 
 
 class SpeechClassifierModule(StreamClassifierModule):

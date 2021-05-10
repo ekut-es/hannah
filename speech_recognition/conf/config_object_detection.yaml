@@ -8,7 +8,7 @@ defaults:
     - module: object_detection
     - compress: null
     - trainer: default
-    - checkpoint: default
+    - checkpoint: detection
     - backend: null
     - early_stopping: null
     - profiler: null
