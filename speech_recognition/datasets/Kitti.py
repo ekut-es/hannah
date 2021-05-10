@@ -48,7 +48,15 @@ class Kitti(AbstractDataset):
         self.set_type = set_type
         self.img_files = list(data.keys())
         self.label_files = list(data.values())
-        self.transform = transforms.Compose([transforms.ToTensor()])
+        self.transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.28679871, 0.30261545, 0.32524435],
+                    std=[0.27106311, 0.27234113, 0.27918578],
+                ),
+            ]
+        )
         self.cocoGt = KittiCOCO(
             self.img_files,
             self.img_size,
@@ -123,7 +131,7 @@ class Kitti(AbstractDataset):
 
         folder = config["data_folder"]
         folder = os.path.join(folder, "kitti")
-        num_imgs = 500  # 7479
+        num_imgs = 7479
         num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
         num_dev_imgs = math.floor(num_imgs * (config["dev_pct"] / 100))
 
@@ -270,7 +278,6 @@ class KittiCOCO(COCO):
             if not os.path.exists("./ann"):
                 os.makedirs("./ann")
 
-            plt.show()
             plt.savefig("./ann/" + filename)
             plt.close()
 
