@@ -6,4 +6,3 @@ save_top_k: 5
 verbose: true
 monitor: val_error
 mode: min
-prefix: ""
