@@ -121,11 +121,7 @@ def train(config=DictConfig):
 
         # INIT PYTORCH-LIGHTNING
         lit_trainer = Trainer(
-            **config.trainer,
-            profiler=profiler,
-            callbacks=callbacks,
-            checkpoint_callback=checkpoint_callback,
-            logger=logger,
+            **config.trainer, profiler=profiler, callbacks=callbacks, logger=logger
         )
 
         if config["auto_lr"]:
