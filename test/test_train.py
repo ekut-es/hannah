@@ -89,6 +89,7 @@ def test_2d():
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.skip(reason="Faster rcnn needs to much memory for builder")
 def test_kitti():
     data_folder = os.getenv(
         "HANNAH_DATA_FOLDER", "/net/rausch1/export/lucille/datasets/"
