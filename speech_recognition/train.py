@@ -64,8 +64,6 @@ def train(config=DictConfig):
         logging.info("Configuration: ")
         logging.info(OmegaConf.to_yaml(config))
         logging.info("Current working directory %s", os.getcwd())
-
-        checkpoint_callback = instantiate(config.checkpoint)
         lit_module = instantiate(
             config.module,
             dataset=config.dataset,
@@ -76,6 +74,8 @@ def train(config=DictConfig):
             normalizer=config.get("normalizer", None),
         )
         callbacks = []
+        checkpoint_callback = instantiate(config.checkpoint)
+        callbacks.append(checkpoint_callback)
 
         logger = [
             TensorBoardLogger(".", version=None, name="", default_hp_metric=False),
