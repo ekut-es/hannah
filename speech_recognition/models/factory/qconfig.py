@@ -177,7 +177,7 @@ class TrainableFakeQuantize(FakeQuantizeBase):
 
 
 def get_trax_qat_qconfig(config):
-    bits_bias = config.bw_b
+    bits_bias = config.bw_b if config.bw_b > 0 else config.bw_f
     bits_activation = config.bw_f
     bits_weight = config.bw_w
 
