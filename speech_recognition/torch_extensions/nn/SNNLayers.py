@@ -247,7 +247,7 @@ class Spiking1DLayer(torch.nn.Module):
             self.alpha = self.alpha.to(device=x.device)
             self.beta = self.beta.to(device=x.device)
             self.Vth = self.Vth.to(device=x.device)
-        elif self.neuron_type == "eALIF":
+        elif self.neuron_type in ["eALIF", "ALIF"]:
             self.alpha = self.alpha.to(device=x.device)
             self.beta = self.beta.to(device=x.device)
             self.gamma = self.gamma.to(device=x.device)
