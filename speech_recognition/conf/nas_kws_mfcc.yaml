@@ -16,7 +16,7 @@ defaults:
 
 
 type: train
-experiment_id: nas3
+experiment_id: nas_kws_mfcc
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
@@ -56,13 +56,21 @@ hydra:
 
     # default parametrization of the search space
     parametrization:
+      features:
+        melkwargs:
+          hop_length: [128,256,384,512,640]
+          n_fft: [128, 256, 512]
+        n_mfcc: [8,16,24,32,40]
+      backend:
+        cols: [4,6,8]
+        rows: [4,6,8]
       model:
         qconfig:
           config:
-            bw_b: [4,6,8]
+            bw_b: 0
             bw_w: [4,6,8]
             bw_f: [4,6,8]
-            power_of_2: false
+            power_of_2: [true, false]
         conv:
           min: 2
           max: 4
@@ -75,22 +83,8 @@ hydra:
                 choices:
                   - target: conv1d
                     kernel_size: [1,3,5,7,9]
-                    stride: [1]
+                    stride: 1
                     act: [false, true]
                     parallel: false
                     norm: true
-                    out_channels: [8,16,24,32,40,48,56,64]
-
-
-            #- target: residual
-            #  stride: [2,3]
-            #  blocks:
-            #    min: 1
-            #    max: 4
-            #    choices:
-            #      - target: conv1d
-            #        kernel_size: [1,3,5,7,9]
-            #        stride: [1,2,3]
-            #        act: true
-            #        norm: true
-            #        out_channels: [8,16,24,32,40,48,56,64]
+                    out_channels: [4,8,12,16,20,24,28,32,40,48,56,64]

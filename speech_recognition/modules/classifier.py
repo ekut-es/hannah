@@ -4,6 +4,8 @@ import json
 import copy
 import platform
 
+from abc import abstractmethod
+
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.classification.precision_recall import Precision
 from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
@@ -25,11 +27,10 @@ from ..datasets import AsynchronousLoader, SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
-
 from omegaconf import DictConfig
 
 
-class StreamClassifierModule(LightningModule):
+class ClassifierModule(LightningModule):
     def __init__(
         self,
         dataset: DictConfig,
@@ -53,12 +54,141 @@ class StreamClassifierModule(LightningModule):
         self.dev_set = None
         self.logged_samples = 0
 
+    @abstractmethod
+    def prepare_data(self):
+        # get all the necessary data stuff
+        pass
+
+    @abstractmethod
+    def setup(self, stage):
+        pass
+
+    def configure_optimizers(self):
+        optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
+
+        retval = {}
+        retval["optimizer"] = optimizer
+
+        if self.hparams.scheduler is not None:
+            if self.hparams.scheduler._target_ == "torch.optim.lr_scheduler.OneCycleLR":
+                scheduler = instantiate(
+                    self.hparams.scheduler,
+                    optimizer=optimizer,
+                    total_steps=self.total_training_steps,
+                )
+                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
+            else:
+                scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
+
+                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="epoch")
+
+        return retval
+
+    @property
+    def total_training_steps(self) -> int:
+        """Total training steps inferred from datamodule and devices."""
+        if self.trainer.max_steps:
+            return self.trainer.max_steps
+
+        limit_batches = self.trainer.limit_train_batches
+        batches = len(self.train_dataloader())
+        batches = (
+            min(batches, limit_batches)
+            if isinstance(limit_batches, int)
+            else int(limit_batches * batches)
+        )
+
+        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
+        if self.trainer.tpu_cores:
+            num_devices = max(num_devices, self.trainer.tpu_cores)
+
+        effective_accum = self.trainer.accumulate_grad_batches * num_devices
+        return int((batches // effective_accum) * self.trainer.max_epochs)
+
+    def _log_weight_distribution(self):
+        for name, params in self.named_parameters():
+            loggers = self._logger_iterator()
+
+            for logger in loggers:
+                if hasattr(logger.experiment, "add_histogram"):
+                    try:
+                        logger.experiment.add_histogram(
+                            name, params, self.current_epoch
+                        )
+                    except ValueError as e:
+                        logging.critical("Could not add histogram for param %s", name)
+
+        for name, module in self.named_modules():
+            loggers = self._logger_iterator()
+            if hasattr(module, "scaled_weight"):
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_histogram"):
+                        try:
+                            logger.experiment.add_histogram(
+                                f"{name}.scaled_weight",
+                                module.scaled_weight,
+                                self.current_epoch,
+                            )
+                        except ValueError as e:
+                            logging.critical(
+                                "Could not add histogram for param %s", name
+                            )
+
+    def _logger_iterator(self):
+        if isinstance(self.logger, LoggerCollection):
+            loggers = self.logger
+        else:
+            loggers = [self.logger]
+
+        return loggers
+
+    @staticmethod
+    def get_balancing_sampler(dataset):
+        distribution = dataset.class_counts
+        weights = 1.0 / torch.tensor(
+            [distribution[i] for i in range(len(distribution))], dtype=torch.float
+        )
+
+        sampler_weights = weights[dataset.get_label_list()]
+
+        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
+        return sampler
+
+    def save(self):
+        output_dir = "."
+        quantized_model = copy.deepcopy(self.model)
+        quantized_model.cpu()
+        if hasattr(self.model, "qconfig") and self.model.qconfig:
+            quantized_model = torch.quantization.convert(
+                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
+            )
+
+        logging.info("saving onnx...")
+        try:
+            dummy_input = self.example_feature_array.cpu()
+
+            torch.onnx.export(
+                quantized_model,
+                dummy_input,
+                os.path.join(output_dir, "model.onnx"),
+                verbose=False,
+                opset_version=13,
+            )
+        except Exception as e:
+            logging.error("Could not export onnx model ...\n {}".format(str(e)))
+
+
+class StreamClassifierModule(ClassifierModule):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def prepare_data(self):
         # get all the necessary data stuff
         if not self.train_set or not self.test_set or not self.dev_set:
             get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
 
     def setup(self, stage):
+
         # TODO stage variable is not used!
         self.msglogger.info("Setting up model")
         if self.logger:
@@ -69,10 +199,14 @@ class StreamClassifierModule(LightningModule):
 
         self.initialized = True
 
-        # trainset needed to set values in hparams
-        self.train_set, self.dev_set, self.test_set = get_class(
-            self.hparams.dataset.cls
-        ).splits(self.hparams.dataset)
+        if self.hparams.dataset is not None:
+
+            # trainset needed to set values in hparams
+            self.train_set, self.dev_set, self.test_set = get_class(
+                self.hparams.dataset.cls
+            ).splits(self.hparams.dataset)
+
+            self.num_classes = len(self.train_set.class_names)
 
         # Create example input
         device = self.device
@@ -98,7 +232,6 @@ class StreamClassifierModule(LightningModule):
             self.normalizer = torch.nn.Identity()
 
         # Instantiate Model
-        self.num_classes = len(self.train_set.class_names)
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
             self.model = instantiate(
@@ -154,48 +287,6 @@ class StreamClassifierModule(LightningModule):
         else:
             self.augmentation = torch.nn.Identity()
 
-    @property
-    def total_training_steps(self) -> int:
-        """Total training steps inferred from datamodule and devices."""
-        if self.trainer.max_steps:
-            return self.trainer.max_steps
-
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
-
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
-
-    def configure_optimizers(self):
-        optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
-
-        retval = {}
-        retval["optimizer"] = optimizer
-
-        if self.hparams.scheduler is not None:
-            if self.hparams.scheduler._target_ == "torch.optim.lr_scheduler.OneCycleLR":
-                scheduler = instantiate(
-                    self.hparams.scheduler,
-                    optimizer=optimizer,
-                    total_steps=self.total_training_steps,
-                )
-                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
-            else:
-                scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
-
-                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="epoch")
-
-        return retval
-
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
         if isinstance(output, list):
             for idx, out in enumerate(output):
@@ -210,18 +301,6 @@ class StreamClassifierModule(LightningModule):
             except ValueError:
                 logging.critical("Could not calculate batch metrics: {outputs}")
         self.log(f"{prefix}_loss", loss)
-
-    @staticmethod
-    def get_balancing_sampler(dataset):
-        distribution = dataset.class_counts
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
-        )
-
-        sampler_weights = weights[dataset.get_label_list()]
-
-        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
-        return sampler
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
@@ -312,6 +391,7 @@ class StreamClassifierModule(LightningModule):
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
+
         logits = torch.nn.functional.softmax(output, dim=1)
         self.test_confusion(logits, y)
         self.test_roc(logits, y)
@@ -378,82 +458,6 @@ class StreamClassifierModule(LightningModule):
         x = self.model(x)
         return x
 
-    def save(self):
-
-        logging.info("saving weights to json...")
-        output_dir = "."
-        filename = os.path.join(output_dir, "model.json")
-        state_dict = self.model.state_dict()
-        with open(filename, "w") as f:
-            json.dump(state_dict, f, default=lambda x: x.tolist(), indent=2)
-
-        quantized_model = copy.deepcopy(self.model)
-        quantized_model.cpu()
-        if hasattr(self.model, "qconfig") and self.model.qconfig:
-            quantized_model = torch.quantization.convert(
-                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
-            )
-
-        logging.info("saving onnx...")
-        try:
-            dummy_input = self.example_feature_array.cpu()
-
-            torch.onnx.export(
-                quantized_model,
-                dummy_input,
-                os.path.join(output_dir, "model.onnx"),
-                verbose=False,
-                opset_version=13,
-            )
-        except Exception as e:
-            logging.error("Could not export onnx model ...\n {}".format(str(e)))
-
-        # logging.info("Saving torchscript model ...")
-        # try:
-        #     dummy_input = self.example_feature_array.cpu()
-        #     traced_model = torch.jit.trace(quantized_model, (dummy_input,))
-        #     traced_model.save(os.path.join(output_dir, "model.pt"))
-
-        # except Exception as e:
-        #     logging.error("Could not export torchscript model ...\n {}".format(str(e)))
-
-    # CALLBACKS
-    def on_fit_end(self):
-        loggers = self._logger_iterator()
-        for logger in loggers:
-            if isinstance(logger, TensorBoardLogger):
-                items = map(lambda x: (x[0], x[1].compute()), self.val_metrics.items())
-                logger.log_hyperparams(self.hparams, metrics=dict(items))
-
-    def _log_weight_distribution(self):
-        for name, params in self.named_parameters():
-            loggers = self._logger_iterator()
-
-            for logger in loggers:
-                if hasattr(logger.experiment, "add_histogram"):
-                    try:
-                        logger.experiment.add_histogram(
-                            name, params, self.current_epoch
-                        )
-                    except ValueError as e:
-                        logging.critical("Could not add histogram for param %s", name)
-
-        for name, module in self.named_modules():
-            loggers = self._logger_iterator()
-            if hasattr(module, "scaled_weight"):
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.scaled_weight",
-                                module.scaled_weight,
-                                self.current_epoch,
-                            )
-                        except ValueError as e:
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
     def _log_audio(self, x, logits, y):
         prediction = torch.argmax(logits, dim=1)
         correct = prediction == y
@@ -471,16 +475,8 @@ class StreamClassifierModule(LightningModule):
                         )
                 self.logged_samples += 1
 
-    def _logger_iterator(self):
-        if isinstance(self.logger, LoggerCollection):
-            loggers = self.logger
-        else:
-            loggers = [self.logger]
 
-        return loggers
-
-
-class SpeechClassifierModule(LightningModule):
+class SpeechClassifierModule(StreamClassifierModule):
     def __init__(self, *args, **kwargs):
         logging.critical(
             "SpeechClassifierModule has been renamed to StreamClassifierModule"

@@ -6,6 +6,8 @@ import torch
 from ..models.sinc import SincNet
 from ..models.factory import qat
 
+import torchvision
+
 from pytorch_lightning.callbacks import Callback
 from tabulate import tabulate
 
@@ -41,24 +43,28 @@ def walk_model(model, dummy_input):
     def collect(module, input, output):
         # if len(list(module.children())) != 0:
         #    return
-        if isinstance(output, tuple):
-            output = output[0]
-        volume_ifm = prod(input[0].size())
-        volume_ofm = prod(output.size())
-        extra = get_extra(module, volume_ofm)
-        if extra is not None:
-            weights, macs, attrs = extra
-        else:
-            weights, macs, attrs = 0, 0, 0
-        data["Name"] += [get_name_by_module(module)]
-        data["Type"] += [module.__class__.__name__]
-        data["Attrs"] += [attrs]
-        data["IFM"] += [tuple(input[0].size())]
-        data["IFM volume"] += [volume_ifm]
-        data["OFM"] += [tuple(output.size())]
-        data["OFM volume"] += [volume_ofm]
-        data["Weights volume"] += [int(weights)]
-        data["MACs"] += [int(macs)]
+        try:
+            if isinstance(output, tuple):
+                output = output[0]
+
+            volume_ifm = prod(input[0].size())
+            volume_ofm = prod(output.size())
+            extra = get_extra(module, volume_ofm)
+            if extra is not None:
+                weights, macs, attrs = extra
+            else:
+                weights, macs, attrs = 0, 0, 0
+            data["Name"] += [get_name_by_module(module)]
+            data["Type"] += [module.__class__.__name__]
+            data["Attrs"] += [attrs]
+            data["IFM"] += [tuple(input[0].size())]
+            data["IFM volume"] += [volume_ifm]
+            data["OFM"] += [tuple(output.size())]
+            data["OFM volume"] += [volume_ofm]
+            data["Weights volume"] += [int(weights)]
+            data["MACs"] += [int(macs)]
+        except Exception as e:
+            pass
 
     def get_extra(module, volume_ofm):
         classes = {
@@ -138,8 +144,6 @@ def walk_model(model, dummy_input):
 
 class MacSummaryCallback(Callback):
     def _do_summary(self, pl_module, print_log=True):
-        print("Mac summary callback:")
-
         dummy_input = pl_module.example_feature_array
         dummy_input = dummy_input.to(pl_module.device)
 
@@ -164,8 +168,7 @@ class MacSummaryCallback(Callback):
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
         except RuntimeError as e:
-            if print_log:
-                msglogger.warning("Could not create performance summary: %s", str(e))
+            msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
         res = OrderedDict()
@@ -178,10 +181,20 @@ class MacSummaryCallback(Callback):
 
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
-        self._do_summary(pl_module)
+        try:
+            self._do_summary(pl_module)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
         pl_module.train()
 
     def on_validation_epoch_end(self, trainer, pl_module):
-        res = self._do_summary(pl_module, print_log=False)
+        res = {}
+        try:
+            res = self._do_summary(pl_module, print_log=False)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
+
         for k, v in res.items():
             pl_module.log(k, v)

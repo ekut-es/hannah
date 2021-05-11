@@ -6,7 +6,6 @@ n_mfcc: 40
 dct_type: 2
 norm: 'ortho'
 melkwargs:
-    win_length: 480
     hop_length: 160
     n_fft: 480
     f_min: 20.0
