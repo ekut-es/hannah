@@ -44,7 +44,7 @@ def train(config=DictConfig):
         config.seed = [config.seed]
 
     for seed in config.seed:
-        seed_everything(seed)
+        seed_everything(seed, workers=True)
         if not torch.cuda.is_available():
             config.trainer.gpus = None
 

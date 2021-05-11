@@ -15,7 +15,7 @@ import speech_recognition.modules.classifier
 
 
 def eval_checkpoint(config: DictConfig, checkpoint):
-    seed_everything(0)
+    seed_everything(1234, workers=True)
     checkpoint_path = to_absolute_path(checkpoint)
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
