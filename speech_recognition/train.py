@@ -14,7 +14,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
-from pytorch_lightning.utilities.seed import seed_everything
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from hydra.utils import instantiate
 
 from . import conf  # noqa
@@ -147,6 +147,7 @@ def train(config=DictConfig):
             ckpt_path = None
 
         # PL TEST
+        reset_seed()
         lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
         if not lit_trainer.fast_dev_run:
             lit_module.save()
