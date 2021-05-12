@@ -151,7 +151,7 @@ To launch multiple optimizations in parallel you can use a hydra launcher
 
 Submitit launcher is installed by default:
 
-   hannah-train --multirun hydra/sweeper=nevergrad  hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.eps='interval(1.0e-09, 1.0e-05)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
+   hannah-train --multirun hydra/sweeper=nevergrad hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
 
 Launches optimizer hyerparameter optimization with 5 parallel jobs.
 
