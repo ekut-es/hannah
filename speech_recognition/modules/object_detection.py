@@ -144,7 +144,7 @@ class ObjectDetectionModule(ClassifierModule):
         cocoGt.createIndex()
 
         output = self(x)
-        cocoDt = cocoGt.transformOutput(output, y)
+        cocoDt = self.model.transformOutput(cocoGt, output, y)
         cocoGt.saveImg(cocoDt, y)
         cocoEval = COCOeval(cocoGt, cocoDt, "bbox")
         cocoEval.evaluate()
@@ -185,7 +185,7 @@ class ObjectDetectionModule(ClassifierModule):
         cocoGt.createIndex()
 
         output = self(x)
-        cocoDt = cocoGt.transformOutput(output, y)
+        cocoDt = self.model.transformOutput(cocoGt, output, y)
         cocoGt.saveImg(cocoDt, y)
         cocoEval = COCOeval(cocoGt, cocoDt, "bbox")
         cocoEval.evaluate()

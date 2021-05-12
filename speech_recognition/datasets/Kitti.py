@@ -207,39 +207,16 @@ class KittiCOCO(COCO):
     def clearBatch(self):
         self.dataset["annotations"] = []
 
-    def _getImgId(self, filename):
+    def getImgId(self, filename):
         for img in range(len(self.imgs)):
             if self.imgs[img]["filename"] == filename:
                 return self.imgs[img]["id"]
-
-    def transformOutput(self, output, y):
-        retval = []
-
-        for boxes, labels, scores, y_img in zip(
-            (out["boxes"] for out in output),
-            (out["labels"] for out in output),
-            (out["scores"] for out in output),
-            y,
-        ):
-            for box, label, score in zip(boxes, labels, scores):
-                img_dict = dict()
-                x1 = box[0].item()
-                y1 = box[1].item()
-                img_dict["image_id"] = self._getImgId(y_img["filename"])
-                img_dict["category_id"] = label.item()
-                img_dict["bbox"] = [x1, y1, box[2].item() - x1, box[3].item() - y1]
-                img_dict["score"] = score.item()
-                retval.append(img_dict)
-
-        if len(retval) == 0:
-            return COCO()
-        return self.loadRes(retval)
 
     def saveImg(self, cocoDt, y):
 
         for y_img in y:
             filename = y_img["filename"]
-            cocoImg = self._getImgId(filename)
+            cocoImg = self.getImgId(filename)
             img = mpimg.imread(self.img_path + filename)
             fig, ax = plt.subplots()
             ax.imshow(img)
@@ -251,7 +228,6 @@ class KittiCOCO(COCO):
                 print("")
 
             for ann in annsGt:
-                # if ann["category_id"] != 0:
                 box = ann["bbox"]
                 rect = patches.Rectangle(
                     (box[0], box[1]),
