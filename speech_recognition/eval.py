@@ -9,13 +9,14 @@ import torch
 
 from hydra.utils import to_absolute_path, instantiate
 from omegaconf import DictConfig
-from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning import Trainer
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 import speech_recognition.modules.classifier
 
 
 def eval_checkpoint(config: DictConfig, checkpoint):
-    seed_everything(0)
+    seed_everything(1234, workers=True)
     checkpoint_path = to_absolute_path(checkpoint)
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
@@ -32,12 +33,9 @@ def eval_checkpoint(config: DictConfig, checkpoint):
     module.load_state_dict(checkpoint["state_dict"])
 
     trainer = Trainer(gpus=1, deterministic=True)
-    trainer.test(
-        model=module, test_dataloaders=[module.test_dataloader()], ckpt_path=None
-    )
-    trainer.test(
-        model=module, test_dataloaders=[module.val_dataloader()], ckpt_path=None
-    )
+    trainer.validate(model=module, ckpt_path=None)
+    reset_seed()
+    trainer.test(model=module, ckpt_path=None)
 
 
 def eval(config: DictConfig):
