@@ -62,6 +62,7 @@ class TCResidualBlock(nn.Module):
         alpha=0.75,
         beta=0.75,
         gamma=0.75,
+        roh=0.75,
         neuron_type="eLIF",
     ):
         super().__init__()
@@ -88,6 +89,7 @@ class TCResidualBlock(nn.Module):
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
+                    roh=roh,
                     neuron_type=neuron_type,
                 )
             )
@@ -174,6 +176,7 @@ class TCResidualBlock(nn.Module):
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
+                    roh=roh,
                     neuron_type=neuron_type,
                 )
             )
@@ -196,6 +199,7 @@ class TCResidualBlock(nn.Module):
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
+                    roh=roh,
                     neuron_type=neuron_type,
                 ),
                 build1DConvolution(
@@ -215,6 +219,7 @@ class TCResidualBlock(nn.Module):
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
+                    roh=roh,
                     neuron_type=neuron_type,
                 ),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
@@ -285,21 +290,37 @@ class TCResNetModel(SerializableModule):
         general_alpha = config.get("general_alpha", None)
         general_beta = config.get("general_beta", None)
         general_gamma = config.get("general_gamma", None)
+        general_roh = config.get("general_roh", None)
 
         if general_conv_type is not None:
             self.conv_type = general_conv_type
+        else:
+            self.conv_type = None
 
         if general_neuron_type is not None:
             self.neuron_type = general_neuron_type
+        else:
+            self.neuron_type = None
 
         if general_alpha is not None:
             self.alpha = general_alpha
+        else:
+            self.alpha = None
 
         if general_beta is not None:
             self.beta = general_beta
+        else:
+            self.beta = None
 
         if general_gamma is not None:
             self.gamma = general_gamma
+        else:
+            self.gamma = None
+
+        if general_roh is not None:
+            self.roh = general_roh
+        else:
+            self.roh = None
 
         self.layers = nn.ModuleList()
         self.feat = None
@@ -321,6 +342,7 @@ class TCResNetModel(SerializableModule):
             alpha_name = "conv{}_alpha".format(count)
             beta_name = "conv{}_beta".format(count)
             gamma_name = "conv{}_gamma".format(count)
+            roh_name = "conv{}_roh".format(count)
             neurontype_name = "conv{}_neuron_type".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
@@ -333,6 +355,7 @@ class TCResNetModel(SerializableModule):
             alpha = config.get(alpha_name, 1)
             beta = config.get(beta_name, 1)
             gamma = config.get(gamma_name, 1)
+            roh = config.get(roh_name, 1)
             neuron_type = config.get(neurontype_name, "eLIF")
 
             if general_bn is not None and batchnorm is not None:
@@ -347,6 +370,8 @@ class TCResNetModel(SerializableModule):
                 beta = self.beta
             if self.gamma is not None:
                 gamma = self.gamma
+            if self.roh is not None:
+                roh = self.roh
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -395,6 +420,7 @@ class TCResNetModel(SerializableModule):
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
+                    roh=roh,
                     neuron_type=neuron_type,
                 )
                 self.layers.append(conv)
@@ -416,6 +442,7 @@ class TCResNetModel(SerializableModule):
             alpha_name = "block{}_alpha".format(count)
             beta_name = "block{}_beta".format(count)
             gamma_name = "block{}_gamma".format(count)
+            roh_name = "block{}_roh".format(count)
             neurontype_name = "block{}_neuron_type".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
@@ -429,6 +456,7 @@ class TCResNetModel(SerializableModule):
             alpha = config.get(alpha_name, 1)
             beta = config.get(beta_name, 1)
             gamma = config.get(gamma_name, 1)
+            roh = config.get(roh_name, 1)
             neuron_type = config.get(neurontype_name, "eLIF")
 
             if general_bn is not None and batchnorm is not None:
@@ -443,6 +471,8 @@ class TCResNetModel(SerializableModule):
                 beta = self.beta
             if self.gamma is not None:
                 gamma = self.gamma
+            if self.roh is not None:
+                roh = self.roh
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -466,6 +496,7 @@ class TCResNetModel(SerializableModule):
                 alpha=alpha,
                 beta=beta,
                 gamma=gamma,
+                roh=roh,
                 neuron_type=neuron_type,
             )
             self.layers.append(block)
@@ -503,6 +534,7 @@ class TCResNetModel(SerializableModule):
                 self.conv_type,
                 input_shape=tmp_shape,
                 output_shape=n_labels,
+                spike_fn=self.spike_fn,
                 bias=False,
                 readout=True,
             )

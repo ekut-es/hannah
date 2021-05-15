@@ -203,6 +203,7 @@ class Spiking1DLayer(torch.nn.Module):
         alpha=0.75,
         beta=0.65,
         gamma=0.75,
+        roh=0.75,
     ):
 
         super(Spiking1DLayer, self).__init__()
@@ -232,6 +233,7 @@ class Spiking1DLayer(torch.nn.Module):
             self.alpha = torch.tensor(alpha)
             self.beta = torch.tensor(beta)
             self.gamma = torch.tensor(gamma)
+            self.roh = torch.tensor(roh)
             self.Vth = torch.ones(out_channels)
 
         self.reset_parameters()
@@ -324,7 +326,7 @@ class Spiking1DLayer(torch.nn.Module):
 
                 mem = (mem - rst) * self.beta + input_
 
-                thadapt = self.gamma * thadapt + spk_rec[:, :, t - 1]
+                thadapt = self.roh * thadapt + spk_rec[:, :, t - 1]
 
                 Athpot = self.Vth + self.gamma * thadapt
 

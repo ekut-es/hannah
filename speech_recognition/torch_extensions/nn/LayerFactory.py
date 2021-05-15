@@ -39,6 +39,7 @@ def build1DConvolution(
     alpha=0.75,
     beta=0.75,
     gamma=0.75,
+    roh=0.75,
     neuron_type="eLIF",
 ):
     conv = nn.Conv1d(
@@ -72,6 +73,7 @@ def build1DConvolution(
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
+                    roh=roh,
                     neuron_type=neuron_type,
                 ),
             )
@@ -96,6 +98,7 @@ def build1DConvolution(
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
+                    roh=roh,
                     neuron_type=neuron_type,
                 ),
             )
