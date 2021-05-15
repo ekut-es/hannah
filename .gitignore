@@ -50,3 +50,4 @@ srf-poetry/tests/
 
 #doc
 doc/_build/
+outputs/
