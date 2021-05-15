@@ -77,7 +77,7 @@ spike_fn: SBPHeaviside
 #general_beta: 0.0
 #general_gamma: 0.0
 #general_roh: 0.0
-general_neuron_type: ALIF
+#general_neuron_type: ALIF
 
 # Set by LigthningModule
 width: 101
