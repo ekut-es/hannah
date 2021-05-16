@@ -56,6 +56,9 @@ renderer:
         - title: Overview
           name: devel/overview
           source: doc/devel/overview.md
+        - title: Debugging
+          name: devel/debugging
+          source: doc/devel/debugging.md
         - title: Profiling
           name: devel/profiling
           source: doc/devel/profiling.md

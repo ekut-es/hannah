@@ -10,11 +10,14 @@ from omegaconf import DictConfig, OmegaConf
 import torch
 from torch.nn.modules import module
 
+from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
 from hydra.utils import instantiate
 
 from . import conf  # noqa
@@ -98,6 +101,14 @@ def train(config=DictConfig):
         if config.get("gpu_stats", None):
             gpu_stats = GPUStatsMonitor()
             callbacks.append(gpu_stats)
+
+        if config.get("data_monitor", False):
+            data_monitor = ModuleDataMonitor(submodules=True)
+            callbacks.append(data_monitor)
+
+        if config.get("print_metrics", False):
+            metrics_printer = PrintTableMetricsCallback()
+            callbacks.append(metrics_printer)
 
         mac_summary_callback = MacSummaryCallback()
         callbacks.append(mac_summary_callback)
