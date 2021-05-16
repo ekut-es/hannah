@@ -13,7 +13,10 @@ from typing import Optional
 
 from .classifier import ClassifierModule
 
-from pycocotools.cocoeval import COCOeval
+try:
+    from pycocotools.cocoeval import COCOeval
+except ModuleNotFoundError:
+    COCOeval = None
 
 import torchvision
 
@@ -28,6 +31,12 @@ from hydra.utils import instantiate, get_class
 class ObjectDetectionModule(ClassifierModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        if COCOeval is None:
+            self.msglogger.error("Could not find cocotools")
+            self.msglogger.error(
+                "please install with poetry install -E object-detection"
+            )
 
     def prepare_data(self):
         pass

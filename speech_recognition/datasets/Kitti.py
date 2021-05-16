@@ -1,4 +1,5 @@
 import os
+import sys
 import csv
 import numpy as np
 from torch.utils.data import Dataset
@@ -12,19 +13,16 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.patches as patches
 
-from pycocotools.coco import COCO
+try:
+    from pycocotools.coco import COCO
+except ModuleNotFoundError:
+    COCO = None
 
 from torchvision import transforms
 
-from pl_bolts.utils import _PIL_AVAILABLE
-from pl_bolts.utils.warnings import warn_missing_pkg
-
 from .base import DatasetType, AbstractDataset
 
-if _PIL_AVAILABLE:
-    from PIL import Image
-else:  # pragma: no cover
-    warn_missing_pkg("PIL", pypi_name="Pillow")
+from PIL import Image
 
 
 class Kitti(AbstractDataset):
@@ -35,10 +33,12 @@ class Kitti(AbstractDataset):
     LABEL_PATH = os.path.join("training", "label_2/")
 
     def __init__(self, data, set_type, config):
-        if not _PIL_AVAILABLE:  # pragma: no cover
-            raise ModuleNotFoundError(
-                "You want to use `PIL` which is not installed yet."
+        if COCO is None:
+            logging.error("Could not find pycocotools")
+            logging.error(
+                "please install with poetry install 'poetry install -E object-detection'"
             )
+            sys.exit(-1)
 
         self.label_names = config["labels"]
         self.img_size = tuple(map(int, config["img_size"].split(",")))
