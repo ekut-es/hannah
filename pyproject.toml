@@ -56,6 +56,7 @@ pytest-cov = "^2.10.1"
 rope = "^0.18.0"
 mypy = "^0.812"
 pydoc-markdown = "^3.10.0"
+torch-tb-profiler = "^0.1.0"
 
 [tool.poetry.extras]
 tf-backend = ["onnx-tf", "tensorflow-addons"]

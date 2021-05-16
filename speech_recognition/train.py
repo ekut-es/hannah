@@ -17,6 +17,7 @@ from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+from pytorch_lightning.utilities.distributed import rank_zero_only
 
 from hydra.utils import instantiate
 
@@ -40,6 +41,18 @@ def handleDataset(config=DictConfig):
     lit_module.prepare_data()
 
 
+@rank_zero_only
+def clear_outputs():
+    current_path = pathlib.Path(".")
+    for component in current_path.iterdir():
+        if component.name == "checkpoints":
+            shutil.rmtree(component)
+        elif component.name.startswith("version_"):
+            shutil.rmtree(component)
+        elif component.name == "profile":
+            shutil.rmtree(component)
+
+
 def train(config=DictConfig):
     test_output = []
     results = []
@@ -55,12 +68,7 @@ def train(config=DictConfig):
             config.trainer.gpus = auto_select_gpus(config.trainer.gpus)
 
         if not config.trainer.fast_dev_run:
-            current_path = pathlib.Path(".")
-            for component in current_path.iterdir():
-                if component.name == "checkpoints":
-                    shutil.rmtree(component)
-                elif component.name.startswith("version_"):
-                    shutil.rmtree(component)
+            clear_outputs()
 
         log_execution_env_state()
 
