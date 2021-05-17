@@ -20,8 +20,7 @@ experiment_id: nas_kws2
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
-backend:
-  rows: None
+
 
 
 monitor: ["val_error", "total_weights",  "acc_clock_cycles", "acc_power", "acc_area"]
