@@ -1,5 +1,5 @@
 defaults:
-    - dataset: snips
+    - dataset: kws
     - model: conv-net-trax
     - scheduler: 1cycle
     - optimizer: sgd
@@ -16,7 +16,7 @@ defaults:
 
 
 type: train
-experiment_id: nas_snips
+experiment_id: nas_kws2
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
