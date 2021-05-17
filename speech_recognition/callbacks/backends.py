@@ -203,11 +203,11 @@ class TRaxUltraTrailBackend(Callback):
         self.postsyn_simulation = postsyn_simulation
         self.power_estimation = power_estimation
         self.num_inferences = num_inferences
-        self.bw_w = 6
-        self.bw_b = 8
-        self.bw_f = 8
+        self.bw_w = None  # These are exectracted from models qconfig
+        self.bw_b = None
+        self.bw_f = None
         self.cols = cols
-        self.rows = rows
+        self.rows = rows if rows is not None else cols
         self.period = period
         self.macro_type = macro_type
         self.xs = []
