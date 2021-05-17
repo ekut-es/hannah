@@ -16,10 +16,12 @@ defaults:
 
 
 type: train
-experiment_id: nas_kws
+experiment_id: nas_kws2
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
+backend:
+  rows: None
 
 
 monitor: ["val_error", "total_weights",  "acc_clock_cycles", "acc_power", "acc_area"]
@@ -58,7 +60,6 @@ hydra:
     parametrization:
       backend:
         cols: [4,6,8]
-        rows: [4,6,8]
       model:
         qconfig:
           config:
