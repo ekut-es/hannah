@@ -177,6 +177,14 @@ class ClassifierModule(LightningModule):
         except Exception as e:
             logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
+    def on_load_checkpoint(self, checkpoint):
+        for k, v in self.state_dict().items():
+            if k not in checkpoint["state_dict"]:
+                self.msglogger.warning(
+                    "%s not in state dict using pre initialized values", k
+                )
+                checkpoint["state_dict"][k] = v
+
 
 class StreamClassifierModule(ClassifierModule):
     def __init__(self, *args, **kwargs):
@@ -188,7 +196,6 @@ class StreamClassifierModule(ClassifierModule):
             get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
 
     def setup(self, stage):
-
         # TODO stage variable is not used!
         self.msglogger.info("Setting up model")
         if self.logger:

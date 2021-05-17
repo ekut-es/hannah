@@ -155,6 +155,8 @@ def train(config=DictConfig):
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
 
+        lit_trainer.tune(lit_module)
+
         # PL TRAIN
         lit_trainer.fit(lit_module)
         ckpt_path = "best"
