@@ -17,7 +17,7 @@
 # requests that the cores are all on one node
 
 #SBATCH --mem=64G
-# the job will need 12GB of memory equally distributed on 4 cpus.
+# the job will need 64GB of memory equally distributed on 4 cpus.
 
 #SBATCH --gres=gpu:rtx2080ti:5
 #the job can use and see 5 GPUs (8 GPUs are available in total on one node)
@@ -59,7 +59,9 @@ cp -r datasets $SCRATCH
 
 cp /home/bringmann/cgerum05/ml_cloud.simg $SCRATCH
 
-echo "Running training"
-singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=config_unas dataset.data_folder=/mnt/datasets module.num_workers=4 experiment_id=nas3 hydra/launcher=joblib trainer.max_epochs=30  -m 
+echo "Running training with config $1"
+date
+singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=$1 dataset.data_folder=/mnt/datasets module.num_workers=4 hydra/launcher=joblib trainer.max_epochs=30  -m
+date
 
 echo DONE!

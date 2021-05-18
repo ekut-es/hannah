@@ -10,11 +10,15 @@ from omegaconf import DictConfig, OmegaConf
 import torch
 from torch.nn.modules import module
 
+from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
-from pytorch_lightning.utilities.seed import seed_everything
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+from pytorch_lightning.utilities.distributed import rank_zero_only
+
 from hydra.utils import instantiate
 
 from . import conf  # noqa
@@ -37,6 +41,18 @@ def handleDataset(config=DictConfig):
     lit_module.prepare_data()
 
 
+@rank_zero_only
+def clear_outputs():
+    current_path = pathlib.Path(".")
+    for component in current_path.iterdir():
+        if component.name == "checkpoints":
+            shutil.rmtree(component)
+        elif component.name.startswith("version_"):
+            shutil.rmtree(component)
+        elif component.name == "profile":
+            shutil.rmtree(component)
+
+
 def train(config=DictConfig):
     test_output = []
     results = []
@@ -44,7 +60,7 @@ def train(config=DictConfig):
         config.seed = [config.seed]
 
     for seed in config.seed:
-        seed_everything(seed)
+        seed_everything(seed, workers=True)
         if not torch.cuda.is_available():
             config.trainer.gpus = None
 
@@ -52,19 +68,13 @@ def train(config=DictConfig):
             config.trainer.gpus = auto_select_gpus(config.trainer.gpus)
 
         if not config.trainer.fast_dev_run:
-            current_path = pathlib.Path(".")
-            for component in current_path.iterdir():
-                if component.name == "checkpoints":
-                    shutil.rmtree(component)
-                elif component.name.startswith("version_"):
-                    shutil.rmtree(component)
+            clear_outputs()
 
         log_execution_env_state()
 
         logging.info("Configuration: ")
         logging.info(OmegaConf.to_yaml(config))
         logging.info("Current working directory %s", os.getcwd())
-
         lit_module = instantiate(
             config.module,
             dataset=config.dataset,
@@ -75,6 +85,8 @@ def train(config=DictConfig):
             normalizer=config.get("normalizer", None),
         )
         callbacks = []
+        checkpoint_callback = instantiate(config.checkpoint)
+        callbacks.append(checkpoint_callback)
 
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
@@ -100,6 +112,14 @@ def train(config=DictConfig):
         if config.get("gpu_stats", None):
             gpu_stats = GPUStatsMonitor()
             callbacks.append(gpu_stats)
+
+        if config.get("data_monitor", False):
+            data_monitor = ModuleDataMonitor(submodules=True)
+            callbacks.append(data_monitor)
+
+        if config.get("print_metrics", False):
+            metrics_printer = PrintTableMetricsCallback()
+            callbacks.append(metrics_printer)
 
         mac_summary_callback = MacSummaryCallback()
         callbacks.append(mac_summary_callback)
@@ -138,6 +158,8 @@ def train(config=DictConfig):
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
 
+        lit_trainer.tune(lit_module)
+
         # PL TRAIN
         lit_trainer.fit(lit_module)
         ckpt_path = "best"
@@ -149,6 +171,7 @@ def train(config=DictConfig):
             ckpt_path = None
 
         # PL TEST
+        reset_seed()
         lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
         if not lit_trainer.fast_dev_run:
             lit_module.save()

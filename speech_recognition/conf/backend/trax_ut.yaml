@@ -12,7 +12,7 @@ postsyn_simulation: False
 power_estimation: False
 num_inferences: 1
 cols: 8
-rows: 8
+rows: null # Is same as cols
 period: 1000
 macro_type: "RTL"
 use_acc_statistic_model: True

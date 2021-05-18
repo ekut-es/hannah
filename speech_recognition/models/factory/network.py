@@ -10,8 +10,12 @@ class ConvNet(nn.Module):
         self.flatten = nn.Flatten()
         self.linear = linear
         self.qconfig = qconfig
+        if qconfig:
+            self.activation_post_process = self.qconfig.activation()
 
     def forward(self, x):
+        if hasattr(self, "activation_post_process"):
+            x = self.activation_post_process(x)
         x = self.convolutions(x)
         x = self.pooling(x)
         x = self.dropout(x)

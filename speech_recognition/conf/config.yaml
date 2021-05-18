@@ -19,6 +19,9 @@ defaults:
 experiment_id: test
 output_dir: trained_models
 auto_lr: false
+print_metrics: false
+data_monitor: false
+
 seed: [1234]
 
 hydra:
