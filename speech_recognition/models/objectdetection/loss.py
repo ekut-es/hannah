@@ -3,12 +3,7 @@
 import torch
 import torch.nn as nn
 
-
-def is_parallel(model):
-    return type(model) in (
-        nn.parallel.DataParallel,
-        nn.parallel.DistributedDataParallel,
-    )
+import math
 
 
 def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7):
@@ -63,6 +58,13 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
             return iou - (c_area - union) / c_area  # GIoU
     else:
         return iou  # IoU
+
+
+def is_parallel(model):
+    return type(model) in (
+        nn.parallel.DataParallel,
+        nn.parallel.DistributedDataParallel,
+    )
 
 
 def smooth_BCE(
