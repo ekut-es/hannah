@@ -88,6 +88,9 @@ def train(config=DictConfig):
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
 
+        checkpoint_callback = instantiate(config.checkpoint)
+        callbacks.append(checkpoint_callback)
+
         logger = [
             TensorBoardLogger(".", version=None, name="", default_hp_metric=False),
             CSVLogger(".", version=None, name=""),
@@ -177,6 +180,7 @@ def train(config=DictConfig):
 
         test_output.append(opt_callback.test_result())
         results.append(opt_callback.result())
+
     test_sum = defaultdict(int)
     for output in test_output:
         for k, v in output.items():
