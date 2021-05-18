@@ -74,6 +74,8 @@ class YoloV5s(torch.nn.Module):
             autoshape=autoshape,
             force_reload=force_reload,
         )
+        for name, param in self.model.named_parameters():
+            param.requires_grad = True
 
         for name, param in self.model.named_parameters():
             param.requires_grad = True
