@@ -9,6 +9,8 @@ import torch.nn.functional as F
 
 import math
 
+import shutil
+
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.patches as patches
@@ -28,7 +30,7 @@ from PIL import Image
 class Kitti(AbstractDataset):
     ""
 
-    IMAGE_PATH = os.path.join("training", "image_2/")
+    IMAGE_PATH = os.path.join("training/")
 
     LABEL_PATH = os.path.join("training", "label_2/")
 
@@ -130,8 +132,11 @@ class Kitti(AbstractDataset):
         the three sets as List"""
 
         folder = config["data_folder"]
-        folder = os.path.join(folder, "kitti")
-        num_imgs = 7479
+        folder = os.path.join(folder, "kitti/training")
+        aug_folder = os.path.join(folder, "augmented_2/")
+        folder = os.path.join(folder, "image_2/")
+        aug_pct = config["augmented_pct"] / 100
+        num_imgs = math.floor(7479 * (config["num_img_pct"] / 100))
         num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
         num_dev_imgs = math.floor(num_imgs * (config["dev_pct"] / 100))
 
@@ -142,16 +147,46 @@ class Kitti(AbstractDataset):
         elif num_test_imgs < 1 or num_dev_imgs < 1:
             raise Exception("Each step must have at least 1 Kitti image")
 
+        if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
+            shutil.rmtree(aug_folder)
+        os.mkdir(aug_folder)
+
         for i in range(num_imgs):
-            # first test_pct into test dataset
-            if i < num_test_imgs:
-                datasets[0][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
-            # next images into dev dataset
+            # test_img pct into test dataset
+            if i < math.ceil(num_test_imgs * aug_pct):
+                img_name = str(i).zfill(6) + ".png"
+                shutil.copy2(folder + img_name, aug_folder + img_name)
+                datasets[0]["augmented_2/" + img_name] = (
+                    str(i).zfill(6) + ".txt"
+                )  # thereof first aug pct augmented
+            elif i < num_test_imgs:
+                datasets[0]["image_2/" + str(i).zfill(6) + ".png"] = (
+                    str(i).zfill(6) + ".txt"
+                )  # last imgs not augmented
+            # dev_img pct into val dataset
+            elif i < (num_test_imgs + num_dev_imgs * aug_pct):
+                img_name = str(i).zfill(6) + ".png"
+                shutil.copy2(folder + img_name, aug_folder + img_name)
+                datasets[1]["augmented_2/" + img_name] = (
+                    str(i).zfill(6) + ".txt"
+                )  # thereof first aug pct augmented
             elif i < num_test_imgs + num_dev_imgs:
-                datasets[1][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
-            # last images into train dataset
+                datasets[1]["image_2/" + str(i).zfill(6) + ".png"] = (
+                    str(i).zfill(6) + ".txt"
+                )  # last imgs not augmented
+            # last pictures into training set
+            elif i < (num_dev_imgs + num_test_imgs) + (
+                (num_imgs - num_dev_imgs - num_test_imgs) * aug_pct
+            ):
+                img_name = str(i).zfill(6) + ".png"
+                shutil.copy2(folder + img_name, aug_folder + img_name)
+                datasets[2]["augmented_2/" + img_name] = (
+                    str(i).zfill(6) + ".txt"
+                )  # thereof first aug pct augmented
             else:
-                datasets[2][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
+                datasets[2]["image_2/" + str(i).zfill(6) + ".png"] = (
+                    str(i).zfill(6) + ".txt"
+                )  # last imgs not augmented
 
         res_datasets = (
             cls(datasets[2], DatasetType.TRAIN, config),
@@ -263,7 +298,7 @@ class KittiCOCO(COCO):
             if not os.path.exists("./ann"):
                 os.makedirs("./ann")
 
-            plt.savefig("./ann/" + filename)
+            plt.savefig("./ann/" + filename[-10:])
             plt.close()
 
 
