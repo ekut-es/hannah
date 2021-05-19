@@ -1,8 +1,0 @@
-# @package _group_
-
-_target_: speech_recognition.models.objectdetection.models.YoloV5s
-name: yolo-v5-s
-num_classes: 80
-pretrained: True
-force_reload: False
-autoshape: False
