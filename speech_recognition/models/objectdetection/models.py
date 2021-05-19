@@ -51,7 +51,7 @@ class FasterRCNN(torch.nn.Module):
         return cocoGt.loadRes(retval)
 
 
-class UltralyitcsYolo(torch.nn.Module):
+class UltralyticsYolo(torch.nn.Module):
     def __init__(
         self,
         name="yolov5s",
