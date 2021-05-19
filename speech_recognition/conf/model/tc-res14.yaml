@@ -75,8 +75,8 @@ clipping_value: 100000.0
 small: false
 conv_type: NN
 spike_fn: SBPHeaviside
-general_conv_type: NN
-general_BN: BN
+#general_conv_type: NN
+#general_BN: BN
 
 # Set by LigthningModule
 width: 101
