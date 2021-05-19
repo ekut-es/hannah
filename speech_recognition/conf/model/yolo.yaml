@@ -1,0 +1,8 @@
+# @package _group_
+
+_target_: speech_recognition.models.objectdetection.models.UltralyitcsYolo
+name: yolov3 #yolov5s #yolov5m #yolov5l #yolov5x #yolov5s6 #yolov5m6 #yolov5l6 #yolov5x6
+num_classes: 80
+pretrained: True
+force_reload: False
+autoshape: False
