@@ -1,0 +1,18 @@
+# @package _group_
+
+cls: speech_recognition.models.wip.models.WIPModel
+name: wip
+
+max_in_channels: 48
+max_out_channels: 48
+max_depth: 8
+kernel_size: 9
+max_kernel_size: 9
+stride: 1
+dilation: 1
+bias: false
+
+#copied.
+width: 101
+height: 40
+n_labels: 12

@@ -104,3 +104,6 @@ class ConfigType(Enum):
     SIMPLE_VAD = "simple-vad"
     BOTTLENECK_VAD = "bottleneck-vad"
     SMALL_VAD = "small-vad"
+
+    # WIP: test model
+    WIP_1 = "wip-ofa"

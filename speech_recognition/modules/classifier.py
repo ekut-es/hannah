@@ -313,6 +313,11 @@ class StreamClassifierModule(ClassifierModule):
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
 
+        #sample active subnet if the relevant function is present
+        sample_subnet_function = getattr(self, "sample_active_subnet", None)
+        if callable(sample_subnet_function):
+            self.model.sample_active_subnet()
+
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
