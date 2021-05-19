@@ -92,9 +92,14 @@ def train(config=DictConfig):
         callbacks.append(checkpoint_callback)
 
         logger = [
-            TensorBoardLogger(".", version=None, name="", default_hp_metric=False),
-            CSVLogger(".", version=None, name=""),
+            TensorBoardLogger(".", version=None, name="", default_hp_metric=False)
         ]
+        if config.trainer.get("stochastic_weight_avg", False):
+            logging.critical(
+                "CSVLogger is not compatible with logging with SWA, disabling csv logger"
+            )
+        else:
+            logger.append(CSVLogger(".", version=None, name=""))
 
         if config.get("backend", None):
             backend = instantiate(config.backend)
