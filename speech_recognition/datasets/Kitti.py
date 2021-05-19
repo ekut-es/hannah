@@ -249,6 +249,15 @@ class KittiCOCO(COCO):
                     edgecolor="r",
                     facecolor="none",
                 )
+                ax.text(
+                    box[0],
+                    box[1],
+                    self.cats[ann["category_id"]]["name"]
+                    if ann["category_id"] in self.cats
+                    else "undefined",
+                    color="red",
+                    fontsize=10,
+                )
                 ax.add_patch(rect)
 
             if not os.path.exists("./ann"):
