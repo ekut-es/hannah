@@ -51,10 +51,10 @@ class FasterRCNN(torch.nn.Module):
         return cocoGt.loadRes(retval)
 
 
-class YoloV5s(torch.nn.Module):
+class UltralyticsYolo(torch.nn.Module):
     def __init__(
         self,
-        name="yolo-v5-s",
+        name="yolov5s",
         num_classes=80,
         pretrained=True,
         autoshape=True,
@@ -67,16 +67,13 @@ class YoloV5s(torch.nn.Module):
 
         # Model
         self.model = torch.hub.load(
-            "ultralytics/yolov5",
-            "yolov5s",
+            "ultralytics/yolov5" if name.startswith("yolov5") else "ultralytics/yolov3",
+            name,
             classes=num_classes,
             pretrained=pretrained,
             autoshape=autoshape,
             force_reload=force_reload,
         )
-        for name, param in self.model.named_parameters():
-            param.requires_grad = True
-
         for name, param in self.model.named_parameters():
             param.requires_grad = True
 
