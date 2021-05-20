@@ -175,6 +175,8 @@ def train(config=DictConfig):
             )
             ckpt_path = None
 
+        reset_seed()
+        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
         # PL TEST
         reset_seed()
         lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
