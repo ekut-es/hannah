@@ -278,14 +278,15 @@ class TRaxUltraTrailBackend(Callback):
             model.cpu(), pl_module.example_feature_array.cpu(), verbose=True
         )
         backend.set_inputs_and_outputs(self.xs, self.ys)
-        backend.prepare()
-        backend.eda(
-            self.standalone,
-            self.rtl_simulation,
-            self.synthesis,
-            self.postsyn_simulation,
-            self.power_estimation,
-        )
+        if self.use_acc_teda_data or self.rtl_simulation or self.synthesis or self.power_estimation:
+            backend.prepare()
+            backend.eda(
+                self.standalone,
+                self.rtl_simulation,
+                self.synthesis,
+                self.postsyn_simulation,
+                self.power_estimation,
+            )
 
         res = backend._do_summary(
             self.use_acc_statistic_model,
