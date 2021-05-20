@@ -30,7 +30,9 @@ from PIL import Image
 class Kitti(AbstractDataset):
     ""
 
-    IMAGE_PATH = os.path.join("training/")
+    IMAGE_PATH = os.path.join("training/image_2/")
+
+    AUG_PATH = os.path.join("training/augmented_2/")
 
     LABEL_PATH = os.path.join("training", "label_2/")
 
@@ -42,12 +44,18 @@ class Kitti(AbstractDataset):
             )
             sys.exit(-1)
 
+        self.set_type = set_type
         self.label_names = config["labels"]
         self.img_size = tuple(map(int, config["img_size"].split(",")))
         self.kitti_dir = config["kitti_folder"]
+        self.aug_pct = (
+            0.5
+            if self.set_type != DatasetType.TRAIN and config["augmented_pct"] != 0.0
+            else config["augmented_pct"] / 100
+        )
         self.img_path = os.path.join(self.kitti_dir, self.IMAGE_PATH)
+        self.aug_path = os.path.join(self.kitti_dir, self.AUG_PATH)
         self.label_path = os.path.join(self.kitti_dir, self.LABEL_PATH)
-        self.set_type = set_type
         self.img_files = list(data.keys())
         self.label_files = list(data.values())
         self.transform = transforms.Compose(
@@ -64,6 +72,7 @@ class Kitti(AbstractDataset):
             self.img_size,
             self.label_names,
             self.img_path,
+            self.aug_path,
             self.kitti_dir,
         )
 
@@ -83,7 +92,13 @@ class Kitti(AbstractDataset):
         return len(self.img_files)
 
     def __getitem__(self, idx):
-        pil_img = Image.open(self.img_path + self.img_files[idx]).convert("RGB")
+        path = np.array2string(
+            np.random.choice(
+                [self.aug_path, self.img_path], p=[self.aug_pct, 1 - self.aug_pct]
+            )
+        )
+        path = path.replace("'", "")
+        pil_img = Image.open(path + self.img_files[idx]).convert("RGB")
         # pil_img = pil_img.resize(self.img_size)
         pil_img = self.transform(pil_img)
 
@@ -101,6 +116,7 @@ class Kitti(AbstractDataset):
         target["boxes"] = torch.stack(boxes)
         target["labels"] = torch.stack(labels)
         target["filename"] = self.img_files[idx]
+        target["augmented"] = True if path == self.aug_path else False
 
         return pil_img, target
 
@@ -135,7 +151,6 @@ class Kitti(AbstractDataset):
         folder = os.path.join(folder, "kitti/training")
         aug_folder = os.path.join(folder, "augmented_2/")
         folder = os.path.join(folder, "image_2/")
-        aug_pct = config["augmented_pct"] / 100
         num_imgs = math.floor(7479 * (config["num_img_pct"] / 100))
         num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
         num_dev_imgs = math.floor(num_imgs * (config["dev_pct"] / 100))
@@ -153,38 +168,20 @@ class Kitti(AbstractDataset):
 
         for i in range(num_imgs):
             # test_img pct into test dataset
-            if i < math.ceil(num_test_imgs * aug_pct):
+            if i < num_test_imgs:
                 img_name = str(i).zfill(6) + ".png"
                 shutil.copy2(folder + img_name, aug_folder + img_name)
-                datasets[0]["augmented_2/" + img_name] = (
-                    str(i).zfill(6) + ".txt"
-                )  # thereof first aug pct augmented
-            elif i < num_test_imgs:
-                datasets[0]["image_2/" + str(i).zfill(6) + ".png"] = (
-                    str(i).zfill(6) + ".txt"
-                )  # last imgs not augmented
+                datasets[0][img_name] = str(i).zfill(6) + ".txt"
             # dev_img pct into val dataset
-            elif i < (num_test_imgs + num_dev_imgs * aug_pct):
-                img_name = str(i).zfill(6) + ".png"
-                shutil.copy2(folder + img_name, aug_folder + img_name)
-                datasets[1]["augmented_2/" + img_name] = (
-                    str(i).zfill(6) + ".txt"
-                )  # thereof first aug pct augmented
             elif i < num_test_imgs + num_dev_imgs:
-                datasets[1]["image_2/" + str(i).zfill(6) + ".png"] = (
-                    str(i).zfill(6) + ".txt"
-                )  # last imgs not augmented
-            # last pictures into training set
-            elif i < (num_dev_imgs + num_test_imgs) + (
-                (num_imgs - num_dev_imgs - num_test_imgs) * aug_pct
-            ):
                 img_name = str(i).zfill(6) + ".png"
                 shutil.copy2(folder + img_name, aug_folder + img_name)
-                datasets[2]["augmented_2/" + img_name] = (
-                    str(i).zfill(6) + ".txt"
-                )  # thereof first aug pct augmented
+                datasets[1][img_name] = str(i).zfill(6) + ".txt"
+            # last pictures into training set
             else:
-                datasets[2]["image_2/" + str(i).zfill(6) + ".png"] = (
+                img_name = str(i).zfill(6) + ".png"
+                shutil.copy2(folder + img_name, aug_folder + img_name)
+                datasets[2][img_name] = (
                     str(i).zfill(6) + ".txt"
                 )  # last imgs not augmented
 
@@ -198,9 +195,10 @@ class Kitti(AbstractDataset):
 
 
 class KittiCOCO(COCO):
-    def __init__(self, img_files, img_size, label_names, img_path, kitti_dir):
+    def __init__(self, img_files, img_size, label_names, img_path, aug_path, kitti_dir):
         super().__init__()
         self.img_path = img_path
+        self.aug_path = aug_path
         self.kitti_dir = kitti_dir
 
         dataset = dict()
@@ -250,9 +248,10 @@ class KittiCOCO(COCO):
     def saveImg(self, cocoDt, y):
 
         for y_img in y:
+            path = self.aug_path if y_img["augmented"] else self.img_path
             filename = y_img["filename"]
             cocoImg = self.getImgId(filename)
-            img = mpimg.imread(self.img_path + filename)
+            img = mpimg.imread(path + filename)
             fig, ax = plt.subplots()
             ax.imshow(img)
 
@@ -298,7 +297,7 @@ class KittiCOCO(COCO):
             if not os.path.exists("./ann"):
                 os.makedirs("./ann")
 
-            plt.savefig("./ann/" + filename[-10:])
+            plt.savefig("./ann/" + filename)
             plt.close()
 
 
