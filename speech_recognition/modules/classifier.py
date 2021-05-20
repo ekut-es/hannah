@@ -482,6 +482,14 @@ class StreamClassifierModule(ClassifierModule):
                         )
                 self.logged_samples += 1
 
+    def on_validation_epoch_end(self):
+        for logger in self._logger_iterator():
+            if isinstance(logger, TensorBoardLogger):
+                logger.log_hyperparams(
+                    self.hparams,
+                    {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
+                )
+
 
 class SpeechClassifierModule(StreamClassifierModule):
     def __init__(self, *args, **kwargs):
