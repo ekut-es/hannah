@@ -8,7 +8,7 @@ test_pct: 10
 dev_pct: 10
 train_pct: 80
 
-input_length: 1250
+input_length: 256
 samplingrate: 250
 num_channels: 2
 
