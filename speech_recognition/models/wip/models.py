@@ -38,6 +38,7 @@ class ResBlockBase(nn.Module):
             x = self.act(x)
         if self.do_norm:
             x = self.norm(x)
+        return x
 
     def __call__(self, x):
         return self.forward(x)
@@ -45,18 +46,19 @@ class ResBlockBase(nn.Module):
 
 # residual block with a 1d skip connection
 class ResBlock1d(ResBlockBase):
-    def __init__(self, in_channels, out_channels, minor_blocks=None, act_after_res=True, norm_after_res=True):
+    def __init__(self, in_channels, out_channels, minor_blocks, act_after_res=True, norm_after_res=True):
         super().__init__(in_channels=in_channels, out_channels=out_channels, act_after_res=act_after_res, norm_after_res=norm_after_res)
         # set the minor block sequence if specified in construction
-        if minor_blocks is not None:
-            self.blocks = minor_blocks
+        # if minor_blocks is not None:
+        self.blocks = minor_blocks
         # if applying skip to the residual values is required, create skip as a minimal conv1d
         self.skip = nn.Sequential(
             nn.Conv1d(self.in_channels, out_channels, kernel_size=1, stride=1, bias=False),
             nn.BatchNorm1d(self.out_channels)
-        ) if self.apply_skip else None
+        )  # if self.apply_skip else None
 
 
+# TODO: implement stride on conv blocks
 def create(name: str, labels: int, input_shape, conv=[]):
     # print("################ SHAPE ################")
     # print(np.shape(input_shape))
@@ -156,36 +158,19 @@ class WIPModel(nn.Module):
 
     # def forward(self, x, out_channel=None):
     def forward(self, x):
-        print("forwarding")
-        print(np.shape(x))
         for layer in self.conv_layers[:self.active_depth]:
-            """ # REMOVE: use __call__ to run forward(x)
-            # if the layer has a forward function, use it.
-            forward_function = getattr(layer, "forward", None)
-            if callable(forward_function):
-                x = layer.forward(x)
-            # otherwise, apply the layer directly
-            else:
-               x = layer(x)
-            """
-            print("################ LAYER ################")
-            print(np.shape(layer))
-            print("################ LAYER ################")
-            breakpoint()
             x = layer(x)
 
         result = x
-        print(np.shape(result))
+        # print(np.shape(result))
         result = self.pool(result)
         result = self.flatten(result)
         result = self.linear(result)
         # print(np.shape(result))
 
         return result
-        # return nn.functional.conv2d(x, self.conv.weight, None, self.conv.stride, padding, self.conv.dilation, 1)
 
     def sample_active_subnet(self):
-        return  # disabled until forward is fixed. active_depth will be default max_depth
         self.active_depth = np.random.randint(1, self.max_depth)
         # the new out channel count is given by the last minor block of the last active major block
         self.out_channels = self.block_config[:self.active_depth][-1].blocks[:-1].out_channels
