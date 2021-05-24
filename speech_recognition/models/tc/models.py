@@ -294,8 +294,6 @@ class TCResNetModel(SerializableModule):
 
         if general_conv_type is not None:
             self.conv_type = general_conv_type
-        else:
-            self.conv_type = None
 
         if general_neuron_type is not None:
             self.neuron_type = general_neuron_type
