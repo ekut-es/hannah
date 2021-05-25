@@ -157,7 +157,10 @@ def build1DBatchNorm(out_channels, type=None, timesteps: int = 0):
             channels=out_channels, timesteps=timesteps, variant=type
         )
     else:
-        return None
+        raise ValueError(
+            "Wrong variant for Batchnorm. allowed: BN/BNTTv1/BNTTv2 You used: "
+            + str(type)
+        )
 
 
 def buildActivationLayer(spike_fn_name="SHeaviside"):
