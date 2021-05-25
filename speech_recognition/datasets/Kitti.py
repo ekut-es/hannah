@@ -49,11 +49,6 @@ class Kitti(AbstractDataset):
         self.label_names = config["labels"]
         self.img_size = tuple(map(int, config["img_size"].split(",")))
         self.kitti_dir = config["kitti_folder"]
-        self.aug_pct = (
-            0.5
-            if self.set_type != DatasetType.TRAIN and config["augmented_pct"] != 0.0
-            else config["augmented_pct"] / 100
-        )
         self.img_path = os.path.join(self.kitti_dir, self.IMAGE_PATH)
         self.aug_path = os.path.join(self.kitti_dir, self.AUG_PATH)
         self.label_path = os.path.join(self.kitti_dir, self.LABEL_PATH)
@@ -179,17 +174,14 @@ class Kitti(AbstractDataset):
             # test_img pct into test dataset
             if i < num_test_imgs:
                 img_name = str(i).zfill(6) + ".png"
-                shutil.copy2(folder + img_name, aug_folder + img_name)
                 datasets[0][img_name] = str(i).zfill(6) + ".txt"
             # dev_img pct into val dataset
             elif i < num_test_imgs + num_dev_imgs:
                 img_name = str(i).zfill(6) + ".png"
-                shutil.copy2(folder + img_name, aug_folder + img_name)
                 datasets[1][img_name] = str(i).zfill(6) + ".txt"
             # last pictures into training set
             else:
                 img_name = str(i).zfill(6) + ".png"
-                shutil.copy2(folder + img_name, aug_folder + img_name)
                 datasets[2][img_name] = (
                     str(i).zfill(6) + ".txt"
                 )  # last imgs not augmented
