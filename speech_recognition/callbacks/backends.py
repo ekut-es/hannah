@@ -239,6 +239,7 @@ class TRaxUltraTrailBackend(Callback):
         sys.path.append(self.backend_dir)
         from backend.backend import UltraTrailBackend  # pytype: disable=import-error
 
+        classes = pl_module.num_classes
         model = pl_module.model
         mac_mode = "FIXED_POINT"
         if hasattr(model, "qconfig"):
@@ -272,6 +273,7 @@ class TRaxUltraTrailBackend(Callback):
             period=self.period,
             mac_mode=mac_mode,
             macro_type=self.macro_type,
+            classes = classes,
         )
 
         backend.set_model(
