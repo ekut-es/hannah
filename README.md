@@ -1,4 +1,4 @@
-# HANNAH - Deep Neural Networks
+# HANNAH - Hardware Acccelerator and Neural network searcH
 
 # Getting Started
 
@@ -6,7 +6,7 @@
 
 Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
 
-- python3.6+ and development headers
+- python (>=3.7.1 <3.10) and development headers
 - libsndfile and development headers
 - libsox and development headers
 - a blas implementation and development headers
@@ -22,7 +22,7 @@ Dependencies and virtual environments are managed using [poetry](https://python-
     sudo yum install python36 python36-devel -y
     sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
 
-### Mac os
+### Mac OS
 Python 3.9 should be installed. Possible way are Homebrew
 
     brew install python@3.9
@@ -78,42 +78,31 @@ Put the following in `.config/pip/pip.conf` until
     timeout = 60
     extra-index-url = https://atreus.informatik.uni-tuebingen.de/~gerum/dist/
 
+And install pytorch manually in your poetry env.
+
+    poetry shell
+    pip install torch==1.8.1 torchvision torchaudio
+
 And you might need to deactivate your conda environement:
 
     conda deactivate
 
-3.) Pytorch 1.8.0 cuda 10.2 incompatibility workaround
-
-The default pytorch 1.8.0 packages unfortunately have a bug when running on newer graphics cards (sm_75).
-
-This results in an error message similar to the following:
-
-      File "/local/gerum/speech_recognition/.venv/lib/python3.7/site-packages/torchaudio/transforms.py", line 297, in forward
-        mel_specgram = torch.matmul(specgram.transpose(1, 2), self.fb).transpose(1, 2)
-    RuntimeError: CUDA error: CUBLAS_STATUS_INTERNAL_ERROR when calling `cublasCreate(handle)
-
-You can work around this bug using:
-
-    poetry shell
-    ./scripts/install_cu11.sh
-
-Unfortunately this command must be rerun after each poetry update.
 
 
 ## Installing the datasets
 
-Datasets are downloaded automatically to the datasets datafolder by default this is a subfolder of the datasets data folder.
+Datasets are downloaded automatically to the datasets data folder by default this is a subfolder of the dataset's data folder.
 
-## Training - KWS
+## Training - Keyword Spotting
 
 Training is invoked by
 
-    python -m speech_recognition.train
+    hannah-train
 
-If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.gpus=[number]
+If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.`gpus=[number]`
 e.g. for GPU 2 use:
 
-    python -m speech_recognition.train trainer.gpus=[2]
+    hannah-train trainer.gpus=[2]
 
 Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
@@ -121,46 +110,40 @@ Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
 Training of VAD is invoked by
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2
+    hannah-train dataset=vad model.n_labels=2
 
 Training of VAD_Extended is invoked by
 
-    python -m speech_recognition.train dataset=vad_extended model.n_labels=2
+    hannah-train dataset=vad_extended model.n_labels=2
 
-If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.gpus=[number]
-e.g. for GPU 2 use:
+### VAD dataset variants
 
-    python -m speech_recognition.train dataset=vad model.n_labels=2 trainer.gpus=[2]
+Selection of other Voice Dataset use  `dataset.variants="[UWNU, de, en, it, fr, es]" `
 
-Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
+    hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, de, en, it, fr, es]"
+
+Selection of other Noise Datasets use  `dataset.noise_dataset="[TUT]" `
+
+    hannah-train dataset=vad model.n_labels=2 dataset.noise_dataset="[TUT]"
+
+Selection of dataset Split use  `dataset.data_split="vad_balanced" `
+
+    hannah-train dataset=vad model.n_labels=2 dataset.data_split="vad_balanced"
+
+Create Vad_small Dataset
+
+    hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU]" dataset.noise_dataset="[TUT]" dataset.data_split="vad_balanced"
+
+Create VAD_big Dataset
+
+    hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, en, de, fr, es, it]" dataset.noise_dataset="[TUT, FSD50K]" dataset.data_split="vad_balanced"
+
 
 ## Training - PAMAP2
 
 Training of PAMAP2 human activity detection dataset is invoked by:
 
-    python -m speech_recognition.train dataset=pamap2 features=raw
-
-### Data Creation at the beginning
-
-Selection of other Voice Dataset use  `dataset.variants="[UWNU, de, en, it, fr, es]" `
-
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU, de, en, it, fr, es]"
-
-Selection of other Noise Datasets use  `dataset.noise_dataset="[TUT]" `
-
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.noise_dataset="[TUT]"
-
-Selection of dataset Split use  `dataset.data_split="vad_balanced" `
-
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.data_split="vad_balanced"
-
-Create Vad_small Dataset
-
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU]" dataset.noise_dataset="[TUT]" dataset.data_split="vad_balanced"
-
-Create VAD_big Dataset
-
-    python -m speech_recognition.train dataset=vad model.n_labels=2 dataset.variants="[UWNU, en, de, fr, es, it]" dataset.noise_dataset="[TUT, FSD50K]" dataset.data_split="vad_balanced"
+    hannah-train dataset=pamap2 features=raw
 
 # Parallel Launchers
 
@@ -168,15 +151,15 @@ To launch multiple optimizations in parallel you can use a hydra launcher
 
 Submitit launcher is installed by default:
 
-    python -m speech_recognition.train --multirun hydra/sweeper=nevergrad  hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.eps='interval(1.0e-09, 1.0e-05)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
+   hannah-train --multirun hydra/sweeper=nevergrad hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
 
 Launches optimizer hyerparameter optimization with 5 parallel jobs.
 
 # Early stopping
 
-To stop training early when a validation metric does not improve, you can use lignings early stopping callback:
+To stop training early when a validation metric does not improve, you can use lighning's early stopping callback:
 
-    python -m speech_recognition.train early_stopping=default
+    hannah-train early_stopping=default
 
 
 # Showing graphical results
@@ -189,7 +172,10 @@ or a subdirectory of trained models if only one experiment or model is of intere
 
 # Development
 
-This project uses pre commit hooks for auto formatting and static code analysis.
-To enable pre commit hooks run the following command in a `poetry shell`.
+This project uses precommit hooks for auto formatting and static code analysis.
+To enable precommit hooks run the following command in a `poetry shell`.
 
-    pre-commit install
+     pre-commit install
+
+Try to follow (pep8)[https://pep8.org/#naming-conventions] and the rest of pep8 to the
+best of your abilities.

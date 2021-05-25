@@ -1,0 +1,38 @@
+Bootstrap: docker
+From: ubuntu:focal
+
+%environment
+   PATH=/opt/poetry/bin:$PATH
+
+%runscript
+   . /opt/poetry_env/speech-recognition-*/bin/activate
+   hannah-train $@
+
+%apprun train
+   . /opt/poetry_env/speech-recognition-*/bin/activate
+   hannah-train $@
+
+%apprun eval
+   . /opt/poetry_env/speech-recognition-*/bin/activate
+   hannah-eval $@
+
+
+%post
+   echo "Hello from inside the container"
+   mount
+   ls $HOME
+   apt update
+   apt install -y python3 python3-distutils python3-apt python3-dev curl libblas-dev liblapack-dev  libsox-dev git-lfs build-essential
+   ln -s /usr/bin/python3 /usr/bin/python
+   export POETRY_HOME=/opt/poetry
+   curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
+   chmod -R 777 $POETRY_HOME
+   export PATH="$POETRY_HOME/bin:$PATH"
+   mkdir -p /opt/speech_recognition
+
+   mkdir -p /opt/poetry_env
+   chmod 777 /opt/poetry_env
+
+   poetry config virtualenvs.create true
+   poetry config virtualenvs.path /opt/poetry_env
+   poetry config --list

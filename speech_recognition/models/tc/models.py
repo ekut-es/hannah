@@ -199,6 +199,7 @@ class TCResNetModel(SerializableModule):
         act = config.get("act", "relu")
 
         self.layers = nn.ModuleList()
+        self.feat = None
 
         input_channels = height
 
@@ -312,10 +313,14 @@ class TCResNetModel(SerializableModule):
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
+        self.feat = x
+        if not self.fully_convolutional:
+            self.feat = x = x.view(x.size(0), -1)
 
         x = self.dropout(x)
         if not self.fully_convolutional:
             x = x.view(x.size(0), -1)
+
         x = self.fc(x)
 
         return x
@@ -527,26 +532,6 @@ class BranchyTCResNetModel(TCResNetModel):
         estimated_losses = torch.sum(diff, dim=1)
 
         return estimated_losses
-
-    def _estimate_losses_piecewise_linear(self, thresholded_result, estimated_labels):
-        expected_result = torch.zeros(thresholded_result.shape, device=x.device)
-        for row, column in enumerate(estimated_labels):
-            for column2 in range(expected_result.shape[1]):
-                expected_result[row, column2] = thresholded_result[row, column]
-
-        diff = thresholded_result - expected_result
-
-        return torch.log(estimated_losses)
-
-    def update_piecewise_data(self, thresholded_result):
-        tmp_result = thresholded_result.detach().cpu().numpy()
-        tmp_data = np.expand_dims(np.max(tmp_result, axis=1), axis=1)
-
-        x = tmp_result - tmp_data
-        y = np.exp(x)
-
-        self.x.append(x.flatten())
-        self.y.append(y.flatten())
 
     def forward(self, x):
         x = super().forward(x)

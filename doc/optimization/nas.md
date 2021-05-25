@@ -4,11 +4,11 @@ In contrast to hyperparameter optimization neural architecture search, explores 
 
 A aging evolution based neural architecture search has been implemented as a hydra plugin:
 
-   python -m speech_recognition.train --config-name config_unas
+   hannah-train --config-name config_unas
 
 To launch multiple configuration jobs in parallel use joblib launcher:
 
-    python -m speech_recognition.train --config-name config_unas hydra/launcher=joblib
+    hannah-train --config-name config_unas hydra/launcher=joblib
 
 Parametrization for neural architecture search need to be given as *YAML* configuration files at
 the moment. For an example see: `speech_recognition/conf/config_unas.yaml`

@@ -6,10 +6,15 @@ import logging
 import os
 import sys
 import platform
+import nvsmi
+import time
+import random
 from pathlib import Path
 from typing import Any, Callable
 
 from git import Repo, InvalidGitRepositoryError
+
+import hydra
 
 from torchvision.datasets.utils import (
     list_files,
@@ -19,7 +24,7 @@ from torchvision.datasets.utils import (
 )
 
 try:
-    import lsb_release
+    import lsb_release  # pytype: disable=import-error
 
     HAVE_LSB = True
 except ImportError:
@@ -135,16 +140,6 @@ def log_execution_env_state(distiller_gitroot="."):
     logger.info("  ")
 
 
-def load_module(path):
-    """small utility to automatically load modules from path"""
-    path = Path(path)
-    name = path.stem
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def list_all_files(path, file_suffix, file_prefix=False, remove_file_beginning=""):
     subfolder = list_dir(path, prefix=True)
     files_in_folder = list_files(path, file_suffix, prefix=file_prefix)
@@ -209,3 +204,22 @@ def extract_from_download_cache(
             target_folder,
             remove_finished=clear_download,
         )
+
+
+def auto_select_gpus(gpus=1):
+    num_gpus = gpus
+
+    gpus = list(nvsmi.get_gpus())
+
+    gpus = list(
+        sorted(gpus, key=lambda gpu: (gpu.mem_free, 1.0 - gpu.gpu_util), reverse=True)
+    )
+
+    job_num = hydra.core.hydra_config.HydraConfig.get().job.get("num", 0)
+
+    result = []
+    for i in range(num_gpus):
+        num = (i + job_num) % len(gpus)
+        result.append(int(gpus[num].id))
+
+    return result

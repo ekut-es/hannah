@@ -3,12 +3,16 @@ from collections import OrderedDict
 
 import pandas as pd
 import torch
-from speech_recognition.models.sinc import SincNet
+from ..models.sinc import SincNet
+from ..models.factory import qat
+
+import torchvision
 
 from pytorch_lightning.callbacks import Callback
 from tabulate import tabulate
 
-msglogger = logging.getLogger()
+msglogger = logging.getLogger("mac_summary")
+
 
 def walk_model(model, dummy_input):
     """Adapted from IntelLabs Distiller"""
@@ -37,32 +41,44 @@ def walk_model(model, dummy_input):
                 return module_name
 
     def collect(module, input, output):
-        if len(list(module.children())) != 0:
-            return
-        if isinstance(output, tuple):
-            output = output[0]
-        volume_ifm = prod(input[0].size())
-        volume_ofm = prod(output.size())
-        extra = get_extra(module, volume_ofm)
-        if extra is not None:
-            weights, macs, attrs = extra
-        else:
-            return
-        data["Name"] += [get_name_by_module(module)]
-        data["Type"] += [module.__class__.__name__]
-        data["Attrs"] += [attrs]
-        data["IFM"] += [tuple(input[0].size())]
-        data["IFM volume"] += [volume_ifm]
-        data["OFM"] += [tuple(output.size())] 
-        data["OFM volume"] += [volume_ofm]
-        data["Weights volume"] += [int(weights)]
-        data["MACs"] += [int(macs)]
+        # if len(list(module.children())) != 0:
+        #    return
+        try:
+            if isinstance(output, tuple):
+                output = output[0]
+
+            volume_ifm = prod(input[0].size())
+            volume_ofm = prod(output.size())
+            extra = get_extra(module, volume_ofm)
+            if extra is not None:
+                weights, macs, attrs = extra
+            else:
+                weights, macs, attrs = 0, 0, 0
+            data["Name"] += [get_name_by_module(module)]
+            data["Type"] += [module.__class__.__name__]
+            data["Attrs"] += [attrs]
+            data["IFM"] += [tuple(input[0].size())]
+            data["IFM volume"] += [volume_ifm]
+            data["OFM"] += [tuple(output.size())]
+            data["OFM volume"] += [volume_ofm]
+            data["Weights volume"] += [int(weights)]
+            data["MACs"] += [int(macs)]
+        except Exception as e:
+            pass
 
     def get_extra(module, volume_ofm):
-        classes = {torch.nn.Conv1d: get_conv,
-                   torch.nn.Conv2d: get_conv,
-                   SincNet: get_sinc_conv,
-                   torch.nn.Linear: get_fc, }
+        classes = {
+            torch.nn.Conv1d: get_conv,
+            torch.nn.Conv2d: get_conv,
+            qat.Conv1d: get_conv,
+            qat.Conv2d: get_conv,
+            qat.ConvBn1d: get_conv,
+            qat.ConvBn2d: get_conv,
+            qat.ConvBnReLU1d: get_conv,
+            qat.ConvBnReLU2d: get_conv,
+            SincNet: get_sinc_conv,
+            torch.nn.Linear: get_fc,
+        }
 
         for _class, method in classes.items():
             if isinstance(module, _class):
@@ -71,20 +87,24 @@ def walk_model(model, dummy_input):
         return get_generic(module)
 
     def get_conv_macs(module, volume_ofm):
-        return volume_ofm * (module.in_channels / module.groups * prod(module.kernel_size))
+        return volume_ofm * (
+            module.in_channels / module.groups * prod(module.kernel_size)
+        )
 
     def get_conv_attrs(module):
-        attrs = 'k=' + '(' + (', ').join(
-            ['%d' % v for v in module.kernel_size]) + ')'
-        attrs += ', s=' + '(' + (', ').join(
-            ['%d' % v for v in module.stride]) + ')'
-        attrs += ', g=%d' % module.groups
-        attrs += ', d=' + '(' + ', '.join(
-            ['%d' % v for v in module.dilation]) + ')'
+        attrs = "k=" + "(" + (", ").join(["%d" % v for v in module.kernel_size]) + ")"
+        attrs += ", s=" + "(" + (", ").join(["%d" % v for v in module.stride]) + ")"
+        attrs += ", g=%d" % module.groups
+        attrs += ", d=" + "(" + ", ".join(["%d" % v for v in module.dilation]) + ")"
         return attrs
 
     def get_conv(module, volume_ofm):
-        weights = module.out_channels * module.in_channels / module.groups * prod(module.kernel_size)
+        weights = (
+            module.out_channels
+            * module.in_channels
+            / module.groups
+            * prod(module.kernel_size)
+        )
         macs = get_conv_macs(module, volume_ofm)
         attrs = get_conv_attrs(module)
         return weights, macs, attrs
@@ -121,6 +141,7 @@ def walk_model(model, dummy_input):
     df = pd.DataFrame(data=data)
     return df
 
+
 class MacSummaryCallback(Callback):
     def _do_summary(self, pl_module, print_log=True):
         dummy_input = pl_module.example_feature_array
@@ -147,8 +168,7 @@ class MacSummaryCallback(Callback):
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
         except RuntimeError as e:
-            if print_log:
-                msglogger.warning("Could not create performance summary: %s", str(e))
+            msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
         res = OrderedDict()
@@ -161,10 +181,20 @@ class MacSummaryCallback(Callback):
 
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
-        self._do_summary(pl_module)
+        try:
+            self._do_summary(pl_module)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
         pl_module.train()
 
     def on_validation_epoch_end(self, trainer, pl_module):
-        res = self._do_summary(pl_module, print_log=False)
+        res = {}
+        try:
+            res = self._do_summary(pl_module, print_log=False)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
+
         for k, v in res.items():
             pl_module.log(k, v)

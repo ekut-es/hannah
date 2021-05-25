@@ -15,7 +15,8 @@ clear_download: False
 variants: ["pamap2"]
 data_split: []
 noise_dataset: []
-download_folder: ""
+download_folder: ${dataset.data_folder}/downloads
+
 
 # The following is an excerpt of the paper by Jordao et al. (2019)
 # Title: "Human Activity Recognition Based on Wearable Sensor Data: A Standardization of the State-of-the-Art"

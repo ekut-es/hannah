@@ -1,3 +1,4 @@
+from typing import Any
 import pytest
 from torch.quantization.qconfig import get_default_qconfig
 from speech_recognition.models.factory.qat import (
@@ -11,7 +12,10 @@ from speech_recognition.models.factory.qat import (
     Conv2d,
     QAT_MODULE_MAPPINGS,
 )
-from speech_recognition.models.factory.qconfig import get_trax_qat_qconfig
+from speech_recognition.models.factory.qconfig import (
+    PowerOf2Quantization,
+    get_trax_qat_qconfig,
+)
 from torch.quantization import default_qconfig, convert
 import torch
 import torch.nn as nn
@@ -24,17 +28,22 @@ import torch.nn as nn
         (ConvBn1d, "trax"),
         (ConvReLU1d, "trax"),
         (ConvBnReLU1d, "trax"),
-        (Conv1d, "fbgemm"),
-        (ConvBn1d, "fbgemm"),
-        (ConvReLU1d, "fbgemm"),
-        (ConvBnReLU1d, "fbgemm"),
+        # (Conv1d, "fbgemm"),
+        # (ConvBn1d, "fbgemm"),
+        # (ConvReLU1d, "fbgemm"),
+        # (ConvBnReLU1d, "fbgemm"),
     ],
 )
 def test_quantized_conv1d(conv_cls, quant):
+    torch.manual_seed(0)
+
     class Config:
         bw_b = 8
         bw_f = 8
         bw_w = 6
+
+        def get(self, name: str, default: Any = None):
+            return getattr(self, name, default)
 
     if quant == "trax":
         config = Config()
@@ -87,10 +96,17 @@ def test_quantized_conv1d(conv_cls, quant):
     ],
 )
 def test_quantized_conv2d(conv_cls, quant):
+    torch.manual_seed(0)
+
     class Config:
         bw_b = 8
         bw_f = 8
         bw_w = 6
+        noise_prob = 0.3
+        power_of_2 = False
+
+        def get(self, name: str, default: Any = None):
+            return getattr(self, name, default)
 
     if quant == "trax":
         config = Config()

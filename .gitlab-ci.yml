@@ -1,3 +1,8 @@
+stages:
+  - build
+  - test
+  - deploy
+
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
@@ -32,35 +37,42 @@ before_script:
 
 test_python_37:
   image: python:3.7
+  stage: test
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=speech_recognition test
   tags:
     - docker
+    - nfs
   interruptible: true
 
 test_python_38:
+  stage: test
   image: python:3.8
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=speech_recognition test
   tags:
     - docker
+    - nfs
   interruptible: true
   except:
     - branches
 
+
 test_python_39:
-   allow_failure: true
-   image: python:3.9
-   script:
-     - set -e
-     - poetry run python3 -m pytest -v --cov=speech_recognition test
-   tags:
-     - docker
-   interruptible: true
+  stage: test
+  image: python:3.9
+  script:
+    - set -e
+    - poetry run python3 -m pytest -v --cov=speech_recognition test
+  tags:
+    - docker
+    - nfs
+  interruptible: true
 
 build_docs:
+  stage: deploy
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
@@ -73,6 +85,7 @@ build_docs:
     - source venv/bin/activate
     - pip install --upgrade pydoc-markdown
     - pip install --upgrade mkdocs
+    - pip install --upgrade pymdown-extensions
 
   allow_failure: true
   script:
@@ -80,5 +93,50 @@ build_docs:
   tags:
     - afs
     - native
+  only:
+    - master
+
+build_image:
+  stage: build
+  before_script:  [""]
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+    - privileged
+  script:
+    - set -e
+    - cd ml_cloud
+    - ./build_image.sh
+  artifacts:
+    paths:
+      - ml_cloud/ml_cloud.simg
+    expire_in: 1 day
+  only:
+    - master
+
+
+deploy_image:
+  stage: deploy
+  before_script:
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+    - privileged
+  script:
+    - cd ml_cloud
+    - scp ml_cloud.simg cgerum05@134.2.168.52:/home/bringmann/cgerum05
+  dependencies:
+    - build_image
   only:
     - master

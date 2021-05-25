@@ -59,16 +59,14 @@ def test_backend(model, backend):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
-@pytest.mark.skip(
-    reason="These tests do not run reliably on build servers, due to their high disk memory consumption"
-)
 @pytest.mark.parametrize(
     "model,dataset,split",
     [
         ("tc-res8", "snips", ""),
-        ("tc-res8", "vad", "vad_balanced"),
+        #        ("tc-res8", "vad", "vad_balanced"),
         ("tc-res8", "kws", ""),
         ("tc-res8", "atrial_fibrillation", ""),
+        ("tc-res8", "pamap2", ""),
     ],
 )
 def test_datasets(model, dataset, split):
@@ -80,5 +78,25 @@ def test_datasets(model, dataset, split):
         return
 
     command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.data_folder={data_folder} dataset.data_split={split}"
+    if dataset == "pamap2":
+        command_line += " features=raw"
 
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
+def test_2d():
+    command_line = "hannah-train dataset=cifar10 features=identity trainer.gpus=[1] model=conv-net-2d  trainer.fast_dev_run=true scheduler.max_lr=2.5"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
+@pytest.mark.skip(reason="Faster rcnn needs to much memory for builder")
+def test_kitti():
+    data_folder = os.getenv(
+        "HANNAH_DATA_FOLDER", "/net/rausch1/export/lucille/datasets/"
+    )
+    if not os.path.exists(data_folder):
+        logging.warning("Could not find data folder, skipping datased tests")
+        return
+
+    command_line = f"hannah-train --config-name config_object_detection dataset.data_folder={data_folder} trainer.fast_dev_run=true"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)

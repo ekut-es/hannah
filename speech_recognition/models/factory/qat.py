@@ -6,15 +6,14 @@
 """
 
 import math
-
-from typing import Callable, Dict, Any
+from typing import Any, Callable, Dict
 
 import torch
 import torch.nn as nn
-import torch.nn.intrinsic as nni
 import torch.nn.functional as F
+import torch.nn.intrinsic as nni
 from torch.nn import init
-from torch.nn.modules.utils import _single, _pair
+from torch.nn.modules.utils import _pair, _single
 from torch.nn.parameter import Parameter
 
 from . import quantized as q
@@ -22,6 +21,7 @@ from . import quantized as q
 _BN_CLASS_MAP = {1: nn.BatchNorm1d, 2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
 
 
+# pytype: disable=attribute-error
 class _ConvForwardMixin:
     def _real_conv_forward(self, input, weight, bias):
         if self.dim == 1:
@@ -56,7 +56,12 @@ class _ConvForwardMixin:
             )
 
 
-class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
+# pytype: enable=attribute-error
+
+
+class _ConvBnNd(
+    nn.modules.conv._ConvNd, _ConvForwardMixin
+):  # pytype: disable=module-attr
 
     _version = 2
 
@@ -80,8 +85,9 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         freeze_bn=False,
         qconfig=None,
         dim=2,
+        out_quant=True,
     ):
-        nn.modules.conv._ConvNd.__init__(
+        nn.modules.conv._ConvNd.__init__(  # pytype: disable=module-attr
             self,
             in_channels,
             out_channels,
@@ -100,7 +106,9 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
         self.freeze_bn = freeze_bn if self.training else True
         self.bn = _BN_CLASS_MAP[dim](out_channels, eps, momentum, True, True)
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation()
+        self.activation_post_process = (
+            self.qconfig.activation() if out_quant else nn.Identity
+        )
         self.dim = dim
 
         if hasattr(self.qconfig, "bias"):
@@ -294,8 +302,8 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _ConvForwardMixin):
     @classmethod
     def from_float(cls, mod):
         r"""Create a qat module from a float module or qparams_dict
-            Args: `mod` a float module, either produced by torch.quantization utilities
-            or directly from user
+        Args: `mod` a float module, either produced by torch.quantization utilities
+        or directly from user
         """
         assert type(mod) == cls._FLOAT_MODULE, (
             "qat."
@@ -368,6 +376,7 @@ class ConvBn1d(_ConvBnNd):
         # Args for this module
         freeze_bn=False,
         qconfig=None,
+        out_quant=True,
     ):
         kernel_size = _single(kernel_size)
         stride = _single(stride)
@@ -392,9 +401,12 @@ class ConvBn1d(_ConvBnNd):
             freeze_bn=freeze_bn,
             qconfig=qconfig,
             dim=1,
+            out_quant=True,
         )
 
-        self.activation_post_process = qconfig.activation()
+        self.activation_post_process = (
+            qconfig.activation() if out_quant else nn.Identity()
+        )
 
     def forward(self, input):
         y = super(ConvBn1d, self).forward(input)
@@ -436,6 +448,7 @@ class ConvBnReLU1d(ConvBn1d):
         # Args for this module
         freeze_bn=False,
         qconfig=None,
+        out_quant=True,
     ):
 
         super().__init__(
@@ -452,8 +465,11 @@ class ConvBnReLU1d(ConvBn1d):
             momentum=momentum,
             freeze_bn=freeze_bn,
             qconfig=qconfig,
+            out_quant=True,
         )
-        self.activation_post_process = qconfig.activation()
+        self.activation_post_process = (
+            qconfig.activation() if out_quant else nn.Identity()
+        )
 
     def forward(self, input):
         # print(f"ConvBnRelu1d {self.stride}")
@@ -660,7 +676,7 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
 
 class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
     r"""A ConvReLU1d module is fused module of Conv1d and ReLU, attached with
-     FakeQuantize modules for quantization aware training"""
+    FakeQuantize modules for quantization aware training"""
 
     _FLOAT_MODULE = nn.Conv1d
 
@@ -676,6 +692,7 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
         bias=True,
         padding_mode="zeros",
         qconfig=None,
+        out_quant=True,
     ):
         super(ConvReLU1d, self).__init__(
             in_channels,
@@ -692,7 +709,9 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
         self.dim = 1
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation()
+        self.activation_post_process = (
+            self.qconfig.activation() if out_quant else nn.Identity()
+        )
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
@@ -731,6 +750,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         bias=True,
         padding_mode="zeros",
         qconfig=None,
+        out_quant=True,
     ):
         super(Conv1d, self).__init__(
             in_channels,
@@ -746,7 +766,9 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation()
+        self.activation_post_process = (
+            self.qconfig.activation() if out_quant else nn.Identity()
+        )
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
@@ -848,9 +870,12 @@ class Linear(nn.Linear):
     """
     _FLOAT_MODULE = nn.Linear
 
-    def __init__(self, in_features, out_features, bias=True, qconfig=None):
+    def __init__(
+        self, in_features, out_features, bias=True, out_quant=False, qconfig=None
+    ):
         super().__init__(in_features, out_features, bias)
         assert qconfig, "qconfig must be provided for QAT module"
+        self.out_quant = out_quant
         self.qconfig = qconfig
         self.weight_fake_quant = qconfig.weight()
         if hasattr(qconfig, "bias"):
@@ -860,21 +885,34 @@ class Linear(nn.Linear):
 
         self.activation_post_process = qconfig.activation()
 
+    @property
+    def scaled_weight(self):
+        return self.weight_fake_quant(self.weight)
+
     def forward(self, input):
-        return self.activation_post_process(
-            F.linear(
+        if self.out_quant:
+            return F.linear(
                 input,
                 self.weight_fake_quant(self.weight),
                 self.bias_fake_quant(self.bias) if self.bias is not None else self.bias,
             )
-        )
+        else:
+            return self.activation_post_process(
+                F.linear(
+                    input,
+                    self.weight_fake_quant(self.weight),
+                    self.bias_fake_quant(self.bias)
+                    if self.bias is not None
+                    else self.bias,
+                )
+            )
 
     @classmethod
     def from_float(cls, mod):
         r"""Create a qat module from a float module or qparams_dict
 
-            Args: `mod` a float module, either produced by torch.quantization utilities
-            or directly from user
+        Args: `mod` a float module, either produced by torch.quantization utilities
+        or directly from user
         """
         assert type(mod) == cls._FLOAT_MODULE, (
             " qat."
@@ -899,6 +937,140 @@ class Linear(nn.Linear):
         return qat_linear
 
 
+class LinearReLU(nn.Linear):
+    r"""
+    A linear module attached with FakeQuantize modules and ReLU for weight,
+    used for quantization aware training.
+
+    We adopt the same interface as `torch.nn.Linear`, please see
+    https://pytorch.org/docs/stable/nn.html#torch.nn.Linear
+    for documentation.
+
+    Similar to `torch.nn.Linear`, with FakeQuantize modules initialized to
+    default.
+
+    Attributes:
+        weight: fake quant module for weight
+    """
+
+    def __init__(
+        self, in_features, out_features, bias=True, out_quant=False, qconfig=None
+    ):
+        super().__init__(in_features, out_features, bias)
+        assert qconfig, "qconfig must be provided for QAT module"
+        self.out_quant = out_quant
+        self.qconfig = qconfig
+        self.weight_fake_quant = qconfig.weight()
+        if hasattr(qconfig, "bias"):
+            self.bias_fake_quant = qconfig.bias()
+        else:
+            self.bias_fake_quant = qconfig.activation()
+
+        self.activation_post_process = qconfig.activation()
+
+    @property
+    def scaled_weight(self):
+        return self.weight_fake_quant(self.weight)
+
+    def forward(self, input):
+        if self.out_quant:
+            return F.relu(
+                F.linear(
+                    input,
+                    self.weight_fake_quant(self.weight),
+                    self.bias_fake_quant(self.bias)
+                    if self.bias is not None
+                    else self.bias,
+                )
+            )
+        else:
+            return self.activation_post_process(
+                F.relu(
+                    F.linear(
+                        input,
+                        self.weight_fake_quant(self.weight),
+                        self.bias_fake_quant(self.bias)
+                        if self.bias is not None
+                        else self.bias,
+                    )
+                )
+            )
+
+    @classmethod
+    def from_float(cls, mod):
+        r"""Create a qat module from a float module or qparams_dict
+
+        Args: `mod` a float module, either produced by torch.quantization utilities
+        or directly from user
+        """
+        assert type(mod) == cls._FLOAT_MODULE, (
+            " qat."
+            + cls.__name__
+            + ".from_float only works for "
+            + cls._FLOAT_MODULE.__name__
+        )
+        assert hasattr(mod, "qconfig"), "Input float module must have qconfig defined"
+        assert mod.qconfig, "Input float module must have a valid qconfig"
+        if type(mod) == LinearReLU:
+            mod = mod[0]
+
+        qconfig = mod.qconfig
+        qat_linear = cls(
+            mod.in_features,
+            mod.out_features,
+            bias=mod.bias is not None,
+            qconfig=qconfig,
+        )
+        qat_linear.weight = mod.weight
+        qat_linear.bias = mod.bias
+        return qat_linear
+
+
+class Identity(nn.Identity):
+    r"""
+    A identity module attached with FakeQuantize modules for weight,
+    used for quantization aware training.
+
+    We adopt the same interface as `torch.nn.Identity`, please see
+    https://pytorch.org/docs/stable/nn.html#torch.nn.Identity
+    for documentation.
+
+    Similar to `torch.nn.Identity`, with FakeQuantize modules initialized to
+    default.
+    """
+    _FLOAT_MODULE = nn.Identity
+
+    def __init__(self, qconfig=None):
+        super().__init__()
+        assert qconfig, "qconfig must be provided for QAT module"
+        self.qconfig = qconfig
+
+        self.activation_post_process = qconfig.activation()
+
+    def forward(self, input):
+        return self.activation_post_process(input)
+
+    @classmethod
+    def from_float(cls, mod):
+        r"""Create a qat module from a float module or qparams_dict
+
+        Args: `mod` a float module, either produced by torch.quantization utilities
+        or directly from user
+        """
+        assert type(mod) == cls._FLOAT_MODULE, (
+            " qat."
+            + cls.__name__
+            + ".from_float only works for "
+            + cls._FLOAT_MODULE.__name__
+        )
+        assert hasattr(mod, "qconfig"), "Input float module must have qconfig defined"
+        assert mod.qconfig, "Input float module must have a valid qconfig"
+
+        qconfig = mod.qconfig
+        qat_identity = cls(qconfig=qconfig)
+        return qat_identity
+
+
 def update_bn_stats(mod):
     if type(mod) in set([ConvBnReLU1d, ConvBnReLU2d, ConvBn1d, ConvBn2d]):
         mod.update_bn_stats()
@@ -914,6 +1086,7 @@ QAT_MODULE_MAPPINGS: Dict[Callable, Any] = {
     Conv1d: q.Conv1d,
     Conv2d: q.Conv2d,
     Linear: q.Linear,
+    Identity: q.Identity,
     # Intrinsic modules:
     ConvBn1d: q.Conv1d,
     ConvBn2d: q.Conv2d,

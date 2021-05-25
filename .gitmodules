@@ -1,17 +1,3 @@
-[submodule "orig/ML-KWS-for-MC"]
-	path = orig/ML-KWS-for-MC
-	url = https://github.com/ARM-software/ML-KWS-for-MCU.git
-[submodule "orig/ML-KWS-for-MCU"]
-	path = orig/ML-KWS-for-MCU
-	url = https://github.com/ARM-software/ML-KWS-for-MCU.git
-[submodule "orig/honk"]
-	path = orig/honk
-	url = https://github.com/castorini/honk.git
-[submodule "external/distiller"]
-	path = external/distiller
-	url = ../distiller.git
-	branch = ekut_master
-
 [submodule "plugins/hannah-optimizer"]
 	path = plugins/hannah-optimizer
 	url = ../hannah-optimizer.git

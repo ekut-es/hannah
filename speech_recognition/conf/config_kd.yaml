@@ -1,8 +1,8 @@
 defaults:
     - dataset: kws
-    - model: tc-res4 # tc-res4 and res6 student model
-    - scheduler: 1cycle
-    - optimizer: sgd
+    - model: tc-res4
+    - scheduler: null
+    - optimizer: adamw
     - features: mfcc
     - normalizer: null
     - module: distilling_speech_classifier
@@ -17,7 +17,7 @@ type: train
 experiment_id: test
 output_dir: trained_models
 auto_lr: false
-seed: 1234
+seed: [1234]
 
 hydra:
     run:

@@ -16,6 +16,7 @@ from .base import AbstractDataset, DatasetType
 
 msglogger = logging.getLogger()
 
+
 class Data3D:
     """ 3D-Data """
 
@@ -220,10 +221,7 @@ class PAMAP2_Dataset(AbstractDataset):
         self.data_files = data_files
         self.channels = 40
         self.input_length = config["input_length"]
-        self.label_names = [
-            PAMAP2_DataPoint.ACTIVITY_MAPPING[index]
-            for index in sorted(list(PAMAP2_DataPoint.ACTIVITY_MAPPING.keys()))
-        ]
+        self.label_names = PAMAP2_Dataset.get_class_names()
 
     def __getitem__(self, item):
         path, start = self.data_files[item]
@@ -235,9 +233,20 @@ class PAMAP2_Dataset(AbstractDataset):
     def __len__(self):
         return len(self.data_files)
 
+    @classmethod
+    def get_num_classes(cls):
+        return len(PAMAP2_DataPoint.ACTIVITY_MAPPING)
+
+    @classmethod
     def prepare(cls, config: Dict[str, Any]) -> None:
         cls.download(config)
 
+    @staticmethod
+    def get_class_names():
+        return [
+            PAMAP2_DataPoint.ACTIVITY_MAPPING[index]
+            for index in sorted(list(PAMAP2_DataPoint.ACTIVITY_MAPPING.keys()))
+        ]
 
     @property
     def class_names(self) -> List[str]:
@@ -330,12 +339,12 @@ class PAMAP2_Dataset(AbstractDataset):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
         downloadfolder_tmp = config["download_folder"]
+        target_folder = os.path.join(data_folder, "pamap2")
+        if os.path.isdir(target_folder):
+            return
 
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
@@ -347,8 +356,6 @@ class PAMAP2_Dataset(AbstractDataset):
             os.makedirs(data_folder)
 
         variants = config["variants"]
-
-        target_folder = os.path.join(data_folder, "pamap2")
 
         # download speech_commands dataset
         filename = "PAMAP2_Dataset.zip"

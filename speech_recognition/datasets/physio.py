@@ -1,8 +1,4 @@
 import os
-import random
-import re
-import json
-import logging
 import hashlib
 import sys
 
@@ -129,11 +125,12 @@ class AtrialFibrillationDataset(PhysioDataset):
         clear_download = config["clear_download"]
         downloadfolder_tmp = config["download_folder"]
 
+        target_folder = os.path.join(data_folder, "atrial_fibrillation")
+        if os.path.isdir(target_folder):
+            return
+
         if len(downloadfolder_tmp) == 0:
-            downloadfolder_tmp = os.path.join(
-                sys.argv[0].replace("speech_recognition/train.py", ""),
-                "datasets/downloads",
-            )
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
@@ -145,8 +142,6 @@ class AtrialFibrillationDataset(PhysioDataset):
             os.makedirs(data_folder)
 
         variants = config["variants"]
-
-        target_folder = os.path.join(data_folder, "atrial_fibrillation")
 
         # download atrial fibrillation dataset
         filename = "mit-bih-atrial-fibrillation-database-1.0.0.zip"
