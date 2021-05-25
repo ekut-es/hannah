@@ -27,7 +27,7 @@ Power of 2 Quantization can currently only be enabled for weights.
 
 ## Noisy Quantization
 
-As described in https://openreview.net/pdf?id=dV19Yyi1fS3 qunatizing only a subset of model weights during training
+As described in https://openreview.net/pdf?id=dV19Yyi1fS3 quantizing only a subset of model weights during training
 can improve accuracies of quantized networks compared to full quantization aware training.
 
 The probability of quantizing a weight can be given as parameter noise_prob in in the qconfig.
@@ -49,7 +49,7 @@ qconfig:
     power_of_2: false  # Use power of two quantization for weights
     noise_prob: 0.7    # Probability of quantizing a value during training
 
-Aditionally standard pytorch quantization aware training is supported by by using a standard pytorch qconfig.
+Aditionally standard pytorch quantization aware training is supported by using a standard pytorch qconfig.
 
     qconfig:
         _target_: torch.quantization.get_default_qat_qconfig
