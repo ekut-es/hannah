@@ -185,6 +185,7 @@ class CrossValidationTrainer:
         model: LightningModule,
     ) -> None:
         working_model = deepcopy(model)
+        working_model.prepare_data()
         working_model.setup(None)
         working_trainer = deepcopy(self.trainer)
         working_trainer.tune(working_model)
