@@ -2,6 +2,10 @@
 
 _target_: speech_recognition.modules.ObjectDetectionModule
 num_workers: 0
-batch_size: 128
+batch_size: 5
 time_masking: 0
 frequency_masking: 0
+
+augmentation:
+  - augmented_pct: 0.6
+  - augmentations: [rain_drops]

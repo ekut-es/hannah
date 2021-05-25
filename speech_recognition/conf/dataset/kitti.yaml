@@ -8,7 +8,6 @@ test_pct: 10
 dev_pct: 10
 train_pct: 80
 
-augmented_pct: 50
 
 kitti_folder: ${dataset.data_folder}/kitti
 img_size: 375, 1242

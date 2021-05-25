@@ -1,6 +1,7 @@
 import os
 import sys
 import csv
+import glob
 import numpy as np
 from torch.utils.data import Dataset
 
@@ -57,6 +58,7 @@ class Kitti(AbstractDataset):
         self.aug_path = os.path.join(self.kitti_dir, self.AUG_PATH)
         self.label_path = os.path.join(self.kitti_dir, self.LABEL_PATH)
         self.img_files = list(data.keys())
+        self.aug_files = list()
         self.label_files = list(data.values())
         self.transform = transforms.Compose(
             [
@@ -92,13 +94,20 @@ class Kitti(AbstractDataset):
         return len(self.img_files)
 
     def __getitem__(self, idx):
-        path = np.array2string(
-            np.random.choice(
-                [self.aug_path, self.img_path], p=[self.aug_pct, 1 - self.aug_pct]
+        img_name = self.img_files[idx]
+
+        if img_name[:-4] in self.aug_files and os.path.isfile(
+            self.kitti_dir + "/training/augmented/" + img_name
+        ):
+            path = self.aug_path
+            shutil.copy2(
+                self.kitti_dir + "/training/augmented/" + img_name,
+                self.aug_path + img_name,
             )
-        )
-        path = path.replace("'", "")
-        pil_img = Image.open(path + self.img_files[idx]).convert("RGB")
+        else:
+            path = self.img_path
+
+        pil_img = Image.open(path + img_name).convert("RGB")
         # pil_img = pil_img.resize(self.img_size)
         pil_img = self.transform(pil_img)
 

@@ -18,10 +18,12 @@ try:
 except ModuleNotFoundError:
     COCOeval = None
 
+
 import torchvision
 
-from speech_recognition.datasets.Kitti import object_collate_fn
+from speech_recognition.datasets.Kitti import Kitti, object_collate_fn
 from speech_recognition.datasets.Kitti import KittiCOCO
+from speech_recognition.modules.augmentation.augmentation import Augmentation
 
 import torch
 import torch.utils.data as data
@@ -29,7 +31,8 @@ from hydra.utils import instantiate, get_class
 
 
 class ObjectDetectionModule(ClassifierModule):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, augmentation: list(), *args, **kwargs):
+        self.augmentation = Augmentation(augmentation)
         super().__init__(*args, **kwargs)
 
         if COCOeval is None:
@@ -98,6 +101,7 @@ class ObjectDetectionModule(ClassifierModule):
         else:
             sampler = data.RandomSampler(self.train_set)
 
+        self.augmentation.augment(self.train_set)
         train_loader = data.DataLoader(
             self.train_set,
             batch_size=min(len(self.train_set), train_batch_size),
@@ -118,6 +122,7 @@ class ObjectDetectionModule(ClassifierModule):
 
     def val_dataloader(self):
 
+        self.augmentation.augment(self.dev_set)
         dev_loader = data.DataLoader(
             self.dev_set,
             batch_size=min(len(self.dev_set), 9),
@@ -133,6 +138,7 @@ class ObjectDetectionModule(ClassifierModule):
         return dev_loader
 
     def test_dataloader(self):
+        self.augmentation.augment(self.test_set)
         test_loader = data.DataLoader(
             self.test_set,
             batch_size=min(len(self.test_set), 9),
@@ -165,6 +171,7 @@ class ObjectDetectionModule(ClassifierModule):
         metric["val_ap_75"] = cocoEval.stats[2].item()
         metric["val_ar"] = cocoEval.stats[6].item()
         metric["val_ar_100dets"] = cocoEval.stats[8].item()
+        metric["aug_pct"] = self.augmentation.getPctAugmented()
 
         self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
         cocoGt.clearBatch()
@@ -176,9 +183,12 @@ class ObjectDetectionModule(ClassifierModule):
         output = self.model(x, y)
         loss = sum(output.values())
 
-        self.log(
-            name="training_loss",
-            value=loss,
+        metric = dict()
+        metric["training_loss"] = loss
+        metric["aug_pct"] = self.augmentation.getPctAugmented()
+
+        self.log_dict(
+            metric,
             on_step=False,
             on_epoch=True,
             prog_bar=True,
@@ -206,6 +216,7 @@ class ObjectDetectionModule(ClassifierModule):
         metric["test_ap_75"] = cocoEval.stats[2].item()
         metric["test_ar"] = cocoEval.stats[6].item()
         metric["test_ar_100dets"] = cocoEval.stats[8].item()
+        metric["aug_pct"] = self.augmentation.getPctAugmented()
 
         self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
         cocoGt.clearBatch()
