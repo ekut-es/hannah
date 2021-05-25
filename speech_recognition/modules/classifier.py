@@ -13,7 +13,7 @@ from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
 from pytorch_lightning.metrics.metric import MetricCollection
 from torch._C import Value
 from .config_utils import get_loss_function, get_model
-from typing import Optional
+from typing import Optional, Dict, Union
 
 from speech_recognition.datasets.base import ctc_collate_fn
 
@@ -558,10 +558,10 @@ class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
         *args,
         **kwargs
     ):
-        self.sets_by_criteria = None
-        self.k_fold = kwargs["k_fold"]
-        del kwargs["k_fold"]
         super().__init__(*args, **kwargs)
+        self.trainer_fold_callback = None
+        self.sets_by_criteria = None
+        self.k_fold = self.hparams.dataset.k_fold
         self.test_end_callback_function = None
 
     def get_class_names(self):
@@ -630,6 +630,14 @@ class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
 
     def test_end_callback(self, test_metrics):
         self.test_end_callback_function(self, test_metrics)
+
+    def get_progress_bar_dict(self) -> Dict[str, Union[int, str]]:
+        items = super().get_progress_bar_dict()
+        items["fold_nr"] = self.trainer_fold_callback()
+        return items
+
+    def register_trainer_fold_callback(self, callback):
+        self.trainer_fold_callback = callback
 
 
 class SpeechClassifierModule(StreamClassifierModule):

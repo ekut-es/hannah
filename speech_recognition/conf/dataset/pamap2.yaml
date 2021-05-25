@@ -8,6 +8,8 @@ test_pct: 10
 dev_pct: 10
 train_pct: 80
 
+k_fold: 9
+
 input_length: 100
 samplingrate: 100
 

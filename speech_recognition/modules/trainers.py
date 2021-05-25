@@ -4,7 +4,8 @@ from typing import Any, Optional, Union, List, Dict
 
 import tabulate
 from pytorch_lightning import LightningModule, LightningDataModule
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, ProgressBar
+from pytorch_lightning.callbacks.progress import tqdm
 from pytorch_lightning.loggers import LoggerCollection
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.tuner.lr_finder import _LRFinder
@@ -13,16 +14,59 @@ from torch.utils.data import DataLoader
 from speech_recognition.modules.metrics import plot_confusion_matrix
 
 
+class FoldProgressBar(ProgressBar):
+    def __init__(self, fold_idx_callback):
+        super().__init__()
+        self.fold_idx_callback = fold_idx_callback
+        self.prefix = lambda: f"Fold-Nr. {fold_idx_callback()} - "
+
+    def init_sanity_tqdm(self) -> tqdm:
+        bar = super().init_sanity_tqdm()
+        desc = self.prefix() + "Validation sanity check"
+        bar.set_description(desc)
+        return bar
+
+    def init_train_tqdm(self) -> tqdm:
+        bar = super().init_train_tqdm()
+        desc = self.prefix() + "Training"
+        bar.set_description(desc)
+        return bar
+
+    def init_validation_tqdm(self) -> tqdm:
+        bar = super().init_validation_tqdm()
+        desc = self.prefix() + "Validating"
+        bar.set_description(desc)
+        return bar
+
+    def init_test_tqdm(self) -> tqdm:
+        bar = super().init_test_tqdm()
+        desc = self.prefix() + "Testing"
+        bar.set_description(desc)
+        return bar
+
+    def init_predict_tqdm(self) -> tqdm:
+        bar = super().init_predict_tqdm()
+        desc = self.prefix() + "Predicting"
+        bar.set_description(desc)
+        return bar
+
+
 class CrossValidationTrainer:
     # Copied or Adapted from:
     # https://github.com/PyTorchLightning/pytorch-lightning/issues/839
 
     def __init__(self, *args, **kwargs):
+        self.current_fold = None
+        kwargs["callbacks"] += [FoldProgressBar(fold_idx_callback=
+                                                self.get_current_fold)]
         self.trainer = Trainer(*args, **kwargs)
         self.fast_dev_run = True
         self.overall_test_results_array = []
-        self.current_fold = None
+
         self.class_names = None
+
+    def get_current_fold(self):
+        return self.current_fold
 
     @staticmethod
     def _update_logger(logger, fold_idx):
@@ -139,9 +183,6 @@ class CrossValidationTrainer:
     def fit(
         self,
         model: LightningModule,
-        train_dataloader: Any = None,
-        val_dataloaders: Optional[Union[DataLoader, List[DataLoader]]] = None,
-        datamodule: Optional[LightningDataModule] = None,
     ) -> None:
         working_model = deepcopy(model)
         working_model.setup(None)
@@ -156,6 +197,8 @@ class CrossValidationTrainer:
             self.current_fold = fold
             model_copy = deepcopy(model)
             model_copy.register_test_end_callback_function(self.test_end_callback)
+            model_copy.register_trainer_fold_callback(callback=
+                                                      self.get_current_fold)
             trainer_copy = deepcopy(working_trainer)
             self.update_logger(trainer_copy, fold)
             for callback in trainer_copy.callbacks:
@@ -168,10 +211,6 @@ class CrossValidationTrainer:
             trainer_copy.test(model_copy, test_dataloaders=test_loader)
 
         self.overall_test_results()
-
-        # TODO: Summaries
-        # TODO: Show fold in logger
-        # TODO: num_fold in right place
 
     def validate(
         self,
