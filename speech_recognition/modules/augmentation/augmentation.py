@@ -11,6 +11,7 @@ from speech_recognition.datasets.base import DatasetType
 from speech_recognition.datasets.Kitti import Kitti
 
 
+# TODO parse rain, fog and snow (Params in conf, daraus zufällig werte)
 class XmlAugmentationParser:
     @staticmethod
     def parse(conf, img, path):
@@ -28,7 +29,7 @@ class XmlAugmentationParser:
         for params in root.iter("ParameterList"):
             for param in params:
                 if param.attrib["Description"] == "Output filename":
-                    param.attrib["Value"] = img
+                    param.attrib["Value"] = img[:-4]
 
         tree.write(path + "/augmentation/augment.xml")
 
@@ -40,15 +41,11 @@ class AugmentationThread:
 
     def call_augment(self, conf, img, kitti_dir):
         XmlAugmentationParser.parse(conf, img, kitti_dir)
-        self.proc = subprocess.Popen(
-            kitti_dir + "/augmentation/perform_augmentation.sh",
-            shell=False,
-            preexec_fn=os.setsid,
-        )
+        subprocess.call(kitti_dir + "/augmentation/perform_augmentation.sh")
 
     def augment(self, conf, kitti, pct):
+        kitti.aug_files = list()
 
-        threads = list()
         for img in kitti.img_files:
             random.seed()
             rand = random.randrange(0, 100)
@@ -58,22 +55,9 @@ class AugmentationThread:
                 kitti.aug_files.append(img[:-4])
                 txt.write(img[:-4] + "\n")
                 txt.close()
-                th = threading.Thread(
-                    target=self.call_augment,
-                    args=(
-                        conf,
-                        img,
-                        kitti.kitti_dir,
-                    ),
-                    daemon=True,
-                )
-                th.start()
-                threads.append(th)
+                self.call_augment(conf, img, kitti.kitti_dir)
                 self.augmented_imgs += 1
             self.imgs_total += 1
-
-        for th in threads:
-            th.join()
 
 
 class Augmentation:
@@ -84,19 +68,17 @@ class Augmentation:
 
     def augment(self, kitti: Kitti):
         kitti.aug_files = list()
-        path = os.path.join(kitti.kitti_dir, "training/augmented/")
-
-        if os.path.exists(path) and os.path.isdir(path):
-            shutil.rmtree(path)
-        os.mkdir(path)
 
         if self.pct != 0:
-            self.aug_thread.augment(
-                self.conf,
-                kitti,
-                self.pct if kitti.set_type == DatasetType.TRAIN else 50,
-            ),
-        # TODO Thread, Pfadaugabe (je ob Train, VAL, ect), kitti getitem (remove conf augmentation from kitti) -> is augmented wenn in liste und cp von augmented to augmented_2
+            th = threading.Thread(
+                target=self.aug_thread.augment,
+                args=(
+                    self.conf,
+                    kitti,
+                    self.pct if kitti.set_type == DatasetType.TRAIN else 50,
+                ),
+            )
+            th.start()
 
     def getPctAugmented(self):
         return (
