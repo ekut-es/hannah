@@ -152,6 +152,7 @@ class CrossValidationTrainer:
             in enumerate(zip(loader_model.train_dataloader(),
                              loader_model.val_dataloader(),
                              loader_model.test_dataloader())):
+            fold += 1  # We want natural enumeration
             self.current_fold = fold
             model_copy = deepcopy(model)
             model_copy.register_test_end_callback_function(self.test_end_callback)
