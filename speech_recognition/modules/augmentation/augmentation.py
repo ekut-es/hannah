@@ -188,7 +188,7 @@ class Augmentation:
             self.aug_thread.augment(
                 self.conf,
                 kitti,
-                self.pct if kitti.set_type == DatasetType.TRAIN else 100,
+                self.pct if kitti.set_type == DatasetType.TRAIN else 50,
             )
 
     def getPctAugmented(self):
