@@ -57,8 +57,9 @@ class CrossValidationTrainer:
 
     def __init__(self, *args, **kwargs):
         self.current_fold = None
-        kwargs["callbacks"] += [FoldProgressBar(fold_idx_callback=
-                                                self.get_current_fold)]
+        kwargs["callbacks"] += [
+            FoldProgressBar(fold_idx_callback=self.get_current_fold)
+        ]
         self.trainer = Trainer(*args, **kwargs)
         self.fast_dev_run = True
         self.overall_test_results_array = []
@@ -70,15 +71,17 @@ class CrossValidationTrainer:
 
     @staticmethod
     def _update_logger(logger, fold_idx):
-        if hasattr(logger, 'experiment_name'):
-            logger_key = 'experiment_name'
-        elif hasattr(logger, 'name'):
-            logger_key = 'name'
+        if hasattr(logger, "experiment_name"):
+            logger_key = "experiment_name"
+        elif hasattr(logger, "name"):
+            logger_key = "name"
         else:
-            raise AttributeError('The logger associated with the trainer '
-                                 'should have an `experiment_name` or `name` '
-                                 'attribute.')
-        new_experiment_name = getattr(logger, logger_key) + f'/{fold_idx}'
+            raise AttributeError(
+                "The logger associated with the trainer "
+                "should have an `experiment_name` or `name` "
+                "attribute."
+            )
+        new_experiment_name = getattr(logger, logger_key) + f"/{fold_idx}"
         try:
             setattr(logger, logger_key, new_experiment_name)
         except AttributeError:
@@ -96,13 +99,13 @@ class CrossValidationTrainer:
 
     @staticmethod
     def update_modelcheckpoint(model_ckpt_callback, fold_idx):
-        _default_filename = '{epoch}-{step}'
-        _suffix = f'_fold{fold_idx}'
+        _default_filename = "{epoch}-{step}"
+        _suffix = f"_fold{fold_idx}"
         if model_ckpt_callback.filename is None:
             new_filename = _default_filename + _suffix
         else:
             new_filename = model_ckpt_callback.filename + _suffix
-        setattr(model_ckpt_callback, 'filename', new_filename)
+        setattr(model_ckpt_callback, "filename", new_filename)
 
     def tune(
         self,
@@ -125,8 +128,10 @@ class CrossValidationTrainer:
     def test_end_callback(self, caller, test_metrics):
         metric_table = self.get_metric_table_from_test_metrics(test_metrics)
 
-        logging.info(f"\nFold: {self.current_fold} "
-                     f"Test Metrics:\n{tabulate.tabulate(metric_table)}")
+        logging.info(
+            f"\nFold: {self.current_fold} "
+            f"Test Metrics:\n{tabulate.tabulate(metric_table)}"
+        )
 
         confusion_matrix = caller.test_confusion.compute()
         caller.test_confusion.reset()
@@ -143,8 +148,9 @@ class CrossValidationTrainer:
 
         # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
         caller.test_roc.reset()
-        self.overall_test_results_array += [(metric_table,
-                                             confusion_matrix.cpu().numpy())]
+        self.overall_test_results_array += [
+            (metric_table, confusion_matrix.cpu().numpy())
+        ]
 
     def overall_test_results(self):
         accum_table = None
@@ -169,45 +175,41 @@ class CrossValidationTrainer:
         for name, metric in accum_table:
             overall_table += [(name, metric / count_folds)]  # Mean value
 
-        logging.info(f"Overall Test Metrics:"
-                     f"\n{tabulate.tabulate(overall_table)}")
+        logging.info(f"Overall Test Metrics:" f"\n{tabulate.tabulate(overall_table)}")
 
-        confusion_plot = plot_confusion_matrix(
-            overall_confusion, self.class_names
-        )
+        confusion_plot = plot_confusion_matrix(overall_confusion, self.class_names)
 
         confusion_plot.savefig(f"test_confusion.png")
         confusion_plot.savefig(f"test_confusion.pdf")
 
     # Do all in fit
-    def fit(
-        self,
-        model: LightningModule,
-    ) -> None:
+    def fit(self, model: LightningModule) -> None:
         working_model = deepcopy(model)
         working_model.prepare_data()
         working_model.setup(None)
         working_trainer = deepcopy(self.trainer)
         working_trainer.tune(working_model)
         loader_model = deepcopy(working_model)
-        for fold, (train_loader, val_loader, test_loader) \
-            in enumerate(zip(loader_model.train_dataloader(),
-                             loader_model.val_dataloader(),
-                             loader_model.test_dataloader())):
+        for fold, (train_loader, val_loader, test_loader) in enumerate(
+            zip(
+                loader_model.train_dataloader(),
+                loader_model.val_dataloader(),
+                loader_model.test_dataloader(),
+            )
+        ):
             fold += 1  # We want natural enumeration
             self.current_fold = fold
             model_copy = deepcopy(model)
             model_copy.register_test_end_callback_function(self.test_end_callback)
-            model_copy.register_trainer_fold_callback(callback=
-                                                      self.get_current_fold)
+            model_copy.register_trainer_fold_callback(callback=self.get_current_fold)
             trainer_copy = deepcopy(working_trainer)
             self.update_logger(trainer_copy, fold)
             for callback in trainer_copy.callbacks:
                 if isinstance(callback, ModelCheckpoint):
                     self.update_modelcheckpoint(callback, fold)
-            trainer_copy.fit(model_copy,
-                             train_dataloader=train_loader,
-                             val_dataloaders=val_loader)
+            trainer_copy.fit(
+                model_copy, train_dataloader=train_loader, val_dataloaders=val_loader
+            )
             trainer_copy.validate(model_copy, val_dataloaders=val_loader)
             trainer_copy.test(model_copy, test_dataloaders=test_loader)
 
@@ -217,7 +219,7 @@ class CrossValidationTrainer:
         self,
         model: Optional[LightningModule] = None,
         val_dataloaders: Optional[Union[DataLoader, List[DataLoader]]] = None,
-        ckpt_path: Optional[str] = 'best',
+        ckpt_path: Optional[str] = "best",
         verbose: bool = True,
         datamodule: Optional[LightningDataModule] = None,
     ):
@@ -227,7 +229,7 @@ class CrossValidationTrainer:
         self,
         model: Optional[LightningModule] = None,
         test_dataloaders: Optional[Union[DataLoader, List[DataLoader]]] = None,
-        ckpt_path: Optional[str] = 'best',
+        ckpt_path: Optional[str] = "best",
         verbose: bool = True,
         datamodule: Optional[LightningDataModule] = None,
     ):
