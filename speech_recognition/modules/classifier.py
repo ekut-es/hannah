@@ -24,7 +24,7 @@ from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
 from hydra.utils import instantiate, get_class
 import numpy as np
 
-from ..datasets import AsynchronousLoader, SpeechDataset
+from ..datasets import SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
@@ -354,12 +354,8 @@ class BaseStreamClassifierModule(ClassifierModule):
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             sampler=sampler,
-            multiprocessing_context="fork" if self.hparams[
-                                                  "num_workers"] > 0 else None,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
-        # if self.device.type == "cuda":
-        #    train_loader = AsynchronousLoader(train_loader, device=self.device)
 
         self.batches_per_epoch = len(train_loader)
 
@@ -396,12 +392,8 @@ class BaseStreamClassifierModule(ClassifierModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context="fork" if self.hparams[
-                                                  "num_workers"] > 0 else None,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
-        # if self.device.type == "cuda":
-        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
 
         return dev_loader
 
@@ -438,12 +430,8 @@ class BaseStreamClassifierModule(ClassifierModule):
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            multiprocessing_context="fork" if self.hparams[
-                                                  "num_workers"] > 0 else None,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
-        # if self.device.type == "cuda":
-        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
 
         return test_loader
 
@@ -512,9 +500,7 @@ class StreamClassifierModule(BaseStreamClassifierModule):
         return self.test_set.class_names
 
     def get_split(self):
-        return get_class(
-            self.hparams.dataset.cls
-        ).splits(self.hparams.dataset)
+        return get_class(self.hparams.dataset.cls).splits(self.hparams.dataset)
 
     def get_num_classes(self):
         return len(self.train_set.class_names)
@@ -553,11 +539,7 @@ class StreamClassifierModule(BaseStreamClassifierModule):
 
 
 class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
-    def __init__(
-        self,
-        *args,
-        **kwargs
-    ):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.trainer_fold_callback = None
         self.sets_by_criteria = None
@@ -565,27 +547,21 @@ class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
         self.test_end_callback_function = None
 
     def get_class_names(self):
-        return get_class(
-            self.hparams.dataset.cls
-        ).get_class_names()
+        return get_class(self.hparams.dataset.cls).get_class_names()
 
     def get_num_classes(self):
-        return get_class(
-                self.hparams.dataset.cls
-                ).get_num_classes()
+        return get_class(self.hparams.dataset.cls).get_num_classes()
 
     def get_split(self):
-        self.sets_by_criteria = get_class(
-                                    self.hparams.dataset.cls
-                                ).splits_cv(self.hparams.dataset)
+        self.sets_by_criteria = get_class(self.hparams.dataset.cls).splits_cv(
+            self.hparams.dataset
+        )
         return self.prepare_dataloaders(self.sets_by_criteria)
 
     def get_example_input_array(self):
         return torch.zeros(
-                1,
-                self.sets_by_criteria[0].channels,
-                self.sets_by_criteria[0].input_length
-                )
+            1, self.sets_by_criteria[0].channels, self.sets_by_criteria[0].input_length
+        )
 
     def prepare_dataloaders(self, sets_by_criteria):
         assert self.k_fold >= len(["train", "val", "test"])
@@ -602,12 +578,19 @@ class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
             dev_split = splits[1]
             train_split = np.concatenate(splits[2:]).ravel()
 
-            train_sets += [torch.utils.data.ConcatDataset(
-                [sets_by_criteria[i] for i in train_split])]
-            dev_sets += [torch.utils.data.ConcatDataset(
-                [sets_by_criteria[i] for i in dev_split])]
-            test_sets += [torch.utils.data.ConcatDataset(
-                [sets_by_criteria[i] for i in test_split])]
+            train_sets += [
+                torch.utils.data.ConcatDataset(
+                    [sets_by_criteria[i] for i in train_split]
+                )
+            ]
+            dev_sets += [
+                torch.utils.data.ConcatDataset([sets_by_criteria[i] for i in dev_split])
+            ]
+            test_sets += [
+                torch.utils.data.ConcatDataset(
+                    [sets_by_criteria[i] for i in test_split]
+                )
+            ]
 
             splits = splits[1:] + [splits[0]]
 
