@@ -143,7 +143,7 @@ Create VAD_big Dataset
 
 Training of PAMAP2 human activity detection dataset is invoked by:
 
-    hannah-train dataset=pamap2 features=raw
+    hannah-train -cn config_activity
 
 # Parallel Launchers
 

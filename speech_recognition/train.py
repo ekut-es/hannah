@@ -1,7 +1,7 @@
-import os
 import logging
-import shutil
+import os
 import pathlib
+import shutil
 
 from collections import defaultdict
 
@@ -20,6 +20,7 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
 from hydra.utils import instantiate
+from omegaconf import DictConfig
 
 from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
@@ -147,8 +148,8 @@ def train(config=DictConfig):
             callbacks.append(pruning_callback)
 
         # INIT PYTORCH-LIGHTNING
-        lit_trainer = Trainer(
-            **config.trainer, profiler=profiler, callbacks=callbacks, logger=logger
+        lit_trainer = instantiate(
+            config.trainer, profiler=profiler, callbacks=callbacks, logger=logger
         )
 
         if config["auto_lr"]:
