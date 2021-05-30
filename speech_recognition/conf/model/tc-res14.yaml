@@ -115,8 +115,13 @@ clipping_value: 100000.0
 small: false
 conv_type: NN
 spike_fn: SBPHeaviside
-#general_conv_type: NN
-#general_BN: BN
+#general_conv_type: SNN
+#general_BN: BNTTv1
+#general_alpha: 0.0
+#general_beta: 0.0
+#general_gamma: 0.0
+#general_rho: 0.0
+#general_neuron_type: ALIF
 
 # Set by LigthningModule
 width: 101
