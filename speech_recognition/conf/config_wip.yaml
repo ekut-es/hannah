@@ -2,8 +2,8 @@ defaults:
     - dataset: kws
     - features: mfcc
     - model: wip
-    - scheduler: 1cycle
-    - optimizer: sgd
+    - scheduler: step
+    - optimizer: adamw
     - normalizer: null
     - module: stream_classifier
     - compress: null
