@@ -187,7 +187,7 @@ class SpikingDenseLayer(torch.nn.Module):
         self.b.data.clamp_(min=0.0)
 
 
-class Spiking1DLayer(torch.nn.Module):
+class Spiking1DLayerS2Net(torch.nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -199,14 +199,9 @@ class Spiking1DLayer(torch.nn.Module):
         stride: _size_1_t = 1,
         flatten_output=False,
         convolution_layer=None,
-        neuron_type="eLIF",
-        alpha=0.75,
-        beta=0.65,
-        gamma=0.75,
-        roh=0.75,
     ):
 
-        super(Spiking1DLayer, self).__init__()
+        super(Spiking1DLayerS2Net, self).__init__()
 
         self.kernel_size = kernel_size
         self.dilation = dilation
@@ -219,22 +214,99 @@ class Spiking1DLayer(torch.nn.Module):
         self.flatten_output = flatten_output
 
         self.convolution = convolution_layer
-        self.neuron_type = neuron_type
 
-        if neuron_type == "s2net":
-            self.eps = eps
-            self.beta = torch.nn.Parameter(torch.empty(1), requires_grad=True)
-            self.b = torch.nn.Parameter(torch.empty(out_channels), requires_grad=True)
-        elif neuron_type in ["eLIF", "LIF"]:
-            self.alpha = torch.tensor(alpha)
-            self.beta = torch.tensor(beta)
-            self.Vth = torch.ones(out_channels)
-        elif neuron_type in ["eALIF", "ALIF"]:
-            self.alpha = torch.tensor(alpha)
-            self.beta = torch.tensor(beta)
-            self.gamma = torch.tensor(gamma)
-            self.roh = torch.tensor(roh)
-            self.Vth = torch.ones(out_channels)
+        self.eps = eps
+        self.beta = torch.nn.Parameter(torch.empty(1), requires_grad=True)
+        self.b = torch.nn.Parameter(torch.empty(out_channels), requires_grad=True)
+
+        self.reset_parameters()
+        self.clamp()
+
+        self.spk_rec_hist = None
+
+        self.training = True
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+        nb_steps = x.shape[2]
+
+        # membrane potential
+        mem = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+        # output spikes
+        spk = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+        # output spikes recording
+        spk_rec = torch.zeros(
+            (batch_size, self.out_channels, nb_steps), dtype=x.dtype, device=x.device
+        )
+
+        b = self.b
+        norm = (self.convolution.weight ** 2).sum((1, 2))
+
+        for t in range(nb_steps):
+
+            # reset term
+            rst = torch.einsum("ab,b,b->ab", spk, self.b, norm)
+
+            input_ = x[:, :, t]
+
+            # membrane potential update
+            mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
+            mthr = torch.einsum("ab,b->ab", mem, 1.0 / (norm + self.eps)) - b
+
+            spk = self.spike_fn(mthr)
+
+            spk_rec[:, :, t] = spk
+
+        # save spk_rec for plotting
+        #        self.spk_rec_hist = spk_rec.detach().cpu().numpy()
+
+        if self.flatten_output:
+            output = torch.transpose(spk_rec, 1, 2).contiguous()
+        else:
+            output = spk_rec
+
+        return output
+
+    def reset_parameters(self):
+        torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
+        torch.nn.init.normal_(self.b, mean=1.0, std=0.01)
+
+    def clamp(self):
+        self.beta.data.clamp_(0.0, 1.0)
+        self.b.data.clamp_(min=0.0)
+
+
+class Spiking1DLayereLIF(torch.nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_1_t,
+        dilation: _size_1_t,
+        spike_fn,
+        stride: _size_1_t = 1,
+        flatten_output=False,
+        beta=0.65,
+    ):
+
+        super(Spiking1DLayereLIF, self).__init__()
+
+        self.kernel_size = kernel_size
+        self.dilation = dilation
+        self.stride = stride
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.spike_fn = spike_fn
+
+        self.flatten_output = flatten_output
+
+        self.beta = torch.tensor(beta)
+        self.Vth = torch.ones(out_channels)
 
         self.reset_parameters()
         self.clamp()
@@ -245,15 +317,8 @@ class Spiking1DLayer(torch.nn.Module):
 
     def forward(self, x):
 
-        if self.neuron_type in ["eLIF", "LIF"]:
-            self.alpha = self.alpha.to(device=x.device)
-            self.beta = self.beta.to(device=x.device)
-            self.Vth = self.Vth.to(device=x.device)
-        elif self.neuron_type in ["eALIF", "ALIF"]:
-            self.alpha = self.alpha.to(device=x.device)
-            self.beta = self.beta.to(device=x.device)
-            self.gamma = self.gamma.to(device=x.device)
-            self.Vth = self.Vth.to(device=x.device)
+        self.beta = self.beta.to(device=x.device)
+        self.Vth = self.Vth.to(device=x.device)
 
         batch_size = x.shape[0]
         nb_steps = x.shape[2]
@@ -271,70 +336,16 @@ class Spiking1DLayer(torch.nn.Module):
             (batch_size, self.out_channels, nb_steps), dtype=x.dtype, device=x.device
         )
 
-        if self.neuron_type == "s2net":
-            b = self.b
-            norm = (self.convolution.weight ** 2).sum((1, 2))
+        for t in range(nb_steps):
+            rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
-            for t in range(nb_steps):
+            input_ = x[:, :, t]
 
-                # reset term
-                rst = torch.einsum("ab,b,b->ab", spk, self.b, norm)
+            mem = (mem - rst) * self.beta + input_
 
-                input_ = x[:, :, t]
+            spk = self.spike_fn(mem - self.Vth)
 
-                # membrane potential update
-                mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
-                mthr = torch.einsum("ab,b->ab", mem, 1.0 / (norm + self.eps)) - b
-
-                spk = self.spike_fn(mthr)
-
-                spk_rec[:, :, t] = spk
-
-            # save spk_rec for plotting
-            #        self.spk_rec_hist = spk_rec.detach().cpu().numpy()
-        elif self.neuron_type in ["eLIF", "LIF"]:
-            for t in range(nb_steps):
-                rst = torch.einsum("ab,b->ab", spk, self.Vth)
-
-                if self.neuron_type == "LIF":
-                    input_ = x[:, :, t] * self.alpha
-                else:
-                    input_ = x[:, :, t]
-
-                mem = (mem - rst) * self.beta + input_
-
-                spk = self.spike_fn(mem - self.Vth)
-
-                spk_rec[:, :, t] = spk
-        elif self.neuron_type in ["eALIF", "ALIF"]:
-
-            Athpot = torch.ones(
-                (batch_size, self.out_channels), dtype=x.dtype, device=x.device
-            )
-
-            thadapt = torch.zeros(
-                (batch_size, self.out_channels), dtype=x.dtype, device=x.device
-            )
-
-            for t in range(nb_steps):
-                rst = torch.einsum("ab,b->ab", spk, self.Vth)
-
-                if self.neuron_type == "ALIF":
-                    input_ = x[:, :, t] * self.alpha
-                else:
-                    input_ = x[:, :, t]
-
-                mem = (mem - rst) * self.beta + input_
-
-                thadapt = self.roh * thadapt + spk_rec[:, :, t - 1]
-
-                Athpot = self.Vth + self.gamma * thadapt
-
-                spk = self.spike_fn(mem - Athpot)
-
-                spk_rec[:, :, t] = spk
-        else:
-            print("Wrong Neuron Type used")
+            spk_rec[:, :, t] = spk
 
         if self.flatten_output:
             output = torch.transpose(spk_rec, 1, 2).contiguous()
@@ -344,14 +355,293 @@ class Spiking1DLayer(torch.nn.Module):
         return output
 
     def reset_parameters(self):
-        if self.neuron_type == "s2net":
-            torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
-            torch.nn.init.normal_(self.b, mean=1.0, std=0.01)
+        pass
 
     def clamp(self):
-        if self.neuron_type == "s2net":
-            self.beta.data.clamp_(0.0, 1.0)
-            self.b.data.clamp_(min=0.0)
+        pass
+
+
+class Spiking1DLayerLIF(torch.nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_1_t,
+        dilation: _size_1_t,
+        spike_fn,
+        stride: _size_1_t = 1,
+        flatten_output=False,
+        alpha=0.75,
+        beta=0.65,
+    ):
+
+        super(Spiking1DLayerLIF, self).__init__()
+
+        self.kernel_size = kernel_size
+        self.dilation = dilation
+        self.stride = stride
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.spike_fn = spike_fn
+
+        self.flatten_output = flatten_output
+
+        self.alpha = torch.tensor(alpha)
+        self.beta = torch.tensor(beta)
+        self.Vth = torch.ones(out_channels)
+
+        self.reset_parameters()
+        self.clamp()
+
+        self.spk_rec_hist = None
+
+        self.training = True
+
+    def forward(self, x):
+
+        self.alpha = self.alpha.to(device=x.device)
+        self.beta = self.beta.to(device=x.device)
+        self.Vth = self.Vth.to(device=x.device)
+
+        batch_size = x.shape[0]
+        nb_steps = x.shape[2]
+
+        # membrane potential
+        mem = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+        # output spikes
+        spk = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+        # output spikes recording
+        spk_rec = torch.zeros(
+            (batch_size, self.out_channels, nb_steps), dtype=x.dtype, device=x.device
+        )
+
+        for t in range(nb_steps):
+            rst = torch.einsum("ab,b->ab", spk, self.Vth)
+
+            input_ = x[:, :, t] * self.alpha
+
+            mem = (mem - rst) * self.beta + input_
+
+            spk = self.spike_fn(mem - self.Vth)
+
+            spk_rec[:, :, t] = spk
+
+        if self.flatten_output:
+            output = torch.transpose(spk_rec, 1, 2).contiguous()
+        else:
+            output = spk_rec
+
+        return output
+
+    def reset_parameters(self):
+        pass
+
+    def clamp(self):
+        pass
+
+
+class Spiking1DLayereALIF(torch.nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_1_t,
+        dilation: _size_1_t,
+        spike_fn,
+        stride: _size_1_t = 1,
+        flatten_output=False,
+        beta=0.65,
+        gamma=0.75,
+        roh=0.75,
+    ):
+
+        super(Spiking1DLayereALIF, self).__init__()
+
+        self.kernel_size = kernel_size
+        self.dilation = dilation
+        self.stride = stride
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.spike_fn = spike_fn
+
+        self.flatten_output = flatten_output
+
+        self.beta = torch.tensor(beta)
+        self.gamma = torch.tensor(gamma)
+        self.roh = torch.tensor(roh)
+        self.Vth = torch.ones(out_channels)
+
+        self.reset_parameters()
+        self.clamp()
+
+        self.spk_rec_hist = None
+
+        self.training = True
+
+    def forward(self, x):
+
+        self.beta = self.beta.to(device=x.device)
+        self.gamma = self.gamma.to(device=x.device)
+        self.Vth = self.Vth.to(device=x.device)
+
+        batch_size = x.shape[0]
+        nb_steps = x.shape[2]
+
+        # membrane potential
+        mem = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+        # output spikes
+        spk = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+        # output spikes recording
+        spk_rec = torch.zeros(
+            (batch_size, self.out_channels, nb_steps), dtype=x.dtype, device=x.device
+        )
+
+        Athpot = torch.ones(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+
+        thadapt = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+
+        for t in range(nb_steps):
+            rst = torch.einsum("ab,b->ab", spk, self.Vth)
+
+            input_ = x[:, :, t]
+
+            mem = (mem - rst) * self.beta + input_
+
+            thadapt = self.roh * thadapt + spk_rec[:, :, t - 1]
+
+            Athpot = self.Vth + self.gamma * thadapt
+
+            spk = self.spike_fn(mem - Athpot)
+
+            spk_rec[:, :, t] = spk
+
+        if self.flatten_output:
+            output = torch.transpose(spk_rec, 1, 2).contiguous()
+        else:
+            output = spk_rec
+
+        return output
+
+    def reset_parameters(self):
+        pass
+
+    def clamp(self):
+        pass
+
+
+class Spiking1DLayerALIF(torch.nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_1_t,
+        dilation: _size_1_t,
+        spike_fn,
+        stride: _size_1_t = 1,
+        flatten_output=False,
+        alpha=0.75,
+        beta=0.65,
+        gamma=0.75,
+        roh=0.75,
+    ):
+
+        super(Spiking1DLayerALIF, self).__init__()
+
+        self.kernel_size = kernel_size
+        self.dilation = dilation
+        self.stride = stride
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.spike_fn = spike_fn
+
+        self.flatten_output = flatten_output
+
+        self.alpha = torch.tensor(alpha)
+        self.beta = torch.tensor(beta)
+        self.gamma = torch.tensor(gamma)
+        self.roh = torch.tensor(roh)
+        self.Vth = torch.ones(out_channels)
+
+        self.reset_parameters()
+        self.clamp()
+
+        self.spk_rec_hist = None
+
+        self.training = True
+
+    def forward(self, x):
+
+        self.alpha = self.alpha.to(device=x.device)
+        self.beta = self.beta.to(device=x.device)
+        self.gamma = self.gamma.to(device=x.device)
+        self.Vth = self.Vth.to(device=x.device)
+
+        batch_size = x.shape[0]
+        nb_steps = x.shape[2]
+
+        # membrane potential
+        mem = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+        # output spikes
+        spk = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+        # output spikes recording
+        spk_rec = torch.zeros(
+            (batch_size, self.out_channels, nb_steps), dtype=x.dtype, device=x.device
+        )
+
+        Athpot = torch.ones(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+
+        thadapt = torch.zeros(
+            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+        )
+
+        for t in range(nb_steps):
+            rst = torch.einsum("ab,b->ab", spk, self.Vth)
+
+            input_ = x[:, :, t] * self.alpha
+
+            mem = (mem - rst) * self.beta + input_
+
+            thadapt = self.roh * thadapt + spk_rec[:, :, t - 1]
+
+            Athpot = self.Vth + self.gamma * thadapt
+
+            spk = self.spike_fn(mem - Athpot)
+
+            spk_rec[:, :, t] = spk
+
+        if self.flatten_output:
+            output = torch.transpose(spk_rec, 1, 2).contiguous()
+        else:
+            output = spk_rec
+
+        return output
+
+    def reset_parameters(self):
+        pass
+
+    def clamp(self):
+        pass
 
 
 class SpikingConv2DLayer(torch.nn.Module):

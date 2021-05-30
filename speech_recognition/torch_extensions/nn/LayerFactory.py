@@ -1,6 +1,10 @@
 from .SNNLayers import (
     SpikingDenseLayer,
-    Spiking1DLayer,
+    Spiking1DLayereLIF,
+    Spiking1DLayerLIF,
+    Spiking1DLayereALIF,
+    Spiking1DLayerALIF,
+    Spiking1DLayerS2Net,
     ReadoutLayer,
     SurrogateHeaviside,
     EmptyLayer,
@@ -18,6 +22,84 @@ def create_spike_fn(spike_fn_name="SHeaviside"):
         return Surrogate_BP_Function.apply
     else:
         return None
+
+
+def get1DNeuronLayer(
+    in_channels,
+    out_channels,
+    kernel_size,
+    dilation,
+    spike_fn,
+    stride,
+    flatten_output,
+    convolution_layer,
+    alpha,
+    beta,
+    gamma,
+    roh,
+    neuron_type,
+):
+    if neuron_type == "s2net":
+        return Spiking1DLayerS2Net(
+            in_channels,
+            out_channels,
+            kernel_size,
+            dilation,
+            spike_fn=spike_fn,
+            stride=stride,
+            flatten_output=flatten_output,
+            convolution_layer=convolution_layer,
+        )
+    if neuron_type == "eLIF":
+        return Spiking1DLayereLIF(
+            in_channels,
+            out_channels,
+            kernel_size,
+            dilation,
+            spike_fn=spike_fn,
+            stride=stride,
+            flatten_output=flatten_output,
+            beta=beta,
+        )
+    elif neuron_type == "LIF":
+        return Spiking1DLayerLIF(
+            in_channels,
+            out_channels,
+            kernel_size,
+            dilation,
+            spike_fn=spike_fn,
+            stride=stride,
+            flatten_output=flatten_output,
+            alpha=alpha,
+            beta=beta,
+        )
+    elif neuron_type == "eALIF":
+        return Spiking1DLayereALIF(
+            in_channels,
+            out_channels,
+            kernel_size,
+            dilation,
+            spike_fn=spike_fn,
+            stride=stride,
+            flatten_output=flatten_output,
+            beta=beta,
+            gamma=gamma,
+            roh=roh,
+        )
+    elif neuron_type == "ALIF":
+        return Spiking1DLayerALIF(
+            in_channels,
+            out_channels,
+            kernel_size,
+            dilation,
+            spike_fn=spike_fn,
+            stride=stride,
+            flatten_output=flatten_output,
+            alpha=alpha,
+            beta=beta,
+            gamma=gamma,
+            roh=roh,
+        )
 
 
 def build1DConvolution(
@@ -61,7 +143,7 @@ def build1DConvolution(
         if type == "SNN":
             return nn.Sequential(
                 conv,
-                Spiking1DLayer(
+                get1DNeuronLayer(
                     in_channels,
                     out_channels,
                     kernel_size,
@@ -86,7 +168,7 @@ def build1DConvolution(
             return nn.Sequential(
                 conv,
                 bn,
-                Spiking1DLayer(
+                get1DNeuronLayer(
                     in_channels,
                     out_channels,
                     kernel_size,
