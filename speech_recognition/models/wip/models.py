@@ -1,7 +1,8 @@
+import copy
 import torch.nn as nn
 import numpy as np
+# import logging
 # import torch
-
 # from ..utils import ConfigType, SerializableModule
 
 
@@ -13,12 +14,13 @@ def conv1d_auto_padding(conv1d: nn.Conv1d):
 
 # base construct of a residual block
 class ResBlockBase(nn.Module):
-    def __init__(self, in_channels, out_channels, act_after_res=True, norm_after_res=True):
+    def __init__(self, in_channels, out_channels, act_after_res=True, norm_after_res=True, norm_order=None):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.do_act = act_after_res
         self.do_norm = norm_after_res
+        self.norm_order = norm_order
         # if the input channel count does not match the output channel count, apply skip to residual values
         self.apply_skip = self.in_channels != self.out_channels
         self.act = nn.ReLU()
@@ -34,9 +36,11 @@ class ResBlockBase(nn.Module):
         x = self.blocks(x)
         x += residual
         # do activation and norm after applying residual (if enabled)
+        if self.do_norm and self.norm_order.norm_before_act:
+            x = self.norm(x)
         if self.do_act:
             x = self.act(x)
-        if self.do_norm:
+        if self.do_norm and self.norm_order.norm_after_act:
             x = self.norm(x)
         return x
 
@@ -46,68 +50,90 @@ class ResBlockBase(nn.Module):
 
 # residual block with a 1d skip connection
 class ResBlock1d(ResBlockBase):
-    def __init__(self, in_channels, out_channels, minor_blocks, act_after_res=True, norm_after_res=True):
-        super().__init__(in_channels=in_channels, out_channels=out_channels, act_after_res=act_after_res, norm_after_res=norm_after_res)
+    def __init__(self, in_channels, out_channels, minor_blocks, act_after_res=True, norm_after_res=False, stride=1, norm_order=None):
+        super().__init__(in_channels=in_channels, out_channels=out_channels, act_after_res=act_after_res, norm_after_res=norm_after_res, norm_order=norm_order)
         # set the minor block sequence if specified in construction
         # if minor_blocks is not None:
         self.blocks = minor_blocks
         # if applying skip to the residual values is required, create skip as a minimal conv1d
+        # stride is also applied to the skip layer (if specified, default is 1)
         self.skip = nn.Sequential(
-            nn.Conv1d(self.in_channels, out_channels, kernel_size=1, stride=1, bias=False),
+            nn.Conv1d(self.in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
             nn.BatchNorm1d(self.out_channels)
-        )  # if self.apply_skip else None
+        ) if self.apply_skip else None
 
 
-# TODO: implement stride on conv blocks
-def create(name: str, labels: int, input_shape, conv=[]):
-    # print("################ SHAPE ################")
-    # print(np.shape(input_shape))
-    # print(input_shape)
-    # print("################ SHAPE ################")
+# TODO: properly implement stride on major blocks
+def create(name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_order=None, steps_without_sampling=1):
+    # if no orders for the norm operator are specified, fall back to default
+    if not (hasattr(norm_order, "norm_before_act") and hasattr(norm_order, "norm_after_act")):
+        print("order of norm before/after activation is not set!")
+        norm_order = {"norm_before_act": True, "norm_after_act": False}
+
     flatten_n = input_shape[0]
     in_channels = input_shape[1]
     pool_n = input_shape[2]
     # the final output channel count is given by the last minor block of the last major block
     final_out_channels = conv[-1].blocks[-1].out_channels
-    # get the max depth from the count of major blocks
-    model = WIPModel(max_depth=len(conv), labels=labels, pool_kernel=pool_n, flatten_dims=flatten_n, out_channels=final_out_channels)
-    model.block_config = conv
+    conv_layers = nn.ModuleList([])
     next_in_channels = in_channels
-    # breakpoint()
 
     for block_config in conv:
         if block_config.target == "forward":
-            major_block = create_forward_block(blocks=block_config.blocks, in_channels=next_in_channels)
+            major_block = create_forward_block(blocks=block_config.blocks, in_channels=next_in_channels, stride=block_config.stride, norm_order=norm_order)
         elif block_config.target == "residual1d":
-            major_block = create_residual_block_1d(blocks=block_config.blocks, in_channels=next_in_channels)
+            major_block = create_residual_block_1d(blocks=block_config.blocks, in_channels=next_in_channels, stride=block_config.stride, norm_order=norm_order)
         else:
             raise Exception(f"Undefined target selected for major block: {block_config.target}")
         # output channel count of the last minor block will be the input channel count of the next major block
         next_in_channels = block_config.blocks[-1].out_channels
-        model.conv_layers.append(major_block)
+        conv_layers.append(major_block)
+
+    # get the max depth from the count of major blocks
+    model = WIPModel(
+        conv_layers=conv_layers,
+        max_depth=len(conv),
+        labels=labels,
+        pool_kernel=pool_n,
+        flatten_dims=flatten_n,
+        out_channels=final_out_channels,
+        min_depth=min_depth,
+        block_config=conv,
+        steps_without_sampling=steps_without_sampling
+    )
 
     return model
 
 
 # build a sequence from a list of minor block configurations
-def create_minor_block_sequence(blocks, in_channels):
+def create_minor_block_sequence(blocks, in_channels, stride=1, norm_order=None):
     next_in_channels = in_channels
     minor_block_sequence = nn.ModuleList([])
+    norm_before_act = norm_order.norm_before_act
+    norm_after_act = norm_order.norm_after_act
+    is_first_minor_block = True
     for block_config in blocks:
         if block_config.target == "conv1d":
             out_channels = block_config.out_channels
             # create a minor block, potentially with activation and norm
             minor_block_internal_sequence = nn.ModuleList([])
-            minor_block_internal_sequence.append(conv1d_auto_padding(nn.Conv1d(
+            new_minor_block = conv1d_auto_padding(nn.Conv1d(
                     kernel_size=block_config.kernel_size,
                     in_channels=next_in_channels,
                     out_channels=out_channels
-            )))
+            ))
+            # set stride on the first minor block in the sequence
+            if is_first_minor_block:
+                new_minor_block.stride = stride
+                is_first_minor_block = False
+            minor_block_internal_sequence.append(new_minor_block)
+            # batch norm will be added before and/or after activation depending on the configuration
+            if block_config.norm and norm_before_act:
+                minor_block_internal_sequence.append(nn.BatchNorm1d(out_channels))
             if block_config.act:
                 # add relu activation if act is set
                 minor_block_internal_sequence.append(nn.ReLU())
-            if block_config.norm:
-                # add a batch norm if norm is set
+            if block_config.norm and norm_after_act:
                 minor_block_internal_sequence.append(nn.BatchNorm1d(out_channels))
 
             minor_block_sequence.append(nn.Sequential(*minor_block_internal_sequence))
@@ -121,42 +147,51 @@ def create_minor_block_sequence(blocks, in_channels):
 
 
 # build a basic forward major block
-def create_forward_block(blocks, in_channels):
-    return create_minor_block_sequence(blocks, in_channels)
+def create_forward_block(blocks, in_channels, stride=1, norm_order=None):
+    return create_minor_block_sequence(blocks, in_channels, stride=stride, norm_order=norm_order)
 
 
 # build a residual major block
-def create_residual_block_1d(blocks, in_channels):
-    minor_blocks = create_minor_block_sequence(blocks, in_channels)
+def create_residual_block_1d(blocks, in_channels, stride=1, norm_order=None):
+    minor_blocks = create_minor_block_sequence(blocks, in_channels, stride=stride, norm_order=norm_order)
     # the output channel count of the residual major block is the output channel count of the last minor block
     out_channels = blocks[-1].out_channels
-    residual_block = ResBlock1d(in_channels=in_channels, out_channels=out_channels, minor_blocks=minor_blocks)
+    residual_block = ResBlock1d(in_channels=in_channels, out_channels=out_channels, minor_blocks=minor_blocks, stride=stride, norm_order=norm_order)
     return residual_block
 
 
 class WIPModel(nn.Module):
-    def __init__(self, max_depth: int, labels: int, pool_kernel: int, flatten_dims: int, out_channels: int):
+    def __init__(self, conv_layers: nn.ModuleList([]), max_depth: int, labels: int, pool_kernel: int, flatten_dims: int, out_channels: int, min_depth: int = 1, block_config=[], steps_without_sampling: int = 1):
         super().__init__()
+        self.conv_layers = conv_layers
         self.max_depth = max_depth
         self.active_depth = self.max_depth
         self.labels = labels
         self.pool_kernel = pool_kernel
         self.flatten_dims = flatten_dims
         self.out_channels = out_channels
-        self.block_config = []
-        # from convolution result dims
+        self.block_config = block_config
+        self.min_depth = min_depth
+        self.steps_without_sampling = steps_without_sampling
+        self.current_step = 0
         self.pool = nn.AvgPool1d(pool_kernel)
         self.flatten = nn.Flatten(flatten_dims)
-        self.linear = nn.Linear(out_channels, labels)  # from channel count at output
-
-        self.conv_layers = nn.ModuleList([])
+        # one linear exit layer for each possible depth level
+        self.linears = nn.ModuleList([])
+        # for every possible depth level (from min_depth to including max_depth)
+        for i in range(self.min_depth, self.max_depth+1):
+            self.active_depth = i
+            self.update_output_channel_count()
+            # create the linear output layer for this depth
+            self.linears.append(nn.Linear(self.out_channels, self.labels))
+        # should now be redundant, as the loop will exit with the active depth being max_depth
+        self.active_depth = self.max_depth
 
     # filter from DynamicConv2d
     def get_active_filter(self, out_channel, in_channel):
         # out_channels, in_channels/groups, kernel_size[0], kernel_size[1]
         return self.conv.weight[:out_channel, :in_channel, :]
 
-    # def forward(self, x, out_channel=None):
     def forward(self, x):
         for layer in self.conv_layers[:self.active_depth]:
             x = layer(x)
@@ -165,14 +200,37 @@ class WIPModel(nn.Module):
         # print(np.shape(result))
         result = self.pool(result)
         result = self.flatten(result)
-        result = self.linear(result)
+        result = self.get_output_linear_layer(self.active_depth)(result)
         # print(np.shape(result))
 
         return result
 
+    # return an extracted module sequence for a given depth
+    def extract_elastic_depth_sequence(self, target_depth):
+        if target_depth < self.min_depth or target_depth > self.max_depth:
+            raise Exception(f"attempted to extract submodel for depth {target_depth} where min: {self.min_depth} and max: {self.max_depth}")
+        extracted_module_list = nn.ModuleList([])
+        for layer in self.conv_layers[:target_depth]:
+            extracted_module_list.append(layer)
+        extracted_module_list.append(self.pool)
+        extracted_module_list.append(self.flatten)
+        extracted_module_list.append(self.get_output_linear_layer(target_depth))
+        return copy.deepcopy(nn.Sequential(*extracted_module_list))
+
+    # sample the active subnet, select a random depth between the configured min and the max depth (available major block depth)
     def sample_active_subnet(self):
-        self.active_depth = np.random.randint(1, self.max_depth)
-        # the new out channel count is given by the last minor block of the last active major block
-        self.out_channels = self.block_config[:self.active_depth][-1].blocks[:-1].out_channels
-        self.linear = nn.Linear(self.out_channels, self.labels)
+        # only sample the subnet after the set amount of steps have passed
+        self.current_step = self.current_step + 1
+        if self.current_step <= self.steps_without_sampling:
+            return
+        self.active_depth = np.random.randint(self.min_depth, self.max_depth)
+        self.update_output_channel_count()
         # print("Picked active depth: ", self.active_depth)
+
+    # set the output channel count value based on the current active depth
+    def update_output_channel_count(self):
+        # the new out channel count is given by the last minor block of the last active major block
+        self.out_channels = self.block_config[:self.active_depth][-1].blocks[-1].out_channels
+
+    def get_output_linear_layer(self, target_depth):
+        return self.linears[target_depth-self.min_depth]
