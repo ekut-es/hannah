@@ -25,12 +25,8 @@ def create_spike_fn(spike_fn_name="SHeaviside"):
 
 
 def get1DNeuronLayer(
-    in_channels,
-    out_channels,
-    kernel_size,
-    dilation,
+    channels,
     spike_fn,
-    stride,
     flatten_output,
     convolution_layer,
     alpha,
@@ -41,46 +37,30 @@ def get1DNeuronLayer(
 ):
     if neuron_type == "s2net":
         return Spiking1DS2NetLayer(
-            in_channels,
-            out_channels,
-            kernel_size,
-            dilation,
+            channels=channels,
             spike_fn=spike_fn,
-            stride=stride,
             flatten_output=flatten_output,
             convolution_layer=convolution_layer,
         )
     if neuron_type == "eLIF":
         return Spiking1DeLIFLayer(
-            in_channels,
-            out_channels,
-            kernel_size,
-            dilation,
+            channels=channels,
             spike_fn=spike_fn,
-            stride=stride,
             flatten_output=flatten_output,
             beta=beta,
         )
     elif neuron_type == "LIF":
         return Spiking1DLIFLayer(
-            in_channels,
-            out_channels,
-            kernel_size,
-            dilation,
+            channels=channels,
             spike_fn=spike_fn,
-            stride=stride,
             flatten_output=flatten_output,
             alpha=alpha,
             beta=beta,
         )
     elif neuron_type == "eALIF":
         return Spiking1DeALIFLayer(
-            in_channels,
-            out_channels,
-            kernel_size,
-            dilation,
+            channels=channels,
             spike_fn=spike_fn,
-            stride=stride,
             flatten_output=flatten_output,
             beta=beta,
             gamma=gamma,
@@ -88,17 +68,13 @@ def get1DNeuronLayer(
         )
     elif neuron_type == "ALIF":
         return Spiking1DALIFLayer(
-            in_channels,
-            out_channels,
-            kernel_size,
-            dilation,
+            channels=channels,
             spike_fn=spike_fn,
-            stride=stride,
             flatten_output=flatten_output,
             alpha=alpha,
             beta=beta,
             gamma=gamma,
-            roh=roh,
+            rho=roh,
         )
 
 
@@ -121,7 +97,7 @@ def build1DConvolution(
     alpha=0.75,
     beta=0.75,
     gamma=0.75,
-    roh=0.75,
+    rho=0.75,
     neuron_type="eLIF",
 ):
     conv = nn.Conv1d(
@@ -144,18 +120,14 @@ def build1DConvolution(
             return nn.Sequential(
                 conv,
                 get1DNeuronLayer(
-                    in_channels,
-                    out_channels,
-                    kernel_size,
-                    dilation,
+                    channels=out_channels,
                     spike_fn=spike_fn,
-                    stride=stride,
                     flatten_output=flatten_output,
                     convolution_layer=conv,
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
-                    roh=roh,
+                    roh=rho,
                     neuron_type=neuron_type,
                 ),
             )
@@ -169,18 +141,14 @@ def build1DConvolution(
                 conv,
                 bn,
                 get1DNeuronLayer(
-                    in_channels,
-                    out_channels,
-                    kernel_size,
-                    dilation,
+                    channels=out_channels,
                     spike_fn=spike_fn,
-                    stride=stride,
                     flatten_output=flatten_output,
                     convolution_layer=conv,
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
-                    roh=roh,
+                    roh=rho,
                     neuron_type=neuron_type,
                 ),
             )

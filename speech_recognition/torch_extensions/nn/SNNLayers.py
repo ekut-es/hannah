@@ -190,37 +190,27 @@ class SpikingDenseLayer(torch.nn.Module):
 class Spiking1DS2NetLayer(torch.nn.Module):
     def __init__(
         self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: _size_1_t,
-        dilation: _size_1_t,
+        channels: int,
         spike_fn,
         eps=1e-8,
-        stride: _size_1_t = 1,
         flatten_output=False,
         convolution_layer=None,
     ):
 
         super(Spiking1DS2NetLayer, self).__init__()
 
-        self.kernel_size = kernel_size
-        self.dilation = dilation
-        self.stride = stride
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-
+        self.channels = channels
         self.spike_fn = spike_fn
-
         self.flatten_output = flatten_output
-
         self.convolution = convolution_layer
 
         self.eps = eps
         self.beta = torch.nn.Parameter(torch.empty(1), requires_grad=True)
-        self.b = torch.nn.Parameter(torch.empty(out_channels), requires_grad=True)
+        self.b = torch.nn.Parameter(torch.empty(channels), requires_grad=True)
 
         self.reset_parameters()
         self.clamp()
+        self.type = "s2net"
 
         self.spk_rec_hist = None
 
@@ -281,32 +271,18 @@ class Spiking1DS2NetLayer(torch.nn.Module):
 
 
 class Spiking1DeLIFLayer(torch.nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: _size_1_t,
-        dilation: _size_1_t,
-        spike_fn,
-        stride: _size_1_t = 1,
-        flatten_output=False,
-        beta=0.65,
-    ):
+    def __init__(self, channels: int, spike_fn, flatten_output=False, beta=0.65):
 
         super(Spiking1DeLIFLayer, self).__init__()
 
-        self.kernel_size = kernel_size
-        self.dilation = dilation
-        self.stride = stride
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-
+        self.out_channels = channels
         self.spike_fn = spike_fn
-
         self.flatten_output = flatten_output
 
         self.beta = torch.tensor(beta)
-        self.Vth = torch.ones(out_channels)
+        self.Vth = torch.ones(channels)
+
+        self.type = "eLIF"
 
         self.reset_parameters()
         self.clamp()
@@ -363,33 +339,20 @@ class Spiking1DeLIFLayer(torch.nn.Module):
 
 class Spiking1DLIFLayer(torch.nn.Module):
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: _size_1_t,
-        dilation: _size_1_t,
-        spike_fn,
-        stride: _size_1_t = 1,
-        flatten_output=False,
-        alpha=0.75,
-        beta=0.65,
+        self, channels: int, spike_fn, flatten_output=False, alpha=0.75, beta=0.65
     ):
 
         super(Spiking1DLIFLayer, self).__init__()
 
-        self.kernel_size = kernel_size
-        self.dilation = dilation
-        self.stride = stride
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-
+        self.channels = channels
         self.spike_fn = spike_fn
-
         self.flatten_output = flatten_output
 
         self.alpha = torch.tensor(alpha)
         self.beta = torch.tensor(beta)
-        self.Vth = torch.ones(out_channels)
+        self.Vth = torch.ones(channels)
+
+        self.type = "LIF"
 
         self.reset_parameters()
         self.clamp()
@@ -448,12 +411,8 @@ class Spiking1DLIFLayer(torch.nn.Module):
 class Spiking1DeALIFLayer(torch.nn.Module):
     def __init__(
         self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: _size_1_t,
-        dilation: _size_1_t,
+        channels: int,
         spike_fn,
-        stride: _size_1_t = 1,
         flatten_output=False,
         beta=0.65,
         gamma=0.75,
@@ -462,20 +421,16 @@ class Spiking1DeALIFLayer(torch.nn.Module):
 
         super(Spiking1DeALIFLayer, self).__init__()
 
-        self.kernel_size = kernel_size
-        self.dilation = dilation
-        self.stride = stride
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-
+        self.channels = channels
         self.spike_fn = spike_fn
-
         self.flatten_output = flatten_output
 
         self.beta = torch.tensor(beta)
         self.gamma = torch.tensor(gamma)
         self.roh = torch.tensor(roh)
-        self.Vth = torch.ones(out_channels)
+        self.Vth = torch.ones(channels)
+
+        self.type = "eALIF"
 
         self.reset_parameters()
         self.clamp()
@@ -546,36 +501,28 @@ class Spiking1DeALIFLayer(torch.nn.Module):
 class Spiking1DALIFLayer(torch.nn.Module):
     def __init__(
         self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: _size_1_t,
-        dilation: _size_1_t,
+        channels: int,
         spike_fn,
-        stride: _size_1_t = 1,
         flatten_output=False,
         alpha=0.75,
         beta=0.65,
         gamma=0.75,
-        roh=0.75,
+        rho=0.75,
     ):
 
         super(Spiking1DALIFLayer, self).__init__()
 
-        self.kernel_size = kernel_size
-        self.dilation = dilation
-        self.stride = stride
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-
+        self.channels = channels
         self.spike_fn = spike_fn
-
         self.flatten_output = flatten_output
 
         self.alpha = torch.tensor(alpha)
         self.beta = torch.tensor(beta)
         self.gamma = torch.tensor(gamma)
-        self.roh = torch.tensor(roh)
-        self.Vth = torch.ones(out_channels)
+        self.rho = torch.tensor(rho)
+        self.Vth = torch.ones(channels)
+
+        self.type = "ALIF"
 
         self.reset_parameters()
         self.clamp()
@@ -595,24 +542,18 @@ class Spiking1DALIFLayer(torch.nn.Module):
         nb_steps = x.shape[2]
 
         # membrane potential
-        mem = torch.zeros(
-            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
-        )
+        mem = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
         # output spikes
-        spk = torch.zeros(
-            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
-        )
+        spk = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
         # output spikes recording
         spk_rec = torch.zeros(
-            (batch_size, self.out_channels, nb_steps), dtype=x.dtype, device=x.device
+            (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
         )
 
-        Athpot = torch.ones(
-            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
-        )
+        Athpot = torch.ones((batch_size, self.channels), dtype=x.dtype, device=x.device)
 
         thadapt = torch.zeros(
-            (batch_size, self.out_channels), dtype=x.dtype, device=x.device
+            (batch_size, self.channels), dtype=x.dtype, device=x.device
         )
 
         for t in range(nb_steps):
@@ -622,7 +563,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
 
             mem = (mem - rst) * self.beta + input_
 
-            thadapt = self.roh * thadapt + spk_rec[:, :, t - 1]
+            thadapt = self.rho * thadapt + spk_rec[:, :, t - 1]
 
             Athpot = self.Vth + self.gamma * thadapt
 

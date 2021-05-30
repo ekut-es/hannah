@@ -7,8 +7,10 @@ from speech_recognition.models.sinc import SincNet
 
 from pytorch_lightning.callbacks import Callback
 from tabulate import tabulate
+from ..torch_extensions.nn import SNNLayers
 
 msglogger = logging.getLogger()
+
 
 def walk_model(model, dummy_input):
     """Adapted from IntelLabs Distiller"""
@@ -43,7 +45,7 @@ def walk_model(model, dummy_input):
             output = output[0]
         volume_ifm = prod(input[0].size())
         volume_ofm = prod(output.size())
-        extra = get_extra(module, volume_ofm)
+        extra = get_extra(module, volume_ofm, output)
         if extra is not None:
             weights, macs, attrs = extra
         else:
@@ -53,49 +55,83 @@ def walk_model(model, dummy_input):
         data["Attrs"] += [attrs]
         data["IFM"] += [tuple(input[0].size())]
         data["IFM volume"] += [volume_ifm]
-        data["OFM"] += [tuple(output.size())] 
+        data["OFM"] += [tuple(output.size())]
         data["OFM volume"] += [volume_ofm]
         data["Weights volume"] += [int(weights)]
         data["MACs"] += [int(macs)]
 
-    def get_extra(module, volume_ofm):
-        classes = {torch.nn.Conv1d: get_conv,
-                   torch.nn.Conv2d: get_conv,
-                   SincNet: get_sinc_conv,
-                   torch.nn.Linear: get_fc, }
+    def get_extra(module, volume_ofm, output):
+        classes = {
+            torch.nn.Conv1d: get_conv,
+            torch.nn.Conv2d: get_conv,
+            SincNet: get_sinc_conv,
+            torch.nn.Linear: get_fc,
+            SNNLayers.Spiking1DeLIFLayer: get_1DSpikeLayer,
+            SNNLayers.Spiking1DLIFLayer: get_1DSpikeLayer,
+            SNNLayers.Spiking1DeALIFLayer: get_1DSpikeLayer,
+            SNNLayers.Spiking1DALIFLayer: get_1DSpikeLayer,
+        }
 
         for _class, method in classes.items():
             if isinstance(module, _class):
-                return method(module, volume_ofm)
+                return method(module, volume_ofm, output)
 
         return get_generic(module)
 
     def get_conv_macs(module, volume_ofm):
-        return volume_ofm * (module.in_channels / module.groups * prod(module.kernel_size))
+        return volume_ofm * (
+            module.in_channels / module.groups * prod(module.kernel_size)
+        )
+
+    def get_1DSpiking_macs(module, output):
+        neuron_macs = {"eLIF": 4, "LIF": 5, "eALIF": 5, "ALIF": 6}
+        if module.flatten_output == False:
+            return module.channels * output.shape[2] * neuron_macs[module.type]
+        elif module.flatten_output == True:
+            return module.channels * output.shape[1] * neuron_macs[module.type]
 
     def get_conv_attrs(module):
-        attrs = 'k=' + '(' + (', ').join(
-            ['%d' % v for v in module.kernel_size]) + ')'
-        attrs += ', s=' + '(' + (', ').join(
-            ['%d' % v for v in module.stride]) + ')'
-        attrs += ', g=%d' % module.groups
-        attrs += ', d=' + '(' + ', '.join(
-            ['%d' % v for v in module.dilation]) + ')'
+        attrs = "k=" + "(" + (", ").join(["%d" % v for v in module.kernel_size]) + ")"
+        attrs += ", s=" + "(" + (", ").join(["%d" % v for v in module.stride]) + ")"
+        attrs += ", g=%d" % module.groups
+        attrs += ", d=" + "(" + ", ".join(["%d" % v for v in module.dilation]) + ")"
         return attrs
 
-    def get_conv(module, volume_ofm):
-        weights = module.out_channels * module.in_channels / module.groups * prod(module.kernel_size)
+    def get_spike_attrs(module):
+        attrs = ""
+        if module.type in ["LIF", "ALIF"]:
+            attrs += "alpha=" + str(module.alpha.item()) + " "
+        attrs += "beta=" + str(module.beta.item()) + " "
+        if module.type in ["ALIF", "eALIF"]:
+            attrs += "gamma=" + str(module.gamma.item()) + " "
+            attrs += "rho=" + str(module.rho.item()) + " "
+        return attrs
+
+    def get_1DSpikeLayer(module, volume_ofm, output):
+        neuron_memory = {"eLIF": 2, "LIF": 3, "eALIF": 4, "ALIF": 5}
+        weights = module.channels * neuron_memory[module.type]
+        macs = get_1DSpiking_macs(module, output)
+        attrs = get_spike_attrs(module)
+        return weights, macs, attrs
+
+    def get_conv(module, volume_ofm, output):
+        weights = (
+            module.out_channels
+            * module.in_channels
+            / module.groups
+            * prod(module.kernel_size)
+        )
         macs = get_conv_macs(module, volume_ofm)
         attrs = get_conv_attrs(module)
         return weights, macs, attrs
 
-    def get_sinc_conv(module, volume_ofm):
+    def get_sinc_conv(module, volume_ofm, output):
         weights = 2 * module.out_channels * module.in_channels / module.groups
         macs = get_conv_macs(module, volume_ofm)
         attrs = get_conv_attrs(module)
         return weights, macs, attrs
 
-    def get_fc(module, volume_ofm):
+    def get_fc(module, volume_ofm, output):
         weights = macs = module.in_features * module.out_features
         attrs = ""
         return weights, macs, attrs
@@ -120,6 +156,7 @@ def walk_model(model, dummy_input):
 
     df = pd.DataFrame(data=data)
     return df
+
 
 class MacSummaryCallback(Callback):
     def _do_summary(self, pl_module, print_log=True):
