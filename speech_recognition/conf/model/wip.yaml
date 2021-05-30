@@ -3,6 +3,11 @@
 #cls: speech_recognition.models.wip.models.WIPModel
 _target_: speech_recognition.models.wip.models.create
 name: wip
+min_depth: 2
+steps_without_sampling: 1000
+norm_order:
+  norm_before_act: true
+  norm_after_act: false
 # conv layout from conv-net-factory
 conv:
   - target: forward
@@ -14,7 +19,7 @@ conv:
         norm: true
         out_channels: 16
   - target: residual1d
-    stride: 2
+    stride: 1
     blocks:
       - target: conv1d
         kernel_size: 9
@@ -30,7 +35,7 @@ conv:
         norm: true
         out_channels: 24
   - target: residual1d
-    stride: 2
+    stride: 1
     blocks:
       - target: conv1d
         kernel_size: 9
@@ -46,7 +51,7 @@ conv:
         norm: true
         out_channels: 32
   - target: residual1d
-    stride: 2
+    stride: 1
     blocks:
       - target: conv1d
         kernel_size: 9
