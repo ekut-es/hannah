@@ -72,6 +72,7 @@ def train(config=DictConfig):
             features=config.features,
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
+            gpus=config.trainer.get("gpus", None),
         )
         callbacks = []
 

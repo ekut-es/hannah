@@ -46,6 +46,7 @@ class StreamClassifierModule(LightningModule):
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
         export_onnx: bool = True,
+        gpus=None,
     ):
         super().__init__()
 
@@ -57,6 +58,7 @@ class StreamClassifierModule(LightningModule):
         self.dev_set = None
         self.logged_samples = 0
         self.export_onnx = export_onnx
+        self.gpus = gpus
         print(dataset.data_folder)
 
     def prepare_data(self):
@@ -90,13 +92,13 @@ class StreamClassifierModule(LightningModule):
         )
         dummy_input = self.example_input_array.to(device)
         if platform.machine() == "ppc64le":
-            dummy_input = dummy_input.cuda()
+            dummy_input = dummy_input.to("cuda:" + str(self.gpus[0]))
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
         if platform.machine() == "ppc64le":
-            self.features.cuda()
+            self.features.to("cuda:" + str(self.gpus[0]))
 
         features = self._extract_features(dummy_input)
         self.example_feature_array = features.to(self.device)
