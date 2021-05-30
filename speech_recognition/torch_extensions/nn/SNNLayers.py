@@ -187,7 +187,7 @@ class SpikingDenseLayer(torch.nn.Module):
         self.b.data.clamp_(min=0.0)
 
 
-class Spiking1DLayerS2Net(torch.nn.Module):
+class Spiking1DS2NetLayer(torch.nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -201,7 +201,7 @@ class Spiking1DLayerS2Net(torch.nn.Module):
         convolution_layer=None,
     ):
 
-        super(Spiking1DLayerS2Net, self).__init__()
+        super(Spiking1DS2NetLayer, self).__init__()
 
         self.kernel_size = kernel_size
         self.dilation = dilation
@@ -280,7 +280,7 @@ class Spiking1DLayerS2Net(torch.nn.Module):
         self.b.data.clamp_(min=0.0)
 
 
-class Spiking1DLayereLIF(torch.nn.Module):
+class Spiking1DeLIFLayer(torch.nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -293,7 +293,7 @@ class Spiking1DLayereLIF(torch.nn.Module):
         beta=0.65,
     ):
 
-        super(Spiking1DLayereLIF, self).__init__()
+        super(Spiking1DeLIFLayer, self).__init__()
 
         self.kernel_size = kernel_size
         self.dilation = dilation
@@ -361,7 +361,7 @@ class Spiking1DLayereLIF(torch.nn.Module):
         pass
 
 
-class Spiking1DLayerLIF(torch.nn.Module):
+class Spiking1DLIFLayer(torch.nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -375,7 +375,7 @@ class Spiking1DLayerLIF(torch.nn.Module):
         beta=0.65,
     ):
 
-        super(Spiking1DLayerLIF, self).__init__()
+        super(Spiking1DLIFLayer, self).__init__()
 
         self.kernel_size = kernel_size
         self.dilation = dilation
@@ -445,7 +445,7 @@ class Spiking1DLayerLIF(torch.nn.Module):
         pass
 
 
-class Spiking1DLayereALIF(torch.nn.Module):
+class Spiking1DeALIFLayer(torch.nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -460,7 +460,7 @@ class Spiking1DLayereALIF(torch.nn.Module):
         roh=0.75,
     ):
 
-        super(Spiking1DLayereALIF, self).__init__()
+        super(Spiking1DeALIFLayer, self).__init__()
 
         self.kernel_size = kernel_size
         self.dilation = dilation
@@ -543,7 +543,7 @@ class Spiking1DLayereALIF(torch.nn.Module):
         pass
 
 
-class Spiking1DLayerALIF(torch.nn.Module):
+class Spiking1DALIFLayer(torch.nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -559,7 +559,7 @@ class Spiking1DLayerALIF(torch.nn.Module):
         roh=0.75,
     ):
 
-        super(Spiking1DLayerALIF, self).__init__()
+        super(Spiking1DALIFLayer, self).__init__()
 
         self.kernel_size = kernel_size
         self.dilation = dilation

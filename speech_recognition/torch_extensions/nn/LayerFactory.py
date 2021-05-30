@@ -1,10 +1,10 @@
 from .SNNLayers import (
     SpikingDenseLayer,
-    Spiking1DLayereLIF,
-    Spiking1DLayerLIF,
-    Spiking1DLayereALIF,
-    Spiking1DLayerALIF,
-    Spiking1DLayerS2Net,
+    Spiking1DeLIFLayer,
+    Spiking1DLIFLayer,
+    Spiking1DeALIFLayer,
+    Spiking1DALIFLayer,
+    Spiking1DS2NetLayer,
     ReadoutLayer,
     SurrogateHeaviside,
     EmptyLayer,
@@ -40,7 +40,7 @@ def get1DNeuronLayer(
     neuron_type,
 ):
     if neuron_type == "s2net":
-        return Spiking1DLayerS2Net(
+        return Spiking1DS2NetLayer(
             in_channels,
             out_channels,
             kernel_size,
@@ -51,7 +51,7 @@ def get1DNeuronLayer(
             convolution_layer=convolution_layer,
         )
     if neuron_type == "eLIF":
-        return Spiking1DLayereLIF(
+        return Spiking1DeLIFLayer(
             in_channels,
             out_channels,
             kernel_size,
@@ -62,7 +62,7 @@ def get1DNeuronLayer(
             beta=beta,
         )
     elif neuron_type == "LIF":
-        return Spiking1DLayerLIF(
+        return Spiking1DLIFLayer(
             in_channels,
             out_channels,
             kernel_size,
@@ -74,7 +74,7 @@ def get1DNeuronLayer(
             beta=beta,
         )
     elif neuron_type == "eALIF":
-        return Spiking1DLayereALIF(
+        return Spiking1DeALIFLayer(
             in_channels,
             out_channels,
             kernel_size,
@@ -87,7 +87,7 @@ def get1DNeuronLayer(
             roh=roh,
         )
     elif neuron_type == "ALIF":
-        return Spiking1DLayerALIF(
+        return Spiking1DALIFLayer(
             in_channels,
             out_channels,
             kernel_size,
