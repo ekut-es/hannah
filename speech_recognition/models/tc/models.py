@@ -535,6 +535,7 @@ class TCResNetModel(SerializableModule):
                 spike_fn=self.spike_fn,
                 bias=False,
                 readout=True,
+                neurontype="s2net",
             )
 
     def forward(self, x):

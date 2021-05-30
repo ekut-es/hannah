@@ -6,6 +6,8 @@ from .SNNLayers import (
     Spiking1DALIFLayer,
     Spiking1DS2NetLayer,
     ReadoutLayer,
+    ReadouteLIFLayer,
+    ReadoutLIFLayer,
     SurrogateHeaviside,
     EmptyLayer,
     Surrogate_BP_Function,
@@ -171,15 +173,21 @@ def buildLinearLayer(
     recurrent=False,
     lateral_connections=False,
     bias=False,
+    alpha=1,
+    beta=1,
+    neurontype="eLIF",
 ):
     if type == "SNN" and readout:
-        return ReadoutLayer(
+        return get_readoutLayer(
+            neurontype=neurontype,
             input_shape=input_shape,
             output_shape=output_shape,
             w_init_mean=w_init_mean,
             w_init_std=w_init_std,
             eps=eps,
             time_reduction=time_reduction,
+            alpha=alpha,
+            beta=beta,
         )
 
     elif type == "SNN" and not readout:
@@ -197,6 +205,47 @@ def buildLinearLayer(
         return nn.Linear(in_features=input_shape, out_features=output_shape, bias=bias)
     else:
         print("Error wrong type Parameter")
+
+
+def get_readoutLayer(
+    neurontype,
+    input_shape,
+    output_shape,
+    w_init_mean,
+    w_init_std,
+    eps,
+    time_reduction,
+    alpha,
+    beta,
+):
+    if neurontype in ["eLIF", "eALIF"]:
+        return ReadouteLIFLayer(
+            input_shape,
+            output_shape,
+            w_init_mean,
+            w_init_std,
+            time_reduction=time_reduction,
+            beta=beta,
+        )
+    elif neurontype in ["LIF", "ALIF"]:
+        return ReadoutLIFLayer(
+            input_shape,
+            output_shape,
+            w_init_mean,
+            w_init_std,
+            time_reduction=time_reduction,
+            alpha=alpha,
+            beta=beta,
+        )
+    else:
+        return ReadoutLayer(
+            input_shape=input_shape,
+            output_shape=output_shape,
+            w_init_mean=w_init_mean,
+            w_init_std=w_init_std,
+            eps=eps,
+            time_reduction=time_reduction,
+        )
 
 
 def build1DBatchNorm(out_channels, type=None, timesteps: int = 0):
