@@ -13,7 +13,7 @@ from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
 from pytorch_lightning.metrics.metric import MetricCollection
 from torch._C import Value
 from .config_utils import get_loss_function, get_model
-from typing import Optional
+from typing import Optional, Dict, Union
 
 from speech_recognition.datasets.base import ctc_collate_fn
 
@@ -22,8 +22,9 @@ import torch
 import torch.utils.data as data
 from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
 from hydra.utils import instantiate, get_class
+import numpy as np
 
-from ..datasets import AsynchronousLoader, SpeechDataset
+from ..datasets import SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
@@ -186,7 +187,7 @@ class ClassifierModule(LightningModule):
                 checkpoint["state_dict"][k] = v
 
 
-class StreamClassifierModule(ClassifierModule):
+class BaseStreamClassifierModule(ClassifierModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -209,15 +210,13 @@ class StreamClassifierModule(ClassifierModule):
         if self.hparams.dataset is not None:
 
             # trainset needed to set values in hparams
-            self.train_set, self.dev_set, self.test_set = get_class(
-                self.hparams.dataset.cls
-            ).splits(self.hparams.dataset)
+            self.train_set, self.dev_set, self.test_set = self.get_split()
 
-            self.num_classes = len(self.train_set.class_names)
+            self.num_classes = self.get_num_classes()
 
         # Create example input
         device = self.device
-        self.example_input_array = torch.zeros(1, *self.train_set.size())
+        self.example_input_array = self.get_example_input_array()
         dummy_input = self.example_input_array.to(device)
         logging.info("Example input array shape: %s", str(dummy_input.shape))
         if platform.machine() == "ppc64le":
@@ -276,7 +275,7 @@ class StreamClassifierModule(ClassifierModule):
                 "test_precision": Precision(
                     num_classes=self.num_classes, average="weighted"
                 ),
-                "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
+                "test_f1": F1(num_classes=self.num_classes, average="weighted"),
             }
         )
 
@@ -293,6 +292,18 @@ class StreamClassifierModule(ClassifierModule):
             self.augmentation = torch.nn.Sequential(*augmentation_passes)
         else:
             self.augmentation = torch.nn.Identity()
+
+    @abstractmethod
+    def get_example_input_array(self):
+        pass
+
+    @abstractmethod
+    def get_split(self):
+        pass
+
+    @abstractmethod
+    def get_num_classes(self):
+        pass
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
         if isinstance(output, list):
@@ -322,18 +333,21 @@ class StreamClassifierModule(ClassifierModule):
 
         return loss
 
+    @abstractmethod
     def train_dataloader(self):
+        pass
+
+    def get_train_dataloader_by_set(self, train_set):
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
-        sampler = None
         sampler_type = dataset_conf.get("sampler", "random")
         if sampler_type == "weighted":
-            sampler = self.get_balancing_sampler(self.train_set)
+            sampler = self.get_balancing_sampler(train_set)
         else:
-            sampler = data.RandomSampler(self.train_set)
+            sampler = data.RandomSampler(train_set)
 
         train_loader = data.DataLoader(
-            self.train_set,
+            train_set,
             batch_size=train_batch_size,
             drop_last=True,
             pin_memory=True,
@@ -342,9 +356,6 @@ class StreamClassifierModule(ClassifierModule):
             sampler=sampler,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
-        # if self.device.type == "cuda":
-        #    train_loader = AsynchronousLoader(train_loader, device=self.device)
 
         self.batches_per_epoch = len(train_loader)
 
@@ -370,19 +381,19 @@ class StreamClassifierModule(ClassifierModule):
         self.calculate_batch_metrics(output, y, loss, self.val_metrics, "val")
         return loss
 
+    @abstractmethod
     def val_dataloader(self):
+        pass
 
+    def get_val_dataloader_by_set(self, dev_set):
         dev_loader = data.DataLoader(
-            self.dev_set,
-            batch_size=min(len(self.dev_set), 16),
+            dev_set,
+            batch_size=min(len(dev_set), 16),
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
-        # if self.device.type == "cuda":
-        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
 
         return dev_loader
 
@@ -408,18 +419,19 @@ class StreamClassifierModule(ClassifierModule):
 
         return loss
 
+    @abstractmethod
     def test_dataloader(self):
+        pass
+
+    def get_test_dataloader_by_set(self, test_set):
         test_loader = data.DataLoader(
-            self.test_set,
-            batch_size=min(len(self.test_set), 16),
+            test_set,
+            batch_size=min(len(test_set), 16),
             shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
-        # if self.device.type == "cuda":
-        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
 
         return test_loader
 
@@ -427,23 +439,15 @@ class StreamClassifierModule(ClassifierModule):
         if self.trainer and self.trainer.fast_dev_run:
             return
 
-        metric_table = []
-        for name, metric in self.test_metrics.items():
-            metric_table.append((name, metric.compute().item()))
+        self.test_end_callback(self.test_metrics)
 
-        logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
+    @abstractmethod
+    def test_end_callback(self, test_metrics):
+        pass
 
-        confusion_matrix = self.test_confusion.compute()
-        self.test_confusion.reset()
-
-        confusion_plot = plot_confusion_matrix(
-            confusion_matrix.cpu().numpy(), self.test_set.class_names
-        )
-        confusion_plot.savefig("test_confusion.png")
-        confusion_plot.savefig("test_confusion.pdf")
-
-        # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
-        self.test_roc.reset()
+    @abstractmethod
+    def get_class_names(self):
+        pass
 
     def _extract_features(self, x):
         x = self.features(x)
@@ -489,6 +493,134 @@ class StreamClassifierModule(ClassifierModule):
                     self.hparams,
                     {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
                 )
+
+
+class StreamClassifierModule(BaseStreamClassifierModule):
+    def get_class_names(self):
+        return self.test_set.class_names
+
+    def get_split(self):
+        return get_class(self.hparams.dataset.cls).splits(self.hparams.dataset)
+
+    def get_num_classes(self):
+        return len(self.train_set.class_names)
+
+    def get_example_input_array(self):
+        return torch.zeros(1, *self.train_set.size())
+
+    def train_dataloader(self):
+        return self.get_train_dataloader_by_set(self.train_set)
+
+    def val_dataloader(self):
+        return self.get_val_dataloader_by_set(self.dev_set)
+
+    def test_dataloader(self):
+        return self.get_test_dataloader_by_set(self.test_set)
+
+    def test_end_callback(self, test_metrics):
+        metric_table = []
+        for name, metric in test_metrics.items():
+            metric_table.append((name, metric.compute().item()))
+
+        logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
+
+        confusion_matrix = self.test_confusion.compute()
+        self.test_confusion.reset()
+
+        confusion_plot = plot_confusion_matrix(
+            confusion_matrix.cpu().numpy(), self.get_class_names()
+        )
+
+        confusion_plot.savefig("test_confusion.png")
+        confusion_plot.savefig("test_confusion.pdf")
+
+        # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
+        self.test_roc.reset()
+
+
+class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.trainer_fold_callback = None
+        self.sets_by_criteria = None
+        self.k_fold = self.hparams.dataset.k_fold
+        self.test_end_callback_function = None
+
+    def get_class_names(self):
+        return get_class(self.hparams.dataset.cls).get_class_names()
+
+    def get_num_classes(self):
+        return get_class(self.hparams.dataset.cls).get_num_classes()
+
+    def get_split(self):
+        self.sets_by_criteria = get_class(self.hparams.dataset.cls).splits_cv(
+            self.hparams.dataset
+        )
+        return self.prepare_dataloaders(self.sets_by_criteria)
+
+    def get_example_input_array(self):
+        return torch.zeros(
+            1, self.sets_by_criteria[0].channels, self.sets_by_criteria[0].input_length
+        )
+
+    def prepare_dataloaders(self, sets_by_criteria):
+        assert self.k_fold >= len(["train", "val", "test"])
+
+        rng = np.random.default_rng()
+        subsets = np.arange(len(sets_by_criteria))
+        rng.shuffle(subsets)
+        splits = np.array_split(subsets, self.k_fold)
+
+        train_sets, dev_sets, test_sets = [], [], []
+
+        for i in range(self.k_fold):
+            test_split = splits[0]
+            dev_split = splits[1]
+            train_split = np.concatenate(splits[2:]).ravel()
+
+            train_sets += [
+                torch.utils.data.ConcatDataset(
+                    [sets_by_criteria[i] for i in train_split]
+                )
+            ]
+            dev_sets += [
+                torch.utils.data.ConcatDataset([sets_by_criteria[i] for i in dev_split])
+            ]
+            test_sets += [
+                torch.utils.data.ConcatDataset(
+                    [sets_by_criteria[i] for i in test_split]
+                )
+            ]
+
+            splits = splits[1:] + [splits[0]]
+
+        return train_sets, dev_sets, test_sets
+
+    def train_dataloader(self):
+        for train_set in self.train_set:
+            yield self.get_train_dataloader_by_set(train_set)
+
+    def val_dataloader(self):
+        for dev_set in self.dev_set:
+            yield self.get_val_dataloader_by_set(dev_set)
+
+    def test_dataloader(self):
+        for test_set in self.test_set:
+            yield self.get_test_dataloader_by_set(test_set)
+
+    def register_test_end_callback_function(self, function):
+        self.test_end_callback_function = function
+
+    def test_end_callback(self, test_metrics):
+        self.test_end_callback_function(self, test_metrics)
+
+    def get_progress_bar_dict(self) -> Dict[str, Union[int, str]]:
+        items = super().get_progress_bar_dict()
+        items["fold_nr"] = self.trainer_fold_callback()
+        return items
+
+    def register_trainer_fold_callback(self, callback):
+        self.trainer_fold_callback = callback
 
 
 class SpeechClassifierModule(StreamClassifierModule):
