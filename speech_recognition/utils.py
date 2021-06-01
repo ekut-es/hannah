@@ -24,6 +24,18 @@ from torchvision.datasets.utils import (
     extract_archive,
 )
 
+import pytorch_lightning
+from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+
+from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+from pytorch_lightning.callbacks import GPUStatsMonitor
+
+
+from .callbacks.summaries import MacSummaryCallback
+from .callbacks.optimization import HydraOptCallback
+from .callbacks.pruning import PruningAmountScheduler
+
 try:
     import lsb_release  # pytype: disable=import-error
 
@@ -85,7 +97,7 @@ def config_pylogger(log_cfg_file, experiment_name, output_dir="logs"):
     return msglogger
 
 
-def log_execution_env_state(distiller_gitroot="."):
+def log_execution_env_state():
     """Log information about the execution environment.
     File 'config_path' will be copied to directory 'logdir'. A common use-case
     is passing the path to a (compression) schedule YAML file. Storing a copy
@@ -132,9 +144,8 @@ def log_execution_env_state(distiller_gitroot="."):
         logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
+    logger.info("  Pytorch Lightning: %", pytorch_lightning.__version__)
     logger.info("  Numpy: %s", np.__version__)
-    logger.info("  Distiller Info:")
-    log_git_state(distiller_gitroot)
     logger.info("  Speech Recognition info:")
     log_git_state(os.path.join(os.path.dirname(__file__), ".."))
     logger.info("  Command line: %s", " ".join(sys.argv))
@@ -252,7 +263,7 @@ def common_callbacks(config: DictConfig):
     callbacks.append(opt_callback)
 
     if config.get("early_stopping", None):
-        stop_callback = instantiate(config.early_stopping)
+        stop_callback = hydra.utils.instantiate(config.early_stopping)
         callbacks.append(stop_callback)
 
     if config.get("pruning", None):
@@ -261,6 +272,8 @@ def common_callbacks(config: DictConfig):
         )
         pruning_config = dict(config.pruning)
         del pruning_config["amount"]
-        pruning_callback = instantiate(pruning_config, amount=pruning_scheduler)
+        pruning_callback = hydra.utils.instantiate(
+            pruning_config, amount=pruning_scheduler
+        )
         callbacks.append(pruning_callback)
     return callbacks

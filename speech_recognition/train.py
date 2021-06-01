@@ -13,7 +13,6 @@ from torch.nn.modules import module
 from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 
 from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
