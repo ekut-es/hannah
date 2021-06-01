@@ -36,8 +36,30 @@ nas:
           bw_b: 0
           bw_w: [2,4,6,8]
           bw_f: [2,4,6,8]
+      conv:
+          min: 2
+          max: 4
+          choices:
+            - target: [forward, residual]
+              stride: [1,2,3,4,5,6,7,11]
+              blocks:
+                min: 1
+                max: 4
+                choices:
+                  - target: conv1d
+                    kernel_size: [1,3,5,7,9]
+                    stride: 1
+                    act: [false, true]
+                    parallel: false
+                    norm: [true, false]
+                    out_channels: [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64]
+
   bounds:
-    val_loss: 0.05
+    val_error: 0.06
+    acc_clock_cycles: 25000
+    acc_power: 0.000001
+    acc_area: 150000
+
 
 
 hydra:

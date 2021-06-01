@@ -85,9 +85,9 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 normalizer=config.get("normalizer", None),
             )
             model.setup("train")
-            metrics = backend.estimate(model)
+            backend_metrics = backend.estimate(model)
 
-            for k, v in metrics.items():
+            for k, v in backend_metrics.items():
                 print(f"{k}: {v}")
 
         # Sample initial Population
