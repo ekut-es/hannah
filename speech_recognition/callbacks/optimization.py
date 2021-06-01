@@ -38,7 +38,7 @@ class HydraOptCallback(Callback):
     def val_result(self):
         return self.val_values
 
-    def result(self):
+    def result(self, dict=False):
 
         return_values = {}
         for key, value in self.values.items():
@@ -49,7 +49,7 @@ class HydraOptCallback(Callback):
 
             return_values[key] = value
 
-        if len(return_values) == 1:
+        if len(return_values) == 1 and dict is False:
             return list(return_values.values())[0]
 
         return return_values

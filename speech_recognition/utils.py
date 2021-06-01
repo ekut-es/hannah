@@ -258,10 +258,6 @@ def common_callbacks(config: DictConfig):
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
 
-    opt_monitor = config.get("monitor", ["val_error"])
-    opt_callback = HydraOptCallback(monitor=opt_monitor)
-    callbacks.append(opt_callback)
-
     if config.get("early_stopping", None):
         stop_callback = hydra.utils.instantiate(config.early_stopping)
         callbacks.append(stop_callback)

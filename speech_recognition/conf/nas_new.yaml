@@ -57,7 +57,7 @@ nas:
   bounds:
     val_error: 0.06
     acc_clock_cycles: 25000
-    acc_power: 0.000001
+    acc_power: 0.00002
     acc_area: 150000
 
 

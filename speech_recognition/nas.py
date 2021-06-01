@@ -1,11 +1,63 @@
+import logging
+
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Dict
+
 
 from hydra.utils import instantiate
+from joblib import Parallel, delayed
+
 from omegaconf import OmegaConf
 import numpy as np
 from pytorch_lightning import Trainer, LightningModule
 
 from hannah_optimizer.aging_evolution import AgingEvolution
+from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
+from .callbacks.optimization import HydraOptCallback
+from .utils import common_callbacks
+
+msglogger = logging.getLogger("nas")
+
+
+@dataclass
+class WorklistItem:
+    parameters: Any
+    results: Dict[str, float]
+
+
+def run_training(config):
+    config = OmegaConf.create(config)
+    from pprint import pprint
+
+    pprint(config, indent=2)
+
+    logger = TensorBoardLogger(".")
+
+    callbacks = common_callbacks(config)
+    opt_monitor = config.get("monitor", ["val_error"])
+    opt_callback = HydraOptCallback(monitor=opt_monitor)
+    callbacks.append(opt_callback)
+
+    checkpoint_callback = instantiate(config.checkpoint)
+    callbacks.append(checkpoint_callback)
+
+    backend = instantiate(config.backend)
+    callbacks.append(backend)
+    trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
+    model = instantiate(
+        config.module,
+        dataset=config.dataset,
+        model=config.model,
+        optimizer=config.optimizer,
+        features=config.features,
+        scheduler=config.get("scheduler", None),
+        normalizer=config.get("normalizer", None),
+    )
+    res = trainer.fit(model)
+
+    return opt_callback.result(dict=True)
+
 
 # TODO: i think this has already been implemented
 def fullname(o):
@@ -18,12 +70,18 @@ def fullname(o):
 
 class NASTrainerBase(ABC):
     def __init__(
-        self, budget=2000, parent_config=None, parametrization=None, bounds=None
+        self,
+        budget=2000,
+        parent_config=None,
+        parametrization=None,
+        bounds=None,
+        n_jobs=5,
     ):
         self.config = parent_config
         self.budget = budget
         self.parametrization = parametrization
         self.bounds = bounds
+        self.n_jobs = n_jobs
 
     @abstractmethod
     def run(self, model):
@@ -50,6 +108,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         parametrization=None,
         bounds=None,
         parent_config=None,
+        presample=True,
     ):
         super().__init__(
             budget=budget,
@@ -58,7 +117,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             parent_config=parent_config,
         )
         self.population_size = population_size
-        self.history = []
+
         self.random_state = np.random.RandomState()
         self.optimizer = AgingEvolution(
             parametrization=parametrization,
@@ -67,32 +126,69 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         )
         self.backend = None
 
+        self.worklist = []
+        self.presample = presample
+
+    def _sample(self):
+        parameters = self.optimizer.next_parameters()
+
+        config = OmegaConf.merge(self.config, parameters.flatten())
+        backend = instantiate(config.backend)
+        model = instantiate(
+            config.module,
+            dataset=config.dataset,
+            model=config.model,
+            optimizer=config.optimizer,
+            features=config.features,
+            scheduler=config.get("scheduler", None),
+            normalizer=config.get("normalizer", None),
+        )
+        model.setup("train")
+        backend_metrics = backend.estimate(model)
+
+        satisfied_bounds = []
+        for k, v in backend_metrics.items():
+            if k in self.bounds:
+                distance = v / self.bounds[k]
+                msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
+                satisfied_bounds.append(distance <= 1.2)
+
+        worklist_item = WorklistItem(parameters, backend_metrics)
+
+        if self.presample:
+            if all(satisfied_bounds):
+                self.worklist.append(worklist_item)
+        else:
+            self.worklist.append(worklist_item)
+
     def run(self):
         # Presample initial Population
-        for i in range(self.budget):
-            parameters = self.optimizer.next_parameters()
-            self.history.append(parameters)
+        while len(self.worklist) < self.population_size:
+            self._sample()
 
-            config = OmegaConf.merge(self.config, parameters.flatten())
-            backend = instantiate(config.backend)
-            model = instantiate(
-                config.module,
-                dataset=config.dataset,
-                model=config.model,
-                optimizer=config.optimizer,
-                features=config.features,
-                scheduler=config.get("scheduler", None),
-                normalizer=config.get("normalizer", None),
+        with Parallel(n_jobs=self.n_jobs) as executor:
+            # Train initial population
+            configs = [
+                OmegaConf.merge(self.config, item.parameters.flatten())
+                for item in self.worklist
+            ]
+
+            results = executor(
+                [
+                    delayed(run_training)(OmegaConf.to_container(config, resolve=True))
+                    for config in configs
+                ]
             )
-            model.setup("train")
-            backend_metrics = backend.estimate(model)
+            for result, item in zip(results, self.worklist):
+                parameters = item.parameters
+                metrics = {**item.results, **result}
 
-            for k, v in backend_metrics.items():
-                print(f"{k}: {v}")
+                self.optimizer.tell_result(parameters, metrics)
 
-        # Sample initial Population
+            while len(self.optimizer.history) < self.n_jobs:
+                self.worklist = []
+                # Mutate current population
+                while len(self.worklist) < self.n_jobs:
+                    self._sample()
 
-        # Mutate current population
-
-        # validate population
-        # self.trainer.fit(model, train_dataloader=train_dataloader, val_dataloaders=val_dataloaders, datamodule=datamodule)
+            # validate population

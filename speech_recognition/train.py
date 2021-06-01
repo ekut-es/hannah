@@ -106,6 +106,10 @@ def train(config: DictConfig):
 
         callbacks.extend(common_callbacks(config))
 
+        opt_monitor = config.get("monitor", ["val_error"])
+        opt_callback = HydraOptCallback(monitor=opt_monitor)
+        callbacks.append(opt_callback)
+
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
 
