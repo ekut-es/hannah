@@ -15,6 +15,7 @@ from typing import Any, Callable
 from git import Repo, InvalidGitRepositoryError
 
 import hydra
+from omegaconf import DictConfig
 
 from torchvision.datasets.utils import (
     list_files,
@@ -223,3 +224,43 @@ def auto_select_gpus(gpus=1):
         result.append(int(gpus[num].id))
 
     return result
+
+
+def common_callbacks(config: DictConfig):
+    callbacks = []
+
+    lr_monitor = LearningRateMonitor()
+    callbacks.append(lr_monitor)
+
+    if config.get("gpu_stats", None):
+        gpu_stats = GPUStatsMonitor()
+        callbacks.append(gpu_stats)
+
+    if config.get("data_monitor", False):
+        data_monitor = ModuleDataMonitor(submodules=True)
+        callbacks.append(data_monitor)
+
+    if config.get("print_metrics", False):
+        metrics_printer = PrintTableMetricsCallback()
+        callbacks.append(metrics_printer)
+
+    mac_summary_callback = MacSummaryCallback()
+    callbacks.append(mac_summary_callback)
+
+    opt_monitor = config.get("monitor", ["val_error"])
+    opt_callback = HydraOptCallback(monitor=opt_monitor)
+    callbacks.append(opt_callback)
+
+    if config.get("early_stopping", None):
+        stop_callback = instantiate(config.early_stopping)
+        callbacks.append(stop_callback)
+
+    if config.get("pruning", None):
+        pruning_scheduler = PruningAmountScheduler(
+            config.pruning.amount, config.trainer.max_epochs
+        )
+        pruning_config = dict(config.pruning)
+        del pruning_config["amount"]
+        pruning_callback = instantiate(pruning_config, amount=pruning_scheduler)
+        callbacks.append(pruning_callback)
+    return callbacks

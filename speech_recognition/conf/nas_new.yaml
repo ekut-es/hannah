@@ -1,0 +1,53 @@
+defaults:
+    - dataset: kws
+    - features: mfcc
+    - model: conv-net-trax
+    - scheduler: 1cycle
+    - optimizer: sgd
+    - normalizer: null
+    - module: stream_classifier
+    - compress: null
+    - trainer: default
+    - checkpoint: default
+    - backend: trax_ut
+    - early_stopping: null
+    - profiler: null
+    - pruning: null
+    - nas: aging_evolution_nas
+    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
+      optional: true
+
+experiment_id: test
+output_dir: trained_models
+auto_lr: false
+print_metrics: false
+data_monitor: false
+
+seed: [1234]
+
+nas:
+  parametrization:
+    backend:
+      cols: [2,4,6,8]
+      rows: [2,4,6,8]
+    model:
+      qconfig:
+        config:
+          bw_b: 0
+          bw_w: [2,4,6,8]
+          bw_f: [2,4,6,8]
+  bounds:
+    val_loss: 0.05
+
+
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+
+
+
+#TODO:
+dump_test: false
+input_file: ''

@@ -26,7 +26,7 @@ from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
-from .utils import log_execution_env_state, auto_select_gpus
+from .utils import log_execution_env_state, auto_select_gpus, common_callbacks
 
 
 def handleDataset(config=DictConfig):
@@ -54,7 +54,7 @@ def clear_outputs():
             shutil.rmtree(component)
 
 
-def train(config=DictConfig):
+def train(config: DictConfig):
     test_output = []
     results = []
     if isinstance(config.seed, int):
@@ -85,12 +85,10 @@ def train(config=DictConfig):
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
         )
-        callbacks = []
-        checkpoint_callback = instantiate(config.checkpoint)
-        callbacks.append(checkpoint_callback)
 
-        checkpoint_callback = instantiate(config.checkpoint)
-        callbacks.append(checkpoint_callback)
+        profiler = None
+        if config.get("profiler", None):
+            profiler = instantiate(config.profiler)
 
         logger = [
             TensorBoardLogger(".", version=None, name="", default_hp_metric=False)
@@ -102,50 +100,15 @@ def train(config=DictConfig):
         else:
             logger.append(CSVLogger(".", version=None, name=""))
 
+        callbacks = []
         if config.get("backend", None):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        logging.info("Starting training")
+        callbacks.extend(common_callbacks(config))
 
-        profiler = None
-        if config.get("profiler", None):
-            profiler = instantiate(config.profiler)
-
-        lr_monitor = LearningRateMonitor()
-        callbacks.append(lr_monitor)
-
-        if config.get("gpu_stats", None):
-            gpu_stats = GPUStatsMonitor()
-            callbacks.append(gpu_stats)
-
-        if config.get("data_monitor", False):
-            data_monitor = ModuleDataMonitor(submodules=True)
-            callbacks.append(data_monitor)
-
-        if config.get("print_metrics", False):
-            metrics_printer = PrintTableMetricsCallback()
-            callbacks.append(metrics_printer)
-
-        mac_summary_callback = MacSummaryCallback()
-        callbacks.append(mac_summary_callback)
-
-        opt_monitor = config.get("monitor", ["val_error"])
-        opt_callback = HydraOptCallback(monitor=opt_monitor)
-        callbacks.append(opt_callback)
-
-        if config.get("early_stopping", None):
-            stop_callback = instantiate(config.early_stopping)
-            callbacks.append(stop_callback)
-
-        if config.get("pruning", None):
-            pruning_scheduler = PruningAmountScheduler(
-                config.pruning.amount, config.trainer.max_epochs
-            )
-            pruning_config = dict(config.pruning)
-            del pruning_config["amount"]
-            pruning_callback = instantiate(pruning_config, amount=pruning_scheduler)
-            callbacks.append(pruning_callback)
+        checkpoint_callback = instantiate(config.checkpoint)
+        callbacks.append(checkpoint_callback)
 
         # INIT PYTORCH-LIGHTNING
         lit_trainer = instantiate(
@@ -166,6 +129,7 @@ def train(config=DictConfig):
 
         lit_trainer.tune(lit_module)
 
+        logging.info("Starting training")
         # PL TRAIN
         lit_trainer.fit(lit_module)
         ckpt_path = "best"
@@ -178,9 +142,11 @@ def train(config=DictConfig):
 
         reset_seed()
         lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
+
         # PL TEST
         reset_seed()
         lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+
         if not lit_trainer.fast_dev_run:
             lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
@@ -208,9 +174,18 @@ def train(config=DictConfig):
         return results
 
 
+def nas(config: DictConfig):
+    print(OmegaConf.to_yaml(config))
+    nas_trainer = instantiate(config.nas, parent_config=config)
+    nas_trainer.run()
+
+
 @hydra.main(config_name="config", config_path="conf")
 def main(config: DictConfig):
-    return train(config)
+    if config.get("nas", None) is not None:
+        return nas(config)
+    else:
+        return train(config)
 
 
 if __name__ == "__main__":

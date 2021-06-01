@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -231,11 +232,8 @@ class TRaxUltraTrailBackend(Callback):
             self.xs.extend(x)
             self.ys.extend(y)
 
-    def on_test_epoch_end(self, trainer, pl_module):
-        logging.info("Preparing ultratrail")
+    def _run(self, pl_module):
         # load backend package
-        import sys
-
         sys.path.append(self.backend_dir)
         from backend.backend import UltraTrailBackend  # pytype: disable=import-error
 
@@ -252,6 +250,7 @@ class TRaxUltraTrailBackend(Callback):
             self.bw_w = model.qconfig.weight.p.keywords["bits"]
             self.bw_b = model.qconfig.bias.p.keywords["bits"]
             self.bw_f = model.qconfig.activation.p.keywords["bits"]
+
             # Removing qconfig produces a normal FloatModule
             model = torch.quantization.convert(
                 model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
@@ -273,14 +272,19 @@ class TRaxUltraTrailBackend(Callback):
             period=self.period,
             mac_mode=mac_mode,
             macro_type=self.macro_type,
-            classes = classes,
+            classes=classes,
         )
 
         backend.set_model(
             model.cpu(), pl_module.example_feature_array.cpu(), verbose=True
         )
         backend.set_inputs_and_outputs(self.xs, self.ys)
-        if self.use_acc_teda_data or self.rtl_simulation or self.synthesis or self.power_estimation:
+        if (
+            self.use_acc_teda_data
+            or self.rtl_simulation
+            or self.synthesis
+            or self.power_estimation
+        ):
             backend.prepare()
             backend.eda(
                 self.standalone,
@@ -298,6 +302,14 @@ class TRaxUltraTrailBackend(Callback):
             self.synthesis,
             self.power_estimation,
         )
+        return res
+
+    def estimate(self, pl_module):
+        return self._run(pl_module)
+
+    def on_test_epoch_end(self, trainer, pl_module):
+        logging.info("Preparing ultratrail")
+        res = self._run(pl_module)
 
         logging.info("Ultratrail metrics")
         for k, v in res.items():

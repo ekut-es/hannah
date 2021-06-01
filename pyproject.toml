@@ -67,6 +67,7 @@ onnxrt-backend = ["onnxruntime"]
 
 [tool.poetry.scripts]
 hannah-train = 'speech_recognition.train:main'
+hannah-nas = 'speech_recognition.train:nas'
 hannah-eval = 'speech_recognition.eval:main'
 
 [build-system]

@@ -1,0 +1,7 @@
+# @package _group_
+
+_target_: speech_recognition.nas.AgingEvolutionNASTrainer
+parametrization: {}
+bounds: {}
+budget: 2000
+population_size: 100
