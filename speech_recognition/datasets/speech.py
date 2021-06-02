@@ -22,6 +22,7 @@ from ..utils import list_all_files, extract_from_download_cache
 from .NoiseDataset import NoiseDataset
 from .DatasetSplit import DatasetSplit
 from .Downsample import Downsample
+from joblib import Memory
 
 msglogger = logging.getLogger()
 
