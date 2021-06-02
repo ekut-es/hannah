@@ -4,7 +4,7 @@ import re
 import json
 import logging
 import hashlib
-import sys
+import os
 
 
 import torchaudio
@@ -26,13 +26,15 @@ from joblib import Memory
 
 msglogger = logging.getLogger()
 
+CACHE_DIR = os.getenv("HANNAH_CACHE_DIR", None)
+
 
 def snr_factor(snr, psig, pnoise):
     y = 10 ** (snr / 10)
     return np.sqrt(psig / (pnoise * y))
 
 
-def load_audio(file_name, sr=16000, backend="torchaudio"):
+def _load_audio(file_name, sr=16000, backend="torchaudio"):
     if backend == "torchaudio":
         torchaudio.set_audio_backend("sox_io")
         try:
@@ -50,6 +52,14 @@ def load_audio(file_name, sr=16000, backend="torchaudio"):
         raise Exception(f"Unknown backend name {backend}")
 
     return data
+
+
+if CACHE_DIR:
+    CACHE_SIZE = os.getenv("HANNAH_CACHE_SIZE", None)
+    cache = Memory(location=CACHE_DIR, bytes_limit=CACHE_SIZE)
+    load_audio = cache.cache(_load_audio)
+else:
+    load_audio = _load_audio
 
 
 class SpeechDataset(AbstractDataset):
