@@ -147,7 +147,7 @@ def log_execution_env_state():
         logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
-    logger.info("  Pytorch Lightning: %", pytorch_lightning.__version__)
+    logger.info("  Pytorch Lightning: %s", pytorch_lightning.__version__)
     logger.info("  Numpy: %s", np.__version__)
     logger.info("  Speech Recognition info:")
     log_git_state(os.path.join(os.path.dirname(__file__), ".."))
