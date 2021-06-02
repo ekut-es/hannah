@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import os
 from typing import Any, Dict
 
+import torch
 
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
@@ -34,6 +35,11 @@ def run_training(num, config):
     config = OmegaConf.create(config)
     logger = TensorBoardLogger(".")
     seed_everything(config.get("seed", 1234), workers=True)
+
+    num_gpus = torch.cuda.device_count()
+    gpu = num % num_gpus
+    config.trainer.gpus = [gpu]
+
     callbacks = common_callbacks(config)
     opt_monitor = config.get("monitor", ["val_error"])
     opt_callback = HydraOptCallback(monitor=opt_monitor)
