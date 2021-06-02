@@ -326,7 +326,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         cross_entropy = torch.nn.CrossEntropyLoss()
         kl_div = torch.nn.KLDivLoss(
             reduction="batchmean"
-        )  # TODO batchmean removes warning but unsure whether good desicion
+        )  # batchmean fits kl div math definition
 
         # specific loss:
 

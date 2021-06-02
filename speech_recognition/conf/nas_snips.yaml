@@ -46,7 +46,7 @@ hydra:
       seed: 1234
       num_workers:  10
       bounds:
-        val_error: 0.05
+        val_error: 0.03
         total_weights: 100000
         acc_clock_cycles: 20000
         acc_power: 0.00001
@@ -58,7 +58,7 @@ hydra:
     # default parametrization of the search space
     parametrization:
       backend:
-        cols: [4,6,8]
+        cols: [2,4,6,8]
       model:
         qconfig:
           config:

@@ -49,10 +49,8 @@ hydra:
         val_error: 0.01
         total_weights: 10000
         acc_clock_cycles: 20000
-        acc_power: 0.00001
+        acc_power: 0.0001
         acc_area: 150000
-
-
 
 
     # default parametrization of the search space
@@ -61,7 +59,7 @@ hydra:
         n_fft: [32,64,128,256]
         hop_length: [160,320,480,640]
       backend:
-        cols: [4,6,8]
+        cols: [2,4,6,8]
       model:
         qconfig:
           config:
