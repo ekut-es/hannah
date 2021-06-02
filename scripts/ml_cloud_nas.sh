@@ -53,15 +53,13 @@ scontrol show job $SLURM_JOB_ID
 
 
 echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
-#ls $SCRATCH
-cp -r datasets $SCRATCH
-#ls $SCRATCH
 
 cp /home/bringmann/cgerum05/ml_cloud.simg $SCRATCH
 
 echo "Running training with config $1"
 date
-singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=$1 dataset.data_folder=/mnt/datasets module.num_workers=4 hydra/launcher=joblib trainer.max_epochs=30  -m
+export HANNAH_CACHE_DIR=$SCRATCH/cache
+singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=$1 module.num_workers=4 hydra/launcher=joblib trainer.max_epochs=30  -m
 date
 
 echo DONE!

@@ -28,10 +28,6 @@ class WorklistItem:
 
 def run_training(config):
     config = OmegaConf.create(config)
-    from pprint import pprint
-
-    pprint(config, indent=2)
-
     logger = TensorBoardLogger(".")
 
     callbacks = common_callbacks(config)
@@ -185,10 +181,28 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
 
                 self.optimizer.tell_result(parameters, metrics)
 
-            while len(self.optimizer.history) < self.n_jobs:
+            while len(self.optimizer.history) < self.budget:
                 self.worklist = []
                 # Mutate current population
                 while len(self.worklist) < self.n_jobs:
                     self._sample()
 
-            # validate population
+                # validate population
+                configs = [
+                    OmegaConf.merge(self.config, item.parameters.flatten())
+                    for item in self.worklist
+                ]
+
+                results = executor(
+                    [
+                        delayed(run_training)(
+                            OmegaConf.to_container(config, resolve=True)
+                        )
+                        for config in configs
+                    ]
+                )
+                for result, item in zip(results, self.worklist):
+                    parameters = item.parameters
+                    metrics = {**item.results, **result}
+
+                    self.optimizer.tell_result(parameters, metrics)

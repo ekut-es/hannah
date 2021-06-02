@@ -56,7 +56,7 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
 
 if CACHE_DIR:
     CACHE_SIZE = os.getenv("HANNAH_CACHE_SIZE", None)
-    cache = Memory(location=CACHE_DIR, bytes_limit=CACHE_SIZE)
+    cache = Memory(location=CACHE_DIR, bytes_limit=CACHE_SIZE, verbose=0)
     load_audio = cache.cache(_load_audio)
 else:
     load_audio = _load_audio

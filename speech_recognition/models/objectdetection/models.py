@@ -48,6 +48,7 @@ class FasterRCNN(torch.nn.Module):
 
         if len(retval) == 0:
             return COCO()
+        breakpoint()
         return cocoGt.loadRes(retval)
 
 
