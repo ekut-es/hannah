@@ -25,7 +25,12 @@ from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
-from .utils import log_execution_env_state, auto_select_gpus, common_callbacks
+from .utils import (
+    log_execution_env_state,
+    auto_select_gpus,
+    common_callbacks,
+    clear_outputs,
+)
 
 
 def handleDataset(config=DictConfig):
@@ -39,18 +44,6 @@ def handleDataset(config=DictConfig):
         normalizer=config.get("normalizer", None),
     )
     lit_module.prepare_data()
-
-
-@rank_zero_only
-def clear_outputs():
-    current_path = pathlib.Path(".")
-    for component in current_path.iterdir():
-        if component.name == "checkpoints":
-            shutil.rmtree(component)
-        elif component.name.startswith("version_"):
-            shutil.rmtree(component)
-        elif component.name == "profile":
-            shutil.rmtree(component)
 
 
 def train(config: DictConfig):

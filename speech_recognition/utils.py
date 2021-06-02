@@ -1,4 +1,7 @@
 import importlib
+import pathlib
+import shutil
+from pytorch_lightning.utilities.distributed import rank_zero_only
 import torch
 import torch.nn as nn
 import numpy as np
@@ -273,3 +276,15 @@ def common_callbacks(config: DictConfig):
         )
         callbacks.append(pruning_callback)
     return callbacks
+
+
+@rank_zero_only
+def clear_outputs():
+    current_path = pathlib.Path(".")
+    for component in current_path.iterdir():
+        if component.name == "checkpoints":
+            shutil.rmtree(component)
+        elif component.name.startswith("version_"):
+            shutil.rmtree(component)
+        elif component.name == "profile":
+            shutil.rmtree(component)

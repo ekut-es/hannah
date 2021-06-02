@@ -4,7 +4,7 @@ defaults:
     - model: conv-net-trax
     - scheduler: 1cycle
     - optimizer: sgd
-    - normalizer: null
+    - normalizer: fixedpoint
     - module: stream_classifier
     - compress: null
     - trainer: default
@@ -25,17 +25,20 @@ data_monitor: false
 
 seed: [1234]
 
+trainer:
+  max_epochs: 30
+
 nas:
   parametrization:
     backend:
-      cols: [2,4,6,8]
-      rows: [2,4,6,8]
+      cols: [2,4,6,8,16]
+      rows: null
     model:
       qconfig:
         config:
           bw_b: 0
           bw_w: [2,4,6,8]
-          bw_f: [2,4,6,8]
+          bw_f: [4,6,8]
       conv:
           min: 2
           max: 4
@@ -51,7 +54,7 @@ nas:
                     stride: 1
                     act: [false, true]
                     parallel: false
-                    norm: [true, false]
+                    norm: true
                     out_channels: [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64]
 
   bounds:

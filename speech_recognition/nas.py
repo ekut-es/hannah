@@ -2,6 +2,7 @@ import logging
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import os
 from typing import Any, Dict
 
 
@@ -14,8 +15,9 @@ from pytorch_lightning import Trainer, LightningModule
 
 from hannah_optimizer.aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
+from pytorch_lightning.utilities.seed import seed_everything
 from .callbacks.optimization import HydraOptCallback
-from .utils import common_callbacks
+from .utils import common_callbacks, clear_outputs
 
 msglogger = logging.getLogger("nas")
 
@@ -26,10 +28,12 @@ class WorklistItem:
     results: Dict[str, float]
 
 
-def run_training(config):
+def run_training(num, config):
+    os.makedirs(str(num), exist_ok=True)
+    os.chdir(str(num))
     config = OmegaConf.create(config)
     logger = TensorBoardLogger(".")
-
+    seed_everything(config.get("seed", 1234), workers=True)
     callbacks = common_callbacks(config)
     opt_monitor = config.get("monitor", ["val_error"])
     opt_callback = HydraOptCallback(monitor=opt_monitor)
@@ -37,25 +41,29 @@ def run_training(config):
 
     checkpoint_callback = instantiate(config.checkpoint)
     callbacks.append(checkpoint_callback)
-
-    backend = instantiate(config.backend)
-    callbacks.append(backend)
-    trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
-    model = instantiate(
-        config.module,
-        dataset=config.dataset,
-        model=config.model,
-        optimizer=config.optimizer,
-        features=config.features,
-        scheduler=config.get("scheduler", None),
-        normalizer=config.get("normalizer", None),
-    )
-    res = trainer.fit(model)
+    try:
+        trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
+        model = instantiate(
+            config.module,
+            dataset=config.dataset,
+            model=config.model,
+            optimizer=config.optimizer,
+            features=config.features,
+            scheduler=config.get("scheduler", None),
+            normalizer=config.get("normalizer", None),
+        )
+        trainer.fit(model)
+    except Exception as e:
+        msglogger.critical("Training failed with exception")
+        msglogger.critical(str(e))
+        res = {}
+        for monitor in opt_monitor:
+            res[monitor] = float("inf")
 
     return opt_callback.result(dict=True)
 
 
-# TODO: i think this has already been implemented
+# TODO: i think this has already been implemented somewhere
 def fullname(o):
     klass = o.__class__
     module = klass.__module__
@@ -158,29 +166,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             self.worklist.append(worklist_item)
 
     def run(self):
-        # Presample initial Population
-        while len(self.worklist) < self.population_size:
-            self._sample()
-
         with Parallel(n_jobs=self.n_jobs) as executor:
-            # Train initial population
-            configs = [
-                OmegaConf.merge(self.config, item.parameters.flatten())
-                for item in self.worklist
-            ]
-
-            results = executor(
-                [
-                    delayed(run_training)(OmegaConf.to_container(config, resolve=True))
-                    for config in configs
-                ]
-            )
-            for result, item in zip(results, self.worklist):
-                parameters = item.parameters
-                metrics = {**item.results, **result}
-
-                self.optimizer.tell_result(parameters, metrics)
-
             while len(self.optimizer.history) < self.budget:
                 self.worklist = []
                 # Mutate current population
@@ -196,9 +182,9 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 results = executor(
                     [
                         delayed(run_training)(
-                            OmegaConf.to_container(config, resolve=True)
+                            num, OmegaConf.to_container(config, resolve=True)
                         )
-                        for config in configs
+                        for num, config in enumerate(configs)
                     ]
                 )
                 for result, item in zip(results, self.worklist):

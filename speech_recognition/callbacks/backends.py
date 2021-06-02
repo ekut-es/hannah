@@ -279,13 +279,13 @@ class TRaxUltraTrailBackend(Callback):
             model.cpu(), pl_module.example_feature_array.cpu(), verbose=True
         )
         backend.set_inputs_and_outputs(self.xs, self.ys)
+        backend.prepare()
         if (
             self.use_acc_teda_data
             or self.rtl_simulation
             or self.synthesis
             or self.power_estimation
         ):
-            backend.prepare()
             backend.eda(
                 self.standalone,
                 self.rtl_simulation,
@@ -305,6 +305,11 @@ class TRaxUltraTrailBackend(Callback):
         return res
 
     def estimate(self, pl_module):
+        input = pl_module.example_feature_array
+        pl_module.eval()
+        output = pl_module.model(input)
+        self.xs.append(input)
+        self.ys.append(output.squeeze())
         return self._run(pl_module)
 
     def on_test_epoch_end(self, trainer, pl_module):
