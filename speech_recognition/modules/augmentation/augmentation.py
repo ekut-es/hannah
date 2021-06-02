@@ -125,44 +125,66 @@ class XmlAugmentationParser:
 
 class AugmentationThread:
     def __init__(self):
-        self.imgs_total = 0
-        self.augmented_imgs = 0
-        # self.stop = True
-        # self.running = False
+        self.stop = True
+        self.running = False
 
     def call_augment(self, conf, img, kitti_dir):
         XmlAugmentationParser.parse(conf, img, kitti_dir)
-        subprocess.call(kitti_dir + "/augmentation/perform_augmentation.sh")
+        subprocess.call(
+            kitti_dir + "/augmentation/perform_augmentation.sh",
+            stdout=subprocess.DEVNULL,
+        )
+
+    def augment_img(self, kitti, img, conf):
+        txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
+        kitti.aug_files.append(img[:-4])
+        txt.write(img[:-4] + "\n")
+        txt.close()
+        self.call_augment(conf, img, kitti.kitti_dir)
 
     def augment(self, conf, kitti, pct):
-        # self.running = True
-        # self.stop = False
-        kitti.aug_files = list()
+        self.running = True
+        self.stop = False
+        reaugment = conf["reaugment_per_epoch_pct"]
+        num_augment = len(kitti.img_files) * (pct / 100)
 
-        for img in kitti.img_files:
-            """if self.stop:
-            break"""
+        for img in kitti.aug_files:
+            # Remove reaugment_per_epoch_pct images from augmentation list
+            if self.stop:
+                break
 
             random.seed()
             rand = random.randrange(0, 100)
 
-            if rand < pct:
-                txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
-                kitti.aug_files.append(img[:-4])
-                txt.write(img[:-4] + "\n")
-                txt.close()
-                self.call_augment(conf, img, kitti.kitti_dir)
-                self.augmented_imgs += 1
-            self.imgs_total += 1
-        # self.stop = True
-        # self.running = False
+            if rand < reaugment:
+                kitti.aug_files.remove(img[:-4])
 
-    """def clear(self):
+        for img in kitti.img_files:
+            # Add images to augmentation list to reach augmented_pct and restart augmentation if necessary
+            if self.stop:
+                break
+
+            random.seed()
+            rand = random.randrange(0, 100)
+
+            if img[:-4] in kitti.aug_files and not os.path.isfile(
+                self.kitti_dir + "/training/augmented/" + img
+            ):
+                self.augment_img(kitti, img, conf)
+            elif (
+                rand < pct
+                and len(kitti.aug_files) <= num_augment
+                and img[:-4] not in kitti.aug_files
+            ):
+                self.augment_img(kitti, img, conf)
+        self.stop = True
+        self.running = False
+
+    def clear(self):
         self.stop = True
 
         while self.running:
             continue
-"""
 
 
 class Augmentation:
@@ -175,7 +197,7 @@ class Augmentation:
         kitti.aug_files = list()
 
         if self.pct != 0:
-            """self.aug_thread.clear()
+            self.aug_thread.clear()
             th = threading.Thread(
                 target=self.aug_thread.augment,
                 args=(
@@ -183,13 +205,9 @@ class Augmentation:
                     kitti,
                     self.pct if kitti.set_type == DatasetType.TRAIN else 50,
                 ),
+                daemon=True,
             )
-            th.start()"""
-            self.aug_thread.augment(
-                self.conf,
-                kitti,
-                self.pct if kitti.set_type == DatasetType.TRAIN else 50,
-            )
+            th.start()
 
     def getPctAugmented(self):
         return (

@@ -7,13 +7,14 @@ time_masking: 0
 frequency_masking: 0
 
 augmentation:
-  - augmented_pct: 0.6
+  - augmented_pct: 50
+  - reaugment_per_epoch_pct: 20
   - augmentations: [rain_drops]
   - rain_drops:
     - angle_rain_streaks: -45,45
     - brightness: 0.2,2
     - number_drops: 500,2000
-    - rain_rate: 50,60
+    - rain_rate: 1,60
     - drop_radius: 0.0004,0.005
   - snow:
     - snowfall_rate: 0,3

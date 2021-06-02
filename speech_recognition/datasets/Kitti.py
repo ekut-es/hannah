@@ -153,7 +153,8 @@ class Kitti(AbstractDataset):
 
         folder = config["data_folder"]
         folder = os.path.join(folder, "kitti/training")
-        aug_folder = os.path.join(folder, "augmented_2/")
+        aug_folder = os.path.join(folder, "augmented/")
+        aug2_folder = os.path.join(folder, "augmented_2/")
         folder = os.path.join(folder, "image_2/")
         num_imgs = math.floor(7479 * (config["num_img_pct"] / 100))
         num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
@@ -165,6 +166,10 @@ class Kitti(AbstractDataset):
             raise Exception("Number of images for Kitti dataset too large")
         elif num_test_imgs < 1 or num_dev_imgs < 1:
             raise Exception("Each step must have at least 1 Kitti image")
+
+        if os.path.exists(aug2_folder) and os.path.isdir(aug2_folder):
+            shutil.rmtree(aug2_folder)
+        os.mkdir(aug2_folder)
 
         if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
             shutil.rmtree(aug_folder)
