@@ -59,7 +59,7 @@ hydra:
       model:
         qconfig:
           config:
-            bw_b: [4,6,8]
+            bw_b: 0
             bw_w: [4,6,8]
             bw_f: [4,6,8]
             power_of_2: false
