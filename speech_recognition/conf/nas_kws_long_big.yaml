@@ -1,5 +1,5 @@
 defaults:
-    - dataset: vad
+    - dataset: kws
     - model: conv-net-trax
     - scheduler: 1cycle
     - optimizer: sgd
@@ -16,14 +16,12 @@ defaults:
 
 
 type: train
-experiment_id: nas_vad
+experiment_id: nas_kws_long_big
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
 
-dataset:
-  train_snr_high: 20
-  test_snr: 5
+
 
 monitor: ["val_error", "total_weights",  "acc_clock_cycles", "acc_power", "acc_area"]
 
@@ -42,17 +40,17 @@ hydra:
   sweeper:
     optim:
       optimizer: aging_evolution
-      population_size: 100
+      population_size: 250
       sample_size: 10
-      budget:  2000
+      budget:  5000
       seed: 1234
       num_workers:  10
       bounds:
         val_error: 0.05
-        total_weights: 1000
+        total_weights: 100000
         acc_clock_cycles: 20000
-        acc_power: 0.000001
-        acc_area: 10000
+        acc_power: 0.0001
+        acc_area: 200000
 
 
 
@@ -60,23 +58,23 @@ hydra:
     # default parametrization of the search space
     parametrization:
       backend:
-        cols: [2,4,6,8]
+        cols: [4,6,8]
       model:
         qconfig:
           config:
             bw_b: 0
-            bw_w: [2,4,6,8]
-            bw_f: [2,4,6,8]
+            bw_w: [4,6,8]
+            bw_f: [4,6,8]
             power_of_2: [true, false]
         conv:
-          min: 1
-          max: 2
+          min: 2
+          max: 4
           choices:
-            - target: [forward]
+            - target: [forward, residual]
               stride: [1,2,3,4,5,6,7]
               blocks:
                 min: 1
-                max: 2
+                max: 4
                 choices:
                   - target: conv1d
                     kernel_size: [1,3,5,7,9]

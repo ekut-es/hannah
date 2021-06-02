@@ -6,12 +6,9 @@ import sys
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-import scipy.signal as signal
 import torch
-import torch.utils.data as data
 import h5py
 
-from enum import Enum
 from collections import defaultdict
 
 from ..utils import list_all_files, extract_from_download_cache
@@ -224,10 +221,7 @@ class PAMAP2_Dataset(AbstractDataset):
         self.data_files = data_files
         self.channels = 40
         self.input_length = config["input_length"]
-        self.label_names = [
-            PAMAP2_DataPoint.ACTIVITY_MAPPING[index]
-            for index in sorted(list(PAMAP2_DataPoint.ACTIVITY_MAPPING.keys()))
-        ]
+        self.label_names = PAMAP2_Dataset.get_class_names()
 
     def __getitem__(self, item):
         path, start = self.data_files[item]
@@ -239,8 +233,20 @@ class PAMAP2_Dataset(AbstractDataset):
     def __len__(self):
         return len(self.data_files)
 
+    @classmethod
+    def get_num_classes(cls):
+        return len(PAMAP2_DataPoint.ACTIVITY_MAPPING)
+
+    @classmethod
     def prepare(cls, config: Dict[str, Any]) -> None:
         cls.download(config)
+
+    @staticmethod
+    def get_class_names():
+        return [
+            PAMAP2_DataPoint.ACTIVITY_MAPPING[index]
+            for index in sorted(list(PAMAP2_DataPoint.ACTIVITY_MAPPING.keys()))
+        ]
 
     @property
     def class_names(self) -> List[str]:
@@ -257,13 +263,13 @@ class PAMAP2_Dataset(AbstractDataset):
 
     @classmethod
     def splits(cls, config):
-
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
 
         input_length = config["input_length"]
 
-        folder = os.path.join(config["data_folder"], "pamap2", "pamap2_prepared")
+        folder = os.path.join(config["data_folder"], "pamap2",
+                              "pamap2_prepared")
 
         sets = [[], [], []]
 
@@ -280,8 +286,10 @@ class PAMAP2_Dataset(AbstractDataset):
                     if i + step >= stop - 1:
                         continue
                     chunk_hash = f"{path}{i}"
-                    bucket = int(hashlib.sha1(chunk_hash.encode()).hexdigest(), 16)
-                    bucket = (bucket % (max_no_files + 1)) * (100.0 / max_no_files)
+                    bucket = int(hashlib.sha1(chunk_hash.encode()).hexdigest(),
+                                 16)
+                    bucket = (bucket % (max_no_files + 1)) * (
+                            100.0 / max_no_files)
                     if bucket < dev_pct:
                         tag = DatasetType.DEV
                     elif bucket < test_pct + dev_pct:
@@ -298,8 +306,33 @@ class PAMAP2_Dataset(AbstractDataset):
         return datasets
 
     @classmethod
-    def prepare(cls, config):
-        cls.download(config)
+    def splits_cv(cls, config):
+
+        input_length = config["input_length"]
+
+        folder = os.path.join(config["data_folder"],
+                              "pamap2", "pamap2_prepared")
+
+        sets_by_subject = defaultdict(list)
+
+        for root, dirs, files in os.walk(folder):
+            subject_folder, _ = os.path.split(root)
+            _, subject_id = os.path.split(subject_folder)
+            for file_name in files:
+                path = os.path.join(root, file_name)
+                with h5py.File(path, "r") as f:
+                    length = len(f["dataset"][()])
+                start = 0
+                stop = length
+                step = input_length
+                for i in range(start, stop, step):
+                    if i + step >= stop - 1:
+                        continue
+
+                    sets_by_subject[subject_id] += [(path, i)]
+
+        return [cls(files, DatasetType.TRAIN.value, config)
+                for files in sets_by_subject.values()]
 
     @classmethod
     def download(cls, config):
@@ -367,6 +400,10 @@ class PAMAP2_Dataset(AbstractDataset):
                     groups[-1] += [datapoint]
                     old_activityID = datapoint.activityID
                 msglogger.info("Now writing...")
+                subject_id = file.split(".")[0]
+                subject_folder = os.path.join(folder_prepared, subject_id)
+                if not os.path.isdir(subject_folder):
+                    os.mkdir(subject_folder)
                 for nr, group in enumerate(groups):
 
                     subfolder = (
@@ -375,13 +412,13 @@ class PAMAP2_Dataset(AbstractDataset):
                         f"_{PAMAP2_DataPoint.ACTIVITY_MAPPING[group[0].activityID]}"
                     )
 
-                    subfolder_path = os.path.join(folder_prepared, subfolder)
+                    subfolder_path = os.path.join(subject_folder, subfolder)
                     if not os.path.isdir(subfolder_path):
                         os.mkdir(subfolder_path)
 
                     data_chunk = PAMAP2_DataChunk(group)
                     data_chunk.to_file(
                         os.path.join(
-                            folder_prepared, subfolder, f"{conf}_{file}_{nr}.hdf5"
+                            subfolder_path, f"{conf}_{file}_{nr}.hdf5"
                         )
                     )

@@ -1,7 +1,7 @@
-import os
 import logging
-import shutil
+import os
 import pathlib
+import shutil
 
 from collections import defaultdict
 
@@ -20,6 +20,7 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
 from hydra.utils import instantiate
+from omegaconf import DictConfig
 
 from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
@@ -179,6 +180,8 @@ def train(config=DictConfig):
             )
             ckpt_path = None
 
+        reset_seed()
+        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
         # PL TEST
         reset_seed()
         lit_trainer.test(ckpt_path=ckpt_path, verbose=False)

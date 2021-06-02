@@ -239,6 +239,7 @@ class TRaxUltraTrailBackend(Callback):
         sys.path.append(self.backend_dir)
         from backend.backend import UltraTrailBackend  # pytype: disable=import-error
 
+        classes = pl_module.num_classes
         model = pl_module.model
         mac_mode = "FIXED_POINT"
         if hasattr(model, "qconfig"):
@@ -272,20 +273,22 @@ class TRaxUltraTrailBackend(Callback):
             period=self.period,
             mac_mode=mac_mode,
             macro_type=self.macro_type,
+            classes = classes,
         )
 
         backend.set_model(
             model.cpu(), pl_module.example_feature_array.cpu(), verbose=True
         )
         backend.set_inputs_and_outputs(self.xs, self.ys)
-        backend.prepare()
-        backend.eda(
-            self.standalone,
-            self.rtl_simulation,
-            self.synthesis,
-            self.postsyn_simulation,
-            self.power_estimation,
-        )
+        if self.use_acc_teda_data or self.rtl_simulation or self.synthesis or self.power_estimation:
+            backend.prepare()
+            backend.eda(
+                self.standalone,
+                self.rtl_simulation,
+                self.synthesis,
+                self.postsyn_simulation,
+                self.power_estimation,
+            )
 
         res = backend._do_summary(
             self.use_acc_statistic_model,
@@ -296,5 +299,7 @@ class TRaxUltraTrailBackend(Callback):
             self.power_estimation,
         )
 
+        logging.info("Ultratrail metrics")
         for k, v in res.items():
             pl_module.log(k, v)
+            logging.info("%s: %s", str(k), str(v))
