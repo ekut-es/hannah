@@ -16,7 +16,7 @@ defaults:
 
 
 type: train
-experiment_id: nas_kws2
+experiment_id: nas_vad
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
