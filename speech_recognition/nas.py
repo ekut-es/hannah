@@ -16,7 +16,7 @@ from pytorch_lightning import Trainer, LightningModule
 
 from hannah_optimizer.aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
-from pytorch_lightning.utilities.seed import seed_everything
+from pytorch_lightning.utilities.seed import seed_everything, reset_seed
 from .callbacks.optimization import HydraOptCallback
 from .utils import common_callbacks, clear_outputs
 
@@ -59,6 +59,14 @@ def run_training(num, config):
             normalizer=config.get("normalizer", None),
         )
         trainer.fit(model)
+        if trainer.fast_dev_run:
+            logging.warning(
+                "Trainer is in fast dev run mode, switching off loading of best model for test"
+            )
+            ckpt_path = None
+
+        reset_seed()
+        trainer.validate(ckpt_path=ckpt_path, verbose=False)
     except Exception as e:
         msglogger.critical("Training failed with exception")
         msglogger.critical(str(e))
