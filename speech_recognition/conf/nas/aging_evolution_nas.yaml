@@ -5,3 +5,4 @@ parametrization: {}
 bounds: {}
 budget: 2000
 population_size: 100
+n_jobs: 10

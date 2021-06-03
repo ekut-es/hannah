@@ -50,7 +50,7 @@ nas:
                 max: 4
                 choices:
                   - target: conv1d
-                    kernel_size: [1,3,5,7,9]
+                    kernel_size: [1,3,5,7,9,11]
                     stride: 1
                     act: [false, true]
                     parallel: false
@@ -61,7 +61,7 @@ nas:
     val_error: 0.06
     acc_clock_cycles: 25000
     acc_power: 0.00002
-    acc_area: 150000
+    acc_area: 200000
 
 
 

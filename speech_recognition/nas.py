@@ -127,12 +127,14 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         bounds=None,
         parent_config=None,
         presample=True,
+        n_jobs=10,
     ):
         super().__init__(
             budget=budget,
             bounds=bounds,
             parametrization=parametrization,
             parent_config=parent_config,
+            n_jobs=n_jobs,
         )
         self.population_size = population_size
 
