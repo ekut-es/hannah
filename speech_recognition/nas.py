@@ -206,7 +206,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
                     metrics = {**item.results, **result}
-                    for k, v in metrics:
+                    for k, v in metrics.items():
                         metrics[k] = float(v)
 
                     self.optimizer.tell_result(parameters, metrics)
