@@ -266,6 +266,70 @@ class Spiking1DS2NetLayer(torch.nn.Module):
         self.b.data.clamp_(min=0.0)
 
 
+class Spiking1DIFLayer(torch.nn.Module):
+    def __init__(self, channels: int, spike_fn, flatten_output=False, time_position=2):
+
+        super(Spiking1DIFLayer, self).__init__()
+
+        self.channels = channels
+        self.spike_fn = spike_fn
+        self.flatten_output = flatten_output
+
+        self.Vth = torch.ones(channels)
+        self.time_position = time_position
+
+        self.type = "IF"
+
+        self.spk_rec_hist = None
+
+        self.training = True
+
+    def forward(self, x):
+
+        self.Vth = self.Vth.to(device=x.device)
+
+        batch_size = x.shape[0]
+        nb_steps = x.shape[2]
+
+        # membrane potential
+        mem = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
+        # output spikes
+        spk = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
+        if self.time_position == 2:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
+            )
+        elif self.time_position == 1:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, nb_steps, self.channels), dtype=x.dtype, device=x.device
+            )
+        for t in range(nb_steps):
+            rst = torch.einsum("ab,b->ab", spk, self.Vth)
+
+            if self.time_position == 2:
+                input_ = x[:, :, t]
+            elif self.time_position == 1:
+                input_ = x[:, t, :]
+
+            mem = (mem - rst) + input_
+
+            spk = self.spike_fn(mem - self.Vth)
+
+            if self.time_position == 2:
+                spk_rec[:, :, t] = spk
+            elif self.time_position == 1:
+                spk_rec[:, t, :] = spk
+
+        if self.flatten_output:
+            output = torch.transpose(spk_rec, 1, 2).contiguous()
+        else:
+            output = spk_rec
+
+        return output
+
+
 class Spiking1DeLIFLayer(torch.nn.Module):
     def __init__(self, channels: int, spike_fn, flatten_output=False, beta=0.65):
 
