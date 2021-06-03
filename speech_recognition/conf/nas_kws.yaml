@@ -17,7 +17,7 @@ defaults:
     - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
       optional: true
 
-experiment_id: nas_kws
+experiment_id: nas_kws2
 output_dir: trained_models
 auto_lr: false
 print_metrics: false
