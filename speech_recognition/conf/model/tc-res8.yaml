@@ -70,6 +70,12 @@ dilation: 1
 clipping_value: 100000.0
 small: false
 conv_type: NN
+readout_type: mean
+readout_neuron_type: eLIF
+readout_alpha: 1
+readout_beta: 1
+readout_gamma: 1
+readout_rho: 1
 spike_fn: SBPHeaviside
 #general_conv_type: SNN
 #general_BN: BNTTv1

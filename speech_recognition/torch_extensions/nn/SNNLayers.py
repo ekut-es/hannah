@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn.modules.conv as conv
 from torch.nn.common_types import _size_1_t
+import math
 
 # Taken from Paper Low-activity supervised convolutional spiking neural networks applied to speech commands recognition Arxiv:2011.06846
 
@@ -331,7 +332,9 @@ class Spiking1DIFLayer(torch.nn.Module):
 
 
 class Spiking1DeLIFLayer(torch.nn.Module):
-    def __init__(self, channels: int, spike_fn, flatten_output=False, beta=0.65):
+    def __init__(
+        self, channels: int, spike_fn, flatten_output=False, beta=0.65, time_position=2
+    ):
 
         super(Spiking1DeLIFLayer, self).__init__()
 
@@ -343,6 +346,7 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         self.Vth = torch.ones(channels)
 
         self.type = "eLIF"
+        self.time_position = time_position
 
         self.reset_parameters()
         self.clamp()
@@ -357,27 +361,38 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         self.Vth = self.Vth.to(device=x.device)
 
         batch_size = x.shape[0]
-        nb_steps = x.shape[2]
+        nb_steps = x.shape[self.time_position]
 
         # membrane potential
         mem = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
         # output spikes
         spk = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
-        # output spikes recording
-        spk_rec = torch.zeros(
-            (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
-        )
+        if self.time_position == 2:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
+            )
+        elif self.time_position == 1:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, nb_steps, self.channels), dtype=x.dtype, device=x.device
+            )
 
         for t in range(nb_steps):
             rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
-            input_ = x[:, :, t]
+            if self.time_position == 2:
+                input_ = x[:, :, t]
+            elif self.time_position == 1:
+                input_ = x[:, t, :]
 
             mem = (mem - rst) * self.beta + input_
 
             spk = self.spike_fn(mem - self.Vth)
-
-            spk_rec[:, :, t] = spk
+            if self.time_position == 2:
+                spk_rec[:, :, t] = spk
+            elif self.time_position == 1:
+                spk_rec[:, t, :] = spk
 
         if self.flatten_output:
             output = torch.transpose(spk_rec, 1, 2).contiguous()
@@ -395,7 +410,13 @@ class Spiking1DeLIFLayer(torch.nn.Module):
 
 class Spiking1DLIFLayer(torch.nn.Module):
     def __init__(
-        self, channels: int, spike_fn, flatten_output=False, alpha=0.75, beta=0.65
+        self,
+        channels: int,
+        spike_fn,
+        flatten_output=False,
+        alpha=0.75,
+        beta=0.65,
+        time_position=2,
     ):
 
         super(Spiking1DLIFLayer, self).__init__()
@@ -404,16 +425,12 @@ class Spiking1DLIFLayer(torch.nn.Module):
         self.spike_fn = spike_fn
         self.flatten_output = flatten_output
 
-        self.alpha = torch.tensor(alpha)
-        self.beta = torch.tensor(beta)
-        self.Vth = torch.ones(channels)
+        self.alpha = torch.nn.Parameter(torch.tensor(alpha), requires_grad=False)
+        self.beta = torch.nn.Parameter(torch.tensor(beta), requires_grad=False)
+        self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "LIF"
-
-        self.reset_parameters()
-        self.clamp()
-
-        self.spk_rec_hist = None
+        self.time_position = time_position
 
         self.training = True
 
@@ -436,21 +453,33 @@ class Spiking1DLIFLayer(torch.nn.Module):
 
         # output spikes
         spk = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
-        # output spikes recording
-        spk_rec = torch.zeros(
-            (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
-        )
+        if self.time_position == 2:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
+            )
+        elif self.time_position == 1:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, nb_steps, self.channels), dtype=x.dtype, device=x.device
+            )
 
         for t in range(nb_steps):
             rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
-            input_ = self.alpha * input_ + x[:, :, t]
+            if self.time_position == 2:
+                input_ = x[:, :, t]
+            elif self.time_position == 1:
+                input_ = x[:, t, :]
 
             mem = (mem - rst) * self.beta + input_
 
             spk = self.spike_fn(mem - self.Vth)
 
-            spk_rec[:, :, t] = spk
+            if self.time_position == 2:
+                spk_rec[:, :, t] = spk
+            elif self.time_position == 1:
+                spk_rec[:, t, :] = spk
 
         if self.flatten_output:
             output = torch.transpose(spk_rec, 1, 2).contiguous()
@@ -458,12 +487,6 @@ class Spiking1DLIFLayer(torch.nn.Module):
             output = spk_rec
 
         return output
-
-    def reset_parameters(self):
-        pass
-
-    def clamp(self):
-        pass
 
 
 class Spiking1DeALIFLayer(torch.nn.Module):
@@ -474,7 +497,8 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         flatten_output=False,
         beta=0.65,
         gamma=0.75,
-        roh=0.75,
+        rho=0.75,
+        time_position=2,
     ):
 
         super(Spiking1DeALIFLayer, self).__init__()
@@ -485,13 +509,11 @@ class Spiking1DeALIFLayer(torch.nn.Module):
 
         self.beta = torch.tensor(beta)
         self.gamma = torch.tensor(gamma)
-        self.rho = torch.tensor(roh)
+        self.rho = torch.tensor(rho)
         self.Vth = torch.ones(channels)
 
         self.type = "eALIF"
-
-        self.reset_parameters()
-        self.clamp()
+        self.time_position = time_position
 
         self.spk_rec_hist = None
 
@@ -510,10 +532,16 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         mem = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
         # output spikes
         spk = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
-        # output spikes recording
-        spk_rec = torch.zeros(
-            (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
-        )
+        if self.time_position == 2:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
+            )
+        elif self.time_position == 1:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, nb_steps, self.channels), dtype=x.dtype, device=x.device
+            )
 
         Athpot = torch.ones((batch_size, self.channels), dtype=x.dtype, device=x.device)
 
@@ -524,7 +552,10 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         for t in range(nb_steps):
             rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
-            input_ = x[:, :, t]
+            if self.time_position == 2:
+                input_ = x[:, :, t]
+            elif self.time_position == 1:
+                input_ = x[:, t, :]
 
             mem = (mem - rst) * self.beta + input_
 
@@ -534,7 +565,10 @@ class Spiking1DeALIFLayer(torch.nn.Module):
 
             spk = self.spike_fn(mem - Athpot)
 
-            spk_rec[:, :, t] = spk
+            if self.time_position == 2:
+                spk_rec[:, :, t] = spk
+            elif self.time_position == 1:
+                spk_rec[:, t, :] = spk
 
         if self.flatten_output:
             output = torch.transpose(spk_rec, 1, 2).contiguous()
@@ -542,12 +576,6 @@ class Spiking1DeALIFLayer(torch.nn.Module):
             output = spk_rec
 
         return output
-
-    def reset_parameters(self):
-        pass
-
-    def clamp(self):
-        pass
 
 
 class Spiking1DALIFLayer(torch.nn.Module):
@@ -560,6 +588,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
         beta=0.65,
         gamma=0.75,
         rho=0.75,
+        time_position=2,
     ):
 
         super(Spiking1DALIFLayer, self).__init__()
@@ -575,11 +604,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
         self.Vth = torch.ones(channels)
 
         self.type = "ALIF"
-
-        self.reset_parameters()
-        self.clamp()
-
-        self.spk_rec_hist = None
+        self.time_position = time_position
 
         self.training = True
 
@@ -601,10 +626,16 @@ class Spiking1DALIFLayer(torch.nn.Module):
         )
         # output spikes
         spk = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
-        # output spikes recording
-        spk_rec = torch.zeros(
-            (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
-        )
+        if self.time_position == 2:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, self.channels, nb_steps), dtype=x.dtype, device=x.device
+            )
+        elif self.time_position == 1:
+            # output spikes recording
+            spk_rec = torch.zeros(
+                (batch_size, nb_steps, self.channels), dtype=x.dtype, device=x.device
+            )
 
         Athpot = torch.ones((batch_size, self.channels), dtype=x.dtype, device=x.device)
 
@@ -615,7 +646,10 @@ class Spiking1DALIFLayer(torch.nn.Module):
         for t in range(nb_steps):
             rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
-            input_ = self.alpha * input_ + x[:, :, t]
+            if self.time_position == 2:
+                input_ = self.alpha * input_ + x[:, :, t]
+            elif self.time_position == 1:
+                input_ = self.alpha * input_ + x[:, t, :]
 
             mem = (mem - rst) * self.beta + input_
 
@@ -625,7 +659,10 @@ class Spiking1DALIFLayer(torch.nn.Module):
 
             spk = self.spike_fn(mem - Athpot)
 
-            spk_rec[:, :, t] = spk
+            if self.time_position == 2:
+                spk_rec[:, :, t] = spk
+            elif self.time_position == 1:
+                spk_rec[:, t, :] = spk
 
         if self.flatten_output:
             output = torch.transpose(spk_rec, 1, 2).contiguous()
@@ -633,12 +670,6 @@ class Spiking1DALIFLayer(torch.nn.Module):
             output = spk_rec
 
         return output
-
-    def reset_parameters(self):
-        pass
-
-    def clamp(self):
-        pass
 
 
 class SpikingConv2DLayer(torch.nn.Module):
@@ -1034,215 +1065,72 @@ class ReadoutLayer(torch.nn.Module):
             mem_rec = h
             output = torch.mean(mem_rec, 1) / (norm + 1e-8) - self.b
 
-        # save mem_rec for plotting
-        # self.mem_rec_hist = mem_rec.detach().cpu().numpy()
-
         return output
 
-    def reset_parameters(self):
-        torch.nn.init.normal_(
-            self.w,
-            mean=self.w_init_mean,
-            std=self.w_init_std * np.sqrt(1.0 / (self.input_shape)),
-        )
 
-        if self.time_reduction == "max":
-            torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
-
-        torch.nn.init.normal_(self.b, mean=1.0, std=0.01)
-
-    def clamp(self):
-
-        if self.time_reduction == "max":
-            self.beta.data.clamp_(0.0, 1.0)
-
-
-class ReadoutLIFLayer(torch.nn.Module):
+class ReadoutMeanLayer(torch.nn.Module):
 
     "Fully connected readout"
 
-    def __init__(
-        self,
-        input_shape,
-        output_shape,
-        w_init_mean,
-        w_init_std,
-        time_reduction="mean",
-        alpha=0.586,
-        beta=0.442,
-    ):
+    def __init__(self, output_shape):
+        super(ReadoutMeanLayer, self).__init__()
 
-        assert time_reduction in [
-            "mean",
-            "max",
-        ], 'time_reduction should be "mean" or "max"'
-
-        super(ReadoutLIFLayer, self).__init__()
-
-        self.input_shape = input_shape
         self.output_shape = output_shape
-
-        self.w_init_mean = w_init_mean
-        self.w_init_std = w_init_std
-
-        self.alpha = alpha
-        self.beta = beta
-
-        self.time_reduction = time_reduction
-
-        self.w = torch.nn.Parameter(
-            torch.empty((input_shape, output_shape)), requires_grad=True
-        )
-        if time_reduction == "max":
-            self.beta = torch.nn.Parameter(torch.tensor(beta), requires_grad=False)
-        self.vth = torch.nn.Parameter(torch.ones(output_shape), requires_grad=False)
-
-        self.reset_parameters()
-        self.clamp()
-
-        self.mem_rec_hist = None
+        self.b = torch.nn.Parameter(torch.ones(output_shape), requires_grad=False)
 
     def forward(self, x):
-
-        batch_size = x[0].shape[0]
-
-        h = torch.einsum("abc,cd->abd", x, self.w)
-
-        if self.time_reduction == "max":
-            nb_steps = x.shape[1]
-            # membrane potential
-            mem = torch.zeros(
-                (batch_size, self.output_shape), dtype=x.dtype, device=x.device
-            )
-
-            input_ = torch.zeros(h[:, 0, :].shape, dtype=x.dtype, device=x.device)
-
-            # memrane potential recording
-            mem_rec = torch.zeros(
-                (batch_size, nb_steps, self.output_shape),
-                dtype=x.dtype,
-                device=x.device,
-            )
-
-            for t in range(nb_steps):
-                input_ = input_ * self.alpha + h[:, t, :]
-                # membrane potential update
-                mem = mem * self.beta + (1 - self.beta) * h[:, t, :]
-                mem_rec[:, t, :] = mem
-
-            output = torch.max(mem_rec, 1)[0] - self.vth
-
-        elif self.time_reduction == "mean":
-
-            mem_rec = h
-            output = torch.mean(mem_rec, 1) - self.vth
-
-        # save mem_rec for plotting
-        # self.mem_rec_hist = mem_rec.detach().cpu().numpy()
+        mem_rec = x
+        output = torch.mean(mem_rec, 1) - self.b
 
         return output
 
-    def reset_parameters(self):
-        torch.nn.init.normal_(
-            self.w,
-            mean=self.w_init_mean,
-            std=self.w_init_std * np.sqrt(1.0 / (self.input_shape)),
-        )
 
-    def clamp(self):
-        pass
+class ReadoutSpikeTimeLayer(torch.nn.Module):
+    def __init__(self,):
 
-
-class ReadouteLIFLayer(torch.nn.Module):
-
-    "Fully connected readout"
-
-    def __init__(
-        self,
-        input_shape,
-        output_shape,
-        w_init_mean,
-        w_init_std,
-        time_reduction="mean",
-        beta=0.695,
-    ):
-
-        assert time_reduction in [
-            "mean",
-            "max",
-        ], 'time_reduction should be "mean" or "max"'
-
-        super(ReadouteLIFLayer, self).__init__()
-
-        self.input_shape = input_shape
-        self.output_shape = output_shape
-
-        self.w_init_mean = w_init_mean
-        self.w_init_std = w_init_std
-
-        self.beta = beta
-
-        self.time_reduction = time_reduction
-
-        self.w = torch.nn.Parameter(
-            torch.empty((input_shape, output_shape)), requires_grad=True
-        )
-        if time_reduction == "max":
-            self.beta = torch.nn.Parameter(torch.tensor(beta), requires_grad=False)
-        self.vth = torch.nn.Parameter(torch.ones(output_shape), requires_grad=False)
-
-        self.reset_parameters()
-        self.clamp()
-
-        self.mem_rec_hist = None
+        super(ReadoutSpikeTimeLayer, self).__init__()
 
     def forward(self, x):
-
-        batch_size = x[0].shape[0]
-
-        h = torch.einsum("abc,cd->abd", x, self.w)
-
-        if self.time_reduction == "max":
-            nb_steps = x.shape[1]
-            # membrane potential
-            mem = torch.zeros(
-                (batch_size, self.output_shape), dtype=x.dtype, device=x.device
-            )
-
-            # memrane potential recording
-            mem_rec = torch.zeros(
-                (batch_size, nb_steps, self.output_shape),
-                dtype=x.dtype,
-                device=x.device,
-            )
-
-            for t in range(nb_steps):
-
-                # membrane potential update
-                mem = mem * self.beta + h[:, t, :]
-                mem_rec[:, t, :] = mem
-
-            output = torch.max(mem_rec, 1)[0] - self.vth
-
-        elif self.time_reduction == "mean":
-
-            mem_rec = h
-            output = torch.mean(mem_rec, 1) - self.vth
-
-        # save mem_rec for plotting
-        # self.mem_rec_hist = mem_rec.detach().cpu().numpy()
-
+        nb_steps = x.shape[1]
+        batch_size = x.shape[0]
+        channels = x.shape[2]
+        output = torch.zeros((batch_size, channels), dtype=x.dtype, device=x.device)
+        for t in range(nb_steps):
+            output[:, :] += x[:, t, :] * (nb_steps - 1 - t)
         return output
 
-    def reset_parameters(self):
-        torch.nn.init.normal_(
-            self.w,
-            mean=self.w_init_mean,
-            std=self.w_init_std * np.sqrt(1.0 / (self.input_shape)),
-        )
 
-    def clamp(self):
-        pass
+class ReadoutCountLayer(torch.nn.Module):
+    def __init__(self,):
+
+        super(ReadoutCountLayer, self).__init__()
+
+    def forward(self, x):
+        nb_steps = x.shape[1]
+        batch_size = x.shape[0]
+        channels = x.shape[2]
+        output = torch.zeros((batch_size, channels), dtype=x.dtype, device=x.device)
+        for t in range(nb_steps):
+            output[:, :] += x[:, t, :]
+        return output
+
+
+class ReadoutFirstSpikeLayer(torch.nn.Module):
+    def __init__(self,):
+
+        super(ReadoutFirstSpikeLayer, self).__init__()
+
+    def forward(self, x):
+        nb_steps = x.shape[1]
+        batch_size = x.shape[0]
+        output = torch.zeros((batch_size, x.shape[2]), dtype=x.dtype, device=x.device)
+        for b in range(batch_size):
+            for t in range(nb_steps):
+                if torch.max(x[b, t, :]).item() == 1:
+                    for i in range(x.shape[2]):
+                        if x[b, t, i] == 1 and output[b, i] < ((nb_steps - 1) - t):
+                            output[b, i] = (nb_steps - 1) - t
+        return output
 
 
 class ActivationLayer(torch.nn.Module):

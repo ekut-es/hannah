@@ -14,6 +14,7 @@ from ..utils import ConfigType, SerializableModule, next_power_of2
 from ...torch_extensions.nn.LayerFactory import (
     build1DConvolution,
     buildLinearLayer,
+    buildReadoutLayer,
     create_spike_fn,
 )
 
@@ -524,19 +525,45 @@ class TCResNetModel(SerializableModule):
             self.fc = nn.Conv1d(shape[1], n_labels, 1, bias=False)
         else:
             if self.conv_type == "SNN":
+                readout_type = config.get("readout_type", "mean")
+                readout_neuron_type = config.get("readout_neuron_type", "eLIF")
+                readout_alpha = config.get("readout_alpha", 1)
+                readout_beta = config.get("readout_beta", 1)
+                readout_gamma = config.get("readout_gamma", 1)
+                readout_rho = config.get("readout_rho", 1)
+
+                if self.neuron_type is not None:
+                    readout_neuron_type = self.neuron_type
+                if self.alpha is not None:
+                    readout_alpha = self.alpha
+                if self.beta is not None:
+                    readout_beta = self.beta
+                if self.gamma is not None:
+                    readout_gamma = self.gamma
+                if self.rho is not None:
+                    readout_rho = self.rho
+
                 tmp_shape = shape[2]
+                self.fc = buildReadoutLayer(
+                    readout_type=readout_type,
+                    input_shape=tmp_shape,
+                    output_shape=n_labels,
+                    spike_fn=self.spike_fn,
+                    neuron_type=readout_neuron_type,
+                    alpha=readout_alpha,
+                    beta=readout_beta,
+                    gamma=readout_gamma,
+                    rho=readout_rho,
+                )
             else:
                 tmp_shape = shape[1]
 
-            self.fc = buildLinearLayer(
-                self.conv_type,
-                input_shape=tmp_shape,
-                output_shape=n_labels,
-                spike_fn=self.spike_fn,
-                bias=False,
-                readout=True,
-                neurontype="s2net",
-            )
+                self.fc = buildLinearLayer(
+                    self.conv_type,
+                    input_shape=tmp_shape,
+                    output_shape=n_labels,
+                    bias=False,
+                )
 
     def forward(self, x):
         for layer in self.layers:
