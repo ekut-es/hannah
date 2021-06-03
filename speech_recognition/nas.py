@@ -59,6 +59,7 @@ def run_training(num, config):
             normalizer=config.get("normalizer", None),
         )
         trainer.fit(model)
+        ckpt_path = "best"
         if trainer.fast_dev_run:
             logging.warning(
                 "Trainer is in fast dev run mode, switching off loading of best model for test"
