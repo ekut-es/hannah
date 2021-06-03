@@ -12,7 +12,7 @@ from joblib import Parallel, delayed
 
 from omegaconf import OmegaConf
 import numpy as np
-from pytorch_lightning import Trainer, LightningModule
+from pytorch_lightning import LightningModule
 
 from hannah_optimizer.aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
@@ -204,5 +204,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
                     metrics = {**item.results, **result}
+                    for k, v in metrics:
+                        metrics[k] = float(v)
 
                     self.optimizer.tell_result(parameters, metrics)
