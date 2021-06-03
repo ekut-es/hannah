@@ -148,12 +148,12 @@ def train(config=DictConfig):
             callbacks.append(pruning_callback)
 
         # INIT PYTORCH-LIGHTNING
-        lit_trainer = Trainer(
-            **config.trainer,
+        lit_trainer = instantiate(
+            config.trainer,
             profiler=profiler,
             callbacks=callbacks,
             logger=logger,
-            reload_dataloaders_every_epoch=True
+            reload_dataloaders_every_epoch=True,
         )
 
         if config["auto_lr"]:
