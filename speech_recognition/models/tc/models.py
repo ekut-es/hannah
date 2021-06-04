@@ -297,7 +297,7 @@ class TCResNetModel(SerializableModule):
         general_beta = config.get("general_beta", None)
         general_gamma = config.get("general_gamma", None)
         general_rho = config.get("general_rho", None)
-        general_tp = config.get("general_Trainable_Parameter", None)
+        general_tp = config.get("general_trainable_parameter", None)
 
         if general_conv_type is not None:
             self.conv_type = general_conv_type
