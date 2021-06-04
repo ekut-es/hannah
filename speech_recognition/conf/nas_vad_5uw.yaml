@@ -1,0 +1,79 @@
+defaults:
+    - dataset: vad
+    - features: mfcc
+    - model: conv-net-trax
+    - scheduler: 1cycle
+    - optimizer: sgd
+    - normalizer: fixedpoint
+    - module: stream_classifier
+    - compress: null
+    - trainer: default
+    - checkpoint: default
+    - backend: trax_ut
+    - early_stopping: null
+    - profiler: null
+    - pruning: null
+    - nas: aging_evolution_nas
+    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
+      optional: true
+
+experiment_id: nas_vad_5uw
+output_dir: trained_models
+auto_lr: false
+print_metrics: false
+data_monitor: false
+
+seed: [1234]
+
+trainer:
+  max_epochs: 30
+
+nas:
+  parametrization:
+    backend:
+      cols: [2,4,6,8,16]
+      rows: null
+    model:
+      qconfig:
+        config:
+          bw_b: 0
+          bw_w: [2,4,6,8]
+          bw_f: [4,6,8]
+      conv:
+          min: 1
+          max: 4
+          choices:
+            - target: [forward, residual]
+              stride: [1,2,4,8,16]
+              blocks:
+                min: 1
+                max: 4
+                choices:
+                  - target: conv1d
+                    kernel_size: [1,3,5,7,9,11]
+                    stride: 1
+                    act: [false, true]
+                    parallel: false
+                    norm: true
+                    out_channels: [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64]
+
+  bounds:
+    val_error: 0.02
+    acc_clock_cycles: 25000
+    acc_power: 0.00005
+    acc_area: 150000
+
+
+
+
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+
+
+
+#TODO:
+dump_test: false
+input_file: ''
