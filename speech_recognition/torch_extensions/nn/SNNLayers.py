@@ -41,6 +41,21 @@ class EmptyLayer(torch.nn.Module):
         return x
 
 
+class TimeTransposeLayer(torch.nn.Module):
+    def __init__(self, time_position=2):
+
+        super(TimeTransposeLayer, self).__init__()
+        self.time_position = time_position
+
+    def forward(self, x):
+        if self.time_position == 1:
+            output = torch.transpose(x, 1, 2).contiguous()
+        elif self.time_position == 2:
+            output = torch.transpose(x, 2, 1).contiguous()
+
+        return output
+
+
 class SpikingDenseLayer(torch.nn.Module):
     def __init__(
         self,
