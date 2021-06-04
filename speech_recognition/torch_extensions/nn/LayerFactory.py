@@ -1,6 +1,6 @@
 import torch.nn
 
-from .SNNLayers import SpikingDenseLayer, EmptyLayer, Spiking1DS2NetLayer
+from .SNNLayers import TimeTransposeLayer, Spiking1DS2NetLayer
 from .SNNReadoutLayers import (
     ReadoutLayer,
     ReadoutMeanLayer,
@@ -195,8 +195,9 @@ def buildLinearLayer(
     beta=1,
     gamma=1,
     rho=1,
-    neurontype="eLIF",
+    neuron_type="eLIF",
     trainable_parameter=False,
+    time_position=1,
 ):
     if conv_type == "SNN":
         return torch.nn.Sequential(
@@ -207,9 +208,9 @@ def buildLinearLayer(
                 beta=beta,
                 gamma=gamma,
                 rho=rho,
-                neuron_type=neurontype,
+                neuron_type=neuron_type,
                 spike_fn=spike_fn,
-                time_position=1,
+                time_position=time_position,
                 trainable_parameter=trainable_parameter,
             ),
         )
@@ -233,6 +234,7 @@ def buildReadoutLayer(
     spike_fn=None,
     neuron_type="eLIF",
     trainable_parameter=False,
+    time_position=1,
 ):
     if readout_type == "s2net":
         return ReadoutLayer(
@@ -257,7 +259,8 @@ def buildReadoutLayer(
             beta=beta,
             gamma=gamma,
             rho=rho,
-            neurontype=neuron_type,
+            neuron_type=neuron_type,
+            time_position=time_position,
             trainable_parameter=trainable_parameter,
         )
         if readout_type == "count":
