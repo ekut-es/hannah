@@ -80,6 +80,7 @@ readout_alpha: 1
 readout_beta: 0.695
 readout_gamma: 1
 readout_rho: 1
+readout_trainable_parameter: False
 spike_fn: SBPHeaviside
 #general_conv_type: SNN
 #general_BN: BNTTv1
@@ -88,7 +89,7 @@ spike_fn: SBPHeaviside
 #general_gamma: 0.0
 #general_rho: 0.0
 #general_neuron_type: ALIF
-#general_Trainable_Parameter: True
+#general_trainable_parameter: True
 
 # Set by LigthningModule
 width: 101
