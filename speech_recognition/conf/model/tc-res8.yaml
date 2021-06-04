@@ -18,6 +18,7 @@ block1_beta: 0.65
 block1_gamma: 0.75
 block1_rho: 0.15
 block1_neuron_type: eLIF
+block1_trainable_partameter: False
 block2_conv_size: 9
 block2_output_channels: 32
 block2_stride: 2
@@ -31,6 +32,7 @@ block2_beta: 0.65
 block2_gamma: 0.75
 block2_rho: 0.15
 block2_neuron_type: eLIF
+block2_trainable_partameter: False
 block3_conv_size: 9
 block3_output_channels: 48
 block3_stride: 2
@@ -44,6 +46,7 @@ block3_beta: 0.65
 block3_gamma: 0.75
 block3_rho: 0.15
 block3_neuron_type: eLIF
+block3_trainable_partameter: False
 bottleneck:
 - 0
 - 0
@@ -62,6 +65,7 @@ conv1_beta: 0.65
 conv1_gamma: 0.75
 conv1_rho: 0.15
 conv1_neuron_type: eLIF
+conv1_trainable_parameter: False
 dropout_prob: 0.5
 fully_convolutional: false
 inputlayer: true
@@ -70,10 +74,10 @@ dilation: 1
 clipping_value: 100000.0
 small: false
 conv_type: NN
-readout_type: mean
+readout_type: s2net
 readout_neuron_type: eLIF
 readout_alpha: 1
-readout_beta: 1
+readout_beta: 0.695
 readout_gamma: 1
 readout_rho: 1
 spike_fn: SBPHeaviside
@@ -84,6 +88,7 @@ spike_fn: SBPHeaviside
 #general_gamma: 0.0
 #general_rho: 0.0
 #general_neuron_type: ALIF
+#general_Trainable_Parameter: True
 
 # Set by LigthningModule
 width: 101

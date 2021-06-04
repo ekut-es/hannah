@@ -65,6 +65,7 @@ class TCResidualBlock(nn.Module):
         gamma=0.75,
         rho=0.75,
         neuron_type="eLIF",
+        trainable_parameter=False,
     ):
         super().__init__()
         self.stride = stride
@@ -92,6 +93,7 @@ class TCResidualBlock(nn.Module):
                     gamma=gamma,
                     rho=rho,
                     neuron_type=neuron_type,
+                    trainable_parameter=trainable_parameter,
                 )
             )
 
@@ -179,6 +181,7 @@ class TCResidualBlock(nn.Module):
                     gamma=gamma,
                     rho=rho,
                     neuron_type=neuron_type,
+                    trainable_parameter=trainable_parameter,
                 )
             )
         else:
@@ -202,6 +205,7 @@ class TCResidualBlock(nn.Module):
                     gamma=gamma,
                     rho=rho,
                     neuron_type=neuron_type,
+                    trainable_parameter=trainable_parameter,
                 ),
                 build1DConvolution(
                     self.conv_type,
@@ -222,6 +226,7 @@ class TCResidualBlock(nn.Module):
                     gamma=gamma,
                     rho=rho,
                     neuron_type=neuron_type,
+                    trainable_parameter=trainable_parameter,
                 ),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
@@ -292,6 +297,7 @@ class TCResNetModel(SerializableModule):
         general_beta = config.get("general_beta", None)
         general_gamma = config.get("general_gamma", None)
         general_rho = config.get("general_rho", None)
+        general_tp = config.get("general_Trainable_Parameter", None)
 
         if general_conv_type is not None:
             self.conv_type = general_conv_type
@@ -321,6 +327,11 @@ class TCResNetModel(SerializableModule):
         else:
             self.rho = None
 
+        if general_tp is not None:
+            self.general_tp = general_tp
+        else:
+            self.general_tp = None
+
         self.layers = nn.ModuleList()
         self.feat = None
 
@@ -343,6 +354,7 @@ class TCResNetModel(SerializableModule):
             gamma_name = "conv{}_gamma".format(count)
             roh_name = "conv{}_rho".format(count)
             neurontype_name = "conv{}_neuron_type".format(count)
+            trainable_parameter_name = "conv{}_trainable_parameter".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -356,6 +368,7 @@ class TCResNetModel(SerializableModule):
             gamma = config.get(gamma_name, 1)
             rho = config.get(roh_name, 1)
             neuron_type = config.get(neurontype_name, "eLIF")
+            trainable_parameter = config.get(trainable_parameter_name, False)
 
             if general_bn is not None and batchnorm is not None:
                 batchnorm = general_bn
@@ -371,6 +384,8 @@ class TCResNetModel(SerializableModule):
                 gamma = self.gamma
             if self.rho is not None:
                 rho = self.rho
+            if self.general_tp is not None:
+                trainable_parameter = self.general_tp
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -421,6 +436,7 @@ class TCResNetModel(SerializableModule):
                     gamma=gamma,
                     rho=rho,
                     neuron_type=neuron_type,
+                    trainable_parameter=trainable_parameter,
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
@@ -443,6 +459,7 @@ class TCResNetModel(SerializableModule):
             gamma_name = "block{}_gamma".format(count)
             roh_name = "block{}_rho".format(count)
             neurontype_name = "block{}_neuron_type".format(count)
+            trainable_parameter_name = "block{}_trainable_partameter".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -457,6 +474,7 @@ class TCResNetModel(SerializableModule):
             gamma = config.get(gamma_name, 1)
             rho = config.get(roh_name, 1)
             neuron_type = config.get(neurontype_name, "eLIF")
+            trainable_parameter = config.get(trainable_parameter_name, False)
 
             if general_bn is not None and batchnorm is not None:
                 batchnorm = general_bn
@@ -472,6 +490,8 @@ class TCResNetModel(SerializableModule):
                 gamma = self.gamma
             if self.rho is not None:
                 rho = self.rho
+            if self.general_tp is not None:
+                trainable_parameter = self.general_tp
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -497,6 +517,7 @@ class TCResNetModel(SerializableModule):
                 gamma=gamma,
                 rho=rho,
                 neuron_type=neuron_type,
+                trainable_parameter=trainable_parameter,
             )
             self.layers.append(block)
 
@@ -531,6 +552,7 @@ class TCResNetModel(SerializableModule):
                 readout_beta = config.get("readout_beta", 1)
                 readout_gamma = config.get("readout_gamma", 1)
                 readout_rho = config.get("readout_rho", 1)
+                readout_tp = config.get("readout_trainable_parameter", False)
 
                 if self.neuron_type is not None:
                     readout_neuron_type = self.neuron_type
@@ -542,6 +564,8 @@ class TCResNetModel(SerializableModule):
                     readout_gamma = self.gamma
                 if self.rho is not None:
                     readout_rho = self.rho
+                if self.general_tp is not None:
+                    readout_tp = self.general_tp
 
                 tmp_shape = shape[2]
                 self.fc = buildReadoutLayer(
@@ -554,6 +578,7 @@ class TCResNetModel(SerializableModule):
                     beta=readout_beta,
                     gamma=readout_gamma,
                     rho=readout_rho,
+                    trainable_parameter=readout_tp,
                 )
             else:
                 tmp_shape = shape[1]

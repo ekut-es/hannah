@@ -62,6 +62,20 @@ class ReadoutMeanLayer(torch.nn.Module):
 
         return output
 
+    def reset_parameters(self):
+        if self.trainable_parameter:
+            torch.nn.init.normal_(self.alpha, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.gamma, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.rho, mean=0.7, std=0.01)
+
+    def clamp(self):
+        if self.trainable_parameter:
+            self.alpha.data.clamp_(0.0, 1.0)
+            self.beta.data.clamp_(0.0, 1.0)
+            self.gamma.data.clamp_(0.0, 1.0)
+            self.rho.data.clamp_(0.0, 1.0)
+
 
 class ReadoutSpikeTimeLayer(torch.nn.Module):
     def __init__(self,):

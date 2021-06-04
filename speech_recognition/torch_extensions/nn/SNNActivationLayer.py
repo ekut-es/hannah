@@ -10,7 +10,7 @@ class Spiking1DIFLayer(torch.nn.Module):
         self.spike_fn = spike_fn
         self.flatten_output = flatten_output
 
-        self.Vth = torch.ones(channels)
+        self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
         self.time_position = time_position
 
         self.type = "IF"
@@ -20,9 +20,6 @@ class Spiking1DIFLayer(torch.nn.Module):
         self.training = True
 
     def forward(self, x):
-
-        self.Vth = self.Vth.to(device=x.device)
-
         batch_size = x.shape[0]
         nb_steps = x.shape[2]
 
@@ -67,7 +64,13 @@ class Spiking1DIFLayer(torch.nn.Module):
 
 class Spiking1DeLIFLayer(torch.nn.Module):
     def __init__(
-        self, channels: int, spike_fn, flatten_output=False, beta=0.65, time_position=2
+        self,
+        channels: int,
+        spike_fn,
+        flatten_output=False,
+        beta=0.65,
+        time_position=2,
+        trainable_parameter=False,
     ):
 
         super(Spiking1DeLIFLayer, self).__init__()
@@ -76,8 +79,11 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         self.spike_fn = spike_fn
         self.flatten_output = flatten_output
 
-        self.beta = torch.tensor(beta)
-        self.Vth = torch.ones(channels)
+        self.trainable_parameter = trainable_parameter
+        self.beta = torch.nn.Parameter(
+            torch.tensor(beta), requires_grad=trainable_parameter
+        )
+        self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "eLIF"
         self.time_position = time_position
@@ -85,15 +91,9 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         self.reset_parameters()
         self.clamp()
 
-        self.spk_rec_hist = None
-
         self.training = True
 
     def forward(self, x):
-
-        self.beta = self.beta.to(device=x.device)
-        self.Vth = self.Vth.to(device=x.device)
-
         batch_size = x.shape[0]
         nb_steps = x.shape[self.time_position]
 
@@ -136,10 +136,12 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         return output
 
     def reset_parameters(self):
-        pass
+        if self.trainable_parameter:
+            torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
 
     def clamp(self):
-        pass
+        if self.trainable_parameter:
+            self.beta.data.clamp_(0.0, 1.0)
 
 
 class Spiking1DLIFLayer(torch.nn.Module):
@@ -151,6 +153,7 @@ class Spiking1DLIFLayer(torch.nn.Module):
         alpha=0.75,
         beta=0.65,
         time_position=2,
+        trainable_parameter=False,
     ):
 
         super(Spiking1DLIFLayer, self).__init__()
@@ -159,21 +162,24 @@ class Spiking1DLIFLayer(torch.nn.Module):
         self.spike_fn = spike_fn
         self.flatten_output = flatten_output
 
-        self.alpha = torch.nn.Parameter(torch.tensor(alpha), requires_grad=False)
-        self.beta = torch.nn.Parameter(torch.tensor(beta), requires_grad=False)
+        self.trainable_parameter = trainable_parameter
+        self.beta = torch.nn.Parameter(
+            torch.tensor(beta), requires_grad=trainable_parameter
+        )
+        self.alpha = torch.nn.Parameter(
+            torch.tensor(alpha), requires_grad=trainable_parameter
+        )
         self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "LIF"
         self.time_position = time_position
 
+        self.reset_parameters()
+        self.clamp()
+
         self.training = True
 
     def forward(self, x):
-
-        self.alpha = self.alpha.to(device=x.device)
-        self.beta = self.beta.to(device=x.device)
-        self.Vth = self.Vth.to(device=x.device)
-
         batch_size = x.shape[0]
         nb_steps = x.shape[2]
 
@@ -222,6 +228,16 @@ class Spiking1DLIFLayer(torch.nn.Module):
 
         return output
 
+    def reset_parameters(self):
+        if self.trainable_parameter:
+            torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.alpha, mean=0.7, std=0.01)
+
+    def clamp(self):
+        if self.trainable_parameter:
+            self.beta.data.clamp_(0.0, 1.0)
+            self.alpha.data.clamp_(0.0, 1.0)
+
 
 class Spiking1DeALIFLayer(torch.nn.Module):
     def __init__(
@@ -233,6 +249,7 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         gamma=0.75,
         rho=0.75,
         time_position=2,
+        trainable_parameter=False,
     ):
 
         super(Spiking1DeALIFLayer, self).__init__()
@@ -241,24 +258,27 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         self.spike_fn = spike_fn
         self.flatten_output = flatten_output
 
-        self.beta = torch.tensor(beta)
-        self.gamma = torch.tensor(gamma)
-        self.rho = torch.tensor(rho)
-        self.Vth = torch.ones(channels)
+        self.trainable_parameter = trainable_parameter
+        self.beta = torch.nn.Parameter(
+            torch.tensor(beta), requires_grad=trainable_parameter
+        )
+        self.gamma = torch.nn.Parameter(
+            torch.tensor(gamma), requires_grad=trainable_parameter
+        )
+        self.rho = torch.nn.Parameter(
+            torch.tensor(rho), requires_grad=trainable_parameter
+        )
+        self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "eALIF"
         self.time_position = time_position
 
-        self.spk_rec_hist = None
+        self.reset_parameters()
+        self.clamp()
 
         self.training = True
 
     def forward(self, x):
-
-        self.beta = self.beta.to(device=x.device)
-        self.gamma = self.gamma.to(device=x.device)
-        self.Vth = self.Vth.to(device=x.device)
-
         batch_size = x.shape[0]
         nb_steps = x.shape[2]
 
@@ -311,6 +331,18 @@ class Spiking1DeALIFLayer(torch.nn.Module):
 
         return output
 
+    def reset_parameters(self):
+        if self.trainable_parameter:
+            torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.gamma, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.rho, mean=0.7, std=0.01)
+
+    def clamp(self):
+        if self.trainable_parameter:
+            self.beta.data.clamp_(0.0, 1.0)
+            self.gamma.data.clamp_(0.0, 1.0)
+            self.rho.data.clamp_(0.0, 1.0)
+
 
 class Spiking1DALIFLayer(torch.nn.Module):
     def __init__(
@@ -323,6 +355,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
         gamma=0.75,
         rho=0.75,
         time_position=2,
+        trainable_parameter=False,
     ):
 
         super(Spiking1DALIFLayer, self).__init__()
@@ -331,24 +364,30 @@ class Spiking1DALIFLayer(torch.nn.Module):
         self.spike_fn = spike_fn
         self.flatten_output = flatten_output
 
-        self.alpha = torch.tensor(alpha)
-        self.beta = torch.tensor(beta)
-        self.gamma = torch.tensor(gamma)
-        self.rho = torch.tensor(rho)
-        self.Vth = torch.ones(channels)
+        self.trainable_parameter = trainable_parameter
+        self.alpha = torch.nn.Parameter(
+            torch.tensor(alpha), requires_grad=trainable_parameter
+        )
+        self.beta = torch.nn.Parameter(
+            torch.tensor(beta), requires_grad=trainable_parameter
+        )
+        self.gamma = torch.nn.Parameter(
+            torch.tensor(gamma), requires_grad=trainable_parameter
+        )
+        self.rho = torch.nn.Parameter(
+            torch.tensor(rho), requires_grad=trainable_parameter
+        )
+        self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "ALIF"
         self.time_position = time_position
 
+        self.reset_parameters()
+        self.clamp()
+
         self.training = True
 
     def forward(self, x):
-
-        self.alpha = self.alpha.to(device=x.device)
-        self.beta = self.beta.to(device=x.device)
-        self.gamma = self.gamma.to(device=x.device)
-        self.Vth = self.Vth.to(device=x.device)
-
         batch_size = x.shape[0]
         nb_steps = x.shape[2]
 
@@ -404,6 +443,20 @@ class Spiking1DALIFLayer(torch.nn.Module):
             output = spk_rec
 
         return output
+
+    def reset_parameters(self):
+        if self.trainable_parameter:
+            torch.nn.init.normal_(self.alpha, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.beta, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.gamma, mean=0.7, std=0.01)
+            torch.nn.init.normal_(self.rho, mean=0.7, std=0.01)
+
+    def clamp(self):
+        if self.trainable_parameter:
+            self.alpha.data.clamp_(0.0, 1.0)
+            self.beta.data.clamp_(0.0, 1.0)
+            self.gamma.data.clamp_(0.0, 1.0)
+            self.rho.data.clamp_(0.0, 1.0)
 
 
 class ActivationLayer(torch.nn.Module):

@@ -52,6 +52,7 @@ def build1DConvolution(
     gamma=0.75,
     rho=0.75,
     neuron_type="eLIF",
+    trainable_parameter=False,
 ):
     conv = nn.Conv1d(
         in_channels=in_channels,
@@ -80,8 +81,9 @@ def build1DConvolution(
                     alpha=alpha,
                     beta=beta,
                     gamma=gamma,
-                    roh=rho,
+                    rho=rho,
                     neuron_type=neuron_type,
+                    trainable_parameter=trainable_parameter,
                 ),
             )
         elif type == "NN":
@@ -103,6 +105,7 @@ def build1DConvolution(
                     gamma=gamma,
                     rho=rho,
                     neuron_type=neuron_type,
+                    trainable_parameter=trainable_parameter,
                 ),
             )
         elif type == "NN":
@@ -122,6 +125,7 @@ def get1DNeuronLayer(
     rho=0,
     neuron_type="IF",
     time_position=2,
+    trainable_parameter=False,
 ):
     if neuron_type == "s2net":
         return Spiking1DS2NetLayer(
@@ -144,6 +148,7 @@ def get1DNeuronLayer(
             flatten_output=flatten_output,
             beta=beta,
             time_position=time_position,
+            trainable_parameter=trainable_parameter,
         )
     elif neuron_type == "LIF":
         return Spiking1DLIFLayer(
@@ -153,6 +158,7 @@ def get1DNeuronLayer(
             alpha=alpha,
             beta=beta,
             time_position=time_position,
+            trainable_parameter=trainable_parameter,
         )
     elif neuron_type == "eALIF":
         return Spiking1DeALIFLayer(
@@ -163,6 +169,7 @@ def get1DNeuronLayer(
             gamma=gamma,
             rho=rho,
             time_position=time_position,
+            trainable_parameter=trainable_parameter,
         )
     elif neuron_type == "ALIF":
         return Spiking1DALIFLayer(
@@ -174,6 +181,7 @@ def get1DNeuronLayer(
             gamma=gamma,
             rho=rho,
             time_position=time_position,
+            trainable_parameter=trainable_parameter,
         )
 
 
@@ -188,6 +196,7 @@ def buildLinearLayer(
     gamma=1,
     rho=1,
     neurontype="eLIF",
+    trainable_parameter=False,
 ):
     if conv_type == "SNN":
         return torch.nn.Sequential(
@@ -201,6 +210,7 @@ def buildLinearLayer(
                 neuron_type=neurontype,
                 spike_fn=spike_fn,
                 time_position=1,
+                trainable_parameter=trainable_parameter,
             ),
         )
     elif conv_type == "NN":
@@ -222,6 +232,7 @@ def buildReadoutLayer(
     w_init_std=0.15,
     spike_fn=None,
     neuron_type="eLIF",
+    trainable_parameter=False,
 ):
     if readout_type == "s2net":
         return ReadoutLayer(
@@ -230,7 +241,6 @@ def buildReadoutLayer(
             w_init_mean=w_init_mean,
             w_init_std=w_init_std,
             eps=eps,
-            time_reduction="mean",
         )
     elif neuron_type in ["IF", "eLIF", "eALIF", "LIF", "ALIF"] and readout_type in [
         "count",
@@ -248,6 +258,7 @@ def buildReadoutLayer(
             gamma=gamma,
             rho=rho,
             neurontype=neuron_type,
+            trainable_parameter=trainable_parameter,
         )
         if readout_type == "count":
             return torch.nn.Sequential(linear, ReadoutCountLayer())
@@ -255,7 +266,10 @@ def buildReadoutLayer(
             return torch.nn.Sequential(linear, ReadoutSpikeTimeLayer())
         elif readout_type == "mean":
             return torch.nn.Sequential(
-                linear, ReadoutMeanLayer(output_shape=output_shape)
+                linear,
+                ReadoutMeanLayer(
+                    output_shape=output_shape, trainable_parameter=trainable_parameter
+                ),
             )
     else:
         print("Error in buildReadoutLayer!!!!!!!!!")
