@@ -1,23 +1,23 @@
 import torch.nn
 
-from .SNNLayers import (
-    SpikingDenseLayer,
+from .SNNLayers import SpikingDenseLayer, EmptyLayer, Spiking1DS2NetLayer
+from .SNNReadoutLayers import (
+    ReadoutLayer,
+    ReadoutMeanLayer,
+    ReadoutSpikeTimeLayer,
+    ReadoutCountLayer,
+    ReadoutFirstSpikeLayer,
+)
+from .SNNBatchNormThroughTime import BatchNormalizationThroughTime1D
+from .SNNActivationLayer import (
     Spiking1DIFLayer,
     Spiking1DeLIFLayer,
     Spiking1DLIFLayer,
     Spiking1DeALIFLayer,
     Spiking1DALIFLayer,
-    Spiking1DS2NetLayer,
-    ReadoutLayer,
-    ReadoutFirstSpikeLayer,
-    ReadoutSpikeTimeLayer,
-    ReadoutCountLayer,
-    ReadoutMeanLayer,
-    SurrogateHeaviside,
-    EmptyLayer,
-    Surrogate_BP_Function,
-    BatchNormalizationThroughTime1D,
     ActivationLayer,
+    Surrogate_BP_Function,
+    SurrogateHeaviside,
 )
 import torch.nn as nn
 

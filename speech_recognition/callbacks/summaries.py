@@ -3,6 +3,8 @@ from collections import OrderedDict
 
 import pandas as pd
 import torch
+
+import speech_recognition.torch_extensions.nn.SNNActivationLayer
 from speech_recognition.models.sinc import SincNet
 
 from pytorch_lightning.callbacks import Callback
@@ -66,10 +68,10 @@ def walk_model(model, dummy_input):
             torch.nn.Conv2d: get_conv,
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
-            SNNLayers.Spiking1DeLIFLayer: get_1DSpikeLayer,
-            SNNLayers.Spiking1DLIFLayer: get_1DSpikeLayer,
-            SNNLayers.Spiking1DeALIFLayer: get_1DSpikeLayer,
-            SNNLayers.Spiking1DALIFLayer: get_1DSpikeLayer,
+            speech_recognition.torch_extensions.nn.SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
+            speech_recognition.torch_extensions.nn.SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
+            speech_recognition.torch_extensions.nn.SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
+            speech_recognition.torch_extensions.nn.SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
         }
 
         for _class, method in classes.items():
