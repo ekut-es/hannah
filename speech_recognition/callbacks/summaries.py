@@ -134,7 +134,11 @@ def walk_model(model, dummy_input):
         return weights, macs, attrs
 
     def get_fc(module, volume_ofm, output):
-        weights = macs = module.in_features * module.out_features
+        if len(output.shape) > 2:
+            weights = module.in_features * module.out_features
+            macs = weights * output.shape[1]
+        else:
+            weights = macs = module.in_features * module.out_features
         attrs = ""
         return weights, macs, attrs
 
