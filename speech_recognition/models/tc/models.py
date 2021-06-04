@@ -546,7 +546,7 @@ class TCResNetModel(SerializableModule):
             self.fc = nn.Conv1d(shape[1], n_labels, 1, bias=False)
         else:
             if self.conv_type == "SNN":
-                readout_type = config.get("readout_type", "mean")
+                readout_type = config.get("readout_type", "s2net")
                 readout_neuron_type = config.get("readout_neuron_type", "eLIF")
                 readout_alpha = config.get("readout_alpha", 1)
                 readout_beta = config.get("readout_beta", 1)

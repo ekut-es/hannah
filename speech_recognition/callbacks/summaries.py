@@ -203,6 +203,10 @@ class MacSummaryCallback(Callback):
         self._do_summary(pl_module)
         pl_module.train()
 
+    def on_test_end(self, trainer, pl_module):
+        pl_module.eval()
+        self._do_summary(pl_module)
+
     def on_validation_epoch_end(self, trainer, pl_module):
         res = self._do_summary(pl_module, print_log=False)
         for k, v in res.items():
