@@ -171,7 +171,6 @@ class ObjectDetectionModule(ClassifierModule):
         metric["val_ap_75"] = cocoEval.stats[2].item()
         metric["val_ar"] = cocoEval.stats[6].item()
         metric["val_ar_100dets"] = cocoEval.stats[8].item()
-        metric["aug_pct"] = self.augmentation.getPctAugmented()
 
         self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
         cocoGt.clearBatch()
@@ -185,10 +184,10 @@ class ObjectDetectionModule(ClassifierModule):
 
         metric = dict()
         metric["training_loss"] = loss
-        metric["aug_pct"] = self.augmentation.getPctAugmented()
 
-        self.log_dict(
-            metric,
+        self.log(
+            name="training_loss",
+            value=loss,
             on_step=False,
             on_epoch=True,
             prog_bar=True,
@@ -216,7 +215,6 @@ class ObjectDetectionModule(ClassifierModule):
         metric["test_ap_75"] = cocoEval.stats[2].item()
         metric["test_ar"] = cocoEval.stats[6].item()
         metric["test_ar_100dets"] = cocoEval.stats[8].item()
-        metric["aug_pct"] = self.augmentation.getPctAugmented()
 
         self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
         cocoGt.clearBatch()
