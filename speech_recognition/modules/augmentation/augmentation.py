@@ -39,27 +39,27 @@ class XmlAugmentationParser:
             for param in params:
                 description = param.attrib["Description"]
                 if description == "angle of rain streaks [deg]":
-                    value = conf["angle_rain_streaks"].split(",")
+                    value = conf["angle_rain_streaks"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
                 elif description == "Brightness factor":
-                    value = conf["brightness"].split(",")
+                    value = conf["brightness"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
                 elif description == "Number of Drops":
-                    value = conf["number_drops"].split(",")
+                    value = conf["number_drops"]
                     param.attrib["Value"] = str(
                         random.randint(int(value[0]), int(value[1]))
                     )
                 elif description == "Rain Rate [mm/h]":
-                    value = conf["rain_rate"].split(",")
+                    value = conf["rain_rate"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
                 elif description == "Mean Drop Radius [m]":
-                    value = conf["drop_radius"].split(",")
+                    value = conf["drop_radius"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
@@ -77,22 +77,22 @@ class XmlAugmentationParser:
             for param in params:
                 description = param.attrib["Description"]
                 if description == "Snow Fall Rate [mm/h]":
-                    value = conf["snowfall_rate"].split(",")
+                    value = conf["snowfall_rate"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
                 elif description == "Car Speed [m/s]":
-                    value = conf["car_speed_ms"].split(",")
+                    value = conf["car_speed_ms"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
                 elif description == "Crosswind Speed [m/s]":
-                    value = conf["car_speed_ms"].split(",")
+                    value = conf["car_speed_ms"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
                 elif description == "Draw Fog":
-                    value = random.choice(conf["draw_fog"])
+                    value = str(random.choice(conf["draw_fog"])).lower()
                     param.attrib["Value"] = value
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
@@ -108,12 +108,12 @@ class XmlAugmentationParser:
             for param in params:
                 description = param.attrib["Description"]
                 if description == "Fog Density [1/um^3]":
-                    value = conf["fog_density"].split(",")
+                    value = conf["fog_density"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
                 elif description == "Fog Sphere Diameter [um]":
-                    value = conf["fog_sphere"].split(",")
+                    value = conf["fog_sphere"]
                     param.attrib["Value"] = str(
                         random.uniform(float(value[0]), float(value[1]))
                     )
