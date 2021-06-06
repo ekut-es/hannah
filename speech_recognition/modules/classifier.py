@@ -29,6 +29,8 @@ from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
 from omegaconf import DictConfig
 
+from numpy import mean
+
 
 class ClassifierModule(LightningModule):
     def __init__(
@@ -308,6 +310,10 @@ class StreamClassifierModule(ClassifierModule):
             except ValueError:
                 logging.critical("Could not calculate batch metrics: {outputs}")
         self.log(f"{prefix}_loss", loss)
+        # log last loss for given depth if subsampling is present and enabled
+        if callable(getattr(self.model, "should_subsample", None)):
+            if self.model.should_subsample():
+                self.log(f"eloss_{self.model.active_depth}", loss, True)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
@@ -317,6 +323,7 @@ class StreamClassifierModule(ClassifierModule):
         sample_subnet_function = getattr(self.model, "sample_active_subnet", None)
         if callable(sample_subnet_function):
             self.model.sample_active_subnet()
+            self.log("a_depth", self.model.active_depth, True)
 
         output = self(x)
         y = y.view(-1)
@@ -366,6 +373,10 @@ class StreamClassifierModule(ClassifierModule):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
+        # if the model has elastic parameters, set them to their defaults for the validation step
+        if callable(getattr(self.model, "reset_active_elastic_values", None)):
+            self.model.reset_active_elastic_values()
+
         # INFERENCE
         output = self(x)
         y = y.view(-1)
@@ -397,6 +408,10 @@ class StreamClassifierModule(ClassifierModule):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
+        # if the model has elastic parameters, set them to their defaults for the test step
+        if callable(getattr(self.model, "reset_active_elastic_values", None)):
+            self.model.reset_active_elastic_values()
+
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
@@ -410,6 +425,28 @@ class StreamClassifierModule(ClassifierModule):
 
         if isinstance(self.test_set, SpeechDataset):
             self._log_audio(x, logits, y)
+
+        # if subsampling is present and enabled, compute loss values of elastic depths
+        if callable(getattr(self.model, "should_subsample", None)):
+            if self.model.should_subsample():
+
+                # initialise storage for elastic loss values, if not present
+                if getattr(self, "elastic_test_loss_values", None) is None:
+                    self.elastic_test_loss_values = []
+                    for i in range(self.model.min_depth, self.model.max_depth+1):
+                        self.elastic_test_loss_values.append([])
+
+                for i in range(self.model.min_depth, self.model.max_depth+1):
+                    try:
+                        submodel_output = self.model.get_elastic_depth_output(i)
+                        if submodel_output is None:
+                            continue
+                        submodel_loss = self.criterion(submodel_output, y)
+                        self.elastic_test_loss_values[i-self.model.min_depth].append(submodel_loss)
+                        # print("Elastic depth {i} yields loss: " + str(submodel_loss))
+                        # self.log(f"eloss_{i}", submodel_loss, True)
+                    except Exception:
+                        pass
 
         return loss
 
@@ -437,6 +474,12 @@ class StreamClassifierModule(ClassifierModule):
             metric_table.append((name, metric.compute().item()))
 
         logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
+
+        if getattr(self, "elastic_test_loss_values", None) is not None:
+            logging.info("Average loss values for elastic depth:")
+            for i, vals in enumerate(self.elastic_test_loss_values):
+                average_loss = mean(vals)
+                logging.info(f"{i+self.model.min_depth} : {average_loss}")
 
         confusion_matrix = self.test_confusion.compute()
         self.test_confusion.reset()
