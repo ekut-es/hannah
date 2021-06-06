@@ -31,7 +31,7 @@ trainer:
 nas:
   parametrization:
     backend:
-      cols: [2,4,6,8,16]
+      cols: [2,4,6,8]
       rows: null
     model:
       qconfig:
