@@ -686,6 +686,118 @@ class VadDataset(SpeechDataset):
             )
 
 
+class TimitDataset(SpeechDataset):
+    def __init__(self, data, set_type, config):
+        super().__init__(data, set_type, config)
+
+        self.label_names = {0: "noise", 1: "speech"}
+
+    @classmethod
+    def prepare(cls, config):
+        cls.download(config)
+        NoiseDataset.download_noise(config)
+        DatasetSplit.split_data(config)
+        Downsample.downsample(config)
+
+    @classmethod
+    def splits(cls, config):
+        """Splits the dataset in training, devlopment and test set and returns
+        the three sets as List"""
+
+        msglogger = logging.getLogger()
+
+        folder = config["data_folder"]
+        folder = os.path.join(folder, "vad_balanced")
+
+        descriptions = ["train", "dev", "test"]
+        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
+        datasets = [{}, {}, {}]
+        configs = [{}, {}, {}]
+
+        for num, desc in enumerate(descriptions):
+
+            descs_noise = os.path.join(folder, desc, "noise")
+            descs_speech = os.path.join(folder, desc, "speech")
+            descs_bg = os.path.join(folder, desc, "background_noise")
+
+            noise_files = [
+                os.path.join(descs_noise, f)
+                for f in os.listdir(descs_noise)
+                if os.path.isfile(os.path.join(descs_noise, f))
+            ]
+            speech_files = [
+                os.path.join(descs_speech, f)
+                for f in os.listdir(descs_speech)
+                if os.path.isfile(os.path.join(descs_speech, f))
+            ]
+            bg_noise_files = [
+                os.path.join(descs_bg, f)
+                for f in os.listdir(descs_bg)
+                if os.path.isfile(os.path.join(descs_bg, f))
+            ]
+
+            random.shuffle(noise_files)
+            random.shuffle(speech_files)
+            label_noise = 0
+            label_speech = 1
+
+            datasets[num].update({n: label_noise for n in noise_files})
+            datasets[num].update({s: label_speech for s in speech_files})
+            configs[num].update(ChainMap(dict(bg_noise_files=bg_noise_files), config))
+
+        res_datasets = (
+            cls(datasets[0], DatasetType.TRAIN, configs[0]),
+            cls(datasets[1], DatasetType.DEV, configs[1]),
+            cls(datasets[2], DatasetType.TEST, configs[2]),
+        )
+
+        return res_datasets
+
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+
+        if len(downloadfolder_tmp) == 0:
+            download_folder = os.path.join(data_folder, "downloads")
+
+        if not os.path.isdir(downloadfolder_tmp):
+            os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".zip")
+
+        data_folder = config["data_folder"]
+
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+
+        timitdir = os.path.join(data_folder, "timit")
+
+        if not os.path.isdir(timitdir):
+            os.makedirs(timitdir)
+
+        variants = config["variants"]
+
+        # download UWNU dataset
+        if "timit" in variants:
+            filename = "timit.zip"
+            target_test_folder = os.path.join(timitdir, "data")
+            url = "https://data.deepai.org/timit.zip"
+            target_cache = os.path.join(downloadfolder_tmp, "timit")
+
+            extract_from_download_cache(
+                filename,
+                url,
+                cached_files,
+                target_cache,
+                timitdir,
+                target_test_folder,
+                clear_download,
+            )
+
+
 class KeyWordDataset(SpeechDataset):
     def __init__(self, data, set_type, config):
         super().__init__(data, set_type, config)
