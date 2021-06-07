@@ -68,7 +68,7 @@ class ResBlock1d(ResBlockBase):
 def create(name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_order=None, steps_without_sampling=1):
     # if no orders for the norm operator are specified, fall back to default
     if not (hasattr(norm_order, "norm_before_act") and hasattr(norm_order, "norm_after_act")):
-        print("order of norm before/after activation is not set!")
+        logging.info("order of norm before/after activation is not set!")
         norm_order = {"norm_before_act": True, "norm_after_act": False}
 
     flatten_n = input_shape[0]
@@ -210,19 +210,25 @@ class WIPModel(nn.Module):
         return result
 
     # return an extracted module sequence for a given depth
-    def extract_elastic_depth_sequence(self, target_depth, quantized=False):
+    def extract_elastic_depth_sequence(self, target_depth, quantized=False, clone_mode=False):
         if target_depth < self.min_depth or target_depth > self.max_depth:
             raise Exception(f"attempted to extract submodel for depth {target_depth} where min: {self.min_depth} and max: {self.max_depth}")
         extracted_module_list = nn.ModuleList([])
-        # for layer in self.conv_layers[:target_depth]:
-        #    extracted_module_list.append(layer)
-        rebuild_output = rebuild_extracted_blocks(self.conv_layers[:target_depth], quantized=quantized)
-        for item in rebuild_output:
-            extracted_module_list.append(item)
+
+        if clone_mode:
+            for layer in self.conv_layers[:target_depth]:
+                extracted_module_list.append(layer)
+        else:
+            rebuild_output = rebuild_extracted_blocks(self.conv_layers[:target_depth], quantized=quantized)
+            extracted_module_list.append(module_list_to_module(rebuild_output))
+            # for item in rebuild_output:
+            #     extracted_module_list.append(item)
+
         extracted_module_list.append(self.pool)
         extracted_module_list.append(self.flatten)
         extracted_module_list.append(self.get_output_linear_layer(target_depth))
-        return copy.deepcopy(nn.Sequential(*extracted_module_list))
+        extracted_module_list = flatten_module_list(extracted_module_list)
+        return copy.deepcopy(module_list_to_module(extracted_module_list))
 
     def get_elastic_depth_output(self, target_depth=None):
         if target_depth is None:
@@ -230,7 +236,12 @@ class WIPModel(nn.Module):
         if self.last_input is None:
             return None
         submodel = self.extract_elastic_depth_sequence(target_depth)
-        return submodel(self.last_input)
+        # print(submodel)
+        # print(type(submodel))
+        output = submodel(self.last_input)
+        # print(type(output))
+        # print(output)
+        return output
 
     # sample the active subnet, select a random depth between the configured min and the max depth (available major block depth)
     def sample_active_subnet(self):
@@ -259,69 +270,73 @@ class WIPModel(nn.Module):
 
 
 def rebuild_extracted_blocks(blocks, quantized=False):
-    module_set = DefaultModuleSet1d
+    out_modules = nn.ModuleList([])
+    module_set = DefaultModuleSet1d()
+    # print(f"\nRebuilding : {type(blocks)} {len(blocks)}")
     if quantized:
-        module_set = QuantizedModuleSet1d
+        module_set = QuantizedModuleSet1d()
 
     if blocks is None:
-        return None
+        raise ValueError("input blocks are None value")
 
-    elif isinstance(blocks, nn.Sequential) or isinstance(blocks, nn.ModuleList):
-        in_modules = nn.ModuleList([])
-        out_modules = nn.ModuleList([])
+    # if the input is not iterable, encase it in a moduleList
+    elif not hasattr(blocks, '__iter__'):
+        if not isinstance(blocks, nn.Module):
+            raise TypeError("Input blocks are neither iterable nor Module")
+        blocks = nn.ModuleList([blocks])
+
+    if isinstance(blocks, nn.Sequential) or isinstance(blocks, nn.ModuleList):
+        modules = nn.ModuleList([])
         for item in blocks:
-            in_modules.append(item)
+            modules.append(item)
 
-        # flatten any nested Sequential or ModuleList
-        while (isinstance(x, nn.Sequential) for x in in_modules) or (isinstance(x, nn.ModuleList) for x in in_modules):
-            new_module_list = nn.ModuleList([])
-            for old_item in in_modules:
-                if(isinstance(item, nn.Sequential)) or (isinstance(item, nn.ModuleList)):
-                    for old_subitem in old_item:
-                        new_module_list.append(old_subitem)
-                else:
-                    new_module_list.append(old_item)
-            modules = new_module_list
+        modules = flatten_module_list(modules)
+
+        input_modules_flat_length = len(modules)
 
         i = 0
         while i in range(len(modules)):
             module = modules[i]
+            # print(type(module))
             reassembled_module = None
             if isinstance(module, nn.Conv1d):
                 if i+1 in range(len(modules)) and isinstance(modules[i+1], nn.BatchNorm1d):
                     if i+2 in range(len(modules)) and isinstance(modules[i+2], nn.ReLU):
                         # if both norm and relu follow in sequence, combine all three and skip the next two items (which are the norm, act)
-                        reassembled_module = module_set.reassemble(module, norm=True, act=True)
+                        reassembled_module = module_set.reassemble(module=module, norm=True, act=True, norm_module=modules[i+1])
                         i += 2
                     else:
                         # if only norm follows in sequence, combine both and skip the next item (which is the norm)
+                        reassembled_module = module_set.reassemble(module=module, norm=True, act=False, norm_module=modules[i+1])
                         i += 1
-                        reassembled_module = module_set.reassemble(module, norm=True, act=False)
                 elif i+1 in range(len(modules)) and isinstance(modules[i+1], nn.ReLU):
                     # if an act with no previous norm follows, combine both and skip the next item (which is the act)
-                    reassembled_module = module_set.reassemble(module, norm=False, act=True)
+                    reassembled_module = module_set.reassemble(module=module, norm=False, act=True)
+                    i += 1
                 else:
                     # if there is no norm or act after the conv, reassemble a standalone conv
-                    reassembled_module = module_set.reassemble(module, norm=False, act=False)
+                    reassembled_module = module_set.reassemble(module=module, norm=False, act=False)
             elif isinstance(module, nn.BatchNorm1d):
                 if module_set.norm1d is not None:
                     # pass the channel count on to the new norm type
                     reassembled_module = module_set.norm1d(module.num_features)
+                    reassembled_module.weight = module.weight
                 else:
-                    logging.warn("Skipping stand-alone norm in reassembly: not available in the selected module set")
+                    logging.error("Skipping stand-alone norm in reassembly: not available in the selected module set")
             elif isinstance(module, nn.ReLU):
                 if module_set.act is not None:
-                    reassembled_module = module_set.act
+                    reassembled_module = module_set.act()
                 else:
-                    logging.warn("Skipping stand-alone activation in reassembly: not available in the selected module set")
+                    logging.error("Skipping stand-alone activation in reassembly: not available in the selected module set")
             elif isinstance(module, ResBlockBase):
                 # reassemble both the subblocks and the skip layer separately, then put them into a new ResBlock
-                reassembled_subblocks = rebuild_extracted_blocks(module.blocks, quantized=quantized)
-                reassembled_skip = rebuild_extracted_blocks(module.skip)
+                reassembled_subblocks = module_list_to_module(rebuild_extracted_blocks(module.blocks, quantized=quantized))
+                reassembled_skip = module_list_to_module(rebuild_extracted_blocks(module.skip, quantized=quantized))
                 reassembled_module = ResBlockBase(module.in_channels, module.out_channels)
                 reassembled_module.blocks = reassembled_subblocks
                 reassembled_module.skip = reassembled_skip
 
+            # print(reassembled_module)
             if reassembled_module is not None:
                 out_modules.append(reassembled_module)
             i += 1
@@ -335,7 +350,51 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                     modules.append(output_item)
     # return module_set.assemble(weights, norm, act)
         """
+    out_modules = flatten_module_list(out_modules)
+    output_modules_flat_length = len(out_modules)
+    if input_modules_flat_length != output_modules_flat_length and not quantized:
+        logging.info("Reassembly changed length of module list")
     return out_modules
+
+
+def flatten_module_list(modules):
+    if not hasattr(modules, '__iter__'):
+        if isinstance(modules, nn.Module):
+            # if the input is non-iterable and is already a module, it can be returned as a list of one element
+            return nn.ModuleList([modules])
+
+    else:
+        # flatten any nested Sequential or ModuleList
+        contains_nested = (isinstance(x, nn.Sequential) for x in modules) or (isinstance(x, nn.ModuleList) for x in modules)
+        # repeat until the cycle no longer finds nested modules
+        while contains_nested:
+            # print(f"Nested? {type(modules)} {len(modules)}")
+            contains_nested = False
+            new_module_list = nn.ModuleList([])
+            for old_item in modules:
+                if hasattr(old_item, '__iter__'):
+                    contains_nested = True
+                    for old_subitem in old_item:
+                        new_module_list.append(old_subitem)
+                else:
+                    new_module_list.append(old_item)
+            modules = new_module_list
+
+        return modules
+
+
+# return a single module from an input moduleList
+def module_list_to_module(module_list):
+    # if the input is non-iterable, and is already a module, return it
+    if not hasattr(module_list, '__iter__'):
+        if isinstance(module_list, nn.Module):
+            return module_list
+        else:
+            raise TypeError("input is neither iterable nor module")
+    if len(module_list) == 1:
+        return module_list[0]
+    else:
+        return nn.Sequential(*module_list)
 
 
 class ModuleSet():
@@ -346,7 +405,7 @@ class ModuleSet():
     conv1d_norm = None
     conv1d_act = None
 
-    def reassemble(self, weights, norm, act):
+    def reassemble(self, weights, norm, act, norm_module):
         raise Exception("reassemble function of module set is undefined")
 
 
@@ -355,17 +414,27 @@ class DefaultModuleSet1d(ModuleSet):
     norm1d = nn.BatchNorm1d
     act = nn.ReLU
 
-    def reassemble(self, module, norm=True, act=True):
+    def reassemble(self, module, norm=True, act=True, norm_module=None, clone_mode=True):
         modules = nn.ModuleList([])
+        # print(f"{module.in_channels}, {module.out_channels}, {module.kernel_size}, {module.stride}, {module.padding}, {module.dilation}, {module.groups}, {module.bias}, {module.padding_mode}")
         # create a new conv1d under the same parameters, with the same weights
         # this could technically re-use the input module directly, as nothing is changed
-        new_conv = nn.Conv1d(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding, module.dilation, module.groups, module.bias, module.padding_mode)
-        new_conv.weight = module.weight
+        # new_conv = nn.Conv1d(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding, module.dilation, module.groups, module.bias, module.padding_mode)
+        new_conv = module
+        if not clone_mode:
+            new_conv = nn.Conv1d(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
+            new_conv.weight = module.weight
         modules.append(new_conv)
         if norm:
-            modules.append(self.norm1d)
+            if norm_module is None:
+                raise ValueError("module with norm requested, no source norm module provided")
+            new_norm = norm_module
+            if not clone_mode:
+                new_norm = self.norm1d(norm_module.num_features)
+                new_norm.weight = norm_module.weight
+            modules.append(new_norm)
         if act:
-            modules.append(self.act)
+            modules.append(self.act())
         return copy.deepcopy(nn.Sequential(*modules))
 
 
@@ -376,15 +445,22 @@ class QuantizedModuleSet1d(ModuleSet):
     conv1d_norm = qat.ConvBn1d
     conv1d_act = qat.ConvReLU1d
 
-    def reassemble(self, module, norm=True, act=True):
+    # TODO: copy norm weights?
+    def reassemble(self, module, norm=True, act=True, norm_module=None):
         out_module = None
+        if norm and norm_module is None:
+            raise ValueError("module with norm requested, no source norm module provided")
         if norm and act:
-            out_module = self.conv1d_norm_act(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
+            # out_module = self.conv1d_norm_act(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
+            out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         elif norm:
-            out_module = self.conv1d_norm(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
+            # out_module = self.conv1d_norm(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
+            out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         elif act:
-            out_module = self.conv1d_act(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
+            # out_module = self.conv1d_act(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
+            out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         else:
-            out_module = self.conv1d(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
+            # out_module = self.conv1d(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
+            out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         out_module.weight = module.weight
         return copy.deepcopy(out_module)
