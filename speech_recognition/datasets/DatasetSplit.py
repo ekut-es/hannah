@@ -15,67 +15,6 @@ class DatasetSplit:
         pass
 
     @classmethod
-    def vad(cls, config):
-        # directories with original data
-        data_folder = config["data_folder"]
-        noise_dir = os.path.join(data_folder, "noise_files")
-        speech_dir = os.path.join(data_folder, "speech_files")
-
-        noise_files = NoiseDataset.getTUT_NoiseFiles(config)
-        noise_files_others = NoiseDataset.getOthers_divided(config)
-
-        # list all noise  and speech files
-        speech_files = DatasetSplit.read_UWNU(config)
-
-        # randomly shuffle the noise and speech files and split them in train,
-        # validation and test set
-        random.shuffle(noise_files)
-        random.shuffle(speech_files)
-
-        nb_noise_files = len(noise_files)
-        nb_train_noise = int(0.6 * nb_noise_files)
-        nb_dev_noise = int(0.2 * nb_noise_files)
-
-        nb_speech_files = len(speech_files)
-        nb_train_speech = int(0.6 * nb_speech_files)
-        nb_dev_speech = int(0.2 * nb_speech_files)
-
-        train_noise = noise_files[:nb_train_noise]
-        dev_noise = noise_files[nb_train_noise : nb_train_noise + nb_dev_noise]
-        test_noise = noise_files[nb_train_noise + nb_dev_noise :]
-
-        train_other, dev_other, test_other = noise_files_others
-        train_noise.extend(train_other)
-        dev_noise.extend(dev_other)
-        test_noise.extend(test_other)
-
-        nb_noise_files += len(test_other)
-        nb_train_noise += len(train_other)
-        nb_dev_noise += len(dev_other)
-
-        train_speech = speech_files[:nb_train_speech]
-        dev_speech = speech_files[nb_train_speech : nb_train_speech + nb_dev_speech]
-        test_speech = speech_files[nb_train_speech + nb_dev_speech :]
-
-        mozilla = DatasetSplit.read_mozilla(config)
-        mozilla_train, mozilla_dev, mozilla_test = mozilla
-
-        train_speech.extend(mozilla_train)
-        dev_speech.extend(mozilla_dev)
-        test_speech.extend(mozilla_test)
-
-        destination_dict = {
-            "train/noise": train_noise,
-            "train/speech": train_speech,
-            "dev/noise": dev_noise,
-            "dev/speech": dev_speech,
-            "test/noise": test_noise,
-            "test/speech": test_speech,
-        }
-
-        return destination_dict
-
-    @classmethod
     def vad_balanced(cls, config):
         # directories with original data
 
@@ -130,63 +69,6 @@ class DatasetSplit:
         random.shuffle(train_noise)
         random.shuffle(dev_noise)
         random.shuffle(test_noise)
-
-        train_bg_noise = train_noise[:100]
-        dev_bg_noise = dev_noise[:100]
-        test_bg_noise = test_noise[:100]
-
-        destination_dict = {
-            "train/noise": train_noise,
-            "train/speech": train_speech,
-            "dev/noise": dev_noise,
-            "dev/speech": dev_speech,
-            "test/noise": test_noise,
-            "test/speech": test_speech,
-            "train/background_noise": train_bg_noise,
-            "dev/background_noise": dev_bg_noise,
-            "test/background_noise": test_bg_noise,
-        }
-
-        return destination_dict
-
-    @classmethod
-    def getrennt(cls, config):
-        # directories with original data
-        data_folder = config["data_folder"]
-        noise_dir = os.path.join(data_folder, "noise_files")
-        speech_dir = os.path.join(data_folder, "speech_files")
-        speech_dir = os.path.join(speech_dir, "uwnu-v2")
-
-        # list all noise  and speech files
-        noise_files = list_all_files(noise_dir, ".wav", True)
-        noise_files.extend(list_all_files(noise_dir, ".mp3", True))
-        speech_files_P = []
-        speech_files_N = []
-        for path, subdirs, files in os.walk(speech_dir):
-            for name in files:
-                if name.endswith("wav") and not name.startswith("."):
-                    if "NC" in name:
-                        speech_files_P.append(os.path.join(path, name))
-                    else:
-                        speech_files_N.append(os.path.join(path, name))
-
-        # randomly shuffle noise and speech files and split them in train,
-        # validation and test set
-
-        random.shuffle(noise_files)
-        random.shuffle(speech_files_P)
-
-        nb_noise_files = len(noise_files)
-        nb_train_noise = int(0.6 * nb_noise_files)
-        nb_dev_noise = int(0.2 * nb_noise_files)
-
-        train_noise = noise_files[:nb_train_noise]
-        dev_noise = noise_files[nb_train_noise : nb_train_noise + nb_dev_noise]
-        test_noise = noise_files[nb_train_noise + nb_dev_noise :]
-
-        train_speech = speech_files_N[:nb_train_noise]
-        dev_speech = speech_files_P[nb_train_noise : nb_train_noise + nb_dev_noise]
-        test_speech = speech_files_P[nb_train_noise + nb_dev_noise : nb_noise_files]
 
         train_bg_noise = train_noise[:100]
         dev_bg_noise = dev_noise[:100]
@@ -277,13 +159,8 @@ class DatasetSplit:
             else:
                 data_splits = []
 
-        splits = ["vad", "vad_speech", "vad_balanced", "getrennt"]
-        split_methods = [
-            DatasetSplit.vad,
-            DatasetSplit.vad_speech,
-            DatasetSplit.vad_balanced,
-            DatasetSplit.getrennt,
-        ]
+        splits = ["vad_speech", "vad_balanced"]
+        split_methods = [DatasetSplit.vad_speech, DatasetSplit.vad_balanced]
 
         for data_split in data_splits:
             logging.info("split data begins current_split: %s", data_split)
