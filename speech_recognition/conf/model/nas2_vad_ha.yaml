@@ -1,14 +1,14 @@
 # @package _group_
 
 # Backend parameters:
-#   backend.cols=2
+#   backend.cols=4
 #   backend.rows=None
 
 # Expected results:#   acc_accuracy: 0.0
-#   acc_area: 35099.563
-#   acc_clock_cycles: 395.0
-#   acc_power: 1.1169924271739999e-06
-#   val_error: 0.010158002376556396
+#   acc_area: 37824.57400000001
+#   acc_clock_cycles: 285.0
+#   acc_power: 1.3192501725340002e-06
+#   val_error: 0.0022573471069335938
 
 _target_: speech_recognition.models.factory.factory.create_cnn
 name: nas2_vad_ha
@@ -26,44 +26,20 @@ conv:
     stride: 1
     target: conv1d
   - act: true
-    kernel_size: 7
+    kernel_size: 3
     norm: true
-    out_channels: 8
+    out_channels: 12
     parallel: false
     stride: 1
     target: conv1d
-  - act: true
+  - act: false
     kernel_size: 1
     norm: true
-    out_channels: 4
+    out_channels: 28
     parallel: false
     stride: 1
     target: conv1d
   stride: 16
-  target: forward
-- blocks:
-  - act: true
-    kernel_size: 7
-    norm: true
-    out_channels: 4
-    parallel: false
-    stride: 1
-    target: conv1d
-  - act: false
-    kernel_size: 5
-    norm: true
-    out_channels: 24
-    parallel: false
-    stride: 1
-    target: conv1d
-  - act: false
-    kernel_size: 11
-    norm: true
-    out_channels: 8
-    parallel: false
-    stride: 1
-    target: conv1d
-  stride: 4
   target: forward
 qconfig:
   _target_: speech_recognition.models.factory.qconfig.get_trax_qat_qconfig
