@@ -253,7 +253,9 @@ class WIPModel(nn.Module):
         self.update_output_channel_count()
         # print("Picked active depth: ", self.active_depth)
 
+    # TODO: remove shortcut when extraction works
     def should_subsample(self):
+        return self.current_step > 5
         return self.current_step > self.steps_without_sampling
 
     # reset elastic values to their default (max) values
@@ -414,20 +416,29 @@ class DefaultModuleSet1d(ModuleSet):
     norm1d = nn.BatchNorm1d
     act = nn.ReLU
 
-    def reassemble(self, module, norm=True, act=True, norm_module=None, clone_mode=True):
+    def reassemble(self, module: nn.Conv1d, norm=False, act=False, norm_module: nn.BatchNorm1d = None, clone_mode=True):
         modules = nn.ModuleList([])
         # print(f"{module.in_channels}, {module.out_channels}, {module.kernel_size}, {module.stride}, {module.padding}, {module.dilation}, {module.groups}, {module.bias}, {module.padding_mode}")
         # create a new conv1d under the same parameters, with the same weights
         # this could technically re-use the input module directly, as nothing is changed
         # new_conv = nn.Conv1d(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding, module.dilation, module.groups, module.bias, module.padding_mode)
+        module = copy.deepcopy(module)
+        norm_module = copy.deepcopy(norm_module)
         new_conv = module
         if not clone_mode:
-            new_conv = nn.Conv1d(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
+            new_conv = self.conv1d(
+                    in_channels=module.in_channels,
+                    out_channels=module.out_channels,
+                    kernel_size=module.kernel_size,
+                    stride=module.stride,
+                    padding=module.padding
+                )
             new_conv.weight = module.weight
+            new_conv.bias = module.bias
         modules.append(new_conv)
         if norm:
             if norm_module is None:
-                raise ValueError("module with norm requested, no source norm module provided")
+                raise ValueError("reassembly with norm requested, no source norm module provided")
             new_norm = norm_module
             if not clone_mode:
                 new_norm = self.norm1d(norm_module.num_features)
@@ -446,7 +457,7 @@ class QuantizedModuleSet1d(ModuleSet):
     conv1d_act = qat.ConvReLU1d
 
     # TODO: copy norm weights?
-    def reassemble(self, module, norm=True, act=True, norm_module=None):
+    def reassemble(self, module: nn.Conv1d, norm=False, act=False, norm_module: nn.BatchNorm1d = None):
         out_module = None
         if norm and norm_module is None:
             raise ValueError("module with norm requested, no source norm module provided")
