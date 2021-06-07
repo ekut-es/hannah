@@ -9,6 +9,13 @@
 #   acc_clock_cycles: 420.0
 #   acc_power: 1.099327357492e-06
 #   val_error: 0.03515833616256714
+
+_target_: speech_recognition.models.factory.factory.create_cnn
+name: nas2_wwd_la
+norm:
+  target: bn
+act:
+  target: relu
 conv:
 - blocks:
   - act: false
@@ -38,7 +45,10 @@ conv:
   stride: 4
   target: forward
 qconfig:
+  _target_: speech_recognition.models.factory.qconfig.get_trax_qat_qconfig
   config:
     bw_b: 0
     bw_f: 4
     bw_w: 6
+    noise_prob: 0.7
+    power_of_2: false
