@@ -10,6 +10,27 @@ class Downsample:
         pass
 
     @classmethod
+    def downsample_file(cls, sourcepath, targetpath, target_sr):
+        torchaudio.set_audio_backend("sox_io")
+        data, sr = torchaudio.load(sourcepath)
+        changed = False
+        if target_sr != sr:
+            data = torchaudio.transforms.Resample(sr, target_sr).forward(data)
+            changed = True
+
+        if targetpath.endswith("mp3"):
+            targetpath = targetpath.replace(".mp3", ".wav")
+            changed = True
+        if targetpath.endswith("MP3"):
+            targetpath = targetpath.replace(".MP3", ".wav")
+            changed = True
+        if changed:
+            torchaudio.save(targetpath, data[0].unsqueeze(0), target_sr)
+            return targetpath
+
+        return None
+
+    @classmethod
     def downsample(cls, config):
         if "downsample" not in config:
             return
