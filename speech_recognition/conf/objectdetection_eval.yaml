@@ -1,7 +1,7 @@
 name: test
 checkpoints: [trained_models/fasterrcnn_augmented/faster-rcnn-resnet50/best.ckpt]
 noise: []
-methods: ["real_rain"]
+methods: ["original", "full_augmented", "real_rain"]
 output_dir: eval
 
 augmentation:
@@ -12,7 +12,7 @@ augmentation:
     - angle_rain_streaks: [-45, 45]
     - brightness: [0.2, 2]
     - number_drops: [500, 2000]
-    - rain_rate: [40, 60]
+    - rain_rate: [1, 60]
     - drop_radius: [0.0004, 0.005]
   - snow:
     - snowfall_rate: [0, 3]
