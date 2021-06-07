@@ -15,7 +15,7 @@ class XmlAugmentationParser:
     @staticmethod
     def parse(conf, img, path):
         random.seed()
-        augmentation = random.choice(conf["augmentations"])
+        augmentation = random.choices(conf["augmentations"], conf["augmentations_pct"])
 
         if "rain" in augmentation:
             XmlAugmentationParser.__parseRain(

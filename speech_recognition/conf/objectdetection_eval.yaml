@@ -8,6 +8,7 @@ augmentation:
   - augmented_pct: 50
   - reaugment_per_epoch_pct: 20
   - augmentations: [rain_drops]
+  - augmentations_pct: [100]
   - rain_drops:
     - angle_rain_streaks: [-45, 45]
     - brightness: [0.2, 2]
