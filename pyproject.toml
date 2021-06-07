@@ -68,6 +68,7 @@ onnxrt-backend = ["onnxruntime"]
 [tool.poetry.scripts]
 hannah-train = 'speech_recognition.train:main'
 hannah-eval = 'speech_recognition.eval:main'
+hannah-objectdetection-eval = 'speech_recognition.objectdetection_eval:main'
 
 [build-system]
 requires = ["poetry>=0.12"]

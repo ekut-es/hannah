@@ -128,21 +128,23 @@ class AugmentationThread:
         self.stop = True
         self.running = False
 
-    def call_augment(self, conf, img, kitti_dir):
+    def call_augment(self, conf, img, kitti_dir, out):
         XmlAugmentationParser.parse(conf, img, kitti_dir)
         subprocess.call(
             kitti_dir + "/augmentation/perform_augmentation.sh",
             stdout=subprocess.DEVNULL,
         )
+        if out is True:
+            print("Image augmented")
 
-    def augment_img(self, kitti, img, conf):
+    def augment_img(self, kitti, img, conf, out):
         txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
         kitti.aug_files.append(img[:-4])
         txt.write(img[:-4] + "\n")
         txt.close()
-        self.call_augment(conf, img, kitti.kitti_dir)
+        self.call_augment(conf, img, kitti.kitti_dir, out)
 
-    def augment(self, conf, kitti, pct):
+    def augment(self, conf, kitti, pct, out):
         self.running = True
         self.stop = False
         reaugment = conf["reaugment_per_epoch_pct"]
@@ -168,15 +170,15 @@ class AugmentationThread:
             rand = random.randrange(0, 100)
 
             if img[:-4] in kitti.aug_files and not os.path.isfile(
-                self.kitti_dir + "/training/augmented/" + img
+                kitti.kitti_dir + "/training/augmented/" + img
             ):
-                self.augment_img(kitti, img, conf)
+                self.augment_img(kitti, img, conf, out)
             elif (
                 rand < pct
                 and len(kitti.aug_files) <= num_augment
                 and img[:-4] not in kitti.aug_files
             ):
-                self.augment_img(kitti, img, conf)
+                self.augment_img(kitti, img, conf, out)
         self.stop = True
         self.running = False
 
@@ -192,26 +194,29 @@ class Augmentation:
         self.aug_thread = AugmentationThread()
         self.conf = dict((key, a[key]) for a in augmentation for key in a)
         self.pct = self.conf["augmented_pct"] if "augmented_pct" in self.conf else 0
+        self.setEvalAttribs()
 
     def augment(self, kitti: Kitti):
         kitti.aug_files = list()
 
-        if self.pct != 0:
+        if self.pct != 0 and self.val_pct != 0:
             self.aug_thread.clear()
             th = threading.Thread(
                 target=self.aug_thread.augment,
                 args=(
                     self.conf,
                     kitti,
-                    self.pct if kitti.set_type == DatasetType.TRAIN else 50,
+                    self.pct if kitti.set_type == DatasetType.TRAIN else self.val_pct,
+                    self.out,
                 ),
                 daemon=True,
             )
             th.start()
 
-    def getPctAugmented(self):
-        return (
-            self.aug_thread.augmented_imgs / self.aug_thread.imgs_total
-            if self.aug_thread.imgs_total != 0
-            else 0
-        )
+            if self.wait is True:
+                th.join()
+
+    def setEvalAttribs(self, val_pct=50, wait=False, out=False):
+        self.val_pct = val_pct
+        self.wait = wait
+        self.out = out
