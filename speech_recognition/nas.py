@@ -34,7 +34,11 @@ def run_training(num, config):
     os.chdir(str(num))
     config = OmegaConf.create(config)
     logger = TensorBoardLogger(".")
-    seed_everything(config.get("seed", 1234), workers=True)
+
+    seed = config.get("seed", 1234)
+    if isinstance(seed, list):
+        seed = seed[0]
+    seed_everything(seed, workers=True)
 
     num_gpus = torch.cuda.device_count()
     gpu = num % num_gpus
