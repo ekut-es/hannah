@@ -27,6 +27,7 @@ import numpy as np
 from ..datasets import SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
+from ..utils import fullname
 
 from omegaconf import DictConfig
 
@@ -185,6 +186,9 @@ class ClassifierModule(LightningModule):
                     "%s not in state dict using pre initialized values", k
                 )
                 checkpoint["state_dict"][k] = v
+
+    def on_save_checkpoint(self, checkpoint):
+        checkpoint["hyper_parameters"]["_target_"] = fullname(self)
 
 
 class BaseStreamClassifierModule(ClassifierModule):

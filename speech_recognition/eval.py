@@ -23,7 +23,7 @@ def eval_checkpoint(config: DictConfig, checkpoint):
     hparams = checkpoint["hyper_parameters"]
 
     if "_target_" not in hparams:
-        target = "speech_recognition.modules.classifier.StreamClassifierModule"
+        target = config.default_target
         logging.warning("Target class not given in checkpoint assuming: %s", target)
         hparams["_target_"] = target
 
@@ -32,7 +32,7 @@ def eval_checkpoint(config: DictConfig, checkpoint):
     module.setup("test")
     module.load_state_dict(checkpoint["state_dict"])
 
-    trainer = Trainer(gpus=1, deterministic=True)
+    trainer = Trainer(gpus=0, deterministic=True)
     trainer.validate(model=module, ckpt_path=None)
     reset_seed()
     trainer.test(model=module, ckpt_path=None)
