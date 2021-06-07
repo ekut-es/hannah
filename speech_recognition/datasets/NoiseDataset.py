@@ -147,6 +147,44 @@ class NoiseDataset:
             if not os.path.isdir(noise_folder):
                 os.makedirs(noise_folder)
 
+            if "Timit" in noisedatasets:
+                quttimit_target = os.path.join(noise_folder, "QUT-Timit")
+
+                if not os.path.exists(quttimit_target):
+
+                    target_cache = os.path.join(downloadfolder_tmp, "QUT-Timit")
+                    base_url = "https://data.researchdatafinder.qut.edu.au/dataset/a0eed5af-abd8-441b-b14a-8e064bc3d732/resource/"
+                    url_ends = [
+                        "8342a090-89e7-4402-961e-1851da11e1aa/download/qutnoise.zip",
+                        "9b0f10ed-e3f5-40e7-b503-73c2943abfb1/download/qutnoisecafe.zip",
+                        "7412452a-92e9-4612-9d9a-6b00f167dc15/download/qutnoisecar.zip",
+                        "35cd737a-e6ad-4173-9aee-a1768e864532/download/qutnoisehome.zip",
+                        "164d38a5-c08e-4e20-8272-793534eb10c7/download/qutnoisereverb.zip",
+                        "10eeceae-9f0c-4556-b33a-dcf35c4f4db9/download/qutnoisestreet.zip",
+                    ]
+                    filenames = [
+                        "qutnoise.zip",
+                        "qutnoisecafe.zip",
+                        "qutnoisecar.zip",
+                        "qutnoisehome.zip",
+                        "qutnoisereverb.zip",
+                        "qutnoisestreet.zip",
+                    ]
+
+                    for u, filename in zip(url_ends, filenames):
+                        url = base_url + u
+
+                        extract_from_download_cache(
+                            filename,
+                            url,
+                            cached_files,
+                            target_cache,
+                            noise_folder,
+                            quttimit_target,
+                            no_exist_check=True,
+                            clear_download=clear_download,
+                        )
+
             if "TUT" in noisedatasets:
                 tut_target = os.path.join(
                     noise_folder, "TUT-acoustic-scenes-2017-development"
