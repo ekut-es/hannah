@@ -1,0 +1,65 @@
+# @package _group_
+
+# Backend parameters:
+#   backend.cols=2
+#   backend.rows=None
+
+# Expected results:#   acc_accuracy: 0.0
+#   acc_area: 35099.563
+#   acc_clock_cycles: 395.0
+#   acc_power: 1.1169924271739999e-06
+#   val_error: 0.010158002376556396
+conv:
+- blocks:
+  - act: true
+    kernel_size: 1
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 7
+    norm: true
+    out_channels: 8
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 1
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 16
+  target: forward
+- blocks:
+  - act: true
+    kernel_size: 7
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: false
+    kernel_size: 5
+    norm: true
+    out_channels: 24
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: false
+    kernel_size: 11
+    norm: true
+    out_channels: 8
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 4
+  target: forward
+qconfig:
+  config:
+    bw_b: 0
+    bw_f: 4
+    bw_w: 4

@@ -1,0 +1,34 @@
+# @package _group_
+
+# Backend parameters:
+#   backend.cols=2
+#   backend.rows=None
+
+# Expected results:#   acc_accuracy: 0.0
+#   acc_area: 33529.773
+#   acc_clock_cycles: 361.0
+#   acc_power: 1.083556997779e-06
+#   val_error: 0.023137688636779785
+conv:
+- blocks:
+  - act: false
+    kernel_size: 1
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 16
+  target: forward
+qconfig:
+  config:
+    bw_b: 0
+    bw_f: 4
+    bw_w: 4
