@@ -2,6 +2,25 @@
 
 _target_: speech_recognition.modules.ObjectDetectionModule
 num_workers: 0
-batch_size: 128
+batch_size: 5
 time_masking: 0
 frequency_masking: 0
+
+augmentation:
+  - augmented_pct: 50
+  - reaugment_per_epoch_pct: 20
+  - augmentations: [rain_drops]
+  - rain_drops:
+    - angle_rain_streaks: [-45, 45]
+    - brightness: [0.2, 2]
+    - number_drops: [500, 2000]
+    - rain_rate: [1, 60]
+    - drop_radius: [0.0004, 0.005]
+  - snow:
+    - snowfall_rate: [0, 3]
+    - car_speed_ms: [0, 13.9]
+    - crosswind_speed_ms: [0, 10]
+    - draw_fog: [true, false]
+  - fog:
+    - fog_density: [0, 0.2]
+    - fog_sphere: [0.4, 0.7]

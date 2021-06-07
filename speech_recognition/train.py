@@ -108,7 +108,11 @@ def train(config: DictConfig):
 
         # INIT PYTORCH-LIGHTNING
         lit_trainer = instantiate(
-            config.trainer, profiler=profiler, callbacks=callbacks, logger=logger
+            config.trainer,
+            profiler=profiler,
+            callbacks=callbacks,
+            logger=logger,
+            reload_dataloaders_every_epoch=True,
         )
 
         if config["auto_lr"]:
