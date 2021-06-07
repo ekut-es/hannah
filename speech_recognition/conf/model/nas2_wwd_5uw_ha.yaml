@@ -21,7 +21,7 @@ conv:
   - act: true
     kernel_size: 1
     norm: true
-    out_channels: 4
+    out_channels: 8
     parallel: false
     stride: 1
     target: conv1d
