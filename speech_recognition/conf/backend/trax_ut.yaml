@@ -13,8 +13,8 @@ power_estimation: False
 num_inferences: 1
 cols: 8
 rows: null # Is same as cols
-period: 1000
+period: 4000
 macro_type: "INVECAS"
-use_acc_statistic_model: True
+use_acc_statistic_model: false
 use_acc_analytical_model: True
 use_acc_teda_data: False

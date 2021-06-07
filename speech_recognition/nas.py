@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import os
 from typing import Any, Dict
+import omegaconf
 
 import torch
 
@@ -36,7 +37,7 @@ def run_training(num, config):
     logger = TensorBoardLogger(".")
 
     seed = config.get("seed", 1234)
-    if isinstance(seed, list):
+    if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
         seed = seed[0]
     seed_everything(seed, workers=True)
 
