@@ -5,10 +5,10 @@
 #   backend.rows=None
 
 # Expected results:#   acc_accuracy: 0.0
-#   acc_area: 81944.291
-#   acc_clock_cycles: 8421.0
-#   acc_power: 3.714579672043e-06
-#   val_error: 0.06977266073226929
+#   acc_area: 84698.395
+#   acc_clock_cycles: 9077.0
+#   acc_power: 3.857774222279e-06
+#   val_error: 0.06459599733352661
 
 _target_: speech_recognition.models.factory.factory.create_cnn
 name: nas2_kws_5uw_lp
@@ -21,12 +21,12 @@ conv:
   - act: true
     kernel_size: 3
     norm: true
-    out_channels: 24
+    out_channels: 16
     parallel: false
     stride: 1
     target: conv1d
   - act: true
-    kernel_size: 3
+    kernel_size: 5
     norm: true
     out_channels: 56
     parallel: false
@@ -38,7 +38,7 @@ conv:
   - act: true
     kernel_size: 1
     norm: true
-    out_channels: 36
+    out_channels: 28
     parallel: false
     stride: 1
     target: conv1d
@@ -48,21 +48,21 @@ conv:
   - act: false
     kernel_size: 9
     norm: true
-    out_channels: 16
+    out_channels: 20
     parallel: false
     stride: 1
     target: conv1d
   - act: true
-    kernel_size: 7
+    kernel_size: 5
     norm: true
-    out_channels: 12
+    out_channels: 44
     parallel: false
     stride: 1
     target: conv1d
   - act: false
-    kernel_size: 7
+    kernel_size: 1
     norm: true
-    out_channels: 32
+    out_channels: 40
     parallel: false
     stride: 1
     target: conv1d
