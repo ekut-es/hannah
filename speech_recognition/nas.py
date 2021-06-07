@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import os
 from typing import Any, Dict
+import omegaconf
 
 import torch
 
@@ -18,7 +19,7 @@ from hannah_optimizer.aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything, reset_seed
 from .callbacks.optimization import HydraOptCallback
-from .utils import common_callbacks, clear_outputs
+from .utils import common_callbacks, clear_outputs, fullname
 
 msglogger = logging.getLogger("nas")
 
@@ -34,7 +35,11 @@ def run_training(num, config):
     os.chdir(str(num))
     config = OmegaConf.create(config)
     logger = TensorBoardLogger(".")
-    seed_everything(config.get("seed", 1234), workers=True)
+
+    seed = config.get("seed", 1234)
+    if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
+        seed = seed[0]
+    seed_everything(seed, workers=True)
 
     num_gpus = torch.cuda.device_count()
     gpu = num % num_gpus
@@ -76,15 +81,6 @@ def run_training(num, config):
             res[monitor] = float("inf")
 
     return opt_callback.result(dict=True)
-
-
-# TODO: i think this has already been implemented somewhere
-def fullname(o):
-    klass = o.__class__
-    module = klass.__module__
-    if module == "builtins":
-        return klass.__qualname__  # avoid outputs like 'builtins.str'
-    return module + "." + klass.__qualname__
 
 
 class NASTrainerBase(ABC):

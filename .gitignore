@@ -11,6 +11,7 @@ datasets/speech_files/
 datasets/noise_files/
 datasets/vad_balanced/
 datasets/vad/
+datasets/timit/
 datasets/vad_speech/
 datasets/getrennt/
 datasets/downloads/

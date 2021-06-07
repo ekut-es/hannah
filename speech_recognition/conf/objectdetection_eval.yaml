@@ -1,10 +1,8 @@
-# @package _group_
-
-_target_: speech_recognition.modules.ObjectDetectionModule
-num_workers: 0
-batch_size: 5
-time_masking: 0
-frequency_masking: 0
+name: test
+checkpoints: [trained_models/fasterrcnn_augmented/faster-rcnn-resnet50/best.ckpt]
+noise: []
+methods: ["original", "full_augmented", "real_rain"]
+output_dir: eval
 
 augmentation:
   - augmented_pct: 50

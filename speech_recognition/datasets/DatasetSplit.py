@@ -78,19 +78,16 @@ class DatasetSplit:
     @classmethod
     def vad_balanced(cls, config):
         # directories with original data
-        data_folder = config["data_folder"]
-        noise_dir = os.path.join(data_folder, "noise_files")
-        speech_dir = os.path.join(data_folder, "speech_files")
 
         noise_files = NoiseDataset.getTUT_NoiseFiles(config)
         noise_files_others = NoiseDataset.getOthers_divided(config)
 
-        speech_files = DatasetSplit.read_UWNU(config)
+        speech_files_uwnu = DatasetSplit.read_UWNU(config)
 
         # randomly shuffle noise and speech files and split them in train,
         # validation and test set
         random.shuffle(noise_files)
-        random.shuffle(speech_files)
+        random.shuffle(speech_files_uwnu)
 
         nb_noise_files = len(noise_files)
         nb_train_noise = int(0.6 * nb_noise_files)
@@ -105,9 +102,9 @@ class DatasetSplit:
         dev_noise.extend(dev_other)
         test_noise.extend(test_other)
 
-        train_speech = speech_files[:nb_train_noise]
-        dev_speech = speech_files[nb_train_noise : nb_train_noise + nb_dev_noise]
-        test_speech = speech_files[nb_train_noise + nb_dev_noise : nb_noise_files]
+        train_speech = speech_files_uwnu[:nb_train_noise]
+        dev_speech = speech_files_uwnu[nb_train_noise : nb_train_noise + nb_dev_noise]
+        test_speech = speech_files_uwnu[nb_train_noise + nb_dev_noise : nb_noise_files]
 
         mozilla = DatasetSplit.read_mozilla(config)
         mozilla_train, mozilla_dev, mozilla_test = mozilla
@@ -119,6 +116,16 @@ class DatasetSplit:
         train_speech.extend(mozilla_train[0 : len(train_other)])
         dev_speech.extend(mozilla_dev[0 : len(dev_other)])
         test_speech.extend(mozilla_test[0 : len(test_other)])
+
+        timit_train, timit_test = DatasetSplit.read_Timit(config)
+
+        random.shuffle(timit_train)
+
+        nb_ttrain = int(len(timit_train) * 0.8)
+
+        train_speech.extend(timit_train[0:nb_ttrain])
+        dev_speech.extend(timit_train[nb_ttrain:])
+        test_speech.extend(timit_test)
 
         random.shuffle(train_noise)
         random.shuffle(dev_noise)
@@ -315,6 +322,24 @@ class DatasetSplit:
             output.extend(list_all_files(uwnu_folder, ".mp3", True, "."))
 
             return output
+        return []
+
+    @classmethod
+    def read_Timit(cls, config):
+        data_folder = config["data_folder"]
+        speech_folder = os.path.join(data_folder, "timit")
+        timit_data_folder = os.path.join(speech_folder, "data")
+
+        test_folder = os.path.join(timit_data_folder, "TEST")
+        train_folder = os.path.join(timit_data_folder, "TRAIN")
+
+        if os.path.isdir(timit_data_folder):
+
+            test = list_all_files(test_folder, ".WAV", True, ".")
+
+            train = list_all_files(train_folder, ".WAV", True, ".")
+
+            return (train, test)
         return []
 
     @classmethod

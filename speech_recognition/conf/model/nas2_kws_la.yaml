@@ -1,0 +1,75 @@
+# @package _group_
+
+# Backend parameters:
+#   backend.cols=4
+#   backend.rows=None
+
+# Expected results:#   acc_accuracy: 0.0
+#   acc_area: 68502.965
+#   acc_clock_cycles: 23730.0
+#   acc_power: 4.720836499266e-06
+#   val_error: 0.06864732503890991
+
+_target_: speech_recognition.models.factory.factory.create_cnn
+name: nas2_kws_la
+norm:
+  target: bn
+act:
+  target: relu
+conv:
+- blocks:
+  - act: false
+    kernel_size: 3
+    norm: true
+    out_channels: 20
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 48
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 48
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: false
+    kernel_size: 3
+    norm: true
+    out_channels: 12
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 4
+  target: forward
+- blocks:
+  - act: true
+    kernel_size: 11
+    norm: true
+    out_channels: 12
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: false
+    kernel_size: 5
+    norm: true
+    out_channels: 48
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 4
+  target: forward
+qconfig:
+  _target_: speech_recognition.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 0
+    bw_f: 6
+    bw_w: 6
+    noise_prob: 0.7
+    power_of_2: false
