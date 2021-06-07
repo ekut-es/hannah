@@ -151,44 +151,49 @@ class Kitti(AbstractDataset):
         """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
 
-        folder = config["data_folder"]
-        folder = os.path.join(folder, "kitti/training")
+        folder = config["kitti_folder"]
+        folder = os.path.join(folder, "training")
         aug_folder = os.path.join(folder, "augmented/")
         aug2_folder = os.path.join(folder, "augmented_2/")
         folder = os.path.join(folder, "image_2/")
-        num_imgs = math.floor(7479 * (config["num_img_pct"] / 100))
+        files = sorted(
+            filter(
+                lambda x: os.path.isfile(os.path.join(folder, x)),
+                os.listdir(folder),
+            )
+        )
+        num_imgs = len(files)
         num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
         num_dev_imgs = math.floor(num_imgs * (config["dev_pct"] / 100))
 
         datasets = [{}, {}, {}]
 
-        if num_imgs > 7480:
-            raise Exception("Number of images for Kitti dataset too large")
-        elif num_test_imgs < 1 or num_dev_imgs < 1:
+        if num_test_imgs < 1 or num_dev_imgs < 1:
             raise Exception("Each step must have at least 1 Kitti image")
 
-        if os.path.exists(aug2_folder) and os.path.isdir(aug2_folder):
-            shutil.rmtree(aug2_folder)
-        os.mkdir(aug2_folder)
+        if "real_rain" not in folder:
+            if os.path.exists(aug2_folder) and os.path.isdir(aug2_folder):
+                shutil.rmtree(aug2_folder)
+            os.mkdir(aug2_folder)
 
-        if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
-            shutil.rmtree(aug_folder)
-        os.mkdir(aug_folder)
+            if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
+                shutil.rmtree(aug_folder)
+            os.mkdir(aug_folder)
 
         for i in range(num_imgs):
             # test_img pct into test dataset
             if i < num_test_imgs:
-                img_name = str(i).zfill(6) + ".png"
-                datasets[0][img_name] = str(i).zfill(6) + ".txt"
+                img_name = files[i]
+                datasets[0][img_name] = files[i][:-4] + ".txt"
             # dev_img pct into val dataset
             elif i < num_test_imgs + num_dev_imgs:
-                img_name = str(i).zfill(6) + ".png"
-                datasets[1][img_name] = str(i).zfill(6) + ".txt"
+                img_name = files[i]
+                datasets[1][img_name] = files[i][:-4] + ".txt"
             # last pictures into training set
             else:
-                img_name = str(i).zfill(6) + ".png"
+                img_name = files[i]
                 datasets[2][img_name] = (
-                    str(i).zfill(6) + ".txt"
+                    files[i][:-4] + ".txt"
                 )  # last imgs not augmented
 
         res_datasets = (
