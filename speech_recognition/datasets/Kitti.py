@@ -1,6 +1,7 @@
 import os
 import sys
 import csv
+import glob
 import numpy as np
 from torch.utils.data import Dataset
 
@@ -8,6 +9,8 @@ import torch
 import torch.nn.functional as F
 
 import math
+
+import shutil
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -28,7 +31,9 @@ from PIL import Image
 class Kitti(AbstractDataset):
     ""
 
-    IMAGE_PATH = os.path.join("training", "image_2/")
+    IMAGE_PATH = os.path.join("training/image_2/")
+
+    AUG_PATH = os.path.join("training/augmented_2/")
 
     LABEL_PATH = os.path.join("training", "label_2/")
 
@@ -40,13 +45,15 @@ class Kitti(AbstractDataset):
             )
             sys.exit(-1)
 
+        self.set_type = set_type
         self.label_names = config["labels"]
         self.img_size = tuple(map(int, config["img_size"].split(",")))
         self.kitti_dir = config["kitti_folder"]
         self.img_path = os.path.join(self.kitti_dir, self.IMAGE_PATH)
+        self.aug_path = os.path.join(self.kitti_dir, self.AUG_PATH)
         self.label_path = os.path.join(self.kitti_dir, self.LABEL_PATH)
-        self.set_type = set_type
         self.img_files = list(data.keys())
+        self.aug_files = list()
         self.label_files = list(data.values())
         self.transform = transforms.Compose(
             [
@@ -62,6 +69,7 @@ class Kitti(AbstractDataset):
             self.img_size,
             self.label_names,
             self.img_path,
+            self.aug_path,
             self.kitti_dir,
         )
 
@@ -81,7 +89,20 @@ class Kitti(AbstractDataset):
         return len(self.img_files)
 
     def __getitem__(self, idx):
-        pil_img = Image.open(self.img_path + self.img_files[idx]).convert("RGB")
+        img_name = self.img_files[idx]
+
+        if img_name[:-4] in self.aug_files and os.path.isfile(
+            self.kitti_dir + "/training/augmented/" + img_name
+        ):
+            path = self.aug_path
+            shutil.copy2(
+                self.kitti_dir + "/training/augmented/" + img_name,
+                self.aug_path + img_name,
+            )
+        else:
+            path = self.img_path
+
+        pil_img = Image.open(path + img_name).convert("RGB")
         # pil_img = pil_img.resize(self.img_size)
         pil_img = self.transform(pil_img)
 
@@ -99,6 +120,7 @@ class Kitti(AbstractDataset):
         target["boxes"] = torch.stack(boxes)
         target["labels"] = torch.stack(labels)
         target["filename"] = self.img_files[idx]
+        target["augmented"] = True if path == self.aug_path else False
 
         return pil_img, target
 
@@ -129,29 +151,50 @@ class Kitti(AbstractDataset):
         """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
 
-        folder = config["data_folder"]
-        folder = os.path.join(folder, "kitti")
-        num_imgs = 7479
+        folder = config["kitti_folder"]
+        folder = os.path.join(folder, "training")
+        aug_folder = os.path.join(folder, "augmented/")
+        aug2_folder = os.path.join(folder, "augmented_2/")
+        folder = os.path.join(folder, "image_2/")
+        files = sorted(
+            filter(
+                lambda x: os.path.isfile(os.path.join(folder, x)),
+                os.listdir(folder),
+            )
+        )
+        num_imgs = len(files)
         num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
         num_dev_imgs = math.floor(num_imgs * (config["dev_pct"] / 100))
 
         datasets = [{}, {}, {}]
 
-        if num_imgs > 7480:
-            raise Exception("Number of images for Kitti dataset too large")
-        elif num_test_imgs < 1 or num_dev_imgs < 1:
+        if num_test_imgs < 1 or num_dev_imgs < 1:
             raise Exception("Each step must have at least 1 Kitti image")
 
+        if "real_rain" not in folder:
+            if os.path.exists(aug2_folder) and os.path.isdir(aug2_folder):
+                shutil.rmtree(aug2_folder)
+            os.mkdir(aug2_folder)
+
+            if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
+                shutil.rmtree(aug_folder)
+            os.mkdir(aug_folder)
+
         for i in range(num_imgs):
-            # first test_pct into test dataset
+            # test_img pct into test dataset
             if i < num_test_imgs:
-                datasets[0][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
-            # next images into dev dataset
+                img_name = files[i]
+                datasets[0][img_name] = files[i][:-4] + ".txt"
+            # dev_img pct into val dataset
             elif i < num_test_imgs + num_dev_imgs:
-                datasets[1][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
-            # last images into train dataset
+                img_name = files[i]
+                datasets[1][img_name] = files[i][:-4] + ".txt"
+            # last pictures into training set
             else:
-                datasets[2][str(i).zfill(6) + ".png"] = str(i).zfill(6) + ".txt"
+                img_name = files[i]
+                datasets[2][img_name] = (
+                    files[i][:-4] + ".txt"
+                )  # last imgs not augmented
 
         res_datasets = (
             cls(datasets[2], DatasetType.TRAIN, config),
@@ -163,9 +206,10 @@ class Kitti(AbstractDataset):
 
 
 class KittiCOCO(COCO):
-    def __init__(self, img_files, img_size, label_names, img_path, kitti_dir):
+    def __init__(self, img_files, img_size, label_names, img_path, aug_path, kitti_dir):
         super().__init__()
         self.img_path = img_path
+        self.aug_path = aug_path
         self.kitti_dir = kitti_dir
 
         dataset = dict()
@@ -215,9 +259,10 @@ class KittiCOCO(COCO):
     def saveImg(self, cocoDt, y):
 
         for y_img in y:
+            path = self.aug_path if y_img["augmented"] else self.img_path
             filename = y_img["filename"]
             cocoImg = self.getImgId(filename)
-            img = mpimg.imread(self.img_path + filename)
+            img = mpimg.imread(path + filename)
             fig, ax = plt.subplots()
             ax.imshow(img)
 
@@ -248,6 +293,15 @@ class KittiCOCO(COCO):
                     linewidth=1,
                     edgecolor="r",
                     facecolor="none",
+                )
+                ax.text(
+                    box[0],
+                    box[1],
+                    self.cats[ann["category_id"]]["name"]
+                    if ann["category_id"] in self.cats
+                    else "undefined",
+                    color="red",
+                    fontsize=10,
                 )
                 ax.add_patch(rect)
 

@@ -19,7 +19,7 @@ class Downsample:
             print("downsample data begins")
             config["downsample"] = 0
             downsample_folder = ["train", "dev", "test"]
-            torchaudio.set_audio_backend("sox")
+            torchaudio.set_audio_backend("sox_io")
 
             if len(config["data_split"]) != 0:
                 downsample_folder = os.path.join(
@@ -27,6 +27,8 @@ class Downsample:
                 )
                 files = list_all_files(downsample_folder, ".mp3", True)
                 files.extend(list_all_files(downsample_folder, ".wav", True))
+                files.extend(list_all_files(downsample_folder, ".MP3", True))
+                files.extend(list_all_files(downsample_folder, ".WAV", True))
             else:
                 splits = ["vad", "vad_speech", "vad_balanced", "getrennt"]
                 for element in splits:
@@ -34,6 +36,8 @@ class Downsample:
                     if os.path.isdir(downsample_folder):
                         files = list_all_files(downsample_folder, ".mp3", True)
                         files.extend(list_all_files(downsample_folder, ".wav", True))
+                        files.extend(list_all_files(downsample_folder, ".MP3", True))
+                        files.extend(list_all_files(downsample_folder, ".WAV", True))
 
             stepsize = 300
             n_splits = len(files) / stepsize
@@ -53,7 +57,7 @@ class Downsample:
                     if filename.endswith("mp3"):
                         os.system("rm " + filename)
                         filename = filename.replace(".mp3", ".wav")
-                    torchaudio.save(filename, data[0], samplerate)
+                    torchaudio.save(filename, data[0].unsqueeze(0), samplerate)
 
                 del tmp_files
                 del output_files

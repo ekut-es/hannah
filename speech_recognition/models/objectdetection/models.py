@@ -60,6 +60,8 @@ class UltralyticsYolo(torch.nn.Module):
         pretrained=True,
         autoshape=True,
         force_reload=False,
+        gr=1,
+        hyp=dict(),
         *args,
         **kwargs,
     ):
@@ -75,6 +77,8 @@ class UltralyticsYolo(torch.nn.Module):
             autoshape=autoshape,
             force_reload=force_reload,
         )
+        self.model.hyp = hyp
+        self.model.gr = gr
         for name, param in self.model.named_parameters():
             param.requires_grad = True
 

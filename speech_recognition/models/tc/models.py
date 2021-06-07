@@ -248,14 +248,14 @@ class TCResNetModel(SerializableModule):
                 self.layers.append(conv1)
                 self.layers.append(conv2)
                 self.layers.append(conv3)
+                input_channels = output_channels
             elif use_inputlayer:
                 conv = nn.Conv1d(
                     input_channels, output_channels, size, stride, bias=False
                 )
                 self.layers.append(conv)
+                input_channels = output_channels
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
-
-            input_channels = output_channels
             count += 1
 
         count = 1
