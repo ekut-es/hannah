@@ -256,7 +256,7 @@ class WIPModel(nn.Module):
     # TODO: remove shortcut when extraction works
     def should_subsample(self):
         return self.current_step > 5
-        return self.current_step > self.steps_without_sampling
+        # return self.current_step > self.steps_without_sampling
 
     # reset elastic values to their default (max) values
     def reset_active_elastic_values(self):
@@ -416,16 +416,14 @@ class DefaultModuleSet1d(ModuleSet):
     norm1d = nn.BatchNorm1d
     act = nn.ReLU
 
-    def reassemble(self, module: nn.Conv1d, norm=False, act=False, norm_module: nn.BatchNorm1d = None, clone_mode=True):
+    def reassemble(self, module: nn.Conv1d, norm=False, act=False, norm_module: nn.BatchNorm1d = None, clone_conv=False, clone_norm=True):
         modules = nn.ModuleList([])
-        # print(f"{module.in_channels}, {module.out_channels}, {module.kernel_size}, {module.stride}, {module.padding}, {module.dilation}, {module.groups}, {module.bias}, {module.padding_mode}")
         # create a new conv1d under the same parameters, with the same weights
         # this could technically re-use the input module directly, as nothing is changed
-        # new_conv = nn.Conv1d(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding, module.dilation, module.groups, module.bias, module.padding_mode)
         module = copy.deepcopy(module)
         norm_module = copy.deepcopy(norm_module)
         new_conv = module
-        if not clone_mode:
+        if not clone_conv:
             new_conv = self.conv1d(
                     in_channels=module.in_channels,
                     out_channels=module.out_channels,
@@ -440,9 +438,16 @@ class DefaultModuleSet1d(ModuleSet):
             if norm_module is None:
                 raise ValueError("reassembly with norm requested, no source norm module provided")
             new_norm = norm_module
-            if not clone_mode:
+            if not clone_norm:
                 new_norm = self.norm1d(norm_module.num_features)
                 new_norm.weight = norm_module.weight
+                new_norm.bias = norm_module.bias
+                new_norm.running_mean = norm_module.running_mean
+                new_norm.running_var = norm_module.running_var
+                new_norm.num_batches_tracked = norm_module.num_batches_tracked
+                new_norm.eps = norm_module.eps
+                new_norm.momentum = norm_module.momentum
+                # TODO: missing params?
             modules.append(new_norm)
         if act:
             modules.append(self.act())
@@ -463,15 +468,17 @@ class QuantizedModuleSet1d(ModuleSet):
             raise ValueError("module with norm requested, no source norm module provided")
         if norm and act:
             # out_module = self.conv1d_norm_act(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
-            out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
+            out_module = self.conv1d_norm_act(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
+            out_module.bn
         elif norm:
             # out_module = self.conv1d_norm(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
-            out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
+            out_module = self.conv1d_norm(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         elif act:
             # out_module = self.conv1d_act(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
-            out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
+            out_module = self.conv1d_act(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         else:
             # out_module = self.conv1d(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
             out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         out_module.weight = module.weight
+        out_module.bias = module.bias
         return copy.deepcopy(out_module)
