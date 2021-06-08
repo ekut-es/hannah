@@ -253,10 +253,11 @@ class WIPModel(nn.Module):
         self.update_output_channel_count()
         # print("Picked active depth: ", self.active_depth)
 
-    # TODO: remove shortcut when extraction works
-    def should_subsample(self):
-        return self.current_step > 5
-        # return self.current_step > self.steps_without_sampling
+    def should_subsample(self, verify_step=False):
+        # Shortcut for testing: set to True to also verify loss of equivalent extracted model
+        if verify_step:
+            return False
+        return self.current_step > self.steps_without_sampling
 
     # reset elastic values to their default (max) values
     def reset_active_elastic_values(self):
@@ -416,7 +417,7 @@ class DefaultModuleSet1d(ModuleSet):
     norm1d = nn.BatchNorm1d
     act = nn.ReLU
 
-    def reassemble(self, module: nn.Conv1d, norm=False, act=False, norm_module: nn.BatchNorm1d = None, clone_conv=False, clone_norm=True):
+    def reassemble(self, module: nn.Conv1d, norm=False, act=False, norm_module: nn.BatchNorm1d = None, clone_conv=False, clone_norm=False):
         modules = nn.ModuleList([])
         # create a new conv1d under the same parameters, with the same weights
         # this could technically re-use the input module directly, as nothing is changed
@@ -447,7 +448,7 @@ class DefaultModuleSet1d(ModuleSet):
                 new_norm.num_batches_tracked = norm_module.num_batches_tracked
                 new_norm.eps = norm_module.eps
                 new_norm.momentum = norm_module.momentum
-                # TODO: missing params?
+                new_norm.eval()
             modules.append(new_norm)
         if act:
             modules.append(self.act())
