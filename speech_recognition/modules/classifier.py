@@ -383,24 +383,13 @@ class StreamClassifierModule(ClassifierModule):
         loss = self.criterion(output, y)
 
         if callable(getattr(self.model, "should_subsample", None)):
-            if self.model.should_subsample():
+            if self.model.should_subsample(verify_step=True):
                 submodel_output = self.model.get_elastic_depth_output(self.model.active_depth)
                 if submodel_output is not None:
                     submodel_loss = self.criterion(submodel_output, y)
                     self.log("eld", submodel_loss-loss, True)
-                    if submodel_loss-loss != 0:
-                        print(f"Loss value not preserved through extraction: {loss} -> {submodel_loss} (depth={self.model.active_depth})")
-        """
-        if callable(getattr(self.model, "should_subsample", None)):
-            if self.model.should_subsample():
-                for i in range(self.model.min_depth, self.model.max_depth+1):
-                    submodel_output = self.model.get_elastic_depth_output(i)
-                    if submodel_output is None:
-                        continue
-                    submodel_loss = self.criterion(submodel_output, y)
-                    if i == self.model.active_depth and submodel_loss != loss:
-                        print(f"\ndepth {i} : real loss={loss}, extracted loss={submodel_loss}")
-        """
+                    # if submodel_loss-loss != 0:
+                    #     print(f"Loss value not preserved through extraction: {loss} -> {submodel_loss} (depth={self.model.active_depth})")
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.val_metrics, "val")
