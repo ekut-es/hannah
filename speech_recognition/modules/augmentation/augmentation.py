@@ -5,7 +5,7 @@ import subprocess
 import threading
 
 import xml.etree.ElementTree as ET
-
+from PIL import Image
 from speech_recognition.datasets.base import DatasetType
 
 from speech_recognition.datasets.Kitti import Kitti
@@ -13,9 +13,17 @@ from speech_recognition.datasets.Kitti import Kitti
 
 class XmlAugmentationParser:
     @staticmethod
+    def __getImgSize(path, img):
+        pil_img = Image.open(path + "/training/image_2/" + img).convert("RGB")
+        width, height = pil_img.size
+        return (width, height)
+
+    @staticmethod
     def parse(conf, img, path):
         random.seed()
-        augmentation = random.choices(conf["augmentations"], conf["augmentations_pct"])
+        augmentation = random.choices(conf["augmentations"], conf["augmentations_pct"])[
+            0
+        ]
 
         if "rain" in augmentation:
             XmlAugmentationParser.__parseRain(
@@ -34,6 +42,7 @@ class XmlAugmentationParser:
     def __parseRain(conf, img, path):
         tree = ET.parse(path + "/augmentation/rain_drops.xml")
         root = tree.getroot()
+        size = XmlAugmentationParser.__getImgSize(path, img)
 
         for params in root.iter("ParameterList"):
             for param in params:
@@ -65,6 +74,10 @@ class XmlAugmentationParser:
                     )
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
+                elif description == "Pixel width":
+                    param.attrib["Value"] = str(size[0])
+                elif description == "Pixel height":
+                    param.attrib["Value"] = str(size[1])
 
         tree.write(path + "/augmentation/augment.xml")
 
@@ -72,6 +85,7 @@ class XmlAugmentationParser:
     def __parseSnow(conf, img, path):
         tree = ET.parse(path + "/augmentation/snow.xml")
         root = tree.getroot()
+        size = XmlAugmentationParser.__getImgSize(path, img)
 
         for params in root.iter("ParameterList"):
             for param in params:
@@ -96,6 +110,10 @@ class XmlAugmentationParser:
                     param.attrib["Value"] = value
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
+                elif description == "Pixel width":
+                    param.attrib["Value"] = str(size[0])
+                elif description == "Pixel height":
+                    param.attrib["Value"] = str(size[1])
 
         tree.write(path + "/augmentation/augment.xml")
 
@@ -103,6 +121,7 @@ class XmlAugmentationParser:
     def __parseFog(conf, img, path):
         tree = ET.parse(path + "/augmentation/fog.xml")
         root = tree.getroot()
+        size = XmlAugmentationParser.__getImgSize(path, img)
 
         for params in root.iter("ParameterList"):
             for param in params:
@@ -119,6 +138,10 @@ class XmlAugmentationParser:
                     )
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
+                elif description == "Pixel width":
+                    param.attrib["Value"] = str(size[0])
+                elif description == "Pixel height":
+                    param.attrib["Value"] = str(size[1])
 
         tree.write(path + "/augmentation/augment.xml")
 
@@ -134,6 +157,7 @@ class AugmentationThread:
             kitti_dir + "/augmentation/perform_augmentation.sh",
             stdout=subprocess.DEVNULL,
         )
+
         if out is True:
             print("Image augmented")
 
@@ -165,7 +189,6 @@ class AugmentationThread:
             # Add images to augmentation list to reach augmented_pct and restart augmentation if necessary
             if self.stop:
                 break
-
             random.seed()
             rand = random.randrange(0, 100)
 
