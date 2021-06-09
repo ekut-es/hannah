@@ -686,6 +686,9 @@ class NetworkFactory:
                     )
                 )
 
+        main_configs[-1].out_quant = False
+        main_configs[-1].act = False
+
         main_chain = self._build_chain(input_shape, main_configs, config.stride)
         residual_chain = self._build_chain(input_shape, residual_configs, config.stride)
 
