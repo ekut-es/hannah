@@ -176,7 +176,8 @@ class WIPModel(nn.Module):
         self.steps_without_sampling = steps_without_sampling
         self.current_step = 0
         self.last_input = None
-        self.pool = nn.AvgPool1d(pool_kernel)
+        # self.pool = nn.AvgPool1d(pool_kernel)
+        self.pool = nn.AdaptiveAvgPool1d(1)
         self.flatten = nn.Flatten(flatten_dims)
         # one linear exit layer for each possible depth level
         self.linears = nn.ModuleList([])
