@@ -442,8 +442,21 @@ class StreamClassifierModule(ClassifierModule):
                 # initialise storage for elastic loss values, if not present
                 if getattr(self, "elastic_test_loss_values", None) is None:
                     self.elastic_test_loss_values = []
+                    self.test_metrics_elastic = []
                     for i in range(self.model.min_depth, self.model.max_depth+1):
                         self.elastic_test_loss_values.append([])
+                        # create a metric for each possible elastic depth submodel
+                        self.test_metrics_elastic.append(
+                            MetricCollection({
+                                "test_accuracy": Accuracy(),
+                                "test_error": Error(),
+                                "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
+                                "test_precision": Precision(
+                                    num_classes=self.num_classes, average="weighted"
+                                ),
+                                "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
+                            })
+                        )
 
                 for i in range(self.model.min_depth, self.model.max_depth+1):
                     try:
@@ -451,9 +464,9 @@ class StreamClassifierModule(ClassifierModule):
                         if submodel_output is None:
                             continue
                         submodel_loss = self.criterion(submodel_output, y)
+                        # store the loss value and add output to respective metrics for every depth level
                         self.elastic_test_loss_values[i-self.model.min_depth].append(submodel_loss)
-                        # print("Elastic depth {i} yields loss: " + str(submodel_loss))
-                        # self.log(f"eloss_{i}", submodel_loss, True)
+                        self.calculate_batch_metrics(submodel_output, y, submodel_loss, self.test_metrics_elastic[i-self.model.min_depth], "test")
                     except Exception:
                         pass
 
@@ -483,6 +496,12 @@ class StreamClassifierModule(ClassifierModule):
             metric_table.append((name, metric.compute().item()))
 
         logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
+
+        for i in range(len(self.test_metrics_elastic)):
+            metric_table = []
+            for name, metric in self.test_metrics_elastic[i].items():
+                metric_table.append((name, metric.compute().item()))
+            logging.info(f"\nTest Metrics for depth {i+self.model.min_depth}:\n%s", tabulate.tabulate(metric_table))
 
         if getattr(self, "elastic_test_loss_values", None) is not None:
             logging.info("Average loss values for elastic depth:")
