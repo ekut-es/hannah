@@ -64,7 +64,6 @@ class ResBlock1d(ResBlockBase):
         ) if self.apply_skip else None
 
 
-# TODO: properly implement stride on major blocks
 def create(name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_order=None, steps_without_sampling=1):
     # if no orders for the norm operator are specified, fall back to default
     if not (hasattr(norm_order, "norm_before_act") and hasattr(norm_order, "norm_after_act")):
