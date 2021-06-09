@@ -17,7 +17,7 @@ defaults:
     - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
       optional: true
 
-experiment_id: nas_snips_500nw
+experiment_id: nas2_snips_500nw
 output_dir: trained_models
 auto_lr: false
 print_metrics: false
