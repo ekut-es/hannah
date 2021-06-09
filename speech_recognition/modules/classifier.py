@@ -384,7 +384,7 @@ class StreamClassifierModule(ClassifierModule):
 
         if callable(getattr(self.model, "should_subsample", None)):
             if self.model.should_subsample(verify_step=True):
-                submodel_output = self.model.get_elastic_depth_output(self.model.active_depth)
+                submodel_output = self.model.get_elastic_depth_output(self.model.active_depth, quantized=False)
                 if submodel_output is not None:
                     submodel_loss = self.criterion(submodel_output, y)
                     self.log("eld", submodel_loss-loss, True)

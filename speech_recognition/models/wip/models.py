@@ -230,14 +230,16 @@ class WIPModel(nn.Module):
         extracted_module_list = flatten_module_list(extracted_module_list)
         return copy.deepcopy(module_list_to_module(extracted_module_list))
 
-    def get_elastic_depth_output(self, target_depth=None):
+    def get_elastic_depth_output(self, target_depth=None, quantized=False):
         if target_depth is None:
             target_depth = self.max_depth
         if self.last_input is None:
             return None
-        submodel = self.extract_elastic_depth_sequence(target_depth)
+        submodel = self.extract_elastic_depth_sequence(target_depth, quantized=quantized)
         # print(submodel)
         # print(type(submodel))
+        # print(self.last_input)
+        # print(np.shape(self.last_input))
         output = submodel(self.last_input)
         # print(type(output))
         # print(output)
@@ -483,7 +485,7 @@ class QuantizedModuleSet1d(ModuleSet):
             out_module = self.conv1d_act(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         else:
             # out_module = self.conv1d(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
-            out_module = (module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
+            out_module = self.conv1d(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         out_module.weight = module.weight
         out_module.bias = module.bias
         return copy.deepcopy(out_module)
