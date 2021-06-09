@@ -388,14 +388,18 @@ def flatten_module_list(modules):
 
 # return a single module from an input moduleList
 def module_list_to_module(module_list):
-    # if the input is non-iterable, and is already a module, return it
+    # if the input is a Sequential module it will be iterable, but can be returned as is.
+    if isinstance(module_list, nn.Sequential):
+        return module_list
+    # if the input is not already a module, it must be iterable
     if not hasattr(module_list, '__iter__'):
         if isinstance(module_list, nn.Module):
             return module_list
-        else:
-            raise TypeError("input is neither iterable nor module")
+        raise TypeError("input is neither iterable nor module")
     if len(module_list) == 1:
-        return module_list[0]
+        module = module_list[0]
+        assert isinstance(module, nn.Module), "Iterable single-length input does not contain module"
+        return module
     else:
         return nn.Sequential(*module_list)
 
