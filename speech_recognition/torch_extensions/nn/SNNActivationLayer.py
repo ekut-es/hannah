@@ -2,7 +2,14 @@ import torch
 
 
 class Spiking1DIFLayer(torch.nn.Module):
-    def __init__(self, channels: int, spike_fn, flatten_output=False, time_position=2):
+    def __init__(
+        self,
+        channels: int,
+        spike_fn,
+        flatten_output=False,
+        time_position=2,
+        negative_mempot=True,
+    ):
 
         super(Spiking1DIFLayer, self).__init__()
 
@@ -18,6 +25,7 @@ class Spiking1DIFLayer(torch.nn.Module):
         self.spk_rec_hist = None
 
         self.training = True
+        self.negative_mempot = negative_mempot
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -45,7 +53,10 @@ class Spiking1DIFLayer(torch.nn.Module):
             elif self.time_position == 1:
                 input_ = x[:, t, :]
 
-            mem = (mem - rst) + input_
+            if self.negative_mempot:
+                mem = mem + input_ - rst
+            else:
+                mem = (mem - rst) + input_
 
             spk = self.spike_fn(mem - self.Vth)
 
@@ -71,6 +82,7 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         beta=0.65,
         time_position=2,
         trainable_parameter=False,
+        negative_mempot=True,
     ):
 
         super(Spiking1DeLIFLayer, self).__init__()
@@ -92,6 +104,7 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         self.clamp()
 
         self.training = True
+        self.negative_mempot = negative_mempot
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -119,8 +132,10 @@ class Spiking1DeLIFLayer(torch.nn.Module):
                 input_ = x[:, :, t]
             elif self.time_position == 1:
                 input_ = x[:, t, :]
-
-            mem = (mem - rst) * self.beta + input_
+            if self.negative_mempot:
+                mem = mem * self.beta + input_ - rst
+            else:
+                mem = (mem - rst) * self.beta + input_
 
             spk = self.spike_fn(mem - self.Vth)
             if self.time_position == 2:
@@ -154,6 +169,7 @@ class Spiking1DLIFLayer(torch.nn.Module):
         beta=0.65,
         time_position=2,
         trainable_parameter=False,
+        negative_mempot=True,
     ):
 
         super(Spiking1DLIFLayer, self).__init__()
@@ -178,6 +194,7 @@ class Spiking1DLIFLayer(torch.nn.Module):
         self.clamp()
 
         self.training = True
+        self.negative_mempot = negative_mempot
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -212,7 +229,10 @@ class Spiking1DLIFLayer(torch.nn.Module):
             elif self.time_position == 1:
                 input_ = x[:, t, :]
 
-            mem = (mem - rst) * self.beta + input_
+            if self.negative_mempot:
+                mem = mem * self.beta + input_ - rst
+            else:
+                mem = (mem - rst) * self.beta + input_
 
             spk = self.spike_fn(mem - self.Vth)
 
@@ -250,6 +270,7 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         rho=0.75,
         time_position=2,
         trainable_parameter=False,
+        negative_mempot=True,
     ):
 
         super(Spiking1DeALIFLayer, self).__init__()
@@ -277,6 +298,7 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         self.clamp()
 
         self.training = True
+        self.negative_mempot = negative_mempot
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -311,7 +333,10 @@ class Spiking1DeALIFLayer(torch.nn.Module):
             elif self.time_position == 1:
                 input_ = x[:, t, :]
 
-            mem = (mem - rst) * self.beta + input_
+            if self.negative_mempot:
+                mem = mem * self.beta + input_ - rst
+            else:
+                mem = (mem - rst) * self.beta + input_
 
             thadapt = self.rho * thadapt + spk_rec[:, :, t - 1]
 
@@ -356,6 +381,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
         rho=0.75,
         time_position=2,
         trainable_parameter=False,
+        negative_mempot=True,
     ):
 
         super(Spiking1DALIFLayer, self).__init__()
@@ -386,6 +412,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
         self.clamp()
 
         self.training = True
+        self.negative_mempot = negative_mempot
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -424,7 +451,10 @@ class Spiking1DALIFLayer(torch.nn.Module):
             elif self.time_position == 1:
                 input_ = self.alpha * input_ + x[:, t, :]
 
-            mem = (mem - rst) * self.beta + input_
+            if self.negative_mempot:
+                mem = mem * self.beta + input_ - rst
+            else:
+                mem = (mem - rst) * self.beta + input_
 
             thadapt = self.rho * thadapt + spk_rec[:, :, t - 1]
 

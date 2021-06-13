@@ -346,6 +346,7 @@ class SpikingConv3DLayer(torch.nn.Module):
         eps=1e-8,
         stride=(1, 1, 1),
         flatten_output=False,
+        negative_mempot=False,
     ):
 
         super(SpikingConv3DLayer, self).__init__()
@@ -384,6 +385,7 @@ class SpikingConv3DLayer(torch.nn.Module):
         self.spk_rec_hist = None
 
         self.training = True
+        self.negative_mempot = negative_mempot
 
     def forward(self, x):
 
@@ -440,7 +442,10 @@ class SpikingConv3DLayer(torch.nn.Module):
                 input_ = input_ + torch.einsum("abcd,be->aecd", spk, self.v)
 
             # membrane potential update
-            mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
+            if self.negative_mempot:
+                mem = mem * self.beta + input_ * (1.0 - self.beta) - rst
+            else:
+                mem = (mem - rst) * self.beta + input_ * (1.0 - self.beta)
             mthr = torch.einsum("abcd,b->abcd", mem, 1.0 / (norm + self.eps)) - b
 
             spk = self.spike_fn(mthr)

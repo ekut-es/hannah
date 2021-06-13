@@ -53,6 +53,7 @@ def build1DConvolution(
     rho=0.75,
     neuron_type="eLIF",
     trainable_parameter=False,
+    negative_mempot=True,
 ):
     conv = nn.Conv1d(
         in_channels=in_channels,
@@ -126,6 +127,7 @@ def get1DNeuronLayer(
     neuron_type="IF",
     time_position=2,
     trainable_parameter=False,
+    negative_mempot=True,
 ):
     if neuron_type == "s2net":
         return Spiking1DS2NetLayer(
@@ -133,6 +135,7 @@ def get1DNeuronLayer(
             spike_fn=spike_fn,
             flatten_output=flatten_output,
             convolution_layer=convolution_layer,
+            negative_mempot=negative_mempot,
         )
     elif neuron_type == "IF":
         return Spiking1DIFLayer(
@@ -140,6 +143,7 @@ def get1DNeuronLayer(
             spike_fn=spike_fn,
             flatten_output=flatten_output,
             time_position=time_position,
+            negative_mempot=negative_mempot,
         )
     elif neuron_type == "eLIF":
         return Spiking1DeLIFLayer(
@@ -149,6 +153,7 @@ def get1DNeuronLayer(
             beta=beta,
             time_position=time_position,
             trainable_parameter=trainable_parameter,
+            negative_mempot=negative_mempot,
         )
     elif neuron_type == "LIF":
         return Spiking1DLIFLayer(
@@ -159,6 +164,7 @@ def get1DNeuronLayer(
             beta=beta,
             time_position=time_position,
             trainable_parameter=trainable_parameter,
+            negative_mempot=negative_mempot,
         )
     elif neuron_type == "eALIF":
         return Spiking1DeALIFLayer(
@@ -170,6 +176,7 @@ def get1DNeuronLayer(
             rho=rho,
             time_position=time_position,
             trainable_parameter=trainable_parameter,
+            negative_mempot=negative_mempot,
         )
     elif neuron_type == "ALIF":
         return Spiking1DALIFLayer(
@@ -182,6 +189,7 @@ def get1DNeuronLayer(
             rho=rho,
             time_position=time_position,
             trainable_parameter=trainable_parameter,
+            negative_mempot=negative_mempot,
         )
 
 
