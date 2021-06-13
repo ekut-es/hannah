@@ -66,6 +66,7 @@ class TCResidualBlock(nn.Module):
         rho=0.75,
         neuron_type="eLIF",
         trainable_parameter=False,
+        negative_mempot=True,
     ):
         super().__init__()
         self.stride = stride
@@ -94,6 +95,7 @@ class TCResidualBlock(nn.Module):
                     rho=rho,
                     neuron_type=neuron_type,
                     trainable_parameter=trainable_parameter,
+                    negative_mempot=negative_mempot,
                 )
             )
 
@@ -182,6 +184,7 @@ class TCResidualBlock(nn.Module):
                     rho=rho,
                     neuron_type=neuron_type,
                     trainable_parameter=trainable_parameter,
+                    negative_mempot=negative_mempot,
                 )
             )
         else:
@@ -206,6 +209,7 @@ class TCResidualBlock(nn.Module):
                     rho=rho,
                     neuron_type=neuron_type,
                     trainable_parameter=trainable_parameter,
+                    negative_mempot=negative_mempot,
                 ),
                 build1DConvolution(
                     self.conv_type,
@@ -227,6 +231,7 @@ class TCResidualBlock(nn.Module):
                     rho=rho,
                     neuron_type=neuron_type,
                     trainable_parameter=trainable_parameter,
+                    negative_mempot=negative_mempot,
                 ),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
@@ -298,6 +303,7 @@ class TCResNetModel(SerializableModule):
         general_gamma = config.get("general_gamma", None)
         general_rho = config.get("general_rho", None)
         general_tp = config.get("general_trainable_parameter", None)
+        general_negative_mempot = config.get("general_trainable_parameter", None)
 
         if general_conv_type is not None:
             self.conv_type = general_conv_type
@@ -332,6 +338,11 @@ class TCResNetModel(SerializableModule):
         else:
             self.general_tp = None
 
+        if general_negative_mempot is not None:
+            self.general_negative_mempot = general_negative_mempot
+        else:
+            self.general_negative_mempot = None
+
         self.layers = nn.ModuleList()
         self.feat = None
 
@@ -355,6 +366,7 @@ class TCResNetModel(SerializableModule):
             roh_name = "conv{}_rho".format(count)
             neurontype_name = "conv{}_neuron_type".format(count)
             trainable_parameter_name = "conv{}_trainable_parameter".format(count)
+            negative_mempot_name = "conv{}_negative_mempot".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -369,6 +381,7 @@ class TCResNetModel(SerializableModule):
             rho = config.get(roh_name, 1)
             neuron_type = config.get(neurontype_name, "eLIF")
             trainable_parameter = config.get(trainable_parameter_name, False)
+            negative_mempot = config.get(negative_mempot_name, False)
 
             if general_bn is not None and batchnorm is not None:
                 batchnorm = general_bn
@@ -386,6 +399,8 @@ class TCResNetModel(SerializableModule):
                 rho = self.rho
             if self.general_tp is not None:
                 trainable_parameter = self.general_tp
+            if self.general_negative_mempot is not None:
+                negative_mempot = self.general_negative_mempot
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -437,6 +452,7 @@ class TCResNetModel(SerializableModule):
                     rho=rho,
                     neuron_type=neuron_type,
                     trainable_parameter=trainable_parameter,
+                    negative_mempot=negative_mempot,
                 )
                 self.layers.append(conv)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
@@ -460,6 +476,7 @@ class TCResNetModel(SerializableModule):
             roh_name = "block{}_rho".format(count)
             neurontype_name = "block{}_neuron_type".format(count)
             trainable_parameter_name = "block{}_trainable_partameter".format(count)
+            negative_mempot_name = "block{}_negative_mempot".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
@@ -475,6 +492,7 @@ class TCResNetModel(SerializableModule):
             rho = config.get(roh_name, 1)
             neuron_type = config.get(neurontype_name, "eLIF")
             trainable_parameter = config.get(trainable_parameter_name, False)
+            negative_mempot = config.get(negative_mempot_name, False)
 
             if general_bn is not None and batchnorm is not None:
                 batchnorm = general_bn
@@ -492,6 +510,8 @@ class TCResNetModel(SerializableModule):
                 rho = self.rho
             if self.general_tp is not None:
                 trainable_parameter = self.general_tp
+            if self.general_negative_mempot is not None:
+                negative_mempot = self.general_negative_mempot
 
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
@@ -518,6 +538,7 @@ class TCResNetModel(SerializableModule):
                 rho=rho,
                 neuron_type=neuron_type,
                 trainable_parameter=trainable_parameter,
+                negative_mempot=negative_mempot,
             )
             self.layers.append(block)
 
