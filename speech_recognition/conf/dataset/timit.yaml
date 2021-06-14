@@ -1,7 +1,7 @@
 # @package _group_
 
 data_folder: ${hydra:runtime.cwd}/datasets/
-cls: speech_recognition.datasets.speech.TimitDataset
+cls: speech_recognition.datasets.speech.VadDataset
 dataset: timit
 
 input_length: 16000
