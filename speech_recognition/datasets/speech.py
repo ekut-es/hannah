@@ -5,7 +5,7 @@ import json
 import logging
 import hashlib
 import os
-
+import csv
 
 import torchaudio
 import numpy as np
@@ -532,8 +532,28 @@ class VadDataset(SpeechDataset):
     def prepare(cls, config):
         cls.download(config)
         NoiseDataset.download_noise(config)
-        DatasetSplit.split_data(config)
-        Downsample.downsample(config)
+        if config.get("override", False):
+            olddata = VadDataset.read_config(config)
+            DatasetSplit.split_data(config, olddata)
+
+    @classmethod
+    def read_config(cls, config):
+        split = config.get("data_split", "vad_balanced")
+        data_folder = config.get("data_folder", None)
+        split_file = os.path.join(data_folder, split + ".csv")
+        output = {}
+        if os.path.isfile(split_file):
+            with open(split_file, mode="r") as csv_file:
+                csv_reader = csv.DictReader(csv_file, delimiter=",")
+                line_count = 0
+                for row in csv_reader:
+                    if line_count == 0:
+                        line_count += 1
+                    output[str(row["filename"])] = row
+                    line_count += 1
+            return output
+        else:
+            return None
 
     @classmethod
     def splits(cls, config):
@@ -542,35 +562,42 @@ class VadDataset(SpeechDataset):
 
         msglogger = logging.getLogger()
 
-        folder = config["data_folder"]
-        folder = os.path.join(folder, "vad_balanced")
+        # open the saved dataset
+        sdataset = VadDataset.read_config(config)
 
         descriptions = ["train", "dev", "test"]
-        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
         datasets = [{}, {}, {}]
         configs = [{}, {}, {}]
 
         for num, desc in enumerate(descriptions):
+            noise_files = list()
+            speech_files = list()
+            bg_noise_files = list()
+            for key in sdataset.keys():
+                filename, original, downsampled, sr_orig, sr_down, allocation = sdataset[
+                    key
+                ].values()
 
-            descs_noise = os.path.join(folder, desc, "noise")
-            descs_speech = os.path.join(folder, desc, "speech")
-            descs_bg = os.path.join(folder, desc, "background_noise")
+                if desc not in allocation:
+                    continue
+                sr_orig = int(sr_orig)
+                if len(sr_down) > 0:
+                    sr_down = int(sr_down)
+                else:
+                    sr_down = -1
 
-            noise_files = [
-                os.path.join(descs_noise, f)
-                for f in os.listdir(descs_noise)
-                if os.path.isfile(os.path.join(descs_noise, f))
-            ]
-            speech_files = [
-                os.path.join(descs_speech, f)
-                for f in os.listdir(descs_speech)
-                if os.path.isfile(os.path.join(descs_speech, f))
-            ]
-            bg_noise_files = [
-                os.path.join(descs_bg, f)
-                for f in os.listdir(descs_bg)
-                if os.path.isfile(os.path.join(descs_bg, f))
-            ]
+                dest_sr = config.get("samplingrate", 16000)
+                file_path = None
+                if sr_down == dest_sr:
+                    file_path = downsampled
+                elif sr_orig == dest_sr:
+                    file_path = original
+                if "background_noise" in allocation:
+                    bg_noise_files.append(file_path)
+                elif "noise" in allocation:
+                    noise_files.append(file_path)
+                if "speech" in allocation:
+                    speech_files.append(file_path)
 
             random.shuffle(noise_files)
             random.shuffle(speech_files)

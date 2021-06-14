@@ -8,6 +8,9 @@ from torchvision.datasets.utils import list_dir
 from pandas import DataFrame
 import pandas as pd
 import logging
+import csv
+import torchaudio
+from .Downsample import Downsample
 
 
 class DatasetSplit:
@@ -151,8 +154,11 @@ class DatasetSplit:
         return destination_dict
 
     @classmethod
-    def split_data(cls, config):
+    def split_data(cls, config, olddata=None):
         data_splits = config.get("data_split", [])
+        oldsplit = {}
+        if olddata is not None:
+            oldsplit = olddata
         if isinstance(data_splits, str):
             if data_splits:
                 data_splits = [data_splits]
@@ -178,14 +184,103 @@ class DatasetSplit:
 
             destination_dict = split_methods[splits.index(data_split)](config)
 
-            dest_dir = os.path.join(data_folder, data_split)
+            downsample_dir = os.path.join(data_folder, "downsampled")
+            downsample_dir = os.path.join(downsample_dir, data_split)
+            if not os.path.exists(downsample_dir):
+                os.makedirs(downsample_dir)
 
+            speech_dir = os.path.join(downsample_dir, "speech")
+            if not os.path.exists(speech_dir):
+                os.makedirs(speech_dir)
+
+            noise_dir = os.path.join(downsample_dir, "noise")
+            if not os.path.exists(noise_dir):
+                os.makedirs(noise_dir)
+
+            dest_sr = config.get("samplingrate", 16000)
+            split_file = os.path.join(data_folder, data_split + ".csv")
+            torchaudio.set_audio_backend("sox_io")
+            output = list()
             for key, value in destination_dict.items():
-                data_dir = os.path.join(dest_dir, key)
-                if not os.path.exists(data_dir):
-                    os.makedirs(data_dir)
                 for f in value:
-                    shutil.copy2(f, data_dir)
+                    f_info = torchaudio.backend.sox_io_backend.info(f)
+                    filename = os.path.basename(f)
+
+                    old = oldsplit.pop(filename, None)
+                    old_orig_sr = -1
+                    old_down_sr = -1
+                    if old is not None:
+                        old_orig_sr = int(old.get("sr_orig", -1))
+                        old_down_sr = old.get("sr_down", -1)
+                        if len(old_down_sr) > 0:
+                            old_down_sr = int(old_down_sr)
+
+                    target_path = ""
+                    downsampled_sr = ""
+
+                    if (
+                        old_orig_sr != dest_sr
+                        and old_down_sr != dest_sr
+                        and (dest_sr != f_info.sample_rate or f_info.num_channels != 1)
+                    ):
+                        if "noise" in key:
+                            target_path = os.path.join(noise_dir, filename)
+                        elif "speech" in key:
+                            target_path = os.path.join(speech_dir, filename)
+                        else:
+                            target_path = None
+
+                        target_path = Downsample.downsample_file(
+                            f, target_path, dest_sr
+                        )
+                        downsampled_sr = str(dest_sr)
+
+                    if oldsplit is not None and old is not None:
+                        downsampled_sr = str(dest_sr)
+                        if old_down_sr == dest_sr:
+                            target_path = old.get("downsampled_path")
+                        elif old_orig_sr == dest_sr:
+                            target_path = old.get("original_path")
+
+                    output.append(
+                        [
+                            filename,
+                            f,
+                            target_path,
+                            f_info.sample_rate,
+                            downsampled_sr,
+                            key,
+                        ]
+                    )
+            for element in oldsplit.keys():
+                tmp = oldsplit[element]
+                output.append(
+                    [
+                        tmp["filename"],
+                        tmp["original_path"],
+                        tmp["downsampled_path"],
+                        tmp["sr_orig"],
+                        tmp["sr_down"],
+                        "",
+                    ]
+                )
+            DatasetSplit.write_split(split_file, output)
+
+    @classmethod
+    def write_split(cls, output_path, data):
+        header = [
+            "filename",
+            "original_path",
+            "downsampled_path",
+            "sr_orig",
+            "sr_down",
+            "allocation",
+        ]
+
+        with open(output_path, mode="w") as output_file:
+            writer = csv.writer(output_file, delimiter=",")
+            writer.writerow(header)
+            writer.writerows(data)
 
     @classmethod
     def read_UWNU(cls, config):

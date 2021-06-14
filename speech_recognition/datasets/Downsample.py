@@ -11,6 +11,7 @@ class Downsample:
 
     @classmethod
     def downsample_file(cls, sourcepath, targetpath, target_sr):
+        assert targetpath is not None
         torchaudio.set_audio_backend("sox_io")
         data, sr = torchaudio.load(sourcepath)
         changed = False
