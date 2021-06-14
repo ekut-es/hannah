@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from pycocotools.coco import COCO
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
+import numpy as np
+
 from .loss import ComputeLoss
 
 from speech_recognition.datasets.Kitti import KittiCOCO
@@ -37,9 +39,7 @@ class FasterRCNN(torch.nn.Module):
             y,
         ):
             for box, label, score in zip(boxes, labels, scores):
-                if not KittiCOCO.dontCareMatch(
-                    box[0].item(), box[1].item(), box[2].item(), box[3].item(), y_img
-                ):
+                if not KittiCOCO.dontCareMatch(box, y_img):
                     img_dict = dict()
                     x1 = box[0].item()
                     y1 = box[1].item()
@@ -154,7 +154,9 @@ class UltralyticsYolo(torch.nn.Module):
                 y2 = ann[3].item()
                 confidence = ann[4].item()
                 label = ann[5].item()
-                if not KittiCOCO.dontCareMatch(x1, y1, x2, y2, y_img):
+                if not KittiCOCO.dontCareMatch(
+                    torch.Tensor(np.array([x1, y2, x2, y2])), y_img
+                ):
                     img_dict = dict()
                     img_dict["image_id"] = cocoGt.getImgId(y_img["filename"])
                     img_dict["category_id"] = label

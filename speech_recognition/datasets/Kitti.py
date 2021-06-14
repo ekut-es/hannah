@@ -318,18 +318,16 @@ class KittiCOCO(COCO):
             plt.close()
 
     @staticmethod
-    def dontCareMatch(bx: int, by: int, bx2: int, by2: int, img: Tensor):
+    def dontCareMatch(box: Tensor, img: Tensor):
         for i in range(len(img["labels"])):
             if img["labels"][i] == 0:
-                x = img["boxes"][i][0]
-                y = img["boxes"][i][1]
-                x2 = img["boxes"][i][2]
-                y2 = img["boxes"][i][3]
-
-                if ((bx >= x and bx <= x2) and (bx2 >= x and bx2 <= x2)) or (
-                    (by >= y and by <= y2) and (by2 >= y and by2 <= y2)
-                ):
+                intersection = np.logical_and(box.cpu(), img["boxes"][i].cpu())
+                union = np.logical_or(box.cpu(), img["boxes"][i].cpu())
+                iou_score = intersection.sum() / union.sum()
+                iou_score = iou_score / ((box[2] - box[0]) * (box[3] - box[1]))
+                if iou_score > 0.5:
                     return True
+
         return False
 
 
