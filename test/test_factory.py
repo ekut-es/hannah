@@ -1,5 +1,5 @@
-from speech_recognition.models.factory.act import DummyActivation
-from speech_recognition.models.factory.factory import (
+from hannah.models.factory.act import DummyActivation
+from hannah.models.factory.factory import (
     MajorBlockConfig,
     NetworkFactory,
     ActConfig,
@@ -9,7 +9,7 @@ from speech_recognition.models.factory.factory import (
     BNConfig,
 )
 
-from speech_recognition.models.factory.qat import ConvBnReLU2d
+from hannah.models.factory.qat import ConvBnReLU2d
 
 import torch.nn as nn
 import torch.quantization as quantization

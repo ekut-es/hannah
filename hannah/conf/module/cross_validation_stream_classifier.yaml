@@ -1,0 +1,5 @@
+# @package _group_
+
+_target_: hannah.modules.CrossValidationStreamClassifierModule
+num_workers: 0
+batch_size: 128
