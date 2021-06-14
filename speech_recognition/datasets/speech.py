@@ -686,13 +686,13 @@ class VadDataset(SpeechDataset):
                 clear_download,
             )
 
-        timitdir = os.path.join(data_folder, "timit")
-
-        if not os.path.isdir(timitdir):
-            os.makedirs(timitdir)
-
-        # download UWNU dataset
+        # download TIMIT dataset
         if "timit" in variants:
+            timitdir = os.path.join(data_folder, "timit")
+
+            if not os.path.isdir(timitdir):
+                os.makedirs(timitdir)
+
             filename = "timit.zip"
             target_test_folder = os.path.join(timitdir, "data")
             url = "https://data.deepai.org/timit.zip"
