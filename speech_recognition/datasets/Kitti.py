@@ -240,17 +240,18 @@ class KittiCOCO(COCO):
         self.dataset = dataset
 
     def addAnn(self, idx, catId, bbox):
-        ann_dict = dict()
-        coco_bbox = [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]]
-        ann_dict["id"] = len(self.dataset["annotations"]) + 1
-        ann_dict["image_id"] = idx
-        ann_dict["category_id"] = catId
-        ann_dict["segmentation"] = "polygon"
-        ann_dict["bbox"] = coco_bbox
-        ann_dict["iscrowd"] = 0
-        ann_dict["area"] = coco_bbox[2] * coco_bbox[3]
+        if catId != 0:
+            ann_dict = dict()
+            coco_bbox = [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]]
+            ann_dict["id"] = len(self.dataset["annotations"]) + 1
+            ann_dict["image_id"] = idx
+            ann_dict["category_id"] = catId
+            ann_dict["segmentation"] = "polygon"
+            ann_dict["bbox"] = coco_bbox
+            ann_dict["iscrowd"] = 0
+            ann_dict["area"] = coco_bbox[2] * coco_bbox[3]
 
-        self.dataset["annotations"].append(ann_dict)
+            self.dataset["annotations"].append(ann_dict)
 
     def clearBatch(self):
         self.dataset["annotations"] = []
