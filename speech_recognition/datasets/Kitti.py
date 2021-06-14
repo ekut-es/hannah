@@ -3,6 +3,7 @@ import sys
 import csv
 import glob
 import numpy as np
+from torch.functional import Tensor
 from torch.utils.data import Dataset
 
 import torch
@@ -107,7 +108,9 @@ class Kitti(AbstractDataset):
         pil_img = self.transform(pil_img)
 
         target = {}
-        label = self._parse_label(idx)
+        label = self._parse_label(
+            idx, True if self.set_type == DatasetType.TRAIN else False
+        )
 
         labels = []
         boxes = []
@@ -127,23 +130,24 @@ class Kitti(AbstractDataset):
     def getCocoGt(self):
         return self.cocoGt
 
-    def _parse_label(self, idx: int):
+    def _parse_label(self, idx: int, considerDC: bool):
         label = []
         with open(self.label_path + self.label_files[idx]) as inp:
             content = csv.reader(inp, delimiter=" ")
             for line in content:
-                label.append(
-                    {
-                        "type": self.label_names.get(line[0]),
-                        "truncated": float(line[1]),
-                        "occluded": int(line[2]),
-                        "alpha": float(line[3]),
-                        "bbox": [float(x) for x in line[4:8]],
-                        "dimensions": [float(x) for x in line[8:11]],
-                        "location": [float(x) for x in line[11:14]],
-                        "rotation_y": float(line[14]),
-                    }
-                )
+                if considerDC is False or not self.label_names.get(line[0]) == 0:
+                    label.append(
+                        {
+                            "type": self.label_names.get(line[0]),
+                            "truncated": float(line[1]),
+                            "occluded": int(line[2]),
+                            "alpha": float(line[3]),
+                            "bbox": [float(x) for x in line[4:8]],
+                            "dimensions": [float(x) for x in line[8:11]],
+                            "location": [float(x) for x in line[11:14]],
+                            "rotation_y": float(line[14]),
+                        }
+                    )
         return label
 
     @classmethod
@@ -273,43 +277,60 @@ class KittiCOCO(COCO):
                 print("")
 
             for ann in annsGt:
-                box = ann["bbox"]
-                rect = patches.Rectangle(
-                    (box[0], box[1]),
-                    box[2],
-                    box[3],
-                    linewidth=1,
-                    edgecolor="b",
-                    facecolor="none",
-                )
-                ax.add_patch(rect)
+                if self.cats[ann["category_id"]]["id"] != 0:
+                    box = ann["bbox"]
+                    rect = patches.Rectangle(
+                        (box[0], box[1]),
+                        box[2],
+                        box[3],
+                        linewidth=1,
+                        edgecolor="b",
+                        facecolor="none",
+                    )
+                    ax.add_patch(rect)
 
             for ann in annsDt:
-                box = ann["bbox"]
-                rect = patches.Rectangle(
-                    (box[0], box[1]),
-                    box[2],
-                    box[3],
-                    linewidth=1,
-                    edgecolor="r",
-                    facecolor="none",
-                )
-                ax.text(
-                    box[0],
-                    box[1],
-                    self.cats[ann["category_id"]]["name"]
-                    if ann["category_id"] in self.cats
-                    else "undefined",
-                    color="red",
-                    fontsize=10,
-                )
-                ax.add_patch(rect)
+                if self.cats[ann["category_id"]]["id"] != 0:
+                    box = ann["bbox"]
+                    rect = patches.Rectangle(
+                        (box[0], box[1]),
+                        box[2],
+                        box[3],
+                        linewidth=1,
+                        edgecolor="r",
+                        facecolor="none",
+                    )
+                    ax.text(
+                        box[0],
+                        box[1],
+                        self.cats[ann["category_id"]]["name"]
+                        if ann["category_id"] in self.cats
+                        else "undefined",
+                        color="red",
+                        fontsize=10,
+                    )
+                    ax.add_patch(rect)
 
             if not os.path.exists("./ann"):
                 os.makedirs("./ann")
 
             plt.savefig("./ann/" + filename)
             plt.close()
+
+    @staticmethod
+    def dontCareMatch(bx: int, by: int, bx2: int, by2: int, img: Tensor):
+        for i in range(len(img["labels"])):
+            if img["labels"][i] == 0:
+                x = img["boxes"][i][0]
+                y = img["boxes"][i][1]
+                x2 = img["boxes"][i][2]
+                y2 = img["boxes"][i][3]
+
+                if ((bx >= x and bx <= x2) and (bx2 >= x and bx2 <= x2)) or (
+                    (by >= y and by <= y2) and (by2 >= y and by2 <= y2)
+                ):
+                    return True
+        return False
 
 
 def object_collate_fn(data):

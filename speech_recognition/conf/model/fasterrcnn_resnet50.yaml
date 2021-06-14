@@ -2,7 +2,7 @@
 
 _target_: speech_recognition.models.objectdetection.models.FasterRCNN
 name: faster-rcnn-resnet50
-num_classes: 9
+num_classes: 8
 pretrained: True
 
 #progress
