@@ -217,7 +217,7 @@ class DatasetSplit:
             train = list_all_files(train_folder, ".WAV", True, ".")
 
             return (train, test)
-        return []
+        return ([], [])
 
     @classmethod
     def read_mozilla(cls, config):
