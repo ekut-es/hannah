@@ -135,7 +135,7 @@ class Kitti(AbstractDataset):
         with open(self.label_path + self.label_files[idx]) as inp:
             content = csv.reader(inp, delimiter=" ")
             for line in content:
-                if considerDC is False or not self.label_names.get(line[0]) == 0:
+                if considerDC is False or not self.label_names.get(line[0]) == 8:
                     label.append(
                         {
                             "type": self.label_names.get(line[0]),
@@ -240,7 +240,7 @@ class KittiCOCO(COCO):
         self.dataset = dataset
 
     def addAnn(self, idx, catId, bbox):
-        if catId != 0:
+        if catId != 8:
             ann_dict = dict()
             coco_bbox = [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]]
             ann_dict["id"] = len(self.dataset["annotations"]) + 1
@@ -278,7 +278,7 @@ class KittiCOCO(COCO):
                 print("")
 
             for ann in annsGt:
-                if self.cats[ann["category_id"]]["id"] != 0:
+                if self.cats[ann["category_id"]]["id"] != 8:
                     box = ann["bbox"]
                     rect = patches.Rectangle(
                         (box[0], box[1]),
@@ -291,7 +291,7 @@ class KittiCOCO(COCO):
                     ax.add_patch(rect)
 
             for ann in annsDt:
-                if self.cats[ann["category_id"]]["id"] != 0:
+                if self.cats[ann["category_id"]]["id"] != 8:
                     box = ann["bbox"]
                     rect = patches.Rectangle(
                         (box[0], box[1]),
@@ -321,7 +321,7 @@ class KittiCOCO(COCO):
     @staticmethod
     def dontCareMatch(box: Tensor, img: Tensor):
         for i in range(len(img["labels"])):
-            if img["labels"][i] == 0:
+            if img["labels"][i] == 8:
                 intersection = np.logical_and(box.cpu(), img["boxes"][i].cpu())
                 union = np.logical_or(box.cpu(), img["boxes"][i].cpu())
                 iou_score = intersection.sum() / union.sum()
