@@ -4,6 +4,8 @@ import numpy as np
 from numpy import random
 import libsvm.svmutil as svmutil
 
+from typing import List, Tuple, Callable
+
 import math
 from numpy.core.arrayprint import ComplexFloatingFormat
 
@@ -25,7 +27,6 @@ class Parameter:
     range: ParameterRange
     uuid: str
     pos: int
-    # TODO add solver
 
     def __init__(self, range: ParameterRange, uuid: str, pos: int):
         self.range = range
@@ -35,18 +36,17 @@ class Parameter:
 
 @dataclass
 class Opts:
-    ground_truth: np
     runs: int
     waterlevel: float
     samples: int
     svm_params: str
     parameters: list()
-    dummy_tsr_matrix: np
     active: bool
+    sample_fun: Callable[[any, int], List[List[float]]]
+    dut_fun: Callable[[List[float]], float]
 
-    def __init__(self, parameters: list, ground_truth: np, runs: int):
+    def __init__(self, parameters: list, runs: int):
         self.parameters = parameters
-        self.ground_truth = ground_truth
         self.runs = runs
         self.waterlevel = 1
         self.samples = 1000
@@ -65,62 +65,53 @@ class Bordersearch:
             else random.uniform(range.start, range.end)
         )
 
-    def get_random_np(self, opts: Opts) -> np:
+    def get_random_param(self, opts: Opts) -> List[float]:
         dims = len(opts.parameters)
-        ret = np.zeros(dims)
+        ret = list()
 
         for j in range(dims):
-            ret[j] = self.get_random_value(opts.parameters[j][0])
+            ret.append(self.get_random_value(opts.parameters[j].range))
 
         return ret
 
-    def normalize(self, opts: Opts, values: np) -> np:
-        result = np.zeros(len(values[0]))
+    def normalize(self, opts: Opts, values: List[float]) -> List[float]:
+        result = list()
 
-        for i in range(len(opts.parameters)):
-            min = opts.parameters[i][0].start
-            max = opts.parameters[i][0].end
-            col = values[0][i]
-            result[i] = (col - min) / (max - min)
+        for i in range(len(values)):
+            param = list()
+            for j in range(len(opts.parameters)):
+                min = opts.parameters[j].range.start
+                max = opts.parameters[j].range.end
+                col = values[i][j]
+                param.append((col - min) / (max - min))
+            result.append(param)
 
         return result
 
-    def mat_to_svm_nodes(self, mat, i):
-        return (i, mat) if mat != 0 else (-1, 0)
-
-    def mat_to_svm_nodes_array(self, mat, number_of_params):
-        nodes = list()
-        for i in range(len(mat)):
-            nodes.append(self.mat_to_svm_nodes(mat[i], i))
-        return nodes
-
-    def svm_train_matrix(self, opts: Opts, labels, data, parameter):
-        number_of_params = len(opts.parameters)
-        problem = svmutil.svm_problem(
-            labels.tolist(), self.mat_to_svm_nodes_array(data, number_of_params)
-        )
+    def svm_train(
+        self,
+        opts: Opts,
+        labels: List[int],
+        data: List[Tuple[List[float], float]],
+        parameter: Parameter,
+    ):
+        problem = svmutil.svm_problem(labels, [i[0] for i in data])
 
         return svmutil.svm_train(problem, parameter)
 
-    def calc_above_wl(self, data, waterlevel):
-        above_wl = np.zeros(len(data[0]))
+    def calc_above_wl(self, data, waterlevel) -> List[float]:
+        return [1 if i[1] > waterlevel else 0 for i in data]
 
-        for i in range(len(data[0])):
-            above_wl[i] = 0 if data[0][i] < waterlevel else 1
-
-        return above_wl
-
-    def test_dut_fun(self, opts, params):
-        return math.pow(params[0], 2) + math.pow(params[1], 2)
-
-    def find_waterlevel(self, opts: Opts, waterlevel: float) -> np:
+    def find_waterlevel(
+        self, opts: Opts, waterlevel: float
+    ) -> Tuple[List[float], float]:
         n_candidates_target = opts.samples
         svm_cost = 100
         weight_lambda = 20
-        number_of_params = len(opts.parameters)
         refinement_level = 0
+        idx = 0
 
-        conf = np.zeros((opts.runs, number_of_params + 1))
+        conf = list()
 
         for i in range(opts.runs):
             progress = (float)(i + 1) / opts.runs
@@ -129,32 +120,34 @@ class Bordersearch:
             out += str(["#" for _ in range(int(progress * size))])
             out += str([" " for _ in range(size)])
             out += str("]" + str((i + 1)) + ("/") + str(opts.runs) + (" "))
-            print(out)
+            print(out.join(""))
 
             if i == 0:
                 # first run, generate some bootsrap data
-                point = self.get_random_np(opts)
-                z = self.test_dut_fun(opts, point)
-                conf[i, :-1] = point
-                conf[i, -1] = z
+                point = self.get_random_param(opts)
+                z = opts.dut_fun(opts, point)
+                conf.append((point, z))
                 continue
 
-            known = conf[:i, :]
-            above_wl = self.calc_above_wl(known[:, :number_of_params], waterlevel)
+            known = conf
+            above_wl = self.calc_above_wl(known, waterlevel)
             parameter = svmutil.svm_parameter(
                 "-s 0 -t 2 -d 3 -g 0.5 -r 0 -c " + str(svm_cost) + " -b 1 -m 20 -e 0.1"
             )
 
             # train model using previous sampled data as ground truth
-            normalized_known = self.normalize(opts, known[:, :number_of_params])
-            model = self.svm_train_matrix(opts, above_wl, normalized_known, parameter)
+            normalized_known = self.normalize(opts, [i[0] for i in known])
+            normalized_known = [
+                (param, z) for param, z in zip(normalized_known, [i[1] for i in known])
+            ]
+            model = self.svm_train(opts, above_wl, normalized_known, parameter)
 
             # generate new sampels
             n_candidates = 0
-            candidates = np.zeros(0)
+            candidates = list()
 
             while n_candidates < n_candidates_target:
-                candidates = np.append(candidates, self.get_random_np(opts))
+                candidates = opts.sample_fun(opts, n_candidates_target)
                 n_candidates = len(candidates)
 
                 if n_candidates < n_candidates_target:
@@ -172,52 +165,75 @@ class Bordersearch:
             if model.get_nr_class() < 2:
                 idx = np.random.randint(0, n_candidates_target - 1)
             else:
-                interval = np.zeros(n_candidates + 1)
-                weights = np.zeros(n_candidates)
+                interval = range(n_candidates)
+                weights = list()
 
                 normalized_candidates = self.normalize(opts, candidates)
 
-                for j in range(n_candidates):
-                    predict_nodes = self.mat_to_svm_nodes(
-                        normalized_candidates[j], number_of_params
-                    )
-                    prob = svmutil.svm_predict(model, predict_nodes)
+                _, _, probs = svmutil.svm_predict(list(), normalized_candidates, model)
+                weights = [
+                    math.exp(-weight_lambda * pow((prob[0] - 0.5), 2)) for prob in probs
+                ]
 
-                    interval[j] = j
-                    weights[j] = math.exp(-weight_lambda * pow((prob - 0.5), 2))
-
-                interval[n_candidates] = n_candidates
-
-                idx = np.random.randint(0, n_candidates_target - 1)
-                idx = min(n_candidates - 1, idx)
+                weights_sum = sum(weights)
+                weights = [i / weights_sum for i in weights]
+                idx = np.random.choice(interval, p=weights)
 
             point = candidates[idx]
-            z = point  # opts.dut_fun(opts, point)
-            conf[i, :-1] = point
-            conf[i, -1] = z
+            z = opts.dut_fun(opts, point)
+            conf.append((point, z))
 
         return conf
+
+
+def test_dut_fun(opts, params):
+    return math.pow(params[0], 2) + math.pow(params[1], 2)
+
+
+def random_sample(opts: Opts, n_candidates_target):
+    def get_random_value(range: ParameterRange) -> float:
+        return (
+            range.start
+            if range.start == range.end
+            else random.uniform(range.start, range.end)
+        )
+
+    def get_random_param(opts: Opts) -> List[float]:
+        dims = len(opts.parameters)
+        ret = list()
+
+        for j in range(dims):
+            ret.append(get_random_value(opts.parameters[j].range))
+
+        return ret
+
+    candidates = list()
+    for m in range(n_candidates_target):
+        candidates.append(get_random_param(opts))
+    return candidates
 
 
 def main():
     b = Bordersearch()
     param = list()
-    param.append((ParameterRange(-1, 1), "", 0))
-    param.append((ParameterRange(-1, 1), "", 1))
+    param.append(Parameter(ParameterRange(-1, 1), "", 0))
+    param.append(Parameter(ParameterRange(-1, 1), "", 1))
 
-    opts = Opts(param, None, 100)
+    opts = Opts(param, 100)
+    opts.dut_fun = test_dut_fun
+    opts.sample_fun = random_sample
     conf = b.find_waterlevel(opts, 1)
 
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
 
     for i in range(len(conf)):
-        ax.scatter(conf[i, 0], conf[i, 1], conf[i, 2])
+        ax.scatter(conf[i][0][0], conf[i][0][1], conf[i][1])
 
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
-    ax.view_init(-60, 180)
+    # ax.view_init(-60, 180)
     plt.savefig("border.png")
 
 
