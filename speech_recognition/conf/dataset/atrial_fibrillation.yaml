@@ -2,7 +2,9 @@
 
 data_folder: ${hydra:runtime.cwd}/datasets/
 cls: speech_recognition.datasets.physio.AtrialFibrillationDataset
+cls_cinc: speech_recognition.datasets.physio.PhysioDataset
 dataset: atrial_fibrillation
+dataset_cinc: cinc_2017
 
 test_pct: 10
 dev_pct: 10
@@ -12,10 +14,16 @@ input_length: 1500
 samplingrate: 250
 num_channels: 2
 
+input_length_cinc: 18000
+samplingrate_cinc: 300
+num_channels_cinc: 1
+
 overlap_ratio: 0.0
 
 clear_download: true
+clear_download_cinc: true
 variants: ["atrial_fibrillation"]
+variants_cinc: ["cinc_2017"]
 data_split: []
 noise_dataset: []
 download_folder: ${dataset.data_folder}/downloads
