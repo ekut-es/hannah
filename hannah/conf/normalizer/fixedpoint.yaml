@@ -1,0 +1,5 @@
+# @package _group_
+
+_target_: hannah.normalizer.FixedPointNormalizer
+normalize_bits: 8
+normalize_max: 256

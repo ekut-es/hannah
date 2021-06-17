@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "speech_recognition"
+name = "hannah"
 version = "0.1.0"
 description = ""
 authors = [
@@ -10,40 +10,44 @@ authors = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7.1 <4.0"
+python = ">=3.7.1 <3.10"
 pwlf = "^2.0.0"
 gitdb2 = "2.0.6"
 chainmap = "^1.0.3"
-redis = "^3.4.1"
 torch = "1.8.1"
-pytorch-lightning = "^1.2.2"
+pytorch-lightning = "^1.3.0"
 SoundFile = "^0.10.3"
 torchaudio = "^0.8.0"
 zipp = "^3.3.1"
 bitstring = "^3.1.7"
 wfdb = "^3.2.0"
 typing-extensions = "^3.7.4"
-fsspec = "^0.8.5"
 lightning-bolts = "^0.3.2"
 wandb = "^0.10.26"
 pycocotools = "^2.0.2"
+opencv-python= "^4.5.2.52"
+scipy="^1.6.3"
+tqdm="^4.60.0"
+seaborn="^0.11.1"
+pandas="^1.2.4"
+thop="^0.0.31-2005241907"
 
 hydra-core = "^1.0.6"
 hydra-nevergrad-sweeper = "^1.1.0-rc.1"
 hydra-joblib-launcher = "^1.1.0"
 hannah-optimizer = {path = "plugins/hannah-optimizer", develop=true}
 hydra-submitit-launcher = "^1.1.0"
-
-# optional dependencies
-onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
-tensorflow-addons = {version = "^0.11.2", optional = true}
-onnxruntime = {version = "^1.4.0", optional = true}
 tabulate = "^0.8.3"
 torchvision = "^0.9.0"
 GitPython = "^3.1.14"
 h5py = "^3.2.1"
 sympy = "^1.7.1"
 nvsmi = "^0.4.2"
+
+# optional dependencies
+onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
+tensorflow-addons = {version = "^0.11.2", optional = true}
+onnxruntime = {version = "^1.4.0", optional = true}
 
 
 [tool.poetry.dev-dependencies]
@@ -55,15 +59,17 @@ pytest-cov = "^2.10.1"
 rope = "^0.18.0"
 mypy = "^0.812"
 pydoc-markdown = "^3.10.0"
+torch-tb-profiler = "^0.1.0"
 
 [tool.poetry.extras]
 tf-backend = ["onnx-tf", "tensorflow-addons"]
 onnxrt-backend = ["onnxruntime"]
 
-
 [tool.poetry.scripts]
-hannah-train = 'speech_recognition.train:main'
-hannah-eval = 'speech_recognition.eval:main'
+hannah-train = 'hannah.train:main'
+hannah-nas = 'hannah.train:nas'
+hannah-eval = 'hannah.eval:main'
+hannah-objectdetection-eval = 'hannah.objectdetection_eval:main'
 
 [build-system]
 requires = ["poetry>=0.12"]

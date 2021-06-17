@@ -3,6 +3,14 @@
 
 To debug training inefficiencies we support the following profiling tools:
 
+## pytorch autograd profiler:
+
+     hannah-train profiler=simple trainer.max_epochs=1 profiler=pytorch
+
+By default profiles are logged to the trainings output directory and can be visualized using tensorboard. For the example run use:
+
+     tensorboard --logdir trained_models/test/tc-res8
+
 ## Simple Profiler:
 
      hannah-train profiler=simple trainer.max_epochs=1 profiler=simple

@@ -1,8 +1,0 @@
-# @package _group_
-
-_target_: pytorch_lightning.callbacks.EarlyStopping
-monitor: val_loss
-min_delta: 0.0
-patience: 3
-verbose: true
-mode:  min
