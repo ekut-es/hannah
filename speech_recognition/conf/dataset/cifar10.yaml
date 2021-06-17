@@ -1,5 +1,0 @@
-# @package _group_
-
-data_folder: ${hydra:runtime.cwd}/datasets/
-cls: speech_recognition.datasets.vision.Cifar10Dataset
-dataset: cifar10

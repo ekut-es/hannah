@@ -1,0 +1,33 @@
+# @package _group_
+
+cls: hannah.models.tc.models.BranchyTCResNetModel
+name: branchy-tc-res8
+dropout_prob: 0.5
+earlyexit_thresholds: [-81.0, -81.0]
+earlyexit_lossweights: [0.3, 0.3]
+fully_convolutional: False
+width_multiplier: 1
+dilation: 1
+small: False
+inputlayer: True
+clipping_value: 100000
+bottleneck: [0,0]
+channel_division: [4,2]
+separable: [0,0]
+conv1_size: 3
+conv1_stride: 1
+conv1_output_channels: 16
+block1_conv_size: 9
+block1_stride: 2
+block1_output_channels: 24
+block2_conv_size: 9
+block2_stride: 2
+block2_output_channels: 32
+block3_conv_size: 9
+block3_stride: 2
+block3_output_channels: 48
+
+# Set by framework
+width: 0
+height: 0
+n_labels: 0

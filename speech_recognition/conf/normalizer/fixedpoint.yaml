@@ -1,5 +1,0 @@
-# @package _group_
-
-_target_: speech_recognition.normalizer.FixedPointNormalizer
-normalize_bits: 8
-normalize_max: 256

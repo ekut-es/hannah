@@ -1,0 +1,75 @@
+# @package _group_
+
+# Backend parameters:
+#   backend.cols=6
+#   backend.rows=None
+
+# Expected results:#   acc_accuracy: 0.0
+#   acc_area: 78453.92199999999
+#   acc_clock_cycles: 8535.0
+#   acc_power: 3.6923910201000003e-06
+#   val_error: 0.06797206401824951
+
+_target_: hannah.models.factory.factory.create_cnn
+name: nas2_kws_lp
+norm:
+  target: bn
+act:
+  target: relu
+conv:
+- blocks:
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 24
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 36
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 1
+    norm: true
+    out_channels: 44
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 24
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 4
+  target: forward
+- blocks:
+  - act: true
+    kernel_size: 11
+    norm: true
+    out_channels: 12
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: false
+    kernel_size: 3
+    norm: true
+    out_channels: 52
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 4
+  target: forward
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 0
+    bw_f: 6
+    bw_w: 6
+    noise_prob: 0.7
+    power_of_2: false
