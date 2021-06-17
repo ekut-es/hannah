@@ -9,8 +9,6 @@ from torch.utils.data import Dataset
 import torch
 import torch.nn.functional as F
 
-import cv2
-
 import math
 
 import shutil
