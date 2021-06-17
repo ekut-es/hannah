@@ -29,17 +29,20 @@ class FasterRCNN(torch.nn.Module):
     def forward(self, x, y=None):
         return self.model(x, y)
 
-    def transformOutput(self, cocoGt, output, y):
+    def transformOutput(self, cocoGt, output, x, y):
         retval = []
 
-        for boxes, labels, scores, y_img in zip(
+        for boxes, labels, scores, x_elem, y_img in zip(
             (out["boxes"] for out in output),
             (out["labels"] for out in output),
             (out["scores"] for out in output),
+            x,
             y,
         ):
             for box, label, score in zip(boxes, labels, scores):
-                if not KittiCOCO.dontCareMatch(box, y_img):
+                if not KittiCOCO.dontCareMatch(
+                    box, (x_elem.shape[2], x_elem.shape[1]), y_img
+                ):
                     img_dict = dict()
                     x1 = box[0].item()
                     y1 = box[1].item()
@@ -143,10 +146,10 @@ class UltralyticsYolo(torch.nn.Module):
         super().train(mode)
         self.model.nms(not mode)
 
-    def transformOutput(self, cocoGt, output, y):
+    def transformOutput(self, cocoGt, output, x, y):
         retval = []
 
-        for out, y_img in zip(output, y):
+        for out, x_elem, y_img in zip(output, x, y):
             for ann in out[0].data:
                 x1 = ann[0].item()
                 y1 = ann[1].item()
@@ -155,7 +158,9 @@ class UltralyticsYolo(torch.nn.Module):
                 confidence = ann[4].item()
                 label = ann[5].item()
                 if not KittiCOCO.dontCareMatch(
-                    torch.Tensor(np.array([x1, y2, x2, y2])), y_img
+                    torch.Tensor(np.array([x1, y2, x2, y2])),
+                    (x_elem.shape[2], x_elem.shape[1]),
+                    y_img,
                 ):
                     img_dict = dict()
                     img_dict["image_id"] = cocoGt.getImgId(y_img["filename"])

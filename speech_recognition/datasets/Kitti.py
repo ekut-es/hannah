@@ -9,6 +9,8 @@ from torch.utils.data import Dataset
 import torch
 import torch.nn.functional as F
 
+import cv2
+
 import math
 
 import shutil
@@ -56,6 +58,7 @@ class Kitti(AbstractDataset):
         self.img_files = list(data.keys())
         self.aug_files = list()
         self.label_files = list(data.values())
+        self.labels_ignore = config["labels_ignore"]
         self.transform = transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -69,6 +72,7 @@ class Kitti(AbstractDataset):
             self.img_files,
             self.img_size,
             self.label_names,
+            self.labels_ignore,
             self.img_path,
             self.aug_path,
             self.kitti_dir,
@@ -135,7 +139,10 @@ class Kitti(AbstractDataset):
         with open(self.label_path + self.label_files[idx]) as inp:
             content = csv.reader(inp, delimiter=" ")
             for line in content:
-                if considerDC is False or not self.label_names.get(line[0]) == 8:
+                if (
+                    considerDC is False
+                    or not self.label_names.get(line[0]) in self.labels_ignore
+                ):
                     label.append(
                         {
                             "type": self.label_names.get(line[0]),
@@ -210,11 +217,23 @@ class Kitti(AbstractDataset):
 
 
 class KittiCOCO(COCO):
-    def __init__(self, img_files, img_size, label_names, img_path, aug_path, kitti_dir):
+    labels_ignore = list()
+
+    def __init__(
+        self,
+        img_files,
+        img_size,
+        label_names,
+        labels_ignore,
+        img_path,
+        aug_path,
+        kitti_dir,
+    ):
         super().__init__()
         self.img_path = img_path
         self.aug_path = aug_path
         self.kitti_dir = kitti_dir
+        KittiCOCO.labels_ignore = labels_ignore
 
         dataset = dict()
         dataset["images"] = []
@@ -240,7 +259,7 @@ class KittiCOCO(COCO):
         self.dataset = dataset
 
     def addAnn(self, idx, catId, bbox):
-        if catId != 8:
+        if catId not in KittiCOCO.labels_ignore:
             ann_dict = dict()
             coco_bbox = [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]]
             ann_dict["id"] = len(self.dataset["annotations"]) + 1
@@ -278,7 +297,7 @@ class KittiCOCO(COCO):
                 print("")
 
             for ann in annsGt:
-                if self.cats[ann["category_id"]]["id"] != 8:
+                if self.cats[ann["category_id"]]["id"] not in KittiCOCO.labels_ignore:
                     box = ann["bbox"]
                     rect = patches.Rectangle(
                         (box[0], box[1]),
@@ -291,7 +310,7 @@ class KittiCOCO(COCO):
                     ax.add_patch(rect)
 
             for ann in annsDt:
-                if self.cats[ann["category_id"]]["id"] != 8:
+                if self.cats[ann["category_id"]]["id"] not in KittiCOCO.labels_ignore:
                     box = ann["bbox"]
                     rect = patches.Rectangle(
                         (box[0], box[1]),
@@ -319,13 +338,34 @@ class KittiCOCO(COCO):
             plt.close()
 
     @staticmethod
-    def dontCareMatch(box: Tensor, img: Tensor):
+    def dontCareMatch(box: Tensor, size, img: Tensor):
         for i in range(len(img["labels"])):
-            if img["labels"][i] == 8:
-                intersection = np.logical_and(box.cpu(), img["boxes"][i].cpu())
-                union = np.logical_or(box.cpu(), img["boxes"][i].cpu())
-                iou_score = intersection.sum() / union.sum()
-                iou_score = iou_score / ((box[2] - box[0]) * (box[3] - box[1]))
+            if img["labels"][i] in KittiCOCO.labels_ignore:
+
+                gt = np.zeros((size[0], size[1]))
+                dt = np.zeros((size[0], size[1]))
+
+                gt_x1 = int(img["boxes"][i][0])
+                gt_y1 = int(img["boxes"][i][1])
+                gt_x2 = int(img["boxes"][i][2])
+                gt_y2 = int(img["boxes"][i][3])
+
+                dt_x1 = int(box[0])
+                dt_y1 = int(box[1])
+                dt_x2 = int(box[2])
+                dt_y2 = int(box[3])
+
+                gt[gt_x1:gt_x2, gt_y1:gt_y2] = np.ones(
+                    (
+                        gt_x2 - gt_x1,
+                        gt_y2 - gt_y1,
+                    )
+                )
+
+                dt[dt_x1:dt_x2, dt_y1:dt_y2] = np.ones((dt_x2 - dt_x1, dt_y2 - dt_y1))
+
+                intersection = (np.logical_and(gt, dt)).sum()
+                iou_score = intersection / dt.sum()
                 if iou_score > 0.5:
                     return True
 
