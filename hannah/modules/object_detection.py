@@ -77,6 +77,7 @@ class ObjectDetectionModule(ClassifierModule):
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
                 labels=self.num_classes,
+                _recursive_=False,
             )
         else:
             self.hparams.model.width = self.example_feature_array.size(2)

@@ -32,7 +32,7 @@ seaborn="^0.11.1"
 pandas="^1.2.4"
 thop="^0.0.31-2005241907"
 
-hydra-core = ">=1.0.6 < 1.1.0"
+hydra-core = "^1.1.0"
 hydra-nevergrad-sweeper = "^1.1.0-rc.1"
 hydra-joblib-launcher = "^1.1.0"
 hannah-optimizer = {path = "plugins/hannah-optimizer", develop=true}

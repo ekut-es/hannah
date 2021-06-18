@@ -37,7 +37,7 @@ def eval_steps(config, module, hparams, checkpoint):
         hparams["dataset"]["kitti_folder"] = folder[: folder.rfind("/")] + "/real_rain"
         hparams["dataset"]["test_pct"] = 50
         hparams["dataset"]["dev_pct"] = 50
-        real_module = instantiate(hparams)
+        real_module = instantiate(hparams, _recursive_=False)
         real_module.setup("test")
         real_module.load_state_dict(checkpoint["state_dict"])
         real_module.augmentation.setEvalAttribs(0)
