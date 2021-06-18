@@ -16,5 +16,6 @@ num_img_pct: 100
 
 variants: ["kitti"]
 labels: {"DontCare" : 0, "Car" : 1, "Van" : 2, "Truck" : 3, "Pedestrian" : 4, "Person_sitting" : 5, "Cyclist" : 6, "Tram" : 7, "Misc" : 8}
+labels_ignore: [0]
 data_split: []
 noise_dataset: []

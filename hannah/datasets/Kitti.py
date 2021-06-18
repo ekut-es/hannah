@@ -3,6 +3,7 @@ import sys
 import csv
 import glob
 import numpy as np
+from torch.functional import Tensor
 from torch.utils.data import Dataset
 
 import torch
@@ -55,6 +56,7 @@ class Kitti(AbstractDataset):
         self.img_files = list(data.keys())
         self.aug_files = list()
         self.label_files = list(data.values())
+        self.labels_ignore = config["labels_ignore"]
         self.transform = transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -68,6 +70,7 @@ class Kitti(AbstractDataset):
             self.img_files,
             self.img_size,
             self.label_names,
+            self.labels_ignore,
             self.img_path,
             self.aug_path,
             self.kitti_dir,
@@ -107,7 +110,9 @@ class Kitti(AbstractDataset):
         pil_img = self.transform(pil_img)
 
         target = {}
-        label = self._parse_label(idx)
+        label = self._parse_label(
+            idx, True if self.set_type == DatasetType.TRAIN else False
+        )
 
         labels = []
         boxes = []
@@ -127,23 +132,27 @@ class Kitti(AbstractDataset):
     def getCocoGt(self):
         return self.cocoGt
 
-    def _parse_label(self, idx: int):
+    def _parse_label(self, idx: int, considerDC: bool):
         label = []
         with open(self.label_path + self.label_files[idx]) as inp:
             content = csv.reader(inp, delimiter=" ")
             for line in content:
-                label.append(
-                    {
-                        "type": self.label_names.get(line[0]),
-                        "truncated": float(line[1]),
-                        "occluded": int(line[2]),
-                        "alpha": float(line[3]),
-                        "bbox": [float(x) for x in line[4:8]],
-                        "dimensions": [float(x) for x in line[8:11]],
-                        "location": [float(x) for x in line[11:14]],
-                        "rotation_y": float(line[14]),
-                    }
-                )
+                if (
+                    considerDC is False
+                    or not self.label_names.get(line[0]) in self.labels_ignore
+                ):
+                    label.append(
+                        {
+                            "type": self.label_names.get(line[0]),
+                            "truncated": float(line[1]),
+                            "occluded": int(line[2]),
+                            "alpha": float(line[3]),
+                            "bbox": [float(x) for x in line[4:8]],
+                            "dimensions": [float(x) for x in line[8:11]],
+                            "location": [float(x) for x in line[11:14]],
+                            "rotation_y": float(line[14]),
+                        }
+                    )
         return label
 
     @classmethod
@@ -205,11 +214,23 @@ class Kitti(AbstractDataset):
 
 
 class KittiCOCO(COCO):
-    def __init__(self, img_files, img_size, label_names, img_path, aug_path, kitti_dir):
+    labels_ignore = list()
+
+    def __init__(
+        self,
+        img_files,
+        img_size,
+        label_names,
+        labels_ignore,
+        img_path,
+        aug_path,
+        kitti_dir,
+    ):
         super().__init__()
         self.img_path = img_path
         self.aug_path = aug_path
         self.kitti_dir = kitti_dir
+        KittiCOCO.labels_ignore = labels_ignore
 
         dataset = dict()
         dataset["images"] = []
@@ -235,17 +256,18 @@ class KittiCOCO(COCO):
         self.dataset = dataset
 
     def addAnn(self, idx, catId, bbox):
-        ann_dict = dict()
-        coco_bbox = [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]]
-        ann_dict["id"] = len(self.dataset["annotations"]) + 1
-        ann_dict["image_id"] = idx
-        ann_dict["category_id"] = catId
-        ann_dict["segmentation"] = "polygon"
-        ann_dict["bbox"] = coco_bbox
-        ann_dict["iscrowd"] = 0
-        ann_dict["area"] = coco_bbox[2] * coco_bbox[3]
+        if catId not in KittiCOCO.labels_ignore:
+            ann_dict = dict()
+            coco_bbox = [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]]
+            ann_dict["id"] = len(self.dataset["annotations"]) + 1
+            ann_dict["image_id"] = idx
+            ann_dict["category_id"] = catId
+            ann_dict["segmentation"] = "polygon"
+            ann_dict["bbox"] = coco_bbox
+            ann_dict["iscrowd"] = 0
+            ann_dict["area"] = coco_bbox[2] * coco_bbox[3]
 
-        self.dataset["annotations"].append(ann_dict)
+            self.dataset["annotations"].append(ann_dict)
 
     def clearBatch(self):
         self.dataset["annotations"] = []
@@ -272,43 +294,79 @@ class KittiCOCO(COCO):
                 print("")
 
             for ann in annsGt:
-                box = ann["bbox"]
-                rect = patches.Rectangle(
-                    (box[0], box[1]),
-                    box[2],
-                    box[3],
-                    linewidth=1,
-                    edgecolor="b",
-                    facecolor="none",
-                )
-                ax.add_patch(rect)
+                if self.cats[ann["category_id"]]["id"] not in KittiCOCO.labels_ignore:
+                    box = ann["bbox"]
+                    rect = patches.Rectangle(
+                        (box[0], box[1]),
+                        box[2],
+                        box[3],
+                        linewidth=1,
+                        edgecolor="b",
+                        facecolor="none",
+                    )
+                    ax.add_patch(rect)
 
             for ann in annsDt:
-                box = ann["bbox"]
-                rect = patches.Rectangle(
-                    (box[0], box[1]),
-                    box[2],
-                    box[3],
-                    linewidth=1,
-                    edgecolor="r",
-                    facecolor="none",
-                )
-                ax.text(
-                    box[0],
-                    box[1],
-                    self.cats[ann["category_id"]]["name"]
-                    if ann["category_id"] in self.cats
-                    else "undefined",
-                    color="red",
-                    fontsize=10,
-                )
-                ax.add_patch(rect)
+                if self.cats[ann["category_id"]]["id"] not in KittiCOCO.labels_ignore:
+                    box = ann["bbox"]
+                    rect = patches.Rectangle(
+                        (box[0], box[1]),
+                        box[2],
+                        box[3],
+                        linewidth=1,
+                        edgecolor="r",
+                        facecolor="none",
+                    )
+                    ax.text(
+                        box[0],
+                        box[1],
+                        self.cats[ann["category_id"]]["name"]
+                        if ann["category_id"] in self.cats
+                        else "undefined",
+                        color="red",
+                        fontsize=10,
+                    )
+                    ax.add_patch(rect)
 
             if not os.path.exists("./ann"):
                 os.makedirs("./ann")
 
             plt.savefig("./ann/" + filename)
             plt.close()
+
+    @staticmethod
+    def dontCareMatch(box: Tensor, size, img: Tensor):
+        for i in range(len(img["labels"])):
+            if img["labels"][i] in KittiCOCO.labels_ignore:
+
+                gt = np.zeros((size[0], size[1]))
+                dt = np.zeros((size[0], size[1]))
+
+                gt_x1 = int(img["boxes"][i][0])
+                gt_y1 = int(img["boxes"][i][1])
+                gt_x2 = int(img["boxes"][i][2])
+                gt_y2 = int(img["boxes"][i][3])
+
+                dt_x1 = int(box[0])
+                dt_y1 = int(box[1])
+                dt_x2 = int(box[2])
+                dt_y2 = int(box[3])
+
+                gt[gt_x1:gt_x2, gt_y1:gt_y2] = np.ones(
+                    (
+                        gt_x2 - gt_x1,
+                        gt_y2 - gt_y1,
+                    )
+                )
+
+                dt[dt_x1:dt_x2, dt_y1:dt_y2] = np.ones((dt_x2 - dt_x1, dt_y2 - dt_y1))
+
+                intersection = (np.logical_and(gt, dt)).sum()
+                iou_score = intersection / dt.sum()
+                if iou_score > 0.5:
+                    return True
+
+        return False
 
 
 def object_collate_fn(data):
