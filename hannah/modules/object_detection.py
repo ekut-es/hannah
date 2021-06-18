@@ -62,7 +62,7 @@ class ObjectDetectionModule(ClassifierModule):
                 self.hparams.dataset.cls
             ).splits(self.hparams.dataset)
 
-            self.num_classes = len(self.train_set.class_names)
+            self.num_classes = len(self.train_set.class_names) - 1
 
         # Create example input
         self.example_input_array = torch.zeros(
@@ -159,7 +159,7 @@ class ObjectDetectionModule(ClassifierModule):
         cocoGt.createIndex()
 
         output = self(x)
-        cocoDt = self.model.transformOutput(cocoGt, output, y)
+        cocoDt = self.model.transformOutput(cocoGt, output, x, y)
         cocoGt.saveImg(cocoDt, y)
         cocoEval = COCOeval(cocoGt, cocoDt, "bbox")
         cocoEval.evaluate()
@@ -203,7 +203,7 @@ class ObjectDetectionModule(ClassifierModule):
         cocoGt.createIndex()
 
         output = self(x)
-        cocoDt = self.model.transformOutput(cocoGt, output, y)
+        cocoDt = self.model.transformOutput(cocoGt, output, x, y)
         cocoGt.saveImg(cocoDt, y)
         cocoEval = COCOeval(cocoGt, cocoDt, "bbox")
         cocoEval.evaluate()
