@@ -1,0 +1,40 @@
+# @package _group_
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.speech.SpeechCommandsDataset
+dataset: keywords
+
+group_speakers_by_id: true
+use_default_split: false
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+wanted_words:
+    - 'yes'
+    - 'no'
+    - up
+    - down
+    - left
+    - right
+    - 'on'
+    - 'off'
+    - stop
+    - go
+
+input_length: 16000
+samplingrate: 16000
+
+timeshift_ms: 100
+extract: loudest
+clear_download: False
+variants: ["speech_command"]
+data_split: []
+noise_dataset: []
+download_folder: ${dataset.data_folder}/downloads
+
+silence_prob: 0.1
+unknown_prob: 0.1
+test_snr: .inf
+train_snr_high: 500
+train_snr_low: 5.0
+sampler: random

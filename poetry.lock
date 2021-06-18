@@ -520,15 +520,24 @@ joblib = ">=0.14.0"
 
 [[package]]
 name = "hydra-nevergrad-sweeper"
+<<<<<<< HEAD
 version = "1.1.5"
+=======
+version = "1.1.0rc2"
+>>>>>>> master
 description = "Hydra Nevergrad Sweeper plugin"
 category = "main"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
+<<<<<<< HEAD
 hydra-core = ">=1.1.0.dev7"
 nevergrad = ">=0.4.3.post2"
+=======
+hydra-core = ">=1.0.0,<1.1.0"
+nevergrad = ">=0.4.1.post4"
+>>>>>>> master
 numpy = "<1.20.0"
 
 [[package]]
@@ -953,7 +962,11 @@ tensorflow-addons = "*"
 type = "git"
 url = "https://github.com/onnx/onnx-tensorflow.git"
 reference = "master"
+<<<<<<< HEAD
 resolved_reference = "5a8f36e06187d8482830adeede8e5a3c9543dbd5"
+=======
+resolved_reference = "44699562c7a67e4cdfa0c51bcf475bb95605425f"
+>>>>>>> master
 
 [[package]]
 name = "onnxruntime"
@@ -1894,7 +1907,11 @@ tf-backend = ["onnx-tf", "tensorflow-addons"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1 <3.10"
+<<<<<<< HEAD
 content-hash = "5a5e4d095bf73ea38e70e4793b8c02bf3598a290d1c3cad0d902a0d3e42ec442"
+=======
+content-hash = "5ab6bebf6a49ba2324bd748081cd2998f616648431ff356eb9cc15238cf7205f"
+>>>>>>> master
 
 [metadata.files]
 absl-py = [
@@ -2280,8 +2297,13 @@ hydra-joblib-launcher = [
     {file = "hydra_joblib_launcher-1.1.5-py3-none-any.whl", hash = "sha256:90578ce6898deda8c6ee3a767be0b5cdc99c6e911decc48b83d47933064f9716"},
 ]
 hydra-nevergrad-sweeper = [
+<<<<<<< HEAD
     {file = "hydra-nevergrad-sweeper-1.1.5.tar.gz", hash = "sha256:629c2f38b879d7a33def0f91df1463837a74fb8fd211e1d468e729b0605f335a"},
     {file = "hydra_nevergrad_sweeper-1.1.5-py3-none-any.whl", hash = "sha256:e81b8d055d64c17f88bc53372215840b7cb819092c34ce0ea68ad99e55fb6187"},
+=======
+    {file = "hydra-nevergrad-sweeper-1.1.0rc2.tar.gz", hash = "sha256:25221d9c33527ac9f2fa7825c980734a75f4135a369ae18ed636bd73aaaf257a"},
+    {file = "hydra_nevergrad_sweeper-1.1.0rc2-py3-none-any.whl", hash = "sha256:7063b5fb8681ebffabd1c3d38da54f75bc6d9054cc4b19bafe8c4f0dc51afab9"},
+>>>>>>> master
 ]
 hydra-submitit-launcher = [
     {file = "hydra-submitit-launcher-1.1.5.tar.gz", hash = "sha256:7b7aba1df9f0b6b237070e8a64bf1c72cd272c4304202b7bb7ea3145a0e5852d"},

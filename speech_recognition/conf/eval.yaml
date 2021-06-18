@@ -1,5 +1,0 @@
-name: test
-checkpoints: []
-noise: []
-output_dir: eval
-default_target: speech_recognition.modules.classifier.StreamClassifierModule
