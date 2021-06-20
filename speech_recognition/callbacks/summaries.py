@@ -102,11 +102,14 @@ def walk_model(model, dummy_input):
     def get_spike_attrs(module):
         attrs = ""
         if module.type in ["LIF", "ALIF"]:
-            attrs += "alpha=" + str(module.alpha.item()) + " "
-        attrs += "beta=" + str(module.beta.item()) + " "
+            if len(module.alpha.shape) == 0:
+                attrs += "alpha=" + str(module.alpha.item()) + " "
+        if len(module.beta.shape) == 0:
+            attrs += "beta=" + str(module.beta.item()) + " "
         if module.type in ["ALIF", "eALIF"]:
-            attrs += "gamma=" + str(module.gamma.item()) + " "
-            attrs += "rho=" + str(module.rho.item()) + " "
+            if len(module.gamma.shape) == 0 and len(module.rho.shape) == 0:
+                attrs += "gamma=" + str(module.gamma.item()) + " "
+                attrs += "rho=" + str(module.rho.item()) + " "
         return attrs
 
     def get_1DSpikeLayer(module, volume_ofm, output):

@@ -2,14 +2,7 @@ import torch
 
 
 class Spiking1DIFLayer(torch.nn.Module):
-    def __init__(
-        self,
-        channels: int,
-        spike_fn,
-        flatten_output=False,
-        time_position=2,
-        negative_mempot=True,
-    ):
+    def __init__(self, channels: int, spike_fn, flatten_output=False, time_position=2):
 
         super(Spiking1DIFLayer, self).__init__()
 
@@ -53,10 +46,7 @@ class Spiking1DIFLayer(torch.nn.Module):
             elif self.time_position == 1:
                 input_ = x[:, t, :]
 
-            if self.negative_mempot:
-                mem = mem + input_ - rst
-            else:
-                mem = (mem - rst) + input_
+            mem = mem + input_ - rst
 
             spk = self.spike_fn(mem - self.Vth)
 
@@ -81,8 +71,9 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         flatten_output=False,
         beta=0.65,
         time_position=2,
-        trainable_parameter=False,
+        trainable_parameter=True,
         negative_mempot=True,
+        parameter_per_channel=False,
     ):
 
         super(Spiking1DeLIFLayer, self).__init__()
@@ -92,9 +83,15 @@ class Spiking1DeLIFLayer(torch.nn.Module):
         self.flatten_output = flatten_output
 
         self.trainable_parameter = trainable_parameter
-        self.beta = torch.nn.Parameter(
-            torch.tensor(beta), requires_grad=trainable_parameter
-        )
+        self.parameter_per_channel = parameter_per_channel
+        if parameter_per_channel and trainable_parameter:
+            self.beta = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+        else:
+            self.beta = torch.nn.Parameter(
+                torch.tensor(beta), requires_grad=trainable_parameter
+            )
         self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "eLIF"
@@ -170,6 +167,7 @@ class Spiking1DLIFLayer(torch.nn.Module):
         time_position=2,
         trainable_parameter=False,
         negative_mempot=True,
+        parameter_per_channel=False,
     ):
 
         super(Spiking1DLIFLayer, self).__init__()
@@ -179,12 +177,20 @@ class Spiking1DLIFLayer(torch.nn.Module):
         self.flatten_output = flatten_output
 
         self.trainable_parameter = trainable_parameter
-        self.beta = torch.nn.Parameter(
-            torch.tensor(beta), requires_grad=trainable_parameter
-        )
-        self.alpha = torch.nn.Parameter(
-            torch.tensor(alpha), requires_grad=trainable_parameter
-        )
+        if parameter_per_channel and trainable_parameter:
+            self.beta = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+            self.alpha = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+        else:
+            self.beta = torch.nn.Parameter(
+                torch.tensor(beta), requires_grad=trainable_parameter
+            )
+            self.alpha = torch.nn.Parameter(
+                torch.tensor(alpha), requires_grad=trainable_parameter
+            )
         self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "LIF"
@@ -271,6 +277,7 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         time_position=2,
         trainable_parameter=False,
         negative_mempot=True,
+        parameter_per_channel=False,
     ):
 
         super(Spiking1DeALIFLayer, self).__init__()
@@ -280,15 +287,26 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         self.flatten_output = flatten_output
 
         self.trainable_parameter = trainable_parameter
-        self.beta = torch.nn.Parameter(
-            torch.tensor(beta), requires_grad=trainable_parameter
-        )
-        self.gamma = torch.nn.Parameter(
-            torch.tensor(gamma), requires_grad=trainable_parameter
-        )
-        self.rho = torch.nn.Parameter(
-            torch.tensor(rho), requires_grad=trainable_parameter
-        )
+        if parameter_per_channel and trainable_parameter:
+            self.beta = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+            self.gamma = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+            self.rho = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+        else:
+            self.beta = torch.nn.Parameter(
+                torch.tensor(beta), requires_grad=trainable_parameter
+            )
+            self.gamma = torch.nn.Parameter(
+                torch.tensor(gamma), requires_grad=trainable_parameter
+            )
+            self.rho = torch.nn.Parameter(
+                torch.tensor(rho), requires_grad=trainable_parameter
+            )
         self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "eALIF"
@@ -382,6 +400,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
         time_position=2,
         trainable_parameter=False,
         negative_mempot=True,
+        parameter_per_channel=False,
     ):
 
         super(Spiking1DALIFLayer, self).__init__()
@@ -391,18 +410,34 @@ class Spiking1DALIFLayer(torch.nn.Module):
         self.flatten_output = flatten_output
 
         self.trainable_parameter = trainable_parameter
-        self.alpha = torch.nn.Parameter(
-            torch.tensor(alpha), requires_grad=trainable_parameter
-        )
-        self.beta = torch.nn.Parameter(
-            torch.tensor(beta), requires_grad=trainable_parameter
-        )
-        self.gamma = torch.nn.Parameter(
-            torch.tensor(gamma), requires_grad=trainable_parameter
-        )
-        self.rho = torch.nn.Parameter(
-            torch.tensor(rho), requires_grad=trainable_parameter
-        )
+        if parameter_per_channel and trainable_parameter:
+
+            self.alpha = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+            self.beta = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+            self.gamma = torch.nn.Parameter(
+                torch.rand(channels), requires_grad=trainable_parameter
+            )
+            self.rho = torch.nn.Parameter(
+                torch.rand(self.channels), requires_grad=trainable_parameter
+            )
+        else:
+
+            self.alpha = torch.nn.Parameter(
+                torch.tensor(alpha), requires_grad=trainable_parameter
+            )
+            self.beta = torch.nn.Parameter(
+                torch.tensor(beta), requires_grad=trainable_parameter
+            )
+            self.gamma = torch.nn.Parameter(
+                torch.tensor(gamma), requires_grad=trainable_parameter
+            )
+            self.rho = torch.nn.Parameter(
+                torch.tensor(rho), requires_grad=trainable_parameter
+            )
         self.Vth = torch.nn.Parameter(torch.ones(channels), requires_grad=False)
 
         self.type = "ALIF"

@@ -54,6 +54,7 @@ def build1DConvolution(
     neuron_type="eLIF",
     trainable_parameter=False,
     negative_mempot=True,
+    parameter_per_channel=False,
 ):
     conv = nn.Conv1d(
         in_channels=in_channels,
@@ -85,6 +86,8 @@ def build1DConvolution(
                     rho=rho,
                     neuron_type=neuron_type,
                     trainable_parameter=trainable_parameter,
+                    negative_mempot=negative_mempot,
+                    parameter_per_channel=parameter_per_channel,
                 ),
             )
         elif type == "NN":
@@ -107,6 +110,8 @@ def build1DConvolution(
                     rho=rho,
                     neuron_type=neuron_type,
                     trainable_parameter=trainable_parameter,
+                    negative_mempot=negative_mempot,
+                    parameter_per_channel=parameter_per_channel,
                 ),
             )
         elif type == "NN":
@@ -128,6 +133,7 @@ def get1DNeuronLayer(
     time_position=2,
     trainable_parameter=False,
     negative_mempot=True,
+    parameter_per_channel=False,
 ):
     if neuron_type == "s2net":
         return Spiking1DS2NetLayer(
@@ -135,7 +141,6 @@ def get1DNeuronLayer(
             spike_fn=spike_fn,
             flatten_output=flatten_output,
             convolution_layer=convolution_layer,
-            negative_mempot=negative_mempot,
         )
     elif neuron_type == "IF":
         return Spiking1DIFLayer(
@@ -143,7 +148,6 @@ def get1DNeuronLayer(
             spike_fn=spike_fn,
             flatten_output=flatten_output,
             time_position=time_position,
-            negative_mempot=negative_mempot,
         )
     elif neuron_type == "eLIF":
         return Spiking1DeLIFLayer(
@@ -154,6 +158,7 @@ def get1DNeuronLayer(
             time_position=time_position,
             trainable_parameter=trainable_parameter,
             negative_mempot=negative_mempot,
+            parameter_per_channel=parameter_per_channel,
         )
     elif neuron_type == "LIF":
         return Spiking1DLIFLayer(
@@ -165,6 +170,7 @@ def get1DNeuronLayer(
             time_position=time_position,
             trainable_parameter=trainable_parameter,
             negative_mempot=negative_mempot,
+            parameter_per_channel=parameter_per_channel,
         )
     elif neuron_type == "eALIF":
         return Spiking1DeALIFLayer(
@@ -177,6 +183,7 @@ def get1DNeuronLayer(
             time_position=time_position,
             trainable_parameter=trainable_parameter,
             negative_mempot=negative_mempot,
+            parameter_per_channel=parameter_per_channel,
         )
     elif neuron_type == "ALIF":
         return Spiking1DALIFLayer(
@@ -190,6 +197,7 @@ def get1DNeuronLayer(
             time_position=time_position,
             trainable_parameter=trainable_parameter,
             negative_mempot=negative_mempot,
+            parameter_per_channel=parameter_per_channel,
         )
 
 

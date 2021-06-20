@@ -53,6 +53,16 @@ bottleneck:
 channel_division:
 - 2
 - 4
+#spike_conversion_neuron_type: eLIF
+#spike_conversion_flattenoutput: False
+#spike_conversion_alpha: 0.1
+#spike_conversion_beta: 0.1
+#spike_conversion_gamma: 0.1
+#spike_conversion_rho: 0.1
+#spike_conversion_trainable_parameter: True
+#spike_conversion_negative_mempot: True
+#spike_conversion_parameter_per_channel: False
+
 conv1_output_channels: 16
 conv1_size: 3
 conv1_stride: 1
@@ -90,6 +100,8 @@ spike_fn: SBPHeaviside
 #general_rho: 0.0
 #general_neuron_type: ALIF
 #general_trainable_parameter: True
+#general_negative_mempot: True
+#general_parameter_per_channel: True
 
 # Set by LigthningModule
 width: 101
