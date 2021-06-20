@@ -51,7 +51,7 @@ def build1DConvolution(
     beta=0.75,
     gamma=0.75,
     rho=0.75,
-    neuron_type="eLIF",
+    neuron_type=None,
     trainable_parameter=False,
     negative_mempot=True,
     parameter_per_channel=False,
@@ -69,9 +69,9 @@ def build1DConvolution(
     )
     bn = build1DBatchNorm(out_channels, type=batchnorm, timesteps=timesteps)
 
-    if batchnorm is None and activation is None and spike_fn is None:
+    if batchnorm is None and activation is None and neuron_type is None:
         return nn.Sequential(conv)
-    elif batchnorm is None and (activation is not None or spike_fn is not None):
+    elif batchnorm is None and (activation is not None or neuron_type is not None):
         if type == "SNN":
             return nn.Sequential(
                 conv,
@@ -92,9 +92,9 @@ def build1DConvolution(
             )
         elif type == "NN":
             return nn.Sequential(conv, activation)
-    elif batchnorm is not None and activation is None and spike_fn is None:
+    elif batchnorm is not None and activation is None and neuron_type is None:
         return nn.Sequential(conv, bn)
-    elif batchnorm is not None and (activation is not None or spike_fn is not None):
+    elif batchnorm is not None and (activation is not None or neuron_type is not None):
         if type == "SNN":
             return nn.Sequential(
                 conv,

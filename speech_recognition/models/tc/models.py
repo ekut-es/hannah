@@ -444,7 +444,7 @@ class TCResNetModel(SerializableModule):
             beta = config.get(beta_name, 1)
             gamma = config.get(gamma_name, 1)
             rho = config.get(roh_name, 1)
-            neuron_type = config.get(neurontype_name, "eLIF")
+            neuron_type = config.get(neurontype_name, None)
             trainable_parameter = config.get(trainable_parameter_name, False)
             negative_mempot = config.get(negative_mempot_name, False)
             parameter_per_channel = config.get(parameter_per_channel_name, False)
@@ -511,6 +511,7 @@ class TCResNetModel(SerializableModule):
                     kernel_size=size,
                     stride=stride,
                     bias=False,
+                    spike_fn=self.spike_fn,
                     timesteps=timesteps,
                     batchnorm=batchnorm,
                     flatten_output=flattenoutput,
@@ -560,7 +561,7 @@ class TCResNetModel(SerializableModule):
             beta = config.get(beta_name, 1)
             gamma = config.get(gamma_name, 1)
             rho = config.get(roh_name, 1)
-            neuron_type = config.get(neurontype_name, "eLIF")
+            neuron_type = config.get(neurontype_name, None)
             trainable_parameter = config.get(trainable_parameter_name, False)
             negative_mempot = config.get(negative_mempot_name, False)
             parameter_per_channel = config.get(parameter_per_channel_name, False)
@@ -642,7 +643,7 @@ class TCResNetModel(SerializableModule):
         else:
             if self.conv_type == "SNN":
                 readout_type = config.get("readout_type", "s2net")
-                readout_neuron_type = config.get("readout_neuron_type", "eLIF")
+                readout_neuron_type = config.get("readout_neuron_type", None)
                 readout_alpha = config.get("readout_alpha", 1)
                 readout_beta = config.get("readout_beta", 1)
                 readout_gamma = config.get("readout_gamma", 1)
