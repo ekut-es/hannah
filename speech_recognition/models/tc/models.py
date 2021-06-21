@@ -453,7 +453,7 @@ class TCResNetModel(SerializableModule):
                 batchnorm = general_bn
             if general_conv_type is not None:
                 conv_type = general_conv_type
-            if self.neuron_type is not None:
+            if self.neuron_type is not None and neuron_type is not None:
                 neuron_type = self.neuron_type
             if self.alpha is not None:
                 alpha = self.alpha
