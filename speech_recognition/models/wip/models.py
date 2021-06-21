@@ -1,16 +1,150 @@
 import copy
 import torch.nn as nn
+import torch.nn.functional as nnf
 import numpy as np
 import logging
-# import torch
+import torch
 # from ..utils import ConfigType, SerializableModule
 from ..factory import qat as qat
 
 
 # Conv1d with automatic padding for the set kernel size
 def conv1d_auto_padding(conv1d: nn.Conv1d):
-    conv1d.padding = conv1d.kernel_size[0] // 2
+    conv1d.padding = conv1d_get_padding(conv1d.kernel_size[0])
     return conv1d
+
+
+def conv1d_get_padding(kernel_size):
+    padding = kernel_size // 2
+    return padding
+
+
+class ElasticKernelConv1d(nn.Conv1d):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_sizes: list(int),
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias: bool = False,
+    ):
+        # sort available kernel sizes from largest to smallest (descending order)
+        kernel_sizes.sort(reverse=True)
+        self.kernel_sizes = kernel_sizes
+        # after sorting kernel sizes, the maximum and minimum size available are the first and last element
+        self.max_kernel_size = kernel_sizes[0]
+        self.min_kernel_size = kernel_sizes[-1]
+        # initially, the target size is the full kernel
+        self.target_kernel_index = 0
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=self.max_kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias
+        )
+
+        # the list of kernel transforms will have one element less than the list of kernel sizes.
+        # between every two sequential kernel sizes, there will be a kernel transform
+        # the subsequent kernel is determined by applying the same-size center of the previous kernel to the transform
+        self.kernel_transforms = nn.ModuleList([])
+        for i in range(len(kernel_sizes) - 1):
+            # the target size of the kernel transform is the next kernel size in the sequence
+            new_kernel_size = kernel_sizes[i+1]
+            # kernel transform is kept minimal by being shared between layers. It is simply a linear transformation from the center of the previous kernel to the new kernel
+            # directly applying the kernel to the transform is possible: nn.Linear accepts multi-dimensional input in a way where the last input dim is transformed from in_channels to out_channels for the last output dim
+            new_transform_module = nn.Linear(new_kernel_size, new_kernel_size, bias=False)
+            # initialise the transform as the identity matrix to start training from the center of the larger kernel
+            new_transform_module.weight.data.copy_(torch.eye(new_kernel_size))
+            # transform weights are initially frozen
+            new_transform_module.weight.requires_grad = False
+            self.kernel_transforms.append(new_transform_module)
+
+    def set_kernel_size(self, new_kernel_size):
+        if new_kernel_size < self.min_kernel_size or new_kernel_size > self.max_kernel_size:
+            logging.warn(f"requested elastic kernel size ({new_kernel_size}) outside of min/max range: ({self.max_kernel_size}, {self.min_kernel_size}). clamping.")
+            if new_kernel_size < self.min_kernel_size:
+                new_kernel_size = self.min_kernel_size
+            else:
+                new_kernel_size = self.max_kernel_size
+
+        self.target_kernel_index = 0
+        try:
+            index = self.kernel_sizes.index(new_kernel_size)
+            self.target_kernel_index = index
+        except ValueError:
+            logging.warn(f"requested elastic kernel size {new_kernel_size} is not an available kernel size. Defaulting to full size ({self.max_kernel_size})")
+
+        # if the largest kernel is selected, train the actual kernel weights. For elastic sub-kernels, only the 'final' transform in the chain should be trained.
+        if self.target_kernel_index == 0:
+            self.weight.requires_grad = True
+        else:
+            self.weight.requires_grad = False
+            for i in range(self.kernel_transforms):
+                # only the kernel transformation transforming to the current target index should be trained
+                # the n-th transformation transforms the n-th kernel to the (n+1)-th kernel
+                self.kernel_transforms[i].weight.requires_grad = i == (self.target_kernel_index - 1)
+
+    # TODO: while kernel transform size (and therefore the required computation) is almost negligible, the transformed second-to-last kernel could be cached
+    # only the very last kernel transform should change unless the target kernel size changes.
+    def get_kernel(self, in_channel=None):
+        current_kernel_index = 0
+        current_kernel = self.weight.data
+        # for later: reduce channel count to first n channels
+        if in_channel is not None:
+            out_channel = in_channel
+            current_kernel = current_kernel[:out_channel, :in_channel, :]
+        # step through kernels until the target index is reached.
+        while current_kernel_index < self.target_kernel_index:
+            if current_kernel_index >= len(self.kernel_sizes):
+                logging.warn("kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel")
+                break
+            # find start, end pos of the kernel center for the given next kernel size
+            start, end = self.sub_filter_start_end(self.kernel_sizes[current_kernel_index], self.kernel_sizes[current_kernel_index+1])
+            # extract the kernel center of the correct size
+            kernel_center = current_kernel[:, :, start:end]
+            # apply the kernel transformation to the next kernel. the n-th transformation is applied to the n-th kernel, yielding the (n+1)-th kernel
+            next_kernel = self.kernel_transforms[current_kernel_index](kernel_center)
+            # the kernel has now advanced through the available sizes by one
+            current_kernel = next_kernel
+            current_kernel_index += 1
+
+        return current_kernel.contiguous()
+
+    def forward(self, input: nn.Tensor) -> nn.Tensor:
+        # if the target kernel size is the full kernel, forward from nn.Conv1d can be used.
+        if self.kernel_sizes[self.target_kernel_index] == self.kernel_size:
+            return self.super().forward(input)
+        else:
+            # get the kernel for the current index
+            kernel = self.get_kernel()
+            # get padding for the size of the kernel
+            padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+            return nnf.conv1d(input, kernel, self.bias, self.stride, padding, self.dilation)
+
+    # from ofa/utils/common_tools
+    def sub_filter_start_end(kernel_size, sub_kernel_size):
+        center = kernel_size // 2
+        dev = sub_kernel_size // 2
+        start, end = center - dev, center + dev + 1
+        assert end - start == sub_kernel_size
+        return start, end
+
+
+"""
+# contains a transformation matrix of a given size. Matrix values are trainable parameters.
+# source kernel must already be of the final size: For transforming a size 5 to a size 3 kernel, the source_kernel is the size 3 center of the size 5 kernel.
+class KernelTransform(nn.Module):
+    def __init__(self, source_kernel):
+        self.source_kernel = source_kernel
+        self.weight = nn.Parameter(data=torch.ones_like(source_kernel), requires_grad=False)
+"""
 
 
 # base construct of a residual block
