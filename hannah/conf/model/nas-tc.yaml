@@ -1,4 +1,4 @@
-# @package _group_
+
 
 cls: hannah.models.nas.tc_model.TCCandidateModel
 name: tc-candidate-model

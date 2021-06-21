@@ -1,4 +1,4 @@
-# @package _group_
+
 
 cls: hannah.models.tc.models.TCResNetModel
 name: tc-res16
