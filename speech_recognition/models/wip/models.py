@@ -123,6 +123,7 @@ class ElasticKernelConv1d(nn.Conv1d):
             return self.super().forward(input)
         else:
             # get the kernel for the current index
+            # TODO: with dynamic channels this would use input.size(1) and pass it to get_kernel for the channel count
             kernel = self.get_kernel()
             # get padding for the size of the kernel
             padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
@@ -135,16 +136,6 @@ class ElasticKernelConv1d(nn.Conv1d):
         start, end = center - dev, center + dev + 1
         assert end - start == sub_kernel_size
         return start, end
-
-
-"""
-# contains a transformation matrix of a given size. Matrix values are trainable parameters.
-# source kernel must already be of the final size: For transforming a size 5 to a size 3 kernel, the source_kernel is the size 3 center of the size 5 kernel.
-class KernelTransform(nn.Module):
-    def __init__(self, source_kernel):
-        self.source_kernel = source_kernel
-        self.weight = nn.Parameter(data=torch.ones_like(source_kernel), requires_grad=False)
-"""
 
 
 # base construct of a residual block
@@ -323,11 +314,6 @@ class WIPModel(nn.Module):
         # should now be redundant, as the loop will exit with the active depth being max_depth
         self.active_depth = self.max_depth
 
-    # filter from DynamicConv2d
-    def get_active_filter(self, out_channel, in_channel):
-        # out_channels, in_channels/groups, kernel_size[0], kernel_size[1]
-        return self.conv.weight[:out_channel, :in_channel, :]
-
     def forward(self, x):
         self.last_input = x
         self.current_step = self.current_step + 1
@@ -480,15 +466,6 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                 out_modules.append(reassembled_module)
             i += 1
 
-        """
-        modules = nn.ModuleList([])
-        for i, item in enumerate(block):
-            rebuild_output = rebuild_extracted_block(item, quantized)
-            if rebuild_output is not None:
-                for output_item in rebuild_output:
-                    modules.append(output_item)
-    # return module_set.assemble(weights, norm, act)
-        """
     out_modules = flatten_module_list(out_modules)
     output_modules_flat_length = len(out_modules)
     if input_modules_flat_length != output_modules_flat_length and not quantized:
