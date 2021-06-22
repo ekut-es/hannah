@@ -47,6 +47,14 @@ def eval_steps(config, module, hparams, checkpoint):
 def eval_checkpoint(config: DictConfig, checkpoint):
     seed_everything(1234, workers=True)
     checkpoint_path = to_absolute_path(checkpoint)
+
+    # FIXME: remove when snapshots use new modules
+    import sys
+    import hannah
+
+    sys.modules["speech_recognition"] = hannah
+    ##
+
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
     hparams = checkpoint["hyper_parameters"]

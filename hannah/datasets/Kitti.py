@@ -359,7 +359,16 @@ class KittiCOCO(COCO):
                     )
                 )
 
-                dt[dt_x1:dt_x2, dt_y1:dt_y2] = np.ones((dt_x2 - dt_x1, dt_y2 - dt_y1))
+                dt[
+                    min(dt_x1, size[0]) : min(dt_x2, size[0]),
+                    min(dt_y1, size[1]) : min(dt_y2, size[1]),
+                ] = np.ones(
+                    (
+                        min(dt_x2, size[0]) - min(dt_x1, size[0]),
+                        min(dt_y2, size[1]) - min(dt_y1, size[1]),
+                        size[1],
+                    )
+                )
 
                 intersection = (np.logical_and(gt, dt)).sum()
                 iou_score = intersection / dt.sum()
