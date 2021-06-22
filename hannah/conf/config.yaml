@@ -13,8 +13,8 @@ defaults:
     - early_stopping: null
     - profiler: null
     - pruning: null
-    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
-      optional: true
+    - optional dataset_features: ${dataset}_${features}
+
 
 experiment_id: test
 output_dir: trained_models
