@@ -24,6 +24,12 @@ import torchvision
 from hannah.datasets.Kitti import Kitti, object_collate_fn
 from hannah.datasets.Kitti import KittiCOCO
 from hannah.modules.augmentation.augmentation import Augmentation
+from hannah.modules.augmentation.bordersearch import (
+    Bordersearch,
+    Opts,
+    dut_fun,
+    random_sample,
+)
 
 import torch
 import torch.utils.data as data
@@ -91,7 +97,22 @@ class ObjectDetectionModule(ClassifierModule):
         x = self.model(x)
         return x
 
+    def bordersearch(self):
+        brs = Bordersearch()
+        param = self.augmentation.fillParams()
+        opts = Opts(param, 100)
+        opts.dut_fun = dut_fun
+        opts.sample_fun = random_sample
+        conf = brs.find_waterlevel(opts, 1)
+
     def train_dataloader(self):
+
+        if (
+            self.augmentation.pct != 0
+            and (self.trainer.current_epoch) % self.augmentation.bordersearch_epochs
+        ):
+            self.bordersearch()
+
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
         sampler = None
@@ -122,6 +143,12 @@ class ObjectDetectionModule(ClassifierModule):
 
     def val_dataloader(self):
 
+        if self.augmentation.pct != 0:
+            if self.trainer.current_epoch == 0:
+                self.augmentation.setEvalAttribs(val_pct=100, wait=True)
+            else:
+                self.augmentation.setEvalAttribs(reaugment=False)
+
         self.augmentation.augment(self.dev_set)
         dev_loader = data.DataLoader(
             self.dev_set,
@@ -131,6 +158,8 @@ class ObjectDetectionModule(ClassifierModule):
             collate_fn=object_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
+
+        self.augmentation.setEvalAttribs()
 
         # if self.device.type == "cuda":
         #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)

@@ -190,6 +190,10 @@ def test_dut_fun(opts, params):
     return math.pow(params[0], 2) + math.pow(params[1], 2)
 
 
+def dut_fun(opts, params):
+    return 0.9
+
+
 def random_sample(opts: Opts, n_candidates_target):
     def get_random_value(range: ParameterRange) -> float:
         return (

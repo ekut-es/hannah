@@ -25,11 +25,11 @@ def eval_steps(config, module, hparams, checkpoint):
     methods = config["methods"]
 
     if "original" in methods:
-        module.augmentation.setEvalAttribs(0)
+        module.augmentation.setEvalAttribs(val_pct=0)
         eval_train(module)
 
     if "full_augmented" in methods:
-        module.augmentation.setEvalAttribs(100, True, True)
+        module.augmentation.setEvalAttribs(val_pct=100, wait=True, out=True)
         eval_train(module)
 
     if "real_rain" in methods:
@@ -40,7 +40,7 @@ def eval_steps(config, module, hparams, checkpoint):
         real_module = instantiate(hparams)
         real_module.setup("test")
         real_module.load_state_dict(checkpoint["state_dict"])
-        real_module.augmentation.setEvalAttribs(0)
+        real_module.augmentation.setEvalAttribs(val_pct=0)
         eval_train(real_module)
 
 

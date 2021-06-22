@@ -56,7 +56,9 @@ class Kitti(AbstractDataset):
         self.img_files = list(data.keys())
         self.aug_files = list()
         self.label_files = list(data.values())
-        self.labels_ignore = config["labels_ignore"]
+        self.labels_ignore = (
+            config["labels_ignore"] if config["labels_ignore"] is not None else [0]
+        )
         self.transform = transforms.Compose(
             [
                 transforms.ToTensor(),

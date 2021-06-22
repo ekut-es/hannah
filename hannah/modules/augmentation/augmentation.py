@@ -7,6 +7,7 @@ import threading
 import xml.etree.ElementTree as ET
 from PIL import Image
 from hannah.datasets.base import DatasetType
+from hannah.modules.augmentation.bordersearch import Parameter, ParameterRange
 
 from hannah.datasets.Kitti import Kitti
 
@@ -161,14 +162,15 @@ class AugmentationThread:
         if out is True:
             print("Image augmented")
 
-    def augment_img(self, kitti, img, conf, out):
-        txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
+    def augment_img(self, kitti, img, conf, reaugment, out):
+        if reaugment is True:
+            txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
+            txt.write(img[:-4] + "\n")
+            txt.close()
+            self.call_augment(conf, img, kitti.kitti_dir, out)
         kitti.aug_files.append(img[:-4])
-        txt.write(img[:-4] + "\n")
-        txt.close()
-        self.call_augment(conf, img, kitti.kitti_dir, out)
 
-    def augment(self, conf, kitti, pct, out):
+    def augment(self, conf, kitti, pct, aug_new, out):
         self.running = True
         self.stop = False
         reaugment = conf["reaugment_per_epoch_pct"]
@@ -195,13 +197,13 @@ class AugmentationThread:
             if img[:-4] in kitti.aug_files and not os.path.isfile(
                 kitti.kitti_dir + "/training/augmented/" + img
             ):
-                self.augment_img(kitti, img, conf, out)
+                self.augment_img(kitti, img, conf, True, out)
             elif (
                 rand < pct
                 and len(kitti.aug_files) <= num_augment
                 and img[:-4] not in kitti.aug_files
             ):
-                self.augment_img(kitti, img, conf, out)
+                self.augment_img(kitti, img, conf, aug_new, out)
         self.stop = True
         self.running = False
 
@@ -217,6 +219,7 @@ class Augmentation:
         self.aug_thread = AugmentationThread()
         self.conf = dict((key, a[key]) for a in augmentation for key in a)
         self.pct = self.conf["augmented_pct"] if "augmented_pct" in self.conf else 0
+        self.bordersearch_epochs = self.conf["bordersearch_epoch_duration"]
         self.setEvalAttribs()
 
     def augment(self, kitti: Kitti):
@@ -230,6 +233,7 @@ class Augmentation:
                     self.conf,
                     kitti,
                     self.pct if kitti.set_type == DatasetType.TRAIN else self.val_pct,
+                    self.reaugment,
                     self.out,
                 ),
                 daemon=True,
@@ -239,7 +243,36 @@ class Augmentation:
             if self.wait is True:
                 th.join()
 
-    def setEvalAttribs(self, val_pct=50, wait=False, out=False):
+    def fillParams(self):
+        params = list()
+        i = 0
+
+        if "rain_drops" in self.conf["augmentations"]:
+            rain = dict((key, a[key]) for a in self.conf["rain_drops"] for key in a)
+            for elem in list(rain):
+                params.append(
+                    Parameter(ParameterRange(rain[elem][0], rain[elem][1]), elem, i)
+                )
+                i += 1
+        if "fog" in self.conf["augmentations"]:
+            fog = dict((key, a[key]) for a in self.conf["fog"] for key in a)
+            for elem in list(fog):
+                params.append(
+                    Parameter(ParameterRange(fog[elem][0], fog[elem][1]), elem, i)
+                )
+                i += 1
+        if "snow" in self.conf["augmentations"]:
+            snow = dict((key, a[key]) for a in self.conf["snow"] for key in a)
+            for elem in list(snow):
+                params.append(
+                    Parameter(ParameterRange(snow[elem][0], snow[elem][1]), elem, i)
+                )
+                i += 1
+
+        return params
+
+    def setEvalAttribs(self, val_pct=50, wait=False, reaugment=True, out=False):
         self.val_pct = val_pct
         self.wait = wait
+        self.reaugment = reaugment
         self.out = out
