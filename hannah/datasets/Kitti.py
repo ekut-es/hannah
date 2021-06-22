@@ -360,13 +360,12 @@ class KittiCOCO(COCO):
                 )
 
                 dt[
-                    min(dt_x1, size[0]) : min(dt_x2, size[0]),
-                    min(dt_y1, size[1]) : min(dt_y2, size[1]),
+                    max(dt_x1, 0) : min(dt_x2, size[0]),
+                    max(dt_y1, 0) : min(dt_y2, size[1]),
                 ] = np.ones(
                     (
-                        min(dt_x2, size[0]) - min(dt_x1, size[0]),
-                        min(dt_y2, size[1]) - min(dt_y1, size[1]),
-                        size[1],
+                        min(dt_x2, size[0]) - max(dt_x1, 0),
+                        min(dt_y2, size[1]) - max(dt_y1, 0),
                     )
                 )
 
