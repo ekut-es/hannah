@@ -147,6 +147,8 @@ class RelayConverter(torch.fx.Interpreter):
         if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
             conv_out = tvm.relay.nn.relu(conv_out)
 
+        accumulator_scale = weight_scale * input_scale
+
         # Calculate shift factors
         conv_out = tvm.relay.right_shift(
             conv_out, tvm.relay.const(module.weight_fake_quant.bits, dtype="int32")
