@@ -1,4 +1,5 @@
 import logging
+import math
 
 import torch.fx
 from tvm.relay import op
@@ -11,6 +12,8 @@ try:
 except ModuleNotFoundError:
     relay = None
     tvm = None
+
+logger = logging.getLogger("tracer")
 
 
 class QuantizationTracer(torch.fx.Tracer):
@@ -35,8 +38,17 @@ class QuantizationTracer(torch.fx.Tracer):
 
 
 class RelayConverter(torch.fx.Interpreter):
-    def __init__(self, graph_module):
+    def __init__(
+        self,
+        graph_module,
+        input_dtype="int8",
+        input_scale=1 / (2 ** 7),
+        accumulator_dtype="int20",
+    ):
         super().__init__(graph_module)
+        self.accumulator_dtype = accumulator_dtype
+        self.input_dtype = input_dtype
+        self.input_scale = input_scale
 
         if relay is None:
             raise Exception(
@@ -120,7 +132,7 @@ class RelayConverter(torch.fx.Interpreter):
                 kernel_size=quant_weight.size(2),
                 data_layout="NCW",
                 kernel_layout="OIW",
-                out_dtype="int32",
+                out_dtype=self.accumulator_dtype,
             )  # FIXME use proper out dtype
         elif quant_weight.dim() == 4:
             conv_out = tvm.relay.nn.conv2d(
@@ -134,24 +146,38 @@ class RelayConverter(torch.fx.Interpreter):
                 kernel_size=(quant_weight.size(2), quant_weight.size(3)),
                 data_layout="NCHW",
                 kernel_layout="OIHW",
-                out_dtype="int32",
+                out_dtype=self.accumulator_dtype,
             )
         else:
             raise Exception(
                 f"Quantized weights of dimension {quant_weight.dim()} are not supported"
             )
 
+        input_scale = 1 / (2.0 ** 7)
+        accumulator_scale = weight_scale * input_scale
+
         if bias is not None:
+            bias_rescale = accumulator_scale / bias_scale
+            bias_rescale = int(1 / bias_rescale)
+            bias_rescale_shift = int(math.log2(bias_rescale))
+
+            print(bias_rescale, bias_rescale_shift)
+            bias = relay.cast(bias, self.accumulator_dtype)
+            if bias_rescale > 0:
+                if 2 ** bias_rescale_shift == bias_rescale:
+                    bias = tvm.relay.left_shift(
+                        bias, tvm.relay.const(bias_rescale_shift)
+                    )
+                else:
+                    bias = tvm.relay.multiply(bias, tvm.relay.const(int(bias_rescale)))
             conv_out = tvm.relay.nn.bias_add(conv_out, bias)
 
         if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
             conv_out = tvm.relay.nn.relu(conv_out)
 
-        accumulator_scale = weight_scale * input_scale
-
         # Calculate shift factors
         conv_out = tvm.relay.right_shift(
-            conv_out, tvm.relay.const(module.weight_fake_quant.bits, dtype="int32")
+            conv_out, tvm.relay.const(module.weight_fake_quant.bits)
         )
         conv_out = tvm.relay.cast(
             conv_out, dtype=f"int{module.activation_post_process.bits}"
@@ -167,7 +193,9 @@ class RelayConverter(torch.fx.Interpreter):
             raise Exception(f"Support for module: {module} is not supported")
 
     def _handle_placeholder(self, node, result):
-        var = relay.var(node.name, relay.TensorType(result.shape))
+        var = relay.var(
+            node.name, relay.TensorType(result.shape, dtype=self.input_dtype)
+        )
         self.outputs[node.name] = var
         self.func_args.append(var)
 
