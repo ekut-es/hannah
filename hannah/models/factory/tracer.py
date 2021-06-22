@@ -60,7 +60,12 @@ class RelayConverter(torch.fx.Interpreter):
             qat.ConvBn2d: self._handle_qat_conv,
             qat.ConvBnReLU1d: self._handle_qat_conv,
             qat.ConvBnReLU2d: self._handle_qat_conv,
+            qat.Linear: self._handle_qat_linear,
+            qat.LinearReLU: self._handle_qat_linear,
         }
+
+    def _handle_qat_linear(self, node, module, result):
+        pass
 
     def _handle_qat_conv(self, node, module, result):
         weight = module.weight
@@ -85,19 +90,20 @@ class RelayConverter(torch.fx.Interpreter):
 
         quant_weight = module.weight_fake_quant.quantize(weight)
         quant_bias = module.bias_fake_quant.quantize(bias)
+        weight_dtype = f"int{module.weight_fake_quant.bits}"
+        weight_scale = module.weight_fake_quant.quantization_function.scale
 
         weight = tvm.relay.Var(
             f"{node.name}.weight",
-            tvm.relay.TensorType(
-                quant_weight.shape, dtype=f"int{module.weight_fake_quant.bits}"
-            ),
+            tvm.relay.TensorType(quant_weight.shape, dtype=weight_dtype),
         )
-        bias = tvm.relay.Var(
-            f"{node.name}.bias",
-            tvm.relay.TensorType(
-                quant_bias.shape, dtype=f"int{module.bias_fake_quant.bits}"
-            ),
-        )
+        if bias is not None:
+            bias_dtype = f"int{module.bias_fake_quant.bits}"
+            bias_scale = module.bias_fake_quant.quantization_function.scale
+            bias = tvm.relay.Var(
+                f"{node.name}.bias",
+                tvm.relay.TensorType(quant_bias.shape, dtype=bias_dtype),
+            )
 
         inputs = list(node.all_input_nodes)
         data = self.outputs[inputs[0].name]
@@ -141,6 +147,7 @@ class RelayConverter(torch.fx.Interpreter):
         if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
             conv_out = tvm.relay.nn.relu(conv_out)
 
+        # Calculate shift factors
         conv_out = tvm.relay.right_shift(
             conv_out, tvm.relay.const(module.weight_fake_quant.bits, dtype="int32")
         )

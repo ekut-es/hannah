@@ -13,6 +13,7 @@ class Config:
     bw_b = 8
     bw_f = 8
     bw_w = 6
+    power_of_two = False
 
     def get(self, name: str, default=None):
         return getattr(self, name, default)
@@ -43,6 +44,7 @@ class TestCell(nn.Module):
 @pytest.mark.parametrize("dim,act", [(1, False), (1, True), (2, False), (2, True)])
 def test_tracer(dim, act):
     cell = TestCell(dim=dim, act=act)
+    print(cell)
     tracer = QuantizationTracer()
 
     traced_graph = tracer.trace(cell)

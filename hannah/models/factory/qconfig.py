@@ -23,11 +23,9 @@ class STE(autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_outputs):
-        # print("grad_outputs:", grad_outputs)
         (values,) = ctx.saved_tensors
         gate = (torch.abs(values) <= 1).float()
         grad_inputs = grad_outputs * gate
-        # print("grad_inputs", grad_inputs)
 
         return grad_inputs, None
 
@@ -214,7 +212,7 @@ def get_trax_qat_qconfig(config):
         ),
         TrainableFakeQuantize.with_args(
             bits=bits_weight,
-            power_of_2=config.get("power_of_2", True),
+            power_of_2=config.get("power_of_2", False),
             noise_prob=config.get("noise_prob", 1.0),
             debug=False,
         ),
