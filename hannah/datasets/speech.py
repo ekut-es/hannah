@@ -396,9 +396,9 @@ class SpeechCommandsDataset(SpeechDataset):
             os.makedirs(data_folder)
 
         # download speech_commands dataset
-        filename = "speech_commands_v0.02.tar.gz"
+        filename = "speech_commands_v02.tar.gz"
         if "v1" in variants:
-            filename = "speech_commands_v0.01.tar.gz"
+            filename = "speech_commands_v01.tar.gz"
 
         if "v1" in variants:
             extract_from_download_cache(
