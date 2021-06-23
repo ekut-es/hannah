@@ -17,8 +17,51 @@ from collections import defaultdict
 from .base import AbstractDataset, DatasetType
 from ..utils import list_all_files, extract_from_download_cache
 
-
 class PhysioDataset(AbstractDataset):
+    def __init__(self, data, set_type, config):
+        super().__init__()
+        self.physio_files = list(data.keys())
+        self.set_type = set_type
+        self.physio_labels = list(data.values())
+
+        self.samplingrate = config["samplingrate"]
+
+        self.input_length = config["input_length"]
+
+        self.channels = config["num_channels"]
+
+    @property
+    def class_names(self):
+        return self.label_names.values()
+
+    @property
+    def class_counts(self):
+        return self.get_categories_distribution()
+
+    def __getitem__(self, index):
+        label = torch.Tensor([self.physio_labels[index]]).long()
+        with open(self.physio_files[index], "rb") as f:
+            data = pickle.load(f)
+        data = torch.from_numpy(data)
+        data = data.transpose(1, 0).float()
+        if self.channels == 1:
+            data = data[0]
+        return data, data.shape[0], label, label.shape[0]
+
+    def get_label_list(self):
+        return self.physio_labels
+
+    def get_categories_distribution(self):
+        distribution = defaultdict(int)
+        for label in self.get_label_list():
+            distribution[label] += 1
+        return distribution
+
+    def __len__(self):
+        return len(self.physio_files)
+
+
+class PhysioCincDataset(PhysioDataset):
 
     LABEL_NORMAL = "N"
     LABEL_ATRIAL_FIBRILLATION = "A"
@@ -27,9 +70,9 @@ class PhysioDataset(AbstractDataset):
 
     def __init__(self, data, set_type, config):
         super().__init__()
-        self.physio_files = list(data.keys())
-        self.set_type = set_type
-        self.physio_labels = list(data.values())
+        #self.physio_files = list(data.keys())
+        #self.set_type = set_type
+        #self.physio_labels = list(data.values())
 
         self.samplingrate = config["samplingrate_cinc"]
 
@@ -46,13 +89,13 @@ class PhysioDataset(AbstractDataset):
             3: cls.LABEL_NOISY,
         }
 
-    @property
-    def class_names(self):
-        return self.label_names.values()
+    #@property
+    #def class_names(self):
+    #    return self.label_names.values()
 
-    @property
-    def class_counts(self):
-        return self.get_categories_distribution()
+    #@property
+    #def class_counts(self):
+    #    return self.get_categories_distribution()
 
     @classmethod
     def download(cls, config):
@@ -60,8 +103,6 @@ class PhysioDataset(AbstractDataset):
         clear_download = config["clear_download"]
         downloadfolder_tmp = config["download_folder"]
 
-        
-        #target_folder = os.path.join(data_folder, "atrial_fibrillation")
         target_folder = os.path.join(data_folder, "cinc_2017")
         if os.path.isdir(target_folder):
             return
@@ -136,13 +177,13 @@ class PhysioDataset(AbstractDataset):
             #raw_data += [{"name": name, "annotations": annotations, "samples": samples}]
             raw_data += [{"name":name,"sample": samples,"label":labels[name]}]
             
-            #look for ways to read samples, lengths, labels
             
         #sample_length = config["input_length"]
         total_samples = len(raw_data)
         for experiment_number, element in enumerate(raw_data):
             name = element["name"]
             sample = element["sample"]
+            sample = torch.from_numpy(sample)
             label = element["label"]
             out_path = os.path.join(output_folder, label)
             if not os.path.isdir(out_path):
@@ -154,8 +195,8 @@ class PhysioDataset(AbstractDataset):
     @classmethod
     def splits(cls, config):
 
-        dev_pct = config["dev_pct"]
-        test_pct = config["test_pct"]
+        dev_pct = config["dev_pct_cinc"]
+        test_pct = config["test_pct_cinc"]
 
         folder = os.path.join(config["data_folder"], "cinc_2017_prepared")
 
@@ -183,7 +224,6 @@ class PhysioDataset(AbstractDataset):
             cls(test_files, DatasetType.TEST, config),
         )
         return datasets
-
 
 
     def __getitem__(self, index):
