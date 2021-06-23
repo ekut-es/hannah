@@ -244,32 +244,56 @@ class Augmentation:
                 th.join()
 
     def fillParams(self):
+        ignore = self.conf["bordersearch_ignore_params"]
         params = list()
         i = 0
 
         if "rain_drops" in self.conf["augmentations"]:
             rain = dict((key, a[key]) for a in self.conf["rain_drops"] for key in a)
             for elem in list(rain):
-                params.append(
-                    Parameter(ParameterRange(rain[elem][0], rain[elem][1]), elem, i)
-                )
-                i += 1
+                if elem not in ignore:
+                    params.append(
+                        Parameter(
+                            ParameterRange(rain[elem][0], rain[elem][1]),
+                            elem,
+                            "rain_drops",
+                            i,
+                        )
+                    )
+                    i += 1
         if "fog" in self.conf["augmentations"]:
             fog = dict((key, a[key]) for a in self.conf["fog"] for key in a)
             for elem in list(fog):
-                params.append(
-                    Parameter(ParameterRange(fog[elem][0], fog[elem][1]), elem, i)
-                )
-                i += 1
+                if elem not in ignore:
+                    params.append(
+                        Parameter(
+                            ParameterRange(fog[elem][0], fog[elem][1]), elem, "fog", i
+                        )
+                    )
+                    i += 1
         if "snow" in self.conf["augmentations"]:
             snow = dict((key, a[key]) for a in self.conf["snow"] for key in a)
             for elem in list(snow):
-                params.append(
-                    Parameter(ParameterRange(snow[elem][0], snow[elem][1]), elem, i)
-                )
-                i += 1
+                if elem not in ignore:
+                    params.append(
+                        Parameter(
+                            ParameterRange(snow[elem][0], snow[elem][1]),
+                            elem,
+                            "snow",
+                            i,
+                        )
+                    )
+                    i += 1
 
         return params
+
+    def changeParams(self, params, conf):
+        for param, value in zip(params, conf[0][0]):
+            for c in self.conf[param.catuuid]:
+                if c[param.uuid] is not None:
+                    c[param.uuid][0] = value
+                    c[param.uuid][1] = value
+                    break
 
     def setEvalAttribs(self, val_pct=50, wait=False, reaugment=True, out=False):
         self.val_pct = val_pct

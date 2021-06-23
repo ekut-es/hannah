@@ -7,6 +7,7 @@ output_dir: eval
 augmentation:
   - augmented_pct: 50
   - reaugment_per_epoch_pct: 20
+  - bordersearch_epoch_duration: 0
   - augmentations: [rain_drops]
   - augmentations_pct: [100]
   - rain_drops:

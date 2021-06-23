@@ -14,23 +14,26 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 
-def eval_train(module):
+def eval_train(module, test=True):
     trainer = Trainer(gpus=1, deterministic=True)
-    trainer.validate(model=module, ckpt_path=None)
-    reset_seed()
-    trainer.test(model=module, ckpt_path=None)
+    val = trainer.validate(model=module, ckpt_path=None, verbose=test)
+    if test:
+        reset_seed()
+        trainer.test(model=module, ckpt_path=None)
+    return val
 
 
 def eval_steps(config, module, hparams, checkpoint):
     methods = config["methods"]
 
+    retval = dict()
     if "original" in methods:
         module.augmentation.setEvalAttribs(val_pct=0)
-        eval_train(module)
+        retval["original"] = eval_train(module)
 
     if "full_augmented" in methods:
         module.augmentation.setEvalAttribs(val_pct=100, wait=True, out=True)
-        eval_train(module)
+        retval["full_augmented"] = eval_train(module)
 
     if "real_rain" in methods:
         folder = hparams["dataset"]["kitti_folder"]
@@ -41,7 +44,13 @@ def eval_steps(config, module, hparams, checkpoint):
         real_module.setup("test")
         real_module.load_state_dict(checkpoint["state_dict"])
         real_module.augmentation.setEvalAttribs(val_pct=0)
-        eval_train(real_module)
+        retval["real_rain"] = eval_train(real_module)
+
+    if "bordersearch" in methods:
+        module.augmentation.setEvalAttribs(val_pct=100, reaugment=False)
+        retval["bordersearch"] = eval_train(module, False)
+
+    return retval
 
 
 def eval_checkpoint(config: DictConfig, checkpoint):
@@ -70,11 +79,14 @@ def eval_checkpoint(config: DictConfig, checkpoint):
     module.setup("test")
     module.load_state_dict(checkpoint["state_dict"])
 
-    eval_steps(config, module, hparams, checkpoint)
+    return eval_steps(config, module, hparams, checkpoint)
 
 
 def eval(config: DictConfig):
-    checkpoints = config.checkpoints
+    retval = list()
+    checkpoints = (
+        config.checkpoints if hasattr(config, "checkpoints") else config["checkpoints"]
+    )
     if isinstance(checkpoints, str):
         checkpoints = [checkpoints]
 
@@ -85,7 +97,8 @@ def eval(config: DictConfig):
         return False
 
     for checkpoint in checkpoints:
-        eval_checkpoint(config, checkpoint)
+        retval.append(eval_checkpoint(config, checkpoint))
+    return retval
 
 
 @hydra.main(config_name="objectdetection_eval", config_path="conf")

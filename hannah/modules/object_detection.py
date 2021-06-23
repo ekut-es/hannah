@@ -39,6 +39,7 @@ from hydra.utils import instantiate, get_class
 class ObjectDetectionModule(ClassifierModule):
     def __init__(self, augmentation: list(), *args, **kwargs):
         self.augmentation = Augmentation(augmentation)
+        self.borderparams = self.augmentation.fillParams()
         super().__init__(*args, **kwargs)
 
         if COCOeval is None:
@@ -98,12 +99,19 @@ class ObjectDetectionModule(ClassifierModule):
         return x
 
     def bordersearch(self):
+        print("################# Bordersearch starts #################")
         brs = Bordersearch()
-        param = self.augmentation.fillParams()
-        opts = Opts(param, 100)
+        opts = Opts(
+            parameters=self.borderparams,
+            runs=1,
+            augmentation_conf=self.augmentation.conf,
+            best_path=self.trainer.checkpoint_callback.best_model_path,
+        )
         opts.dut_fun = dut_fun
         opts.sample_fun = random_sample
-        conf = brs.find_waterlevel(opts, 1)
+        conf = brs.find_waterlevel(opts, 2)
+        self.augmentation.changeParams(self.borderparams, conf)
+        print("################# Bordersearch ends #################")
 
     def train_dataloader(self):
 

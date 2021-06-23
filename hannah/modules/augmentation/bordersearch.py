@@ -9,6 +9,8 @@ from typing import List, Tuple, Callable
 import math
 from numpy.core.arrayprint import ComplexFloatingFormat
 
+from hannah.objectdetection_eval import eval
+
 import matplotlib.pyplot as plt
 
 
@@ -26,11 +28,13 @@ class ParameterRange:
 class Parameter:
     range: ParameterRange
     uuid: str
+    catuuid: str
     pos: int
 
-    def __init__(self, range: ParameterRange, uuid: str, pos: int):
+    def __init__(self, range: ParameterRange, uuid: str, catuuid: str, pos: int):
         self.range = range
         self.uuid = uuid
+        self.catuuid = catuuid
         self.pos = pos
 
 
@@ -42,12 +46,18 @@ class Opts:
     svm_params: str
     parameters: list()
     active: bool
+    augmentation_conf: dict()
+    best_path: str
     sample_fun: Callable[[any, int], List[List[float]]]
     dut_fun: Callable[[List[float]], float]
 
-    def __init__(self, parameters: list, runs: int):
+    def __init__(
+        self, parameters: list, runs: int, augmentation_conf: dict, best_path: str
+    ):
         self.parameters = parameters
         self.runs = runs
+        self.augmentation_conf = augmentation_conf
+        self.best_path = best_path
         self.waterlevel = 1
         self.samples = 1000
         self.svm_params = "-s 4"
@@ -191,7 +201,19 @@ def test_dut_fun(opts, params):
 
 
 def dut_fun(opts, params):
-    return 0.9
+    augmentation = [
+        {key: value}
+        for key, value in zip(
+            opts.augmentation_conf.keys(), opts.augmentation_conf.values()
+        )
+    ]
+    conf = {
+        "checkpoints": opts.best_path,
+        "augmentation": augmentation,
+        "methods": "bordersearch",
+    }
+    result = eval(conf)
+    return result[0]["bordersearch"][0]["val_ap"]
 
 
 def random_sample(opts: Opts, n_candidates_target):
