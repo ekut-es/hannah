@@ -2,7 +2,7 @@ import pytest
 
 import torch
 import torch.nn as nn
-from torchaudio.transforms import Spectrogram, MFCC
+import tvm
 
 from hannah.models.factory.tracer import QuantizationTracer, RelayConverter
 from hannah.models.factory.qat import ConvBn1d, ConvBn2d, ConvBnReLU1d, ConvBnReLU2d
@@ -10,7 +10,7 @@ from hannah.models.factory.qconfig import get_trax_qat_qconfig
 
 
 class Config:
-    bw_b = 8
+    bw_b = 4
     bw_f = 8
     bw_w = 6
     power_of_two = False
@@ -54,7 +54,12 @@ def test_tracer(dim, act):
         input = torch.rand((1, 8, 12))
     elif dim == 2:
         input = torch.rand((1, 8, 12, 12))
-    converter.run(input)
+
+    mod, params = converter.run(input)
+    print(mod)
+
+    mod = tvm.relay.transform.InferType()(mod)
+    print(mod)
 
 
 if __name__ == "__main__":

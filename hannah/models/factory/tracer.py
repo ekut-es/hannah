@@ -76,6 +76,69 @@ class RelayConverter(torch.fx.Interpreter):
             qat.LinearReLU: self._handle_qat_linear,
         }
 
+    def _gen_requantize(
+        self,
+        input,
+        input_scale,
+        input_dtype,
+        output_scale,
+        output_dtype,
+        use_rescale=False,
+    ):
+        assert input_dtype.startswith("int")
+        assert output_dtype.startswith("int")
+        input_bits = int(input_dtype[3:])
+        output_bits = int(output_dtype[3:])
+
+        output = input
+        if use_rescale:
+            output = tvm.relay.qnn.op.requantize(
+                output,
+                tvm.relay.const(input_scale),
+                tvm.relay.const(0.0),
+                tvm.relay.const(output_scale),
+                tvm.relay.const(0.0),
+                axis=1,
+                rounding="TONEAREST",
+                out_dtype=output_dtype,
+            )
+        else:
+            rescale = input_scale / output_scale
+            rescale_shift = int(math.log2(rescale))
+            accumulator_dtype = (
+                input_dtype if input_bits > output_bits else output_dtype
+            )
+            print(rescale, rescale_shift)
+            if output_bits > input_bits:
+                output = relay.cast(output, output_dtype)
+            if rescale != 1.0:
+                if 2 ** rescale_shift == rescale:
+                    if rescale_shift > 0:
+                        output = tvm.relay.left_shift(
+                            output,
+                            tvm.relay.cast(
+                                tvm.relay.const(rescale_shift), dtype=accumulator_dtype
+                            ),
+                        )
+                    else:
+                        output = tvm.relay.right_shift(
+                            output,
+                            tvm.relay.cast(
+                                tvm.relay.const(abs(rescale_shift)),
+                                dtype=accumulator_dtype,
+                            ),
+                        )
+                else:
+                    output = tvm.relay.multiply(
+                        output,
+                        tvm.relay.cast(
+                            tvm.relay.const(int(rescale)), dtype=accumulator_dtype
+                        ),
+                    )
+            if input_bits < output_bits:
+                output = relay.cast(output, output_dtype)
+        return output
+
     def _handle_qat_linear(self, node, module, result):
         pass
 
@@ -104,6 +167,8 @@ class RelayConverter(torch.fx.Interpreter):
         quant_bias = module.bias_fake_quant.quantize(bias)
         weight_dtype = f"int{module.weight_fake_quant.bits}"
         weight_scale = module.weight_fake_quant.quantization_function.scale
+        output_dtype = f"int{module.activation_post_process.bits}"
+        output_scale = module.activation_post_process.quantization_function.scale
 
         weight = tvm.relay.Var(
             f"{node.name}.weight",
@@ -157,30 +222,27 @@ class RelayConverter(torch.fx.Interpreter):
         accumulator_scale = weight_scale * input_scale
 
         if bias is not None:
-            bias_rescale = accumulator_scale / bias_scale
-            bias_rescale = int(1 / bias_rescale)
-            bias_rescale_shift = int(math.log2(bias_rescale))
-
-            print(bias_rescale, bias_rescale_shift)
-            bias = relay.cast(bias, self.accumulator_dtype)
-            if bias_rescale > 0:
-                if 2 ** bias_rescale_shift == bias_rescale:
-                    bias = tvm.relay.left_shift(
-                        bias, tvm.relay.const(bias_rescale_shift)
-                    )
-                else:
-                    bias = tvm.relay.multiply(bias, tvm.relay.const(int(bias_rescale)))
+            bias = self._gen_requantize(
+                bias,
+                bias_scale,
+                bias_dtype,
+                accumulator_scale,
+                self.accumulator_dtype,
+                use_rescale=False,
+            )
             conv_out = tvm.relay.nn.bias_add(conv_out, bias)
 
         if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
             conv_out = tvm.relay.nn.relu(conv_out)
 
         # Calculate shift factors
-        conv_out = tvm.relay.right_shift(
-            conv_out, tvm.relay.const(module.weight_fake_quant.bits)
-        )
-        conv_out = tvm.relay.cast(
-            conv_out, dtype=f"int{module.activation_post_process.bits}"
+        conv_out = self._gen_requantize(
+            conv_out,
+            accumulator_scale,
+            self.accumulator_dtype,
+            output_scale,
+            output_dtype,
+            use_rescale=False,
         )
 
         self.outputs[node.name] = conv_out
@@ -234,7 +296,5 @@ class RelayConverter(torch.fx.Interpreter):
 
         function = relay.Function(free_vars, ret)
         tvm_mod["main"] = function
-
-        print(tvm_mod)
 
         return tvm_mod, self.params
