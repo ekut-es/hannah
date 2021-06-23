@@ -57,7 +57,7 @@ class ElasticKernelConv1d(nn.Conv1d):
         for i in range(len(kernel_sizes) - 1):
             # the target size of the kernel transform is the next kernel size in the sequence
             new_kernel_size = kernel_sizes[i+1]
-            # kernel transform is kept minimal by being shared between layers. It is simply a linear transformation from the center of the previous kernel to the new kernel
+            # kernel transform is kept minimal by being shared between channels. It is simply a linear transformation from the center of the previous kernel to the new kernel
             # directly applying the kernel to the transform is possible: nn.Linear accepts multi-dimensional input in a way where the last input dim is transformed from in_channels to out_channels for the last output dim
             new_transform_module = nn.Linear(new_kernel_size, new_kernel_size, bias=False)
             # initialise the transform as the identity matrix to start training from the center of the larger kernel
@@ -103,7 +103,7 @@ class ElasticKernelConv1d(nn.Conv1d):
         # step through kernels until the target index is reached.
         while current_kernel_index < self.target_kernel_index:
             if current_kernel_index >= len(self.kernel_sizes):
-                logging.warn("kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel")
+                logging.warn(f"kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel")
                 break
             # find start, end pos of the kernel center for the given next kernel size
             start, end = self.sub_filter_start_end(self.kernel_sizes[current_kernel_index], self.kernel_sizes[current_kernel_index+1])
