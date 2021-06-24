@@ -89,6 +89,15 @@ class PhysioCincDataset(PhysioDataset):
             3: cls.LABEL_NOISY,
         }
 
+    @classmethod
+    def get_label_mapping(cls):
+        return {
+            cls.NORMAL: 0,
+            cls.LABEL_ATRIAL_FIBRILLATION: 1,
+            cls.LABEL_OTHER_RYTHM: 2,
+            cls.LABEL_NOISY: 3,
+        }
+
     #@property
     #def class_names(self):
     #    return self.label_names.values()
