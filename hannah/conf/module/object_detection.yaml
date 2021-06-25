@@ -7,8 +7,9 @@ time_masking: 0
 frequency_masking: 0
 
 augmentation:
+  - augmented_pct: 50
   - reaugment_per_epoch_pct: 50
-  - bordersearch_epoch_duration: 1
+  - bordersearch_epoch_duration: 5
   - bordersearch_ignore_params: ["draw_fog"]
   - augmentations: [rain_drops]
   - augmentations_pct: [100]

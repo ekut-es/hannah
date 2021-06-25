@@ -40,6 +40,7 @@ class ObjectDetectionModule(ClassifierModule):
     def __init__(self, augmentation: list(), *args, **kwargs):
         self.augmentation = Augmentation(augmentation)
         self.borderparams = self.augmentation.fillParams()
+        self.first_step = True
         super().__init__(*args, **kwargs)
 
         if COCOeval is None:
@@ -116,8 +117,10 @@ class ObjectDetectionModule(ClassifierModule):
     def train_dataloader(self):
 
         if (
-            self.augmentation.pct != 0
-            and (self.trainer.current_epoch) % self.augmentation.bordersearch_epochs
+            self.trainer.current_epoch != 0
+            and self.augmentation.pct != 0
+            and (self.trainer.current_epoch % self.augmentation.bordersearch_epochs)
+            == 0
         ):
             self.bordersearch()
 
@@ -150,12 +153,12 @@ class ObjectDetectionModule(ClassifierModule):
         return train_loader
 
     def val_dataloader(self):
-
         if self.augmentation.pct != 0:
-            if self.trainer.current_epoch == 0:
+            if self.first_step:
                 self.augmentation.setEvalAttribs(val_pct=100, wait=True)
-            else:
-                self.augmentation.setEvalAttribs(reaugment=False)
+                self.augmentation.augment(self.dev_set)
+                self.first_step = False
+            self.augmentation.setEvalAttribs(reaugment=False)
 
         self.augmentation.augment(self.dev_set)
         dev_loader = data.DataLoader(

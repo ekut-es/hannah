@@ -78,6 +78,7 @@ def eval_checkpoint(config: DictConfig, checkpoint):
     module = instantiate(hparams)
     module.setup("test")
     module.load_state_dict(checkpoint["state_dict"])
+    module.first_step = False
 
     return eval_steps(config, module, hparams, checkpoint)
 

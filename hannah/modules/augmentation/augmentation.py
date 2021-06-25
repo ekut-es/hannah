@@ -241,6 +241,7 @@ class Augmentation:
             th.start()
 
             if self.wait is True:
+                print("######### WAIT FOR AUGMENTATION #########")
                 th.join()
 
     def fillParams(self):

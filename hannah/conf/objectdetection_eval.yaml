@@ -1,5 +1,5 @@
 name: test
-checkpoints: [trained_models/fasterrcnn_augmented/faster-rcnn-resnet50/best.ckpt]
+checkpoints: [trained_models/fasterrcnn_brs/faster-rcnn-resnet50/best.ckpt]
 noise: []
 methods: ["original", "full_augmented", "real_rain"]
 output_dir: eval
@@ -8,6 +8,7 @@ augmentation:
   - augmented_pct: 50
   - reaugment_per_epoch_pct: 20
   - bordersearch_epoch_duration: 0
+  - bordersearch_ignore_params: ["draw_fog"]
   - augmentations: [rain_drops]
   - augmentations_pct: [100]
   - rain_drops:
