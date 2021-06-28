@@ -59,6 +59,11 @@ class Kitti(AbstractDataset):
         self.labels_ignore = (
             config["labels_ignore"] if config["labels_ignore"] is not None else [0]
         )
+        self.realrain = config["realrain_test"] if "realrain_test" in config else False
+        if self.realrain:
+            self.realrain_path = config["realrain_folder"]
+            self.realrain_imgpath = os.path.join(self.realrain_path, self.IMAGE_PATH)
+            self.realrain_labelpath = os.path.join(self.realrain_path, self.LABEL_PATH)
         self.transform = transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -76,6 +81,7 @@ class Kitti(AbstractDataset):
             self.img_path,
             self.aug_path,
             self.kitti_dir,
+            self.realrain_imgpath if self.realrain else None,
         )
 
     @classmethod
@@ -104,6 +110,8 @@ class Kitti(AbstractDataset):
                 self.kitti_dir + "/training/augmented/" + img_name,
                 self.aug_path + img_name,
             )
+        elif self.set_type == DatasetType.TEST and self.realrain:
+            path = self.realrain_imgpath
         else:
             path = self.img_path
 
@@ -113,7 +121,9 @@ class Kitti(AbstractDataset):
 
         target = {}
         label = self._parse_label(
-            idx, True if self.set_type == DatasetType.TRAIN else False
+            idx,
+            True if self.set_type == DatasetType.TRAIN else False,
+            True if self.set_type == DatasetType.TEST and self.realrain else False,
         )
 
         labels = []
@@ -128,15 +138,19 @@ class Kitti(AbstractDataset):
         target["labels"] = torch.stack(labels)
         target["filename"] = self.img_files[idx]
         target["augmented"] = True if path == self.aug_path else False
+        target["realrain"] = (
+            True if self.set_type == DatasetType.TEST and self.realrain else False
+        )
 
         return pil_img, target
 
     def getCocoGt(self):
         return self.cocoGt
 
-    def _parse_label(self, idx: int, considerDC: bool):
+    def _parse_label(self, idx: int, considerDC: bool, realrain: bool):
         label = []
-        with open(self.label_path + self.label_files[idx]) as inp:
+        labelpath = self.label_path if not realrain else self.realrain_labelpath
+        with open(labelpath + self.label_files[idx]) as inp:
             content = csv.reader(inp, delimiter=" ")
             for line in content:
                 if (
@@ -162,6 +176,7 @@ class Kitti(AbstractDataset):
         """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
 
+        realrain = config["realrain_test"] if "realrain_test" in config else False
         folder = config["kitti_folder"]
         folder = os.path.join(folder, "training")
         aug_folder = os.path.join(folder, "augmented/")
@@ -173,13 +188,12 @@ class Kitti(AbstractDataset):
             )
         )
         num_imgs = len(files)
-        num_test_imgs = math.floor(num_imgs * (config["test_pct"] / 100))
+        num_test_imgs = (
+            math.floor(num_imgs * (config["test_pct"] / 100)) if not realrain else 0
+        )
         num_dev_imgs = math.floor(num_imgs * (config["dev_pct"] / 100))
 
         datasets = [{}, {}, {}]
-
-        if num_test_imgs < 1 or num_dev_imgs < 1:
-            raise Exception("Each step must have at least 1 Kitti image")
 
         if "real_rain" not in folder:
             if os.path.exists(aug2_folder) and os.path.isdir(aug2_folder):
@@ -192,11 +206,13 @@ class Kitti(AbstractDataset):
 
         for i in range(num_imgs):
             # test_img pct into test dataset
-            if i < num_test_imgs:
+            if not realrain and i < num_test_imgs:
                 img_name = files[i]
                 datasets[0][img_name] = files[i][:-4] + ".txt"
             # dev_img pct into val dataset
-            elif i < num_test_imgs + num_dev_imgs:
+            elif (not realrain and i < num_test_imgs + num_dev_imgs) or (
+                realrain and i < num_dev_imgs
+            ):
                 img_name = files[i]
                 datasets[1][img_name] = files[i][:-4] + ".txt"
             # last pictures into training set
@@ -205,6 +221,22 @@ class Kitti(AbstractDataset):
                 datasets[2][img_name] = (
                     files[i][:-4] + ".txt"
                 )  # last imgs not augmented
+
+        if realrain:
+            folder = config["realrain_folder"]
+            folder = os.path.join(folder, "training")
+            folder = os.path.join(folder, "image_2/")
+            files = sorted(
+                filter(
+                    lambda x: os.path.isfile(os.path.join(folder, x)),
+                    os.listdir(folder),
+                )
+            )
+            num_imgs = math.floor(len(files) * (config["test_pct"] / 100))
+
+            for i in range(num_imgs):
+                img_name = files[i]
+                datasets[0][img_name] = files[i][:-4] + ".txt"
 
         res_datasets = (
             cls(datasets[2], DatasetType.TRAIN, config),
@@ -227,11 +259,13 @@ class KittiCOCO(COCO):
         img_path,
         aug_path,
         kitti_dir,
+        realrain_path,
     ):
         super().__init__()
         self.img_path = img_path
         self.aug_path = aug_path
         self.kitti_dir = kitti_dir
+        self.realrain_path = realrain_path
         KittiCOCO.labels_ignore = labels_ignore
 
         dataset = dict()
@@ -282,7 +316,12 @@ class KittiCOCO(COCO):
     def saveImg(self, cocoDt, y):
 
         for y_img in y:
-            path = self.aug_path if y_img["augmented"] else self.img_path
+            if y_img["augmented"]:
+                path = self.aug_path
+            elif y_img["realrain"]:
+                path = self.realrain_path
+            else:
+                path = self.img_path
             filename = y_img["filename"]
             cocoImg = self.getImgId(filename)
             img = mpimg.imread(path + filename)

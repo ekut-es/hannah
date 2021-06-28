@@ -8,6 +8,8 @@ import torch
 
 from hannah.datasets.Kitti import Kitti, object_collate_fn
 
+from omegaconf import open_dict, OmegaConf
+
 from hydra.utils import to_absolute_path, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
@@ -15,7 +17,7 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 
 def eval_train(module, test=True):
-    trainer = Trainer(gpus=1, deterministic=True)
+    trainer = Trainer(gpus=1, deterministic=True, logger=False)
     val = trainer.validate(model=module, ckpt_path=None, verbose=test)
     if test:
         reset_seed()
@@ -38,8 +40,6 @@ def eval_steps(config, module, hparams, checkpoint):
     if "real_rain" in methods:
         folder = hparams["dataset"]["kitti_folder"]
         hparams["dataset"]["kitti_folder"] = folder[: folder.rfind("/")] + "/real_rain"
-        hparams["dataset"]["test_pct"] = 50
-        hparams["dataset"]["dev_pct"] = 50
         real_module = instantiate(hparams)
         real_module.setup("test")
         real_module.load_state_dict(checkpoint["state_dict"])
@@ -75,6 +75,10 @@ def eval_checkpoint(config: DictConfig, checkpoint):
 
     hparams["num_workers"] = 0
     hparams["augmentation"] = config["augmentation"]
+    if "realrain_test" in hparams["dataset"]:
+        hparams["dataset"]["realrain_test"] = False
+    hparams["dataset"]["test_pct"] = 50
+    hparams["dataset"]["dev_pct"] = 50
     module = instantiate(hparams)
     module.setup("test")
     module.load_state_dict(checkpoint["state_dict"])

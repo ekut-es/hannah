@@ -179,7 +179,9 @@ class ObjectDetectionModule(ClassifierModule):
         return dev_loader
 
     def test_dataloader(self):
+        if not self.test_set.realrain:
         self.augmentation.augment(self.test_set)
+
         test_loader = data.DataLoader(
             self.test_set,
             batch_size=min(len(self.test_set), 9),
