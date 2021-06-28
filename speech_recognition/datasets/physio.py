@@ -42,10 +42,16 @@ class PhysioDataset(AbstractDataset):
         label = torch.Tensor([self.physio_labels[index]]).long()
         with open(self.physio_files[index], "rb") as f:
             data = pickle.load(f)
+        #print(type(data))
         data = torch.from_numpy(data)
-        data = data.transpose(1, 0).float()
+        #data = np.asarray(data)
+        #data = data.transpose(1, 0).float()
+        data = data.transpose(-1, 0).float()
         if self.channels == 1:
             data = data[0]
+        print(data.shape)
+        print(label.shape)
+        breakpoint
         return data, data.shape[0], label, label.shape[0]
 
     def get_label_list(self):
@@ -69,16 +75,29 @@ class PhysioCincDataset(PhysioDataset):
     LABEL_NOISY = "~"
 
     def __init__(self, data, set_type, config):
-        super().__init__()
+        super().__init__(data, set_type, config)
         #self.physio_files = list(data.keys())
         #self.set_type = set_type
         #self.physio_labels = list(data.values())
 
-        self.samplingrate = config["samplingrate_cinc"]
+        #self.samplingrate = config["samplingrate_cinc"]
 
-        self.input_length = config["input_length_cinc"]
+        #self.input_length = config["input_length_cinc"]
 
-        self.channels = config["num_channels_cinc"]
+        #self.channels = config["num_channels_cinc"]
+
+        self.samplingrate = config["samplingrate"]
+
+        self.input_length = config["input_length"]
+
+        self.channels = config["num_channels"]
+
+        self.label_names = {
+            0: self.LABEL_NORMAL,
+            1: self.LABEL_ATRIAL_FIBRILLATION,
+            2: self.LABEL_OTHER_RYTHM,
+            3: self.LABEL_NOISY,
+        }
 
     @classmethod
     def get_label_names(cls):
@@ -92,11 +111,16 @@ class PhysioCincDataset(PhysioDataset):
     @classmethod
     def get_label_mapping(cls):
         return {
-            cls.NORMAL: 0,
+            cls.LABEL_NORMAL: 0,
             cls.LABEL_ATRIAL_FIBRILLATION: 1,
             cls.LABEL_OTHER_RYTHM: 2,
             cls.LABEL_NOISY: 3,
         }
+
+    @classmethod
+    def prepare(cls, config):
+        cls.download(config)
+        cls.prepare_files(config)
 
     #@property
     #def class_names(self):
@@ -128,8 +152,8 @@ class PhysioCincDataset(PhysioDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        #variants = config["variants"]
-        variants_cinc = config["variants"]
+        variants = config["variants"]
+        #variants_cinc = config["variants"]
         
         # download Physionet 2017 CinC dataset
         filename = "training2017.zip"
@@ -173,7 +197,7 @@ class PhysioCincDataset(PhysioDataset):
         
         raw_data = list()
         
-        sample_length = config["input_length_cinc"]
+        sample_length = config["input_length"]
         for name in files_list:
             sample_path = os.path.join(raw_folder, name)
             samples, _ = wfdb.rdsamp(sample_path)
@@ -192,7 +216,7 @@ class PhysioCincDataset(PhysioDataset):
         for experiment_number, element in enumerate(raw_data):
             name = element["name"]
             sample = element["sample"]
-            sample = torch.from_numpy(sample)
+            #sample = torch.from_numpy(sample)
             label = element["label"]
             out_path = os.path.join(output_folder, label)
             if not os.path.isdir(out_path):
@@ -204,8 +228,8 @@ class PhysioCincDataset(PhysioDataset):
     @classmethod
     def splits(cls, config):
 
-        dev_pct = config["dev_pct_cinc"]
-        test_pct = config["test_pct_cinc"]
+        dev_pct = config["dev_pct"]
+        test_pct = config["test_pct"]
 
         folder = os.path.join(config["data_folder"], "cinc_2017_prepared")
 
@@ -235,27 +259,28 @@ class PhysioCincDataset(PhysioDataset):
         return datasets
 
 
-    def __getitem__(self, index):
-        label = torch.Tensor([self.physio_labels[index]]).long()
-        with open(self.physio_files[index], "rb") as f:
-            data = pickle.load(f)
-        data = torch.from_numpy(data)
-        data = data.transpose(1, 0).float()
-        if self.channels == 1:
-            data = data[0]
-        return data, data.shape[0], label, label.shape[0]
+#    def __getitem__(self, index):
+#        label = torch.Tensor([self.physio_labels[index]]).long()
+#        with open(self.physio_files[index], "rb") as f:
+#            data = pickle.load(f)
+#        data = torch.from_numpy(data)
+#        #data = np.ndarray(data)
+#        data = data.transpose(1, 0).float()
+#        if self.channels == 1:
+#            data = data[0]
+#        return data, data.shape[0], label, label.shape[0]
 
-    def get_label_list(self):
-        return self.physio_labels
+#    def get_label_list(self):
+#        return self.physio_labels
 
-    def get_categories_distribution(self):
-        distribution = defaultdict(int)
-        for label in self.get_label_list():
-            distribution[label] += 1
-        return distribution
+#    def get_categories_distribution(self):
+#        distribution = defaultdict(int)
+#        for label in self.get_label_list():
+#            distribution[label] += 1
+#        return distribution
 
-    def __len__(self):
-        return len(self.physio_files)
+#    def __len__(self):
+#        return len(self.physio_files)
 
 
 class AtrialFibrillationDataset(PhysioDataset):
