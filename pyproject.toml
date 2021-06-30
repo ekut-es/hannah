@@ -44,6 +44,7 @@ h5py = "^3.2.1"
 sympy = "^1.7.1"
 nvsmi = "^0.4.2"
 libsvm="^3.23.0.4"
+scikit-image = "^0.18.2"
 
 # optional dependencies
 onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}

@@ -4,6 +4,9 @@ import random
 import subprocess
 import threading
 
+import torch
+from skimage.util import random_noise
+from torchvision.utils import save_image
 import xml.etree.ElementTree as ET
 from PIL import Image
 from hannah.datasets.base import DatasetType
@@ -20,11 +23,12 @@ class XmlAugmentationParser:
         return (width, height)
 
     @staticmethod
-    def parse(conf, img, path):
+    def parse(conf, img, path, transform):
         random.seed()
         augmentation = random.choices(conf["augmentations"], conf["augmentations_pct"])[
             0
         ]
+        subpring = True
 
         if "rain" in augmentation:
             XmlAugmentationParser.__parseRain(
@@ -38,6 +42,15 @@ class XmlAugmentationParser:
             XmlAugmentationParser.__parseFog(
                 dict((key, a[key]) for a in conf["fog"] for key in a), img, path
             )
+        elif "noise" in augmentation:
+            XmlAugmentationParser.__noise(
+                dict((key, a[key]) for a in conf["noise"] for key in a),
+                img,
+                path,
+                transform,
+            )
+            subpring = False
+        return subpring
 
     @staticmethod
     def __parseRain(conf, img, path):
@@ -146,18 +159,33 @@ class XmlAugmentationParser:
 
         tree.write(path + "/augmentation/augment.xml")
 
+    @staticmethod
+    def __noise(conf, img, path, transform):
+        pil_img = Image.open(path + "/training/image_2/" + img).convert("RGB")
+        pil_img = transform(pil_img)
+        pil_img = torch.tensor(
+            random_noise(
+                pil_img,
+                mode=conf["noise_mode"],
+                mean=conf["mean"],
+                var=conf["var"],
+                clip=True,
+            )
+        )
+        save_image(pil_img.to(torch.float32), path + "/training/augmented/" + img)
+
 
 class AugmentationThread:
     def __init__(self):
         self.stop = True
         self.running = False
 
-    def call_augment(self, conf, img, kitti_dir, out):
-        XmlAugmentationParser.parse(conf, img, kitti_dir)
-        subprocess.call(
-            kitti_dir + "/augmentation/perform_augmentation.sh",
-            stdout=subprocess.DEVNULL,
-        )
+    def call_augment(self, conf, img, kitti_dir, kitti_transform, out):
+        if XmlAugmentationParser.parse(conf, img, kitti_dir, kitti_transform):
+            subprocess.call(
+                kitti_dir + "/augmentation/perform_augmentation.sh",
+                stdout=subprocess.DEVNULL,
+            )
 
         if out is True:
             print("Image augmented")
@@ -167,7 +195,7 @@ class AugmentationThread:
             txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
             txt.write(img[:-4] + "\n")
             txt.close()
-            self.call_augment(conf, img, kitti.kitti_dir, out)
+            self.call_augment(conf, img, kitti.kitti_dir, kitti.transform, out)
         kitti.aug_files.append(img[:-4])
 
     def augment(self, conf, kitti, pct, aug_new, out):
