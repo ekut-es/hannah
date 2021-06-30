@@ -11,6 +11,7 @@ augmentation:
   - reaugment_per_epoch_pct: 50
   - bordersearch_epoch_duration: 5
   - bordersearch_ignore_params: ["draw_fog"]
+  - bordersearch_waterlevel: 0.7
   - augmentations: [rain_drops]
   - augmentations_pct: [100]
   - rain_drops:

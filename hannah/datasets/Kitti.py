@@ -187,7 +187,7 @@ class Kitti(AbstractDataset):
                 lambda x: os.path.isfile(os.path.join(folder, x)), os.listdir(folder)
             )
         )
-        num_imgs = len(files)
+        num_imgs = int(len(files) * (config["num_img_pct"] / 100))
         num_test_imgs = (
             math.floor(num_imgs * (config["test_pct"] / 100)) if not realrain else 0
         )

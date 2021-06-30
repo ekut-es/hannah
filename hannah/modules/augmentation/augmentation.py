@@ -220,6 +220,7 @@ class Augmentation:
         self.conf = dict((key, a[key]) for a in augmentation for key in a)
         self.pct = self.conf["augmented_pct"] if "augmented_pct" in self.conf else 0
         self.bordersearch_epochs = self.conf["bordersearch_epoch_duration"]
+        self.waterlevel = self.conf["bordersearch_waterlevel"]
         self.setEvalAttribs()
 
     def augment(self, kitti: Kitti):
@@ -293,7 +294,6 @@ class Augmentation:
             for c in self.conf[param.catuuid]:
                 if c[param.uuid] is not None:
                     c[param.uuid][0] = value
-                    c[param.uuid][1] = value
                     break
 
     def setEvalAttribs(self, val_pct=50, wait=False, reaugment=True, out=False):

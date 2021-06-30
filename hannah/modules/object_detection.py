@@ -110,7 +110,7 @@ class ObjectDetectionModule(ClassifierModule):
         )
         opts.dut_fun = dut_fun
         opts.sample_fun = random_sample
-        conf = brs.find_waterlevel(opts, 2)
+        conf = brs.find_waterlevel(opts, self.augmentation.waterlevel)
         self.augmentation.changeParams(self.borderparams, conf)
         print("################# Bordersearch ends #################")
 
@@ -180,7 +180,7 @@ class ObjectDetectionModule(ClassifierModule):
 
     def test_dataloader(self):
         if not self.test_set.realrain:
-        self.augmentation.augment(self.test_set)
+            self.augmentation.augment(self.test_set)
 
         test_loader = data.DataLoader(
             self.test_set,
