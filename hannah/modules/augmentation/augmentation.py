@@ -230,9 +230,9 @@ class AugmentationThread:
 
     def augment_img(self, kitti, img, conf, reaugment, out):
         if reaugment is True:
-            # txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
-            # txt.write(img[:-4] + "\n")
-            # txt.close()
+            txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
+            txt.write(img[:-4] + "\n")
+            txt.close()
             self.call_augment(conf, img, kitti.kitti_dir, kitti.transform, out)
         kitti.aug_files.append(img[:-4])
 
