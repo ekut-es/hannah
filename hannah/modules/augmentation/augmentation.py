@@ -91,8 +91,10 @@ class XmlAugmentationParser:
                 elif description == "Number of Drops":
                     value = conf["number_drops"]
                     param.attrib["Value"] = str(
-                        XmlAugmentationParser.__getDistValue(
-                            int(value[0]), int(value[1])
+                        int(
+                            XmlAugmentationParser.__getDistValue(
+                                int(value[0]), int(value[1])
+                            )
                         )
                     )
                 elif description == "Rain Rate [mm/h]":
