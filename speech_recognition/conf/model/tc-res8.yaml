@@ -74,7 +74,7 @@ conv1_alpha: 0.75
 conv1_beta: 0.65
 conv1_gamma: 0.75
 conv1_rho: 0.15
-conv1_neuron_type: eLIF
+#conv1_neuron_type: eLIF
 conv1_trainable_parameter: False
 dropout_prob: 0.5
 fully_convolutional: false
