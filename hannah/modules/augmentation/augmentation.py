@@ -219,11 +219,10 @@ class AugmentationThread:
 
     def call_augment(self, conf, img, kitti_dir, kitti_transform, out):
         if XmlAugmentationParser.parse(conf, img, kitti_dir, kitti_transform):
-            pass
-            """ subprocess.call(
+            subprocess.call(
                 kitti_dir + "/augmentation/perform_augmentation.sh",
                 stdout=subprocess.DEVNULL,
-            )"""
+            )
 
         if out is True:
             print("Image augmented")
