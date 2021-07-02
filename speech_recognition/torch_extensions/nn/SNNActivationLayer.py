@@ -344,7 +344,7 @@ class Spiking1DeALIFLayer(torch.nn.Module):
         )
 
         for t in range(nb_steps):
-            rst = torch.einsum("ab,b->ab", spk, self.Vth)
+            rst = torch.einsum("ab,ab->ab", spk, Athpot)
 
             if self.time_position == 2:
                 input_ = x[:, :, t]
@@ -479,7 +479,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
         )
 
         for t in range(nb_steps):
-            rst = torch.einsum("ab,b->ab", spk, self.Vth)
+            rst = torch.einsum("ab,ab->ab", spk, Athpot)
 
             if self.time_position == 2:
                 input_ = self.alpha * input_ + x[:, :, t]
