@@ -1,8 +1,10 @@
 import os
-import shutil
+import sys
 import random
 import subprocess
 import threading
+import tensorflow_probability as tfp
+import numpy as np
 
 import torch
 from skimage.util import random_noise
@@ -53,6 +55,17 @@ class XmlAugmentationParser:
         return subpring
 
     @staticmethod
+    def __getDistValue(low, high):
+        range = abs(high - low)
+        dist = tfp.distributions.HalfNormal(scale=range, validate_args=True)
+        sample = sys.maxsize
+
+        while sample > range:
+            sample = dist.sample().numpy()
+
+        return low + sample
+
+    @staticmethod
     def __parseRain(conf, img, path):
         tree = ET.parse(path + "/augmentation/rain_drops.xml")
         root = tree.getroot()
@@ -64,27 +77,37 @@ class XmlAugmentationParser:
                 if description == "angle of rain streaks [deg]":
                     value = conf["angle_rain_streaks"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Brightness factor":
                     value = conf["brightness"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Number of Drops":
                     value = conf["number_drops"]
                     param.attrib["Value"] = str(
-                        random.randint(int(value[0]), int(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            int(value[0]), int(value[1])
+                        )
                     )
                 elif description == "Rain Rate [mm/h]":
                     value = conf["rain_rate"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Mean Drop Radius [m]":
                     value = conf["drop_radius"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
@@ -107,17 +130,23 @@ class XmlAugmentationParser:
                 if description == "Snow Fall Rate [mm/h]":
                     value = conf["snowfall_rate"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Car Speed [m/s]":
                     value = conf["car_speed_ms"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Crosswind Speed [m/s]":
                     value = conf["car_speed_ms"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Draw Fog":
                     value = str(random.choice(conf["draw_fog"])).lower()
@@ -143,12 +172,16 @@ class XmlAugmentationParser:
                 if description == "Fog Density [1/um^3]":
                     value = conf["fog_density"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Fog Sphere Diameter [um]":
                     value = conf["fog_sphere"]
                     param.attrib["Value"] = str(
-                        random.uniform(float(value[0]), float(value[1]))
+                        XmlAugmentationParser.__getDistValue(
+                            float(value[0]), float(value[1])
+                        )
                     )
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
@@ -167,8 +200,12 @@ class XmlAugmentationParser:
             random_noise(
                 pil_img,
                 mode=conf["noise_mode"],
-                mean=conf["mean"],
-                var=conf["var"],
+                mean=XmlAugmentationParser.__getDistValue(
+                    float(conf["mean"][0]), float(conf["mean"][1])
+                ),
+                var=XmlAugmentationParser.__getDistValue(
+                    float(conf["var"][0]), float(conf["var"][1])
+                ),
                 clip=True,
             )
         )
@@ -182,19 +219,20 @@ class AugmentationThread:
 
     def call_augment(self, conf, img, kitti_dir, kitti_transform, out):
         if XmlAugmentationParser.parse(conf, img, kitti_dir, kitti_transform):
-            subprocess.call(
+            pass
+            """ subprocess.call(
                 kitti_dir + "/augmentation/perform_augmentation.sh",
                 stdout=subprocess.DEVNULL,
-            )
+            )"""
 
         if out is True:
             print("Image augmented")
 
     def augment_img(self, kitti, img, conf, reaugment, out):
         if reaugment is True:
-            txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
-            txt.write(img[:-4] + "\n")
-            txt.close()
+            # txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
+            # txt.write(img[:-4] + "\n")
+            # txt.close()
             self.call_augment(conf, img, kitti.kitti_dir, kitti.transform, out)
         kitti.aug_files.append(img[:-4])
 
@@ -310,6 +348,19 @@ class Augmentation:
                             ParameterRange(snow[elem][0], snow[elem][1]),
                             elem,
                             "snow",
+                            i,
+                        )
+                    )
+                    i += 1
+        if "noise" in self.conf["augmentations"]:
+            noise = dict((key, a[key]) for a in self.conf["noise"] for key in a)
+            for elem in list(noise):
+                if elem not in ignore:
+                    params.append(
+                        Parameter(
+                            ParameterRange(noise[elem][0], noise[elem][1]),
+                            elem,
+                            "noise",
                             i,
                         )
                     )
