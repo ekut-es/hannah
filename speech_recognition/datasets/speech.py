@@ -537,10 +537,51 @@ class VadDataset(SpeechDataset):
             DatasetSplit.split_data(config, olddata)
 
     @classmethod
+    def check_existing_splits(cls, data_split, data_folder, variants, noise_dataset):
+        csvfiles = list_all_files(data_folder, ".csv", file_prefix=False)
+
+        for f in csvfiles:
+            tmp_f = f
+            dataset_names = []
+            if data_split in tmp_f:
+                tmp_f = tmp_f.replace(data_split, "")
+                tmp_f = tmp_f.replace(".csv", "")
+                dataset_names = tmp_f.split("_")
+
+            useable = True
+            for v in variants:
+                if v not in dataset_names:
+                    useable = False
+                    break
+                else:
+                    dataset_names.remove(v)
+                
+            if not useable:
+                continue
+                
+            for n in noise_dataset:
+                if n not in dataset_names:
+                    useable = False
+                    break
+                else:
+                    dataset_names.remove(n)
+                
+            if not useable and len(dataset_names) > 0:
+                continue
+            elif useable and len(dataset_names) == 0:
+                return f
+        return None
+
+    @classmethod
     def read_config(cls, config):
         split = config.get("data_split", "vad_balanced")
         data_folder = config.get("data_folder", None)
-        split_file = os.path.join(data_folder, split + ".csv")
+        variants = config.get("variants")
+        noise_dataset = config.get("noise_dataset")
+
+        filename = VadDataset.check_existing_splits(split, data_folder, variants, noise_dataset)
+        
+        split_file = os.path.join(data_folder, filename)
         output = {}
         if os.path.isfile(split_file):
             with open(split_file, mode="r") as csv_file:
