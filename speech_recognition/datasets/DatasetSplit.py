@@ -154,7 +154,7 @@ class DatasetSplit:
         return destination_dict
 
     @classmethod
-    def split_data(cls, config, olddata=None):
+    def split_data(cls, config, olddata=None, split_filename=None):
         data_splits = config.get("data_split", [])
         oldsplit = {}
         if olddata is not None:
@@ -198,7 +198,8 @@ class DatasetSplit:
                 os.makedirs(noise_dir)
 
             dest_sr = config.get("samplingrate", 16000)
-            split_file = os.path.join(data_folder, data_split + ".csv")
+
+            split_file = os.path.join(data_folder, split_filename)
             torchaudio.set_audio_backend("sox_io")
             output = list()
             for key, value in destination_dict.items():
