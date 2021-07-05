@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from PIL import Image
 from hannah.datasets.base import DatasetType
 from hannah.modules.augmentation.bordersearch import Parameter, ParameterRange
-import scikit.stats as stats
+import scipy.stats as stats
 
 from hannah.datasets.Kitti import Kitti
 
