@@ -171,31 +171,13 @@ class DatasetSplit:
         for data_split in data_splits:
             logging.info("split data begins current_split: %s", data_split)
             data_folder = config["data_folder"]
-            target_folder = os.path.join(data_folder, data_split)
-
-            # remove old folders
-            if config["clear_split"]:
-                for name in ["train", "dev", "test"]:
-                    oldpath = os.path.join(target_folder, name)
-                    if os.path.isdir(oldpath):
-                        shutil.rmtree(oldpath)
-            elif os.path.isdir(target_folder):
-                return
 
             destination_dict = split_methods[splits.index(data_split)](config)
 
-            downsample_dir = os.path.join(data_folder, "downsampled")
-            downsample_dir = os.path.join(downsample_dir, data_split)
-            if not os.path.exists(downsample_dir):
-                os.makedirs(downsample_dir)
-
-            speech_dir = os.path.join(downsample_dir, "speech")
-            if not os.path.exists(speech_dir):
-                os.makedirs(speech_dir)
-
-            noise_dir = os.path.join(downsample_dir, "noise")
-            if not os.path.exists(noise_dir):
-                os.makedirs(noise_dir)
+            downsample_dir = DatasetSplit.create_folder(data_folder, "downsampled")
+            downsample_dir = DatasetSplit.create_folder(downsample_dir, data_split)
+            speech_dir = DatasetSplit.create_folder(downsample_dir, "speech")
+            noise_dir = DatasetSplit.create_folder(downsample_dir, "noise")
 
             dest_sr = config.get("samplingrate", 16000)
 
