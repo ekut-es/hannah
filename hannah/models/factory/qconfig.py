@@ -160,6 +160,7 @@ class TrainableFakeQuantize(FakeQuantizeBase):
         quantization_loss=True,
         power_of_2=False,
         noise_prob=1.0,
+        rounding_mode="TOEVEN",  # One of TONEAREST, TOEVEN, UPWARD
         debug=False,
     ):
         super().__init__()
@@ -168,6 +169,7 @@ class TrainableFakeQuantize(FakeQuantizeBase):
         self.noise_prob = noise_prob
         self.debug = debug
         self.power_of_2 = power_of_2
+        self.rounding_mode = rounding_mode
 
         if power_of_2:
             self.quantization_function = PowerOf2Quantization(bits, debug=self.debug)
