@@ -184,14 +184,21 @@ class DatasetSplit:
             split_file = DatasetSplit.create_filename(data_folder, split_filename)
 
             output = cls.file_conversion_handling(
-                dest_sr, destination_dict, noise_dir, oldsplit, speech_dir
+                dest_sr, destination_dict, oldsplit, noise_dir, speech_dir
             )
 
             DatasetSplit.write_split(split_file, output)
 
     @classmethod
+    def convert_number(cls, text):
+        output = -1
+        if len(text) > 0:
+            output = int(text)
+        return output
+
+    @classmethod
     def file_conversion_handling(
-        cls, dest_sr, destination_dict, noise_dir, oldsplit, speech_dir
+        cls, dest_sr, destination_dict, oldsplit, noise_dir, speech_dir
     ):
         torchaudio.set_audio_backend("sox_io")
         output = list()
@@ -204,10 +211,8 @@ class DatasetSplit:
                 old_orig_sr = -1
                 old_down_sr = -1
                 if old is not None:
-                    old_orig_sr = int(old.get("sr_orig", -1))
-                    old_down_sr = old.get("sr_down", -1)
-                    if len(old_down_sr) > 0:
-                        old_down_sr = int(old_down_sr)
+                    old_orig_sr = DatasetSplit.convert_number(old.get("sr_orig"))
+                    old_down_sr = DatasetSplit.convert_number(old.get("sr_down"))
 
                 target_path = ""
                 downsampled_sr = ""
