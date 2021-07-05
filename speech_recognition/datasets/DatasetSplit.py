@@ -190,13 +190,6 @@ class DatasetSplit:
             DatasetSplit.write_split(split_file, output)
 
     @classmethod
-    def convert_number(cls, text):
-        output = -1
-        if len(text) > 0:
-            output = int(text)
-        return output
-
-    @classmethod
     def file_conversion_handling(
         cls, dest_sr, destination_dict, oldsplit, noise_dir, speech_dir
     ):
@@ -254,6 +247,13 @@ class DatasetSplit:
                     "",
                 ]
             )
+        return output
+
+    @classmethod
+    def convert_number(cls, text):
+        output = -1
+        if len(text) > 0:
+            output = int(text)
         return output
 
     @classmethod
