@@ -257,7 +257,7 @@ class DatasetSplit:
         return output
 
     @classmethod
-    def create_filename(cls, split_name, variants, noises):
+    def create_filename(cls, split_name, variants, noises, data_folder=None):
         output = split_name
         for variant in variants:
             output += "_" + variant
@@ -266,6 +266,11 @@ class DatasetSplit:
             output += "_" + noise
 
         output += ".csv"
+
+        if data_folder is not None:
+            os.path.join(data_folder, output)
+
+        return output
 
     @classmethod
     def write_split(cls, output_path, data):
