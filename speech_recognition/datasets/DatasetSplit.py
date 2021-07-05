@@ -268,6 +268,24 @@ class DatasetSplit:
             DatasetSplit.write_split(split_file, output)
 
     @classmethod
+    def create_folder(cls, path, new_folder):
+        output = os.path.join(path, new_folder)
+        if not os.path.exists(output):
+            os.makedirs(output)
+        return output
+
+    @classmethod
+    def create_filename(cls, split_name, variants, noises):
+        output = split_name
+        for variant in variants:
+            output += "_" + variant
+
+        for noise in noises:
+            output += "_" + noise
+
+        output += ".csv"
+
+    @classmethod
     def write_split(cls, output_path, data):
         header = [
             "filename",
