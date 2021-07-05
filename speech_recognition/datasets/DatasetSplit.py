@@ -181,73 +181,75 @@ class DatasetSplit:
 
             dest_sr = config.get("samplingrate", 16000)
 
-            split_file = os.path.join(data_folder, split_filename)
-            torchaudio.set_audio_backend("sox_io")
-            output = list()
-            for key, value in destination_dict.items():
-                for f in value:
-                    f_info = torchaudio.backend.sox_io_backend.info(f)
-                    filename = os.path.basename(f)
+            split_file = DatasetSplit.create_filename(data_folder, split_filename)
 
-                    old = oldsplit.pop(filename, None)
-                    old_orig_sr = -1
-                    old_down_sr = -1
-                    if old is not None:
-                        old_orig_sr = int(old.get("sr_orig", -1))
-                        old_down_sr = old.get("sr_down", -1)
-                        if len(old_down_sr) > 0:
-                            old_down_sr = int(old_down_sr)
+            output = cls.file_conversion_handling(
+                dest_sr, destination_dict, noise_dir, oldsplit, speech_dir
+            )
 
-                    target_path = ""
-                    downsampled_sr = ""
-
-                    if (
-                        old_orig_sr != dest_sr
-                        and old_down_sr != dest_sr
-                        and (dest_sr != f_info.sample_rate or f_info.num_channels != 1)
-                    ):
-                        if "noise" in key:
-                            target_path = os.path.join(noise_dir, filename)
-                        elif "speech" in key:
-                            target_path = os.path.join(speech_dir, filename)
-                        else:
-                            target_path = None
-
-                        target_path = Downsample.downsample_file(
-                            f, target_path, dest_sr
-                        )
-                        downsampled_sr = str(dest_sr)
-
-                    if oldsplit is not None and old is not None:
-                        downsampled_sr = str(dest_sr)
-                        if old_down_sr == dest_sr:
-                            target_path = old.get("downsampled_path")
-                        elif old_orig_sr == dest_sr:
-                            target_path = old.get("original_path")
-
-                    output.append(
-                        [
-                            filename,
-                            f,
-                            target_path,
-                            f_info.sample_rate,
-                            downsampled_sr,
-                            key,
-                        ]
-                    )
-            for element in oldsplit.keys():
-                tmp = oldsplit[element]
-                output.append(
-                    [
-                        tmp["filename"],
-                        tmp["original_path"],
-                        tmp["downsampled_path"],
-                        tmp["sr_orig"],
-                        tmp["sr_down"],
-                        "",
-                    ]
-                )
             DatasetSplit.write_split(split_file, output)
+
+    @classmethod
+    def file_conversion_handling(
+        cls, dest_sr, destination_dict, noise_dir, oldsplit, speech_dir
+    ):
+        torchaudio.set_audio_backend("sox_io")
+        output = list()
+        for key, value in destination_dict.items():
+            for f in value:
+                f_info = torchaudio.backend.sox_io_backend.info(f)
+                filename = os.path.basename(f)
+
+                old = oldsplit.pop(filename, None)
+                old_orig_sr = -1
+                old_down_sr = -1
+                if old is not None:
+                    old_orig_sr = int(old.get("sr_orig", -1))
+                    old_down_sr = old.get("sr_down", -1)
+                    if len(old_down_sr) > 0:
+                        old_down_sr = int(old_down_sr)
+
+                target_path = ""
+                downsampled_sr = ""
+
+                if (
+                    old_orig_sr != dest_sr
+                    and old_down_sr != dest_sr
+                    and (dest_sr != f_info.sample_rate or f_info.num_channels != 1)
+                ):
+                    if "noise" in key:
+                        target_path = os.path.join(noise_dir, filename)
+                    elif "speech" in key:
+                        target_path = os.path.join(speech_dir, filename)
+                    else:
+                        target_path = None
+
+                    target_path = Downsample.downsample_file(f, target_path, dest_sr)
+                    downsampled_sr = str(dest_sr)
+
+                if oldsplit is not None and old is not None:
+                    downsampled_sr = str(dest_sr)
+                    if old_down_sr == dest_sr:
+                        target_path = old.get("downsampled_path")
+                    elif old_orig_sr == dest_sr:
+                        target_path = old.get("original_path")
+
+                output.append(
+                    [filename, f, target_path, f_info.sample_rate, downsampled_sr, key]
+                )
+        for element in oldsplit.keys():
+            tmp = oldsplit[element]
+            output.append(
+                [
+                    tmp["filename"],
+                    tmp["original_path"],
+                    tmp["downsampled_path"],
+                    tmp["sr_orig"],
+                    tmp["sr_down"],
+                    "",
+                ]
+            )
+        return output
 
     @classmethod
     def create_folder(cls, path, new_folder):
