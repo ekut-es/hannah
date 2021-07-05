@@ -207,19 +207,25 @@ def get_trax_qat_qconfig(config):
     bits_bias = config.bw_b if config.bw_b > 0 else config.bw_f
     bits_activation = config.bw_f
     bits_weight = config.bw_w
+    rounding_mode = config.get("rounding_mode", "TOEVEN")
 
     qconfig = QConfig(
         TrainableFakeQuantize.with_args(
-            bits=bits_activation, noise_prob=config.get("noise_prob", 1.0)
+            bits=bits_activation,
+            noise_prob=config.get("noise_prob", 1.0),
+            rounding_mode=rounding_mode,
         ),
         TrainableFakeQuantize.with_args(
             bits=bits_weight,
             power_of_2=config.get("power_of_2", False),
             noise_prob=config.get("noise_prob", 1.0),
             debug=False,
+            rounding_mode=rounding_mode,
         ),
         TrainableFakeQuantize.with_args(
-            bits=bits_bias, noise_prob=config.get("noise_prob", 1.0)
+            bits=bits_bias,
+            noise_prob=config.get("noise_prob", 1.0),
+            rounding_mode=rounding_mode,
         ),
     )
 
