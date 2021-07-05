@@ -275,17 +275,6 @@ optional = false
 python-versions = "*"
 
 [[package]]
-name = "dm-tree"
-version = "0.1.6"
-description = "Tree is a library for working with nested data structures."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-six = ">=1.12.0"
-
-[[package]]
 name = "docker-pycreds"
 version = "0.4.0"
 description = "Python bindings for the docker credentials store API"
@@ -386,14 +375,6 @@ description = "Clean single-source support for Python 3 and 2"
 category = "main"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
-
-[[package]]
-name = "gast"
-version = "0.5.0"
-description = "Python AST that abstracts the underlying Python version"
-category = "main"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "gitdb"
@@ -1694,26 +1675,6 @@ python-versions = "*"
 typeguard = ">=2.7"
 
 [[package]]
-name = "tensorflow-probability"
-version = "0.13.0"
-description = "Probabilistic modeling and statistical inference in TensorFlow"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-cloudpickle = ">=1.3"
-decorator = "*"
-dm-tree = "*"
-gast = ">=0.3.2"
-numpy = ">=1.13.3"
-six = ">=1.10.0"
-
-[package.extras]
-jax = ["jax", "jaxlib"]
-tfds = ["tensorflow-datasets (>=2.2.0)"]
-
-[[package]]
 name = "thop"
 version = "0.0.31-2005241907"
 description = "A tool to count the FLOPs of PyTorch model."
@@ -2034,7 +1995,7 @@ tf-backend = ["onnx-tf", "tensorflow-addons"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1 <3.10"
-content-hash = "af20b0a26367bf6d26ad2090b7a384cd325e756855b71131682ce6bb8d00931d"
+content-hash = "ce04772da1feb6b5916d2483da6fc0c86d7e697f79896c101d7d8493dcf6808b"
 
 [metadata.files]
 absl-py = [
@@ -2298,25 +2259,6 @@ distlib = [
     {file = "distlib-0.3.2-py2.py3-none-any.whl", hash = "sha256:23e223426b28491b1ced97dc3bbe183027419dfc7982b4fa2f05d5f3ff10711c"},
     {file = "distlib-0.3.2.zip", hash = "sha256:106fef6dc37dd8c0e2c0a60d3fca3e77460a48907f335fa28420463a6f799736"},
 ]
-dm-tree = [
-    {file = "dm-tree-0.1.6.tar.gz", hash = "sha256:6776404b23b4522c01012ffb314632aba092c9541577004ab153321e87da439a"},
-    {file = "dm_tree-0.1.6-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:a8814a5c838f79e9db22a51369c74f4d92e7f1485ec55d7f665ae4d98478cb4f"},
-    {file = "dm_tree-0.1.6-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:e28ba91d3d97230b831716db401ce116ae5c7dcd025161ac16ecb8bd5c870a85"},
-    {file = "dm_tree-0.1.6-cp36-cp36m-manylinux_2_24_x86_64.whl", hash = "sha256:603392f1a7818a4f43a7033c2061ae7c2085a4a728171b0bbca76bd107fcdfb0"},
-    {file = "dm_tree-0.1.6-cp36-cp36m-win_amd64.whl", hash = "sha256:2c91e472aab5c5e083c12d0a9396bbd7695031348721f709a9c6f2449e53dab6"},
-    {file = "dm_tree-0.1.6-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:889eae86e0d2d4b8da8eb2edc7186b45a5f92e00c8dd77f2a5c8422f03db18f4"},
-    {file = "dm_tree-0.1.6-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:2fa9c6e56cbd22cdffec42dc8b20464872b07c4535d8effc537fe0d31930b084"},
-    {file = "dm_tree-0.1.6-cp37-cp37m-manylinux_2_24_x86_64.whl", hash = "sha256:c4e8d868fc9a75cbdb67e78069b33e62a4c69bc182c1d2adc29ab08e283912d8"},
-    {file = "dm_tree-0.1.6-cp37-cp37m-win_amd64.whl", hash = "sha256:6d5f64d89f657b11f429e13b1378c8cfbe4baef50e7ab31f3689bfe0cf4a2508"},
-    {file = "dm_tree-0.1.6-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:8d59c5098456667b28c607110537c86c25cbd0ee455f21d033c60ef2d7f48d81"},
-    {file = "dm_tree-0.1.6-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:f3bec40e658fe7546c3a56849c743ac9a498e620b3236e82e171801938a56679"},
-    {file = "dm_tree-0.1.6-cp38-cp38-manylinux_2_24_x86_64.whl", hash = "sha256:e87d06478356a2d92c3940dedebcd92a14ad37fba10ebb1839c8140693b83c0a"},
-    {file = "dm_tree-0.1.6-cp38-cp38-win_amd64.whl", hash = "sha256:02ffa673f20b1756dcf085ef2c354bc59416d843b384c7b71c421f873ffc36c0"},
-    {file = "dm_tree-0.1.6-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:affc7a6d29442a143c60efb2f03bcb95424d4fe6168f3d31de892c1e601fa0e6"},
-    {file = "dm_tree-0.1.6-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:bd347c74254ba320d57b0e102558c1189e3b4ae1bae952f9aef156b5914567c8"},
-    {file = "dm_tree-0.1.6-cp39-cp39-manylinux_2_24_x86_64.whl", hash = "sha256:8425454192e954692d9a1e0f7b374b3b7030916b17b6055951dc17d58b6fe1b8"},
-    {file = "dm_tree-0.1.6-cp39-cp39-win_amd64.whl", hash = "sha256:5269183f80f1ae37543a2a30a8f78e4b0460d5da74fb5ac42dc8a476ef8d707e"},
-]
 docker-pycreds = [
     {file = "docker-pycreds-0.4.0.tar.gz", hash = "sha256:6ce3270bcaf404cc4c3e27e4b6c70d3521deae82fb508767870fdbf772d584d4"},
     {file = "docker_pycreds-0.4.0-py2.py3-none-any.whl", hash = "sha256:7266112468627868005106ec19cd0d722702d2b7d5912a28e19b826c3d37af49"},
@@ -2347,10 +2289,6 @@ fsspec = [
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
-]
-gast = [
-    {file = "gast-0.5.0-py3-none-any.whl", hash = "sha256:95a9b9a83004e7f18a8ae326bfbb6bf9a70ae045174148e34d041810d811d4e5"},
-    {file = "gast-0.5.0.tar.gz", hash = "sha256:8109cbe7aa0f7bf7e4348379da05b8137ea1f059f073332c3c1cedd57db8541f"},
 ]
 gitdb = [
     {file = "gitdb-4.0.7-py3-none-any.whl", hash = "sha256:6c4cc71933456991da20917998acbe6cf4fb41eeaab7d6d67fbc05ecd4c865b0"},
@@ -3259,9 +3197,6 @@ tensorflow-addons = [
     {file = "tensorflow_addons-0.11.2-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:e6b9acec0a8353b52854d7c7e422a1e96459c58c3307ee4c7ba7bf3afb035fb6"},
     {file = "tensorflow_addons-0.11.2-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:e36dd53520989dbd2c6850ea92a23739bd90fb481d7076777d8d521dce47fcc8"},
     {file = "tensorflow_addons-0.11.2-cp38-cp38-win_amd64.whl", hash = "sha256:551b0097f28075c31dfebc3d8e717bc23bd8521ba03f2d69e2141c2bd687cd29"},
-]
-tensorflow-probability = [
-    {file = "tensorflow_probability-0.13.0-py2.py3-none-any.whl", hash = "sha256:308c05998731d0de077a81f4537bef34523cab406fdae09e3e11854d45a075bb"},
 ]
 thop = [
     {file = "thop-0.0.31.post2005241907-py3-none-any.whl", hash = "sha256:86d67af12311b34905949eb91c8c38f92a707de72140c29a94110cc623e21ceb"},
