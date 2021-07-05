@@ -41,7 +41,7 @@ class RelayConverter(torch.fx.Interpreter):
     def __init__(
         self,
         graph_module,
-        input_dtype="int8",
+        input_dtype="int6",
         input_scale=1 / (2 ** 7),
         accumulator_dtype="int20",
     ):
@@ -84,6 +84,8 @@ class RelayConverter(torch.fx.Interpreter):
         output_scale,
         output_dtype,
         use_rescale=False,
+        axis=-1,
+        rounding="TOEVEN",
     ):
         assert input_dtype.startswith("int")
         assert output_dtype.startswith("int")
@@ -95,11 +97,11 @@ class RelayConverter(torch.fx.Interpreter):
             output = tvm.relay.qnn.op.requantize(
                 output,
                 tvm.relay.const(input_scale),
-                tvm.relay.const(0.0),
+                tvm.relay.const(0),
                 tvm.relay.const(output_scale),
-                tvm.relay.const(0.0),
-                axis=1,
-                rounding="TONEAREST",
+                tvm.relay.const(0),
+                axis=axis,
+                rounding=rounding,
                 out_dtype=output_dtype,
             )
         else:
@@ -228,7 +230,8 @@ class RelayConverter(torch.fx.Interpreter):
                 bias_dtype,
                 accumulator_scale,
                 self.accumulator_dtype,
-                use_rescale=False,
+                use_rescale=True,
+                axis=0,
             )
             conv_out = tvm.relay.nn.bias_add(conv_out, bias)
 
@@ -242,7 +245,7 @@ class RelayConverter(torch.fx.Interpreter):
             self.accumulator_dtype,
             output_scale,
             output_dtype,
-            use_rescale=False,
+            use_rescale=True,
         )
 
         self.outputs[node.name] = conv_out
