@@ -265,17 +265,31 @@ class DatasetSplit:
 
     @classmethod
     def create_filename(cls, split_name, variants, noises, data_folder=None):
-        output = split_name
-        for variant in variants:
-            output += "_" + variant
-
-        for noise in noises:
-            output += "_" + noise
-
-        output += ".csv"
+        output = (
+            DatasetSplit.combine_underscore_lists(variants, noises, split_name) + ".csv"
+        )
 
         if data_folder is not None:
             os.path.join(data_folder, output)
+
+        return output
+
+    @classmethod
+    def create_foldername(cls, split_name, variants, noises, data_folder=None):
+        output = DatasetSplit.combine_underscore_lists(variants, noises, split_name)
+
+        if data_folder is not None:
+            os.path.join(data_folder, output)
+
+        return output
+
+    @classmethod
+    def combine_underscore_lists(cls, l1, l2, output=""):
+        for variant in l1:
+            output += "_" + variant
+
+        for noise in l2:
+            output += "_" + noise
 
         return output
 
