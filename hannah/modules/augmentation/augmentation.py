@@ -3,7 +3,6 @@ import sys
 import random
 import subprocess
 import threading
-import tensorflow_probability as tfp
 import numpy as np
 
 import torch
@@ -13,6 +12,7 @@ import xml.etree.ElementTree as ET
 from PIL import Image
 from hannah.datasets.base import DatasetType
 from hannah.modules.augmentation.bordersearch import Parameter, ParameterRange
+import scikit.stats as stats
 
 from hannah.datasets.Kitti import Kitti
 
@@ -57,11 +57,13 @@ class XmlAugmentationParser:
     @staticmethod
     def __getDistValue(low, high):
         range = abs(high - low)
-        dist = tfp.distributions.HalfNormal(scale=range, validate_args=True)
+        # dist = tfp.distributions.HalfNormal(scale=range, validate_args=True)
+        dist = stats.halfnorm()
         sample = sys.maxsize
 
         while sample > range:
-            sample = dist.sample().numpy()
+            # sample = dist.sample().numpy()
+            sample = dist.rvs(size=1).item()
 
         return low + sample
 
