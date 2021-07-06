@@ -532,7 +532,7 @@ class VadDataset(SpeechDataset):
     def prepare(cls, config):
         cls.download(config)
         NoiseDataset.download_noise(config)
-        split_locked = VadDataset.dataset_config_blocked(config)
+        split_locked = VadDataset.dataset_config_locked(config)
         override = config.get("override", False)
         if override and not split_locked:
             olddata, filename = VadDataset.read_config(config)
@@ -540,10 +540,10 @@ class VadDataset(SpeechDataset):
         if override and split_locked:
             while split_locked:
                 time.sleep(10)
-                split_locked = VadDataset.dataset_config_blocked(config)
+                split_locked = VadDataset.dataset_config_locked(config)
 
     @classmethod
-    def dataset_config_blocked(cls, config):
+    def dataset_config_locked(cls, config):
         split = config.get("data_split", "vad_balanced")
         data_folder = config.get("data_folder", None)
         variants = config.get("variants")
