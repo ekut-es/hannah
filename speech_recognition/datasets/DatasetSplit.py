@@ -154,8 +154,7 @@ class DatasetSplit:
         return destination_dict
 
     @classmethod
-    def split_data(cls, config, olddata=None, split_filename=None):
-        lockfile = DatasetSplit.lock(config)
+    def split_data(cls, config, olddata=None, split_filename=None, lockfile=None):
         data_splits = config.get("data_split", [])
         oldsplit = {}
         if olddata is not None:
