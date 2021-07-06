@@ -6,7 +6,7 @@ import logging
 import hashlib
 import os
 import csv
-
+import time
 import torchaudio
 import numpy as np
 import scipy.signal as signal
@@ -532,21 +532,43 @@ class VadDataset(SpeechDataset):
     def prepare(cls, config):
         cls.download(config)
         NoiseDataset.download_noise(config)
-        if config.get("override", False):
-            olddata = VadDataset.read_config(config)
-            DatasetSplit.split_data(config, olddata)
+        split_locked = VadDataset.dataset_config_blocked(config)
+        override = config.get("override", False)
+        if override and not split_locked:
+            olddata, filename = VadDataset.read_config(config)
+            DatasetSplit.split_data(config, olddata, split_filename=filename)
+        if override and split_locked:
+            while split_locked:
+                time.sleep(10)
+                split_locked = VadDataset.dataset_config_blocked(config)
 
     @classmethod
-    def check_existing_splits(cls, data_split, data_folder, variants, noise_dataset):
-        csvfiles = list_all_files(data_folder, ".csv", file_prefix=False)
+    def dataset_config_blocked(cls, config):
+        split = config.get("data_split", "vad_balanced")
+        data_folder = config.get("data_folder", None)
+        variants = config.get("variants")
+        noise_dataset = config.get("noise_dataset")
+        return (
+            VadDataset.check_existing_splits(
+                split, data_folder, variants, noise_dataset, suffix=".lock"
+            )
+            is not None
+        )
+
+    @classmethod
+    def check_existing_splits(
+        cls, data_split, data_folder, variants, noise_dataset, suffix=".csv"
+    ):
+        csvfiles = list_all_files(data_folder, suffix, file_prefix=False)
 
         for f in csvfiles:
             tmp_f = f
             dataset_names = []
             if data_split in tmp_f:
                 tmp_f = tmp_f.replace(data_split, "")
-                tmp_f = tmp_f.replace(".csv", "")
+                tmp_f = tmp_f.replace(suffix, "")
                 dataset_names = tmp_f.split("_")
+                dataset_names = list(filter(lambda name: name != "", dataset_names))
 
             useable = True
             for v in variants:
@@ -555,17 +577,17 @@ class VadDataset(SpeechDataset):
                     break
                 else:
                     dataset_names.remove(v)
-                
+
             if not useable:
                 continue
-                
+
             for n in noise_dataset:
                 if n not in dataset_names:
                     useable = False
                     break
                 else:
                     dataset_names.remove(n)
-                
+
             if not useable and len(dataset_names) > 0:
                 continue
             elif useable and len(dataset_names) == 0:
@@ -579,8 +601,10 @@ class VadDataset(SpeechDataset):
         variants = config.get("variants")
         noise_dataset = config.get("noise_dataset")
 
-        filename = VadDataset.check_existing_splits(split, data_folder, variants, noise_dataset)
-        
+        filename = VadDataset.check_existing_splits(
+            split, data_folder, variants, noise_dataset
+        )
+
         split_file = os.path.join(data_folder, filename)
         output = {}
         if os.path.isfile(split_file):
@@ -592,9 +616,9 @@ class VadDataset(SpeechDataset):
                         line_count += 1
                     output[str(row["filename"])] = row
                     line_count += 1
-            return output
+            return (output, filename)
         else:
-            return None
+            return (None, None)
 
     @classmethod
     def splits(cls, config):
@@ -604,7 +628,7 @@ class VadDataset(SpeechDataset):
         msglogger = logging.getLogger()
 
         # open the saved dataset
-        sdataset = VadDataset.read_config(config)
+        sdataset, _ = VadDataset.read_config(config)
 
         descriptions = ["train", "dev", "test"]
         datasets = [{}, {}, {}]

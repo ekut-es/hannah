@@ -155,6 +155,7 @@ class DatasetSplit:
 
     @classmethod
     def split_data(cls, config, olddata=None, split_filename=None):
+        lockfile = DatasetSplit.lock(config)
         data_splits = config.get("data_split", [])
         oldsplit = {}
         if olddata is not None:
@@ -181,13 +182,21 @@ class DatasetSplit:
 
             dest_sr = config.get("samplingrate", 16000)
 
-            split_file = DatasetSplit.create_filename(data_folder, split_filename)
+            if split_filename is None:
+                variants = config.get("variants")
+                noise_dataset = config.get("noise_dataset")
+                split_filename = DatasetSplit.create_filename(
+                    data_split, variants, noise_dataset, data_folder=data_folder
+                )
+            else:
+                split_filename = os.path.join(data_folder, split_filename)
 
             output = cls.file_conversion_handling(
                 dest_sr, destination_dict, oldsplit, noise_dir, speech_dir
             )
 
-            DatasetSplit.write_split(split_file, output)
+            DatasetSplit.write_split(split_filename, output)
+            DatasetSplit.release(lockfile)
 
     @classmethod
     def file_conversion_handling(
@@ -264,13 +273,36 @@ class DatasetSplit:
         return output
 
     @classmethod
-    def create_filename(cls, split_name, variants, noises, data_folder=None):
+    def lock(cls, config):
+        split = config.get("data_split", "vad_balanced")
+        data_folder = config.get("data_folder", None)
+        variants = config.get("variants")
+        noise_dataset = config.get("noise_dataset")
+        filename = DatasetSplit.create_filename(
+            split_name=split,
+            variants=variants,
+            noises=noise_dataset,
+            data_folder=data_folder,
+            suffix=".lock",
+        )
+        f = open(filename, "w")
+        return filename
+
+    @classmethod
+    def release(cls, lockfile):
+        if os.path.isfile(lockfile):
+            os.system("rm " + lockfile)
+
+    @classmethod
+    def create_filename(
+        cls, split_name, variants, noises, data_folder=None, suffix=".csv"
+    ):
         output = (
-            DatasetSplit.combine_underscore_lists(variants, noises, split_name) + ".csv"
+            DatasetSplit.combine_underscore_lists(variants, noises, split_name) + suffix
         )
 
         if data_folder is not None:
-            os.path.join(data_folder, output)
+            output = os.path.join(data_folder, output)
 
         return output
 
