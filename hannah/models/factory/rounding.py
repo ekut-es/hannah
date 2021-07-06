@@ -54,8 +54,8 @@ def truncate_zero(x):
 
 def round_stochastic(x):
     "Round stochastically"
-    probs = x - torch.ceil(x)
-    return torch.ceil(x) + torch.bernoulli(probs)
+    probs = x - torch.floor(x)
+    return torch.floor(x) + torch.bernoulli(probs)
 
 
 _MODE_MAP = {
