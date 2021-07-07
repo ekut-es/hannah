@@ -158,7 +158,7 @@ class UltralyticsYolo(torch.nn.Module):
                 confidence = ann[4].item()
                 label = ann[5].item()
                 if not KittiCOCO.dontCareMatch(
-                    torch.Tensor(np.array([x1, y2, x2, y2])),
+                    torch.Tensor(np.array([x1, y1, x2, y2])),
                     (x_elem.shape[2], x_elem.shape[1]),
                     y_img,
                 ):

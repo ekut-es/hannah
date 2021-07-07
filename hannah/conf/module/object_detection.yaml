@@ -7,9 +7,12 @@ time_masking: 0
 frequency_masking: 0
 
 augmentation:
-  - augmented_pct: 50
-  - reaugment_per_epoch_pct: 20
-  - augmentations: [rain_drops]
+  - augmented_pct: 100
+  - reaugment_per_epoch_pct: 50
+  - bordersearch_epoch_duration: 5
+  - bordersearch_ignore_params: ["draw_fog"]
+  - bordersearch_waterlevel: 0.7
+  - augmentations: [noise]
   - augmentations_pct: [100]
   - rain_drops:
     - angle_rain_streaks: [-45, 45]
@@ -25,3 +28,7 @@ augmentation:
   - fog:
     - fog_density: [0, 0.2]
     - fog_sphere: [0.4, 0.7]
+  - noise:
+    - noise_mode: "gaussian"
+    - mean: [0, 0.2]
+    - var: [0.5, 2]

@@ -24,6 +24,12 @@ import torchvision
 from hannah.datasets.Kitti import Kitti, object_collate_fn
 from hannah.datasets.Kitti import KittiCOCO
 from hannah.modules.augmentation.augmentation import Augmentation
+from hannah.modules.augmentation.bordersearch import (
+    Bordersearch,
+    Opts,
+    dut_fun,
+    random_sample,
+)
 
 import torch
 import torch.utils.data as data
@@ -33,6 +39,8 @@ from hydra.utils import instantiate, get_class
 class ObjectDetectionModule(ClassifierModule):
     def __init__(self, augmentation: list(), *args, **kwargs):
         self.augmentation = Augmentation(augmentation)
+        self.borderparams = self.augmentation.fillParams()
+        self.first_step = True
         super().__init__(*args, **kwargs)
 
         if COCOeval is None:
@@ -91,7 +99,31 @@ class ObjectDetectionModule(ClassifierModule):
         x = self.model(x)
         return x
 
+    def bordersearch(self):
+        print("################# Bordersearch starts #################")
+        brs = Bordersearch()
+        opts = Opts(
+            parameters=self.borderparams,
+            runs=1,
+            augmentation_conf=self.augmentation.conf,
+            best_path=self.trainer.checkpoint_callback.best_model_path,
+        )
+        opts.dut_fun = dut_fun
+        opts.sample_fun = random_sample
+        conf = brs.find_waterlevel(opts, self.augmentation.waterlevel)
+        self.augmentation.changeParams(self.borderparams, conf)
+        print("################# Bordersearch ends #################")
+
     def train_dataloader(self):
+
+        if (
+            self.trainer.current_epoch != 0
+            and self.augmentation.pct != 0
+            and (self.trainer.current_epoch % self.augmentation.bordersearch_epochs)
+            == 0
+        ):
+            self.bordersearch()
+
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
         sampler = None
@@ -121,6 +153,12 @@ class ObjectDetectionModule(ClassifierModule):
         return train_loader
 
     def val_dataloader(self):
+        if self.augmentation.pct != 0 and self.augmentation.val_pct != 0:
+            if self.first_step:
+                self.augmentation.setEvalAttribs(val_pct=100, wait=True)
+                self.augmentation.augment(self.dev_set)
+                self.first_step = False
+            self.augmentation.setEvalAttribs(reaugment=False)
 
         self.augmentation.augment(self.dev_set)
         dev_loader = data.DataLoader(
@@ -132,13 +170,18 @@ class ObjectDetectionModule(ClassifierModule):
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
+        if self.augmentation.pct != 0 and self.augmentation.val_pct != 0:
+            self.augmentation.setEvalAttribs()
+
         # if self.device.type == "cuda":
         #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
 
         return dev_loader
 
     def test_dataloader(self):
-        self.augmentation.augment(self.test_set)
+        if not self.test_set.realrain:
+            self.augmentation.augment(self.test_set)
+
         test_loader = data.DataLoader(
             self.test_set,
             batch_size=min(len(self.test_set), 9),
