@@ -84,8 +84,7 @@ class SymmetricQuantization:
         self.min = -(2.0 ** (bits - 1))
         self.scale = 1.0 / 2 ** (bits - 1)
         self.rounding_mode = rounding_mode
-        # self.round = RoundingMode(rounding_mode)
-        self.round = torch.round
+        self.round = RoundingMode(rounding_mode)
         self.debug = debug
 
     def quantize(self, x):
