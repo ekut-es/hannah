@@ -28,7 +28,6 @@ augmentation:
   - fog:
     - fog_density: [0, 0.2]
     - fog_sphere: [0.4, 0.7]
-  - noise:
-    - noise_mode: "gaussian"
-    - mean: [0, 0.2]
-    - var: [0.5, 2]
+  - imagecorruptions:
+    - corruption: "snow"
+    - severity: [1, 5]

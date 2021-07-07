@@ -5,9 +5,7 @@ import subprocess
 import threading
 import numpy as np
 
-import torch
-from skimage.util import random_noise
-from torchvision.utils import save_image
+from imagecorruptions import corrupt
 import xml.etree.ElementTree as ET
 from PIL import Image
 from hannah.datasets.base import DatasetType
@@ -44,9 +42,11 @@ class XmlAugmentationParser:
             XmlAugmentationParser.__parseFog(
                 dict((key, a[key]) for a in conf["fog"] for key in a), img, kitti
             )
-        elif "noise" in augmentation:
-            XmlAugmentationParser.__noise(
-                dict((key, a[key]) for a in conf["noise"] for key in a), img, kitti
+        elif "imagecorruptions" in augmentation:
+            XmlAugmentationParser.__imagecorruptions(
+                dict((key, a[key]) for a in conf["imagecorruptions"] for key in a),
+                img,
+                kitti,
             )
             subpring = False
         return subpring
@@ -54,12 +54,10 @@ class XmlAugmentationParser:
     @staticmethod
     def __getDistValue(low, high):
         range = abs(high - low)
-        # dist = tfp.distributions.HalfNormal(scale=range, validate_args=True)
         dist = stats.halfnorm()
         sample = sys.maxsize
 
         while sample > range:
-            # sample = dist.sample().numpy()
             sample = dist.rvs(size=1).item()
 
         return low + sample
@@ -200,25 +198,20 @@ class XmlAugmentationParser:
         tree.write(kitti.kitti_dir + "/augmentation/augment.xml")
 
     @staticmethod
-    def __noise(conf, img, kitti):
+    def __imagecorruptions(conf, img, kitti):
         pil_img = Image.open(kitti.kitti_dir + "/training/image_2/" + img).convert(
             "RGB"
         )
-        pil_img = kitti.transform(pil_img)
-        pil_img = torch.tensor(
-            random_noise(
-                pil_img,
-                mode=conf["noise_mode"],
-                mean=XmlAugmentationParser.__getDistValue(
-                    float(conf["mean"][0]), float(conf["mean"][1])
-                ),
-                var=XmlAugmentationParser.__getDistValue(
-                    float(conf["var"][0]), float(conf["var"][1])
-                ),
-                clip=True,
-            )
+        pil_img = corrupt(
+            np.array(pil_img),
+            corruption_name=conf["corruption"],
+            severity=int(
+                XmlAugmentationParser.__getDistValue(
+                    int(conf["severity"][0]), int(conf["severity"][1])
+                )
+            ),
         )
-        save_image(pil_img.to(torch.float32), kitti.aug_path + img)
+        Image.fromarray(pil_img).save(kitti.aug_path + img)
 
 
 class AugmentationThread:
@@ -358,15 +351,19 @@ class Augmentation:
                         )
                     )
                     i += 1
-        if "noise" in self.conf["augmentations"]:
-            noise = dict((key, a[key]) for a in self.conf["noise"] for key in a)
-            for elem in list(noise):
+        if "imagecorruptions" in self.conf["augmentations"]:
+            imagecorruptions = dict(
+                (key, a[key]) for a in self.conf["imagecorruptions"] for key in a
+            )
+            for elem in list(imagecorruptions):
                 if elem not in ignore:
                     params.append(
                         Parameter(
-                            ParameterRange(noise[elem][0], noise[elem][1]),
+                            ParameterRange(
+                                imagecorruptions[elem][0], imagecorruptions[elem][1]
+                            ),
                             elem,
-                            "noise",
+                            "imagecorruptions",
                             i,
                         )
                     )
