@@ -171,7 +171,9 @@ class Kitti(AbstractDataset):
         return label
 
     @classmethod
-    def removeAugs(aug_folder, aug_folder_cpy):
+    def removeAugs():
+        aug_folder = os.getcwd() + Kitti.AUG_PATH
+        aug_folder_cpy = os.getcwd() + Kitti.AUG_PATH_CPY
         if os.path.exists(aug_folder_cpy) and os.path.isdir(aug_folder_cpy):
             shutil.rmtree(aug_folder_cpy)
 
@@ -211,7 +213,7 @@ class Kitti(AbstractDataset):
                 shutil.rmtree(aug_folder)
             os.mkdir(aug_folder)
 
-            atexit.register(Kitti.removeAugs, aug_folder, aug_folder_cpy)
+            atexit.register(Kitti.removeAugs)
 
         for i in range(num_imgs):
             # test_img pct into test dataset
