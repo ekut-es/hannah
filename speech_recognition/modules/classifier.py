@@ -324,6 +324,7 @@ class StreamClassifierModule(ClassifierModule):
         if callable(sample_subnet_function):
             self.model.sample_active_subnet()
             self.log("a_depth", self.model.active_depth, True)
+            self.log("k_step", self.model.current_kernel_step, True)
 
         output = self(x)
         y = y.view(-1)
@@ -393,6 +394,10 @@ class StreamClassifierModule(ClassifierModule):
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.val_metrics, "val")
+
+        if callable(getattr(self.model, "resume_active_elastic_values", None)):
+            self.model.resume_active_elastic_values()
+
         return loss
 
     def val_dataloader(self):
@@ -435,40 +440,101 @@ class StreamClassifierModule(ClassifierModule):
         if isinstance(self.test_set, SpeechDataset):
             self._log_audio(x, logits, y)
 
-        # if subsampling is present and enabled, compute loss values of elastic depths
-        if callable(getattr(self.model, "should_subsample", None)):
-            if self.model.should_subsample():
+        # if subsampling depth is present and enabled, compute loss values of elastic depths
+        try:
+            if callable(getattr(self.model, "should_subsample", None)):
+                if self.model.should_subsample():
 
-                # initialise storage for elastic loss values, if not present
-                if getattr(self, "elastic_test_loss_values", None) is None:
-                    self.elastic_test_loss_values = []
-                    self.test_metrics_elastic = []
+                    # initialise storage for elastic depth loss values, if not present
+                    if getattr(self, "elastic_depth_test_loss_values", None) is None:
+                        self.elastic_depth_test_loss_values = []
+                        self.test_metrics_elastic_depth = []
+                        for i in range(self.model.min_depth, self.model.max_depth+1):
+                            self.elastic_depth_test_loss_values.append([])
+                            # create a metric for each possible elastic depth submodel
+                            self.test_metrics_elastic_depth.append(
+                                MetricCollection({
+                                    "test_accuracy": Accuracy(),
+                                    "test_error": Error(),
+                                    "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
+                                    "test_precision": Precision(
+                                        num_classes=self.num_classes, average="weighted"
+                                    ),
+                                    "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
+                                })
+                            )
+
+                    self.model.reset_active_elastic_values()
+                    self.model.reset_all_kernel_sizes()
                     for i in range(self.model.min_depth, self.model.max_depth+1):
-                        self.elastic_test_loss_values.append([])
-                        # create a metric for each possible elastic depth submodel
-                        self.test_metrics_elastic.append(
-                            MetricCollection({
-                                "test_accuracy": Accuracy(),
-                                "test_error": Error(),
-                                "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
-                                "test_precision": Precision(
-                                    num_classes=self.num_classes, average="weighted"
-                                ),
-                                "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
-                            })
-                        )
+                        try:
+                            submodel_output = self.model.get_elastic_depth_output(i)
+                            if submodel_output is None:
+                                continue
+                            submodel_loss = self.criterion(submodel_output, y)
+                            # store the loss value and add output to respective metrics for every depth level
+                            self.elastic_depth_test_loss_values[i-self.model.min_depth].append(submodel_loss)
+                            self.calculate_batch_metrics(submodel_output, y, submodel_loss, self.test_metrics_elastic_depth[i-self.model.min_depth], "test")
+                        except Exception:
+                            pass
+        except Exception:
+            logging.warning("Elastic depth accuracy testing failed.")
 
-                for i in range(self.model.min_depth, self.model.max_depth+1):
-                    try:
-                        submodel_output = self.model.get_elastic_depth_output(i)
-                        if submodel_output is None:
-                            continue
-                        submodel_loss = self.criterion(submodel_output, y)
-                        # store the loss value and add output to respective metrics for every depth level
-                        self.elastic_test_loss_values[i-self.model.min_depth].append(submodel_loss)
-                        self.calculate_batch_metrics(submodel_output, y, submodel_loss, self.test_metrics_elastic[i-self.model.min_depth], "test")
-                    except Exception:
-                        pass
+
+        # if subsampling kernels is available and enabled, also compute loss values of elastic kernels
+        try:
+            if callable(getattr(self.model, "check_kernel_stepping", None)):
+                if self.model.check_kernel_stepping():
+
+                    # initialise storage for elastic kernel loss values, if not present
+                    if getattr(self, "elastic_kernel_test_loss_values", None) is None:
+                        self.elastic_kernel_test_loss_values = []
+                        self.test_metrics_elastic_kernel = []
+
+                        # reset elastic values before beginning the counting
+                        self.model.reset_active_elastic_values()
+                        self.model.reset_all_kernel_sizes()
+                        max_kernel_steps = 1
+                        # step_down_all_kernels will return false once there were no more kernels left to step through
+                        # this will create one metric slot for each possible kernel step, including the initial, full kernels
+                        while self.model.step_down_all_kernels() and max_kernel_steps < 255:
+                            max_kernel_steps += 1
+
+                        for i in range(max_kernel_steps):
+                            self.elastic_kernel_test_loss_values.append([])
+                            # create a metric for each possible elastic kernel submodel
+                            self.test_metrics_elastic_kernel.append(
+                                MetricCollection({
+                                    "test_accuracy": Accuracy(),
+                                    "test_error": Error(),
+                                    "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
+                                    "test_precision": Precision(
+                                        num_classes=self.num_classes, average="weighted"
+                                    ),
+                                    "rest_f1": F1(num_classes=self.num_classes, average="weighted"),
+                                })
+                            )
+
+                    self.model.reset_active_elastic_values()
+                    self.model.reset_all_kernel_sizes()
+                    # start with full kernels, repeat calculation for each step down
+                    for i in range(len(self.test_metrics_elastic_kernel)):
+                        try:
+                            # with no depth specified, this will pick max depth by default.
+                            submodel_output = self.model.get_elastic_depth_output()
+                            if submodel_output is None:
+                                continue
+                            submodel_loss = self.criterion(submodel_output, y)
+                            # store the loss value and add output to respective metrics for every depth level
+                            self.elastic_kernel_test_loss_values[i-self.model.min_depth].append(submodel_loss)
+                            self.calculate_batch_metrics(submodel_output, y, submodel_loss, self.test_metrics_elastic_kernel[i], "test")
+
+                            # step down one kernel size
+                            self.model.step_down_all_kernels()
+                        except Exception:
+                            pass
+        except Exception:
+            logging.warning("Elastic kernel testing failed.")
 
         return loss
 
@@ -497,17 +563,41 @@ class StreamClassifierModule(ClassifierModule):
 
         logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
 
-        for i in range(len(self.test_metrics_elastic)):
-            metric_table = []
-            for name, metric in self.test_metrics_elastic[i].items():
-                metric_table.append((name, metric.compute().item()))
-            logging.info(f"\nTest Metrics for depth {i+self.model.min_depth}:\n%s", tabulate.tabulate(metric_table))
+        try:
+            for i in range(len(self.test_metrics_elastic_depth)):
+                metric_table = []
+                for name, metric in self.test_metrics_elastic_depth[i].items():
+                    metric_table.append((name, metric.compute().item()))
+                logging.info(f"\nTest Metrics for depth {i+self.model.min_depth}:\n%s", tabulate.tabulate(metric_table))
+        except Exception:
+            logging.warning("could not compute elastic depth test metrics")
 
-        if getattr(self, "elastic_test_loss_values", None) is not None:
-            logging.info("Average loss values for elastic depth:")
-            for i, vals in enumerate(self.elastic_test_loss_values):
-                average_loss = mean(vals)
-                logging.info(f"{i+self.model.min_depth} : {average_loss}")
+        try:
+            for i in range(len(self.test_metrics_elastic_kernel)):
+                metric_table = []
+                for name, metric in self.test_metrics_elastic_kernel[i].items():
+                    metric_table.append((name, metric.compute().item()))
+                logging.info(f"\nTest Metrics for kernel step {i}:\n%s", tabulate.tabulate(metric_table))
+        except Exception:
+            logging.warning("could not compute elastic kernel test metrics")
+
+        try:
+            if getattr(self, "elastic_depth_test_loss_values", None) is not None:
+                logging.info("Average loss values for elastic depth:")
+                for i, vals in enumerate(self.elastic_depth_test_loss_values):
+                    average_loss = mean(vals)
+                    logging.info(f"{i+self.model.min_depth} : {average_loss}")
+        except Exception:
+            logging.warning("could not compute elastic depth test loss")
+
+        try:
+            if getattr(self, "elastic_kernel_test_loss_values", None) is not None:
+                logging.info("Average loss values for elastic kernel:")
+                for i, vals in enumerate(self.elastic_kernel_test_loss_values):
+                    average_loss = mean(vals)
+                    logging.info(f"{i} : {average_loss}")
+        except Exception:
+            logging.warning("could not compute elastic kernel test loss")
 
         confusion_matrix = self.test_confusion.compute()
         self.test_confusion.reset()

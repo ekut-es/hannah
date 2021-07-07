@@ -4,7 +4,10 @@
 _target_: speech_recognition.models.wip.models.create
 name: wip
 min_depth: 2
-steps_without_sampling: 10000
+# depth sampling temporarily disabled: progressive shrinking / some form of sequencing required:
+# randomly sampling depth in parallel to training subkernels seems to cause very bad results
+steps_without_sampling: 999999
+steps_per_kernel_step: 12000
 norm_order:
   norm_before_act: true
   norm_after_act: false
@@ -21,48 +24,72 @@ conv:
   - target: residual1d
     stride: 2
     blocks:
-      - target: conv1d
-        kernel_size: 9
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 5
+          - 3
+          - 1
         act: true
         norm: true
         out_channels: 24
       - target: conv1d
         kernel_size: 1
         out_channels: 24
-      - target: conv1d
-        kernel_size: 9
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 5
+          - 3
+          - 1
         act: true
         norm: true
         out_channels: 24
   - target: residual1d
     stride: 2
     blocks:
-      - target: conv1d
-        kernel_size: 9
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 5
+          - 3
+          - 1
         act: true
         norm: true
         out_channels: 32
       - target: conv1d
         kernel_size: 1
         out_channels: 32
-      - target: conv1d
-        kernel_size: 9
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 5
+          - 3
+          - 1
         act: true
         norm: true
         out_channels: 32
   - target: residual1d
     stride: 2
     blocks:
-      - target: conv1d
-        kernel_size: 9
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 5
+          - 3
+          - 1
         act: true
         norm: true
         out_channels: 48
       - target: conv1d
         kernel_size: 1
         out_channels: 48
-      - target: conv1d
-        kernel_size: 9
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 5
+          - 3
+          - 1
         act: true
         norm: true
         out_channels: 48

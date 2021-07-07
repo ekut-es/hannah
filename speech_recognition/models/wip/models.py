@@ -1,4 +1,5 @@
 import copy
+from typing import List
 import torch.nn as nn
 import torch.nn.functional as nnf
 import numpy as np
@@ -24,7 +25,7 @@ class ElasticKernelConv1d(nn.Conv1d):
         self,
         in_channels: int,
         out_channels: int,
-        kernel_sizes: list(int),
+        kernel_sizes: List[int],
         stride=1,
         padding=0,
         dilation=1,
@@ -65,8 +66,10 @@ class ElasticKernelConv1d(nn.Conv1d):
             # transform weights are initially frozen
             new_transform_module.weight.requires_grad = False
             self.kernel_transforms.append(new_transform_module)
+        self.set_kernel_size(self.max_kernel_size)
 
     def set_kernel_size(self, new_kernel_size):
+        # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
         if new_kernel_size < self.min_kernel_size or new_kernel_size > self.max_kernel_size:
             logging.warn(f"requested elastic kernel size ({new_kernel_size}) outside of min/max range: ({self.max_kernel_size}, {self.min_kernel_size}). clamping.")
             if new_kernel_size < self.min_kernel_size:
@@ -84,12 +87,43 @@ class ElasticKernelConv1d(nn.Conv1d):
         # if the largest kernel is selected, train the actual kernel weights. For elastic sub-kernels, only the 'final' transform in the chain should be trained.
         if self.target_kernel_index == 0:
             self.weight.requires_grad = True
+            for i in range(len(self.kernel_transforms)):
+                # if the full kernel is selected for training, do not train the transforms
+                self.kernel_transforms[i].weight.requires_grad = False
         else:
             self.weight.requires_grad = False
-            for i in range(self.kernel_transforms):
+            for i in range(len(self.kernel_transforms)):
                 # only the kernel transformation transforming to the current target index should be trained
                 # the n-th transformation transforms the n-th kernel to the (n+1)-th kernel
                 self.kernel_transforms[i].weight.requires_grad = i == (self.target_kernel_index - 1)
+        # if self.kernel_sizes[self.target_kernel_index] != previous_kernel_size:
+            # print(f"\nkernel size was changed: {previous_kernel_size} -> {self.kernel_sizes[self.target_kernel_index]}")
+
+    # the initial kernel size is the first element of the list of available sizes
+    # set the kernel back to its initial size
+    def reset_kernel_size(self):
+        self.set_kernel_size(self.kernel_sizes[0])
+
+    # step current kernel size down by one index, if possible.
+    # return True if the size limit was not reached
+    def step_down_kernel_size(self):
+        next_kernel_index = self.target_kernel_index + 1
+        if next_kernel_index < len(self.kernel_sizes):
+            self.set_kernel_size(self.kernel_sizes[next_kernel_index])
+            # print(f"stepped down kernel size of a module! Index is now {self.target_kernel_index}")
+            return True
+        else:
+            logging.debug(f"unable to step down kernel size, no available index after current: {self.target_kernel_index} with size: {self.kernel_sizes[self.target_kernel_index]}")
+            return False
+
+    # lock/unlock training of the kernels
+    # should only need to set requires_grad for the currently active kernel, the weights of other kernel sizes should be frozen
+    def kernel_requires_grad(self, state: bool):
+        if self.target_kernel_index == 0:
+            self.weight.requires_grad = state
+        else:
+            # the (n-1)-th transform produces the weights of the n-th kernel from the (n-1)-th kernel.
+            self.kernel_transforms[self.target_kernel_index-1].weight.requires_grad = state
 
     # TODO: while kernel transform size (and therefore the required computation) is almost negligible, the transformed second-to-last kernel could be cached
     # only the very last kernel transform should change unless the target kernel size changes.
@@ -106,7 +140,7 @@ class ElasticKernelConv1d(nn.Conv1d):
                 logging.warn(f"kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel")
                 break
             # find start, end pos of the kernel center for the given next kernel size
-            start, end = self.sub_filter_start_end(self.kernel_sizes[current_kernel_index], self.kernel_sizes[current_kernel_index+1])
+            start, end = sub_filter_start_end(self.kernel_sizes[current_kernel_index], self.kernel_sizes[current_kernel_index+1])
             # extract the kernel center of the correct size
             kernel_center = current_kernel[:, :, start:end]
             # apply the kernel transformation to the next kernel. the n-th transformation is applied to the n-th kernel, yielding the (n+1)-th kernel
@@ -115,27 +149,48 @@ class ElasticKernelConv1d(nn.Conv1d):
             current_kernel = next_kernel
             current_kernel_index += 1
 
-        return current_kernel.contiguous()
+        return current_kernel
 
-    def forward(self, input: nn.Tensor) -> nn.Tensor:
-        # if the target kernel size is the full kernel, forward from nn.Conv1d can be used.
-        if self.kernel_sizes[self.target_kernel_index] == self.kernel_size:
-            return self.super().forward(input)
-        else:
-            # get the kernel for the current index
-            # TODO: with dynamic channels this would use input.size(1) and pass it to get_kernel for the channel count
-            kernel = self.get_kernel()
-            # get padding for the size of the kernel
-            padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-            return nnf.conv1d(input, kernel, self.bias, self.stride, padding, self.dilation)
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
+        # get the kernel for the current index
+        # TODO: with dynamic channels this would use input.size(1) and pass it to get_kernel for the channel count
+        kernel = self.get_kernel()
+        # get padding for the size of the kernel
+        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        return nnf.conv1d(input, kernel, self.bias, self.stride, padding, self.dilation)
 
-    # from ofa/utils/common_tools
-    def sub_filter_start_end(kernel_size, sub_kernel_size):
-        center = kernel_size // 2
-        dev = sub_kernel_size // 2
-        start, end = center - dev, center + dev + 1
-        assert end - start == sub_kernel_size
-        return start, end
+    # return a normal conv1d equivalent to this module in the current state
+    def get_basic_conv1d(self) -> nn.Conv1d:
+        kernel = self.get_kernel()
+        kernel_size = self.kernel_sizes[self.target_kernel_index]
+        padding = conv1d_get_padding(kernel_size)
+        new_conv = nn.Conv1d(
+            in_channels=self.in_channels,
+            out_channels=self.out_channels,
+            kernel_size=kernel_size,
+            stride=self.stride,
+            padding=padding,
+            dilation=self.dilation,
+            bias=False
+        )
+        new_conv.weight.data = kernel
+        new_conv.bias = self.bias
+        # print("\nassembled a basic conv from elastic kernel!")
+        return new_conv
+
+    # return a safe copy of a conv1d equivalent to this module in the current state
+    def assemble_basic_conv1d(self) -> nn.Conv1d:
+        return copy.deepcopy(self.get_basic_conv1d())
+
+
+# from ofa/utils/common_tools
+def sub_filter_start_end(kernel_size, sub_kernel_size):
+    center = kernel_size // 2
+    dev = sub_kernel_size // 2
+    start, end = center - dev, center + dev + 1
+    assert end - start == sub_kernel_size
+    return start, end
 
 
 # base construct of a residual block
@@ -173,6 +228,14 @@ class ResBlockBase(nn.Module):
     def __call__(self, x):
         return self.forward(x)
 
+    def get_nested_modules(self):
+        return nn.ModuleList([
+            self.blocks,
+            self.skip,
+            self.norm,
+            self.act
+        ])
+
 
 # residual block with a 1d skip connection
 class ResBlock1d(ResBlockBase):
@@ -189,7 +252,16 @@ class ResBlock1d(ResBlockBase):
         ) if self.apply_skip else None
 
 
-def create(name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_order=None, steps_without_sampling=1):
+def create(
+    name: str,
+    labels: int,
+    input_shape,
+    conv=[],
+    min_depth: int = 1,
+    norm_order=None,
+    steps_without_sampling=1,
+    steps_per_kernel_step=100
+):
     # if no orders for the norm operator are specified, fall back to default
     if not (hasattr(norm_order, "norm_before_act") and hasattr(norm_order, "norm_after_act")):
         logging.info("order of norm before/after activation is not set!")
@@ -224,7 +296,8 @@ def create(name: str, labels: int, input_shape, conv=[], min_depth: int = 1, nor
         out_channels=final_out_channels,
         min_depth=min_depth,
         block_config=conv,
-        steps_without_sampling=steps_without_sampling
+        steps_without_sampling=steps_without_sampling,
+        steps_per_kernel_step=steps_per_kernel_step
     )
 
     return model
@@ -234,41 +307,104 @@ def create(name: str, labels: int, input_shape, conv=[], min_depth: int = 1, nor
 def create_minor_block_sequence(blocks, in_channels, stride=1, norm_order=None):
     next_in_channels = in_channels
     minor_block_sequence = nn.ModuleList([])
-    norm_before_act = norm_order.norm_before_act
-    norm_after_act = norm_order.norm_after_act
     is_first_minor_block = True
     for block_config in blocks:
-        if block_config.target == "conv1d":
-            out_channels = block_config.out_channels
-            # create a minor block, potentially with activation and norm
-            minor_block_internal_sequence = nn.ModuleList([])
-            new_minor_block = conv1d_auto_padding(nn.Conv1d(
-                    kernel_size=block_config.kernel_size,
-                    in_channels=next_in_channels,
-                    out_channels=out_channels
-            ))
-            # set stride on the first minor block in the sequence
-            if is_first_minor_block:
-                new_minor_block.stride = stride
-                is_first_minor_block = False
-            minor_block_internal_sequence.append(new_minor_block)
-            # batch norm will be added before and/or after activation depending on the configuration
-            if block_config.norm and norm_before_act:
-                minor_block_internal_sequence.append(nn.BatchNorm1d(out_channels))
-            if block_config.act:
-                # add relu activation if act is set
-                minor_block_internal_sequence.append(nn.ReLU())
-            if block_config.norm and norm_after_act:
-                minor_block_internal_sequence.append(nn.BatchNorm1d(out_channels))
-
-            minor_block_sequence.append(nn.Sequential(*minor_block_internal_sequence))
-            # the input channel count of the next minor block is the output channel count of the previous block
-            next_in_channels = out_channels
-        # if an unknown target is selected for a minor block, throw an exception.
+        # set stride on the first minor block in the sequence
+        if is_first_minor_block:
+            next_stride = stride
+            is_first_minor_block = False
         else:
-            raise Exception(f"Undefined target selected in minor block sequence: {block_config.target}")
+            next_stride = 1
+        minor_block, next_in_channels = create_minor_block(block_config=block_config, in_channels=next_in_channels, stride=next_stride, norm_order=norm_order)
+        minor_block_sequence.append(minor_block)
 
-    return nn.Sequential(*minor_block_sequence)
+    return module_list_to_module(minor_block_sequence)
+
+
+# build a single minor block from its config. return the number of output channels with the block
+def create_minor_block(block_config, in_channels: int, stride : int = 1, norm_order=None):
+    new_block = None
+    # the output channel count is usually stored in block_config.out_channels
+    # use it as the default value if available, otherwise it must be set by the specific code handling the target type
+    new_block_out_channels = getattr(block_config, "out_channels", 1)
+
+    if block_config.target == "conv1d":
+        out_channels = block_config.out_channels
+        # create a conv minor block from the config, autoset padding
+        minor_block_internal_sequence = nn.ModuleList([])
+        new_minor_block = conv1d_auto_padding(nn.Conv1d(
+                kernel_size=block_config.kernel_size,
+                in_channels=in_channels,
+                out_channels=out_channels,
+                stride=stride
+        ))
+        minor_block_internal_sequence.append(new_minor_block)
+
+        # add norm/act if requested
+        norm_act_sequence = create_norm_act_sequence(block_config.norm, block_config.act, out_channels, norm_order)
+        if norm_act_sequence is not None:
+            minor_block_internal_sequence.append(norm_act_sequence)
+
+        new_block = module_list_to_module(minor_block_internal_sequence)
+        # the input channel count of the next minor block is the output channel count of the previous block
+        new_block_out_channels = out_channels
+    elif block_config.target == "elastic_conv1d":
+        out_channels = block_config.out_channels
+        kernel_sizes = block_config.kernel_sizes
+        # create a minor block, potentially with activation and norm
+        minor_block_internal_sequence = nn.ModuleList([])
+        new_minor_block = ElasticKernelConv1d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_sizes=kernel_sizes,
+            stride=stride
+        )
+        minor_block_internal_sequence.append(new_minor_block)
+
+        # add norm/act if requested
+        norm_act_sequence = create_norm_act_sequence(block_config.norm, block_config.act, out_channels, norm_order)
+        if norm_act_sequence is not None:
+            minor_block_internal_sequence.append(norm_act_sequence)
+
+        new_block = module_list_to_module(minor_block_internal_sequence)
+        # the input channel count of the next minor block is the output channel count of the previous block
+        new_block_out_channels = out_channels
+    # if an unknown target is selected for a minor block, throw an exception.
+    else:
+        raise Exception(f"Undefined target selected in minor block sequence: {block_config.target}")
+
+    # return the new block and its output channel count
+    return new_block, new_block_out_channels
+
+
+# create a module representing a sequence of norm and act
+def create_norm_act_sequence(norm: bool, act: bool, channels: int, norm_order=None):
+    # batch norm will be added before and/or after activation depending on the configuration
+    # fallback default is one norm before act, if no order is specified.
+
+    # if no norm or activation is requested, simply return None
+    # going through the steps below and returning an empty module list would also be fine
+    if not norm and not act:
+        return None
+
+    if norm_order is None:
+        norm_before_act = True
+        norm_after_act = False
+    else:
+        norm_before_act = norm_order.norm_before_act
+        norm_after_act = norm_order.norm_after_act
+
+    norm_act_sequence = nn.ModuleList([])
+
+    if norm and norm_before_act:
+        norm_act_sequence.append(nn.BatchNorm1d(channels))
+    if act:
+        # add relu activation if act is set
+        norm_act_sequence.append(nn.ReLU())
+    if norm and norm_after_act:
+        norm_act_sequence.append(nn.BatchNorm1d(channels))
+
+    return module_list_to_module(norm_act_sequence)
 
 
 # build a basic forward major block
@@ -286,7 +422,18 @@ def create_residual_block_1d(blocks, in_channels, stride=1, norm_order=None):
 
 
 class WIPModel(nn.Module):
-    def __init__(self, conv_layers: nn.ModuleList([]), max_depth: int, labels: int, pool_kernel: int, flatten_dims: int, out_channels: int, min_depth: int = 1, block_config=[], steps_without_sampling: int = 1):
+    def __init__(
+        self, conv_layers: nn.ModuleList([]),
+        max_depth: int,
+        labels: int,
+        pool_kernel: int,
+        flatten_dims: int,
+        out_channels: int,
+        min_depth: int = 1,
+        block_config=[],
+        steps_without_sampling: int = 1,
+        steps_per_kernel_step: int = 100
+    ):
         super().__init__()
         self.conv_layers = conv_layers
         self.max_depth = max_depth
@@ -298,7 +445,9 @@ class WIPModel(nn.Module):
         self.block_config = block_config
         self.min_depth = min_depth
         self.steps_without_sampling = steps_without_sampling
+        self.steps_per_kernel_step = steps_per_kernel_step
         self.current_step = 0
+        self.current_kernel_step = 0
         self.last_input = None
         # self.pool = nn.AvgPool1d(pool_kernel)
         self.pool = nn.AdaptiveAvgPool1d(1)
@@ -376,22 +525,93 @@ class WIPModel(nn.Module):
         # print("Picked active depth: ", self.active_depth)
 
     def should_subsample(self, verify_step=False):
+        # for testing, until there is a proper scheduler in place:
+        self.check_kernel_stepping()
         # Shortcut for testing: set to True to also verify loss of equivalent extracted model
         if verify_step:
             return False
         return self.current_step > self.steps_without_sampling
 
+    # placeholder until there is a proper scheduler in place
+    def check_kernel_stepping(self):
+        # if enough steps have passed, step down kernels by one size
+        if self.current_step > self.steps_per_kernel_step*(self.current_kernel_step+1):
+            # print("stepping kernels!")
+            self.current_kernel_step += 1
+            if not self.step_down_all_kernels():
+                self.current_kernel_step = 99
+
+        return self.current_step > self.steps_per_kernel_step
+
     # reset elastic values to their default (max) values
     def reset_active_elastic_values(self):
         self.active_depth = self.max_depth
+        # self.reset_all_kernel_sizes()
+
+    # resume: return to the elastic values from before a reset
+    def resume_active_elastic_values(self):
+        self.resume_kernel_sizes_from_step()
 
     # set the output channel count value based on the current active depth
     def update_output_channel_count(self):
         # the new out channel count is given by the last minor block of the last active major block
         self.out_channels = self.block_config[:self.active_depth][-1].blocks[-1].out_channels
 
+    # return the linear layer which processes the output for the current elastic depth
     def get_output_linear_layer(self, target_depth):
         return self.linears[target_depth-self.min_depth]
+
+    # step all elastic kernels within the model down by one, if possible
+    def step_down_all_kernels(self):
+        return call_function_from_deep_nested(input=self.conv_layers, function="step_down_kernel_size", type_selection=ElasticKernelConv1d)
+        # return call_function_from_deep_nested(input=self.conv_layers, function="step_down_kernel_size")
+
+    # reset all kernel sizes to their max value
+    def reset_all_kernel_sizes(self):
+        return call_function_from_deep_nested(input=self.conv_layers, function="reset_kernel_size", type_selection=ElasticKernelConv1d)
+        # return call_function_from_deep_nested(input=self.conv_layers, function="reset_kernel_size")
+
+    # go back to the kernel sizes specified by the current step
+    # call after reset_all_kernel_sizes to resume
+    def resume_kernel_sizes_from_step(self):
+        # reset kernel sizes to start from a known point
+        self.reset_all_kernel_sizes()
+        for i in range(self.current_kernel_step):
+            # perform one step down call for each current kernel step
+            if not self.step_down_all_kernels():
+                # if this iteration of stepping down kernel size returned false, there were no kernels to step down. Further iterations are not necessary
+                break
+
+
+# recurse through any iterable (sub)structures. Attempt to call the specified function from any discovered objects if it is available.
+# return true if any of the calls returned true
+# for modules: both ModuleList and Sequential are iterable, so this should be able to descend into any module substructures
+def call_function_from_deep_nested(input, function, type_selection : type = None):
+    if input is None:
+        return False
+    # print(".")
+    call_return_value = False
+    # if a type is specified, only check matching objects
+    if type_selection is None or isinstance(input, type_selection):
+        # print(type(input))
+        maybe_function = getattr(input, function, None)
+        if callable(maybe_function):
+            call_return_value = maybe_function()
+            # print("deep call!")
+
+    # if the input is iterable, recursively check any nested objects
+    if hasattr(input, '__iter__'):
+        for item in input:
+            new_return_value = call_function_from_deep_nested(item, function, type_selection)
+            call_return_value = call_return_value or new_return_value
+
+    # if the object has a function to return nested modules, also check them.
+    if callable(getattr(input, "get_nested_modules", None)):
+        nested_modules = getattr(input, "get_nested_modules", None)()
+        new_return_value = call_function_from_deep_nested(nested_modules, function, type_selection)
+        call_return_value = call_return_value or new_return_value
+
+    return call_return_value
 
 
 def rebuild_extracted_blocks(blocks, quantized=False):
@@ -424,6 +644,14 @@ def rebuild_extracted_blocks(blocks, quantized=False):
             module = modules[i]
             # print(type(module))
             reassembled_module = None
+
+            # if the module is an elastic kernel convolution, it is replaced by an equivalent basic conv1d for its current state
+            if isinstance(module, ElasticKernelConv1d):
+                # print(type(module))
+                replacement_module = module.assemble_basic_conv1d()
+                module = replacement_module
+                # print(type(module))
+
             if isinstance(module, nn.Conv1d):
                 if i+1 in range(len(modules)) and isinstance(modules[i+1], nn.BatchNorm1d):
                     if i+2 in range(len(modules)) and isinstance(modules[i+2], nn.ReLU):
