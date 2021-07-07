@@ -229,7 +229,6 @@ def get_trax_qat_qconfig(config):
             noise_prob=config.get("noise_prob", 1.0),
             rounding_mode=rounding_mode,
             debug=False,
-            rounding_mode=rounding_mode,
         ),
         TrainableFakeQuantize.with_args(
             bits=bits_bias,
