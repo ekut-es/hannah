@@ -414,6 +414,28 @@ class KittiCOCO(COCO):
                 iou_score = intersection / dt.sum()
                 if iou_score > 0.5:
                     return True
+                except ValueError:
+                    print(
+                        "An value error occurd:\nx1: "
+                        + gt_x1
+                        + ", x2: "
+                        + gt_x2
+                        + ", y1: "
+                        + gt_y1
+                        + ", y2: ",
+                        +gt_y2,
+                    )
+                    print(
+                        "\n: Detected: x1: "
+                        + dt_x1
+                        + ", x2: "
+                        + dt_x2
+                        + ", y1: "
+                        + dt_y1
+                        + ", y2: "
+                        + dt_y2
+                    )
+                    return False
 
         return False
 
