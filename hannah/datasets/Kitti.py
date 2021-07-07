@@ -1,7 +1,7 @@
 import os
 import sys
 import csv
-import glob
+import atexit
 import numpy as np
 from torch.functional import Tensor
 from torch.utils.data import Dataset
@@ -34,7 +34,9 @@ class Kitti(AbstractDataset):
 
     IMAGE_PATH = os.path.join("training/image_2/")
 
-    AUG_PATH = os.path.join("training/augmented_2/")
+    AUG_PATH_CPY = os.path.join("/augmented_2/")
+
+    AUG_PATH = os.path.join("/augmented/")
 
     LABEL_PATH = os.path.join("training", "label_2/")
 
@@ -51,7 +53,8 @@ class Kitti(AbstractDataset):
         self.img_size = tuple(map(int, config["img_size"].split(",")))
         self.kitti_dir = config["kitti_folder"]
         self.img_path = os.path.join(self.kitti_dir, self.IMAGE_PATH)
-        self.aug_path = os.path.join(self.kitti_dir, self.AUG_PATH)
+        self.aug_path = os.getcwd() + self.AUG_PATH
+        self.aug_path_cpy = os.getcwd() + self.AUG_PATH_CPY
         self.label_path = os.path.join(self.kitti_dir, self.LABEL_PATH)
         self.img_files = list(data.keys())
         self.aug_files = list()
@@ -102,13 +105,11 @@ class Kitti(AbstractDataset):
     def __getitem__(self, idx):
         img_name = self.img_files[idx]
 
-        if img_name[:-4] in self.aug_files and os.path.isfile(
-            self.kitti_dir + "/training/augmented/" + img_name
-        ):
+        if img_name[:-4] in self.aug_files and os.path.isfile(self.aug_path + img_name):
             path = self.aug_path
             shutil.copy2(
-                self.kitti_dir + "/training/augmented/" + img_name,
                 self.aug_path + img_name,
+                self.aug_path_cpy + img_name,
             )
         elif self.set_type == DatasetType.TEST and self.realrain:
             path = self.realrain_imgpath
@@ -172,6 +173,14 @@ class Kitti(AbstractDataset):
         return label
 
     @classmethod
+    def removeAugs(aug_folder, aug_folder_cpy):
+        if os.path.exists(aug_folder_cpy) and os.path.isdir(aug_folder_cpy):
+            shutil.rmtree(aug_folder_cpy)
+
+        if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
+            shutil.rmtree(aug_folder)
+
+    @classmethod
     def splits(cls, config):
         """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
@@ -179,8 +188,8 @@ class Kitti(AbstractDataset):
         realrain = config["realrain_test"] if "realrain_test" in config else False
         folder = config["kitti_folder"]
         folder = os.path.join(folder, "training")
-        aug_folder = os.path.join(folder, "augmented/")
-        aug2_folder = os.path.join(folder, "augmented_2/")
+        aug_folder = os.getcwd() + Kitti.AUG_PATH
+        aug_folder_cpy = os.getcwd() + Kitti.AUG_PATH_CPY
         folder = os.path.join(folder, "image_2/")
         files = sorted(
             filter(
@@ -196,13 +205,15 @@ class Kitti(AbstractDataset):
         datasets = [{}, {}, {}]
 
         if "real_rain" not in folder:
-            if os.path.exists(aug2_folder) and os.path.isdir(aug2_folder):
-                shutil.rmtree(aug2_folder)
-            os.mkdir(aug2_folder)
+            if os.path.exists(aug_folder_cpy) and os.path.isdir(aug_folder_cpy):
+                shutil.rmtree(aug_folder_cpy)
+            os.mkdir(aug_folder_cpy)
 
             if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
                 shutil.rmtree(aug_folder)
             os.mkdir(aug_folder)
+
+            atexit.register(Kitti.removeAugs, aug_folder, aug_folder_cpy)
 
         for i in range(num_imgs):
             # test_img pct into test dataset
@@ -393,27 +404,29 @@ class KittiCOCO(COCO):
                 dt_x2 = int(box[2])
                 dt_y2 = int(box[3])
 
-                gt[gt_x1:gt_x2, gt_y1:gt_y2] = np.ones(
-                    (
-                        gt_x2 - gt_x1,
-                        gt_y2 - gt_y1,
-                    )
-                )
+                try:
 
-                dt[
-                    max(dt_x1, 0) : min(dt_x2, size[0]),
-                    max(dt_y1, 0) : min(dt_y2, size[1]),
-                ] = np.ones(
-                    (
-                        min(dt_x2, size[0]) - max(dt_x1, 0),
-                        min(dt_y2, size[1]) - max(dt_y1, 0),
+                    gt[gt_x1:gt_x2, gt_y1:gt_y2] = np.ones(
+                        (
+                            gt_x2 - gt_x1,
+                            gt_y2 - gt_y1,
+                        )
                     )
-                )
 
-                intersection = (np.logical_and(gt, dt)).sum()
-                iou_score = intersection / dt.sum()
-                if iou_score > 0.5:
-                    return True
+                    dt[
+                        max(dt_x1, 0) : min(dt_x2, size[0]),
+                        max(dt_y1, 0) : min(dt_y2, size[1]),
+                    ] = np.ones(
+                        (
+                            min(dt_x2, size[0]) - max(dt_x1, 0),
+                            min(dt_y2, size[1]) - max(dt_y1, 0),
+                        )
+                    )
+
+                    intersection = (np.logical_and(gt, dt)).sum()
+                    iou_score = intersection / dt.sum()
+                    if iou_score > 0.5:
+                        return True
                 except ValueError:
                     print(
                         "An value error occurd:\nx1: "
