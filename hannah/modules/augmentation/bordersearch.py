@@ -7,7 +7,6 @@ import libsvm.svmutil as svmutil
 from typing import List, Tuple, Callable
 
 import math
-from numpy.core.arrayprint import ComplexFloatingFormat
 
 from hannah.objectdetection_eval import eval
 

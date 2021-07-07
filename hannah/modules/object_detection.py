@@ -1,15 +1,6 @@
 import logging
-import os
-import json
-import copy
-import platform
 
-from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
-from pytorch_lightning.metrics.metric import MetricCollection
-from torch._C import Value
 from .config_utils import get_loss_function, get_model
-from typing import Optional
 
 from .classifier import ClassifierModule
 
@@ -19,10 +10,7 @@ except ModuleNotFoundError:
     COCOeval = None
 
 
-import torchvision
-
-from hannah.datasets.Kitti import Kitti, object_collate_fn
-from hannah.datasets.Kitti import KittiCOCO
+from hannah.datasets.Kitti import object_collate_fn
 from hannah.modules.augmentation.augmentation import Augmentation
 from hannah.modules.augmentation.bordersearch import (
     Bordersearch,
