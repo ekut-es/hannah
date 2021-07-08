@@ -1,7 +1,6 @@
 import os
 import sys
 import csv
-import atexit
 import numpy as np
 from torch.functional import Tensor
 
@@ -206,16 +205,6 @@ class Kitti(AbstractDataset):
         return label
 
     @classmethod
-    def removeAugs():
-        aug_folder = os.getcwd() + Kitti.AUG_PATH
-        aug_folder_cpy = os.getcwd() + Kitti.AUG_PATH_CPY
-        if os.path.exists(aug_folder_cpy) and os.path.isdir(aug_folder_cpy):
-            shutil.rmtree(aug_folder_cpy)
-
-        if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
-            shutil.rmtree(aug_folder)
-
-    @classmethod
     def splits(cls, config):
         """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
@@ -246,8 +235,6 @@ class Kitti(AbstractDataset):
             if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
                 shutil.rmtree(aug_folder)
             os.mkdir(aug_folder)
-
-            atexit.register(Kitti.removeAugs)
 
         for i in range(num_imgs):
             if i < num_dev_imgs:
@@ -407,7 +394,9 @@ class KittiCOCO(COCO):
             path = y_img["path"]
             filename = y_img["filename"]
             cocoImg = self.getImgId(filename)
-            img = mpimg.imread(path + filename)
+            img = mpimg.imread(
+                path + filename if "/" not in filename else path + filename[3:]
+            )
             fig, ax = plt.subplots()
             ax.imshow(img)
 
@@ -455,7 +444,9 @@ class KittiCOCO(COCO):
             if not os.path.exists("./ann"):
                 os.makedirs("./ann")
 
-            plt.savefig("./ann/" + filename)
+            plt.savefig(
+                "./ann/" + filename if "/" not in filename else "./ann/" + filename[3:]
+            )
             plt.close()
 
     @staticmethod
