@@ -19,9 +19,7 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 def eval_train(module, test=True):
     trainer = Trainer(gpus=1, deterministic=True, logger=False)
     val = trainer.validate(model=module, ckpt_path=None, verbose=test)
-    if test:
-        reset_seed()
-        trainer.test(model=module, ckpt_path=None)
+
     return val
 
 
@@ -31,20 +29,52 @@ def eval_steps(config, module, hparams, checkpoint):
     retval = dict()
     if "original" in methods:
         module.augmentation.setEvalAttribs(val_pct=0)
+        hparams["dataset"]["dev_pct"] = 100
         retval["original"] = eval_train(module)
 
     if "full_augmented" in methods:
         module.augmentation.setEvalAttribs(val_pct=100, wait=True, out=True)
+        hparams["dataset"]["dev_pct"] = 100
         retval["full_augmented"] = eval_train(module)
 
     if "real_rain" in methods:
         folder = hparams["dataset"]["kitti_folder"]
         hparams["dataset"]["kitti_folder"] = folder[: folder.rfind("/")] + "/real_rain"
+        hparams["dataset"]["dev_pct"] = 100
         real_module = instantiate(hparams)
         real_module.setup("test")
         real_module.load_state_dict(checkpoint["state_dict"])
         real_module.augmentation.setEvalAttribs(val_pct=0)
         retval["real_rain"] = eval_train(real_module)
+
+    if "dawn_rain" in methods:
+        folder = hparams["dataset"]["kitti_folder"]
+        hparams["dataset"]["kitti_folder"] = folder[: folder.rfind("/")] + "/DAWN/Rain"
+        hparams["dataset"]["dev_pct"] = 100
+        real_module = instantiate(hparams)
+        real_module.setup("test")
+        real_module.load_state_dict(checkpoint["state_dict"])
+        real_module.augmentation.setEvalAttribs(val_pct=0)
+        retval["dawn_rain"] = eval_train(real_module)
+
+    if "dawn_snow" in methods:
+        folder = hparams["dataset"]["kitti_folder"]
+        hparams["dataset"]["kitti_folder"] = folder[: folder.rfind("/")] + "/DAWN/Snow"
+        hparams["dataset"]["dev_pct"] = 100
+        real_module = instantiate(hparams)
+        real_module.setup("test")
+        real_module.load_state_dict(checkpoint["state_dict"])
+        real_module.augmentation.setEvalAttribs(val_pct=0)
+        retval["dawn_snow"] = eval_train(real_module)
+
+    if "dawn_fog" in methods:
+        folder = hparams["dataset"]["kitti_folder"]
+        hparams["dataset"]["kitti_folder"] = folder[: folder.rfind("/")] + "/DAWN/Fog"
+        real_module = instantiate(hparams)
+        real_module.setup("test")
+        real_module.load_state_dict(checkpoint["state_dict"])
+        real_module.augmentation.setEvalAttribs(val_pct=0)
+        retval["dawn_fog"] = eval_train(real_module)
 
     if "bordersearch" in methods:
         module.augmentation.setEvalAttribs(val_pct=100, reaugment=False)

@@ -1,7 +1,7 @@
 name: test
-checkpoints: [trained_models/yolo_low_rain/yolov5s/best.ckpt]
+checkpoints: [trained_models/fasterrcnn_brs_new/faster-rcnn-resnet50/best.ckpt]
 noise: []
-methods: ["original", "full_augmented", "real_rain"]
+methods: ["original", "full_augmented", "real_rain", "dawn_rain", "dawn_snow", "dawn_fog"]
 output_dir: eval
 
 augmentation:
