@@ -284,13 +284,14 @@ class DatasetSplit:
             data_folder=data_folder,
             suffix=".lock",
         )
-        f = open(filename, "w")
+        f = os.open(filename, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+        os.close(f)
         return filename
 
     @classmethod
     def release(cls, lockfile):
         if os.path.isfile(lockfile):
-            os.system("rm " + lockfile)
+            os.remove(lockfile)
 
     @classmethod
     def create_filename(
