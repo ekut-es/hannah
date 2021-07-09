@@ -536,14 +536,16 @@ class VadDataset(SpeechDataset):
         if override:
             try:
                 lockfile = DatasetSplit.lock(config)
+            except OSError:
+                wait = True
+            if not wait:
                 cls.download(config)
                 NoiseDataset.download_noise(config)
                 olddata, filename = VadDataset.read_config(config)
                 DatasetSplit.split_data(
                     config, olddata, split_filename=filename, lockfile=lockfile
                 )
-            except OSError:
-                wait = True
+
         if wait:
             split_locked = VadDataset.dataset_config_locked(config)
             while split_locked:
