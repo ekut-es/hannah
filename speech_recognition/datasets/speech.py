@@ -619,14 +619,15 @@ class VadDataset(SpeechDataset):
         split_file = os.path.join(data_folder, filename)
         output = {}
         if os.path.isfile(split_file):
-            with open(split_file, mode="r") as csv_file:
-                csv_reader = csv.DictReader(csv_file, delimiter=",")
-                line_count = 0
-                for row in csv_reader:
-                    if line_count == 0:
-                        line_count += 1
-                    output[str(row["filename"])] = row
+            csv_file = open(split_file, mode="r")
+            csv_reader = csv.DictReader(csv_file, delimiter=",")
+            line_count = 0
+            for row in csv_reader:
+                if line_count == 0:
                     line_count += 1
+                output[str(row["filename"])] = row
+                line_count += 1
+            csv_file.close()
             return (output, filename)
 
         return (None, None)
