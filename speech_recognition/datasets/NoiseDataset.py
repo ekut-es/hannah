@@ -101,7 +101,7 @@ class NoiseDataset:
             train = list()
 
             test = NoiseDataset.read_dataset_specific(
-                os.path.join(kaggle_folder, "FSDFSDnoisy.audio_test")
+                os.path.join(kaggle_folder, "FSDFSDnoisy18k.audio_test")
             )
             train = NoiseDataset.read_dataset_specific(
                 os.path.join(kaggle_folder, "FSDKaggle2018.audio_train")
