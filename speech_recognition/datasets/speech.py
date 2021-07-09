@@ -611,6 +611,8 @@ class VadDataset(SpeechDataset):
         filename = VadDataset.check_existing_splits(
             split, data_folder, variants, noise_dataset
         )
+        if filename is None:
+            return (None, None)
 
         split_file = os.path.join(data_folder, filename)
         output = {}
@@ -624,8 +626,8 @@ class VadDataset(SpeechDataset):
                     output[str(row["filename"])] = row
                     line_count += 1
             return (output, filename)
-        else:
-            return (None, None)
+
+        return (None, None)
 
     @classmethod
     def splits(cls, config):
