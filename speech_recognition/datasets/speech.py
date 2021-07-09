@@ -15,6 +15,7 @@ import torch
 from collections import defaultdict
 
 from chainmap import ChainMap
+from torchvision.datasets.utils import list_files
 
 from .base import AbstractDataset, DatasetType
 from ..utils import list_all_files, extract_from_download_cache
@@ -566,7 +567,8 @@ class VadDataset(SpeechDataset):
     def check_existing_splits(
         cls, data_split, data_folder, variants, noise_dataset, suffix=".csv"
     ):
-        csvfiles = list_all_files(data_folder, suffix, file_prefix=False)
+
+        csvfiles = list_files(data_folder, suffix, prefix=False)
 
         for f in csvfiles:
             tmp_f = f
