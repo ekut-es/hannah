@@ -21,6 +21,7 @@ datasets/hey_snips_research_6k_en_train_eval_clean_ter/
 datasets/atrial_fibrillation
 datasets/atrial_fibrillation_prepared
 datasets/pamap
+datasets/*.lock
 .vscode/.ropeproject
 trained_models
 \#*
