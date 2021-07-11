@@ -558,16 +558,28 @@ class VadDataset(SpeechDataset):
         data_folder = config.get("data_folder", None)
         variants = config.get("variants")
         noise_dataset = config.get("noise_dataset")
+        dest_sr = config.get("samplingrate", 16000)
         return (
             VadDataset.check_existing_splits(
-                split, data_folder, variants, noise_dataset, suffix=".lock"
+                split,
+                data_folder,
+                variants,
+                noise_dataset,
+                str(dest_sr),
+                suffix=".lock",
             )
             is not None
         )
 
     @classmethod
     def check_existing_splits(
-        cls, data_split, data_folder, variants, noise_dataset, suffix=".csv"
+        cls,
+        data_split,
+        data_folder,
+        variants,
+        noise_dataset,
+        samplingrate,
+        suffix=".csv",
     ):
 
         csvfiles = list_files(data_folder, suffix, prefix=False)
@@ -575,11 +587,14 @@ class VadDataset(SpeechDataset):
         for f in csvfiles:
             tmp_f = f
             dataset_names = []
-            if data_split in tmp_f:
+            if data_split in tmp_f and str(samplingrate) in tmp_f:
                 tmp_f = tmp_f.replace(data_split, "")
+                tmp_f = tmp_f.replace(str(samplingrate), "")
                 tmp_f = tmp_f.replace(suffix, "")
                 dataset_names = tmp_f.split("_")
                 dataset_names = list(filter(lambda name: name != "", dataset_names))
+            else:
+                continue
 
             useable = True
             for v in variants:
@@ -611,9 +626,9 @@ class VadDataset(SpeechDataset):
         data_folder = config.get("data_folder", None)
         variants = config.get("variants")
         noise_dataset = config.get("noise_dataset")
-
+        samplingrate = config.get("samplingrate", 16000)
         filename = VadDataset.check_existing_splits(
-            split, data_folder, variants, noise_dataset
+            split, data_folder, variants, noise_dataset, str(samplingrate)
         )
         if filename is None:
             return (None, None)

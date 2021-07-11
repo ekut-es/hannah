@@ -174,18 +174,23 @@ class DatasetSplit:
 
             destination_dict = split_methods[splits.index(data_split)](config)
 
+            dest_sr = config.get("samplingrate", 16000)
+
             downsample_dir = DatasetSplit.create_folder(data_folder, "downsampled")
             downsample_dir = DatasetSplit.create_folder(downsample_dir, data_split)
+            downsample_dir = DatasetSplit.create_folder(downsample_dir, str(dest_sr))
             speech_dir = DatasetSplit.create_folder(downsample_dir, "speech")
             noise_dir = DatasetSplit.create_folder(downsample_dir, "noise")
-
-            dest_sr = config.get("samplingrate", 16000)
 
             if split_filename is None:
                 variants = config.get("variants")
                 noise_dataset = config.get("noise_dataset")
                 split_filename = DatasetSplit.create_filename(
-                    data_split, variants, noise_dataset, data_folder=data_folder
+                    data_split,
+                    variants,
+                    noise_dataset,
+                    dest_sr,
+                    data_folder=data_folder,
                 )
             else:
                 split_filename = os.path.join(data_folder, split_filename)
@@ -232,13 +237,9 @@ class DatasetSplit:
 
                     target_path = Downsample.downsample_file(f, target_path, dest_sr)
                     downsampled_sr = str(dest_sr)
-
-                if oldsplit is not None and old is not None:
-                    downsampled_sr = str(dest_sr)
-                    if old_down_sr == dest_sr:
-                        target_path = old.get("downsampled_path")
-                    elif old_orig_sr == dest_sr:
-                        target_path = old.get("original_path")
+                elif old is not None and old_down_sr == dest_sr:
+                    target_path = old.get("downsampled_path")
+                    downsampled_sr = dest_sr
 
                 output.append(
                     [filename, f, target_path, f_info.sample_rate, downsampled_sr, key]
@@ -277,10 +278,12 @@ class DatasetSplit:
         data_folder = config.get("data_folder", None)
         variants = config.get("variants")
         noise_dataset = config.get("noise_dataset")
+        dest_sr = config.get("samplingrate", 16000)
         filename = DatasetSplit.create_filename(
             split_name=split,
             variants=variants,
             noises=noise_dataset,
+            samplingrate=str(dest_sr),
             data_folder=data_folder,
             suffix=".lock",
         )
@@ -295,10 +298,13 @@ class DatasetSplit:
 
     @classmethod
     def create_filename(
-        cls, split_name, variants, noises, data_folder=None, suffix=".csv"
+        cls, split_name, variants, noises, samplingrate, data_folder=None, suffix=".csv"
     ):
         output = (
-            DatasetSplit.combine_underscore_lists(variants, noises, split_name) + suffix
+            DatasetSplit.combine_underscore_lists(
+                variants, noises, str(samplingrate), split_name
+            )
+            + suffix
         )
 
         if data_folder is not None:
@@ -307,8 +313,12 @@ class DatasetSplit:
         return output
 
     @classmethod
-    def create_foldername(cls, split_name, variants, noises, data_folder=None):
-        output = DatasetSplit.combine_underscore_lists(variants, noises, split_name)
+    def create_foldername(
+        cls, split_name, variants, noises, samplingrate, data_folder=None
+    ):
+        output = DatasetSplit.combine_underscore_lists(
+            variants, noises, split_name, str(samplingrate)
+        )
 
         if data_folder is not None:
             os.path.join(data_folder, output)
@@ -316,12 +326,14 @@ class DatasetSplit:
         return output
 
     @classmethod
-    def combine_underscore_lists(cls, l1, l2, output=""):
-        for variant in l1:
-            output += "_" + variant
+    def combine_underscore_lists(cls, l1, l2, last_element, output=""):
+        for l in l1:
+            output += "_" + l
 
-        for noise in l2:
-            output += "_" + noise
+        for l in l2:
+            output += "_" + l
+
+        output += "_" + last_element
 
         return output
 
