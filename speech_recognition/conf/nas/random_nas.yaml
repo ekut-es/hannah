@@ -1,4 +1,0 @@
-# @package _group_
-
-_target_: speech_recognition.nas.RandomNASTrainer
-budget: 2000

@@ -59,7 +59,7 @@ cp /home/bringmann/cgerum05/ml_cloud.simg $SCRATCH
 echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/cache
-singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=$1 module.num_workers=4 hydra/launcher=joblib trainer.max_epochs=30  -m
+singularity run --nv  --bind $PWD:/opt/hannah,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=$1 module.num_workers=4 hydra/launcher=joblib trainer.max_epochs=30  -m
 date
 
 echo DONE!
