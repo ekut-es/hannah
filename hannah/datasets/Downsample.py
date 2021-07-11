@@ -14,9 +14,12 @@ class Downsample:
         assert targetpath is not None
         torchaudio.set_audio_backend("sox_io")
         data, sr = torchaudio.load(sourcepath)
+        f_info = torchaudio.backend.sox_io_backend.info(sourcepath)
         changed = False
         if target_sr != sr:
             data = torchaudio.transforms.Resample(sr, target_sr).forward(data)
+            changed = True
+        elif f_info.num_channels != 1:
             changed = True
 
         if targetpath.endswith("mp3"):
