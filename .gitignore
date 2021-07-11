@@ -22,6 +22,7 @@ datasets/atrial_fibrillation
 datasets/atrial_fibrillation_prepared
 datasets/pamap
 datasets/*.lock
+datasets/*.csv
 .vscode/.ropeproject
 trained_models
 \#*
