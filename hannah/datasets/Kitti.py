@@ -493,23 +493,23 @@ class KittiCOCO(COCO):
                 except ValueError:
                     print(
                         "An value error occurd:\nx1: "
-                        + gt_x1
+                        + str(gt_x1)
                         + ", x2: "
-                        + gt_x2
+                        + str(gt_x2)
                         + ", y1: "
-                        + gt_y1
+                        + str(gt_y1)
                         + ", y2: ",
-                        +gt_y2,
+                        +str(gt_y2),
                     )
                     print(
                         "\n: Detected: x1: "
-                        + dt_x1
+                        + str(dt_x1)
                         + ", x2: "
-                        + dt_x2
+                        + str(dt_x2)
                         + ", y1: "
-                        + dt_y1
+                        + str(dt_y1)
                         + ", y2: "
-                        + dt_y2
+                        + str(dt_y2)
                     )
                     return False
 

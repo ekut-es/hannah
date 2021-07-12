@@ -7,12 +7,13 @@ time_masking: 0
 frequency_masking: 0
 
 augmentation:
-  - augmented_pct: 100
+  - augmented_pct: 50
   - reaugment_per_epoch_pct: 50
   - bordersearch_epoch_duration: 5
   - bordersearch_ignore_params: ["draw_fog"]
   - bordersearch_waterlevel: 0.7
-  - augmentations: [albumentations]
+  - double_augment: True #After rain_drops, snow or fog do second augmentation with albumentations if True
+  - augmentations: [imagecorruptions]
   - augmentations_pct: [100]
   - rain_drops:
     - angle_rain_streaks: [-45, 45]
@@ -29,26 +30,24 @@ augmentation:
     - fog_density: [0, 0.2]
     - fog_sphere: [0.4, 0.7]
   - imagecorruptions:
-    - corruption: "snow"
+    - corruption: "fog"
     - severity: [1, 5]
   - albumentations:
     - blur: 30
     - clahe: 50
     - channel_dropout: 2
     - channel_shuffle: 2
-    - coarse_dropout: 50
+    - coarse_dropout: 45
     - downscale: 30
-    - equalize: 60
-    - gauss_noise: 60
+    - equalize: 50
+    - gauss_noise: 50
     - hue_saturation_value: 30
     - iso_noise: 40
     - image_compression: 10
     - invert: 5
     - motion_blur: 40
     - posterize: 2
-    - rgb_shift: 50
-    - random_brightness_contrast: 60
+    - rgb_shift: 40
+    - random_brightness_contrast: 50
     - random_gamma: 40
     - solarize: 2
-    - to_gray: 10
-    - to_sepia: 2

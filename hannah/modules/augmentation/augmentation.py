@@ -223,7 +223,7 @@ class XmlAugmentationParser:
         Image.fromarray(pil_img).save(kitti.aug_path + img)
 
     @staticmethod
-    def __albumentations(conf, img, kitti):
+    def __albumentations(conf, img, kitti, double_augment=False):
         transform = A.Compose(
             [
                 A.Blur(p=conf["blur"] / 100),
@@ -244,13 +244,13 @@ class XmlAugmentationParser:
                 A.RandomBrightnessContrast(p=conf["random_brightness_contrast"] / 100),
                 A.RandomGamma(p=conf["random_gamma"] / 100),
                 A.Solarize(p=conf["solarize"] / 100),
-                A.ToGray(p=conf["to_gray"] / 100),
-                A.ToSepia(p=conf["to_sepia"] / 100),
             ]
         )
-        pil_img = Image.open(kitti.kitti_dir + "/training/image_2/" + img).convert(
-            "RGB"
-        )
+        pil_img = Image.open(
+            kitti.kitti_dir + "/training/image_2/" + img
+            if not double_augment
+            else kitti.aug_path + img
+        ).convert("RGB")
         pil_img = transform(image=np.array(pil_img))["image"]
         Image.fromarray(pil_img).save(kitti.aug_path + img)
 
@@ -266,6 +266,13 @@ class AugmentationThread:
                 kitti.kitti_dir + "/augmentation/perform_augmentation.sh",
                 stdout=subprocess.DEVNULL,
             )
+            if conf["double_augment"]:
+                XmlAugmentationParser.__albumentations(
+                    dict((key, a[key]) for a in conf["albumentations"] for key in a),
+                    img,
+                    kitti,
+                    True,
+                )
 
         if out is True:
             print("Image augmented")
