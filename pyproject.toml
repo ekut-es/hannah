@@ -45,6 +45,7 @@ sympy = "^1.7.1"
 nvsmi = "^0.4.2"
 libsvm="^3.23.0.4"
 imagecorruptions = "^1.1.2"
+albumentations = "^1.0.1"
 
 # optional dependencies
 onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
