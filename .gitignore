@@ -38,6 +38,8 @@ srf-venv/
 
 distillation/lorenzfe/
 
+outputs/
+
 # eclipse
 .settings/
 
