@@ -4,10 +4,8 @@
 _target_: speech_recognition.models.wip.models.create
 name: wip
 min_depth: 2
-# depth sampling temporarily disabled: progressive shrinking / some form of sequencing required:
-# randomly sampling depth in parallel to training subkernels seems to cause very bad results
-steps_without_sampling: 999999
-steps_per_kernel_step: 12000
+steps_without_sampling: 10000
+steps_per_kernel_step: 99999
 norm_order:
   norm_before_act: true
   norm_after_act: false

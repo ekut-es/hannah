@@ -484,8 +484,9 @@ class StreamClassifierModule(ClassifierModule):
         # if subsampling kernels is available and enabled, also compute loss values of elastic kernels
         try:
             if callable(getattr(self.model, "check_kernel_stepping", None)):
-                if self.model.check_kernel_stepping():
-
+                # if self.model.check_kernel_stepping():
+                # if kernel stepping is available, try to compute elastic kernel accuracies
+                if True:
                     # initialise storage for elastic kernel loss values, if not present
                     if getattr(self, "elastic_kernel_test_loss_values", None) is None:
                         self.elastic_kernel_test_loss_values = []

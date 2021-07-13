@@ -523,6 +523,11 @@ class WIPModel(nn.Module):
         self.active_depth = np.random.randint(self.min_depth, self.max_depth+1)
         self.update_output_channel_count()
         # print("Picked active depth: ", self.active_depth)
+        # also sample a random kernel, in place until progressive shrinking is done
+        max_kernel_steps = self.compute_max_kernel_steps()
+        # pick a random kernel step, from 0 to including the max step count
+        random_kernel_step = np.random.randint(0, max_kernel_steps+1)
+        self.go_to_kernel_step(random_kernel_step)
 
     def should_subsample(self, verify_step=False):
         # for testing, until there is a proper scheduler in place:
@@ -539,9 +544,31 @@ class WIPModel(nn.Module):
             # print("stepping kernels!")
             self.current_kernel_step += 1
             if not self.step_down_all_kernels():
-                self.current_kernel_step = 99
+                self.current_kernel_step -= 1
+                setattr(self, 'max_kernel_steps', self.current_kernel_step)
 
         return self.current_step > self.steps_per_kernel_step
+
+    # temporary implementation to speed up random sampling by only searching for max kernel steps once
+    # get max amount of kernel steps
+    def compute_max_kernel_steps(self):
+        max_kernel_steps = getattr(self, 'max_kernel_steps', None)
+        if max_kernel_steps is not None:
+            # if the attribute was already set, simply return.
+            return max_kernel_steps
+        else:
+            previous_kernel_step = self.current_kernel_step
+            self.reset_all_kernel_sizes()
+            # count the amount of steps until step_down_all_kernels returns false (step-down was no longer possible)
+            steps_passed = 0
+            while self.step_down_all_kernels():
+                steps_passed += 1
+            # store the value, it only needs to be computed once.
+            setattr(self, 'max_kernel_steps', steps_passed)
+            # return to whichever the current step was before this function was called
+            self.go_to_kernel_step(previous_kernel_step)
+            # return the computed value
+            return steps_passed
 
     # reset elastic values to their default (max) values
     def reset_active_elastic_values(self):
@@ -571,11 +598,19 @@ class WIPModel(nn.Module):
         return call_function_from_deep_nested(input=self.conv_layers, function="reset_kernel_size", type_selection=ElasticKernelConv1d)
         # return call_function_from_deep_nested(input=self.conv_layers, function="reset_kernel_size")
 
+    # go to a specific kernel step
+    def go_to_kernel_step(self, step: int):
+        self.current_kernel_step = step
+        self.resume_kernel_sizes_from_step()
+
     # go back to the kernel sizes specified by the current step
     # call after reset_all_kernel_sizes to resume
     def resume_kernel_sizes_from_step(self):
+        # save the current step, resetting may also reset the value for some future implementations
+        step = self.current_kernel_step
         # reset kernel sizes to start from a known point
         self.reset_all_kernel_sizes()
+        self.current_kernel_step = step
         for i in range(self.current_kernel_step):
             # perform one step down call for each current kernel step
             if not self.step_down_all_kernels():
