@@ -228,13 +228,11 @@ class Kitti(AbstractDataset):
         datasets = [{}, {}, {}]
 
         if "real_rain" not in folder and "DAWN" not in folder:
-            if os.path.exists(aug_folder_cpy) and os.path.isdir(aug_folder_cpy):
-                shutil.rmtree(aug_folder_cpy)
-            os.mkdir(aug_folder_cpy)
+            if not os.path.exists(aug_folder_cpy) or not os.path.isdir(aug_folder_cpy):
+                os.mkdir(aug_folder_cpy)
 
-            if os.path.exists(aug_folder) and os.path.isdir(aug_folder):
-                shutil.rmtree(aug_folder)
-            os.mkdir(aug_folder)
+            if not os.path.exists(aug_folder) or not os.path.isdir(aug_folder):
+                os.mkdir(aug_folder)
 
         for i in range(num_imgs):
             if i < num_dev_imgs:
@@ -491,7 +489,7 @@ class KittiCOCO(COCO):
                     if iou_score > 0.5:
                         return True
                 except ValueError:
-                    print(
+                    """print(
                         "An value error occurd:\nx1: "
                         + str(gt_x1)
                         + ", x2: "
@@ -499,7 +497,7 @@ class KittiCOCO(COCO):
                         + ", y1: "
                         + str(gt_y1)
                         + ", y2: ",
-                        +str(gt_y2),
+                        + str(gt_y2),
                     )
                     print(
                         "\n: Detected: x1: "
@@ -510,7 +508,7 @@ class KittiCOCO(COCO):
                         + str(dt_y1)
                         + ", y2: "
                         + str(dt_y2)
-                    )
+                    )"""
                     return False
 
         return False

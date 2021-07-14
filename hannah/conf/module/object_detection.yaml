@@ -12,15 +12,15 @@ augmentation:
   - bordersearch_epoch_duration: 5
   - bordersearch_ignore_params: ["draw_fog"]
   - bordersearch_waterlevel: 0.7
-  - double_augment: True #After rain_drops, snow or fog do second augmentation with albumentations if True
-  - augmentations: [imagecorruptions]
+  - double_augment: False #After rain_drops, snow or fog do second augmentation with albumentations if True
+  - augmentations: [rain_drops]
   - augmentations_pct: [100]
   - rain_drops:
     - angle_rain_streaks: [-45, 45]
     - brightness: [0.2, 2]
-    - number_drops: [500, 2000]
-    - rain_rate: [1, 60]
-    - drop_radius: [0.0004, 0.005]
+    - number_drops: [500, 3000]
+    - rain_rate: [10, 80]
+    - drop_radius: [0.0004, 0.01]
   - snow:
     - snowfall_rate: [0, 3]
     - car_speed_ms: [0, 13.9]
