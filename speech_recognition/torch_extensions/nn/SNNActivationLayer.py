@@ -231,9 +231,9 @@ class Spiking1DLIFLayer(torch.nn.Module):
             rst = torch.einsum("ab,b->ab", spk, self.Vth)
 
             if self.time_position == 2:
-                input_ = x[:, :, t]
+                input_ = self.alpha * input_ + x[:, :, t]
             elif self.time_position == 1:
-                input_ = x[:, t, :]
+                input_ = self.alpha * input_ + x[:, t, :]
 
             if self.negative_mempot:
                 mem = mem * self.beta + input_ - rst
