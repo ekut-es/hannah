@@ -5,7 +5,7 @@ from typing import Optional
 import tabulate
 
 import torch
-from torch.nn import CrossEntropyLoss
+from torch.nn import BatchNorm1d
 from pytorch_lightning.callbacks import ModelPruning
 
 
@@ -22,18 +22,24 @@ class PruningAmountScheduler:
 
 
 class FilteredPruning(ModelPruning):
+    def on_before_accelerator_backend_setup(self, trainer, pl_module):
+        # FIXME: calling setup here breaks assumptions about call order and will lead to setup being called twice
+        pl_module.setup("fit")
+        super().on_before_accelerator_backend_setup(trainer, pl_module)
+
     def filter_parameters_to_prune(self, parameters_to_prune=None):
         """
         Filter out unprunable parameters
         """
 
         def filter_func(x):
+            if isinstance(x[0], BatchNorm1d):
+                return False
             if hasattr(x[0], x[1]) and getattr(x[0], x[1]) is not None:
                 return True
             return False
 
         parameters_to_prune = list(filter(filter_func, parameters_to_prune))
-
         return parameters_to_prune
 
     def on_test_end(self, trainer, pl_module) -> None:
