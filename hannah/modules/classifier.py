@@ -365,7 +365,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         return train_loader
 
-    def on_train_epoch_end(self, outputs):
+    def on_train_epoch_end(self):
         self.eval()
         self._log_weight_distribution()
         self.train()
