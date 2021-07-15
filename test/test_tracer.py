@@ -17,10 +17,11 @@ from hannah.models.factory.qconfig import get_trax_qat_qconfig
 
 
 class Config:
-    bw_b = 6
-    bw_f = 4
-    bw_w = 6
+    bw_b = 8
+    bw_f = 8
+    bw_w = 8
     power_of2 = False
+    rounding_mode = "UPWARD"
 
     def get(self, name: str, default=None):
         return getattr(self, name, default)
@@ -139,15 +140,26 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
 class TestCell(nn.Module):
     def __init__(self, dim=1, act=False):
         super().__init__()
+        self.qconfig = get_trax_qat_qconfig(Config())
+        self.activation_post_process = self.qconfig.activation()
         if dim == 1:
-            self.conv = Conv1d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
+            self.conv = Conv1d(
+                8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
+            )
 
-            self.conv2 = ConvBnReLU1d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
+            self.conv2 = Conv1d(
+                8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
+            )
         elif dim == 2:
-            self.conv = Conv2d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
-            self.conv2 = ConvBn2d(8, 8, 3, qconfig=get_trax_qat_qconfig(Config()))
+            self.conv = Conv2d(
+                8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
+            )
+            self.conv2 = Conv2d(
+                8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
+            )
 
     def forward(self, x):
+        x = self.activation_post_process(x)
         x = self.conv(x)
         x = self.conv2(x)
         return x
@@ -175,15 +187,29 @@ def test_tracer(dim, act):
 
     mod = tvm.relay.transform.InferType()(mod)
     print(mod)
-    print(params)
+    # print(params)
 
-    target = "c"
+    target = "llvm"
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = tvm.relay.build(mod, target=target, params=params)
 
     output_torch = cell(input)
+    input_ndarray = (input * 2 ** 7).detach().numpy().astype("byte")
 
-    print(lib.lib.get_source())
+    dev = tvm.device(str(target), 0)
+    module = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))
+    module.set_input("x", input_ndarray)
+    module.run()
+    tvm_output = (
+        module.get_output(0, tvm.nd.empty(output_torch.shape, dtype="int8"))
+        .numpy()
+        .astype(float)
+        / 2 ** 7
+    )
+    print("MSE:   ", ((output_torch.detach().numpy() - tvm_output) ** 2).mean())
+    print("MAX_SE:", ((output_torch.detach().numpy() - tvm_output) ** 2).max())
+    # print(params)
+    # print(lib.lib.get_source())
 
 
 if __name__ == "__main__":

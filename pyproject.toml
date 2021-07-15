@@ -24,8 +24,6 @@ wfdb = "^3.2.0"
 typing-extensions = "^3.7.4"
 lightning-bolts = "^0.3.2"
 wandb = "^0.10.26"
-pycocotools = "^2.0.2"
-opencv-python= "^4.5.2.52"
 scipy="^1.6.3"
 tqdm="^4.60.0"
 seaborn="^0.11.1"
@@ -43,14 +41,17 @@ GitPython = "^3.1.14"
 h5py = "^3.2.1"
 sympy = "^1.7.1"
 nvsmi = "^0.4.2"
-libsvm="^3.23.0.4"
-imagecorruptions = "^1.1.2"
 
 # optional dependencies
 onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
 tensorflow-addons = {version = "^0.11.2", optional = true}
 onnxruntime = {version = "^1.4.0", optional = true}
-albumentations = "^1.0.0"
+
+libsvm="^3.23.0.4"
+imagecorruptions = "^1.1.2"
+albumentations = "^1.0.1"
+pycocotools = "^2.0.2"
+opencv-python= "^4.5.2.52"
 
 
 [tool.poetry.dev-dependencies]

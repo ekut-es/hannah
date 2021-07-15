@@ -157,7 +157,7 @@ class PowerOf2Quantization:
         return x
 
 
-class TrainableFakeQuantize(FakeQuantizeBase):
+class STEQuantize(FakeQuantizeBase):
     def __init__(
         self,
         bits,
@@ -217,19 +217,19 @@ def get_trax_qat_qconfig(config):
     rounding_mode = config.get("rounding_mode", "EVEN")
 
     qconfig = QConfig(
-        TrainableFakeQuantize.with_args(
+        STEQuantize.with_args(
             bits=bits_activation,
             noise_prob=config.get("noise_prob", 1.0),
             rounding_mode=rounding_mode,
         ),
-        TrainableFakeQuantize.with_args(
+        STEQuantize.with_args(
             bits=bits_weight,
             power_of_2=config.get("power_of_2", False),
             noise_prob=config.get("noise_prob", 1.0),
             rounding_mode=rounding_mode,
             debug=False,
         ),
-        TrainableFakeQuantize.with_args(
+        STEQuantize.with_args(
             bits=bits_bias,
             noise_prob=config.get("noise_prob", 1.0),
             rounding_mode=rounding_mode,

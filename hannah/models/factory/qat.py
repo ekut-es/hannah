@@ -837,7 +837,7 @@ class Conv2d(nn.Conv2d, _ConvForwardMixin):
             self._real_conv_forward(
                 input,
                 self.weight_fake_quant(self.weight),
-                self.bias_fake_quant(self.bias),
+                self.bias_fake_quant(self.bias) if self.bias is not None else None,
             )
         )
 

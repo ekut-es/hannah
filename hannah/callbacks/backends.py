@@ -320,3 +320,31 @@ class TRaxUltraTrailBackend(Callback):
         for k, v in res.items():
             pl_module.log(k, v)
             logging.info("%s: %s", str(k), str(v))
+
+
+class TVMBackend(InferenceBackendBase):
+    """Inference backend for torch mobile"""
+
+    def __init__(self, val_batches=1, test_batches=1, val_frequency=1):
+        super().__init__(val_batches, test_batches, val_frequency)
+
+        self.script_module = None
+
+    def prepare(self, model):
+        logging.info("Preparing model for target")
+
+        from ..models.factory.tracer import QuantizationTracer, RelayConverter
+
+        tracer = QuantizationTracer()
+
+        model.cpu()
+
+        traced_graph = tracer.trace(model.model)
+        converter = RelayConverter(torch.fx.GraphModule(model.model, traced_graph))
+        mod, params = converter.run(model.example_feature_array)
+        print(mod)
+
+    def run_batch(self, inputs=None):
+        if inputs is None:
+            logging.critical("Backend batch is empty")
+            return None

@@ -1,16 +1,17 @@
 name: test
-checkpoints: [trained_models/yolo_low_rain/yolov5s/best.ckpt]
+checkpoints: [trained_models/fasterrcnn_brs_new/faster-rcnn-resnet50/best.ckpt]
 noise: []
-methods: ["original", "full_augmented", "real_rain"]
+methods: ["original", "full_augmented", "real_rain", "dawn_rain", "dawn_snow", "dawn_fog"]
 output_dir: eval
+gpus: [1]
 
 augmentation:
   - augmented_pct: 50
-  - reaugment_per_epoch_pct: 20
-  - bordersearch_epoch_duration: 0
+  - reaugment_per_epoch_pct: 50
+  - bordersearch_epoch_duration: 5
   - bordersearch_ignore_params: ["draw_fog"]
   - bordersearch_waterlevel: 0.7
-  - augmentations: [rain_drops]
+  - augmentations: [albumentations]
   - augmentations_pct: [100]
   - rain_drops:
     - angle_rain_streaks: [-45, 45]
@@ -26,7 +27,27 @@ augmentation:
   - fog:
     - fog_density: [0, 0.2]
     - fog_sphere: [0.4, 0.7]
-  - noise:
-    - noise_mode: "gaussian"
-    - mean: 0.0
-    - var: 0.5
+  - imagecorruptions:
+    - corruption: "snow"
+    - severity: [1, 5]
+  - albumentations:
+    - blur: 30
+    - clahe: 50
+    - channel_dropout: 2
+    - channel_shuffle: 2
+    - coarse_dropout: 45
+    - downscale: 30
+    - equalize: 50
+    - gauss_noise: 50
+    - hue_saturation_value: 30
+    - iso_noise: 40
+    - image_compression: 10
+    - invert: 5
+    - motion_blur: 40
+    - posterize: 2
+    - rgb_shift: 40
+    - random_brightness_contrast: 50
+    - random_gamma: 40
+    - solarize: 2
+    - to_gray: 10
+    - to_sepia: 2

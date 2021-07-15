@@ -5,6 +5,8 @@ import torch.fx
 from tvm.relay import op
 
 from . import qat
+from . import qconfig
+from . import pooling
 
 try:
     import tvm.relay as relay
@@ -27,6 +29,9 @@ class QuantizationTracer(torch.fx.Tracer):
         qat.ConvBnReLU2d,
         qat.ConvReLU1d,
         qat.ConvReLU2d,
+        qat.Linear,
+        qat.LinearReLU,
+        qconfig.STEQuantize,
     ]
 
     def is_leaf_module(self, module, module_qualified_name):
@@ -41,10 +46,11 @@ class RelayConverter(torch.fx.Interpreter):
     def __init__(
         self,
         graph_module,
-        input_dtype="int6",
+        input_dtype="int8",
         input_scale=1 / (2 ** 7),
         accumulator_dtype="int20",
     ):
+        print(graph_module)
         super().__init__(graph_module)
         self.accumulator_dtype = accumulator_dtype
         self.input_dtype = input_dtype
@@ -63,7 +69,7 @@ class RelayConverter(torch.fx.Interpreter):
         self.outputs = {}
         self.func_args = []
         self.returns = []
-        self.params = []
+        self.params = {}
 
         self.module_map = {
             qat.Conv1d: self._handle_qat_conv,
@@ -74,6 +80,10 @@ class RelayConverter(torch.fx.Interpreter):
             qat.ConvBnReLU2d: self._handle_qat_conv,
             qat.Linear: self._handle_qat_linear,
             qat.LinearReLU: self._handle_qat_linear,
+            qconfig.STEQuantize: self._handle_identity,
+            torch.nn.ReLU: self._handle_identity,
+            torch.nn.Dropout: self._handle_identity,
+            torch.nn.Flatten: self._handle_identity,
         }
 
     def _gen_requantize(
@@ -85,7 +95,7 @@ class RelayConverter(torch.fx.Interpreter):
         output_dtype,
         use_rescale=False,
         axis=-1,
-        rounding="TOEVEN",
+        rounding="UPWARD",
     ):
         assert input_dtype.startswith("int")
         assert output_dtype.startswith("int")
@@ -110,7 +120,7 @@ class RelayConverter(torch.fx.Interpreter):
             accumulator_dtype = (
                 input_dtype if input_bits > output_bits else output_dtype
             )
-            print(rescale, rescale_shift)
+
             if output_bits > input_bits:
                 output = relay.cast(output, output_dtype)
             if rescale != 1.0:
@@ -141,8 +151,17 @@ class RelayConverter(torch.fx.Interpreter):
                 output = relay.cast(output, output_dtype)
         return output
 
+    def _handle_identity(self, node, module, result):
+        inputs = list(node.all_input_nodes)
+        data = self.outputs[inputs[0].name]
+        self.outputs[node.name] = data
+        return None
+
     def _handle_qat_linear(self, node, module, result):
-        pass
+        inputs = list(node.all_input_nodes)
+        data = self.outputs[inputs[0].name]
+        self.outputs[node.name] = data
+        return None
 
     def _handle_qat_conv(self, node, module, result):
         weight = module.weight
@@ -166,22 +185,26 @@ class RelayConverter(torch.fx.Interpreter):
         out_channels = module.out_channels
 
         quant_weight = module.weight_fake_quant.quantize(weight)
-        quant_bias = module.bias_fake_quant.quantize(bias)
+        quant_bias = module.bias_fake_quant.quantize(bias) if bias is not None else None
         weight_dtype = f"int{module.weight_fake_quant.bits}"
         weight_scale = module.weight_fake_quant.quantization_function.scale
-        output_dtype = f"int{module.activation_post_process.bits}"
-        output_scale = module.activation_post_process.quantization_function.scale
 
+        weight_name = f"{node.name}.weight"
         weight = tvm.relay.Var(
-            f"{node.name}.weight",
-            tvm.relay.TensorType(quant_weight.shape, dtype=weight_dtype),
+            weight_name, tvm.relay.TensorType(quant_weight.shape, dtype=weight_dtype)
+        )
+        self.params[weight_name] = tvm.nd.array(
+            (quant_weight).detach().numpy().astype("byte")
         )
         if bias is not None:
             bias_dtype = f"int{module.bias_fake_quant.bits}"
             bias_scale = module.bias_fake_quant.quantization_function.scale
+            bias_name = f"{node.name}.bias"
             bias = tvm.relay.Var(
-                f"{node.name}.bias",
-                tvm.relay.TensorType(quant_bias.shape, dtype=bias_dtype),
+                bias_name, tvm.relay.TensorType(quant_bias.shape, dtype=bias_dtype)
+            )
+            self.params[bias_name] = tvm.nd.array(
+                (quant_bias).detach().numpy().astype("byte")
             )
 
         inputs = list(node.all_input_nodes)
@@ -238,6 +261,13 @@ class RelayConverter(torch.fx.Interpreter):
         if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
             conv_out = tvm.relay.nn.relu(conv_out)
 
+        if hasattr(module.activation_post_process, "bits"):
+            output_dtype = f"int{module.activation_post_process.bits}"
+            output_scale = module.activation_post_process.quantization_function.scale
+        else:
+            output_dtype = self.accumulator_dtype
+            output_scale = accumulator_scale
+
         # Calculate shift factors
         conv_out = self._gen_requantize(
             conv_out,
@@ -251,6 +281,7 @@ class RelayConverter(torch.fx.Interpreter):
         self.outputs[node.name] = conv_out
 
     def _handle_module(self, node, result):
+        print("Handle module", node)
         module = self.modules[node.target]
         if type(module) in self.module_map:
             self.module_map[type(module)](node, module, result)
@@ -270,11 +301,34 @@ class RelayConverter(torch.fx.Interpreter):
         for input in inputs:
             self.returns.append(self.outputs[input.name])
 
+    def _handle_function(self, node, result):
+        target = node.target
+        if target.__name__ == "add":
+            inputs = list(node.all_input_nodes)
+            lhs = self.outputs[inputs[0].name]
+            rhs = self.outputs[inputs[1].name]
+            add = tvm.relay.add(lhs, rhs)
+            self.outputs[node.name] = add
+        elif target.__name__ == "sum":
+            inputs = list(node.all_input_nodes)
+            data = self.outputs[inputs[0].name]
+            sum = tvm.relay.sum(data, axis=2, keepdims=True)
+            self.outputs[node.name] = sum
+        elif target.__name__ == "truediv":
+            inputs = list(node.all_input_nodes)
+            data = self.outputs[inputs[0].name]
+            div = tvm.relay.sum(data, axis=2, keepdims=True)
+            self.outputs[node.name] = div
+        else:
+            raise Exception(f"Unandled function {target}")
+
     def run_node(self, node):
         result = super().run_node(node)
 
         if node.op == "call_module":
             self._handle_module(node, result)
+        elif node.op == "call_function":
+            self._handle_function(node, result)
         elif node.op == "output":
             self._handle_output(node, result)
         elif node.op == "placeholder":

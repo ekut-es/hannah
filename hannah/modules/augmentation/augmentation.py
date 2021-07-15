@@ -5,6 +5,8 @@ import subprocess
 import threading
 import numpy as np
 
+import albumentations as A
+
 from imagecorruptions import corrupt
 import xml.etree.ElementTree as ET
 from PIL import Image
@@ -45,6 +47,13 @@ class XmlAugmentationParser:
         elif "imagecorruptions" in augmentation:
             XmlAugmentationParser.__imagecorruptions(
                 dict((key, a[key]) for a in conf["imagecorruptions"] for key in a),
+                img,
+                kitti,
+            )
+            subpring = False
+        elif "albumentations" in augmentation:
+            XmlAugmentationParser.__albumentations(
+                dict((key, a[key]) for a in conf["albumentations"] for key in a),
                 img,
                 kitti,
             )
@@ -211,6 +220,38 @@ class XmlAugmentationParser:
                 )
             ),
         )
+        Image.fromarray(pil_img).save(kitti.aug_path + img)
+
+    @staticmethod
+    def __albumentations(conf, img, kitti):
+        transform = A.Compose(
+            [
+                A.Blur(p=conf["blur"] / 100),
+                A.CLAHE(p=conf["clahe"] / 100),
+                A.ChannelDropout(p=conf["channel_dropout"] / 100),
+                A.ChannelShuffle(p=conf["channel_shuffle"] / 100),
+                A.CoarseDropout(p=conf["coarse_dropout"] / 100),
+                A.Downscale(p=conf["downscale"] / 100),
+                A.Equalize(p=conf["equalize"] / 100),
+                A.GaussNoise(p=conf["gauss_noise"] / 100),
+                A.HueSaturationValue(p=conf["hue_saturation_value"] / 100),
+                A.ISONoise(p=conf["iso_noise"] / 100),
+                A.ImageCompression(p=conf["image_compression"] / 100),
+                A.InvertImg(p=conf["invert"] / 100),
+                A.MotionBlur(p=conf["motion_blur"] / 100),
+                A.Posterize(p=conf["posterize"] / 100),
+                A.RGBShift(p=conf["rgb_shift"] / 100),
+                A.RandomBrightnessContrast(p=conf["random_brightness_contrast"] / 100),
+                A.RandomGamma(p=conf["random_gamma"] / 100),
+                A.Solarize(p=conf["solarize"] / 100),
+                A.ToGray(p=conf["to_gray"] / 100),
+                A.ToSepia(p=conf["to_sepia"] / 100),
+            ]
+        )
+        pil_img = Image.open(kitti.kitti_dir + "/training/image_2/" + img).convert(
+            "RGB"
+        )
+        pil_img = transform(image=np.array(pil_img))["image"]
         Image.fromarray(pil_img).save(kitti.aug_path + img)
 
 
