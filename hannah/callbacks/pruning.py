@@ -18,7 +18,9 @@ class PruningAmountScheduler:
         if current_epoch == 0:
             return 0.00
         else:
-            return self.target_amount / (self.max_epochs - 1.0)
+            amount = self.target_amount / (self.max_epochs - 1.0)
+            logging.info("Pruning amount %f", amount)
+            return amount
 
 
 class FilteredPruning(ModelPruning):
