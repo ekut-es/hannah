@@ -90,7 +90,8 @@ def train(config: DictConfig):
                 "CSVLogger is not compatible with logging with SWA, disabling csv logger"
             )
         else:
-            logger.append(CSVLogger(".", version=None, name=""))
+            pass
+            # logger.append(CSVLogger(".", version=None, name=""))
 
         callbacks = []
         if config.get("backend", None):
