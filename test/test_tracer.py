@@ -22,7 +22,7 @@ from hannah.models.factory.qconfig import get_trax_qat_qconfig
 class Config:
     bw_b = 8
     bw_f = 8
-    bw_w = 8
+    bw_w = 6
     power_of2 = False
     rounding_mode = "UPWARD"
 
@@ -151,17 +151,47 @@ class TestCell(nn.Module):
         self.qconfig = get_trax_qat_qconfig(Config())
         self.activation_post_process = self.qconfig.activation()
         if dim == 1:
-            self.conv = Conv1d(
-                8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
-            )
+            if act:
+                self.conv = ConvBnReLU1d(
+                    8,
+                    8,
+                    3,
+                    qconfig=get_trax_qat_qconfig(Config()),
+                    padding=1,
+                    bias=True,
+                )
+            else:
+                self.conv = ConvBn1d(
+                    8,
+                    8,
+                    3,
+                    qconfig=get_trax_qat_qconfig(Config()),
+                    padding=1,
+                    bias=True,
+                )
 
             self.conv2 = Conv1d(
                 8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
             )
         elif dim == 2:
-            self.conv = Conv2d(
-                8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
-            )
+            if act:
+                self.conv = ConvBn2d(
+                    8,
+                    8,
+                    3,
+                    qconfig=get_trax_qat_qconfig(Config()),
+                    padding=1,
+                    bias=True,
+                )
+            else:
+                self.conv = ConvBnReLU2d(
+                    8,
+                    8,
+                    3,
+                    qconfig=get_trax_qat_qconfig(Config()),
+                    padding=1,
+                    bias=True,
+                )
             self.conv2 = Conv2d(
                 8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
             )
@@ -335,7 +365,6 @@ def test_tracer_pooling():
     act = False
     input_bits = 8
     output_bits = 8
-    output_dtype = 8
     out_dtype = "int32"
     run_test(cell, input_shape, act, input_bits, output_bits, out_dtype)
 
@@ -343,6 +372,6 @@ def test_tracer_pooling():
 if __name__ == "__main__":
     # test_tracer(1, True)
     # test_tracer(2, False)
-    test_tracer_reduction()
-    # test_tracer_linear()
+    # test_tracer_reduction()
+    test_tracer_linear()
     # test_tracer_pooling()
