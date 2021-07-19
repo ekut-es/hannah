@@ -115,7 +115,7 @@ class RelayConverter(torch.fx.Interpreter):
             qat.Linear: self._handle_qat_linear,
             qat.LinearReLU: self._handle_qat_linear,
             qconfig.STEQuantize: self._handle_identity,
-            torch.nn.ReLU: self._handle_identity,
+            torch.nn.ReLU: self._handle_relu,
             torch.nn.Dropout: self._handle_identity,
             torch.nn.Flatten: self._handle_flatten,
         }
@@ -413,6 +413,15 @@ class RelayConverter(torch.fx.Interpreter):
             shape=result.shape, dtype=dtype, bits=bits, scale=output_scale, zero_point=0
         )
 
+    def _handle_relu(self, node, module, result):
+        inputs = list(node.all_input_nodes)
+        assert len(inputs) == 1
+        data = self.outputs[inputs[0].name]
+        relu = tvm.relay.nn.relu(data)
+        self.outputs[node.name] = relu
+        output_metadata = copy.deepcopy(self.tensor_info[inputs[0].name])
+        self.tensor_info[node.name] = output_metadata
+
     def _handle_module(self, node, result):
         module = self.modules[node.target]
         if type(module) in self.module_map:
@@ -439,6 +448,8 @@ class RelayConverter(torch.fx.Interpreter):
 
     def _handle_function(self, node, result):
         target = node.target
+
+        print(node, target.__name__)
         if target.__name__ == "add":
             inputs = list(node.all_input_nodes)
             assert len(inputs) == 2
@@ -501,7 +512,7 @@ class RelayConverter(torch.fx.Interpreter):
 
     def run_node(self, node):
         result = super().run_node(node)
-        print(node)
+        print("node:", node)
         # print(result)
 
         if node.op == "call_module":

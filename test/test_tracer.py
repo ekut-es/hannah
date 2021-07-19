@@ -223,8 +223,8 @@ def run_test(cell, input_shape, act, input_bits, output_bits, out_dtype):
     print("MSE:   ", mse)
     print("MAX_SE:", max_se)
 
-    assert mse < 1 / (2 ** (output_bits - 1))
-    assert max_se < 2 / (2 ** (output_bits - 1))
+    assert mse < 1 / (2 ** (min(output_bits, input_bits) - 1))
+    assert max_se < 2 / (2 ** (min(output_bits, input_bits) - 1))
 
 
 @pytest.mark.parametrize("dim,act", [(1, False), (1, True), (2, False), (2, True)])
@@ -291,7 +291,7 @@ def test_tracer_reduction(dim=1, act=True):
     elif dim == 2:
         input_shape = (1, 8, 32, 32)
 
-    run_test(cell, input_shape, act, 8, 20, "int32")
+    run_test(cell, input_shape, act, 8, 15, "int32")
 
 
 class TestCellLinear(nn.Module):
@@ -311,7 +311,7 @@ def test_tracer_linear():
     cell = TestCellLinear()
     input_shape = (1, 128)
     act = True
-    run_test(cell, input_shape, act, 8, 8, "int8")
+    run_test(cell, input_shape, act, 8, 15, "int8")
 
 
 class TestCellPooling(nn.Module):
@@ -343,6 +343,6 @@ def test_tracer_pooling():
 if __name__ == "__main__":
     # test_tracer(1, True)
     # test_tracer(2, False)
-    # test_tracer_reduction()
+    test_tracer_reduction()
     # test_tracer_linear()
-    test_tracer_pooling()
+    # test_tracer_pooling()
