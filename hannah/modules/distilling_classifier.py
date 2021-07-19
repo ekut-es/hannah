@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch.autograd import grad
 
 from omegaconf import DictConfig
-from pytorch_lightning.metrics import Accuracy
+from torchmetrics import Accuracy
 
 from .classifier import StreamClassifierModule
 

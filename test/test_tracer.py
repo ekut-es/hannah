@@ -12,7 +12,10 @@ from hannah.models.factory.qat import (
     ConvBnReLU2d,
     Conv1d,
     Conv2d,
+    Linear,
 )
+from hannah.models.factory.pooling import ApproximateGlobalAveragePooling1D
+from hannah.models.factory.reduction import ReductionBlockAdd
 from hannah.models.factory.qconfig import get_trax_qat_qconfig
 
 
@@ -122,6 +125,11 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
             new_attrs = dict(call.attrs)
             new_attrs["out_dtype"] = self.dtype_map[out_dtype]
             new_call = tvm.relay.nn.conv3d(*new_args, **new_attrs)
+        elif call.op.name == "nn.dense":
+            out_dtype = call.attrs.out_dtype
+            new_attrs = dict(call.attrs)
+            new_attrs["out_dtype"] = self.dtype_map[out_dtype]
+            new_call = tvm.relay.nn.dense(*new_args, **new_attrs)
         elif call.op.name == "qnn.requantize":
             out_dtype = call.attrs.out_dtype
             new_attrs = dict(call.attrs)
@@ -165,21 +173,18 @@ class TestCell(nn.Module):
         return x
 
 
-@pytest.mark.parametrize("dim,act", [(1, False), (1, True), (2, False), (2, True)])
-def test_tracer(dim, act):
-    cell = TestCell(dim=dim, act=act)
+def run_test(cell, input_shape, act, input_bits, output_bits, out_dtype):
     print(cell)
     tracer = QuantizationTracer()
 
     traced_graph = tracer.trace(cell)
 
     converter = RelayConverter(torch.fx.GraphModule(cell, traced_graph))
-    if dim == 1:
-        input = torch.rand((1, 8, 32))
-    elif dim == 2:
-        input = torch.rand((1, 8, 32, 32))
+
+    input = torch.rand(input_shape)
 
     mod, params = converter.run(input)
+    print(mod)
 
     mod = tvm.relay.transform.InferType()(mod)
 
@@ -194,24 +199,150 @@ def test_tracer(dim, act):
         lib = tvm.relay.build(mod, target=target, params=params)
 
     output_torch = cell(input)
-    input_ndarray = (input * 2 ** 7).detach().numpy().astype("byte")
+    input_ndarray = (input * 2 ** (input_bits - 1)).detach().numpy().astype("byte")
 
     dev = tvm.device(str(target), 0)
     module = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))
     module.set_input("x", input_ndarray)
     module.run()
+    output_scale = 1 / 2 ** (output_bits - 1)
+    print("Output scale:", output_scale)
     tvm_output = (
-        module.get_output(0, tvm.nd.empty(output_torch.shape, dtype="int8"))
+        module.get_output(0, tvm.nd.empty(output_torch.shape, dtype=out_dtype))
         .numpy()
         .astype(float)
-        / 2 ** 7
+        * output_scale
     )
-    print("MSE:   ", ((output_torch.detach().numpy() - tvm_output) ** 2).mean())
-    print("MAX_SE:", ((output_torch.detach().numpy() - tvm_output) ** 2).max())
+
+    mse = ((output_torch.detach().numpy() - tvm_output) ** 2).mean()
+    max_se = ((output_torch.detach().numpy() - tvm_output) ** 2).max()
+
+    print(output_torch)
+    print(tvm_output)
+
+    print("MSE:   ", mse)
+    print("MAX_SE:", max_se)
+
+    assert mse < 1 / (2 ** (output_bits - 1))
+    assert max_se < 2 / (2 ** (output_bits - 1))
+
+
+@pytest.mark.parametrize("dim,act", [(1, False), (1, True), (2, False), (2, True)])
+def test_tracer(dim, act):
+    cell = TestCell(dim=dim, act=act)
+    input_bits = 8
+    output_bits = 8
+
+    if dim == 1:
+        input_shape = (1, 8, 32)
+    elif dim == 2:
+        input_shape = (1, 8, 32, 32)
+
+    run_test(cell, input_shape, act, input_bits, output_bits, "int8")
+
     # print(params)
     # print(lib.lib.get_source())
 
 
+class TestCellReduction(nn.Module):
+    def __init__(self, dim=1, act=False):
+        super().__init__()
+        self.qconfig = get_trax_qat_qconfig(Config())
+        self.activation_post_process = self.qconfig.activation()
+        if dim == 1:
+            conv = Conv1d(
+                8,
+                8,
+                3,
+                qconfig=get_trax_qat_qconfig(Config()),
+                padding=1,
+                bias=True,
+                out_quant=False,
+            )
+
+            conv2 = Conv1d(
+                8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
+            )
+        elif dim == 2:
+            conv = Conv2d(
+                8,
+                8,
+                3,
+                qconfig=get_trax_qat_qconfig(Config()),
+                padding=1,
+                bias=True,
+                out_quant=False,
+            )
+            conv2 = Conv2d(
+                8, 8, 3, qconfig=get_trax_qat_qconfig(Config()), padding=1, bias=True
+            )
+        self.red = ReductionBlockAdd(conv, conv2)
+
+    def forward(self, x):
+        x = self.activation_post_process(x)
+        x = self.red(x)
+        return x
+
+
+def test_tracer_reduction(dim=1, act=True):
+    cell = TestCellReduction(dim=dim, act=act)
+    if dim == 1:
+        input_shape = (1, 8, 32)
+    elif dim == 2:
+        input_shape = (1, 8, 32, 32)
+
+    run_test(cell, input_shape, act, 8, 20, "int32")
+
+
+class TestCellLinear(nn.Module):
+    def __init__(self, act=False):
+        super().__init__()
+        self.qconfig = get_trax_qat_qconfig(Config())
+        self.activation_post_process = self.qconfig.activation()
+        self.linear = Linear(128, 32, qconfig=get_trax_qat_qconfig(Config()))
+
+    def forward(self, x):
+        x = self.activation_post_process(x)
+        x = self.linear(x)
+        return x
+
+
+def test_tracer_linear():
+    cell = TestCellLinear()
+    input_shape = (1, 128)
+    act = True
+    run_test(cell, input_shape, act, 8, 8, "int8")
+
+
+class TestCellPooling(nn.Module):
+    def __init__(self, act=False):
+        super().__init__()
+        self.qconfig = get_trax_qat_qconfig(Config())
+        self.activation_post_process = self.qconfig.activation()
+        self.pool = ApproximateGlobalAveragePooling1D(
+            16, qconfig=get_trax_qat_qconfig(Config())
+        )
+
+    def forward(self, x):
+        x = self.activation_post_process(x)
+        x = self.pool(x)
+        return x
+
+
+def test_tracer_pooling():
+    cell = TestCellPooling()
+    input_shape = (1, 64, 16)
+    act = False
+    input_bits = 8
+    output_bits = 8
+    output_dtype = 8
+    out_dtype = "int32"
+    run_test(cell, input_shape, act, input_bits, output_bits, out_dtype)
+
+
 if __name__ == "__main__":
-    test_tracer(1, False)
-    test_tracer(2, False)
+    # test_tracer(1, True)
+    # test_tracer(2, False)
+    # test_tracer_reduction()
+    # test_tracer_linear()
+    test_tracer_pooling()

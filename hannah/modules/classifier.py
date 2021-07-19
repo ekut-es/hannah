@@ -7,10 +7,16 @@ import platform
 from abc import abstractmethod
 
 from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.metrics.classification.precision_recall import Precision
-from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
+from torchmetrics import (
+    Accuracy,
+    Recall,
+    F1,
+    ROC,
+    ConfusionMatrix,
+    Precision,
+    MetricCollection,
+)
 from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
-from pytorch_lightning.metrics.metric import MetricCollection
 from torch._C import Value
 from .config_utils import get_loss_function, get_model
 from typing import Optional, Dict, Union
