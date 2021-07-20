@@ -42,16 +42,7 @@ class PhysioDataset(AbstractDataset):
         label = torch.Tensor([self.physio_labels[index]]).long()
         with open(self.physio_files[index], "rb") as f:
             data = pickle.load(f)
-        #print(type(data))
-        data = torch.from_numpy(data)
-        #data = np.asarray(data)
-        #data = data.transpose(1, 0).float()
-        data = data.transpose(-1, 0).float()
-        if self.channels == 1:
-            data = data[0]
-        print(data.shape)
-        print(label.shape)
-        breakpoint
+        data = torch.from_numpy(data).float()
         return data, data.shape[0], label, label.shape[0]
 
     def get_label_list(self):
@@ -201,12 +192,15 @@ class PhysioCincDataset(PhysioDataset):
         for name in files_list:
             sample_path = os.path.join(raw_folder, name)
             samples, _ = wfdb.rdsamp(sample_path)
-            #zero_pad_len = 18000-len(samples)
+            ##zero_pad_len = 18000-len(samples)
             zero_pad_len = sample_length
             zero_pad = np.zeros(zero_pad_len)
             samples = np.append(samples,zero_pad)
             samples = samples[0:zero_pad_len]
-            #Sample length is 18000 = 60s ECG recording
+            #print(samples)
+            #print("std: ",np.std(samples))
+            #print("mean: ",np.mean(samples))
+            ##Sample length is 18000 = 60s ECG recording
             #raw_data += [{"name": name, "annotations": annotations, "samples": samples}]
             raw_data += [{"name":name,"sample": samples,"label":labels[name]}]
             
@@ -451,6 +445,219 @@ class AtrialFibrillationDataset(PhysioDataset):
         test_pct = config["test_pct"]
 
         folder = os.path.join(config["data_folder"], "atrial_fibrillation_prepared")
+
+        train_files = dict()
+        test_files = dict()
+        dev_files = dict()
+
+        for subfolder in os.listdir(folder):
+            subpath = os.path.join(folder, subfolder)
+            for filename in os.listdir(subpath):
+                path = os.path.join(folder, subfolder, filename)
+                max_no_files = 2 ** 27 - 1
+                bucket = int(hashlib.sha1(path.encode()).hexdigest(), 16)
+                bucket = (bucket % (max_no_files + 1)) * (100.0 / max_no_files)
+                if bucket < dev_pct:
+                    dev_files[path] = cls.get_label_mapping()[subfolder]
+                elif bucket < test_pct + dev_pct:
+                    test_files[path] = cls.get_label_mapping()[subfolder]
+                else:
+                    train_files[path] = cls.get_label_mapping()[subfolder]
+
+        datasets = (
+            cls(train_files, DatasetType.TRAIN, config),
+            cls(dev_files, DatasetType.DEV, config),
+            cls(test_files, DatasetType.TEST, config),
+        )
+        return datasets
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#trial 
+
+class PhysioCinctrialDataset(PhysioDataset):
+
+    LABEL_NORMAL = "N"
+    LABEL_ATRIAL_FIBRILLATION = "A"
+    #LABEL_OTHER_RYTHM = "O"
+    #LABEL_NOISY = "~"
+
+    def __init__(self, data, set_type, config):
+        super().__init__(data, set_type, config)
+        #self.physio_files = list(data.keys())
+        #self.set_type = set_type
+        #self.physio_labels = list(data.values())
+
+        #self.samplingrate = config["samplingrate_cinc"]
+
+        #self.input_length = config["input_length_cinc"]
+
+        #self.channels = config["num_channels_cinc"]
+
+        self.samplingrate = config["samplingrate"]
+
+        self.input_length = config["input_length"]
+
+        self.channels = config["num_channels"]
+
+        self.label_names = {
+            0: self.LABEL_NORMAL,
+            1: self.LABEL_ATRIAL_FIBRILLATION,
+            #2: self.LABEL_OTHER_RYTHM,
+            #3: self.LABEL_NOISY,
+        }
+
+    @classmethod
+    def get_label_names(cls):
+        return {
+            0: cls.LABEL_NORMAL,
+            1: cls.LABEL_ATRIAL_FIBRILLATION,
+            #2: cls.LABEL_OTHER_RYTHM,
+            #3: cls.LABEL_NOISY,
+        }
+
+    @classmethod
+    def get_label_mapping(cls):
+        return {
+            cls.LABEL_NORMAL: 0,
+            cls.LABEL_ATRIAL_FIBRILLATION: 1,
+            #cls.LABEL_OTHER_RYTHM: 2,
+            #cls.LABEL_NOISY: 3,
+        }
+
+    @classmethod
+    def prepare(cls, config):
+        cls.download(config)
+        cls.prepare_files(config)
+
+    #@property
+    #def class_names(self):
+    #    return self.label_names.values()
+
+    #@property
+    #def class_counts(self):
+    #    return self.get_categories_distribution()
+
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+        return
+        target_folder = os.path.join(data_folder, "cinc_2017")
+        if os.path.isdir(target_folder):
+            return
+
+        if len(downloadfolder_tmp) == 0:
+            download_folder = os.path.join(data_folder, "downloads")
+
+        if not os.path.isdir(downloadfolder_tmp):
+            os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".zip")
+
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
+
+        variants = config["variants"]
+        #variants_cinc = config["variants"]
+        
+        # download Physionet 2017 CinC dataset
+        filename = "training2017.zip"
+
+        if "cinc_2017" in variants:
+            extract_from_download_cache(
+                filename,
+                "https://physionet.org/files/challenge-2017/1.0.0/training2017.zip",
+                cached_files,
+                os.path.join(downloadfolder_tmp, "cinc_2017"),
+                target_folder,
+                clear_download=clear_download,
+            )
+
+    @classmethod
+    def prepare_files(cls, config):
+        print("Preparing files...")
+        return
+        files_list = list()
+        data_folder = config["data_folder"]
+        raw_folder = os.path.join(data_folder, "cinc_2017", "training2017")
+        output_folder = os.path.join(data_folder, "cinc_2017_prepared")
+        if os.path.isdir(output_folder):
+            print("Preparation folder already exists, skipping...")
+            return
+        os.makedirs(output_folder)
+        for label in cls.get_label_mapping().keys():
+            os.makedirs(os.path.join(output_folder, label))
+
+        for filename in os.listdir(raw_folder):
+            file_path = os.path.join(raw_folder, filename)
+            if os.path.isfile(file_path) and ".mat" in filename:
+                name, extension = filename.split(".")
+                files_list += [name]
+        
+        #Load Labels        
+        labels = {}
+        label_file_path = os.path.join(raw_folder, "REFERENCE.csv")
+        with open(label_file_path, 'r') as data:
+            for line in csv.reader(data):
+                labels.update({(line[0]):(line[1])})
+        
+        raw_data = list()
+        
+        sample_length = config["input_length"]
+        for name in files_list:
+            sample_path = os.path.join(raw_folder, name)
+            samples, _ = wfdb.rdsamp(sample_path)
+            #zero_pad_len = 18000-len(samples)
+            zero_pad_len = sample_length
+            zero_pad = np.zeros(zero_pad_len)
+            samples = np.append(samples,zero_pad)
+            samples = samples[0:zero_pad_len]
+            #Sample length is 18000 = 60s ECG recording
+            #raw_data += [{"name": name, "annotations": annotations, "samples": samples}]
+            raw_data += [{"name":name,"sample": samples,"label":labels[name]}]
+            
+            
+        #sample_length = config["input_length"]
+        total_samples = len(raw_data)
+        for experiment_number, element in enumerate(raw_data):
+            name = element["name"]
+            sample = element["sample"]
+            #sample = torch.from_numpy(sample)
+            label = element["label"]
+            out_path = os.path.join(output_folder, label)
+            if not os.path.isdir(out_path):
+                os.makedirs(out_path)
+            path = os.path.join(output_folder,label,name)
+            with open(path,"wb") as f:
+                pickle.dump(sample,f)
+            
+    @classmethod
+    def splits(cls, config):
+        data_folder = config["data_folder"]
+        #clear_download = config["clear_download"]
+        #downloadfolder_tmp = config["download_folder"]
+        dev_pct = config["dev_pct"]
+        test_pct = config["test_pct"]
+
+        folder = os.path.join(config["data_folder"], "cinc_trial_1class_prepared")
 
         train_files = dict()
         test_files = dict()
