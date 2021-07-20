@@ -153,17 +153,18 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                 ),
                 nn.BatchNorm1d(output_channels),
-                act,
-                nn.Conv1d(
-                    output_channels,
-                    output_channels,
-                    size,
-                    1,
-                    padding=dilation * pad_x,
-                    dilation=dilation,
-                    bias=False,
-                ),
-                nn.BatchNorm1d(output_channels),
+                nn.ReLU(),
+                #act,
+                #nn.Conv1d(
+                #    output_channels,
+                #    output_channels,
+                #    size,
+                #    1,
+                #    padding=dilation * pad_x,
+                #    dilation=dilation,
+                #    bias=False,
+                #),
+                #nn.BatchNorm1d(output_channels),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
 
@@ -245,14 +246,21 @@ class TCResNetModel(SerializableModule):
                     1,
                     bias=False,
                 )
+                drop_layer = nn.Dropout(dropout_prob)
                 self.layers.append(conv1)
+                self.layers.append(drop_layer)
                 self.layers.append(conv2)
+                self.layers.append(drop_layer)
                 self.layers.append(conv3)
+                #drop_layer = nn.Dropout(dropout_prob)
+                self.layers.append(drop_layer)
             elif use_inputlayer:
                 conv = nn.Conv1d(
                     input_channels, output_channels, size, stride, bias=False
                 )
                 self.layers.append(conv)
+                drop_layer = nn.Dropout(dropout_prob)
+                self.layers.append(drop_layer)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
 
             input_channels = output_channels
@@ -268,21 +276,35 @@ class TCResNetModel(SerializableModule):
             size = config[size_name]
             stride = config[stride_name]
 
+            layer1 = nn.Conv1d(
+                    input_channels,
+                    output_channels,
+                    size,
+                    stride,
+                )
+            self.layers.append(layer1)
+            layer2 = nn.BatchNorm1d(output_channels)
+            self.layers.append(layer2)
+            layer3 = nn.ReLU()
+            self.layers.append(layer3)
+            drop_layer = nn.Dropout(dropout_prob)
+            self.layers.append(drop_layer)
+
             # Use same bottleneck, channel_division factor and separable configuration for all blocks
-            block = TCResidualBlock(
-                input_channels,
-                output_channels,
-                size,
-                stride,
-                dilation ** count,
-                clipping_value,
-                bottleneck[1],
-                channel_division[1],
-                separable[1],
-                small,
-                act,
-            )
-            self.layers.append(block)
+            # block = TCResidualBlock(
+            #     input_channels,
+            #     output_channels,
+            #     size,
+            #     stride,
+            #     dilation ** count,
+            #     clipping_value,
+            #     bottleneck[1],
+            #     channel_division[1],
+            #     separable[1],
+            #     small,
+            #     act,
+            # )
+            #self.layers.append(block)
 
             input_channels = output_channels
             count += 1
@@ -291,9 +313,9 @@ class TCResNetModel(SerializableModule):
             x = layer(x)
 
         shape = x.shape
-        average_pooling = ApproximateGlobalAveragePooling1D(
-            x.shape[2]
-        )  # nn.AvgPool1d((shape[2]))
+        average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
+          # nn.AvgPool1d((shape[2]))
+        #average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
         self.layers.append(average_pooling)
 
         x = average_pooling(x)
@@ -317,7 +339,7 @@ class TCResNetModel(SerializableModule):
         if not self.fully_convolutional:
             self.feat = x = x.view(x.size(0), -1)
 
-        x = self.dropout(x)
+        #x = self.dropout(x)
         if not self.fully_convolutional:
             x = x.view(x.size(0), -1)
 
@@ -628,6 +650,193 @@ class BranchyTCResNetModel(TCResNetModel):
                 return criterion(scores, labels)
 
         return loss_function
+
+
+
+
+
+
+class PaperModel(SerializableModule):
+    def __init__(self, config):
+        super().__init__()
+
+        n_labels = config["n_labels"]
+        width = config["width"]
+        height = config["height"]
+        dropout_prob = config["dropout_prob"]
+        width_multiplier = config["width_multiplier"]
+        self.fully_convolutional = config["fully_convolutional"]
+        dilation = config["dilation"]
+        clipping_value = config["clipping_value"]
+        bottleneck = config["bottleneck"]
+        channel_division = config["channel_division"]
+        separable = config["separable"]
+        small = config["small"]
+        use_inputlayer = config["inputlayer"]
+        act = config.get("act", "relu")
+
+        # self.lstm = nn.LSTM(
+        #     input_size=config["height_lstm"],
+        #     hidden_size=config["hidden_size_lstm"],
+        #     num_layers=config["n_layers_lstm"],
+        #     batch_first=True,
+        #     dropout=config["dropout_lstm"],
+        # )
+
+
+        self.layers = nn.ModuleList()
+        self.feat = None
+
+        input_channels = height
+
+        x = Variable(torch.zeros(1, height, width))
+
+        count = 1
+        while "conv{}_size".format(count) in config:
+            output_channels_name = "conv{}_output_channels".format(count)
+            size_name = "conv{}_size".format(count)
+            stride_name = "conv{}_stride".format(count)
+
+            output_channels = int(config[output_channels_name] * width_multiplier)
+            size = config[size_name]
+            stride = config[stride_name]
+
+            # Change first convolution to bottleneck layer.
+            if bottleneck[0] == 1:
+                channel_division_local = channel_division[0]
+                # Change bottleneck layer to separable convolution
+                groups = (
+                    output_channels // channel_division_local if separable[0] else 1
+                )
+
+                conv1 = nn.Conv1d(
+                    input_channels,
+                    output_channels // channel_division_local,
+                    1,
+                    1,
+                    bias=False,
+                )
+                conv2 = nn.Conv1d(
+                    output_channels // channel_division_local,
+                    output_channels // channel_division_local,
+                    size,
+                    stride,
+                    bias=False,
+                    groups=groups,
+                )
+                conv3 = nn.Conv1d(
+                    output_channels // channel_division_local,
+                    output_channels,
+                    1,
+                    1,
+                    bias=False,
+                )
+                self.layers.append(conv1)
+                self.layers.append(conv2)
+                self.layers.append(conv3)
+            elif use_inputlayer:
+                conv = nn.Conv1d(
+                    input_channels, output_channels, size, stride, bias=False
+                )
+                self.layers.append(conv)
+                # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
+
+            input_channels = output_channels
+            count += 1
+
+        count = 1
+        while "block{}_conv_size".format(count) in config:
+            output_channels_name = "block{}_output_channels".format(count)
+            size_name = "block{}_conv_size".format(count)
+            stride_name = "block{}_stride".format(count)
+
+            output_channels = int(config[output_channels_name] * width_multiplier)
+            size = config[size_name]
+            stride = config[stride_name]
+
+            layer1 = nn.Conv1d(
+                    input_channels,
+                    output_channels,
+                    size,
+                    stride,
+                )
+            self.layers.append(layer1)
+            layer2 = nn.BatchNorm1d(output_channels)
+            self.layers.append(layer2)
+            layer3 = nn.ReLU()
+            self.layers.append(layer3)
+
+            # Use same bottleneck, channel_division factor and separable configuration for all blocks
+            # block = TCResidualBlock(
+            #     input_channels,
+            #     output_channels,
+            #     size,
+            #     stride,
+            #     dilation ** count,
+            #     clipping_value,
+            #     bottleneck[1],
+            #     channel_division[1],
+            #     separable[1],
+            #     small,
+            #     act,
+            # )
+            #self.layers.append(block)
+
+            input_channels = output_channels
+            count += 1
+
+        for layer in self.layers:
+            x = layer(x)
+
+        shape = x.shape
+        average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
+          # nn.AvgPool1d((shape[2]))
+        #average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
+        self.layers.append(average_pooling)
+
+        x = average_pooling(x)
+
+        if not self.fully_convolutional:
+            x = x.view(1, -1)
+
+        shape = x.shape
+
+        self.dropout = nn.Dropout(dropout_prob)
+
+        if self.fully_convolutional:
+            self.fc = nn.Conv1d(shape[1], n_labels, 1, bias=False)
+        else:
+            self.fc = nn.Linear(shape[1], n_labels, bias=False)
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        self.feat = x
+
+        # x = torch.flatten(x)
+        # #x = x.permute(0, 2, 1)
+        # _, (ht, _) = self.lstm(x)
+        
+        # x = self.dropout(ht[-1])
+
+        if not self.fully_convolutional:
+            self.feat = x = x.view(x.size(0), -1)
+
+        x = self.dropout(x)
+        if not self.fully_convolutional:
+            x = x.view(x.size(0), -1)
+
+        x = self.fc(x)
+
+        return x
+
+
+
+
+
+
+
+
 
 
 configs = {
