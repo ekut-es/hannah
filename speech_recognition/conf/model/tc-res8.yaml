@@ -5,25 +5,28 @@ name: tc-res8
 separable:
 - 0
 - 0
-block1_conv_size: 9
-block1_output_channels: 24
-block1_stride: 2
+block1_conv_size: 3
+block1_output_channels: 16
+block1_stride: 1
 block2_conv_size: 9
-block2_output_channels: 32
+block2_output_channels: 64
 block2_stride: 2
 block3_conv_size: 9
-block3_output_channels: 48
+block3_output_channels: 224
 block3_stride: 2
+block4_conv_size: 9
+block4_output_channels: 48
+block4_stride: 2
 bottleneck:
 - 0
 - 0
 channel_division:
 - 2
 - 4
-conv1_output_channels: 16
-conv1_size: 3
-conv1_stride: 1
-dropout_prob: 0.5
+# conv1_output_channels: 16
+# conv1_size: 3
+# conv1_stride: 1
+dropout_prob: 0.2
 fully_convolutional: false
 inputlayer: true
 width_multiplier: 1.0
