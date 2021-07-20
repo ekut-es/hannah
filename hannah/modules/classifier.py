@@ -180,7 +180,7 @@ class ClassifierModule(LightningModule):
                 dummy_input,
                 os.path.join(output_dir, "model.onnx"),
                 verbose=False,
-                opset_version=13,
+                opset_version=11,
             )
         except Exception as e:
             logging.error("Could not export onnx model ...\n {}".format(str(e)))
