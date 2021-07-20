@@ -1,18 +1,18 @@
 # @package _group_
 
 cls: speech_recognition.models.tc.models.TCResNetModel
-name: tc-res10
+name: tc-res15
 separable:
 - 0
 - 0
 block1_conv_size: 9
-block1_stride: 1
+block1_stride: 2
 block1_output_channels: 24
 block2_conv_size: 9
 block2_stride: 1
 block2_output_channels: 24
 block3_conv_size: 9
-block3_stride: 1
+block3_stride: 2
 block3_output_channels: 32
 block4_conv_size: 9
 block4_stride: 1
@@ -42,3 +42,4 @@ small: false
 width: 101
 height: 40
 n_labels: 12
+
