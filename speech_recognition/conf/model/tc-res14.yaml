@@ -5,22 +5,22 @@ name: tc-res14
 separable:
 - 0
 - 0
-block1_conv_size: 5
+block1_conv_size: 9
 block1_stride: 2
 block1_output_channels: 24
-block2_conv_size: 5
+block2_conv_size: 9
 block2_stride: 1
 block2_output_channels: 24
-block3_conv_size: 5
+block3_conv_size: 9
 block3_stride: 2
 block3_output_channels: 32
-block4_conv_size: 5
+block4_conv_size: 9
 block4_stride: 1
 block4_output_channels: 32
-block5_conv_size: 5
+block5_conv_size: 9
 block5_stride: 2
 block5_output_channels: 48
-block6_conv_size: 5
+block6_conv_size: 9
 block6_stride: 1
 block6_output_channels: 48
 bottleneck:
