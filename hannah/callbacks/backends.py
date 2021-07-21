@@ -21,6 +21,11 @@ try:
 except ModuleNotFoundError:
     onnxrt_backend = None
 
+try:
+    import tvm, tvm.relay
+except ModuleNotFoundError:
+    tvm = None
+
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
 
@@ -322,18 +327,146 @@ class TRaxUltraTrailBackend(Callback):
             logging.info("%s: %s", str(k), str(v))
 
 
+if tvm is not None:
+
+    @tvm.relay.transform.function_pass(opt_level=0)
+    class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
+        def __init__(self):
+            super().__init__()
+
+            self.dtype_map = {}
+            for i in range(1, 9):
+                self.dtype_map[f"int{i}"] = "int8"
+            for i in range(9, 17):
+                self.dtype_map[f"int{i}"] = "int16"
+            for i in range(17, 33):
+                self.dtype_map[f"int{i}"] = "int32"
+            for i in range(33, 65):
+                self.dtype_map[f"int{i}"] = "int64"
+
+            for i in range(1, 9):
+                self.dtype_map[f"uint{i}"] = "uint8"
+            for i in range(9, 17):
+                self.dtype_map[f"uint{i}"] = "uint16"
+            for i in range(17, 33):
+                self.dtype_map[f"uint{i}"] = "uint32"
+            for i in range(33, 65):
+                self.dtype_map[f"uint{i}"] = "uint64"
+
+        def transform_function(self, func, mod, ctx):
+            return self.visit(func)
+
+        def visit_constant(self, const):
+            if const.data.dtype in self.dtype_map:
+                return const.astype(self.dtype_map[const.data.dtype])
+            return const
+
+        def visit_function(self, fn):
+            new_params = []
+            binds = {}
+            for param in fn.params:
+                # Get the parameter's type annotation.
+                var_type = param.type_annotation
+                if isinstance(var_type, tvm.ir.TensorType):
+                    dtype = var_type.dtype
+
+                # See if we want to replace dtype.
+                if dtype in self.dtype_map:
+                    dtype = self.dtype_map[dtype]
+                else:
+                    dtype = var_type.dtype
+
+                # Generate new variable.
+                new_param = tvm.relay.expr.var(
+                    param.name_hint, shape=var_type.shape, dtype=dtype
+                )
+
+                new_params.append(new_param)
+                binds[param] = new_param
+
+            new_body = self.visit(fn.body)
+            # Rewrite the body to use new parameters.
+            new_body = tvm.relay.expr.bind(new_body, binds)
+
+            # Construct the updated function and return.
+            return tvm.relay.Function(
+                new_params,
+                new_body,
+                # You could change the return type, if you use None it will re-infer.
+                None,
+                type_params=fn.type_params,
+                attrs=fn.attrs,
+            )
+
+        def visit_call(self, call):
+            # print(call.op)
+            new_args = [self.visit(arg) for arg in call.args]
+            # print(new_args)
+            # breakpoint()
+            new_attrs = call.attrs
+            new_fn = self.visit(call.op)
+            new_call = tvm.relay.Call(
+                new_fn, new_args, new_attrs, call.type_args, call.span
+            )
+
+            if call.op.name == "nn.conv1d":
+                out_dtype = call.attrs.out_dtype
+                new_attrs = dict(call.attrs)
+                new_attrs["out_dtype"] = self.dtype_map[out_dtype]
+                new_call = tvm.relay.nn.conv1d(*new_args, **new_attrs)
+            elif call.op.name == "nn.conv2d":
+                out_dtype = call.attrs.out_dtype
+                new_attrs = dict(call.attrs)
+                new_attrs["out_dtype"] = self.dtype_map[out_dtype]
+                new_call = tvm.relay.nn.conv2d(*new_args, **new_attrs)
+            elif call.op.name == "nn.conv3d":
+                out_dtype = call.attrs.out_dtype
+                new_attrs = dict(call.attrs)
+                new_attrs["out_dtype"] = self.dtype_map[out_dtype]
+                new_call = tvm.relay.nn.conv3d(*new_args, **new_attrs)
+            elif call.op.name == "nn.dense":
+                out_dtype = call.attrs.out_dtype
+                new_attrs = dict(call.attrs)
+                new_attrs["out_dtype"] = self.dtype_map[out_dtype]
+                new_call = tvm.relay.nn.dense(*new_args, **new_attrs)
+            elif call.op.name == "qnn.requantize":
+                out_dtype = call.attrs.out_dtype
+                new_attrs = dict(call.attrs)
+                new_attrs["out_dtype"] = self.dtype_map[out_dtype]
+                new_call = tvm.relay.qnn.op.requantize(*new_args, **new_attrs)
+            elif call.op.name == "cast":
+                out_dtype = call.attrs.dtype
+                new_attrs = dict(call.attrs)
+                new_attrs["dtype"] = self.dtype_map[out_dtype]
+                new_call = tvm.relay.cast(*new_args, **new_attrs)
+            # print(new_call)
+
+            return new_call
+
+
 class TVMBackend(InferenceBackendBase):
     """Inference backend for torch mobile"""
 
     def __init__(self, val_batches=1, test_batches=1, val_frequency=1):
         super().__init__(val_batches, test_batches, val_frequency)
 
-        self.script_module = None
+        if tvm is None:
+            raise Exception(
+                "No tvm installation found please make sure that hannah-tvm is installed"
+            )
+
+        self.torch_model = None
+        self.model = None
+        self.params = None
+        self.lib = None
 
     def prepare(self, model):
         logging.info("Preparing model for target")
+        self.torch_model = model
 
         from ..models.factory.tracer import QuantizationTracer, RelayConverter
+
+        device = model.device
 
         tracer = QuantizationTracer()
 
@@ -342,9 +475,32 @@ class TVMBackend(InferenceBackendBase):
         traced_graph = tracer.trace(model.model)
         converter = RelayConverter(torch.fx.GraphModule(model.model, traced_graph))
         mod, params = converter.run(model.example_feature_array)
-        print(mod)
+        mod = tvm.relay.transform.InferType()(mod)
+        mod = LegalizeQuantizedTypes()(mod)
+
+        target = "llvm"
+        with tvm.transform.PassContext(
+            opt_level=3, config={"tir.disable_vectorize": True}
+        ):
+            lib = tvm.relay.build(mod, target=target, params=params)
+
+        self.model = mod
+        self.params = params
+        self.lib = lib
+
+        model.to(device)
 
     def run_batch(self, inputs=None):
         if inputs is None:
             logging.critical("Backend batch is empty")
             return None
+
+        features = []
+        device = self.torch_model.device
+        self.torch_model.cpu()
+        for inp in inputs:
+            feature = self.torch_model.features(inp)
+            feature = self.torch_model.normalizer(feature)
+            features.append(feature)
+
+        features = [x.detach().cpu().numpy() for x in features]
