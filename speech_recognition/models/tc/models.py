@@ -282,30 +282,29 @@ class TCResNetModel(SerializableModule):
             size = config[size_name]
             stride = config[stride_name]
 
-            layer1 = nn.Conv1d(input_channels, output_channels, size, stride)
-            self.layers.append(layer1)
-            layer2 = nn.BatchNorm1d(output_channels)
-            self.layers.append(layer2)
-            layer3 = nn.ReLU()
-            self.layers.append(layer3)
-            drop_layer = nn.Dropout(dropout_prob)
-            self.layers.append(drop_layer)
+            # layer1 = nn.Conv1d(input_channels, output_channels, size, stride)
+            # self.layers.append(layer1)
+            # layer2 = nn.BatchNorm1d(output_channels)
+            # self.layers.append(layer2)
+            # layer3 = nn.ReLU()
+            # self.layers.append(layer3)
+            # drop_layer = nn.Dropout(dropout_prob)
+            # self.layers.append(drop_layer)
 
-            # Use same bottleneck, channel_division factor and separable configuration for all blocks
-            # block = TCResidualBlock(
-            #     input_channels,
-            #     output_channels,
-            #     size,
-            #     stride,
-            #     dilation ** count,
-            #     clipping_value,
-            #     bottleneck[1],
-            #     channel_division[1],
-            #     separable[1],
-            #     small,
-            #     act,
-            # )
-            # self.layers.append(block)
+            block = TCResidualBlock(
+                input_channels,
+                output_channels,
+                size,
+                stride,
+                dilation ** count,
+                clipping_value,
+                bottleneck[1],
+                channel_division[1],
+                separable[1],
+                small,
+                act,
+            )
+            self.layers.append(block)
 
             input_channels = output_channels
             count += 1
@@ -314,9 +313,9 @@ class TCResNetModel(SerializableModule):
             x = layer(x)
 
         shape = x.shape
-        average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
-        # nn.AvgPool1d((shape[2]))
-        # average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
+        average_pooling = ApproximateGlobalAveragePooling1D(
+            x.shape[2]
+        )  # nn.AvgPool1d((shape[2]))
         self.layers.append(average_pooling)
 
         x = average_pooling(x)
