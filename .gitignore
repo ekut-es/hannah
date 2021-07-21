@@ -18,6 +18,8 @@ datasets/noise_files/
 datasets/hey_snips_research_6k_en_train_eval_clean_ter/
 datasets/atrial_fibrillation
 datasets/atrial_fibrillation_prepared
+datasets/cinc_2017
+datasets/cinc_2017_prepared
 datasets/pamap
 .vscode/.ropeproject
 trained_models
