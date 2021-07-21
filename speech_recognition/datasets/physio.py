@@ -162,13 +162,14 @@ class PhysioCincDataset(PhysioDataset):
             print("Preparation folder already exists, skipping...")
             return
         os.makedirs(output_folder)
+
         for label in cls.get_label_mapping().keys():
             os.makedirs(os.path.join(output_folder, label))
 
         for filename in os.listdir(raw_folder):
             file_path = os.path.join(raw_folder, filename)
             if os.path.isfile(file_path) and ".mat" in filename:
-                name, extension = filename.split(".")
+                name, _ = filename.split(".")
                 files_list += [name]
 
         # Load Labels
@@ -181,19 +182,19 @@ class PhysioCincDataset(PhysioDataset):
         raw_data = list()
 
         sample_length = config["input_length"]
+        zero_pad_len = sample_length
+
         for name in files_list:
+
             sample_path = os.path.join(raw_folder, name)
             samples, _ = wfdb.rdsamp(sample_path)
-            zero_pad_len = sample_length
             zero_pad = np.zeros(zero_pad_len)
             samples = np.append(samples, zero_pad)
             samples = samples[0:zero_pad_len]
-            ##Sample length is 18000 = 60s ECG recording
-            # raw_data += [{"name": name, "annotations": annotations, "samples": samples}]
+
             raw_data += [{"name": name, "sample": samples, "label": labels[name]}]
 
-        total_samples = len(raw_data)
-        for experiment_number, element in enumerate(raw_data):
+        for _, element in enumerate(raw_data):
             name = element["name"]
             sample = element["sample"]
             label = element["label"]
