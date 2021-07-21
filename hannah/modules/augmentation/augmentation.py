@@ -252,14 +252,13 @@ class XmlAugmentationParser:
                 A.Solarize(p=conf["solarize"] / 100),
             ]
         )
-        if os.path.isfile(kitti.aug_path + img):
-            pil_img = Image.open(
-                kitti.kitti_dir + "/training/image_2/" + img
-                if not double_augment
-                else kitti.aug_path + img
-            ).convert("RGB")
-            pil_img = transform(image=np.array(pil_img))["image"]
-            Image.fromarray(pil_img).save(kitti.aug_path + img)
+        pil_img = Image.open(
+            kitti.kitti_dir + "/training/image_2/" + img
+            if not double_augment
+            else kitti.aug_path + img
+        ).convert("RGB")
+        pil_img = transform(image=np.array(pil_img))["image"]
+        Image.fromarray(pil_img).save(kitti.aug_path + img)
 
 
 class AugmentationThread:
@@ -345,14 +344,6 @@ class Augmentation:
 
     def augment(self, kitti: Kitti):
         kitti.aug_files = list()
-        f = open(kitti.kitti_dir + "/augmentation/perform_augmentation.sh", "r")
-        f = f.read()
-        f = f[: f.rfind("-x") + 3] + kitti.aug_path + "augment.xml"
-        with open(kitti.aug_path + "perform_augmentation.sh", "w") as s:
-            s.write(f)
-            s.close()
-        os.chmod(kitti.aug_path + "perform_augmentation.sh", 0o777)
-
         if self.pct != 0 and self.val_pct != 0:
             self.aug_thread.clear()
             th = threading.Thread(

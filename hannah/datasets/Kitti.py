@@ -234,6 +234,16 @@ class Kitti(AbstractDataset):
             if not os.path.exists(aug_folder) or not os.path.isdir(aug_folder):
                 os.mkdir(aug_folder)
 
+            f = open(
+                config["kitti_folder"] + "/augmentation/perform_augmentation.sh", "r"
+            )
+            f = f.read()
+            f = f[: f.rfind("-x") + 3] + aug_folder + "augment.xml"
+            with open(aug_folder + "perform_augmentation.sh", "w") as s:
+                s.write(f)
+                s.close()
+            os.chmod(aug_folder + "perform_augmentation.sh", 0o777)
+
         for i in range(num_imgs):
             if i < num_dev_imgs:
                 img_name = files[i]
