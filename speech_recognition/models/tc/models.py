@@ -339,7 +339,7 @@ class TCResNetModel(SerializableModule):
         if not self.fully_convolutional:
             self.feat = x = x.view(x.size(0), -1)
 
-        # x = self.dropout(x)
+        x = self.dropout(x)
         if not self.fully_convolutional:
             x = x.view(x.size(0), -1)
 
