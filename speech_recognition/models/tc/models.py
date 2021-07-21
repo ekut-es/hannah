@@ -153,18 +153,17 @@ class TCResidualBlock(nn.Module):
                     bias=False,
                 ),
                 nn.BatchNorm1d(output_channels),
-                nn.ReLU(),
-                #act,
-                #nn.Conv1d(
-                #    output_channels,
-                #    output_channels,
-                #    size,
-                #    1,
-                #    padding=dilation * pad_x,
-                #    dilation=dilation,
-                #    bias=False,
-                #),
-                #nn.BatchNorm1d(output_channels),
+                act,
+                nn.Conv1d(
+                    output_channels,
+                    output_channels,
+                    size,
+                    1,
+                    padding=dilation * pad_x,
+                    dilation=dilation,
+                    bias=False,
+                ),
+                nn.BatchNorm1d(output_channels),
                 # distiller.quantization.SymmetricClippedLinearQuantization(num_bits=20, clip_val=2.0**5-1.0/(2.0**14),min_val=-2.0**5)
             )
 
@@ -246,21 +245,28 @@ class TCResNetModel(SerializableModule):
                     1,
                     bias=False,
                 )
-                drop_layer = nn.Dropout(dropout_prob)
-                self.layers.append(conv1)
-                self.layers.append(drop_layer)
-                self.layers.append(conv2)
-                self.layers.append(drop_layer)
-                self.layers.append(conv3)
-                #drop_layer = nn.Dropout(dropout_prob)
-                self.layers.append(drop_layer)
+
+                if config.get("input_dropout", False):
+                    drop_layer = nn.Dropout(dropout_prob)
+                    self.layers.append(conv1)
+                    self.layers.append(drop_layer)
+                    self.layers.append(conv2)
+                    self.layers.append(drop_layer)
+                    self.layers.append(conv3)
+                    self.layers.append(drop_layer)
+                else:
+                    self.layers.append(conv1)
+                    self.layers.append(conv2)
+                    self.layers.append(conv3)
+
             elif use_inputlayer:
                 conv = nn.Conv1d(
                     input_channels, output_channels, size, stride, bias=False
                 )
                 self.layers.append(conv)
-                drop_layer = nn.Dropout(dropout_prob)
-                self.layers.append(drop_layer)
+                if config.get("input_dropout", False):
+                    drop_layer = nn.Dropout(dropout_prob)
+                    self.layers.append(drop_layer)
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
 
             input_channels = output_channels
@@ -276,12 +282,7 @@ class TCResNetModel(SerializableModule):
             size = config[size_name]
             stride = config[stride_name]
 
-            layer1 = nn.Conv1d(
-                    input_channels,
-                    output_channels,
-                    size,
-                    stride,
-                )
+            layer1 = nn.Conv1d(input_channels, output_channels, size, stride)
             self.layers.append(layer1)
             layer2 = nn.BatchNorm1d(output_channels)
             self.layers.append(layer2)
@@ -304,7 +305,7 @@ class TCResNetModel(SerializableModule):
             #     small,
             #     act,
             # )
-            #self.layers.append(block)
+            # self.layers.append(block)
 
             input_channels = output_channels
             count += 1
@@ -314,8 +315,8 @@ class TCResNetModel(SerializableModule):
 
         shape = x.shape
         average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
-          # nn.AvgPool1d((shape[2]))
-        #average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
+        # nn.AvgPool1d((shape[2]))
+        # average_pooling = nn.AdaptiveAvgPool1d(x.shape[2])
         self.layers.append(average_pooling)
 
         x = average_pooling(x)
@@ -339,7 +340,7 @@ class TCResNetModel(SerializableModule):
         if not self.fully_convolutional:
             self.feat = x = x.view(x.size(0), -1)
 
-        #x = self.dropout(x)
+        # x = self.dropout(x)
         if not self.fully_convolutional:
             x = x.view(x.size(0), -1)
 
@@ -650,8 +651,6 @@ class BranchyTCResNetModel(TCResNetModel):
                 return criterion(scores, labels)
 
         return loss_function
-
-
 
 
 configs = {
