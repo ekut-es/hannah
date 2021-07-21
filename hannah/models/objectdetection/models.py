@@ -117,15 +117,13 @@ class UltralyticsYolo(torch.nn.Module):
         return retval
 
     def forward(self, x, y=None):
-        pad = (3, 3, 4, 5) if "6" not in self.model.yaml_file else (19, 19, 132, 133)
-
         if isinstance(x, (tuple, list)):
             retval = list()
             for x_elem in x:
                 pad = (
                     (0, 1248 - x_elem.size()[2], 0, 384 - x_elem.size()[1])
                     if "6" not in self.model.yaml_file
-                    else (0, 1280 - x_elem.size()[2], 0, 640 - x_elem.size()[1])
+                    else (0, 1280 - x_elem.size()[2], 0, 1280 - x_elem.size()[1])
                 )
                 retval.append(self.model(F.pad(x_elem.unsqueeze(0), pad, "constant")))
 
@@ -143,6 +141,11 @@ class UltralyticsYolo(torch.nn.Module):
 
             return retval
         else:
+            pad = (
+                (0, 1248 - x.size()[3], 0, 384 - x.size()[2])
+                if "6" not in self.model.yaml_file
+                else (0, 1280 - x.size()[3], 0, 1280 - x.size()[2])
+            )
             x = F.pad(x, pad, "constant")
             return self.model(x)
 

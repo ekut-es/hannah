@@ -103,10 +103,6 @@ def eval_checkpoint(config: DictConfig, checkpoint):
 
     hparams["num_workers"] = 0
     hparams["augmentation"] = config["augmentation"]
-    if "realrain_test" in hparams["dataset"]:
-        hparams["dataset"]["realrain_test"] = False
-    hparams["dataset"]["test_pct"] = 50
-    hparams["dataset"]["dev_pct"] = 50
     module = instantiate(hparams)
     module.setup("test")
     module.load_state_dict(checkpoint["state_dict"])
