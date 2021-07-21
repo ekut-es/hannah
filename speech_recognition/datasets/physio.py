@@ -17,8 +17,9 @@ from collections import defaultdict
 from .base import AbstractDataset, DatasetType
 from ..utils import list_all_files, extract_from_download_cache
 
+
 class PhysioDataset(AbstractDataset):
-    def __init__(self, data, set_type, config):
+    def __init__(self, data, set_type, config, dataset_name=None):
         super().__init__()
         self.physio_files = list(data.keys())
         self.set_type = set_type
@@ -30,6 +31,8 @@ class PhysioDataset(AbstractDataset):
 
         self.channels = config["num_channels"]
 
+        self.dataset_name = dataset_name
+
     @property
     def class_names(self):
         return self.label_names.values()
@@ -39,10 +42,18 @@ class PhysioDataset(AbstractDataset):
         return self.get_categories_distribution()
 
     def __getitem__(self, index):
-        label = torch.Tensor([self.physio_labels[index]]).long()
-        with open(self.physio_files[index], "rb") as f:
-            data = pickle.load(f)
-        data = torch.from_numpy(data).float()
+        if self.dataset_name == "PhysioCinc":
+            label = torch.Tensor([self.physio_labels[index]]).long()
+            with open(self.physio_files[index], "rb") as f:
+                data = pickle.load(f)
+            data = torch.from_numpy(data).float()
+        elif self.dataset_name == "AtrialFibrillation":
+            with open(self.physio_files[index], "rb") as f:
+                data = pickle.load(f)
+            data = torch.from_numpy(data)
+            data = data.transpose(1, 0).float()
+            if self.channels == 1:
+                data = data[0]
         return data, data.shape[0], label, label.shape[0]
 
     def get_label_list(self):
@@ -66,7 +77,7 @@ class PhysioCincDataset(PhysioDataset):
     LABEL_NOISY = "~"
 
     def __init__(self, data, set_type, config):
-        super().__init__(data, set_type, config)
+        super().__init__(data, set_type, config, "PhysioCinc")
         self.samplingrate = config["samplingrate"]
 
         self.input_length = config["input_length"]
@@ -126,7 +137,7 @@ class PhysioCincDataset(PhysioDataset):
             os.makedirs(data_folder)
 
         variants = config["variants"]
-        
+
         # download Physionet 2017 CinC dataset
         filename = "training2017.zip"
 
@@ -159,28 +170,28 @@ class PhysioCincDataset(PhysioDataset):
             if os.path.isfile(file_path) and ".mat" in filename:
                 name, extension = filename.split(".")
                 files_list += [name]
-        
-        #Load Labels        
+
+        # Load Labels
         labels = {}
         label_file_path = os.path.join(raw_folder, "REFERENCE.csv")
-        with open(label_file_path, 'r') as data:
+        with open(label_file_path, "r") as data:
             for line in csv.reader(data):
-                labels.update({(line[0]):(line[1])})
-        
+                labels.update({(line[0]): (line[1])})
+
         raw_data = list()
-        
+
         sample_length = config["input_length"]
         for name in files_list:
             sample_path = os.path.join(raw_folder, name)
             samples, _ = wfdb.rdsamp(sample_path)
             zero_pad_len = sample_length
             zero_pad = np.zeros(zero_pad_len)
-            samples = np.append(samples,zero_pad)
+            samples = np.append(samples, zero_pad)
             samples = samples[0:zero_pad_len]
             ##Sample length is 18000 = 60s ECG recording
-            #raw_data += [{"name": name, "annotations": annotations, "samples": samples}]
-            raw_data += [{"name":name,"sample": samples,"label":labels[name]}]
-            
+            # raw_data += [{"name": name, "annotations": annotations, "samples": samples}]
+            raw_data += [{"name": name, "sample": samples, "label": labels[name]}]
+
         total_samples = len(raw_data)
         for experiment_number, element in enumerate(raw_data):
             name = element["name"]
@@ -189,10 +200,10 @@ class PhysioCincDataset(PhysioDataset):
             out_path = os.path.join(output_folder, label)
             if not os.path.isdir(out_path):
                 os.makedirs(out_path)
-            path = os.path.join(output_folder,label,name)
-            with open(path,"wb") as f:
-                pickle.dump(sample,f)
-            
+            path = os.path.join(output_folder, label, name)
+            with open(path, "wb") as f:
+                pickle.dump(sample, f)
+
     @classmethod
     def splits(cls, config):
 
@@ -227,7 +238,6 @@ class PhysioCincDataset(PhysioDataset):
         return datasets
 
 
-
 class AtrialFibrillationDataset(PhysioDataset):
     """ Atrial Fibrillation Database (https://physionet.org/content/afdb/1.0.0/)"""
 
@@ -245,7 +255,7 @@ class AtrialFibrillationDataset(PhysioDataset):
         self.label_names = self.get_label_names()
 
         self.annotation_names = self.get_annotation_names()
-        super().__init__(data, set_type, config)
+        super().__init__(data, set_type, config, "AtrialFibrillation")
 
         self.channels = config["num_channels"]
 
@@ -421,4 +431,3 @@ class AtrialFibrillationDataset(PhysioDataset):
             cls(test_files, DatasetType.TEST, config),
         )
         return datasets
-
