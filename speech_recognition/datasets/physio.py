@@ -42,8 +42,8 @@ class PhysioDataset(AbstractDataset):
         return self.get_categories_distribution()
 
     def __getitem__(self, index):
+        label = torch.Tensor([self.physio_labels[index]]).long()
         if self.dataset_name == "PhysioCinc":
-            label = torch.Tensor([self.physio_labels[index]]).long()
             with open(self.physio_files[index], "rb") as f:
                 data = pickle.load(f)
             data = torch.from_numpy(data).float()
