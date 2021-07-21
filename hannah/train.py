@@ -183,6 +183,8 @@ def nas(config: DictConfig):
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config: DictConfig):
+    if config.get("dataset_creation", None) is not None:
+        handleDataset(config)
     if config.get("nas", None) is not None:
         return nas(config)
     else:

@@ -16,10 +16,13 @@ datasets/vad_speech/
 datasets/getrennt/
 datasets/downloads/
 datasets/noise_files/
+datasets/downsampled/
 datasets/hey_snips_research_6k_en_train_eval_clean_ter/
 datasets/atrial_fibrillation
 datasets/atrial_fibrillation_prepared
 datasets/pamap
+datasets/*.lock
+datasets/*.csv
 .vscode/.ropeproject
 trained_models
 \#*
