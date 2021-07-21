@@ -298,9 +298,10 @@ class LogSpectrogram(torch.nn.Module):
         if hop_length is not None:
             self.hop_length = hop_length
 
-        window = window_fn(self.win_length, **wkwargs)
         if wkwargs is None:
             window = window_fn(self.win_length)
+        else:
+            window = window_fn(self.win_length, **wkwargs)
 
         self.register_buffer("window", window)
         self.pad = pad
