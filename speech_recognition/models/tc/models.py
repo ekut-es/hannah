@@ -282,15 +282,6 @@ class TCResNetModel(SerializableModule):
             size = config[size_name]
             stride = config[stride_name]
 
-            # layer1 = nn.Conv1d(input_channels, output_channels, size, stride)
-            # self.layers.append(layer1)
-            # layer2 = nn.BatchNorm1d(output_channels)
-            # self.layers.append(layer2)
-            # layer3 = nn.ReLU()
-            # self.layers.append(layer3)
-            # drop_layer = nn.Dropout(dropout_prob)
-            # self.layers.append(drop_layer)
-
             block = TCResidualBlock(
                 input_channels,
                 output_channels,

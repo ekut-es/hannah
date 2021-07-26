@@ -43,14 +43,12 @@ class PhysioDataset(AbstractDataset):
 
     def __getitem__(self, index):
         label = torch.Tensor([self.physio_labels[index]]).long()
+        with open(self.physio_files[index], "rb") as f:
+            data = pickle.load(f)
+        data = torch.from_numpy(data).float()
         if self.dataset_name == "PhysioCinc":
-            with open(self.physio_files[index], "rb") as f:
-                data = pickle.load(f)
-            data = torch.from_numpy(data).float()
-        elif self.dataset_name == "AtrialFibrillation":
-            with open(self.physio_files[index], "rb") as f:
-                data = pickle.load(f)
-            data = torch.from_numpy(data)
+            data = data - 0.01
+        if self.dataset_name == "AtrialFibrillation":
             data = data.transpose(1, 0).float()
             if self.channels == 1:
                 data = data[0]
