@@ -515,6 +515,7 @@ class ConvBn2d(_ConvBnNd):
         # Args for this module
         freeze_bn=False,
         qconfig=None,
+        out_quant=True,
     ):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
@@ -539,7 +540,11 @@ class ConvBn2d(_ConvBnNd):
             qconfig=qconfig,
             dim=2,
         )
-        self.activation_post_process = qconfig.activation()
+        self.out_quant = out_quant
+        if self.out_quant:
+            self.activation_post_process = qconfig.activation()
+        else:
+            self.activation_past_process = nn.Identity()
 
     def forward(self, input):
         return self.activation_post_process(super(ConvBn2d, self)._forward(input))
@@ -580,6 +585,7 @@ class ConvBnReLU2d(ConvBn2d):
         # Args for this module
         freeze_bn=False,
         qconfig=None,
+        out_quant=True,
     ):
         super(ConvBnReLU2d, self).__init__(
             in_channels,
@@ -596,7 +602,11 @@ class ConvBnReLU2d(ConvBn2d):
             freeze_bn,
             qconfig,
         )
-        self.activation_post_process = qconfig.activation()
+        self.out_quant = out_quant
+        if self.out_quant:
+            self.activation_post_process = qconfig.activation()
+        else:
+            self.activation_post_process = nn.Identity()
 
     def forward(self, input):
         return self.activation_post_process(
@@ -631,6 +641,7 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
         bias=True,
         padding_mode="zeros",
         qconfig=None,
+        out_quant=True,
     ):
         super(ConvReLU2d, self).__init__(
             in_channels,
@@ -647,7 +658,13 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
         self.dim = 2
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation()
+        self.out_quant = out_quant
+
+        if self.out_quant:
+            self.activation_post_process = self.qconfig.activation()
+        else:
+            self.activation_post_process = nn.Identity()
+
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
@@ -810,6 +827,7 @@ class Conv2d(nn.Conv2d, _ConvForwardMixin):
         bias=True,
         padding_mode="zeros",
         qconfig=None,
+        out_quant=True,
     ):
         super(Conv2d, self).__init__(
             in_channels,
@@ -825,7 +843,10 @@ class Conv2d(nn.Conv2d, _ConvForwardMixin):
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
         self.weight_fake_quant = self.qconfig.weight()
-        self.activation_post_process = self.qconfig.activation()
+        self.out_quant = out_quant
+        self.activation_post_process = (
+            self.qconfig.activation() if out_quant else nn.Identity()
+        )
         if hasattr(qconfig, "bias"):
             self.bias_fake_quant = self.qconfig.bias()
         else:
@@ -866,7 +887,7 @@ class Linear(nn.Linear):
     _FLOAT_MODULE = nn.Linear
 
     def __init__(
-        self, in_features, out_features, bias=True, out_quant=False, qconfig=None
+        self, in_features, out_features, bias=True, out_quant=True, qconfig=None
     ):
         super().__init__(in_features, out_features, bias)
         assert qconfig, "qconfig must be provided for QAT module"
@@ -878,29 +899,22 @@ class Linear(nn.Linear):
         else:
             self.bias_fake_quant = qconfig.activation()
 
-        self.activation_post_process = qconfig.activation()
+        self.activation_post_process = (
+            qconfig.activation() if out_quant else nn.Identity()
+        )
 
     @property
     def scaled_weight(self):
         return self.weight_fake_quant(self.weight)
 
     def forward(self, input):
-        if self.out_quant:
-            return F.linear(
+        return self.activation_post_process(
+            F.linear(
                 input,
                 self.weight_fake_quant(self.weight),
                 self.bias_fake_quant(self.bias) if self.bias is not None else self.bias,
             )
-        else:
-            return self.activation_post_process(
-                F.linear(
-                    input,
-                    self.weight_fake_quant(self.weight),
-                    self.bias_fake_quant(self.bias)
-                    if self.bias is not None
-                    else self.bias,
-                )
-            )
+        )
 
     @classmethod
     def from_float(cls, mod):
@@ -949,7 +963,7 @@ class LinearReLU(nn.Linear):
     """
 
     def __init__(
-        self, in_features, out_features, bias=True, out_quant=False, qconfig=None
+        self, in_features, out_features, bias=True, out_quant=True, qconfig=None
     ):
         super().__init__(in_features, out_features, bias)
         assert qconfig, "qconfig must be provided for QAT module"
@@ -961,15 +975,17 @@ class LinearReLU(nn.Linear):
         else:
             self.bias_fake_quant = qconfig.activation()
 
-        self.activation_post_process = qconfig.activation()
+        self.activation_post_process = (
+            qconfig.activation() if out_quant else nn.Identity()
+        )
 
     @property
     def scaled_weight(self):
         return self.weight_fake_quant(self.weight)
 
     def forward(self, input):
-        if self.out_quant:
-            return F.relu(
+        return self.activation_post_process(
+            F.relu(
                 F.linear(
                     input,
                     self.weight_fake_quant(self.weight),
@@ -978,18 +994,7 @@ class LinearReLU(nn.Linear):
                     else self.bias,
                 )
             )
-        else:
-            return self.activation_post_process(
-                F.relu(
-                    F.linear(
-                        input,
-                        self.weight_fake_quant(self.weight),
-                        self.bias_fake_quant(self.bias)
-                        if self.bias is not None
-                        else self.bias,
-                    )
-                )
-            )
+        )
 
     @classmethod
     def from_float(cls, mod):

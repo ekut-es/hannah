@@ -66,7 +66,11 @@ class InferenceBackendBase(Callback):
                 result = self.run_batch(inputs=batch[0])
                 target = pl_module.forward(batch[0].to(pl_module.device))
 
-                mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
+                mse = torch.nn.functional.mse_loss(
+                    result.to(pl_module.device),
+                    target.to(pl_module.device),
+                    reduction="mean",
+                )
                 pl_module.log("val_backend_mse", mse)
                 logging.info("val_backend_mse: %f", mse)
 
@@ -80,7 +84,11 @@ class InferenceBackendBase(Callback):
             result = self.run_batch(inputs=batch[0])
             target = pl_module(batch[0].to(pl_module.device))
 
-            mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
+            mse = torch.nn.functional.mse_loss(
+                result.to(pl_module.device),
+                target.to(pl_module.device),
+                reduction="mean",
+            )
             pl_module.log("test_backend_mse", mse)
             logging.info("test_backend_mse: %f", mse)
 
@@ -532,10 +540,13 @@ class TVMBackend(InferenceBackendBase):
             print(out_deploy.flatten()[0:10])
 
             out = out_deploy.astype(float)
-            out = out / 128
+            out = out / (2 ** 14)
+
+            print(out[0:10])
 
             results.append(torch.from_numpy(out))
 
         out = torch.stack(results).squeeze(1)
+        self.torch_model.to(device)
 
         return out

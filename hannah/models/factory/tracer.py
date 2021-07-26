@@ -338,6 +338,13 @@ class RelayConverter(torch.fx.Interpreter):
                 module.bn.bias,
             )
 
+        inputs = list(node.all_input_nodes)
+        data = self.outputs[inputs[0].name]
+        input_info = self.tensor_info[inputs[0].name]
+        input_bits = input_info.bits
+        input_dtype = input_info.relay_dtype
+        input_scale = input_info.scale
+
         quant_weight = module.weight_fake_quant.quantize(weight)
         quant_bias = module.bias_fake_quant.quantize(bias) if bias is not None else None
         weight_dtype = f"int{module.weight_fake_quant.bits}"
@@ -368,7 +375,6 @@ class RelayConverter(torch.fx.Interpreter):
             data, weight, out_dtype=self.accumulator_dtype
         )  # FIXME use proper out dtype
 
-        input_scale = 1 / (2.0 ** 7)
         accumulator_scale = weight_scale * input_scale
 
         if bias is not None:
@@ -386,7 +392,7 @@ class RelayConverter(torch.fx.Interpreter):
         if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
             linear_out = tvm.relay.nn.relu(linear_out)
 
-        if hasattr(module.activation_post_process, "bits"):
+        if hasattr(module.activation_post_process, "bits") and module.out_quant:
             output_dtype = f"int{module.activation_post_process.bits}"
             output_scale = module.activation_post_process.quantization_function.scale
         else:
@@ -432,8 +438,16 @@ class RelayConverter(torch.fx.Interpreter):
 
         quant_weight = module.weight_fake_quant.quantize(weight)
         quant_bias = module.bias_fake_quant.quantize(bias) if bias is not None else None
+
         weight_dtype = f"int{module.weight_fake_quant.bits}"
         weight_scale = module.weight_fake_quant.quantization_function.scale
+
+        inputs = list(node.all_input_nodes)
+        data = self.outputs[inputs[0].name]
+        input_info = self.tensor_info[inputs[0].name]
+        input_bits = input_info.bits
+        input_dtype = input_info.relay_dtype
+        input_scale = input_info.scale
 
         weight_name = f"{node.name}.weight"
         weight = tvm.relay.Var(
@@ -452,9 +466,6 @@ class RelayConverter(torch.fx.Interpreter):
             self.params[bias_name] = tvm.nd.array(
                 (quant_bias).detach().numpy().astype("byte")
             )
-
-        inputs = list(node.all_input_nodes)
-        data = self.outputs[inputs[0].name]
 
         if quant_weight.dim() == 3:
             conv_out = tvm.relay.nn.conv1d(
@@ -489,7 +500,6 @@ class RelayConverter(torch.fx.Interpreter):
                 f"Quantized weights of dimension {quant_weight.dim()} are not supported"
             )
 
-        input_scale = 1 / (2.0 ** 7)
         accumulator_scale = weight_scale * input_scale
 
         if bias is not None:
@@ -512,7 +522,10 @@ class RelayConverter(torch.fx.Interpreter):
         ):
             conv_out = tvm.relay.nn.relu(conv_out)
 
-        if hasattr(module.activation_post_process, "bits"):
+        if (
+            hasattr(module.activation_post_process, "bits")
+            and getattr(module, "out_quant", True) is True
+        ):
             output_dtype = f"int{module.activation_post_process.bits}"
             output_scale = module.activation_post_process.quantization_function.scale
         else:
@@ -552,6 +565,7 @@ class RelayConverter(torch.fx.Interpreter):
             raise Exception(f"Support for module: {module} is not supported")
 
     def _handle_placeholder(self, node, result):
+        print("handle_placeholder", self.input_scale)
         var = relay.var(
             node.name, relay.TensorType(result.shape, dtype=self.input_dtype)
         )
