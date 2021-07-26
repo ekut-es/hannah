@@ -495,12 +495,47 @@ class TVMBackend(InferenceBackendBase):
             logging.critical("Backend batch is empty")
             return None
 
-        features = []
         device = self.torch_model.device
         self.torch_model.cpu()
-        for inp in inputs:
-            feature = self.torch_model.features(inp)
-            feature = self.torch_model.normalizer(feature)
-            features.append(feature)
+
+        feature = self.torch_model.features(inputs)
+        feature = self.torch_model.normalizer(feature)
+
+        features = torch.split(feature, 1)
 
         features = [x.detach().cpu().numpy() for x in features]
+        results = []
+
+        for input in features:
+            from tvm.contrib import utils
+            import numpy as np
+
+            input = input * 128
+            input = input.round()
+            input = np.clip(input, -128, 127)
+
+            temp = utils.tempdir()
+            path_lib = temp.relpath("deploy_lib.tar")
+            self.lib.export_library(path_lib)
+            print(temp.listdir())
+
+            loaded_lib = tvm.runtime.load_module(path_lib)
+            input_data = tvm.nd.array(input)
+
+            module = tvm.contrib.graph_executor.GraphModule(
+                loaded_lib["default"](tvm.cpu())
+            )
+            module.run(data=input_data)
+            out_deploy = module.get_output(0).numpy()
+
+            # Print first 10 elements of output
+            print(out_deploy.flatten()[0:10])
+
+            out = out_deploy.astype(float)
+            out = out / 128
+
+            results.append(torch.from_numpy(out))
+
+        out = torch.stack(results).squeeze(1)
+
+        return out
