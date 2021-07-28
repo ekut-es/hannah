@@ -7,7 +7,7 @@ From: nvidia/cuda:10.2-cudnn7-runtime
 %post
     echo "Hello from inside the container"
     apt-get update
-    
+
     apt-get -y install python3.6-dev freeglut3-dev portaudio19-dev
     apt-get -y install git curl wget ffmpeg
     curl https://bootstrap.pypa.io/get-pip.py | python3.6

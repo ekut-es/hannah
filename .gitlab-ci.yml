@@ -13,7 +13,7 @@ before_script:
   - source /etc/os-release
   - if [[ $ID == "debian" || $ID == "ubuntu" ]]; then
   - apt update
-  - apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev
+  - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev
   - else
   - yum install epel-release -y
   - yum install git sudo python36 -y
@@ -40,9 +40,10 @@ test_python_37:
   stage: test
   script:
     - set -e
-    - poetry run python3 -m pytest  -v --cov=speech_recognition test
+    - poetry run python3 -m pytest  -v --cov=hannah test
   tags:
     - docker
+    - nfs
   interruptible: true
 
 test_python_38:
@@ -50,21 +51,24 @@ test_python_38:
   image: python:3.8
   script:
     - set -e
-    - poetry run python3 -m pytest  -v --cov=speech_recognition test
+    - poetry run python3 -m pytest  -v --cov=hannah test
   tags:
     - docker
+    - nfs
   interruptible: true
   except:
     - branches
+
 
 test_python_39:
   stage: test
   image: python:3.9
   script:
     - set -e
-    - poetry run python3 -m pytest -v --cov=speech_recognition test
+    - poetry run python3 -m pytest -v --cov=hannah test
   tags:
     - docker
+    - nfs
   interruptible: true
 
 build_docs:

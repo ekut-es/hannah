@@ -57,7 +57,6 @@ cp -r datasets $SCRATCH
 ls $SCRATCH
 
 echo "Running training"
-singularity run --nv  --bind $PWD:/opt/speech_recognition,$SCRATCH:/mnt /home/bringmann/cgerum05/ml_cloud.simg dataset.data_folder=/mnt/datasets trainer.num_workers=4 -m 
+singularity run --nv  --bind $PWD:/opt/hannah,$SCRATCH:/mnt /home/bringmann/cgerum05/ml_cloud.simg dataset.data_folder=/mnt/datasets trainer.num_workers=4 -m
 
 echo DONE!
-
