@@ -67,7 +67,8 @@ def build1DConvolution(
         bias=bias,
         padding_mode=padding_mode,
     )
-    bn = build1DBatchNorm(out_channels, type=batchnorm, timesteps=timesteps)
+    if batchnorm is not None:
+        bn = build1DBatchNorm(out_channels, type=batchnorm, timesteps=timesteps)
 
     if batchnorm is None and activation is None and neuron_type is None:
         return nn.Sequential(conv)
