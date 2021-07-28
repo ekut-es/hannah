@@ -1,7 +1,7 @@
 # @package _group_
 
 cls: hannah.models.tc.models.TCResNetModel
-name: tc-res8
+name: tc-res8-snn
 separable:
 - 0
 - 0
