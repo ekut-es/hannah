@@ -38,6 +38,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         noise_variance: float = 0.1,
         correct_prob: float = 0.9,
         export_onnx: bool = True,
+        gpus=None,
     ):
         super().__init__(
             dataset=dataset,
@@ -51,7 +52,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             time_masking=time_masking,
             frequency_masking=frequency_masking,
             export_onnx=export_onnx,
+            gpus=gpus,
         )
+        self.gpus = gpus
         self.model = model
         self.save_hyperparameters()
         self.distillation_loss = distillation_loss
