@@ -1,0 +1,5 @@
+name: test
+checkpoints: []
+noise: []
+output_dir: eval
+default_target: hannah.modules.classifier.StreamClassifierModule

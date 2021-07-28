@@ -1,6 +1,0 @@
-# @package _group_
-
-_target_: speech_recognition.callbacks.backends.TorchMobileBackend
-val_batches: 10
-test_batches: 10
-val_frequency: 10

@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "speech_recognition"
+name = "hannah"
 version = "0.1.0"
 description = ""
 authors = [
@@ -32,7 +32,7 @@ seaborn="^0.11.1"
 pandas="^1.2.4"
 thop="^0.0.31-2005241907"
 
-hydra-core = "^1.0.6"
+hydra-core = ">=1.0.6 < 1.1.0"
 hydra-nevergrad-sweeper = "^1.1.0-rc.1"
 hydra-joblib-launcher = "^1.1.0"
 hannah-optimizer = {path = "plugins/hannah-optimizer", develop=true}
@@ -43,6 +43,9 @@ GitPython = "^3.1.14"
 h5py = "^3.2.1"
 sympy = "^1.7.1"
 nvsmi = "^0.4.2"
+libsvm="^3.23.0.4"
+imagecorruptions = "^1.1.2"
+albumentations = "^1.0.1"
 
 # optional dependencies
 onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
@@ -66,8 +69,10 @@ tf-backend = ["onnx-tf", "tensorflow-addons"]
 onnxrt-backend = ["onnxruntime"]
 
 [tool.poetry.scripts]
-hannah-train = 'speech_recognition.train:main'
-hannah-eval = 'speech_recognition.eval:main'
+hannah-train = 'hannah.train:main'
+hannah-nas = 'hannah.train:nas'
+hannah-eval = 'hannah.eval:main'
+hannah-objectdetection-eval = 'hannah.objectdetection_eval:main'
 
 [build-system]
 requires = ["poetry>=0.12"]

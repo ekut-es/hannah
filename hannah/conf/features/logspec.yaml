@@ -1,0 +1,12 @@
+# @package _group_
+_target_: speech_recognition.features.LogSpectrogram
+n_fft: 400
+win_length: null
+hop_length: null
+pad: 0
+power: 2.0
+normalized: False
+
+#TODO:
+#window_fn: Callable[[...], torch.Tensor] = <built-in method hann_window of type object>
+#wkwargs: Optional[dict] = None
