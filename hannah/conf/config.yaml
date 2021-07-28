@@ -2,7 +2,7 @@ defaults:
     - dataset: kws
     - features: mfcc
     - model: tc-res8
-    - scheduler: null
+    - scheduler: 1cycle
     - optimizer: sgd
     - normalizer: null
     - module: stream_classifier
