@@ -1,5 +1,5 @@
 # @package _group_
-_target_: speech_recognition.features.LogSpectrogram
+_target_: hannah.features.LogSpectrogram
 n_fft: 400
 win_length: null
 hop_length: null

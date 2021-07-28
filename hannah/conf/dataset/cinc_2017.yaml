@@ -1,7 +1,7 @@
 # @package _group_
 
 data_folder: ${hydra:runtime.cwd}/datasets/
-cls: speech_recognition.datasets.physio.PhysioCincDataset
+cls: hannah.datasets.physio.PhysioCincDataset
 dataset: cinc_2017
 
 test_pct: 10
