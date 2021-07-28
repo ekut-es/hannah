@@ -172,7 +172,7 @@ def train(config: DictConfig):
     if len(results) == 1:
         return results[0]
     else:
-        return np.sum(results) / len(results)
+        return results
 
 
 def nas(config: DictConfig):
