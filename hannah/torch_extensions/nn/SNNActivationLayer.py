@@ -18,7 +18,6 @@ class Spiking1DIFLayer(torch.nn.Module):
         self.spk_rec_hist = None
 
         self.training = True
-        self.negative_mempot = negative_mempot
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -204,7 +203,7 @@ class Spiking1DLIFLayer(torch.nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        nb_steps = x.shape[2]
+        nb_steps = x.shape[self.time_position]
 
         # membrane potential
         mem = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
@@ -320,7 +319,7 @@ class Spiking1DeALIFLayer(torch.nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        nb_steps = x.shape[2]
+        nb_steps = x.shape[self.time_position]
 
         # membrane potential
         mem = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)
@@ -451,7 +450,7 @@ class Spiking1DALIFLayer(torch.nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        nb_steps = x.shape[2]
+        nb_steps = x.shape[self.time_position]
 
         # membrane potential
         mem = torch.zeros((batch_size, self.channels), dtype=x.dtype, device=x.device)

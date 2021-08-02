@@ -140,7 +140,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
 
                 # Overwrite dataset
                 hparams["dataset"] = self.hparams["dataset"]
-                teacher_module = StreamClassifierModule(**hparams)
+                params = deepcopy(hparams)
+                params.pop("_target_")
+                teacher_module = StreamClassifierModule(**params)
                 teacher_module.trainer = self.trainer
                 teacher_module.setup("fit")
                 teacher_module.load_state_dict(checkpoint["state_dict"])

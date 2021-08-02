@@ -168,6 +168,7 @@ def train(config: DictConfig):
 
     for k, v in test_sum.items():
         logging.info(k + " : " + str(v / len(test_output)))
+    logging.info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]
