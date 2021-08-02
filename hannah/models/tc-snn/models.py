@@ -69,27 +69,13 @@ class TCResidualBlock(nn.Module):
         trainable_parameter=False,
         negative_mempot=True,
         parameter_per_channel=False,
-        combination_activation=True,
     ):
         super().__init__()
         self.stride = stride
         self.clipping_value = clipping_value
         self.conv_type = conv_type
         self.comb_type = combtype
-        if conv_type == "SNN" and combination_activation:
-            self.combination_AL = get1DNeuronLayer(
-                output_channels,
-                spike_fn=spike_fn,
-                flatten_output=flattenoutput,
-                alpha=alpha,
-                beta=beta,
-                gamma=gamma,
-                rho=rho,
-                neuron_type=neuron_type,
-                trainable_parameter=trainable_parameter,
-                negative_mempot=negative_mempot,
-                parameter_per_channel=parameter_per_channel,
-            )
+
         if stride > 1:
             # No dilation needed: 1x1 kernel
             act = create_act(act, clipping_value)
