@@ -115,8 +115,11 @@ def build1DConvolution(
                     parameter_per_channel=parameter_per_channel,
                 ),
             )
-        elif type == "NN":
+        elif type == "NN" and activation is not None:
             return nn.Sequential(conv, bn, activation)
+
+        elif type == "NN" and activation is None:
+            return nn.Sequential(conv, bn)
     else:
         print("Error wrong type Parameter")
 
