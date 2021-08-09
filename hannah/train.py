@@ -1,10 +1,9 @@
 import logging
 import os
 import pathlib
+import numpy as np
 import shutil
-
 from collections import defaultdict
-
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
@@ -76,6 +75,7 @@ def train(config: DictConfig):
             features=config.features,
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
+            gpus=config.trainer.get("gpus", None),
         )
 
         profiler = None
@@ -168,6 +168,7 @@ def train(config: DictConfig):
 
     for k, v in test_sum.items():
         logging.info(k + " : " + str(v / len(test_output)))
+    logging.info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]
