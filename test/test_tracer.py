@@ -37,7 +37,7 @@ from hannah.models.factory import factory
 class Config:
     bw_b: int = 8
     bw_f: int = 8
-    bw_w: int = 6
+    bw_w: int = 8
     power_of2: bool = False
     rounding_mode: str = "UPWARD"
 
@@ -132,7 +132,9 @@ class TestCell(nn.Module):
         return x
 
 
-def run_test(cell, input_shape, act, input_bits, output_bits, out_dtype):
+def run_test(
+    cell, input_shape, act, input_bits, output_bits, out_dtype, approximate=False
+):
     print(cell)
     cell.eval()
     tracer = QuantizationTracer()
@@ -183,12 +185,17 @@ def run_test(cell, input_shape, act, input_bits, output_bits, out_dtype):
 
     print(output_torch)
     print(tvm_output)
+    print(tvm_output / output_scale)
 
     print("MSE:   ", mse)
     print("MAX_SE:", max_se)
 
-    assert mse == 0.0
-    assert max_se == 0.0
+    if approximate:
+        assert mse <= output_scale
+        assert max_se <= output_scale
+    else:
+        assert mse == 0.0
+        assert max_se == 0.0
 
 
 @pytest.mark.parametrize(
@@ -302,7 +309,9 @@ def test_tracer_reduction(dim, act, bw_w, bw_b, bw_f):
     elif dim == 2:
         input_shape = (1, 8, 32, 32)
 
-    run_test(cell, input_shape, act, bw_f, bw_w - 1 + bw_f - 1 + 1, "int32")
+    run_test(
+        cell, input_shape, act, bw_f, bw_w - 1 + bw_f - 1 + 1, "int32", approximate=True
+    )
 
 
 class TestCellLinear(nn.Module):
@@ -342,12 +351,12 @@ def test_tracer_linear(act=False):
 
 
 class TestCellPooling(nn.Module):
-    def __init__(self, act=False):
+    def __init__(self, length=5, act=False):
         super().__init__()
         self.qconfig = get_trax_qat_qconfig(Config())
         self.activation_post_process = self.qconfig.activation()
         self.pool = ApproximateGlobalAveragePooling1D(
-            16, qconfig=get_trax_qat_qconfig(Config())
+            length, qconfig=get_trax_qat_qconfig(Config())
         )
 
     def forward(self, x):
@@ -356,14 +365,17 @@ class TestCellPooling(nn.Module):
         return x
 
 
-def test_tracer_pooling():
-    cell = TestCellPooling()
-    input_shape = (1, 64, 16)
+@pytest.mark.parametrize("length", [5, 8, 17, 33])
+def test_tracer_pooling(length):
+    cell = TestCellPooling(length=length)
+    input_shape = (1, 64, length)
     act = False
     input_bits = 8
     output_bits = 8
     out_dtype = "int32"
-    run_test(cell, input_shape, act, input_bits, output_bits, out_dtype)
+    run_test(
+        cell, input_shape, act, input_bits, output_bits, out_dtype, approximate=True
+    )
 
 
 class TestCellSimple(nn.Module):
@@ -466,10 +478,4 @@ def test_tracer_model():
 
 
 if __name__ == "__main__":
-    # test_tracer(1, True)
-    # test_tracer(2, True)
-    test_tracer_reduction()
-    # test_tracer_linear(True)
-    # test_tracer_pooling()
-    # test_tracer_simple()
-    # test_tracer_model()
+    test_tracer_pooling(78)
