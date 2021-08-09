@@ -40,6 +40,17 @@ class ElasticKernelConv1d(nn.Conv1d):
         self.min_kernel_size = kernel_sizes[-1]
         # initially, the target size is the full kernel
         self.target_kernel_index = 0
+        # initialize the filter for input channel reduction in training, and the channel priority list
+        self.input_channel_pass_filter = []
+        # the first channel index in this list is least important, the last channel index ist most important
+        self.input_channels_by_priority = []
+        # initially, all channels are used.
+        self.input_channel_reduction = 0
+        for i in range(in_channels):
+            self.input_channel_pass_filter.append(True)
+            # to init with technically valid values, simply set starting priority based on index
+            self.input_channels_by_priority.append(i)
+
         super().__init__(
             in_channels=in_channels,
             out_channels=out_channels,
@@ -67,6 +78,35 @@ class ElasticKernelConv1d(nn.Conv1d):
             new_transform_module.weight.requires_grad = False
             self.kernel_transforms.append(new_transform_module)
         self.set_kernel_size(self.max_kernel_size)
+
+    def compute_channel_priorities(self):
+        weights = self.weight.data
+        norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=0)
+        input_channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
+        # contains the indices of the channels, sorted from channel with smallest norm to channel with largest norm
+        # the least important channel index is at the beginning of the list, the most important channel index is at the end
+        self.input_channels_by_priority = np.argsort(input_channel_norms)
+
+    def set_input_channel_reduction(self, reduction_amount: int):
+        # clamp the value to (in_channels - 1), always keep at least one input channel
+        self.input_channel_reduction = min(reduction_amount, self.in_channels-1)
+
+    def create_input_channel_pass_filter(self):
+        # start with an empty filter, where every channel passes through, then remove in channels by priority
+        for i in range(len(self.input_channel_pass_filter)):
+            self.input_channel_pass_filter[i] = True
+
+        # remove input for the least important n channels, specified by the reduction amount
+        for i in range(self.input_channel_reduction):
+            # priority list of channels contains channel indices from least important to most important
+            # the first n channel indices specified in this list will be filtered out
+            filtered_channel_index = self.input_channels_by_priority[i]
+            self.input_channel_pass_filter[filtered_channel_index] = False
+
+    def reduce_input_channels_by_n(self, n: int):
+        self.set_input_channel_reduction(n)
+        self.compute_channel_priorities()
+        self.create_input_channel_pass_filter()
 
     def set_kernel_size(self, new_kernel_size):
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
@@ -153,8 +193,18 @@ class ElasticKernelConv1d(nn.Conv1d):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
+
+        # zero out input channels specified in the filter, for training channel reduction
+        # if every channel passes, the filter matrix is an identity matrix
+        channel_filter = torch.eye(self.in_channels)
+        for i in range(len(self.input_channel_pass_filter)):
+            # for every input to be removed, zero out the entry in the identity matrix
+            if not self.input_channel_pass_filter[i]:
+                channel_filter[i][i] = 0
+        # apply the filter matrix (identity matrix with entries of filtered channels zeroed) to the input via a functional linear layer
+        input = nnf.linear(input=input, weight=channel_filter)
+
         # get the kernel for the current index
-        # TODO: with dynamic channels this would use input.size(1) and pass it to get_kernel for the channel count
         kernel = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
