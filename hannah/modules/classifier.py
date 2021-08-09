@@ -51,6 +51,8 @@ class ClassifierModule(LightningModule):
         frequency_masking: int = 0,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
+        export_onnx: bool = True,
+        gpus=None,
     ):
         super().__init__()
 
@@ -61,6 +63,9 @@ class ClassifierModule(LightningModule):
         self.test_set = None
         self.dev_set = None
         self.logged_samples = 0
+        self.export_onnx = export_onnx
+        self.gpus = gpus
+        print(dataset.data_folder)
 
     @abstractmethod
     def prepare_data(self):
@@ -170,20 +175,20 @@ class ClassifierModule(LightningModule):
             quantized_model = torch.quantization.convert(
                 quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
+        if self.export_onnx:
+            logging.info("saving onnx...")
+            try:
+                dummy_input = self.example_feature_array.cpu()
 
-        logging.info("saving onnx...")
-        try:
-            dummy_input = self.example_feature_array.cpu()
-
-            torch.onnx.export(
-                quantized_model,
-                dummy_input,
-                os.path.join(output_dir, "model.onnx"),
-                verbose=False,
-                opset_version=11,
-            )
-        except Exception as e:
-            logging.error("Could not export onnx model ...\n {}".format(str(e)))
+                torch.onnx.export(
+                    quantized_model,
+                    dummy_input,
+                    os.path.join(output_dir, "model.onnx"),
+                    verbose=False,
+                    opset_version=11,
+                )
+            except Exception as e:
+                logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
     def on_load_checkpoint(self, checkpoint):
         for k, v in self.state_dict().items():
@@ -230,13 +235,13 @@ class BaseStreamClassifierModule(ClassifierModule):
         dummy_input = self.example_input_array.to(device)
         logging.info("Example input array shape: %s", str(dummy_input.shape))
         if platform.machine() == "ppc64le":
-            dummy_input = dummy_input.cuda()
+            dummy_input = dummy_input.to("cuda:" + str(self.gpus[0]))
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
         if platform.machine() == "ppc64le":
-            self.features.cuda()
+            self.features.to("cuda:" + str(self.gpus[0]))
 
         features = self._extract_features(dummy_input)
         self.example_feature_array = features.to(self.device)

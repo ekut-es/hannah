@@ -52,7 +52,7 @@ class XmlAugmentationParser:
             )
             subpring = False
         elif "albumentations" in augmentation:
-            XmlAugmentationParser.__albumentations(
+            XmlAugmentationParser.albumentations(
                 dict((key, a[key]) for a in conf["albumentations"] for key in a),
                 img,
                 kitti,
@@ -119,6 +119,8 @@ class XmlAugmentationParser:
                     )
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
+                elif description == "File containg files to process":
+                    param.attrib["Value"] = kitti.aug_path + "to_augment.txt"
                 elif description == "Pixel width":
                     param.attrib["Value"] = str(size[0])
                 elif description == "Pixel height":
@@ -126,7 +128,7 @@ class XmlAugmentationParser:
                 elif description == "Output directory":
                     param.attrib["Value"] = kitti.aug_path
 
-        tree.write(kitti.kitti_dir + "/augmentation/augment.xml")
+        tree.write(kitti.aug_path + "augment.xml")
 
     @staticmethod
     def __parseSnow(conf, img, kitti):
@@ -163,6 +165,8 @@ class XmlAugmentationParser:
                     param.attrib["Value"] = value
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
+                elif description == "File containg files to process":
+                    param.attrib["Value"] = kitti.aug_path + "to_augment.txt"
                 elif description == "Pixel width":
                     param.attrib["Value"] = str(size[0])
                 elif description == "Pixel height":
@@ -170,7 +174,7 @@ class XmlAugmentationParser:
                 elif description == "Output directory":
                     param.attrib["Value"] = kitti.aug_path
 
-        tree.write(kitti.kitti_dir + "/augmentation/augment.xml")
+        tree.write(kitti.aug_path + "augment.xml")
 
     @staticmethod
     def __parseFog(conf, img, kitti):
@@ -197,6 +201,8 @@ class XmlAugmentationParser:
                     )
                 elif description == "Output filename":
                     param.attrib["Value"] = img[:-4]
+                elif description == "File containg files to process":
+                    param.attrib["Value"] = kitti.aug_path + "to_augment.txt"
                 elif description == "Pixel width":
                     param.attrib["Value"] = str(size[0])
                 elif description == "Pixel height":
@@ -204,7 +210,7 @@ class XmlAugmentationParser:
                 elif description == "Output directory":
                     param.attrib["Value"] = kitti.aug_path
 
-        tree.write(kitti.kitti_dir + "/augmentation/augment.xml")
+        tree.write(kitti.aug_path + "augment.xml")
 
     @staticmethod
     def __imagecorruptions(conf, img, kitti):
@@ -223,7 +229,7 @@ class XmlAugmentationParser:
         Image.fromarray(pil_img).save(kitti.aug_path + img)
 
     @staticmethod
-    def __albumentations(conf, img, kitti):
+    def albumentations(conf, img, kitti, double_augment=False):
         transform = A.Compose(
             [
                 A.Blur(p=conf["blur"] / 100),
@@ -244,13 +250,13 @@ class XmlAugmentationParser:
                 A.RandomBrightnessContrast(p=conf["random_brightness_contrast"] / 100),
                 A.RandomGamma(p=conf["random_gamma"] / 100),
                 A.Solarize(p=conf["solarize"] / 100),
-                A.ToGray(p=conf["to_gray"] / 100),
-                A.ToSepia(p=conf["to_sepia"] / 100),
             ]
         )
-        pil_img = Image.open(kitti.kitti_dir + "/training/image_2/" + img).convert(
-            "RGB"
-        )
+        pil_img = Image.open(
+            kitti.kitti_dir + "/training/image_2/" + img
+            if not double_augment
+            else kitti.aug_path + img
+        ).convert("RGB")
         pil_img = transform(image=np.array(pil_img))["image"]
         Image.fromarray(pil_img).save(kitti.aug_path + img)
 
@@ -263,16 +269,23 @@ class AugmentationThread:
     def call_augment(self, conf, img, kitti, out):
         if XmlAugmentationParser.parse(conf, img, kitti):
             subprocess.call(
-                kitti.kitti_dir + "/augmentation/perform_augmentation.sh",
+                kitti.aug_path + "perform_augmentation.sh",
                 stdout=subprocess.DEVNULL,
             )
+            if conf["double_augment"]:
+                XmlAugmentationParser.albumentations(
+                    dict((key, a[key]) for a in conf["albumentations"] for key in a),
+                    img,
+                    kitti,
+                    True,
+                )
 
         if out is True:
             print("Image augmented")
 
     def augment_img(self, kitti, img, conf, reaugment, out):
         if reaugment is True:
-            txt = open(kitti.kitti_dir + "/augmentation/to_augment.txt", "w")
+            txt = open(kitti.aug_path + "/to_augment.txt", "w")
             txt.write(img[:-4] + "\n")
             txt.close()
             self.call_augment(conf, img, kitti, out)
@@ -331,7 +344,6 @@ class Augmentation:
 
     def augment(self, kitti: Kitti):
         kitti.aug_files = list()
-
         if self.pct != 0 and self.val_pct != 0:
             self.aug_thread.clear()
             th = threading.Thread(

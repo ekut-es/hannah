@@ -5,8 +5,8 @@ import json
 import logging
 import hashlib
 import os
-
-
+import csv
+import time
 import torchaudio
 import numpy as np
 import scipy.signal as signal
@@ -15,6 +15,7 @@ import torch
 from collections import defaultdict
 
 from chainmap import ChainMap
+from torchvision.datasets.utils import list_files
 
 from .base import AbstractDataset, DatasetType
 from ..utils import list_all_files, extract_from_download_cache
@@ -530,10 +531,123 @@ class VadDataset(SpeechDataset):
 
     @classmethod
     def prepare(cls, config):
-        cls.download(config)
-        NoiseDataset.download_noise(config)
-        DatasetSplit.split_data(config)
-        Downsample.downsample(config)
+        override = config.get("override", False)
+        wait = False
+        if override:
+            try:
+                lockfile = DatasetSplit.lock(config)
+            except OSError:
+                wait = True
+            if not wait:
+                cls.download(config)
+                NoiseDataset.download_noise(config)
+                olddata, filename = VadDataset.read_config(config)
+                DatasetSplit.split_data(
+                    config, olddata, split_filename=filename, lockfile=lockfile
+                )
+
+        if wait:
+            split_locked = VadDataset.dataset_config_locked(config)
+            while split_locked:
+                time.sleep(1)
+                split_locked = VadDataset.dataset_config_locked(config)
+
+    @classmethod
+    def dataset_config_locked(cls, config):
+        split = config.get("data_split", "vad_balanced")
+        data_folder = config.get("data_folder", None)
+        variants = config.get("variants")
+        noise_dataset = config.get("noise_dataset")
+        dest_sr = config.get("samplingrate", 16000)
+        return (
+            VadDataset.check_existing_splits(
+                split,
+                data_folder,
+                variants,
+                noise_dataset,
+                str(dest_sr),
+                suffix=".lock",
+            )
+            is not None
+        )
+
+    @classmethod
+    def check_existing_splits(
+        cls,
+        data_split,
+        data_folder,
+        variants,
+        noise_dataset,
+        samplingrate,
+        suffix=".csv",
+    ):
+
+        csvfiles = list_files(data_folder, suffix, prefix=False)
+
+        for f in csvfiles:
+            tmp_f = f
+            dataset_names = []
+            if data_split in tmp_f and str(samplingrate) in tmp_f:
+                tmp_f = tmp_f.replace(data_split, "")
+                tmp_f = tmp_f.replace(str(samplingrate), "")
+                tmp_f = tmp_f.replace(suffix, "")
+                dataset_names = tmp_f.split("_")
+                dataset_names = list(filter(lambda name: name != "", dataset_names))
+            else:
+                continue
+
+            useable = True
+            for v in variants:
+                if v not in dataset_names:
+                    useable = False
+                    break
+                else:
+                    dataset_names.remove(v)
+
+            if not useable:
+                continue
+
+            for n in noise_dataset:
+                if n not in dataset_names:
+                    useable = False
+                    break
+                else:
+                    dataset_names.remove(n)
+
+            if not useable and len(dataset_names) > 0:
+                continue
+            elif useable and len(dataset_names) == 0:
+                return f
+        return None
+
+    @classmethod
+    def read_config(cls, config):
+        split = config.get("data_split", "vad_balanced")
+        data_folder = config.get("data_folder", None)
+        variants = config.get("variants")
+        noise_dataset = config.get("noise_dataset")
+        samplingrate = config.get("samplingrate", 16000)
+        filename = VadDataset.check_existing_splits(
+            split, data_folder, variants, noise_dataset, str(samplingrate)
+        )
+        if filename is None:
+            return (None, None)
+
+        split_file = os.path.join(data_folder, filename)
+        output = {}
+        if os.path.isfile(split_file):
+            csv_file = open(split_file, mode="r")
+            csv_reader = csv.DictReader(csv_file, delimiter=",")
+            line_count = 0
+            for row in csv_reader:
+                if line_count == 0:
+                    line_count += 1
+                output[str(row["filename"])] = row
+                line_count += 1
+            csv_file.close()
+            return (output, filename)
+
+        return (None, None)
 
     @classmethod
     def splits(cls, config):
@@ -542,35 +656,42 @@ class VadDataset(SpeechDataset):
 
         msglogger = logging.getLogger()
 
-        folder = config["data_folder"]
-        folder = os.path.join(folder, "vad_balanced")
+        # open the saved dataset
+        sdataset, _ = VadDataset.read_config(config)
 
         descriptions = ["train", "dev", "test"]
-        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
         datasets = [{}, {}, {}]
         configs = [{}, {}, {}]
 
         for num, desc in enumerate(descriptions):
+            noise_files = list()
+            speech_files = list()
+            bg_noise_files = list()
+            for key in sdataset.keys():
+                filename, original, downsampled, sr_orig, sr_down, allocation = sdataset[
+                    key
+                ].values()
 
-            descs_noise = os.path.join(folder, desc, "noise")
-            descs_speech = os.path.join(folder, desc, "speech")
-            descs_bg = os.path.join(folder, desc, "background_noise")
+                if desc not in allocation:
+                    continue
+                sr_orig = int(sr_orig)
+                if len(sr_down) > 0:
+                    sr_down = int(sr_down)
+                else:
+                    sr_down = -1
 
-            noise_files = [
-                os.path.join(descs_noise, f)
-                for f in os.listdir(descs_noise)
-                if os.path.isfile(os.path.join(descs_noise, f))
-            ]
-            speech_files = [
-                os.path.join(descs_speech, f)
-                for f in os.listdir(descs_speech)
-                if os.path.isfile(os.path.join(descs_speech, f))
-            ]
-            bg_noise_files = [
-                os.path.join(descs_bg, f)
-                for f in os.listdir(descs_bg)
-                if os.path.isfile(os.path.join(descs_bg, f))
-            ]
+                dest_sr = config.get("samplingrate", 16000)
+                file_path = None
+                if sr_down == dest_sr:
+                    file_path = downsampled
+                elif sr_orig == dest_sr:
+                    file_path = original
+                if "background_noise" in allocation:
+                    bg_noise_files.append(file_path)
+                elif "noise" in allocation:
+                    noise_files.append(file_path)
+                if "speech" in allocation:
+                    speech_files.append(file_path)
 
             random.shuffle(noise_files)
             random.shuffle(speech_files)
@@ -603,6 +724,7 @@ class VadDataset(SpeechDataset):
             cached_files = list()
         else:
             cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
+            cached_files.extend(list_all_files(downloadfolder_tmp, ".zip"))
 
         data_folder = config["data_folder"]
 
@@ -685,103 +807,13 @@ class VadDataset(SpeechDataset):
                 clear_download,
             )
 
-
-class TimitDataset(SpeechDataset):
-    def __init__(self, data, set_type, config):
-        super().__init__(data, set_type, config)
-
-        self.label_names = {0: "noise", 1: "speech"}
-
-    @classmethod
-    def prepare(cls, config):
-        cls.download(config)
-        NoiseDataset.download_noise(config)
-        DatasetSplit.split_data(config)
-        Downsample.downsample(config)
-
-    @classmethod
-    def splits(cls, config):
-        """Splits the dataset in training, devlopment and test set and returns
-        the three sets as List"""
-
-        msglogger = logging.getLogger()
-
-        folder = config["data_folder"]
-        folder = os.path.join(folder, "vad_balanced")
-
-        descriptions = ["train", "dev", "test"]
-        dataset_types = [DatasetType.TRAIN, DatasetType.DEV, DatasetType.TEST]
-        datasets = [{}, {}, {}]
-        configs = [{}, {}, {}]
-
-        for num, desc in enumerate(descriptions):
-
-            descs_noise = os.path.join(folder, desc, "noise")
-            descs_speech = os.path.join(folder, desc, "speech")
-            descs_bg = os.path.join(folder, desc, "background_noise")
-
-            noise_files = [
-                os.path.join(descs_noise, f)
-                for f in os.listdir(descs_noise)
-                if os.path.isfile(os.path.join(descs_noise, f))
-            ]
-            speech_files = [
-                os.path.join(descs_speech, f)
-                for f in os.listdir(descs_speech)
-                if os.path.isfile(os.path.join(descs_speech, f))
-            ]
-            bg_noise_files = [
-                os.path.join(descs_bg, f)
-                for f in os.listdir(descs_bg)
-                if os.path.isfile(os.path.join(descs_bg, f))
-            ]
-
-            random.shuffle(noise_files)
-            random.shuffle(speech_files)
-            label_noise = 0
-            label_speech = 1
-
-            datasets[num].update({n: label_noise for n in noise_files})
-            datasets[num].update({s: label_speech for s in speech_files})
-            configs[num].update(ChainMap(dict(bg_noise_files=bg_noise_files), config))
-
-        res_datasets = (
-            cls(datasets[0], DatasetType.TRAIN, configs[0]),
-            cls(datasets[1], DatasetType.DEV, configs[1]),
-            cls(datasets[2], DatasetType.TEST, configs[2]),
-        )
-
-        return res_datasets
-
-    @classmethod
-    def download(cls, config):
-        data_folder = config["data_folder"]
-        clear_download = config["clear_download"]
-        downloadfolder_tmp = config["download_folder"]
-
-        if len(downloadfolder_tmp) == 0:
-            download_folder = os.path.join(data_folder, "downloads")
-
-        if not os.path.isdir(downloadfolder_tmp):
-            os.makedirs(downloadfolder_tmp)
-            cached_files = list()
-        else:
-            cached_files = list_all_files(downloadfolder_tmp, ".zip")
-
-        data_folder = config["data_folder"]
-
-        if not os.path.isdir(data_folder):
-            os.makedirs(data_folder)
-
-        timitdir = os.path.join(data_folder, "timit")
-
-        if not os.path.isdir(timitdir):
-            os.makedirs(timitdir)
-
-        variants = config["variants"]
-
-        # download UWNU dataset
+        # download TIMIT dataset
         if "timit" in variants:
+            timitdir = os.path.join(data_folder, "timit")
+
+            if not os.path.isdir(timitdir):
+                os.makedirs(timitdir)
+
             filename = "timit.zip"
             target_test_folder = os.path.join(timitdir, "data")
             url = "https://data.deepai.org/timit.zip"
