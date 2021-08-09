@@ -108,6 +108,12 @@ class ElasticKernelConv1d(nn.Conv1d):
         self.compute_channel_priorities()
         self.create_input_channel_pass_filter()
 
+    # reduce input width by one channel, if possible
+    def step_down_input_width(self):
+        current_reduction = self.input_channel_reduction
+        # at least 1 channel will always be kept
+        self.reduce_input_channels_by_n(current_reduction + 1)
+
     def set_kernel_size(self, new_kernel_size):
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
         if new_kernel_size < self.min_kernel_size or new_kernel_size > self.max_kernel_size:
@@ -193,7 +199,7 @@ class ElasticKernelConv1d(nn.Conv1d):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
-
+        """
         # zero out input channels specified in the filter, for training channel reduction
         # if every channel passes, the filter matrix is an identity matrix
         channel_filter = torch.eye(self.in_channels)
@@ -202,13 +208,51 @@ class ElasticKernelConv1d(nn.Conv1d):
             if not self.input_channel_pass_filter[i]:
                 channel_filter[i][i] = 0
         # apply the filter matrix (identity matrix with entries of filtered channels zeroed) to the input via a functional linear layer
-        input = nnf.linear(input=input, weight=channel_filter)
+        # input = nnf.linear(input=input, weight=channel_filter)
+        """
+        """
+        # THIS APPROACH CAUSES GRADIENT COMPUTATION TO FAIL DUE TO INPLACE OPERATION
+        # print(np.shape(input)); print(self.in_channels); print(len(self.input_channel_pass_filter))
+        # zero out the input in any channels which are set to be filtered out
+        for input_index in range(len(input)):
+            # for every input index
+            for channel_index in range(len(input[input_index])):
+                # for every channel index within that input
+                if not self.input_channel_pass_filter[channel_index]:
+                    # if this channel is supposed to be filtered out
+                    for i in range(len(input[input_index][channel_index])):
+                        # zero every value within this channel
+                        input[input_index][channel_index][i] = 0.
+        """
+        """
+        # zero out input channels specified in the filter, for training channel reduction
+        # if every channel passes, the filter matrix is an identity matrix
+        channel_filter = torch.eye(self.in_channels)
+        for i in range(len(self.input_channel_pass_filter)):
+            # for every input to be removed, zero out the entry in the identity matrix
+            if not self.input_channel_pass_filter[i]:
+                channel_filter[i][i] = 0
+        # apply the filter matrix (identity matrix with entries of filtered channels zeroed) to the input via a functional linear layer
+        # input = nnf.linear(input=input, weight=channel_filter)
+        """
+        null_input = torch.zeros_like(input)
+        input_copy = torch.clone(input)
+        zeroed = 0
+        for input_index in range(len(input)):
+            # for every input index
+            for channel_index in range(len(input[input_index])):
+                # for every channel index within that input
+                if not self.input_channel_pass_filter[channel_index]:
+                    zeroed += 1
+                    # if this channel index is supposed to be filtered, copy over zeroes
+                    input_copy[input_index][channel_index] = null_input[input_index][channel_index]
+        # print(f"{zeroed}|{zeroed/len(input)}|{self.input_channel_reduction}") # sanity check
 
         # get the kernel for the current index
         kernel = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return nnf.conv1d(input, kernel, self.bias, self.stride, padding, self.dilation)
+        return nnf.conv1d(input_copy, kernel, self.bias, self.stride, padding, self.dilation)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
@@ -310,7 +354,8 @@ def create(
     min_depth: int = 1,
     norm_order=None,
     steps_without_sampling=1,
-    steps_per_kernel_step=100
+    steps_per_kernel_step=100,
+    steps_per_channel_step=100
 ):
     # if no orders for the norm operator are specified, fall back to default
     if not (hasattr(norm_order, "norm_before_act") and hasattr(norm_order, "norm_after_act")):
@@ -347,7 +392,8 @@ def create(
         min_depth=min_depth,
         block_config=conv,
         steps_without_sampling=steps_without_sampling,
-        steps_per_kernel_step=steps_per_kernel_step
+        steps_per_kernel_step=steps_per_kernel_step,
+        steps_per_channel_step=steps_per_channel_step
     )
 
     return model
@@ -482,7 +528,8 @@ class WIPModel(nn.Module):
         min_depth: int = 1,
         block_config=[],
         steps_without_sampling: int = 1,
-        steps_per_kernel_step: int = 100
+        steps_per_kernel_step: int = 100,
+        steps_per_channel_step: int = 100
     ):
         super().__init__()
         self.conv_layers = conv_layers
@@ -496,8 +543,10 @@ class WIPModel(nn.Module):
         self.min_depth = min_depth
         self.steps_without_sampling = steps_without_sampling
         self.steps_per_kernel_step = steps_per_kernel_step
+        self.steps_per_channel_step = steps_per_channel_step
         self.current_step = 0
         self.current_kernel_step = 0
+        self.current_channel_step = 0
         self.last_input = None
         # self.pool = nn.AvgPool1d(pool_kernel)
         self.pool = nn.AdaptiveAvgPool1d(1)
@@ -582,6 +631,8 @@ class WIPModel(nn.Module):
     def should_subsample(self, verify_step=False):
         # for testing, until there is a proper scheduler in place:
         self.check_kernel_stepping()
+        # again, for testing, until progressive shrinking is implemented:
+        self.check_channel_stepping()
         # Shortcut for testing: set to True to also verify loss of equivalent extracted model
         if verify_step:
             return False
@@ -598,6 +649,17 @@ class WIPModel(nn.Module):
                 setattr(self, 'max_kernel_steps', self.current_kernel_step)
 
         return self.current_step > self.steps_per_kernel_step
+
+    # placeholder until there is a proper scheduler in place
+    def check_channel_stepping(self):
+        if self.current_step > self.steps_per_channel_step*(self.current_channel_step+1):
+            self.current_channel_step += 1
+            self.step_down_all_channels()
+
+    # step all input widths within the model down by one, if possible
+    def step_down_all_channels(self):
+        # print("stepping down input widths by one!")
+        return call_function_from_deep_nested(input=self.conv_layers, function="step_down_input_width", type_selection=ElasticKernelConv1d)
 
     # temporary implementation to speed up random sampling by only searching for max kernel steps once
     # get max amount of kernel steps

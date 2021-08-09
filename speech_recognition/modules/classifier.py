@@ -325,6 +325,7 @@ class StreamClassifierModule(ClassifierModule):
             self.model.sample_active_subnet()
             self.log("a_depth", self.model.active_depth, True)
             self.log("k_step", self.model.current_kernel_step, True)
+            self.log("c_step", self.model.current_channel_step, True)
 
         output = self(x)
         y = y.view(-1)

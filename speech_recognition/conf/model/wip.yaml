@@ -4,8 +4,9 @@
 _target_: speech_recognition.models.wip.models.create
 name: wip
 min_depth: 2
-steps_without_sampling: 10000
-steps_per_kernel_step: 99999
+steps_without_sampling: 9999999
+steps_per_kernel_step: 9999999
+steps_per_channel_step: 5000
 norm_order:
   norm_before_act: true
   norm_after_act: false
