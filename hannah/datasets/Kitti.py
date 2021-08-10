@@ -123,10 +123,7 @@ class Kitti(AbstractDataset):
         if img_name[:-4] in self.aug_files and os.path.isfile(self.aug_path + img_name):
             path = self.aug_path
             label_path = self.label_path
-            shutil.copy2(
-                self.aug_path + img_name,
-                self.aug_path_cpy + img_name,
-            )
+            shutil.copy2(self.aug_path + img_name, self.aug_path_cpy + img_name)
         elif self.set_type == DatasetType.TEST:
             if "rr/" in img_name:
                 path = self.realrain_imgpath
@@ -157,9 +154,7 @@ class Kitti(AbstractDataset):
 
         target = {}
         label = self._parse_label(
-            idx,
-            True if self.set_type == DatasetType.TRAIN else False,
-            label_path,
+            idx, True if self.set_type == DatasetType.TRAIN else False, label_path
         )
 
         labels = []
@@ -478,10 +473,7 @@ class KittiCOCO(COCO):
                 try:
 
                     gt[gt_x1:gt_x2, gt_y1:gt_y2] = np.ones(
-                        (
-                            gt_x2 - gt_x1,
-                            gt_y2 - gt_y1,
-                        )
+                        (gt_x2 - gt_x1, gt_y2 - gt_y1)
                     )
 
                     dt[
