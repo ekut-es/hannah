@@ -1,5 +1,3 @@
-# @package _group_
-
 _target_: hannah.models.objectdetection.models.FasterRCNN
 name: faster-rcnn-mobilenetv3
 num_classes: 9
