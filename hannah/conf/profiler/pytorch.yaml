@@ -1,4 +1,4 @@
-# @package _group_
+
 
 _target_: pytorch_lightning.profiler.PyTorchProfiler
 dirpath: profile

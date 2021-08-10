@@ -1,4 +1,4 @@
-# @package _group_
+
 
 _target_: hannah.features.SincConvBlock
 out_channels: 40

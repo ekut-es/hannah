@@ -1,4 +1,4 @@
-# @package _group_
+
 
 _target_: hannah.callbacks.backends.TVMBackend
 val_batches: 10

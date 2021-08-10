@@ -1,4 +1,4 @@
-# @package _group_
+
 
 _target_: hannah.models.factory.factory.create_cnn
 name: conv_net4_trax
