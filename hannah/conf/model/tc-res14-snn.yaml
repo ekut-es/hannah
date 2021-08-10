@@ -1,5 +1,3 @@
-# @package _group_
-
 cls: hannah.models.tc-snn.models.TCResNetModel
 name: tc-res14-snn
 separable:

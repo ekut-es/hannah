@@ -1,4 +1,4 @@
-# @package _group_
+
 
 _target_: torchaudio.transforms.MFCC
 sample_rate: ${dataset.samplingrate}

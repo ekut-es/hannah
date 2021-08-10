@@ -73,6 +73,7 @@ class ObjectDetectionModule(ClassifierModule):
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
                 labels=self.num_classes,
+                _recursive_=False,
             )
         else:
             self.hparams.model.width = self.example_feature_array.size(2)
@@ -126,7 +127,6 @@ class ObjectDetectionModule(ClassifierModule):
             self.train_set,
             batch_size=min(len(self.train_set), train_batch_size),
             drop_last=True,
-            pin_memory=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=object_collate_fn,
             sampler=sampler,
