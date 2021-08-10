@@ -1,6 +1,5 @@
 import logging
 import os
-import json
 import copy
 import platform
 
@@ -128,7 +127,7 @@ class ClassifierModule(LightningModule):
                         logger.experiment.add_histogram(
                             name, params, self.current_epoch
                         )
-                    except ValueError as e:
+                    except ValueError:
                         logging.critical("Could not add histogram for param %s", name)
 
         for name, module in self.named_modules():
@@ -142,7 +141,7 @@ class ClassifierModule(LightningModule):
                                 module.scaled_weight,
                                 self.current_epoch,
                             )
-                        except ValueError as e:
+                        except ValueError:
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )
