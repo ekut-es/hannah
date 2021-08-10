@@ -1,19 +1,15 @@
 import logging
 import os
-import pathlib
 import numpy as np
 import shutil
 from collections import defaultdict
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
-from torch.nn.modules import module
 
 from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.callbacks import GPUStatsMonitor
+from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
