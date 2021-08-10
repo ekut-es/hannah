@@ -4,18 +4,21 @@ data_folder: ${hydra:runtime.cwd}/datasets
 cls: hannah.datasets.Kitti.Kitti
 dataset: kitti
 
-test_pct: 10
-dev_pct: 10
+testsets: ["realrain", "dawn_rain", "dawn_snow", "dawn_fog"]
+testsets_pct: [100, 100, 0, 0] #gibt an wie viele Prozent an Bildern aus dem Datensatz verwendet werden
+dev_pct: 20
 train_pct: 80
 
 
 kitti_folder: ${dataset.data_folder}/kitti
+realrain_folder: ${dataset.data_folder}/real_rain
+dawn_folder: ${dataset.data_folder}/DAWN
 img_size: 375, 1242
 num_img_pct: 100
 
 
 variants: ["kitti"]
 labels: {"DontCare" : 0, "Car" : 1, "Van" : 2, "Truck" : 3, "Pedestrian" : 4, "Person_sitting" : 5, "Cyclist" : 6, "Tram" : 7, "Misc" : 8}
-labels_ignore: [0]
+labels_ignore: [0, 2, 3, 5, 7, 8]
 data_split: []
 noise_dataset: []

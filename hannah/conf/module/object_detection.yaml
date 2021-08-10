@@ -8,15 +8,19 @@ frequency_masking: 0
 
 augmentation:
   - augmented_pct: 50
-  - reaugment_per_epoch_pct: 20
+  - reaugment_per_epoch_pct: 50
+  - bordersearch_epoch_duration: 5
+  - bordersearch_ignore_params: ["draw_fog"]
+  - bordersearch_waterlevel: 0.7
+  - double_augment: False #After rain_drops, snow or fog do second augmentation with albumentations if True
   - augmentations: [rain_drops]
   - augmentations_pct: [100]
   - rain_drops:
     - angle_rain_streaks: [-45, 45]
     - brightness: [0.2, 2]
-    - number_drops: [500, 2000]
-    - rain_rate: [1, 60]
-    - drop_radius: [0.0004, 0.005]
+    - number_drops: [500, 3000]
+    - rain_rate: [10, 80]
+    - drop_radius: [0.0004, 0.01]
   - snow:
     - snowfall_rate: [0, 3]
     - car_speed_ms: [0, 13.9]
@@ -25,3 +29,25 @@ augmentation:
   - fog:
     - fog_density: [0, 0.2]
     - fog_sphere: [0.4, 0.7]
+  - imagecorruptions:
+    - corruption: "fog"
+    - severity: [1, 5]
+  - albumentations:
+    - blur: 30
+    - clahe: 50
+    - channel_dropout: 2
+    - channel_shuffle: 2
+    - coarse_dropout: 45
+    - downscale: 30
+    - equalize: 50
+    - gauss_noise: 50
+    - hue_saturation_value: 30
+    - iso_noise: 40
+    - image_compression: 10
+    - invert: 5
+    - motion_blur: 40
+    - posterize: 2
+    - rgb_shift: 40
+    - random_brightness_contrast: 50
+    - random_gamma: 40
+    - solarize: 2

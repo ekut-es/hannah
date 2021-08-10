@@ -3,6 +3,9 @@ from collections import OrderedDict
 
 import pandas as pd
 import torch
+
+import hannah.torch_extensions.nn.SNNActivationLayer
+from ..torch_extensions.nn import SNNLayers
 from ..models.sinc import SincNet
 from ..models.factory import qat
 
@@ -10,6 +13,7 @@ import torchvision
 
 from pytorch_lightning.callbacks import Callback
 from tabulate import tabulate
+
 
 msglogger = logging.getLogger("mac_summary")
 
@@ -49,7 +53,7 @@ def walk_model(model, dummy_input):
 
             volume_ifm = prod(input[0].size())
             volume_ofm = prod(output.size())
-            extra = get_extra(module, volume_ofm)
+            extra = get_extra(module, volume_ofm, output)
             if extra is not None:
                 weights, macs, attrs = extra
             else:
@@ -66,7 +70,7 @@ def walk_model(model, dummy_input):
         except Exception as e:
             pass
 
-    def get_extra(module, volume_ofm):
+    def get_extra(module, volume_ofm, output):
         classes = {
             torch.nn.Conv1d: get_conv,
             torch.nn.Conv2d: get_conv,
@@ -78,11 +82,15 @@ def walk_model(model, dummy_input):
             qat.ConvBnReLU2d: get_conv,
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
+            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
+            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
+            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
+            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
         }
 
         for _class, method in classes.items():
             if isinstance(module, _class):
-                return method(module, volume_ofm)
+                return method(module, volume_ofm, output)
 
         return get_generic(module)
 
@@ -91,6 +99,13 @@ def walk_model(model, dummy_input):
             module.in_channels / module.groups * prod(module.kernel_size)
         )
 
+    def get_1DSpiking_macs(module, output):
+        neuron_macs = {"eLIF": 4, "LIF": 5, "eALIF": 5, "ALIF": 6}
+        if module.flatten_output == False:
+            return module.channels * output.shape[2] * neuron_macs[module.type]
+        elif module.flatten_output == True:
+            return module.channels * output.shape[1] * neuron_macs[module.type]
+
     def get_conv_attrs(module):
         attrs = "k=" + "(" + (", ").join(["%d" % v for v in module.kernel_size]) + ")"
         attrs += ", s=" + "(" + (", ").join(["%d" % v for v in module.stride]) + ")"
@@ -98,7 +113,27 @@ def walk_model(model, dummy_input):
         attrs += ", d=" + "(" + ", ".join(["%d" % v for v in module.dilation]) + ")"
         return attrs
 
-    def get_conv(module, volume_ofm):
+    def get_spike_attrs(module):
+        attrs = ""
+        if module.type in ["LIF", "ALIF"]:
+            if len(module.alpha.shape) == 0:
+                attrs += "alpha=" + str(module.alpha.item()) + " "
+        if len(module.beta.shape) == 0:
+            attrs += "beta=" + str(module.beta.item()) + " "
+        if module.type in ["ALIF", "eALIF"]:
+            if len(module.gamma.shape) == 0 and len(module.rho.shape) == 0:
+                attrs += "gamma=" + str(module.gamma.item()) + " "
+                attrs += "rho=" + str(module.rho.item()) + " "
+        return attrs
+
+    def get_1DSpikeLayer(module, volume_ofm, output):
+        neuron_memory = {"eLIF": 3, "LIF": 4, "eALIF": 6, "ALIF": 7}
+        weights = module.channels * neuron_memory[module.type]
+        macs = get_1DSpiking_macs(module, output)
+        attrs = get_spike_attrs(module)
+        return weights, macs, attrs
+
+    def get_conv(module, volume_ofm, output):
         weights = (
             module.out_channels
             * module.in_channels
@@ -109,13 +144,13 @@ def walk_model(model, dummy_input):
         attrs = get_conv_attrs(module)
         return weights, macs, attrs
 
-    def get_sinc_conv(module, volume_ofm):
+    def get_sinc_conv(module, volume_ofm, output):
         weights = 2 * module.out_channels * module.in_channels / module.groups
         macs = get_conv_macs(module, volume_ofm)
         attrs = get_conv_attrs(module)
         return weights, macs, attrs
 
-    def get_fc(module, volume_ofm):
+    def get_fc(module, volume_ofm, output):
         weights = macs = module.in_features * module.out_features
         attrs = ""
         return weights, macs, attrs
@@ -187,6 +222,10 @@ class MacSummaryCallback(Callback):
             msglogger.critical("_do_summary failed")
             msglogger.critical(str(e))
         pl_module.train()
+
+    def on_test_end(self, trainer, pl_module):
+        pl_module.eval()
+        self._do_summary(pl_module)
 
     def on_validation_epoch_end(self, trainer, pl_module):
         res = {}

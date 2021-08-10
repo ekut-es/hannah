@@ -12,6 +12,7 @@ fast_dev_run: false
 overfit_batches: 0.0
 benchmark: False
 deterministic: True
+#accelerator: ddp
 gradient_clip_val: 0
 stochastic_weight_avg: false
 auto_scale_batch_size: null

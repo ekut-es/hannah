@@ -1,7 +1,7 @@
 
 
 data_folder: ${hydra:runtime.cwd}/datasets/
-cls: hannah.datasets.speech.TimitDataset
+cls: hannah.datasets.speech.VadDataset
 dataset: timit
 
 input_length: 16000
@@ -17,6 +17,7 @@ noise_dataset: ["TUT"]
 clear_split: False
 download_folder: ${dataset.data_folder}/downloads
 downsample: 0
+override: False
 
 silence_prob: 0.1
 unknown_prob: 0.1

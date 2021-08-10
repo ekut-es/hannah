@@ -13,7 +13,7 @@ before_script:
   - source /etc/os-release
   - if [[ $ID == "debian" || $ID == "ubuntu" ]]; then
   - apt update
-  - apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev
+  - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev
   - else
   - yum install epel-release -y
   - yum install git sudo python36 -y

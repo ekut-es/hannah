@@ -8,72 +8,14 @@ from torchvision.datasets.utils import list_dir
 from pandas import DataFrame
 import pandas as pd
 import logging
+import csv
+import torchaudio
+from .Downsample import Downsample
 
 
 class DatasetSplit:
     def __init__(self):
         pass
-
-    @classmethod
-    def vad(cls, config):
-        # directories with original data
-        data_folder = config["data_folder"]
-        noise_dir = os.path.join(data_folder, "noise_files")
-        speech_dir = os.path.join(data_folder, "speech_files")
-
-        noise_files = NoiseDataset.getTUT_NoiseFiles(config)
-        noise_files_others = NoiseDataset.getOthers_divided(config)
-
-        # list all noise  and speech files
-        speech_files = DatasetSplit.read_UWNU(config)
-
-        # randomly shuffle the noise and speech files and split them in train,
-        # validation and test set
-        random.shuffle(noise_files)
-        random.shuffle(speech_files)
-
-        nb_noise_files = len(noise_files)
-        nb_train_noise = int(0.6 * nb_noise_files)
-        nb_dev_noise = int(0.2 * nb_noise_files)
-
-        nb_speech_files = len(speech_files)
-        nb_train_speech = int(0.6 * nb_speech_files)
-        nb_dev_speech = int(0.2 * nb_speech_files)
-
-        train_noise = noise_files[:nb_train_noise]
-        dev_noise = noise_files[nb_train_noise : nb_train_noise + nb_dev_noise]
-        test_noise = noise_files[nb_train_noise + nb_dev_noise :]
-
-        train_other, dev_other, test_other = noise_files_others
-        train_noise.extend(train_other)
-        dev_noise.extend(dev_other)
-        test_noise.extend(test_other)
-
-        nb_noise_files += len(test_other)
-        nb_train_noise += len(train_other)
-        nb_dev_noise += len(dev_other)
-
-        train_speech = speech_files[:nb_train_speech]
-        dev_speech = speech_files[nb_train_speech : nb_train_speech + nb_dev_speech]
-        test_speech = speech_files[nb_train_speech + nb_dev_speech :]
-
-        mozilla = DatasetSplit.read_mozilla(config)
-        mozilla_train, mozilla_dev, mozilla_test = mozilla
-
-        train_speech.extend(mozilla_train)
-        dev_speech.extend(mozilla_dev)
-        test_speech.extend(mozilla_test)
-
-        destination_dict = {
-            "train/noise": train_noise,
-            "train/speech": train_speech,
-            "dev/noise": dev_noise,
-            "dev/speech": dev_speech,
-            "test/noise": test_noise,
-            "test/speech": test_speech,
-        }
-
-        return destination_dict
 
     @classmethod
     def vad_balanced(cls, config):
@@ -130,63 +72,6 @@ class DatasetSplit:
         random.shuffle(train_noise)
         random.shuffle(dev_noise)
         random.shuffle(test_noise)
-
-        train_bg_noise = train_noise[:100]
-        dev_bg_noise = dev_noise[:100]
-        test_bg_noise = test_noise[:100]
-
-        destination_dict = {
-            "train/noise": train_noise,
-            "train/speech": train_speech,
-            "dev/noise": dev_noise,
-            "dev/speech": dev_speech,
-            "test/noise": test_noise,
-            "test/speech": test_speech,
-            "train/background_noise": train_bg_noise,
-            "dev/background_noise": dev_bg_noise,
-            "test/background_noise": test_bg_noise,
-        }
-
-        return destination_dict
-
-    @classmethod
-    def getrennt(cls, config):
-        # directories with original data
-        data_folder = config["data_folder"]
-        noise_dir = os.path.join(data_folder, "noise_files")
-        speech_dir = os.path.join(data_folder, "speech_files")
-        speech_dir = os.path.join(speech_dir, "uwnu-v2")
-
-        # list all noise  and speech files
-        noise_files = list_all_files(noise_dir, ".wav", True)
-        noise_files.extend(list_all_files(noise_dir, ".mp3", True))
-        speech_files_P = []
-        speech_files_N = []
-        for path, subdirs, files in os.walk(speech_dir):
-            for name in files:
-                if name.endswith("wav") and not name.startswith("."):
-                    if "NC" in name:
-                        speech_files_P.append(os.path.join(path, name))
-                    else:
-                        speech_files_N.append(os.path.join(path, name))
-
-        # randomly shuffle noise and speech files and split them in train,
-        # validation and test set
-
-        random.shuffle(noise_files)
-        random.shuffle(speech_files_P)
-
-        nb_noise_files = len(noise_files)
-        nb_train_noise = int(0.6 * nb_noise_files)
-        nb_dev_noise = int(0.2 * nb_noise_files)
-
-        train_noise = noise_files[:nb_train_noise]
-        dev_noise = noise_files[nb_train_noise : nb_train_noise + nb_dev_noise]
-        test_noise = noise_files[nb_train_noise + nb_dev_noise :]
-
-        train_speech = speech_files_N[:nb_train_noise]
-        dev_speech = speech_files_P[nb_train_noise : nb_train_noise + nb_dev_noise]
-        test_speech = speech_files_P[nb_train_noise + nb_dev_noise : nb_noise_files]
 
         train_bg_noise = train_noise[:100]
         dev_bg_noise = dev_noise[:100]
@@ -269,46 +154,204 @@ class DatasetSplit:
         return destination_dict
 
     @classmethod
-    def split_data(cls, config):
+    def split_data(cls, config, olddata=None, split_filename=None, lockfile=None):
         data_splits = config.get("data_split", [])
+        oldsplit = {}
+        if olddata is not None:
+            oldsplit = olddata
         if isinstance(data_splits, str):
             if data_splits:
                 data_splits = [data_splits]
             else:
                 data_splits = []
 
-        splits = ["vad", "vad_speech", "vad_balanced", "getrennt"]
-        split_methods = [
-            DatasetSplit.vad,
-            DatasetSplit.vad_speech,
-            DatasetSplit.vad_balanced,
-            DatasetSplit.getrennt,
-        ]
+        splits = ["vad_speech", "vad_balanced"]
+        split_methods = [DatasetSplit.vad_speech, DatasetSplit.vad_balanced]
 
         for data_split in data_splits:
             logging.info("split data begins current_split: %s", data_split)
             data_folder = config["data_folder"]
-            target_folder = os.path.join(data_folder, data_split)
-
-            # remove old folders
-            if config["clear_split"]:
-                for name in ["train", "dev", "test"]:
-                    oldpath = os.path.join(target_folder, name)
-                    if os.path.isdir(oldpath):
-                        shutil.rmtree(oldpath)
-            elif os.path.isdir(target_folder):
-                return
 
             destination_dict = split_methods[splits.index(data_split)](config)
 
-            dest_dir = os.path.join(data_folder, data_split)
+            dest_sr = config.get("samplingrate", 16000)
 
-            for key, value in destination_dict.items():
-                data_dir = os.path.join(dest_dir, key)
-                if not os.path.exists(data_dir):
-                    os.makedirs(data_dir)
-                for f in value:
-                    shutil.copy2(f, data_dir)
+            downsample_dir = DatasetSplit.create_folder(data_folder, "downsampled")
+            downsample_dir = DatasetSplit.create_folder(downsample_dir, data_split)
+            downsample_dir = DatasetSplit.create_folder(downsample_dir, str(dest_sr))
+            speech_dir = DatasetSplit.create_folder(downsample_dir, "speech")
+            noise_dir = DatasetSplit.create_folder(downsample_dir, "noise")
+
+            if split_filename is None:
+                variants = config.get("variants")
+                noise_dataset = config.get("noise_dataset")
+                split_filename = DatasetSplit.create_filename(
+                    data_split,
+                    variants,
+                    noise_dataset,
+                    dest_sr,
+                    data_folder=data_folder,
+                )
+            else:
+                split_filename = os.path.join(data_folder, split_filename)
+
+            output = cls.file_conversion_handling(
+                dest_sr, destination_dict, oldsplit, noise_dir, speech_dir
+            )
+
+            DatasetSplit.write_split(split_filename, output)
+            DatasetSplit.release(lockfile)
+
+    @classmethod
+    def file_conversion_handling(
+        cls, dest_sr, destination_dict, oldsplit, noise_dir, speech_dir
+    ):
+        torchaudio.set_audio_backend("sox_io")
+        output = list()
+        for key, value in destination_dict.items():
+            for f in value:
+                f_info = torchaudio.backend.sox_io_backend.info(f)
+                filename = os.path.basename(f)
+
+                old = oldsplit.pop(filename, None)
+                old_orig_sr = -1
+                old_down_sr = -1
+                if old is not None:
+                    old_orig_sr = DatasetSplit.convert_number(old.get("sr_orig"))
+                    old_down_sr = DatasetSplit.convert_number(old.get("sr_down"))
+
+                target_path = ""
+                downsampled_sr = ""
+
+                if (
+                    old_orig_sr != dest_sr
+                    and old_down_sr != dest_sr
+                    and (dest_sr != f_info.sample_rate or f_info.num_channels != 1)
+                ):
+                    if "noise" in key:
+                        target_path = os.path.join(noise_dir, filename)
+                    elif "speech" in key:
+                        target_path = os.path.join(speech_dir, filename)
+                    else:
+                        target_path = None
+
+                    target_path = Downsample.downsample_file(f, target_path, dest_sr)
+                    downsampled_sr = str(dest_sr)
+                elif old is not None and old_down_sr == dest_sr:
+                    target_path = old.get("downsampled_path")
+                    downsampled_sr = dest_sr
+
+                output.append(
+                    [filename, f, target_path, f_info.sample_rate, downsampled_sr, key]
+                )
+        for element in oldsplit.keys():
+            tmp = oldsplit[element]
+            output.append(
+                [
+                    tmp["filename"],
+                    tmp["original_path"],
+                    tmp["downsampled_path"],
+                    tmp["sr_orig"],
+                    tmp["sr_down"],
+                    "",
+                ]
+            )
+        return output
+
+    @classmethod
+    def convert_number(cls, text):
+        output = -1
+        if len(text) > 0:
+            output = int(text)
+        return output
+
+    @classmethod
+    def create_folder(cls, path, new_folder):
+        output = os.path.join(path, new_folder)
+        if not os.path.exists(output):
+            os.makedirs(output)
+        return output
+
+    @classmethod
+    def lock(cls, config):
+        split = config.get("data_split", "vad_balanced")
+        data_folder = config.get("data_folder", None)
+        variants = config.get("variants")
+        noise_dataset = config.get("noise_dataset")
+        dest_sr = config.get("samplingrate", 16000)
+        filename = DatasetSplit.create_filename(
+            split_name=split,
+            variants=variants,
+            noises=noise_dataset,
+            samplingrate=str(dest_sr),
+            data_folder=data_folder,
+            suffix=".lock",
+        )
+        f = os.open(filename, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+        os.close(f)
+        return filename
+
+    @classmethod
+    def release(cls, lockfile):
+        if os.path.isfile(lockfile):
+            os.remove(lockfile)
+
+    @classmethod
+    def create_filename(
+        cls, split_name, variants, noises, samplingrate, data_folder=None, suffix=".csv"
+    ):
+        output = (
+            DatasetSplit.combine_underscore_lists(
+                variants, noises, str(samplingrate), split_name
+            )
+            + suffix
+        )
+
+        if data_folder is not None:
+            output = os.path.join(data_folder, output)
+
+        return output
+
+    @classmethod
+    def create_foldername(
+        cls, split_name, variants, noises, samplingrate, data_folder=None
+    ):
+        output = DatasetSplit.combine_underscore_lists(
+            variants, noises, split_name, str(samplingrate)
+        )
+
+        if data_folder is not None:
+            os.path.join(data_folder, output)
+
+        return output
+
+    @classmethod
+    def combine_underscore_lists(cls, l1, l2, last_element, output=""):
+        for l in l1:
+            output += "_" + l
+
+        for l in l2:
+            output += "_" + l
+
+        output += "_" + last_element
+
+        return output
+
+    @classmethod
+    def write_split(cls, output_path, data):
+        header = [
+            "filename",
+            "original_path",
+            "downsampled_path",
+            "sr_orig",
+            "sr_down",
+            "allocation",
+        ]
+
+        with open(output_path, mode="w") as output_file:
+            writer = csv.writer(output_file, delimiter=",")
+            writer.writerow(header)
+            writer.writerows(data)
 
     @classmethod
     def read_UWNU(cls, config):
@@ -340,7 +383,7 @@ class DatasetSplit:
             train = list_all_files(train_folder, ".WAV", True, ".")
 
             return (train, test)
-        return []
+        return ([], [])
 
     @classmethod
     def read_mozilla(cls, config):

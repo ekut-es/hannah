@@ -22,7 +22,13 @@ class FasterRCNN(torch.nn.Module):
         **kwargs,
     ):
         super().__init__()
-        self.model = torchvision.models.detection.fasterrcnn_resnet50_fpn(**kwargs)
+        self.model = (
+            torchvision.models.detection.fasterrcnn_resnet50_fpn(**kwargs)
+            if name == "faster-rcnn-resnet50"
+            else torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(
+                **kwargs
+            )
+        )
         in_features = self.model.roi_heads.box_predictor.cls_score.in_features
         self.model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
@@ -117,12 +123,14 @@ class UltralyticsYolo(torch.nn.Module):
         return retval
 
     def forward(self, x, y=None):
-        pad = (3, 3, 4, 5)
-
         if isinstance(x, (tuple, list)):
             retval = list()
             for x_elem in x:
-                pad = (0, 1248 - x_elem.size()[2], 0, 384 - x_elem.size()[1])
+                pad = (
+                    (0, 1248 - x_elem.size()[2], 0, 384 - x_elem.size()[1])
+                    if "6" not in self.model.yaml_file
+                    else (0, 1280 - x_elem.size()[2], 0, 1280 - x_elem.size()[1])
+                )
                 retval.append(self.model(F.pad(x_elem.unsqueeze(0), pad, "constant")))
 
             if self.training:
@@ -139,6 +147,11 @@ class UltralyticsYolo(torch.nn.Module):
 
             return retval
         else:
+            pad = (
+                (0, 1248 - x.size()[3], 0, 384 - x.size()[2])
+                if "6" not in self.model.yaml_file
+                else (0, 1280 - x.size()[3], 0, 1280 - x.size()[2])
+            )
             x = F.pad(x, pad, "constant")
             return self.model(x)
 
@@ -158,7 +171,7 @@ class UltralyticsYolo(torch.nn.Module):
                 confidence = ann[4].item()
                 label = ann[5].item()
                 if not KittiCOCO.dontCareMatch(
-                    torch.Tensor(np.array([x1, y2, x2, y2])),
+                    torch.Tensor(np.array([x1, y1, x2, y2])),
                     (x_elem.shape[2], x_elem.shape[1]),
                     y_img,
                 ):

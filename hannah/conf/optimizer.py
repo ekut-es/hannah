@@ -33,6 +33,19 @@ cs.store(group="optimizer", name="adam", node=AdamConf())
 
 
 @dataclass
+class RAdamConf:
+    _target_: str = "hannah.torch_extensions.optim.RAdam.RAdam"
+    lr: Any = 0.001
+    betas: Any = (0.9, 0.999)
+    eps: Any = 1e-08
+    weight_decay: Any = 0
+    degenerated_to_sgd = False
+
+
+cs.store(group="optimizer", name="RAdam", node=RAdamConf())
+
+
+@dataclass
 class AdamaxConf:
     _target_: str = "torch.optim.adamax.Adamax"
     lr: Any = 0.002
