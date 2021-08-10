@@ -360,7 +360,6 @@ class BaseStreamClassifierModule(ClassifierModule):
             train_set,
             batch_size=train_batch_size,
             drop_last=True,
-            pin_memory=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             sampler=sampler,
