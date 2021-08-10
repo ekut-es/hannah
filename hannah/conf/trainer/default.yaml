@@ -17,3 +17,5 @@ stochastic_weight_avg: false
 auto_scale_batch_size: null
 accumulate_grad_batches: 1
 log_gpu_memory: False
+plugins: ""
+precision: 32
