@@ -41,6 +41,7 @@ def handleDataset(config=DictConfig):
         features=config.features,
         scheduler=config.get("scheduler", None),
         normalizer=config.get("normalizer", None),
+        _recursive_=False,
     )
     lit_module.prepare_data()
 
@@ -76,6 +77,7 @@ def train(config: DictConfig):
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
             gpus=config.trainer.get("gpus", None),
+            _recursive_=False,
         )
 
         profiler = None

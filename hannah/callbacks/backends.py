@@ -318,5 +318,5 @@ class TRaxUltraTrailBackend(Callback):
 
         logging.info("Ultratrail metrics")
         for k, v in res.items():
-            pl_module.log(k, v)
+            pl_module.log(k, float(v))
             logging.info("%s: %s", str(k), str(v))

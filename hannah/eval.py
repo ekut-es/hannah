@@ -28,7 +28,7 @@ def eval_checkpoint(config: DictConfig, checkpoint):
         hparams["_target_"] = target
 
     hparams["num_workers"] = 8
-    module = instantiate(hparams)
+    module = instantiate(hparams, _recursive_=False)
     module.setup("test")
     module.load_state_dict(checkpoint["state_dict"])
 
