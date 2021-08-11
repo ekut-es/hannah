@@ -199,42 +199,6 @@ class ElasticKernelConv1d(nn.Conv1d):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
-        """
-        # zero out input channels specified in the filter, for training channel reduction
-        # if every channel passes, the filter matrix is an identity matrix
-        channel_filter = torch.eye(self.in_channels)
-        for i in range(len(self.input_channel_pass_filter)):
-            # for every input to be removed, zero out the entry in the identity matrix
-            if not self.input_channel_pass_filter[i]:
-                channel_filter[i][i] = 0
-        # apply the filter matrix (identity matrix with entries of filtered channels zeroed) to the input via a functional linear layer
-        # input = nnf.linear(input=input, weight=channel_filter)
-        """
-        """
-        # THIS APPROACH CAUSES GRADIENT COMPUTATION TO FAIL DUE TO INPLACE OPERATION
-        # print(np.shape(input)); print(self.in_channels); print(len(self.input_channel_pass_filter))
-        # zero out the input in any channels which are set to be filtered out
-        for input_index in range(len(input)):
-            # for every input index
-            for channel_index in range(len(input[input_index])):
-                # for every channel index within that input
-                if not self.input_channel_pass_filter[channel_index]:
-                    # if this channel is supposed to be filtered out
-                    for i in range(len(input[input_index][channel_index])):
-                        # zero every value within this channel
-                        input[input_index][channel_index][i] = 0.
-        """
-        """
-        # zero out input channels specified in the filter, for training channel reduction
-        # if every channel passes, the filter matrix is an identity matrix
-        channel_filter = torch.eye(self.in_channels)
-        for i in range(len(self.input_channel_pass_filter)):
-            # for every input to be removed, zero out the entry in the identity matrix
-            if not self.input_channel_pass_filter[i]:
-                channel_filter[i][i] = 0
-        # apply the filter matrix (identity matrix with entries of filtered channels zeroed) to the input via a functional linear layer
-        # input = nnf.linear(input=input, weight=channel_filter)
-        """
         null_input = torch.zeros_like(input)
         input_copy = torch.clone(input)
         zeroed = 0
