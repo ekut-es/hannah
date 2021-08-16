@@ -21,11 +21,6 @@ try:
 except ModuleNotFoundError:
     onnxrt_backend = None
 
-try:
-    import tvm, tvm.relay
-except ModuleNotFoundError:
-    tvm = None
-
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
 
