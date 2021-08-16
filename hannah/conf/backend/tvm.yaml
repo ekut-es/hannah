@@ -1,6 +1,4 @@
-
-
-_target_: hannah.callbacks.backends.TVMBackend
+_target_: hannah_tvm.backend.TVMBackend
 val_batches: 10
 test_batches: 10
 val_frequency: 10
