@@ -23,9 +23,6 @@ bitstring = "^3.1.7"
 wfdb = "^3.2.0"
 typing-extensions = "^3.7.4"
 lightning-bolts = "^0.3.2"
-wandb = "^0.10.26"
-pycocotools = "^2.0.2"
-opencv-python= "^4.5.2.52"
 scipy="^1.6.3"
 tqdm="^4.60.0"
 seaborn="^0.11.1"
@@ -33,36 +30,39 @@ pandas="^1.2.4"
 thop="^0.0.31-2005241907"
 
 hydra-core = "^1.1.0"
-hydra-nevergrad-sweeper = "^1.1.0-rc.1"
-hydra-joblib-launcher = "^1.1.0"
+hydra-nevergrad-sweeper = ">=1.1.5"
+hydra-joblib-launcher = ">1.1.0"
 hannah-optimizer = {path = "plugins/hannah-optimizer", develop=true}
-hydra-submitit-launcher = "^1.1.0"
+hydra-submitit-launcher = ">1.1.0"
 tabulate = "^0.8.3"
 torchvision = "^0.10.0"
 GitPython = "^3.1.14"
 h5py = "^3.2.1"
 sympy = "^1.7.1"
 nvsmi = "^0.4.2"
-libsvm="^3.23.0.4"
-imagecorruptions = "^1.1.2"
-albumentations = "^1.0.1"
 
 # optional dependencies
 onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
 tensorflow-addons = {version = "^0.11.2", optional = true}
 onnxruntime = {version = "^1.4.0", optional = true}
 
+libsvm="^3.23.0.4"
+imagecorruptions = "^1.1.2"
+albumentations = "^1.0.1"
+pycocotools = "^2.0.2"
+#opencv-python= "^4.5.2.52"
+
 
 [tool.poetry.dev-dependencies]
-pytest = "4.6.1"
+pytest = "^6.2.0"
 flake8 = "^3.8.3"
 pre_commit = "^2.7.1"
-black = "^20.8b1"
-pytest-cov = "^2.10.1"
-rope = "^0.18.0"
-mypy = "^0.812"
-pydoc-markdown = "^3.10.0"
-torch-tb-profiler = "^0.1.0"
+pytest-cov = ">2.10.1"
+rope = "^0.19.0"
+mypy = "^0.910"
+pydoc-markdown = "^4.1.0"
+torch-tb-profiler = "^0.2.0"
+black = "^21.7b0"
 
 [tool.poetry.extras]
 tf-backend = ["onnx-tf", "tensorflow-addons"]

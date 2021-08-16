@@ -825,7 +825,7 @@ class NetworkFactory:
                 outputs=labels,
                 norm=False,
                 act=False,
-                out_quant=True,
+                out_quant=False,
                 qconfig=True if self.default_qconfig else False,
             ),
         )

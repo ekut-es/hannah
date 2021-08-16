@@ -208,7 +208,7 @@ class Conv2d(QuantizedConvModule):
 
 class ConvReLU2d(Conv2d):
     def _get_name(self):
-        return "QuantizedConvReLU1d"
+        return "QuantizedConvReLU2d"
 
     def forward(self, input):
         output = f.conv2d(

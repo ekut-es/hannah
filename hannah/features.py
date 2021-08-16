@@ -91,6 +91,7 @@ class SincConv(nn.Module):
 
     def forward(self, waveforms):
         f_low = torch.abs(self.low_freq_) + self.min_low_hz
+        # print(f_low[0:10])
         f_high = torch.clamp(
             f_low + self.min_band_hz + torch.abs(self.band_freq_),
             self.min_low_hz,

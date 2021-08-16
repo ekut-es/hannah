@@ -6,10 +6,16 @@ import platform
 from abc import abstractmethod
 
 from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.metrics.classification.precision_recall import Precision
-from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
+from torchmetrics import (
+    Accuracy,
+    Recall,
+    F1,
+    ROC,
+    ConfusionMatrix,
+    Precision,
+    MetricCollection,
+)
 from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
-from pytorch_lightning.metrics.metric import MetricCollection
 from torch._C import Value
 from .config_utils import get_loss_function, get_model
 from typing import Optional, Dict, Union
@@ -178,7 +184,7 @@ class ClassifierModule(LightningModule):
                     dummy_input,
                     os.path.join(output_dir, "model.onnx"),
                     verbose=False,
-                    opset_version=13,
+                    opset_version=11,
                 )
             except Exception as e:
                 logging.error("Could not export onnx model ...\n {}".format(str(e)))
@@ -369,7 +375,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         return train_loader
 
-    def on_train_epoch_end(self, outputs):
+    def on_train_epoch_end(self):
         self.eval()
         self._log_weight_distribution()
         self.train()
