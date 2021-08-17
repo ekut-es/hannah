@@ -6,11 +6,14 @@ name: wip
 min_depth: 2
 steps_without_sampling: 9999999
 steps_per_kernel_step: 9999999
-steps_per_channel_step: 5000
+steps_per_channel_step: 10000
 norm_order:
   norm_before_act: true
   norm_after_act: false
 # conv layout from conv-net-factory
+# to add elastic channel count following a module which is not elastic_conv1d
+# an "elastic_channel_helper" module with only a channel_count list may be added after
+# the maximum channel count of the elastic helper must match the out_channels of the previous module
 conv:
   - target: forward
     stride: 1
@@ -31,7 +34,10 @@ conv:
           - 1
         act: true
         norm: true
-        out_channels: 24
+        out_channels:
+          - 24
+          - 16
+          - 8
       - target: conv1d
         kernel_size: 1
         out_channels: 24
@@ -43,7 +49,10 @@ conv:
           - 1
         act: true
         norm: true
-        out_channels: 24
+        out_channels: 
+          - 24
+          - 16
+          - 8
   - target: residual1d
     stride: 2
     blocks:
@@ -55,7 +64,10 @@ conv:
           - 1
         act: true
         norm: true
-        out_channels: 32
+        out_channels: 
+          - 32
+          - 24
+          - 16
       - target: conv1d
         kernel_size: 1
         out_channels: 32
@@ -67,7 +79,10 @@ conv:
           - 1
         act: true
         norm: true
-        out_channels: 32
+        out_channels: 
+          - 32
+          - 24
+          - 16
   - target: residual1d
     stride: 2
     blocks:
@@ -79,7 +94,10 @@ conv:
           - 1
         act: true
         norm: true
-        out_channels: 48
+        out_channels: 
+          - 48
+          - 32
+          - 24
       - target: conv1d
         kernel_size: 1
         out_channels: 48
@@ -91,4 +109,7 @@ conv:
           - 1
         act: true
         norm: true
-        out_channels: 48
+        out_channels:
+          - 48
+          - 32
+          - 24

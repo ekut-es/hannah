@@ -1,5 +1,5 @@
 import copy
-from typing import List
+from typing import List, Tuple
 import torch.nn as nn
 import torch.nn.functional as nnf
 import numpy as np
@@ -20,40 +20,262 @@ def conv1d_get_padding(kernel_size):
     return padding
 
 
+# TODO: deploy these during the creation process at every elastic width connection
+# helper module, deployed in an elastic width connection
+# can zero out input channels to train elastic channels without weight modification
+# must know the module it passes inputs to to compute channel priorities
+# must know source modules to remove output channels in extraction
+# This can be previous linears/convs, the skip layer of a previous residual block, and batchnorms placed in-between
+class ElasticChannelHelper(nn.Module):
+    def __init__(self, channel_counts: List[int], sources: nn.ModuleList, target: nn.Module, additional_targets: nn.ModuleList = nn.ModuleList([])):
+        super().__init__()
+        # sort channel counts: largest -> smallest
+        self.channel_counts = channel_counts
+        self.channel_counts.sort(reverse=True)
+        self.sources = sources
+        self.target = target
+        # additional target modules will not be used to compute channel priorities, but will have to be known for reducing input channels
+        # this may contain additional exits, the skip layer of a following residual block
+        self.additional_targets = additional_targets
+        # initialize filter for channel reduction in training, channel priority list
+        self.channel_pass_filter: List[int] = []
+        # the first channel index in this list is least important, the last channel index ist most important
+        self.channels_by_priority: List[int] = []
+        # initially, all channels are used.
+        self.max_channels: int = self.channel_counts[0]
+        self.channel_step: int = 0
+        self.current_channels: int = self.channel_counts[self.channel_step]
+
+        # initialize the filter and the channel priority list
+        for i in range(self.max_channels):
+            self.channel_pass_filter.append(True)
+            # to init with technically valid values, simply set starting priority based on index
+            self.channels_by_priority.append(i)
+
+    # compute channel priorities based on the l1 norm of the weights of whichever target module follows this elastic channel section
+    def compute_channel_priorities(self):
+        target = self.target
+        channel_norms = []
+
+        # this will also include the elastic kernel convolutions
+        # for elastic kernel convolutions, the priorities will then also be computed on the base module (full kernel)
+        if isinstance(target, nn.Conv1d):
+            weights = target.weight.data
+            norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=0)
+            channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
+        # the channel priorities for lienars need to also be computable:
+        # especially for the exit connections, a linear may follow after an elastic width
+        elif isinstance(target, nn.Linear):
+            weights = target.weight.data
+            channel_norms = torch.linalg.norm(weights, ord=1, dim=0)
+        else:
+            # the channel priorities will keep their previous / default value in this case. Reduction will probably occur by channel order
+            logging.warning(f"Unable to compute channel priorities! Unsupported target module after elastic channels: {type(target)}")
+
+        # contains the indices of the channels, sorted from channel with smallest norm to channel with largest norm
+        # the least important channel index is at the beginning of the list, the most important channel index is at the end
+        self.input_channels_by_priority = np.argsort(channel_norms)
+
+    # set the channel filter list based on the channel priorities and the current channel count
+    def set_channel_filter(self):
+        # get the amount of channels to be removed from the max and current channel counts
+        channel_reduction_amount: int = self.max_channels - self.current_channels
+        # start with an empty filter, where every channel passes through, then remove channels by priority
+        for i in range(len(self.channel_pass_filter)):
+            self.channel_pass_filter[i] = True
+
+        # filter the least important n channels, specified by the reduction amount
+        for i in range(channel_reduction_amount):
+            # priority list of channels contains channel indices from least important to most important
+            # the first n channel indices specified in this list will be filtered out
+            filtered_channel_index = self.channels_by_priority[i]
+            self.channel_pass_filter[filtered_channel_index] = False
+
+        # store the channel filter on every affected module, to make extraction more straightforward later.
+        # then, in the extraction step, we no longer need to know about the relation of modules, each module knows which channels must be removed.
+        setattr(self.target, 'elastic_width_filter_input', self.channel_pass_filter)
+        # any modules which also get inputs from this elastic width connection should also know the filter for extraction
+        # this may contain skip layers in following residual blocks or additional exit layers
+        for additional_target in self.additional_targets:
+            setattr(additional_target, 'elastic_width_filter_input', self.channel_pass_filter)
+        for source in self.sources:
+            setattr(source, 'elastic_width_filter_output', self.channel_pass_filter)
+
+    # step down channel count by one channel step
+    def step_down_channels(self):
+        if self.channel_step + 1 in range(len(self.channel_counts)):
+            # if there is still channel steps available, step forward by one. Set new active channel count.
+            self.channel_step += 1
+            self.current_channels = self.channel_counts[self.channel_step]
+            # after stepping down channels by one, set new channel filter.
+            self.set_channel_filter()
+            return True
+        else:
+            # if the last channel step is already reached, no additional step-down operation can be performed
+            return False
+
+    # set the primary target from an input module. For iterable inputs, extract additional secondary targets
+    def set_primary_target(self, target: nn.Module):
+        if hasattr(target, '__iter__'):
+            # first, flatten the target, if it is iterable
+            target = flatten_module_list(target)
+            # the primary target is the first linear/conv in the sequence
+            for item in target:
+                if self.is_valid_primary_target(item):
+                    self.target = item
+                    # if the primary target was found in the sequence, any trailing modules must be ignored, as they are unaffected.
+                    break
+                else:
+                    # if the module item is not a primary target, process it as a secondary target.
+                    self.add_secondary_targets(item)
+                    # this will check for other, invalid ElasticChannelHelper modules in targets and throw an error
+        else:
+            # if the input is not iterable, and is just a simple module, it is the target
+            if not self.is_valid_primary_target(target):
+                # if the standalone module is not actually a valid primary target, something went wrong!
+                logging.warn(f"ElasticChannelHelper target module is an invalid module: '{type(target)}'. Target reset to None.")
+                self.target = None
+            # if the input is valid as a target module, set it as the target
+            self.target = target
+
+    # check if a module is valid as a primary target (to compute channel priorities from)
+    def is_valid_primary_target(self, module: nn.Module) -> bool:
+        return isinstance(module, nn.Conv1d) or isinstance(module, nn.Linear)
+
+    # add additional target(s) which must also have their inputs adjusted when stepping down channels
+    def add_secondary_targets(self, target: nn.Module):
+        if hasattr(target, '__iter__'):
+            # if the input target is iterable, check every item
+            target_flat = flatten_module_list(target)
+            for item in target_flat:
+                if isinstance(item, ElasticChannelHelper):
+                    logging.error("ElasticChannelHelper target accumulation reached another ElasticChannelHelper, with no primary target in-between!")
+                self.add_secondary_target_item(item)
+                if self.is_valid_primary_target(item):
+                    # if a valid primary target is found reached, the modules trailing it must not be affected by width changes
+                    # only modules before a trailing linear/conv will be affected
+                    break
+        else:
+            self.add_secondary_target_item(target)
+
+    # TODO: logic for adding secondary items to target/source is pretty much a copy - could be cleaned up
+    # check a module, add it as a secondary target if its weights would need modification when channel width changes
+    def add_secondary_target_item(self, target: nn.Module):
+        if self.is_valid_primary_target(target):
+            self.additional_targets.append(target)
+        if isinstance(target, nn.BatchNorm1d):
+            # trailing batchnorms between the channel helper and the next 'real' module will also need to have their channels adjusted
+            logging.info("found loose BatchNorm1d module trailing an elastic channel helper. These are usually located in-front of the helper")
+            self.additional_targets.append(target)
+        elif isinstance(target, nn.ReLU):
+            logging.info("found loose ReLu module trailing an elastic channel helper. These are usually located in-front of the helper")
+        else:
+            logging.warn(f"module with undefined behavior found in ElasticChannelHelper targets: '{type(target)}'. Ignoring.")
+
+    # add additional source(s) which must have their outputs adjusted if the channel width changes
+    def add_sources(self, source: nn.Module):
+        if hasattr(source, '__iter__'):
+            # if the input source is iterable, check every item
+            source_flat = flatten_module_list(source)
+            for item in source_flat[::-1]:
+                # ascend the list of sources from the back
+                if isinstance(item, ElasticChannelHelper):
+                    logging.error("ElasticChannelHelper source accumulation reached another ElasticChannelHelper, with no primary target in-between!")
+                self.add_source_item(self, item)
+                if self.is_valid_primary_target(item):
+                    # if a valid primary target is found in the sources, the modules above it must not be affected by width changes
+                    # only modules after a previous linear/conv will be affected
+                    break
+        else:
+            self.add_source_item(self, source)
+
+    # check a module, add it as a source if its weights would need modification when channel width changes
+    def add_source_item(self, source: nn.Module):
+        if self.is_valid_primary_target(source):
+            # modules which are valid primary targets (Convs, Linears) are also valid sources
+            self.sources.append(source)
+        if isinstance(source, nn.BatchNorm1d):
+            # batchnorms before the channel helper will need to be adjusted if channels are removed
+            self.sources.append(source)
+        elif isinstance(source, nn.ReLU):
+            # ReLu preceding the channel helper can be ignored. It does not need adjustment.
+            pass
+        else:
+            logging.warn(f"module with undefined behavior found in ElasticChannelHelper sources: '{type(source)}'. Ignoring.")
+
+    # in forward, zero out filtered channels
+    def forward(self, x):
+        input = x
+        null_input = torch.zeros_like(input)
+        # work on a copy of the input to avoid in-place operations on the input tensor
+        input_copy = torch.clone(input)
+        zeroed = 0
+        for input_index in range(len(input)):
+            # for every input index
+            for channel_index in range(len(input[input_index])):
+                # for every channel index within that input
+                # print(self.channel_pass_filter)
+                # print(channel_index)
+                if not self.channel_pass_filter[channel_index]:
+                    zeroed += 1
+                    # if this channel index is supposed to be filtered, copy over zeroes from the equivalent null input
+                    input_copy[input_index][channel_index] = null_input[input_index][channel_index]
+        # sanity check
+        removed_channels_count = self.max_channels - self.current_channels
+        if (zeroed/len(input) != removed_channels_count) or (self.channel_step > 0 and zeroed == 0):
+            logging.warn(f"ElasticChannelHelper zeroed channel count {zeroed/len(input)} does not match expected {removed_channels_count}")
+        return input_copy
+
+    def __call__(self, x):
+        return self.forward(x)
+
+
+# TODO: remove elastic width implementations, to be taken over by the helper module
 class ElasticKernelConv1d(nn.Conv1d):
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups : int = 1,
         bias: bool = False,
     ):
         # sort available kernel sizes from largest to smallest (descending order)
         kernel_sizes.sort(reverse=True)
-        self.kernel_sizes = kernel_sizes
+        self.kernel_sizes: List[int] = kernel_sizes
         # after sorting kernel sizes, the maximum and minimum size available are the first and last element
-        self.max_kernel_size = kernel_sizes[0]
-        self.min_kernel_size = kernel_sizes[-1]
+        self.max_kernel_size: int = kernel_sizes[0]
+        self.min_kernel_size: int = kernel_sizes[-1]
         # initially, the target size is the full kernel
-        self.target_kernel_index = 0
+        self.target_kernel_index: int = 0
+        """
         # initialize the filter for input channel reduction in training, and the channel priority list
         self.input_channel_pass_filter = []
         # the first channel index in this list is least important, the last channel index ist most important
         self.input_channels_by_priority = []
         # initially, all channels are used.
         self.input_channel_reduction = 0
+        self.output_channel_step = 0
+        # sort output channel counts list, largest to smallest (descending order)
+        out_channels_list.sort(reverse=True)
+        # get min/max values for out channels
+        self.max_out_channels = out_channels_list[0]
+        self.min_out_channels = out_channels_list[-1]
+        self.out_channels = self.max_out_channels
+
         for i in range(in_channels):
             self.input_channel_pass_filter.append(True)
             # to init with technically valid values, simply set starting priority based on index
             self.input_channels_by_priority.append(i)
-
+        """
+        self.out_channels: int = out_channels
+        # print(self.out_channels)
         super().__init__(
             in_channels=in_channels,
-            out_channels=out_channels,
+            out_channels=self.out_channels,
             kernel_size=self.max_kernel_size,
             stride=stride,
             padding=padding,
@@ -79,6 +301,7 @@ class ElasticKernelConv1d(nn.Conv1d):
             self.kernel_transforms.append(new_transform_module)
         self.set_kernel_size(self.max_kernel_size)
 
+    """
     def compute_channel_priorities(self):
         weights = self.weight.data
         norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=0)
@@ -113,6 +336,7 @@ class ElasticKernelConv1d(nn.Conv1d):
         current_reduction = self.input_channel_reduction
         # at least 1 channel will always be kept
         self.reduce_input_channels_by_n(current_reduction + 1)
+    """
 
     def set_kernel_size(self, new_kernel_size):
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
@@ -199,6 +423,7 @@ class ElasticKernelConv1d(nn.Conv1d):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
+        """
         null_input = torch.zeros_like(input)
         input_copy = torch.clone(input)
         zeroed = 0
@@ -211,12 +436,12 @@ class ElasticKernelConv1d(nn.Conv1d):
                     # if this channel index is supposed to be filtered, copy over zeroes
                     input_copy[input_index][channel_index] = null_input[input_index][channel_index]
         # print(f"{zeroed}|{zeroed/len(input)}|{self.input_channel_reduction}") # sanity check
-
+        """
         # get the kernel for the current index
         kernel = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return nnf.conv1d(input_copy, kernel, self.bias, self.stride, padding, self.dilation)
+        return nnf.conv1d(input, kernel, self.bias, self.stride, padding, self.dilation)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
@@ -234,6 +459,13 @@ class ElasticKernelConv1d(nn.Conv1d):
         )
         new_conv.weight.data = kernel
         new_conv.bias = self.bias
+        # copy over elastic filter annotations if they are present
+        elastic_width_filter_input = getattr(self, 'elastic_width_filter_input', None)
+        elastic_width_filter_output = getattr(self, 'elastic_width_filter_output', None)
+        if elastic_width_filter_input is not None:
+            setattr(new_conv, 'elastic_width_filter_input', elastic_width_filter_input)
+        if elastic_width_filter_output is not None:
+            setattr(new_conv, 'elastic_width_filter_output', elastic_width_filter_output)
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
@@ -270,7 +502,9 @@ class ResBlockBase(nn.Module):
 
     def forward(self, x):
         residual = x
-        if self.apply_skip:
+        # do not use self.apply_skip for this: a skip connection may still be added to support elastic width
+        # by default, skip is an Identity. It may be needlessly applied if the residual block implementation does not replace it with a skip or None
+        if self.skip is not None:
             residual = self.skip(residual)
         x = self.blocks(x)
         x += residual
@@ -307,7 +541,8 @@ class ResBlock1d(ResBlockBase):
         self.skip = nn.Sequential(
             nn.Conv1d(self.in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
             nn.BatchNorm1d(self.out_channels)
-        ) if self.apply_skip else None
+        )  # if self.apply_skip else None
+        # as this does not know if an elastic width section may follow, the skip connection is required! it will be needed if the width is modified later
 
 
 def create(
@@ -320,7 +555,7 @@ def create(
     steps_without_sampling=1,
     steps_per_kernel_step=100,
     steps_per_channel_step=100
-):
+) -> nn.Module:
     # if no orders for the norm operator are specified, fall back to default
     if not (hasattr(norm_order, "norm_before_act") and hasattr(norm_order, "norm_after_act")):
         logging.info("order of norm before/after activation is not set!")
@@ -331,18 +566,49 @@ def create(
     pool_n = input_shape[2]
     # the final output channel count is given by the last minor block of the last major block
     final_out_channels = conv[-1].blocks[-1].out_channels
+    if hasattr(final_out_channels, '__iter__'):
+        # if the output channel count is a list, get the highest value
+        final_out_channels = max(final_out_channels)
     conv_layers = nn.ModuleList([])
     next_in_channels = in_channels
 
+    previous_sources = [nn.ModuleList([])]
+    previous_elastic_channel_helper: ElasticChannelHelper = None
     for block_config in conv:
         if block_config.target == "forward":
-            major_block = create_forward_block(blocks=block_config.blocks, in_channels=next_in_channels, stride=block_config.stride, norm_order=norm_order)
+            major_block = create_forward_block(blocks=block_config.blocks, in_channels=next_in_channels, stride=block_config.stride, norm_order=norm_order, sources=previous_sources)
+            # this major block is the source for the next block. If it already ends in a channel helper and is passed to a second channel helper, the issue will be handled there.
+            previous_sources = [major_block]
+            if previous_elastic_channel_helper is not None:
+                # if an elastic channel helper directly precedes this block, this block is it's primary target.
+                previous_elastic_channel_helper.set_primary_target(major_block)
+            if hasattr(major_block, '__iter__') and isinstance(major_block[-1], ElasticChannelHelper):
+                # if the block ends in an elastic channel helper, store it. It's targets are specified by the block which follows
+                previous_elastic_channel_helper = major_block[-1]
         elif block_config.target == "residual1d":
-            major_block = create_residual_block_1d(blocks=block_config.blocks, in_channels=next_in_channels, stride=block_config.stride, norm_order=norm_order)
+            major_block = create_residual_block_1d(blocks=block_config.blocks, in_channels=next_in_channels, stride=block_config.stride, norm_order=norm_order, sources=previous_sources)
+            # this major block is the source for the next block. This involves both the main blocks and the skip connection
+            # both sources MUST be processed in parallel, and not added to one ModuleList: each source is only ascended until a primary target is found. Modules before it must be unaffected.
+            # duplicate elastic channel helpers will be found if the source is added to the second helper module.
+            previous_sources = [major_block.blocks, major_block.skip]
+            if previous_elastic_channel_helper is not None:
+                # if an elastic channel helper directly precedes this block, this block is it's primary target.
+                previous_elastic_channel_helper.set_primary_target(major_block.blocks)
+                # the input channels of the skip connection must also be modified by the channel helper
+                previous_elastic_channel_helper.add_secondary_targets(major_block.skip)
+            if hasattr(major_block.blocks, '__iter__') and isinstance(major_block.blocks[-1], ElasticChannelHelper):
+                helper : ElasticChannelHelper = major_block.blocks[-1]
+                # if the block ends in an elastic channel helper, store it. It's targets are specified by the block which follows
+                previous_elastic_channel_helper = helper
+                # additionally, this channel helper must be able to adjust the output channels of the skip connection, if the residual block adjusts it's output channels
+                helper.add_sources(major_block.skip)
         else:
             raise Exception(f"Undefined target selected for major block: {block_config.target}")
         # output channel count of the last minor block will be the input channel count of the next major block
         next_in_channels = block_config.blocks[-1].out_channels
+        if hasattr(next_in_channels, '__iter__'):
+            # if the channel count is a list, get the highest value
+            next_in_channels = max(next_in_channels)
         conv_layers.append(major_block)
 
     # get the max depth from the count of major blocks
@@ -360,14 +626,18 @@ def create(
         steps_per_channel_step=steps_per_channel_step
     )
 
+    # store the name onto the model
+    setattr(model, 'creation_name', name)
+
     return model
 
 
 # build a sequence from a list of minor block configurations
-def create_minor_block_sequence(blocks, in_channels, stride=1, norm_order=None):
+def create_minor_block_sequence(blocks, in_channels, stride=1, norm_order=None, sources: List[nn.Module] = [nn.ModuleList([])]) -> nn.Module:
     next_in_channels = in_channels
     minor_block_sequence = nn.ModuleList([])
     is_first_minor_block = True
+    elastic_helper = None
     for block_config in blocks:
         # set stride on the first minor block in the sequence
         if is_first_minor_block:
@@ -375,15 +645,36 @@ def create_minor_block_sequence(blocks, in_channels, stride=1, norm_order=None):
             is_first_minor_block = False
         else:
             next_stride = 1
-        minor_block, next_in_channels = create_minor_block(block_config=block_config, in_channels=next_in_channels, stride=next_stride, norm_order=norm_order)
+        minor_block, next_in_channels = create_minor_block(block_config=block_config, in_channels=next_in_channels, stride=next_stride, norm_order=norm_order, sources=sources)
+        if hasattr(minor_block, '__iter__') and isinstance(minor_block[-1], ElasticChannelHelper):
+            # if the minor block is iterable, check it's last element for an elastic width helper. It will already know it's source modules from the block
+            # store the elastic helper, it needs to know it's 'target' blocks, which follow it
+            elastic_helper = minor_block[-1]
+            # reset sources: this block is already attached to an elastic channel helper
+            sources = [nn.ModuleList([])]
+        elif isinstance(minor_block, ElasticChannelHelper):
+            # if the module is a standalone elastic channel helper, it has already received the sources, but must still be stored for passing it's targets
+            elastic_helper = minor_block
+            # reset sources: no additional elastic channel helper may be attached to this block
+            sources = [nn.ModuleList([])]
+        else:
+            # if the module does not end in any elastic helper, pass it as the target to a previous helper module, if present.
+            if elastic_helper is not None:
+                elastic_helper.set_primary_target(minor_block)
+            # reset any previous stored helper if this block does not contain one
+            elastic_helper = None
+            # the minor block will be a source for the next minor block
+            sources = minor_block
+
         minor_block_sequence.append(minor_block)
 
     return module_list_to_module(minor_block_sequence)
 
 
 # build a single minor block from its config. return the number of output channels with the block
-def create_minor_block(block_config, in_channels: int, stride : int = 1, norm_order=None):
+def create_minor_block(block_config, in_channels: int, stride : int = 1, norm_order=None, sources: List[nn.ModuleList] = [nn.ModuleList([])]) -> Tuple[nn.Module, int]:
     new_block = None
+    # print(in_channels)
     # the output channel count is usually stored in block_config.out_channels
     # use it as the default value if available, otherwise it must be set by the specific code handling the target type
     new_block_out_channels = getattr(block_config, "out_channels", 1)
@@ -405,30 +696,55 @@ def create_minor_block(block_config, in_channels: int, stride : int = 1, norm_or
         if norm_act_sequence is not None:
             minor_block_internal_sequence.append(norm_act_sequence)
 
-        new_block = module_list_to_module(minor_block_internal_sequence)
+        new_block = module_list_to_module(flatten_module_list(minor_block_internal_sequence))
         # the input channel count of the next minor block is the output channel count of the previous block
         new_block_out_channels = out_channels
     elif block_config.target == "elastic_conv1d":
-        out_channels = block_config.out_channels
+        out_channels_list = block_config.out_channels
+        out_channels_list.sort(reverse=True)
+        # the maximum available width is the initial output channel count
+        out_channels_full = out_channels_list[0]
         kernel_sizes = block_config.kernel_sizes
         # create a minor block, potentially with activation and norm
         minor_block_internal_sequence = nn.ModuleList([])
         new_minor_block = ElasticKernelConv1d(
             in_channels=in_channels,
-            out_channels=out_channels,
+            out_channels=out_channels_full,
             kernel_sizes=kernel_sizes,
             stride=stride
         )
         minor_block_internal_sequence.append(new_minor_block)
 
         # add norm/act if requested
-        norm_act_sequence = create_norm_act_sequence(block_config.norm, block_config.act, out_channels, norm_order)
+        norm_act_sequence = create_norm_act_sequence(block_config.norm, block_config.act, out_channels_full, norm_order)
         if norm_act_sequence is not None:
             minor_block_internal_sequence.append(norm_act_sequence)
 
-        new_block = module_list_to_module(minor_block_internal_sequence)
+        new_block = module_list_to_module(flatten_module_list(minor_block_internal_sequence))
+        # if multiple output channel widths are specified (elastic width), add an elastic width helper module
+        if len(out_channels_list) > 1:
+            # the sources of the elastic channel helper module are the previous conv, and its potential norm/act
+            # print(out_channels_list)
+            helper_module = ElasticChannelHelper(out_channels_list, new_block, None)
+            # append the helper module to the sequence
+            new_sequence = nn.ModuleList([new_block, helper_module])
+            new_block = module_list_to_module(new_sequence)
         # the input channel count of the next minor block is the output channel count of the previous block
-        new_block_out_channels = out_channels
+        # output channel count is specified by the elastic conv
+        new_block_out_channels = new_minor_block.out_channels
+    elif block_config.target == "elastic_channel_helper":
+        # if the module is a standalone elastic channel helper, pass the previous block as it's sources
+        out_channels_list = block_config.out_channels
+        out_channels_list.sort(reverse=True)
+        out_channels_full = out_channels_list[0]
+        new_block = ElasticChannelHelper(out_channels_list, None, None)
+        for source in sources:
+            # add every source item as a source to the new block.
+            # this has to be done in parallel: each source is only ascended until a primary target is found (modules before it must be unaffected.)
+            new_block.add_sources(source)
+        if out_channels_full != in_channels:
+            logging.error(f"standalone ElasticChannelHelper input width {in_channels} does not match max output channel width {out_channels_full} in list {out_channels_list}")
+        new_block_out_channels = out_channels_full
     # if an unknown target is selected for a minor block, throw an exception.
     else:
         raise Exception(f"Undefined target selected in minor block sequence: {block_config.target}")
@@ -438,7 +754,7 @@ def create_minor_block(block_config, in_channels: int, stride : int = 1, norm_or
 
 
 # create a module representing a sequence of norm and act
-def create_norm_act_sequence(norm: bool, act: bool, channels: int, norm_order=None):
+def create_norm_act_sequence(norm: bool, act: bool, channels: int, norm_order=None) -> nn.Module:
     # batch norm will be added before and/or after activation depending on the configuration
     # fallback default is one norm before act, if no order is specified.
 
@@ -455,32 +771,42 @@ def create_norm_act_sequence(norm: bool, act: bool, channels: int, norm_order=No
         norm_after_act = norm_order.norm_after_act
 
     norm_act_sequence = nn.ModuleList([])
-
+    # create the norm module only if required. its reference will be passed back.
+    new_norm = None
+    if norm:
+        new_norm = nn.BatchNorm1d(channels)
+    new_act = nn.ReLU()
     if norm and norm_before_act:
-        norm_act_sequence.append(nn.BatchNorm1d(channels))
+        norm_act_sequence.append(new_norm)
     if act:
         # add relu activation if act is set
-        norm_act_sequence.append(nn.ReLU())
+        norm_act_sequence.append(new_act)
     if norm and norm_after_act:
-        norm_act_sequence.append(nn.BatchNorm1d(channels))
+        norm_act_sequence.append(norm)
 
     return module_list_to_module(norm_act_sequence)
 
 
 # build a basic forward major block
-def create_forward_block(blocks, in_channels, stride=1, norm_order=None):
-    return create_minor_block_sequence(blocks, in_channels, stride=stride, norm_order=norm_order)
+def create_forward_block(blocks, in_channels, stride=1, norm_order=None, sources: List[nn.ModuleList] = [nn.ModuleList([])]) -> nn.Module:
+    return create_minor_block_sequence(blocks, in_channels, stride=stride, norm_order=norm_order, sources=sources)
 
 
 # build a residual major block
-def create_residual_block_1d(blocks, in_channels, stride=1, norm_order=None):
-    minor_blocks = create_minor_block_sequence(blocks, in_channels, stride=stride, norm_order=norm_order)
+def create_residual_block_1d(blocks, in_channels, stride=1, norm_order=None, sources: List[nn.ModuleList] = [nn.ModuleList([])]) -> ResBlock1d:
+    minor_blocks = create_minor_block_sequence(blocks, in_channels, stride=stride, norm_order=norm_order, sources=sources)
     # the output channel count of the residual major block is the output channel count of the last minor block
     out_channels = blocks[-1].out_channels
+    if hasattr(out_channels, '__iter__'):
+        # if the out_channels count is a list, get the highest value
+        out_channels = max(out_channels)
+    # print(blocks[-1])
+    # print(out_channels)
     residual_block = ResBlock1d(in_channels=in_channels, out_channels=out_channels, minor_blocks=minor_blocks, stride=stride, norm_order=norm_order)
     return residual_block
 
 
+# TODO: additional output connections must be added to secondary target list of preceding elastic channel helpers, where present
 class WIPModel(nn.Module):
     def __init__(
         self, conv_layers: nn.ModuleList([]),
@@ -512,6 +838,8 @@ class WIPModel(nn.Module):
         self.current_kernel_step = 0
         self.current_channel_step = 0
         self.last_input = None
+        # will be updated with the output channel count
+        self.active_elastic_output_helper: ElasticChannelHelper = None
         # self.pool = nn.AvgPool1d(pool_kernel)
         self.pool = nn.AdaptiveAvgPool1d(1)
         self.flatten = nn.Flatten(flatten_dims)
@@ -522,7 +850,11 @@ class WIPModel(nn.Module):
             self.active_depth = i
             self.update_output_channel_count()
             # create the linear output layer for this depth
-            self.linears.append(nn.Linear(self.out_channels, self.labels))
+            new_output_linear = nn.Linear(self.out_channels, self.labels)
+            if self.active_elastic_output_helper is not None:
+                # add this output linear as a target to an elastic channel module preceding it. The in-channels of this linear will also need to be modified.
+                self.active_elastic_output_helper.add_secondary_targets(new_output_linear)
+            self.linears.append(new_output_linear)
         # should now be redundant, as the loop will exit with the active depth being max_depth
         self.active_depth = self.max_depth
 
@@ -658,7 +990,30 @@ class WIPModel(nn.Module):
     # set the output channel count value based on the current active depth
     def update_output_channel_count(self):
         # the new out channel count is given by the last minor block of the last active major block
-        self.out_channels = self.block_config[:self.active_depth][-1].blocks[-1].out_channels
+        last_active_major_block = self.block_config[:self.active_depth][-1].blocks[-1]
+        self.out_channels = last_active_major_block.out_channels
+        # for error reporting below
+        out_channels_maybe_list = self.out_channels
+        if hasattr(self.out_channels, '__iter__'):
+            # if the out_channels count is a list, get the highest value
+            self.out_channels = max(self.out_channels)
+            # get the very last module of the last active layer. It must be an elastic channel helper, as the channel count is a list.
+            last_active_item = self.conv_layers[:self.active_depth][-1]
+            if isinstance(last_active_item, ResBlock1d):
+                # incase of a residual layer being at the end, the helper will be at the end of its blocks
+                last_active_item = last_active_item.blocks
+            if hasattr(last_active_item, '__iter__'):
+                # flatten the iterable list of items to actually access the last module, and not some nested Sequential
+                last_active_item = flatten_module_list(last_active_item)
+                # a layer ususally contains multiple modules and is iterable. Pick the last module within the layer.
+                last_active_item = last_active_item[-1]
+            # store the ElasticChannelHelper ending the active layer. The correct output layer must be added as a secondary target.
+            if isinstance(last_active_item, ElasticChannelHelper):
+                self.active_elastic_output_helper = last_active_item
+            else:
+                logging.error(f"model layer ends with multiple possible output channels {out_channels_maybe_list}, but last module '{last_active_item}' is not ElasticChannelHelper")
+        else:
+            self.active_elastic_output_helper = None
 
     # return the linear layer which processes the output for the current elastic depth
     def get_output_linear_layer(self, target_depth):
@@ -812,7 +1167,8 @@ def rebuild_extracted_blocks(blocks, quantized=False):
     return out_modules
 
 
-def flatten_module_list(modules):
+# flatten nested iterable modules, usually over a ModuleList. nn.Sequential is also an iterable module and a valid input.
+def flatten_module_list(modules: nn.Module) -> nn.Module:
     if not hasattr(modules, '__iter__'):
         if isinstance(modules, nn.Module):
             # if the input is non-iterable and is already a module, it can be returned as a list of one element
