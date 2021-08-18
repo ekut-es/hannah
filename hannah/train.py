@@ -176,7 +176,7 @@ def train(config: DictConfig):
 
 def nas(config: DictConfig):
     print(OmegaConf.to_yaml(config))
-    nas_trainer = instantiate(config.nas, parent_config=config)
+    nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
     nas_trainer.run()
 
 
