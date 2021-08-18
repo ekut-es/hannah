@@ -48,9 +48,6 @@ imagecorruptions = "^1.1.2"
 albumentations = "^1.0.1"
 pycocotools = "^2.0.2"
 
-hannah-tvm = {path = "external/hannah-tvm", optional = true}
-
-
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.0"
