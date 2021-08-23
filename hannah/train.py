@@ -9,7 +9,7 @@ import torch
 
 from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
@@ -88,8 +88,7 @@ def train(config: DictConfig):
                 "CSVLogger is not compatible with logging with SWA, disabling csv logger"
             )
         else:
-            pass
-            # logger.append(CSVLogger(".", version=None, name=""))
+            logger.append(CSVLogger(".", version=None, name=""))
 
         callbacks = []
         if config.get("backend", None):
