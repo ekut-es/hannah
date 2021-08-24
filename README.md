@@ -179,3 +179,14 @@ To enable precommit hooks run the following command in a `poetry shell`.
 
 Try to follow (pep8)[https://pep8.org/#naming-conventions] and the rest of pep8 to the
 best of your abilities.
+
+## Resolving merge conflicts in `poetry.lock`
+
+If you have changed `poetry.lock` this can result in merge conflicts.
+
+The easiest way to resolve them is:
+
+```
+git checkout --theirs poetry.lock
+poetry update
+```
