@@ -890,7 +890,10 @@ class WIPModel(nn.Module):
 
         extracted_module_list.append(self.pool)
         extracted_module_list.append(self.flatten)
-        extracted_module_list.append(self.get_output_linear_layer(target_depth))
+        output_linear = self.get_output_linear_layer(target_depth)
+        # apply potential channel filters of the output linear
+        output_linear = apply_channel_filters(output_linear)
+        extracted_module_list.append(output_linear)
         extracted_module_list = flatten_module_list(extracted_module_list)
         return copy.deepcopy(module_list_to_module(extracted_module_list))
 
@@ -1115,18 +1118,23 @@ def rebuild_extracted_blocks(blocks, quantized=False):
             if isinstance(module, ElasticKernelConv1d):
                 # print(type(module))
                 replacement_module = module.assemble_basic_conv1d()
+                # assemble_basic_conv1d copies over the elastic filter information
                 module = replacement_module
                 # print(type(module))
 
             if isinstance(module, nn.Conv1d):
+                # apply channel filters to the conv, if present.
+                module = apply_channel_filters(module)
                 if i+1 in range(len(modules)) and isinstance(modules[i+1], nn.BatchNorm1d):
+                    # apply channel filters to the norm, if present.
+                    norm_module = apply_channel_filters(modules[i+1])
                     if i+2 in range(len(modules)) and isinstance(modules[i+2], nn.ReLU):
                         # if both norm and relu follow in sequence, combine all three and skip the next two items (which are the norm, act)
-                        reassembled_module = module_set.reassemble(module=module, norm=True, act=True, norm_module=modules[i+1])
+                        reassembled_module = module_set.reassemble(module=module, norm=True, act=True, norm_module=norm_module)
                         i += 2
                     else:
                         # if only norm follows in sequence, combine both and skip the next item (which is the norm)
-                        reassembled_module = module_set.reassemble(module=module, norm=True, act=False, norm_module=modules[i+1])
+                        reassembled_module = module_set.reassemble(module=module, norm=True, act=False, norm_module=norm_module)
                         i += 1
                 elif i+1 in range(len(modules)) and isinstance(modules[i+1], nn.ReLU):
                     # if an act with no previous norm follows, combine both and skip the next item (which is the act)
@@ -1136,6 +1144,8 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                     # if there is no norm or act after the conv, reassemble a standalone conv
                     reassembled_module = module_set.reassemble(module=module, norm=False, act=False)
             elif isinstance(module, nn.BatchNorm1d):
+                # for standalone batchnorms, apply any channel filters, if present.
+                module = apply_channel_filters(module)
                 if module_set.norm1d is not None:
                     # pass the channel count on to the new norm type
                     reassembled_module = module_set.norm1d(module.num_features)
@@ -1154,6 +1164,12 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                 reassembled_module = ResBlockBase(module.in_channels, module.out_channels)
                 reassembled_module.blocks = reassembled_subblocks
                 reassembled_module.skip = reassembled_skip
+            elif isinstance(module, ElasticChannelHelper):
+                # elastic channel helper modules are not extracted in a rebuild. The active filter will be applied to each module.
+                # to ensure that the length validation still works, reduce input module count by one.
+                input_modules_flat_length -= 1
+            else:
+                logging.warn(f"unknown module found during extract/rebuild '{type(module)}'. Ignoring.")
 
             # print(reassembled_module)
             if reassembled_module is not None:
@@ -1165,6 +1181,102 @@ def rebuild_extracted_blocks(blocks, quantized=False):
     if input_modules_flat_length != output_modules_flat_length and not quantized:
         logging.info("Reassembly changed length of module list")
     return out_modules
+
+
+# return a module with the in/out channel filters of the input module applied. channels where the filter is false are dropped.
+def apply_channel_filters(module: nn.Module) -> nn.Module:
+    # first, copy the module. return a new module with channels filtered.
+    module = copy.deepcopy(module)
+    if not (isinstance(module, nn.Conv1d) or isinstance(module, nn.Linear) or isinstance(module, nn.BatchNorm1d)):
+        logging.error(f"channel filter application failed on module of invalid type: '{type(module)}'")
+        return module
+
+    elastic_width_filter_input = getattr(module, 'elastic_width_filter_input', None)
+    elastic_width_filter_output = getattr(module, 'elastic_width_filter_output', None)
+    # after extracting the filters from the module, set them to None.
+    # the returned module no longer requires filter application!
+    setattr(module, 'elastic_width_filter_input', None)
+    setattr(module, 'elastic_width_filter_output', None)
+
+    if (elastic_width_filter_output is None) and (elastic_width_filter_input is None):
+        # if there are no elastic filters to be applied to the module, it can be returned as is.
+        return module
+
+    if isinstance(module, nn.Conv1d) or isinstance(module, nn.Linear):
+        weight = module.weight.data.clone()
+        # conv weight tensor has dimensions out_channels, in_channels, kernel_size
+        # linear weight tensor has dimensions out_channels, in_channels
+        # out_channel count will be length in dim 0
+        out_channel_count = len(weight)
+        # in_channel count will be length in second dim
+        in_channel_count = len(weight[0])
+        new_weight = None
+        for o in range(out_channel_count):
+            # if the output filter is defined and this out_channel is specified with 'False', it is dropped.
+            # simply skip the iteration of this channel
+            if elastic_width_filter_output is None or elastic_width_filter_output[o]:
+                # if this output channel will be kept (no filter, or filter is true)
+                out_channel_segment = weight[o:o+1]
+                new_out_channel = None
+                for i in range(in_channel_count):
+                    # segment = weight[:,i:i+1]
+                    if elastic_width_filter_input is None or elastic_width_filter_input[i]:
+                        in_channel_segment = out_channel_segment[:, i:i+1]
+                        if new_out_channel is None:
+                            # for the first in_channel being kept, simply copy over the channel
+                            new_out_channel = in_channel_segment
+                        else:
+                            # append the input channel being kept, concatenate in dim 1 (dim 0 has length 1 and is the out_channel)
+                            new_out_channel = torch.cat((new_out_channel, in_channel_segment), dim=1)
+                if new_out_channel is None:
+                    logging.error("zero input channels were kept during channel filter application of conv1d!")
+                if new_weight is None:
+                    # if this is the first out_channel being kept, simply copy it over
+                    new_weight = new_out_channel
+                else:
+                    # for subsequent out_channels, cat them onto the weights in dim 0
+                    new_weight = torch.cat((new_weight, new_out_channel), dim=0)
+        if new_weight is None:
+            logging.error("zero output channels were kept during channel filter application of conv1d!")
+        # put the new weights back into the module and return it
+        module.weight.data = new_weight
+        return module
+
+    elif isinstance(module, nn.BatchNorm1d):
+        elastic_filter = None
+        if elastic_width_filter_output is not None:
+            elastic_filter = elastic_width_filter_output
+            if elastic_width_filter_input is not None:
+                # this should be impossible, as it would require two channel helpers with a norm but without a 'primary' module in-between
+                logging.error("batchnorm1d channel filter application: a filter is specified from both sides (input, output)! defaulting to output filter.")
+        elif elastic_width_filter_input is not None:
+            elastic_filter = elastic_width_filter_input
+        else:
+            # this case should not be reachable
+            logging.error("initiated batchnorm1d channel filtering with both filters None. This is supposed to be caught earlier!")
+            return module
+        weight = module.weight.data
+        new_weight = None
+        channel_count = len(weight)
+        for i in range(channel_count):
+            if elastic_filter[i]:
+                this_channel = weight[i:i+1]
+                if new_weight is None:
+                    # for the first channel being kept, simply copy over
+                    new_weight = this_channel
+                else:
+                    # if there are already channels being kept, concatenate this one onto the other weights
+                    new_weight = torch.cat((new_weight, this_channel), dim=0)
+        if new_weight is None:
+            logging.error("zero channels were kept during channel filter application of batchnorm1d!")
+        # put the new weights back into the module and return it
+        module.weight.data = new_weight
+        return module
+
+    else:
+        # this case should not be reachable
+        logging.error(f"initiated channel filtering for invalid module type: '{type(module)}'. This is supposed to be caught earlier!")
+        return module
 
 
 # flatten nested iterable modules, usually over a ModuleList. nn.Sequential is also an iterable module and a valid input.
