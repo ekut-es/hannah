@@ -19,8 +19,6 @@ def conv1d_get_padding(kernel_size):
     padding = kernel_size // 2
     return padding
 
-
-# TODO: deploy these during the creation process at every elastic width connection
 # helper module, deployed in an elastic width connection
 # can zero out input channels to train elastic channels without weight modification
 # must know the module it passes inputs to to compute channel priorities
@@ -230,7 +228,6 @@ class ElasticChannelHelper(nn.Module):
         return self.forward(x)
 
 
-# TODO: remove elastic width implementations, to be taken over by the helper module
 class ElasticKernelConv1d(nn.Conv1d):
     def __init__(
         self,
@@ -251,26 +248,6 @@ class ElasticKernelConv1d(nn.Conv1d):
         self.min_kernel_size: int = kernel_sizes[-1]
         # initially, the target size is the full kernel
         self.target_kernel_index: int = 0
-        """
-        # initialize the filter for input channel reduction in training, and the channel priority list
-        self.input_channel_pass_filter = []
-        # the first channel index in this list is least important, the last channel index ist most important
-        self.input_channels_by_priority = []
-        # initially, all channels are used.
-        self.input_channel_reduction = 0
-        self.output_channel_step = 0
-        # sort output channel counts list, largest to smallest (descending order)
-        out_channels_list.sort(reverse=True)
-        # get min/max values for out channels
-        self.max_out_channels = out_channels_list[0]
-        self.min_out_channels = out_channels_list[-1]
-        self.out_channels = self.max_out_channels
-
-        for i in range(in_channels):
-            self.input_channel_pass_filter.append(True)
-            # to init with technically valid values, simply set starting priority based on index
-            self.input_channels_by_priority.append(i)
-        """
         self.out_channels: int = out_channels
         # print(self.out_channels)
         super().__init__(
@@ -300,43 +277,6 @@ class ElasticKernelConv1d(nn.Conv1d):
             new_transform_module.weight.requires_grad = False
             self.kernel_transforms.append(new_transform_module)
         self.set_kernel_size(self.max_kernel_size)
-
-    """
-    def compute_channel_priorities(self):
-        weights = self.weight.data
-        norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=0)
-        input_channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
-        # contains the indices of the channels, sorted from channel with smallest norm to channel with largest norm
-        # the least important channel index is at the beginning of the list, the most important channel index is at the end
-        self.input_channels_by_priority = np.argsort(input_channel_norms)
-
-    def set_input_channel_reduction(self, reduction_amount: int):
-        # clamp the value to (in_channels - 1), always keep at least one input channel
-        self.input_channel_reduction = min(reduction_amount, self.in_channels-1)
-
-    def create_input_channel_pass_filter(self):
-        # start with an empty filter, where every channel passes through, then remove in channels by priority
-        for i in range(len(self.input_channel_pass_filter)):
-            self.input_channel_pass_filter[i] = True
-
-        # remove input for the least important n channels, specified by the reduction amount
-        for i in range(self.input_channel_reduction):
-            # priority list of channels contains channel indices from least important to most important
-            # the first n channel indices specified in this list will be filtered out
-            filtered_channel_index = self.input_channels_by_priority[i]
-            self.input_channel_pass_filter[filtered_channel_index] = False
-
-    def reduce_input_channels_by_n(self, n: int):
-        self.set_input_channel_reduction(n)
-        self.compute_channel_priorities()
-        self.create_input_channel_pass_filter()
-
-    # reduce input width by one channel, if possible
-    def step_down_input_width(self):
-        current_reduction = self.input_channel_reduction
-        # at least 1 channel will always be kept
-        self.reduce_input_channels_by_n(current_reduction + 1)
-    """
 
     def set_kernel_size(self, new_kernel_size):
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
@@ -423,20 +363,6 @@ class ElasticKernelConv1d(nn.Conv1d):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
-        """
-        null_input = torch.zeros_like(input)
-        input_copy = torch.clone(input)
-        zeroed = 0
-        for input_index in range(len(input)):
-            # for every input index
-            for channel_index in range(len(input[input_index])):
-                # for every channel index within that input
-                if not self.input_channel_pass_filter[channel_index]:
-                    zeroed += 1
-                    # if this channel index is supposed to be filtered, copy over zeroes
-                    input_copy[input_index][channel_index] = null_input[input_index][channel_index]
-        # print(f"{zeroed}|{zeroed/len(input)}|{self.input_channel_reduction}") # sanity check
-        """
         # get the kernel for the current index
         kernel = self.get_kernel()
         # get padding for the size of the kernel
@@ -806,7 +732,6 @@ def create_residual_block_1d(blocks, in_channels, stride=1, norm_order=None, sou
     return residual_block
 
 
-# TODO: additional output connections must be added to secondary target list of preceding elastic channel helpers, where present
 class WIPModel(nn.Module):
     def __init__(
         self, conv_layers: nn.ModuleList([]),
