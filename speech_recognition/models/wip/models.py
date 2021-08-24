@@ -665,7 +665,7 @@ def apply_channel_filters(module: nn.Module) -> nn.Module:
                             # append the input channel being kept, concatenate in dim 1 (dim 0 has length 1 and is the out_channel)
                             new_out_channel = torch.cat((new_out_channel, in_channel_segment), dim=1)
                 if new_out_channel is None:
-                    logging.error("zero input channels were kept during channel filter application of conv1d!")
+                    logging.error("zero input channels were kept during channel filter application of primary module!")
                 if new_weight is None:
                     # if this is the first out_channel being kept, simply copy it over
                     new_weight = new_out_channel
@@ -673,9 +673,21 @@ def apply_channel_filters(module: nn.Module) -> nn.Module:
                     # for subsequent out_channels, cat them onto the weights in dim 0
                     new_weight = torch.cat((new_weight, new_out_channel), dim=0)
         if new_weight is None:
-            logging.error("zero output channels were kept during channel filter application of conv1d!")
+            logging.error("zero output channels were kept during channel filter application of primary module!")
         # put the new weights back into the module and return it
         module.weight.data = new_weight
+        # if the module has a bias parameter, also apply the output filtering to it.
+        if module.bias is not None:
+            bias = module.bias.data
+            new_bias = None
+            for i in range(out_channel_count):
+                if elastic_width_filter_output[i]:
+                    if new_bias is None:
+                        new_bias = bias[i]
+                    else:
+                        new_bias = torch.cat((new_bias, bias[i]), dim=0)
+            logging.error("zero bias channels were kept during channel filter application of primary module with bias parameter!")
+            module.bias.data = new_bias
         return module
 
     elif isinstance(module, nn.BatchNorm1d):
@@ -693,20 +705,30 @@ def apply_channel_filters(module: nn.Module) -> nn.Module:
             return module
         weight = module.weight.data
         new_weight = None
+        new_mean = None
+        new_var = None
         channel_count = len(weight)
         for i in range(channel_count):
             if elastic_filter[i]:
                 this_channel = weight[i:i+1]
+                this_mean = module.running_mean[i:i+1]
+                this_var = module.running_var[i:i+1]
                 if new_weight is None:
                     # for the first channel being kept, simply copy over
                     new_weight = this_channel
+                    new_mean = this_mean
+                    new_var = this_var
                 else:
                     # if there are already channels being kept, concatenate this one onto the other weights
                     new_weight = torch.cat((new_weight, this_channel), dim=0)
+                    new_mean = torch.cat((new_mean, this_mean), dim=0)
+                    new_var = torch.cat((new_var, this_var), dim=0)
         if new_weight is None:
             logging.error("zero channels were kept during channel filter application of batchnorm1d!")
         # put the new weights back into the module and return it
         module.weight.data = new_weight
+        module.running_var = new_var
+        module.running_mean = new_mean
         return module
 
     else:
