@@ -683,9 +683,9 @@ def apply_channel_filters(module: nn.Module) -> nn.Module:
             for i in range(out_channel_count):
                 if elastic_width_filter_output[i]:
                     if new_bias is None:
-                        new_bias = bias[i]
+                        new_bias = bias[i:i+1]
                     else:
-                        new_bias = torch.cat((new_bias, bias[i]), dim=0)
+                        new_bias = torch.cat((new_bias, bias[i:i+1]), dim=0)
             logging.error("zero bias channels were kept during channel filter application of primary module with bias parameter!")
             module.bias.data = new_bias
         return module
