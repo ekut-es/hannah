@@ -214,6 +214,13 @@ class MacSummaryCallback(Callback):
 
         return res
 
+    def predict(self, pl_module):
+        pl_module.eval()
+        res = self._do_summary(pl_module, print_log=False)
+        pl_module.train()
+
+        return res
+
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
         try:

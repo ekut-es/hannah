@@ -47,6 +47,8 @@ libsvm="^3.23.0.4"
 imagecorruptions = "^1.1.2"
 albumentations = "^1.0.1"
 pycocotools = "^2.0.2"
+dgl = "^0.6.1"
+networkx = "^2.6.2"
 
 
 [tool.poetry.dev-dependencies]

@@ -1,4 +1,5 @@
-
+defaults:
+  - predictor: gcn
 
 _target_: hannah.nas.unas.AgingEvolutionNASTrainer
 parametrization: {}

@@ -149,7 +149,7 @@ def log_execution_env_state():
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Pytorch Lightning: %s", pytorch_lightning.__version__)
     logger.info("  Numpy: %s", np.__version__)
-    logger.info("  Speech Recognition info:")
+    logger.info("  Hannah version info:")
     log_git_state(os.path.join(os.path.dirname(__file__), ".."))
     logger.info("  Command line: %s", " ".join(sys.argv))
     logger.info("  ")

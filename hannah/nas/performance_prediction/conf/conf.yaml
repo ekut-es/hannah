@@ -1,0 +1,4 @@
+defaults:
+  - board: local_cpu
+  - setup: moritz_home
+  - net: test_net

@@ -342,6 +342,20 @@ wrapt = ">=1.10,<2"
 dev = ["tox", "bump2version (<1)", "sphinx (<2)", "importlib-metadata (<3)", "importlib-resources (<4)", "configparser (<5)", "sphinxcontrib-websupport (<2)", "zipp (<2)", "PyTest (<5)", "PyTest-Cov (<2.6)", "pytest", "pytest-cov"]
 
 [[package]]
+name = "dgl"
+version = "0.6.1"
+description = "Deep Graph Library"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+networkx = ">=2.1"
+numpy = ">=1.14.0"
+requests = ">=2.19.0"
+scipy = ">=1.1.0"
+
+[[package]]
 name = "distlib"
 version = "0.3.2"
 description = "Distribution utilities"
@@ -1920,7 +1934,7 @@ tvm-backend = []
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1 <3.10"
-content-hash = "d5f7d30dd5e0f360559e7d393b7c5f2c250ced69d380a414470e46634be284fd"
+content-hash = "fec9a9a3e415ea3d28436f52a28a170be8ed8ff4b8dde58d8a3d0c33e3daf6d6"
 
 [metadata.files]
 absl-py = [
@@ -2205,6 +2219,20 @@ dataclasses = [
 deprecated = [
     {file = "Deprecated-1.2.12-py2.py3-none-any.whl", hash = "sha256:08452d69b6b5bc66e8330adde0a4f8642e969b9e1702904d137eeb29c8ffc771"},
     {file = "Deprecated-1.2.12.tar.gz", hash = "sha256:6d2de2de7931a968874481ef30208fd4e08da39177d61d3d4ebdf4366e7dbca1"},
+]
+dgl = [
+    {file = "dgl-0.6.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:5c71268a934fe8c40634bba728fd9567b7ea8bda8275d9dcee88931f855c86b0"},
+    {file = "dgl-0.6.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:2cfd4c346aa72e986b06a8b0f9e947bb9304fcf95073da1bc40e0d4c9c66c8d1"},
+    {file = "dgl-0.6.1-cp36-cp36m-win_amd64.whl", hash = "sha256:131e63f97d96d983d1141363fb3bf2d7a60cca108e8de56f679e729835df0a9f"},
+    {file = "dgl-0.6.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:3b4242e5c17f6427205567b2e69fdd232fd9c540d42742149cb812ca4a23c065"},
+    {file = "dgl-0.6.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:5437f101d1995723f1b03bca27dbf6e5510ba0b6031c87c43bc3f95c20d3ce7b"},
+    {file = "dgl-0.6.1-cp37-cp37m-win_amd64.whl", hash = "sha256:09eb899bdcced716406a8071149ad61e057cc8b556f99ecd16b372ba030fccab"},
+    {file = "dgl-0.6.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:90ca71ac2fdfe3b8ae0f498348ed5d23a3ef7c4f41e7496c3a2b9f63c78aec8f"},
+    {file = "dgl-0.6.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:6764dc0eb0e27954ec245c20bbffad7eb7c89459285d40ab96c6f0a2853d9b8c"},
+    {file = "dgl-0.6.1-cp38-cp38-win_amd64.whl", hash = "sha256:a131b50c9c122bf66c6ce1382c073512bd39646fc8d5d30c958becad1e21a19a"},
+    {file = "dgl-0.6.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:6593c7f604477186a4e7e0abc986dcdd62ef97b256062bce22b348db5eb57d1e"},
+    {file = "dgl-0.6.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:1777c27541c501962567d292e2b0b323724af50e542a24aac4260f6729d44e94"},
+    {file = "dgl-0.6.1-cp39-cp39-win_amd64.whl", hash = "sha256:b8561cf366db2bee9f27059407d611d436e3001fb7e8ec7b20626b853f3f085b"},
 ]
 distlib = [
     {file = "distlib-0.3.2-py2.py3-none-any.whl", hash = "sha256:23e223426b28491b1ced97dc3bbe183027419dfc7982b4fa2f05d5f3ff10711c"},

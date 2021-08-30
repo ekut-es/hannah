@@ -166,6 +166,7 @@ class STEQuantize(FakeQuantizeBase):
         noise_prob=1.0,
         rounding_mode="EVEN",
         debug=False,
+        dtype="int",
     ):
         super().__init__()
 
@@ -174,7 +175,7 @@ class STEQuantize(FakeQuantizeBase):
         self.rounding_mode = rounding_mode
         self.debug = debug
         self.power_of_2 = power_of_2
-        self.rounding_mode = rounding_mode
+        self.dtype = dtype
 
         if power_of_2:
             self.quantization_function = PowerOf2Quantization(bits, debug=self.debug)
