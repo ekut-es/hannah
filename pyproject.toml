@@ -69,7 +69,7 @@ tvm-backend = ["hannah-tvm"]
 
 [tool.poetry.scripts]
 hannah-train = 'hannah.train:main'
-hannah-nas = 'hannah.train:nas'
+hannah-characterize = 'hannah.characterize:main'
 hannah-eval = 'hannah.eval:main'
 hannah-objectdetection-eval = 'hannah.objectdetection_eval:main'
 
