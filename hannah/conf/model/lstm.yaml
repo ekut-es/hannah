@@ -1,4 +1,4 @@
-# @package _group_
+
 
 cls: hannah.models.lstm.models.LSTMModel
 name: lstm

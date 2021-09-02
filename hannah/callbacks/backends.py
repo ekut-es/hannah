@@ -61,7 +61,11 @@ class InferenceBackendBase(Callback):
                 result = self.run_batch(inputs=batch[0])
                 target = pl_module.forward(batch[0].to(pl_module.device))
 
-                mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
+                mse = torch.nn.functional.mse_loss(
+                    result.to(pl_module.device),
+                    target.to(pl_module.device),
+                    reduction="mean",
+                )
                 pl_module.log("val_backend_mse", mse)
                 logging.info("val_backend_mse: %f", mse)
 
@@ -75,7 +79,11 @@ class InferenceBackendBase(Callback):
             result = self.run_batch(inputs=batch[0])
             target = pl_module(batch[0].to(pl_module.device))
 
-            mse = torch.nn.functional.mse_loss(result, target, reduction="mean")
+            mse = torch.nn.functional.mse_loss(
+                result.to(pl_module.device),
+                target.to(pl_module.device),
+                reduction="mean",
+            )
             pl_module.log("test_backend_mse", mse)
             logging.info("test_backend_mse: %f", mse)
 
@@ -318,5 +326,5 @@ class TRaxUltraTrailBackend(Callback):
 
         logging.info("Ultratrail metrics")
         for k, v in res.items():
-            pl_module.log(k, v)
+            pl_module.log(k, float(v))
             logging.info("%s: %s", str(k), str(v))

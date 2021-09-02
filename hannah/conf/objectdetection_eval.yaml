@@ -49,6 +49,3 @@ augmentation:
     - rgb_shift: 40
     - random_brightness_contrast: 50
     - random_gamma: 40
-    - solarize: 2
-    - to_gray: 10
-    - to_sepia: 2

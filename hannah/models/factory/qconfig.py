@@ -10,6 +10,8 @@ from torch.quantization.observer import (
     _with_args,
 )
 
+from .rounding import RoundingMode
+
 # FIXME: accumulator is not used at the moment
 QConfig = namedtuple("QConfig", ["activation", "weight", "bias"])
 
@@ -23,11 +25,9 @@ class STE(autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_outputs):
-        # print("grad_outputs:", grad_outputs)
         (values,) = ctx.saved_tensors
-        gate = (torch.abs(values) <= 1).float()
+        gate = (torch.abs(values) <= 1.0).float()
         grad_inputs = grad_outputs * gate
-        # print("grad_inputs", grad_inputs)
 
         return grad_inputs, None
 
@@ -78,22 +78,31 @@ class FixedpointObserver(ObserverBase):
 
 
 class SymmetricQuantization:
-    def __init__(self, bits, debug=False):
+    def __init__(self, bits, rounding_mode="EVEN", debug=False):
         self.bits = bits
         self.max = 2.0 ** (bits - 1) - 1
         self.min = -(2.0 ** (bits - 1))
         self.scale = 1.0 / 2 ** (bits - 1)
+        self.rounding_mode = rounding_mode
+        self.round = RoundingMode(rounding_mode)
         self.debug = debug
 
-    def __call__(self, x):
+    def quantize(self, x):
+
         if self.debug:
             print("x", x)
         x = x / self.scale
-        x = torch.round(x)
+        x = self.round(x)
         if self.debug:
             print("rounded", x)
         x = torch.clamp(x, self.min, self.max)
+
+        return x
+
+    def __call__(self, x):
+        x = self.quantize(x)
         x = x * self.scale
+
         if self.debug:
             print("fake quantized:", x)
 
@@ -104,6 +113,22 @@ class PowerOf2Quantization:
     def __init__(self, bits, debug=False):
         self.bits = bits
         self.debug = debug
+
+    def quantize(self, x):
+        sign_x = torch.sign(x)
+        abs_x = torch.abs(x)
+        mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
+
+        log_x = torch.ceil(torch.log2(abs_x))
+
+        # This takes care that the number of bits is considered
+        # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0)
+        # is occupied by the weight value 0. But seems to have no negative
+        # effect on the contrary this raises the accuracy.
+        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
+        return log_x * sign_x * mask_x
+
+        return log_x
 
     def __call__(self, x):
         sign_x = torch.sign(x)
@@ -132,25 +157,31 @@ class PowerOf2Quantization:
         return x
 
 
-class TrainableFakeQuantize(FakeQuantizeBase):
+class STEQuantize(FakeQuantizeBase):
     def __init__(
         self,
         bits,
         quantization_loss=True,
         power_of_2=False,
         noise_prob=1.0,
+        rounding_mode="EVEN",
         debug=False,
     ):
         super().__init__()
 
         self.bits = bits
         self.noise_prob = noise_prob
+        self.rounding_mode = rounding_mode
         self.debug = debug
+        self.power_of_2 = power_of_2
+        self.rounding_mode = rounding_mode
 
         if power_of_2:
             self.quantization_function = PowerOf2Quantization(bits, debug=self.debug)
         else:
-            self.quantization_function = SymmetricQuantization(bits, debug=self.debug)
+            self.quantization_function = SymmetricQuantization(
+                bits, rounding_mode=rounding_mode, debug=self.debug
+            )
 
         self.quantization_loss = torch.zeros(1)
 
@@ -167,6 +198,9 @@ class TrainableFakeQuantize(FakeQuantizeBase):
 
         return quantized_x
 
+    def quantize(self, x):
+        return self.quantization_function.quantize(x)
+
     def calculate_qparams(self):
         raise NotImplementedError(
             "Trainable quantizer has no calulate qparams implementation"
@@ -180,19 +214,25 @@ def get_trax_qat_qconfig(config):
     bits_bias = config.bw_b if config.bw_b > 0 else config.bw_f
     bits_activation = config.bw_f
     bits_weight = config.bw_w
+    rounding_mode = config.get("rounding_mode", "EVEN")
 
     qconfig = QConfig(
-        TrainableFakeQuantize.with_args(
-            bits=bits_activation, noise_prob=config.get("noise_prob", 1.0)
-        ),
-        TrainableFakeQuantize.with_args(
-            bits=bits_weight,
-            power_of_2=config.get("power_of_2", True),
+        STEQuantize.with_args(
+            bits=bits_activation,
             noise_prob=config.get("noise_prob", 1.0),
+            rounding_mode=rounding_mode,
+        ),
+        STEQuantize.with_args(
+            bits=bits_weight,
+            power_of_2=config.get("power_of_2", False),
+            noise_prob=config.get("noise_prob", 1.0),
+            rounding_mode=rounding_mode,
             debug=False,
         ),
-        TrainableFakeQuantize.with_args(
-            bits=bits_bias, noise_prob=config.get("noise_prob", 1.0)
+        STEQuantize.with_args(
+            bits=bits_bias,
+            noise_prob=config.get("noise_prob", 1.0),
+            rounding_mode=rounding_mode,
         ),
     )
 

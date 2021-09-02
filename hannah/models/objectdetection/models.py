@@ -22,7 +22,13 @@ class FasterRCNN(torch.nn.Module):
         **kwargs,
     ):
         super().__init__()
-        self.model = torchvision.models.detection.fasterrcnn_resnet50_fpn(**kwargs)
+        self.model = (
+            torchvision.models.detection.fasterrcnn_resnet50_fpn(**kwargs)
+            if name == "faster-rcnn-resnet50"
+            else torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(
+                **kwargs
+            )
+        )
         in_features = self.model.roi_heads.box_predictor.cls_score.in_features
         self.model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 

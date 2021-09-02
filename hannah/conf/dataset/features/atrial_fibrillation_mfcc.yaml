@@ -1,3 +1,4 @@
+# @package _global_
 features:
     melkwargs:
         win_length: 250

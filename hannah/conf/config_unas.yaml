@@ -1,7 +1,7 @@
 defaults:
     - dataset: kws
     - model: conv-net-trax
-    - scheduler: 1cycle
+    - scheduler: null
     - optimizer: sgd
     - features: mfcc
     - normalizer: fixedpoint

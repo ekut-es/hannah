@@ -121,3 +121,14 @@ class FakeDataset(VisionDatasetBase):
     @property
     def class_names(self):
         return [f"class{n}" for n in range(self.config.num_classes)]
+
+
+class KvasirCapsuleDataset(VisionDatasetBase):
+    DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/?zip="
+
+    @classmethod
+    def prepare(cls, config):
+        download_and_extract_archive(cls.DOWNLOAD_URL)
+
+    def splits():
+        pass
