@@ -1,0 +1,18 @@
+# @package _group_
+
+cls: hannah.models.wavenet.models.WaveNet
+name: wavenet-medium
+
+n_layers: 12
+max_dilation: 128
+n_residual_channels: 64
+n_skip_channels: 256
+n_out_channels: 256
+mu_quantization: 256
+non_causal_layers_per_layer: 2
+downsampling_factor: 2
+
+# Set by LigthningModule
+width: 101
+height: 40
+n_labels: 12

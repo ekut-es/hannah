@@ -1,0 +1,37 @@
+# @package _group_
+
+  _target_: hannah.models.factory.factory.create_cnn
+  name: conv_net_trax
+  norm:
+    target: bn
+  act:
+    target: relu
+  qconfig:
+    _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+    config:
+      bw_b: 0
+      bw_w: 2
+      bw_f: 4
+      power_of_2: false
+      noise_prob: 0.7
+  conv:
+  - blocks:
+    - act: false
+      kernel_size: 5
+      norm: true
+      out_channels: 4
+      parallel: false
+      stride: 1
+      target: conv1d
+    stride: 1
+    target: forward
+  - target: forward
+    stride: 4
+    blocks:
+    - target: conv1d
+      kernel_size: 1
+      stride: 1
+      act: false
+      parallel: false
+      norm: true
+      out_channels: 48

@@ -1,0 +1,54 @@
+name: test
+checkpoints: [trained_models/fasterrcnn_brs_new/faster-rcnn-resnet50/best.ckpt]
+noise: []
+methods: ["original", "full_augmented", "real_rain", "dawn_rain", "dawn_snow", "dawn_fog"]
+output_dir: eval
+gpus: [1]
+
+augmentation:
+  - augmented_pct: 50
+  - reaugment_per_epoch_pct: 50
+  - bordersearch_epoch_duration: 5
+  - bordersearch_ignore_params: ["draw_fog"]
+  - bordersearch_waterlevel: 0.7
+  - double_augment: False
+  - augmentations: [albumentations]
+  - augmentations_pct: [100]
+  - rain_drops:
+    - angle_rain_streaks: [-45, 45]
+    - brightness: [0.2, 2]
+    - number_drops: [500, 2000]
+    - rain_rate: [1, 60]
+    - drop_radius: [0.0004, 0.005]
+  - snow:
+    - snowfall_rate: [0, 3]
+    - car_speed_ms: [0, 13.9]
+    - crosswind_speed_ms: [0, 10]
+    - draw_fog: [true, false]
+  - fog:
+    - fog_density: [0, 0.2]
+    - fog_sphere: [0.4, 0.7]
+  - imagecorruptions:
+    - corruption: "snow"
+    - severity: [1, 5]
+  - albumentations:
+    - blur: 30
+    - clahe: 50
+    - channel_dropout: 2
+    - channel_shuffle: 2
+    - coarse_dropout: 45
+    - downscale: 30
+    - equalize: 50
+    - gauss_noise: 50
+    - hue_saturation_value: 30
+    - iso_noise: 40
+    - image_compression: 10
+    - invert: 5
+    - motion_blur: 40
+    - posterize: 2
+    - rgb_shift: 40
+    - random_brightness_contrast: 50
+    - random_gamma: 40
+    - solarize: 2
+    - to_gray: 10
+    - to_sepia: 2
