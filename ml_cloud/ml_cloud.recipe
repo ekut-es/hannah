@@ -5,14 +5,17 @@ From: ubuntu:focal
    PATH=/opt/poetry/bin:$PATH
 
 %runscript
+   export PYTHONPATH=/opt/hannah
    . /opt/poetry_env/hannah-*/bin/activate
    hannah-train $@
 
 %apprun train
+   export PYTHONPATH=/opt/hannah
    . /opt/poetry_env/hannah-*/bin/activate
    hannah-train $@
 
 %apprun eval
+   export PYTHONPATH=/opt/hannah
    . /opt/poetry_env/hannah-*/bin/activate
    hannah-eval $@
 
