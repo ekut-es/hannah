@@ -5,15 +5,15 @@ From: ubuntu:focal
    PATH=/opt/poetry/bin:$PATH
 
 %runscript
-   . /opt/poetry_env/speech-recognition-*/bin/activate
+   . /opt/poetry_env/hannah-*/bin/activate
    hannah-train $@
 
 %apprun train
-   . /opt/poetry_env/speech-recognition-*/bin/activate
+   . /opt/poetry_env/hannah-*/bin/activate
    hannah-train $@
 
 %apprun eval
-   . /opt/poetry_env/speech-recognition-*/bin/activate
+   . /opt/poetry_env/hannah-*/bin/activate
    hannah-eval $@
 
 
