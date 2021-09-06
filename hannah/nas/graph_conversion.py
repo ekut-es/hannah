@@ -310,15 +310,15 @@ def model_to_graph(model):
     model.cpu()
     model.eval()
     traced_graph = tracer.trace(model.model)
-    print(traced_graph)
+    # print(traced_graph)
     interpreter = GraphConversionInterpreter(
         torch.fx.GraphModule(model.model, traced_graph)
     )
     result = interpreter.run(model.example_feature_array)
 
-    print(interpreter.nx_graph)
+    # print(interpreter.nx_graph)
 
-    for edge in interpreter.nx_graph.edges:
-        print(edge)
+    # for edge in interpreter.nx_graph.edges:
+    #     print(edge)
 
     return interpreter.nx_graph

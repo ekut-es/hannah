@@ -170,7 +170,7 @@ class AgingEvolution:
             self.history = yaml.unsafe_load(history_data)
 
         if len(self.history) > self.population_size:
-            self.population = self.history[len(self.history) - self.population_size - 1]
+            self.population = self.history[len(self.history) - self.population_size :]
         else:
             self.population = self.history
 

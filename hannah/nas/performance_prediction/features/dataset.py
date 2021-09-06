@@ -1,117 +1,65 @@
 import dgl
 from dgl.data import DGLDataset
+from pathlib import Path
 
-from search_space import space
-from .graph_conversion import to_dgl_graph, get_global_feature_options
+from hannah.nas.graph_conversion import model_to_graph
+from hannah.nas.performance_prediction.simple import to_dgl_graph
 import torch
 import pandas as pd
 import numpy as np
+import yaml
+from hydra.utils import instantiate
+import hydra
+from omegaconf import OmegaConf, DictConfig
+
+import hannah.conf
 
 
 class NASGraphDataset(DGLDataset):
-    def __init__(self, cfg_space, graph_properties_file, graph_edges_file=None):
-        self.cfg_space = cfg_space
-        self.graph_edges = graph_edges_file
-        self.graph_properties = graph_properties_file
+    def __init__(self, result_file_path):
+        self.result_file_path = result_file_path
         super().__init__(name="nasgraph")
 
     def process(self):
-        if self.graph_edges:
-            edges = pd.read_csv(self.graph_edges)
-        properties = pd.read_csv(self.graph_properties)
-
-        # if graphs are duplicated in the dataset, average their cost
-        properties = properties.groupby("graph_id", as_index=False).mean()
         self.graphs = []
         self.labels = []
-        self.ids = []
+        result_path = Path(self.result_file_path)
+        result_file = result_path / "results.yaml"
+        assert result_file.exists()
+        with result_file.open("r") as result_file:
+            results = yaml.safe_load(result_file)
 
-        fopt = get_global_feature_options(self.cfg_space)
+        for i, result in enumerate(results):
+            print("Processing model {}".format(i))
+            config_file_path = result_path / result["config"]
+            with config_file_path.open("r") as config_file:
+                config = yaml.safe_load(config_file)
+            # config = DictConfig(config)
+            # hydra.initialize_config_module('hannah.conf')
+            # config = hydra.compose("config")
+            config = OmegaConf.create(config)
+            metrics = result["metrics"]
+            # backend = instantiate(config.backend)
+            model = instantiate(
+                config.module,
+                dataset=config.dataset,
+                model=config.model,
+                optimizer=config.optimizer,
+                features=config.features,
+                scheduler=config.get("scheduler", None),
+                normalizer=config.get("normalizer", None),
+                _recursive_=False,
+            )
+            model.setup("test")
 
-        # Create a graph for each graph ID from the edges table.
-        # First process the properties table into two dictionaries with graph IDs as keys.
-        # The label and number of nodes are values.
-        label_dict = {}
-        num_nodes_dict = {}
-        for _, row in properties.iterrows():
-            cost = row["label"]
-            label = 0 if cost == 1e5 else 1 / cost
-            # label = 1/cost
+            dgl_graph = to_dgl_graph(model_to_graph(model))
+            self.graphs.append(dgl_graph)
+            label = metrics["val_error"]  # 1 / metrics['val_error']
+            self.labels.append(label)
 
-            label_dict[row["graph_id"]] = label
-            num_nodes_dict[row["graph_id"]] = row["num_nodes"]
-
-        if self.graph_edges:  # TODO: maybe delete this option altogether?
-            # For the edges, first group the table by graph IDs.
-            edges_group = edges.groupby("graph_id")
-            # For each graph ID...
-            for graph_id in edges_group.groups:
-                if graph_id not in num_nodes_dict:
-                    continue
-                # Find the edges as well as the number of nodes and its label.
-                edges_of_id = edges_group.get_group(graph_id)
-                src = edges_of_id["src"].to_numpy()
-                dst = edges_of_id["dst"].to_numpy()
-                num_nodes = num_nodes_dict[graph_id]
-                label = label_dict[graph_id]
-
-                # Create a graph and add it to the list of graphs and labels.
-                g = dgl.graph((src, dst), num_nodes=num_nodes)
-                g = dgl.add_self_loop(g)
-                cfg = space.point2knob(graph_id, self.cfg_space.collapsed_dims())
-                net = space.NetworkEntity(
-                    self.cfg_space, self.cfg_space.expand_config(cfg)
-                )
-                featured_graph = to_dgl_graph(net, fopt)
-
-                features = featured_graph.ndata["features"]
-
-                # append # of nodes to each feature row
-                num_nodes_col = (
-                    torch.Tensor([num_nodes]).repeat(features.shape[0]).unsqueeze(-1)
-                )
-                features = torch.hstack((num_nodes_col, features))
-
-                g.ndata["features"] = features
-                self.graphs.append(g)
-                self.labels.append(label)
-                self.ids.append(graph_id)
-        else:
-            for graph_id, label in label_dict.items():
-                graph_id = int(graph_id)
-                cfg = space.point2knob(graph_id, self.cfg_space.collapsed_dims())
-                net = space.NetworkEntity(
-                    self.cfg_space, self.cfg_space.expand_config(cfg)
-                )
-                g = to_dgl_graph(net, fopt)
-
-                features = g.ndata["features"]
-                # append # of nodes to each feature row
-                num_nodes = num_nodes_dict[graph_id]
-                num_nodes_col = (
-                    torch.Tensor([num_nodes]).repeat(features.shape[0]).unsqueeze(-1)
-                )
-                features = torch.hstack((num_nodes_col, features))
-
-                g.ndata["features"] = features
-
-                self.graphs.append(g)
-                self.labels.append(label)
-                self.ids.append(graph_id)
-
-        # Convert the label list to tensor for saving.
         self.labels = torch.FloatTensor(self.labels)
 
     def normalize_labels(self):
-        max_label = self.labels.max()
-        new_labels = []
-        for l in self.labels:
-            if l == -1:
-                new_labels.append(-max_label)
-            else:
-                new_labels.append(l)
-        self.labels = torch.FloatTensor(new_labels)
-
         std = self.labels.std()
         mean = self.labels.mean()
         self.labels = (self.labels - mean) / std
@@ -123,19 +71,6 @@ class NASGraphDataset(DGLDataset):
                 new_features[row] = new_features[row] / max_feature
             g.ndata["features"] = new_features
 
-    def close_label_gap(self, gap=0.2):
-        # ignore the first one (outlier in current dataset)
-        non_zero = np.sort([l for l in self.labels if l > 0])[1:]
-        min_non_zero = np.min(non_zero)
-        new_labels = []
-
-        for l in self.labels:
-            if l > 1.5:
-                new_labels.append(l - 1.5)
-            else:
-                new_labels.append(l)
-        self.labels = torch.FloatTensor(new_labels)
-
     def to_class_labels(self):
         new_labels = []
         for l in self.labels:
@@ -146,11 +81,19 @@ class NASGraphDataset(DGLDataset):
         self.float_labels = self.labels.clone()
         self.labels = torch.LongTensor(new_labels)
 
-    def get_graph_id(self, i):
-        return self.ids[i]
-
     def __getitem__(self, i):
         return self.graphs[i], self.labels[i]
 
     def __len__(self):
         return len(self.graphs)
+
+
+@hydra.main(config_path="../../../conf", config_name="config")
+def main(config):
+    dataset = NASGraphDataset(
+        "/local/gerum/speech_recognition/characterize/nas_kws2/conv_net_trax/n1sdp/"
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -635,11 +635,3 @@ class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
 
     def register_trainer_fold_callback(self, callback):
         self.trainer_fold_callback = callback
-
-
-class SpeechClassifierModule(StreamClassifierModule):
-    def __init__(self, *args, **kwargs):
-        logging.critical(
-            "SpeechClassifierModule has been renamed to StreamClassifierModule"
-        )
-        super(SpeechClassifierModule, self).__init__(*args, **kwargs)

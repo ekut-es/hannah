@@ -29,7 +29,16 @@ def main(config: DictConfig):
         parameters = search_space.get_random()
         config = OmegaConf.merge(config, parameters.flatten())
 
-        print(OmegaConf.to_yaml(config.model))
+        skip = False
+        for board in config.backend.board:
+            result_path = Path(board) / f"config_{i}.yaml"
+            if result_path.exists():
+                skip = True
+        if skip:
+            logging.info("Skipping config_%d", i)
+            continue
+
+        logging.info(OmegaConf.to_yaml(config.model))
         model = instantiate(
             config.module,
             dataset=config.dataset,

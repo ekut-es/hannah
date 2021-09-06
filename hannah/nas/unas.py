@@ -7,6 +7,9 @@ from typing import Any, Dict
 import omegaconf
 
 import torch
+import yaml
+
+from pathlib import Path
 
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
@@ -143,6 +146,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         presample=True,
         n_jobs=10,
         predictor=None,
+        seed=1234,
     ):
         super().__init__(
             budget=budget,
@@ -153,7 +157,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         )
         self.population_size = population_size
 
-        self.random_state = np.random.RandomState()
+        self.random_state = np.random.RandomState(seed=seed)
         self.optimizer = AgingEvolution(
             parametrization=parametrization,
             bounds=bounds,
@@ -211,6 +215,31 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                         for num, config in enumerate(configs)
                     ]
                 )
+
+                for num, (config, result) in enumerate(zip(configs, results)):
+                    nas_result_path = Path("results")
+                    if not nas_result_path.exists():
+                        nas_result_path.mkdir(parents=True, exist_ok=True)
+                    config_file_name = f"config_{len(self.optimizer.history)+num}.yaml"
+                    config_path = nas_result_path / config_file_name
+                    with config_path.open("w") as config_file:
+                        config_file.write(OmegaConf.to_yaml(config))
+
+                    result_path = nas_result_path / "results.yaml"
+                    result_history = []
+                    if result_path.exists():
+                        with result_path.open("r") as result_file:
+                            result_history = yaml.safe_load(result_file)
+                        if not isinstance(result_history, list):
+                            result_history = []
+
+                    result_history.append(
+                        {"config": str(config_file_name), "metrics": result}
+                    )
+
+                    with result_path.open("w") as result_file:
+                        yaml.safe_dump(result_history, result_file)
+
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
                     metrics = {**item.results, **result}

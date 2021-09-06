@@ -20,7 +20,6 @@ def eval_checkpoint(config: DictConfig, checkpoint):
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
     hparams = checkpoint["hyper_parameters"]
-
     if "_target_" not in hparams:
         target = config.default_target
         logging.warning("Target class not given in checkpoint assuming: %s", target)

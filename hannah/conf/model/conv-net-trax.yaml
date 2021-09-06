@@ -1,5 +1,3 @@
-
-
 _target_: hannah.models.factory.factory.create_cnn
 name: conv_net_trax
 norm:
