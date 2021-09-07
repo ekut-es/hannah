@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as nnf
 import logging
 import torch
-from ..utilities import conv1d_get_padding, sub_filter_start_end
+from ..utilities import conv1d_get_padding, set_weight_maybe_bias_grad, sub_filter_start_end
 
 
 class ElasticKernelConv1d(nn.Conv1d):
@@ -75,18 +75,27 @@ class ElasticKernelConv1d(nn.Conv1d):
 
         # if the largest kernel is selected, train the actual kernel weights. For elastic sub-kernels, only the 'final' transform in the chain should be trained.
         if self.target_kernel_index == 0:
-            self.weight.requires_grad = True
+            # primary kernel weights are unfrozen
+            set_weight_maybe_bias_grad(self, True)
             for i in range(len(self.kernel_transforms)):
                 # if the full kernel is selected for training, do not train the transforms
-                self.kernel_transforms[i].weight.requires_grad = False
+                set_weight_maybe_bias_grad(self.kernel_transforms[i], False)
         else:
-            self.weight.requires_grad = False
+            # primary kernel weights are frozen
+            set_weight_maybe_bias_grad(self, False)
             for i in range(len(self.kernel_transforms)):
                 # only the kernel transformation transforming to the current target index should be trained
                 # the n-th transformation transforms the n-th kernel to the (n+1)-th kernel
-                self.kernel_transforms[i].weight.requires_grad = i == (self.target_kernel_index - 1)
+                this_layer_requires_grad = i == (self.target_kernel_index - 1)
+                set_weight_maybe_bias_grad(self.kernel_transforms[i], this_layer_requires_grad)
         # if self.kernel_sizes[self.target_kernel_index] != previous_kernel_size:
             # print(f"\nkernel size was changed: {previous_kernel_size} -> {self.kernel_sizes[self.target_kernel_index]}")
+
+    # freeze all weights for every kernel step.
+    def freeze_kernel_weights(self):
+        set_weight_maybe_bias_grad(self, False)
+        for i in range(len(self.kernel_transforms)):
+            set_weight_maybe_bias_grad(self.kernel_transforms[i], False)
 
     # the initial kernel size is the first element of the list of available sizes
     # set the kernel back to its initial size
