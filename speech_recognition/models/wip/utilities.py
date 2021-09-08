@@ -98,7 +98,7 @@ def call_function_from_deep_nested(input, function, type_selection : type = None
     return call_return_value
 
 
-# recurse line call_function_from_deep_nested; freeze/unfreeze weights of any "normal" modules found.
+# recurse like call_function_from_deep_nested; freeze/unfreeze weights of any "normal" modules found.
 def set_basic_weight_grad(input, state: bool):
     if input is None:
         return
