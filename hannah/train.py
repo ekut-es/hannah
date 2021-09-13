@@ -1,20 +1,15 @@
 import logging
 import os
-import pathlib
+import numpy as np
 import shutil
-
 from collections import defaultdict
-
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
-from torch.nn.modules import module
 
 from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.callbacks import GPUStatsMonitor
+from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
@@ -42,6 +37,7 @@ def handleDataset(config=DictConfig):
         features=config.features,
         scheduler=config.get("scheduler", None),
         normalizer=config.get("normalizer", None),
+        _recursive_=False,
     )
     lit_module.prepare_data()
 
@@ -76,6 +72,8 @@ def train(config: DictConfig):
             features=config.features,
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
+            gpus=config.trainer.get("gpus", None),
+            _recursive_=False,
         )
 
         profiler = None
@@ -168,6 +166,7 @@ def train(config: DictConfig):
 
     for k, v in test_sum.items():
         logging.info(k + " : " + str(v / len(test_output)))
+    logging.info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]

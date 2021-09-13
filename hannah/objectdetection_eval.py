@@ -42,7 +42,7 @@ def eval_steps(config, module, hparams, checkpoint):
     if "real_rain" in methods:
         hparams["dataset"]["kitti_folder"] = folder[: folder.rfind("/")] + "/real_rain"
         hparams["dataset"]["dev_pct"] = 100
-        real_module = instantiate(hparams)
+        real_module = instantiate(hparams, _recursive_=False)
         real_module.setup("test")
         real_module.load_state_dict(checkpoint["state_dict"])
         real_module.augmentation.setEvalAttribs(val_pct=0)

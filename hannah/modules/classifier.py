@@ -1,16 +1,21 @@
 import logging
 import os
-import json
 import copy
 import platform
 
 from abc import abstractmethod
 
 from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.metrics.classification.precision_recall import Precision
-from pytorch_lightning.metrics import Accuracy, Recall, F1, ROC, ConfusionMatrix
+from torchmetrics import (
+    Accuracy,
+    Recall,
+    F1,
+    ROC,
+    ConfusionMatrix,
+    Precision,
+    MetricCollection,
+)
 from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
-from pytorch_lightning.metrics.metric import MetricCollection
 from torch._C import Value
 from .config_utils import get_loss_function, get_model
 from typing import Optional, Dict, Union
@@ -45,6 +50,8 @@ class ClassifierModule(LightningModule):
         frequency_masking: int = 0,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
+        export_onnx: bool = True,
+        gpus=None,
     ):
         super().__init__()
 
@@ -55,6 +62,9 @@ class ClassifierModule(LightningModule):
         self.test_set = None
         self.dev_set = None
         self.logged_samples = 0
+        self.export_onnx = export_onnx
+        self.gpus = gpus
+        print(dataset.data_folder)
 
     @abstractmethod
     def prepare_data(self):
@@ -117,7 +127,7 @@ class ClassifierModule(LightningModule):
                         logger.experiment.add_histogram(
                             name, params, self.current_epoch
                         )
-                    except ValueError as e:
+                    except ValueError:
                         logging.critical("Could not add histogram for param %s", name)
 
         for name, module in self.named_modules():
@@ -131,7 +141,7 @@ class ClassifierModule(LightningModule):
                                 module.scaled_weight,
                                 self.current_epoch,
                             )
-                        except ValueError as e:
+                        except ValueError:
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )
@@ -164,20 +174,20 @@ class ClassifierModule(LightningModule):
             quantized_model = torch.quantization.convert(
                 quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
+        if self.export_onnx:
+            logging.info("saving onnx...")
+            try:
+                dummy_input = self.example_feature_array.cpu()
 
-        logging.info("saving onnx...")
-        try:
-            dummy_input = self.example_feature_array.cpu()
-
-            torch.onnx.export(
-                quantized_model,
-                dummy_input,
-                os.path.join(output_dir, "model.onnx"),
-                verbose=False,
-                opset_version=13,
-            )
-        except Exception as e:
-            logging.error("Could not export onnx model ...\n {}".format(str(e)))
+                torch.onnx.export(
+                    quantized_model,
+                    dummy_input,
+                    os.path.join(output_dir, "model.onnx"),
+                    verbose=False,
+                    opset_version=11,
+                )
+            except Exception as e:
+                logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
     def on_load_checkpoint(self, checkpoint):
         for k, v in self.state_dict().items():
@@ -224,13 +234,13 @@ class BaseStreamClassifierModule(ClassifierModule):
         dummy_input = self.example_input_array.to(device)
         logging.info("Example input array shape: %s", str(dummy_input.shape))
         if platform.machine() == "ppc64le":
-            dummy_input = dummy_input.cuda()
+            dummy_input = dummy_input.to("cuda:" + str(self.gpus[0]))
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
         if platform.machine() == "ppc64le":
-            self.features.cuda()
+            self.features.to("cuda:" + str(self.gpus[0]))
 
         features = self._extract_features(dummy_input)
         self.example_feature_array = features.to(self.device)
@@ -248,6 +258,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
                 labels=self.num_classes,
+                _recursive_=False,
             )
         else:
             self.hparams.model.width = self.example_feature_array.size(2)
@@ -354,7 +365,6 @@ class BaseStreamClassifierModule(ClassifierModule):
             train_set,
             batch_size=train_batch_size,
             drop_last=True,
-            pin_memory=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             sampler=sampler,
@@ -365,7 +375,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         return train_loader
 
-    def on_train_epoch_end(self, outputs):
+    def on_train_epoch_end(self):
         self.eval()
         self._log_weight_distribution()
         self.train()

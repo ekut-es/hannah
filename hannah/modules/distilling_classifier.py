@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch.autograd import grad
 
 from omegaconf import DictConfig
-from pytorch_lightning.metrics import Accuracy
+from torchmetrics import Accuracy
 
 from .classifier import StreamClassifierModule
 
@@ -37,6 +37,8 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         alpha: float = 0.5,
         noise_variance: float = 0.1,
         correct_prob: float = 0.9,
+        export_onnx: bool = True,
+        gpus=None,
     ):
         super().__init__(
             dataset=dataset,
@@ -49,7 +51,10 @@ class SpeechKDClassifierModule(StreamClassifierModule):
             normalizer=normalizer,
             time_masking=time_masking,
             frequency_masking=frequency_masking,
+            export_onnx=export_onnx,
+            gpus=gpus,
         )
+        self.gpus = gpus
         self.model = model
         self.save_hyperparameters()
         self.distillation_loss = distillation_loss
@@ -135,7 +140,9 @@ class SpeechKDClassifierModule(StreamClassifierModule):
 
                 # Overwrite dataset
                 hparams["dataset"] = self.hparams["dataset"]
-                teacher_module = StreamClassifierModule(**hparams)
+                params = deepcopy(hparams)
+                params.pop("_target_")
+                teacher_module = StreamClassifierModule(**params)
                 teacher_module.trainer = self.trainer
                 teacher_module.setup("fit")
                 teacher_module.load_state_dict(checkpoint["state_dict"])

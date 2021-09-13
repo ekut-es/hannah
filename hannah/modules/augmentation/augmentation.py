@@ -269,8 +269,7 @@ class AugmentationThread:
     def call_augment(self, conf, img, kitti, out):
         if XmlAugmentationParser.parse(conf, img, kitti):
             subprocess.call(
-                kitti.aug_path + "perform_augmentation.sh",
-                stdout=subprocess.DEVNULL,
+                kitti.aug_path + "perform_augmentation.sh", stdout=subprocess.DEVNULL
             )
             if conf["double_augment"]:
                 XmlAugmentationParser.albumentations(
