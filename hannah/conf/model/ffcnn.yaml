@@ -1,0 +1,47 @@
+# @package _group_
+
+cls: hannah.models.tc.models.TCResNetModel
+name: tc-res8
+separable:
+- 0
+- 0
+bottleneck:
+- 0
+- 0
+channel_division:
+- 2
+- 4
+conv1_output_channels: 16
+conv1_size: 3
+conv1_stride: 1
+conv1_dropout: True
+conv1_bn: True
+conv1_activation: True
+
+conv2_output_channels: 16
+conv2_size: 3
+conv2_stride: 1
+conv2_dropout: True
+conv2_bn: True
+conv2_activation: True
+
+conv3_output_channels: 16
+conv3_size: 3
+conv3_stride: 1
+conv3_dropout: True
+conv3_bn: True
+conv3_activation: True
+
+dropout_prob: 0.2
+fully_convolutional: false
+inputlayer: true
+width_multiplier: 1.0
+dilation: 1
+clipping_value: 100000.0
+small: false
+
+
+# Set by LigthningModule
+width: 101
+height: 40
+n_labels: 12

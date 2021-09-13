@@ -210,10 +210,16 @@ class TCResNetModel(SerializableModule):
             output_channels_name = "conv{}_output_channels".format(count)
             size_name = "conv{}_size".format(count)
             stride_name = "conv{}_stride".format(count)
+            dropout_name = "conv{}_dropout".format(count)
+            bn_name = "conv{}_bn".format(count)
+            allowActivation_name = "conv{}_activation".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
+            dropout = config.get(dropout_name, False)
+            bn = config.get(bn_name, False)
+            allowact = config.get(allowActivation_name, False)
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -246,7 +252,7 @@ class TCResNetModel(SerializableModule):
                     bias=False,
                 )
 
-                if config.get("input_dropout", False):
+                if dropout:
                     drop_layer = nn.Dropout(dropout_prob)
                     self.layers.append(conv1)
                     self.layers.append(drop_layer)
@@ -266,7 +272,14 @@ class TCResNetModel(SerializableModule):
                 input_channels = output_channels
                 self.layers.append(conv)
 
-                if config.get("input_dropout", False):
+                if bn:
+                    bn = nn.BatchNorm1d(output_channels)
+                    self.layers.append(bn)
+                if allowact:
+                    tmpact = nn.ReLU()
+                    self.layers.append(tmpact)
+
+                if dropout:
                     drop_layer = nn.Dropout(dropout_prob)
                     self.layers.append(drop_layer)
 
