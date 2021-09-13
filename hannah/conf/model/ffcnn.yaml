@@ -18,19 +18,26 @@ conv1_dropout: True
 conv1_bn: True
 conv1_activation: True
 
-conv2_output_channels: 16
-conv2_size: 3
-conv2_stride: 1
+conv2_output_channels: 64
+conv2_size: 9
+conv2_stride: 2
 conv2_dropout: True
 conv2_bn: True
 conv2_activation: True
 
-conv3_output_channels: 16
-conv3_size: 3
-conv3_stride: 1
+conv3_output_channels: 224
+conv3_size: 9
+conv3_stride: 2
 conv3_dropout: True
 conv3_bn: True
 conv3_activation: True
+
+conv4_output_channels: 48
+conv4_size: 9
+conv4_stride: 2
+conv4_dropout: True
+conv4_bn: True
+conv4_activation: True
 
 dropout_prob: 0.2
 fully_convolutional: false
