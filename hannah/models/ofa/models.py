@@ -2,7 +2,7 @@ import copy
 from typing import List, Tuple
 import torch.nn as nn
 # import torch.nn.functional as nnf
-import numpy as np
+# import numpy as np
 import logging
 import torch
 # from ..utils import ConfigType, SerializableModule
@@ -10,7 +10,7 @@ from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper
 from .submodules.elastickernelconv import ElasticKernelConv1d
 from .submodules.resblock import ResBlock1d, ResBlockBase
-from .utilities import flatten_module_list, module_list_to_module, conv1d_auto_padding, call_function_from_deep_nested
+from .utilities import flatten_module_list, set_basic_weight_grad, module_list_to_module, conv1d_auto_padding, call_function_from_deep_nested, set_weight_maybe_bias_grad
 
 
 def create(
@@ -25,7 +25,7 @@ def create(
     steps_per_channel_step=100
 ) -> nn.Module:
     # if no orders for the norm operator are specified, fall back to default
-    if not (hasattr(norm_order, "norm_before_act") and hasattr(norm_order, "norm_after_act")):
+    if not (hasattr(norm_order, "norm_before_act") or hasattr(norm_order, "norm_after_act")):
         logging.info("order of norm before/after activation is not set!")
         norm_order = {"norm_before_act": True, "norm_after_act": False}
 
@@ -80,7 +80,7 @@ def create(
         conv_layers.append(major_block)
 
     # get the max depth from the count of major blocks
-    model = WIPModel(
+    model = OFAModel(
         conv_layers=conv_layers,
         max_depth=len(conv_layers),
         labels=labels,
@@ -96,6 +96,25 @@ def create(
 
     # store the name onto the model
     setattr(model, 'creation_name', name)
+
+    # acquire step counts for OFA progressive shrinking
+    ofa_steps_depth = len(model.linears)
+    ofa_steps_kernel = 1
+    ofa_steps_width = 1
+    for major_block in conv:
+        for block in major_block.blocks:
+            if block.target == "elastic_conv1d":
+                this_block_kernel_steps = len(block.kernel_sizes)
+                this_block_width_steps = len(block.out_channels)
+                ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
+                ofa_steps_kernel = max(ofa_steps_kernel, this_block_kernel_steps)
+            elif block.target == "elastic_channel_helper":
+                this_block_width_steps = len(block.out_channels)
+                ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
+    logging.info(f"OFA steps are {ofa_steps_kernel} kernel sizes, {ofa_steps_depth} depths, {ofa_steps_width} widths.")
+    model.ofa_steps_kernel = ofa_steps_kernel
+    model.ofa_steps_depth = ofa_steps_depth
+    model.ofa_steps_width = ofa_steps_width
 
     return model
 
@@ -142,7 +161,6 @@ def create_minor_block_sequence(blocks, in_channels, stride=1, norm_order=None, 
 # build a single minor block from its config. return the number of output channels with the block
 def create_minor_block(block_config, in_channels: int, stride : int = 1, norm_order=None, sources: List[nn.ModuleList] = [nn.ModuleList([])]) -> Tuple[nn.Module, int]:
     new_block = None
-    # print(in_channels)
     # the output channel count is usually stored in block_config.out_channels
     # use it as the default value if available, otherwise it must be set by the specific code handling the target type
     new_block_out_channels = getattr(block_config, "out_channels", 1)
@@ -192,7 +210,6 @@ def create_minor_block(block_config, in_channels: int, stride : int = 1, norm_or
         # if multiple output channel widths are specified (elastic width), add an elastic width helper module
         if len(out_channels_list) > 1:
             # the sources of the elastic channel helper module are the previous conv, and its potential norm/act
-            # print(out_channels_list)
             helper_module = ElasticChannelHelper(out_channels_list, new_block, None)
             # append the helper module to the sequence
             new_sequence = nn.ModuleList([new_block, helper_module])
@@ -268,13 +285,11 @@ def create_residual_block_1d(blocks, in_channels, stride=1, norm_order=None, sou
     if hasattr(out_channels, '__iter__'):
         # if the out_channels count is a list, get the highest value
         out_channels = max(out_channels)
-    # print(blocks[-1])
-    # print(out_channels)
     residual_block = ResBlock1d(in_channels=in_channels, out_channels=out_channels, minor_blocks=minor_blocks, stride=stride, norm_order=norm_order)
     return residual_block
 
 
-class WIPModel(nn.Module):
+class OFAModel(nn.Module):
     def __init__(
         self, conv_layers: nn.ModuleList([]),
         max_depth: int,
@@ -324,6 +339,10 @@ class WIPModel(nn.Module):
             self.linears.append(new_output_linear)
         # should now be redundant, as the loop will exit with the active depth being max_depth
         self.active_depth = self.max_depth
+        # ofa step counts will be set by the create function.
+        self.ofa_steps_kernel = 1
+        self.ofa_steps_depth = 1
+        self.ofa_steps_width = 1
 
     def forward(self, x):
         self.last_input = x
@@ -332,11 +351,9 @@ class WIPModel(nn.Module):
             x = layer(x)
 
         result = x
-        # print(np.shape(result))
         result = self.pool(result)
         result = self.flatten(result)
         result = self.get_output_linear_layer(self.active_depth)(result)
-        # print(np.shape(result))
 
         return result
 
@@ -352,8 +369,6 @@ class WIPModel(nn.Module):
         else:
             rebuild_output = rebuild_extracted_blocks(self.conv_layers[:target_depth], quantized=quantized)
             extracted_module_list.append(module_list_to_module(rebuild_output))
-            # for item in rebuild_output:
-            #     extracted_module_list.append(item)
 
         extracted_module_list.append(self.pool)
         extracted_module_list.append(self.flatten)
@@ -370,15 +385,11 @@ class WIPModel(nn.Module):
         if self.last_input is None:
             return None
         submodel = self.extract_elastic_depth_sequence(target_depth, quantized=quantized)
-        # print(submodel)
-        # print(type(submodel))
-        # print(self.last_input)
-        # print(np.shape(self.last_input))
         output = submodel(self.last_input)
-        # print(type(output))
-        # print(output)
         return output
 
+    # old sampling based functions for testing, to be removed.
+    """
     # sample the active subnet, select a random depth between the configured min and the max depth (available major block depth)
     def sample_active_subnet(self):
         # only sample the subnet after the set amount of steps have passed
@@ -421,12 +432,14 @@ class WIPModel(nn.Module):
         if self.current_step > self.steps_per_channel_step*(self.current_channel_step+1):
             self.current_channel_step += 1
             self.step_down_all_channels()
+    """
 
     # step all input widths within the model down by one, if possible
     def step_down_all_channels(self):
         # print("stepping down input widths by one!")
         return call_function_from_deep_nested(input=self.conv_layers, function="step_down_input_width", type_selection=ElasticKernelConv1d)
 
+    """
     # temporary implementation to speed up random sampling by only searching for max kernel steps once
     # get max amount of kernel steps
     def compute_max_kernel_steps(self):
@@ -450,8 +463,12 @@ class WIPModel(nn.Module):
 
     # reset elastic values to their default (max) values
     def reset_active_elastic_values(self):
-        self.active_depth = self.max_depth
+        self.reset_active_depth()
         # self.reset_all_kernel_sizes()
+    """
+
+    def reset_active_depth(self):
+        self.active_depth = self.max_depth
 
     # resume: return to the elastic values from before a reset
     def resume_active_elastic_values(self):
@@ -518,11 +535,81 @@ class WIPModel(nn.Module):
                 # if this iteration of stepping down kernel size returned false, there were no kernels to step down. Further iterations are not necessary
                 break
 
+    # step active depth down by one. Freeze output weights of the previous depth step (now no longer in use)
+    def step_active_depth(self):
+        previous_output_linear = self.get_output_linear_layer(self.active_depth)
+        set_basic_weight_grad(previous_output_linear, False)
+        if self.active_depth > self.min_depth:
+            self.active_depth += 1
+        else:
+            logging.warn(f"Excess OFA depth stepping: step_active_depth called when min depth ({self.min_depth}) was already reached!")
+
+    # freeze 'normal' weights of modules. To be called after warm-up
+    # this will freeze: conv weights (not elastic kernel transforms), batchnorm weights, linear weights
+    def freeze_basic_module_weights(self):
+        set_basic_weight_grad(self.conv_layers, False)
+
+    # freeze all kernel weights of elastic kernel modules - both full kernels and kernel transforms.
+    # to be called after the elastic kernel training step has completed.
+    def freeze_elastic_kernels(self):
+        call_function_from_deep_nested(input=self.conv_layers, function="freeze_kernel_weights", type_selection=ElasticKernelConv1d)
+
+    # freeze the weights of the full-depth output linear. To be called after initial warm-up period (before elastic kernel training).
+    def freeze_full_depth_linear(self):
+        set_weight_maybe_bias_grad(self.linears[-1], False)
+
+    # unfreeze elastic depth output layers (the full depth output layer weights remain frozen).
+    def unfreeze_elastic_depths(self):
+        for linear in self.linears[:-1]:
+            set_weight_maybe_bias_grad(linear, True)
+
+    # freeze weights of all output layers. To be called after elastic depth training is completed.
+    def freeze_all_depths(self):
+        for linear in self.linears:
+            set_weight_maybe_bias_grad(linear, False)
+
+    def unfreeze_all_depths(self):
+        for linear in self.linears:
+            set_weight_maybe_bias_grad(linear, True)
+
+    # called when warmup is completed and elastic kernel training should start.
+    def progressive_shrinking_from_warmup_to_kernel(self):
+        self.freeze_basic_module_weights()
+        self.freeze_full_depth_linear()
+
+    # called to perform one kernel step.
+    def progressive_shrinking_kernel_step(self):
+        self.step_down_all_kernels()
+
+    # called when elastic kernel training is completed and elastic depth training should start.
+    def progressive_shrinking_from_kernel_to_depth(self):
+        self.freeze_elastic_kernels()
+        # (technically not required: elastic depth output linears should not be frozen at this point in time.)
+        self.unfreeze_elastic_depths()
+
+    # called to perform one depth step.
+    def progressive_shrinking_perform_depth_step(self):
+        self.step_active_depth()
+
+    # called when elastic depth training is completed and elastic width training should start.
+    def progressive_shrinking_from_depth_to_width(self):
+        self.freeze_all_depths()
+
+    # called to perform one width step.
+    def progressive_shrinking_perform_width_step(self):
+        self.step_down_all_channels()
+
+    # restart all elastic values, except for the width
+    def progressive_shrinking_restart_non_width(self):
+        set_basic_weight_grad(self.conv_layers, True)
+        self.reset_all_kernel_sizes()
+        self.unfreeze_all_depths()
+        self.reset_active_depth()
+
 
 def rebuild_extracted_blocks(blocks, quantized=False):
     out_modules = nn.ModuleList([])
     module_set = DefaultModuleSet1d()
-    # print(f"\nRebuilding : {type(blocks)} {len(blocks)}")
     if quantized:
         module_set = QuantizedModuleSet1d()
 
@@ -547,16 +634,13 @@ def rebuild_extracted_blocks(blocks, quantized=False):
         i = 0
         while i in range(len(modules)):
             module = modules[i]
-            # print(type(module))
             reassembled_module = None
 
             # if the module is an elastic kernel convolution, it is replaced by an equivalent basic conv1d for its current state
             if isinstance(module, ElasticKernelConv1d):
-                # print(type(module))
                 replacement_module = module.assemble_basic_conv1d()
                 # assemble_basic_conv1d copies over the elastic filter information
                 module = replacement_module
-                # print(type(module))
 
             if isinstance(module, nn.Conv1d):
                 # apply channel filters to the conv, if present.
@@ -607,7 +691,6 @@ def rebuild_extracted_blocks(blocks, quantized=False):
             else:
                 logging.warn(f"unknown module found during extract/rebuild '{type(module)}'. Ignoring.")
 
-            # print(reassembled_module)
             if reassembled_module is not None:
                 out_modules.append(reassembled_module)
             i += 1
@@ -792,30 +875,24 @@ class DefaultModuleSet1d(ModuleSet):
         return copy.deepcopy(nn.Sequential(*modules))
 
 
-# TODO: verify functionality (weight copying from normal to quantized)
+# TODO: Quantization
 class QuantizedModuleSet1d(ModuleSet):
     conv1d = qat.Conv1d
     conv1d_norm_act = qat.ConvBnReLU1d
     conv1d_norm = qat.ConvBn1d
     conv1d_act = qat.ConvReLU1d
 
-    # TODO: copy norm weights?
     def reassemble(self, module: nn.Conv1d, norm=False, act=False, norm_module: nn.BatchNorm1d = None):
         out_module = None
         if norm and norm_module is None:
             raise ValueError("module with norm requested, no source norm module provided")
         if norm and act:
-            # out_module = self.conv1d_norm_act(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
             out_module = self.conv1d_norm_act(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
-            out_module.bn
         elif norm:
-            # out_module = self.conv1d_norm(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
             out_module = self.conv1d_norm(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         elif act:
-            # out_module = self.conv1d_act(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
             out_module = self.conv1d_act(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         else:
-            # out_module = self.conv1d(in_channels=module.in_channels, out_channels=module.out_channels, kernel_size=module.kernel_size, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups, bias=module.bias, padding_mode=module.padding_mode)
             out_module = self.conv1d(module.in_channels, module.out_channels, module.kernel_size, module.stride, module.padding)
         out_module.weight = module.weight
         out_module.bias = module.bias
