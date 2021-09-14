@@ -1,0 +1,7 @@
+
+
+_target_: hannah.modules.StreamClassifierModule
+num_workers: 0
+batch_size: 128
+time_masking: 0
+frequency_masking: 0

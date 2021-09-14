@@ -1,0 +1,43 @@
+
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.activity.PAMAP2_Dataset
+dataset: pamap2
+
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+
+k_fold: 9
+
+input_length: 100
+samplingrate: 100
+
+clear_download: False
+variants: ["pamap2"]
+data_split: []
+noise_dataset: []
+download_folder: ${dataset.data_folder}/downloads
+
+
+# The following is an excerpt of the paper by Jordao et al. (2019)
+# Title: "Human Activity Recognition Based on Wearable Sensor Data: A Standardization of the State-of-the-Art"
+# Link: https://arxiv.org/pdf/1806.05226.pdf
+# Fetched on 23. February 2021, page 6, Table I
+
+# =================================================================================================================================
+# Work                    Data Generation                 Evaluation Metrics              Validation Protocol
+# =================================================================================================================================
+# Pirttikangas [29]       Semi-Non-Overlapping-Window     Accuracy                        4-fold cross validation
+# Suutala et al. [30]     Semi-Non-Overlapping-Window     Accuracy, Precision, Recall     4-fold cross validation
+# Kwapisz et al. [7]      Unknown                         Accuracy                        10-fold cross validation
+# Catal et al. [8]        Unknown                         Accuracy, AUC, F-Measure        10-fold cross validation
+# Kim et al. [9]          Semi-Non-Overlapping-Window     F-measure                       Unknown
+# Kim and Choi [10]       Semi-Non-Overlapping-Window     Accuracy, F-measure             Unknown
+# Chen and Xue [3]        Semi-Non-Overlapping-Window     Accuracy                        Holdout
+# Jiang and Yin [11]      Unknown                         Accuracy                        Unknown
+# Ha et al. [4]           Semi-Non-Overlapping-Window     Accuracy                        Hold out
+# Ha and Choi [5]         Semi-Non-Overlapping-Window     Accuracy                        Leave-One-Subjet-Out
+# Yao et al. [27]         Semi-Non-Overlapping-Window     Accuracy.                       Leave-One-Subjet-Out
+# Pan et al. [31]         Semi-Non-Overlapping-Window     Accuracy                        Cross validation and Leave-One-Subjet-Out
+# Yang et al. [32]        Unknown                         Accuracy, F-Measure             Hold out and Leave-One-Subjet-Out

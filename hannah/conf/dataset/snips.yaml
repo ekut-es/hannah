@@ -1,0 +1,32 @@
+
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+dataset: keywords
+cls: hannah.datasets.speech.SpeechHotwordDataset
+
+group_speakers_by_id: false
+use_default_split: false
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+wanted_words: []
+bg_noise_files: []
+
+variants: ["snips"]
+data_split: []
+noise_dataset: []
+download_folder: ${dataset.data_folder}/downloads
+
+input_length: 16000
+samplingrate: 16000
+
+timeshift_ms: 100
+extract: loudest
+
+silence_prob: 1.0
+unknown_prob: 1.0
+test_snr: .inf
+train_snr_high: 1000.0
+train_snr_low: 0.0
+clear_download: false
+sampler: random

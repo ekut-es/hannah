@@ -1,0 +1,5 @@
+
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.vision.Cifar10Dataset
+dataset: cifar10

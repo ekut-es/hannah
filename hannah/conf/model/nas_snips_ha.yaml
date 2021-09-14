@@ -1,0 +1,58 @@
+
+
+_target_: hannah.models.factory.factory.create_cnn
+name: nas_snips_ha
+norm:
+  target: bn
+act:
+  target: relu
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 0
+    bw_w: 4
+    bw_f: 6
+    power_of_2: true
+    noise_prob: 0.7
+conv:
+- blocks:
+  - act: false
+    kernel_size: 3
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 5
+    norm: true
+    out_channels: 8
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 5
+  target: residual
+- blocks:
+  - act: false
+    kernel_size: 3
+    norm: true
+    out_channels: 12
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: false
+    kernel_size: 5
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 56
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 6
+  target: residual

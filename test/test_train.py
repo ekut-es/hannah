@@ -10,7 +10,7 @@ import pytest
 topdir = Path(__file__).parent.absolute() / ".."
 
 # def test_tc_res8_vad():
-#     command_line = "python -m speech_recognition.train --model tc-res8 --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --batch_size=2"
+#     command_line = "python -m hannah.train --model tc-res8 --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --batch_size=2"
 #     subprocess.run(
 #         command_line,
 #         check=True,
@@ -35,15 +35,16 @@ topdir = Path(__file__).parent.absolute() / ".."
         ("gds", "melspec"),
         ("lstm", "melspec"),
         ("wavenet", "mfcc"),
-        ("nas-tc", "mfcc"),
         ("conv-net-factory", "mfcc"),
         ("conv-net-factory", "spectrogram"),
         ("conv-net-fbgemm", "mfcc"),
         ("conv-net-trax", "mfcc"),
+        ("conv-net-factory", "melspec"),
+        ("tc-res8-snn", "mfcc"),
     ],
 )
 def test_models(model, features):
-    command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} features={features}"
+    command_line = f"python -m hannah.train trainer.fast_dev_run=True model={model} features={features}"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
@@ -55,7 +56,7 @@ def test_models(model, features):
     "model,backend", [("tc-res8", "torchmobile"), ("gds", "torchmobile")]
 )
 def test_backend(model, backend):
-    command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True experiment_id=test_backend backend={backend} model={model}"
+    command_line = f"python -m hannah.train trainer.fast_dev_run=True experiment_id=test_backend backend={backend} model={model}"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
@@ -77,7 +78,7 @@ def test_datasets(model, dataset, split):
         logging.warning("Could not find data folder, skipping datased tests")
         return
 
-    command_line = f"python -m speech_recognition.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.data_folder={data_folder} dataset.data_split={split}"
+    command_line = f"python -m hannah.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.data_folder={data_folder} dataset.data_split={split}"
     if dataset == "pamap2":
         command_line += " features=raw"
 

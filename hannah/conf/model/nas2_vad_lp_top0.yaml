@@ -1,0 +1,51 @@
+
+
+# Backend parameters:
+#   backend.cols=2
+#   backend.rows=None
+
+# Expected results:#   acc_accuracy: 0.0
+#   acc_area: 33529.773
+#   acc_clock_cycles: 450.0
+#   acc_power: 1.09196303206e-06
+#   val_error: 0.018058717250823975
+
+_target_: hannah.models.factory.factory.create_cnn
+name: nas2_vad_lp_top0
+norm:
+  target: bn
+act:
+  target: relu
+conv:
+- blocks:
+  - act: true
+    kernel_size: 1
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: true
+    kernel_size: 3
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  - act: false
+    kernel_size: 1
+    norm: true
+    out_channels: 12
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 16
+  target: forward
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 0
+    bw_f: 4
+    bw_w: 4
+    noise_prob: 0.7
+    power_of_2: false

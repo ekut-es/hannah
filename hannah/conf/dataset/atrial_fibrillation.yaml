@@ -1,0 +1,23 @@
+
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.physio.AtrialFibrillationDataset
+dataset: atrial_fibrillation
+
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+
+input_length: 1500
+samplingrate: 250
+num_channels: 2
+
+overlap_ratio: 0.0
+
+clear_download: true
+variants: ["atrial_fibrillation"]
+data_split: []
+noise_dataset: []
+download_folder: ${dataset.data_folder}/downloads
+
+sampler: weighted

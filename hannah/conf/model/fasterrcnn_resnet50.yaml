@@ -1,0 +1,10 @@
+
+
+_target_: hannah.models.objectdetection.models.FasterRCNN
+name: faster-rcnn-resnet50
+num_classes: 9
+pretrained: True
+
+#progress
+
+#trainable_backbone_layers

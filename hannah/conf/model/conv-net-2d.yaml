@@ -1,0 +1,64 @@
+
+
+_target_: hannah.models.factory.create_cnn
+name: conv_net_factory
+norm:
+  target: bn
+act:
+  target: relu
+conv:
+  - target: forward
+    stride: 1
+    blocks:
+      - target: conv2d
+        kernel_size: 3
+        act: false
+        norm: true
+        out_channels: 16
+  - target: residual
+    stride: 2
+    blocks:
+      - target: conv2d
+        kernel_size: 3
+        act: true
+        norm: true
+        out_channels: 24
+      - target: conv2d
+        kernel_size: 1
+        parallel: true
+        out_channels: 24
+      - target: conv2d
+        kernel_size: 3
+        act: true
+        norm: true
+        out_channels: 24
+  - target: residual
+    stride: 2
+    blocks:
+      - target: conv2d
+        kernel_size: 3
+        act: true
+        norm: true
+        out_channels: 32
+      - target: conv2d
+        kernel_size: 3
+        act: true
+        norm: true
+        out_channels: 32
+  - target: residual
+    stride: 2
+    blocks:
+      - target: conv2d
+        kernel_size: 3
+        act: true
+        norm: true
+        out_channels: 48
+      - target: conv2d
+        kernel_size: 1
+        parallel: true
+        out_channels: 48
+      - target: conv2d
+        kernel_size: 3
+        act: true
+        norm: true
+        out_channels: 48

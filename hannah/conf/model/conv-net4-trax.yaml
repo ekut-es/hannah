@@ -1,0 +1,46 @@
+
+
+_target_: hannah.models.factory.factory.create_cnn
+name: conv_net4_trax
+norm:
+  target: bn
+act:
+  target: relu
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 8
+    bw_w: 6
+    bw_f: 8
+    power_of_2: false  # Use power of two quantization for weights
+    noise_prob: 0.7   # Probability of quantizing a value during training
+conv:
+  - target: forward
+    stride: 1
+    blocks:
+      - target: conv1d
+        kernel_size: 3
+        act: false
+        norm: true
+        bias: false
+        out_channels: 16
+  - target: residual
+    stride: 2
+    blocks:
+      - target: conv1d
+        kernel_size: 9
+        act: true
+        norm: true
+        out_channels: 24
+      - target: conv1d
+        kernel_size: 1
+        act: true
+        norm: true
+        parallel: true
+        out_channels: 24
+      - target: conv1d
+        kernel_size: 9
+        act: false
+        norm: true
+        out_channels: 24
+        out_quant: false

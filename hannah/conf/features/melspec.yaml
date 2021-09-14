@@ -1,0 +1,17 @@
+
+
+_target_: torchaudio.transforms.MelSpectrogram
+sample_rate: 16000
+n_fft: 400
+win_length: null
+hop_length: null
+f_min: 0.0
+f_max: null
+pad: 0
+n_mels: 128
+power: 2.0
+normalized: False
+
+#TODO:
+#window_fn: Callable[[...], torch.Tensor] = <built-in method hann_window of type object>
+#wkwargs: Optional[dict] = None
