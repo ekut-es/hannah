@@ -1,7 +1,7 @@
 defaults:
     - dataset: kws
     - features: mfcc
-    - model: wip
+    - model: ofa
     - scheduler: step
     - optimizer: adamw
     - normalizer: null
@@ -16,8 +16,8 @@ defaults:
     - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
       optional: true
 
-experiment_id: test_WIP
-output_dir: trained_models
+experiment_id: test_OFA
+output_dir: trained_models_OFA
 auto_lr: false
 seed: [1234]
 

@@ -1,8 +1,8 @@
 # @package _group_
 
 #cls: speech_recognition.models.wip.models.WIPModel
-_target_: speech_recognition.models.wip.models.create
-name: wip
+_target_: hannah.models.ofa.models.create
+name: ofa
 min_depth: 2
 steps_without_sampling: 9999999
 steps_per_kernel_step: 9999999
