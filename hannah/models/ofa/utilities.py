@@ -1,3 +1,4 @@
+import logging
 import torch.nn as nn
 
 
@@ -95,3 +96,37 @@ def call_function_from_deep_nested(input, function, type_selection : type = None
         call_return_value = call_return_value or new_return_value
 
     return call_return_value
+
+
+# recurse like call_function_from_deep_nested; freeze/unfreeze weights of any "normal" modules found.
+def set_basic_weight_grad(input, state: bool):
+    if input is None:
+        return
+    # if the input is iterable, recursively check any nested objects
+    if hasattr(input, '__iter__'):
+        for item in input:
+            set_basic_weight_grad(item, state)
+    # if the object has a function to return nested modules, also check them.
+    if callable(getattr(input, "get_nested_modules", None)):
+        nested_modules = getattr(input, "get_nested_modules", None)()
+        set_basic_weight_grad(nested_modules, state)
+
+    # freeze weight/bias, if present.
+    if isinstance(input, nn.Conv1d) or isinstance(input, nn.Linear) or isinstance(input, nn.BatchNorm1d):
+        set_weight_maybe_bias_grad(input, state)
+    # for batchnorms, switch running stats to/from eval mode.
+    elif isinstance(input, nn.BatchNorm1d):
+        if not state:
+            input.eval()
+        else:
+            input.train()
+
+
+# set requires_grad state of a module for weight, and for bias if present.
+def set_weight_maybe_bias_grad(module: nn.Module, state: bool):
+    if getattr(module, "weight", None) is not None:
+        module.weight.requires_grad = state
+    else:
+        logging.warn(f"unable to set weight grad for module with no weight attribute: {module}")
+    if getattr(module, "bias", None) is not None:
+        module.bias.requires_grad = state
