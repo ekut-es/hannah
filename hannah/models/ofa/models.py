@@ -20,9 +20,6 @@ def create(
     conv=[],
     min_depth: int = 1,
     norm_order=None,
-    steps_without_sampling=1,
-    steps_per_kernel_step=100,
-    steps_per_channel_step=100
 ) -> nn.Module:
     # if no orders for the norm operator are specified, fall back to default
     if not (hasattr(norm_order, "norm_before_act") or hasattr(norm_order, "norm_after_act")):
@@ -89,9 +86,6 @@ def create(
         out_channels=final_out_channels,
         min_depth=min_depth,
         block_config=conv,
-        steps_without_sampling=steps_without_sampling,
-        steps_per_kernel_step=steps_per_kernel_step,
-        steps_per_channel_step=steps_per_channel_step
     )
 
     # store the name onto the model
@@ -299,9 +293,6 @@ class OFAModel(nn.Module):
         out_channels: int,
         min_depth: int = 1,
         block_config=[],
-        steps_without_sampling: int = 1,
-        steps_per_kernel_step: int = 100,
-        steps_per_channel_step: int = 100
     ):
         super().__init__()
         self.conv_layers = conv_layers
@@ -313,9 +304,6 @@ class OFAModel(nn.Module):
         self.out_channels = out_channels
         self.block_config = block_config
         self.min_depth = min_depth
-        self.steps_without_sampling = steps_without_sampling
-        self.steps_per_kernel_step = steps_per_kernel_step
-        self.steps_per_channel_step = steps_per_channel_step
         self.current_step = 0
         self.current_kernel_step = 0
         self.current_channel_step = 0
@@ -388,84 +376,10 @@ class OFAModel(nn.Module):
         output = submodel(self.last_input)
         return output
 
-    # old sampling based functions for testing, to be removed.
-    """
-    # sample the active subnet, select a random depth between the configured min and the max depth (available major block depth)
-    def sample_active_subnet(self):
-        # only sample the subnet after the set amount of steps have passed
-        if not self.should_subsample():
-            return
-        # active depth is picked from min depth to including max depth
-        self.active_depth = np.random.randint(self.min_depth, self.max_depth+1)
-        self.update_output_channel_count()
-        # print("Picked active depth: ", self.active_depth)
-        # also sample a random kernel, in place until progressive shrinking is done
-        max_kernel_steps = self.compute_max_kernel_steps()
-        # pick a random kernel step, from 0 to including the max step count
-        random_kernel_step = np.random.randint(0, max_kernel_steps+1)
-        self.go_to_kernel_step(random_kernel_step)
-
-    def should_subsample(self, verify_step=False):
-        # for testing, until there is a proper scheduler in place:
-        self.check_kernel_stepping()
-        # again, for testing, until progressive shrinking is implemented:
-        self.check_channel_stepping()
-        # Shortcut for testing: set to True to also verify loss of equivalent extracted model
-        if verify_step:
-            return False
-        return self.current_step > self.steps_without_sampling
-
-    # placeholder until there is a proper scheduler in place
-    def check_kernel_stepping(self):
-        # if enough steps have passed, step down kernels by one size
-        if self.current_step > self.steps_per_kernel_step*(self.current_kernel_step+1):
-            # print("stepping kernels!")
-            self.current_kernel_step += 1
-            if not self.step_down_all_kernels():
-                self.current_kernel_step -= 1
-                setattr(self, 'max_kernel_steps', self.current_kernel_step)
-
-        return self.current_step > self.steps_per_kernel_step
-
-    # placeholder until there is a proper scheduler in place
-    def check_channel_stepping(self):
-        if self.current_step > self.steps_per_channel_step*(self.current_channel_step+1):
-            self.current_channel_step += 1
-            self.step_down_all_channels()
-    """
-
     # step all input widths within the model down by one, if possible
     def step_down_all_channels(self):
         # print("stepping down input widths by one!")
         return call_function_from_deep_nested(input=self.conv_layers, function="step_down_input_width", type_selection=ElasticKernelConv1d)
-
-    """
-    # temporary implementation to speed up random sampling by only searching for max kernel steps once
-    # get max amount of kernel steps
-    def compute_max_kernel_steps(self):
-        max_kernel_steps = getattr(self, 'max_kernel_steps', None)
-        if max_kernel_steps is not None:
-            # if the attribute was already set, simply return.
-            return max_kernel_steps
-        else:
-            previous_kernel_step = self.current_kernel_step
-            self.reset_all_kernel_sizes()
-            # count the amount of steps until step_down_all_kernels returns false (step-down was no longer possible)
-            steps_passed = 0
-            while self.step_down_all_kernels():
-                steps_passed += 1
-            # store the value, it only needs to be computed once.
-            setattr(self, 'max_kernel_steps', steps_passed)
-            # return to whichever the current step was before this function was called
-            self.go_to_kernel_step(previous_kernel_step)
-            # return the computed value
-            return steps_passed
-
-    # reset elastic values to their default (max) values
-    def reset_active_elastic_values(self):
-        self.reset_active_depth()
-        # self.reset_all_kernel_sizes()
-    """
 
     def reset_active_depth(self):
         self.active_depth = self.max_depth

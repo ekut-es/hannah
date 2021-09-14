@@ -4,13 +4,9 @@
 _target_: hannah.models.ofa.models.create
 name: ofa
 min_depth: 2
-steps_without_sampling: 9999999
-steps_per_kernel_step: 9999999
-steps_per_channel_step: 10000
 norm_order:
   norm_before_act: true
   norm_after_act: false
-# conv layout from conv-net-factory
 # to add elastic channel count following a module which is not elastic_conv1d
 # an "elastic_channel_helper" module with only a channel_count list may be added after
 # the maximum channel count of the elastic helper must match the out_channels of the previous module
