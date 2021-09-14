@@ -1,0 +1,10 @@
+
+
+_target_: hannah.nas.OFANasTrainer
+gpu: 0
+epochs_warmup: 30
+epochs_kernel_step: 15
+epochs_depth_step: 8
+epochs_warmup_after_width: 8
+epochs_kernel_after_width: 5
+epochs_depth_after_width: 5
