@@ -319,7 +319,7 @@ class OFANasTrainer(NASTrainerBase):
                 trainer.fit(model)
 
         # TODO: eval/save for width step n
-        self.eval_model(model, trainer, current_depth_step)
+        self.eval_model(model, trainer, current_width_step)
 
         # for current_depth_step in range(depth_step_count):
 
