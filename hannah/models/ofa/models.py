@@ -172,7 +172,9 @@ def create_minor_block(block_config, in_channels: int, stride : int = 1, norm_or
         minor_block_internal_sequence.append(new_minor_block)
 
         # add norm/act if requested
-        norm_act_sequence = create_norm_act_sequence(block_config.norm, block_config.act, out_channels, norm_order)
+        add_norm = block_config.get("norm", False)
+        add_act = block_config.get("act", False)
+        norm_act_sequence = create_norm_act_sequence(add_norm, add_act, out_channels, norm_order)
         if norm_act_sequence is not None:
             minor_block_internal_sequence.append(norm_act_sequence)
 
