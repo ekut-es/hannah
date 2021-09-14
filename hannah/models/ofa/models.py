@@ -497,6 +497,9 @@ class OFAModel(nn.Module):
 
     # called when elastic kernel training is completed and elastic depth training should start.
     def progressive_shrinking_from_kernel_to_depth(self):
+        self.reset_all_kernel_sizes()
+        # setting kernel size to full can unfreeze the base conv module kernel weights.
+        self.freeze_basic_module_weights()
         self.freeze_elastic_kernels()
         # (technically not required: elastic depth output linears should not be frozen at this point in time.)
         self.unfreeze_elastic_depths()
@@ -507,6 +510,7 @@ class OFAModel(nn.Module):
 
     # called when elastic depth training is completed and elastic width training should start.
     def progressive_shrinking_from_depth_to_width(self):
+        self.reset_active_depth()
         self.freeze_all_depths()
 
     # called to perform one width step.
