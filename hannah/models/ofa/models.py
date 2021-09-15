@@ -476,6 +476,11 @@ class OFAModel(nn.Module):
         extracted_module_list = flatten_module_list(extracted_module_list)
         return copy.deepcopy(module_list_to_module(extracted_module_list))
 
+    # return extracted module for a given progressive shrinking depth step
+    def extract_module_from_depth_step(self, depth_step) -> nn.Module:
+        torch_module = self.extract_elastic_depth_sequence(self.max_depth - depth_step)
+        return torch_module
+
     def get_elastic_depth_output(self, target_depth=None, quantized=False):
         if target_depth is None:
             target_depth = self.max_depth

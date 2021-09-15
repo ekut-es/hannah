@@ -1,7 +1,7 @@
 _target_: hannah.nas.OFANasTrainer
-epochs_warmup: 25
+epochs_warmup: 20
 epochs_kernel_step: 10
-epochs_depth_step: 8
+epochs_depth_step: 10
 epochs_warmup_after_width: 8
 epochs_kernel_after_width: 5
 epochs_depth_after_width: 5

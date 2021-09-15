@@ -235,7 +235,7 @@ class OFANasTrainer(NASTrainerBase):
         os.makedirs("ofa_nas_dir", exist_ok=True)
         os.chdir("ofa_nas_dir")
         config = OmegaConf.create(self.config)
-        logger = TensorBoardLogger(".")
+        # logger = TensorBoardLogger(".")
 
         seed = config.get("seed", 1234)
         if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
@@ -251,15 +251,9 @@ class OFANasTrainer(NASTrainerBase):
         callbacks.append(opt_callback)
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
-        self.trainer_callbacks = callbacks
-        self.trainer_logger = logger
-        self.trainer_config = config.trainer
-        self.trainer = instantiate(
-            config.trainer,
-            callbacks=callbacks,
-            logger=logger,
-            max_epochs=self.epochs_warmup
-        )
+        self.config = config
+        # trainer will be initialized by rebuild_trainer
+        self.trainer = None
         model = instantiate(
             config.module,
             dataset=config.dataset,
@@ -272,12 +266,14 @@ class OFANasTrainer(NASTrainerBase):
         )
         model.setup("fit")
         ofa_model = model.model
-        kernel_step_count = ofa_model.ofa_steps_kernel
-        depth_step_count = ofa_model.ofa_steps_depth
-        width_step_count = ofa_model.ofa_steps_width
+        self.kernel_step_count = ofa_model.ofa_steps_kernel
+        self.depth_step_count = ofa_model.ofa_steps_depth
+        self.width_step_count = ofa_model.ofa_steps_width
+
+        self.submodel_metrics = {}
 
         # warm-up.
-        self.rebuild_trainer(self.epochs_warmup)
+        self.rebuild_trainer("warmup", self.epochs_warmup)
         self.trainer.fit(model)
         ckpt_path = "best"
         self.trainer.validate(ckpt_path=ckpt_path, verbose=False)
@@ -285,32 +281,31 @@ class OFANasTrainer(NASTrainerBase):
 
         # train elastic kernels
         ofa_model.progressive_shrinking_from_warmup_to_kernel()
-        self.rebuild_trainer(self.epochs_kernel_step)
-        for current_kernel_step in range(kernel_step_count):
+        for current_kernel_step in range(self.kernel_step_count):
             if (current_kernel_step == 0):
                 # step 0 is the full model, and was processed during warm-up
                 continue
             ofa_model.progressive_shrinking_kernel_step()
+            self.rebuild_trainer(f"kernel_{current_kernel_step}", self.epochs_kernel_step)
             self.trainer.fit(model)
         logging.info("OFA completed kernel matrices.")
 
         # train elastic depth
         ofa_model.progressive_shrinking_from_kernel_to_depth()
-        self.rebuild_trainer(self.epochs_depth_step)
-        for current_depth_step in range(depth_step_count):
+        for current_depth_step in range(self.depth_step_count):
             if (current_depth_step == 0):
                 # step 0 is the full model, and was processed during warm-up
                 continue
             ofa_model.progressive_shrinking_perform_depth_step()
+            self.rebuild_trainer(f"depth_{current_depth_step}", self.epochs_depth_step)
             self.trainer.fit(model)
         logging.info("OFA completed depth steps.")
 
-        # TODO: eval/save for width step 0
-        self.eval_model(ofa_model, 0)
+        self.eval_model(model, ofa_model, 0)
 
         # train elastic width
         ofa_model.progressive_shrinking_from_depth_to_width()
-        for current_width_step in range(width_step_count):
+        for current_width_step in range(self.width_step_count):
             if (current_width_step == 0):
                 # the very first width step (step 0) was already processed before this loop was entered.
                 continue
@@ -318,45 +313,69 @@ class OFANasTrainer(NASTrainerBase):
             # re-run warmup with reduced epoch count to re-optimize with reduced width
             ofa_model.progressive_shrinking_perform_width_step()
             ofa_model.progressive_shrinking_restart_non_width()
-            self.rebuild_trainer(self.epochs_warmup_after_width)
+            self.rebuild_trainer(f"width_{current_width_step}_warmup", self.epochs_warmup_after_width)
             self.trainer.fit(model)
 
             # re-train elastic kernels, re-optimizing after a width step with reduced epoch count
             ofa_model.progressive_shrinking_from_warmup_to_kernel()
-            self.rebuild_trainer(self.epochs_kernel_after_width)
-            for current_kernel_step in range(kernel_step_count):
+            for current_kernel_step in range(self.kernel_step_count):
                 if (current_kernel_step == 0):
                     # step 0 is the full model, and was processed during warm-up
                     continue
                 ofa_model.progressive_shrinking_kernel_step()
+                self.rebuild_trainer(f"width_{current_width_step}_kernel_{current_kernel_step}", self.epochs_kernel_after_width)
                 self.trainer.fit(model)
 
             # re-train elastic depth, re-optimizing after a width step with reduced epoch count
             ofa_model.progressive_shrinking_from_kernel_to_depth()
-            self.rebuild_trainer(self.epochs_depth_after_width)
-            for current_depth_step in range(depth_step_count):
+            for current_depth_step in range(self.depth_step_count):
                 if (current_depth_step == 0):
                     # step 0 is the full model, and was processed during warm-up
                     continue
                 ofa_model.progressive_shrinking_perform_depth_step()
+                self.rebuild_trainer(f"width_{current_width_step}_depth_{current_depth_step}", self.epochs_depth_after_width)
                 self.trainer.fit(model)
 
             logging.info(f"OFA completed re-training for width step {current_width_step}.")
 
-            # TODO: eval/save for width step n
-            self.eval_model(ofa_model, current_width_step)
+            self.eval_model(model, ofa_model, current_width_step)
 
-        # for current_depth_step in range(depth_step_count):
+        print(self.submodel_metrics)
+        np.save("ofa_submodel_metrics_dict.npy", self.submodel_metrics)
 
-    # should cycle through submodels, test them, store results (under a given width step)
-    def eval_model(self, model, current_width_step):
+    # cycle through submodels, test them, store results (under a given width step)
+    def eval_model(self, lightning_model, model, current_width_step):
+        self.submodel_metrics[current_width_step] = {}
         # reset_seed()  # run_training does this (?)
-        self.trainer.validate(ckpt_path=None, verbose=False)
+        # reset target values to step through
+        model.reset_all_kernel_sizes()
+        for current_kernel_step in range(self.kernel_step_count):
+            self.submodel_metrics[current_width_step][current_kernel_step] = {}
+            if (current_kernel_step > 0):
+                # iteration 0 is the full model with no stepping
+                model.step_down_all_kernels()
 
-    def rebuild_trainer(self, epochs: int):
+            model.reset_active_depth()
+            for current_depth_step in range(self.depth_step_count):
+                if (current_depth_step > 0):
+                    # iteration 0 is the full model with no stepping
+                    model.step_active_depth()
+
+                # extracted_model = model.extract_module_from_depth_step(current_depth_step)
+                self.rebuild_trainer(f"Eval K {current_kernel_step}, D {current_depth_step}, W {current_width_step}")
+                logging.info(
+                    f"OFA validating Kernel {current_kernel_step}, Depth {current_depth_step}, Width {current_width_step}"
+                )
+                validation_results = self.trainer.validate(lightning_model, ckpt_path=None, verbose=False)
+                self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
+                # print(validation_results)
+
+    def rebuild_trainer(self, step_name: str, epochs: int = 1):
+        logger = TensorBoardLogger(".", version=step_name)
+        callbacks = common_callbacks(self.config)
         self.trainer = instantiate(
-            self.trainer_config,
-            callbacks=self.trainer_callbacks,
-            logger=self.trainer_logger,
+            self.config.trainer,
+            callbacks=callbacks,
+            logger=logger,
             max_epochs=epochs
         )
