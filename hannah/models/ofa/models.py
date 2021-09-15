@@ -456,7 +456,7 @@ class OFAModel(nn.Module):
         previous_output_linear = self.get_output_linear_layer(self.active_depth)
         set_basic_weight_grad(previous_output_linear, False)
         if self.active_depth > self.min_depth:
-            self.active_depth += 1
+            self.active_depth -= 1
         else:
             logging.warn(f"Excess OFA depth stepping: step_active_depth called when min depth ({self.min_depth}) was already reached!")
 
