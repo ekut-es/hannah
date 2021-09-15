@@ -78,11 +78,14 @@ class FixedpointObserver(ObserverBase):
 
 
 class SymmetricQuantization:
-    def __init__(self, bits, rounding_mode="EVEN", debug=False):
+    def __init__(self, bits, scale=None, rounding_mode="EVEN", debug=False):
         self.bits = bits
         self.max = 2.0 ** (bits - 1) - 1
         self.min = -(2.0 ** (bits - 1))
-        self.scale = 1.0 / 2 ** (bits - 1)
+        if scale is None:
+            self.scale = 1.0 / 2 ** (bits - 1)
+        else:
+            self.scale = scale
         self.rounding_mode = rounding_mode
         self.round = RoundingMode(rounding_mode)
         self.debug = debug
@@ -161,6 +164,7 @@ class STEQuantize(FakeQuantizeBase):
     def __init__(
         self,
         bits,
+        scale=None,
         quantization_loss=True,
         power_of_2=False,
         noise_prob=1.0,
@@ -178,7 +182,9 @@ class STEQuantize(FakeQuantizeBase):
         self.dtype = dtype
 
         if power_of_2:
-            self.quantization_function = PowerOf2Quantization(bits, debug=self.debug)
+            self.quantization_function = PowerOf2Quantization(
+                bits, scale=scale, debug=self.debug
+            )
         else:
             self.quantization_function = SymmetricQuantization(
                 bits, rounding_mode=rounding_mode, debug=self.debug

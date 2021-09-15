@@ -289,7 +289,7 @@ class ScalarParameter(Parameter):
                 lower = math.log2(lower)
                 upper = math.log2(upper)
             if self.config.integer:
-                value = self.random_state.random_integers(int(lower), int(upper))
+                value = int(self.random_state.random_integers(int(lower), int(upper)))
                 if self.config.log:
                     value = 2 ** value
                 return ScalarParameterState(value, (upper - lower) / 6.0)
