@@ -270,7 +270,7 @@ class OFANasTrainer(NASTrainerBase):
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
 
-        self.submodel_metrics_csv = "width, kernel, depth, result"
+        self.submodel_metrics_csv = "width, kernel, depth, acc, total_macs, total_weights\n"
 
         # warm-up.
         self.rebuild_trainer("warmup", self.epochs_warmup)
@@ -370,7 +370,10 @@ class OFANasTrainer(NASTrainerBase):
                 )
                 validation_results = self.trainer.validate(lightning_model, ckpt_path=None, verbose=True)
                 # self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
-                self.submodel_metrics_csv += f"{current_width_step}, {current_kernel_step}, {current_depth_step}" + str(validation_results[0]).replace(",", ";") + "\n"
+                self.submodel_metrics_csv += f"{current_width_step}, {current_kernel_step}, {current_depth_step}, "
+                results = validation_results[0]
+                self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
+                self.submodel_metrics_csv += "\n"
                 # print(validation_results)
 
         # revert to normal operation after eval.
