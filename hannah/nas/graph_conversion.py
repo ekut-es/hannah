@@ -73,6 +73,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             qconfig.STEQuantize: self.add_nodes_quantize,
             pooling.ApproximateGlobalAveragePooling1D: self.add_nodes_pooling,
             torch.nn.ReLU: self.add_nodes_relu,
+            torch.nn.modules.dropout.Dropout: self.add_nodes_dropout,
+            torch.nn.modules.flatten.Flatten: self.add_nodes_flatten,
             "add": self.add_nodes_add,
         }
         self.layer_encodings = [
@@ -130,16 +132,21 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         return NamedTensor(target, output, quantization=quant_attrs)
 
     def add_nodes_relu(self, target, mod, args, output):
-        type_onehot = to_one_hot("relu", self.layer_encodings)
-        features = type_onehot
-
-        self.nx_graph.add_node(target, features=features)
+        quant_attrs = args[0].quantization
+        input_attrs = self.extract_input_attrs(args)
+        self.nx_graph.add_node(
+            target,
+            attrs={},
+            output={"quant": quant_attrs, "shape": output.shape},
+            inputs=input_attrs,
+            type='relu',
+            )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
             self.nx_graph.add_edge(input_name, target)
 
-        return NamedTensor(target, output)
+        return NamedTensor(target, output, quantization=quant_attrs)
 
     def add_nodes_conv(self, target, mod, args, output):
         attrs = {}
@@ -191,7 +198,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
                 "bits": output_bits,
                 "method": input_attrs[0]["quant"]["method"],
             }
-            output_attr = {"name": name, "quant": output_quant, "shape": output.shape}
+        output_attr = {"name": name, "quant": output_quant, "shape": output.shape}
         self.nx_graph.add_node(
             name,
             attrs=attrs,
@@ -233,25 +240,53 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         return NamedTensor(name, output, quantization=quantization)
 
     def add_nodes_linear(self, target, mod, args, output):
-        type_onehot = to_one_hot("linear", self.layer_encodings)
-        bias = 1.0 if mod.bias else 0.0
-        conv_attrs = np.asarray(
-            [float(mod.in_features), float(mod.out_features), bias], dtype=np.float32
-        )
+        attrs = {}
+
+        attrs["in_features"] = mod.in_features
+        attrs["out_features"] = mod.out_features
 
         weight_quant_attrs = self.extract_quant_attrs(
             getattr(mod, "weight_fake_quant", None)
         )
-        bias_quant_attrs = self.extract_quant_attrs(
-            getattr(mod, "bias_fake_quant", None)
-        )
+        weight_attrs = {"quant": weight_quant_attrs, "shape": mod.weight.shape}
 
-        features = np.hstack(
-            [type_onehot, conv_attrs, weight_quant_attrs, bias_quant_attrs]
-        )
+        bias_attrs = None
+        if mod.bias is not None:
+            bias_quant_attrs = self.extract_quant_attrs(
+                getattr(mod, "bias_fake_quant", None)
+            )
+            bias_shape = mod.bias.shape
+            bias_attrs = {"quant": bias_quant_attrs, "shape": bias_shape}
 
         name = target + "_linear"
-        self.nx_graph.add_node(name, features=features)
+        input_attrs = self.extract_input_attrs(args)
+        output_quant = {"dtype": "float", "bits": 32, "method": "none"}
+        if (
+            input_attrs[0]["quant"]["dtype"] != "float"
+            and weight_attrs["quant"]["dtype"] != "float"
+        ):
+            output_bits = (
+                input_attrs[0]["quant"]["bits"]
+                + weight_attrs["quant"]["bits"]
+                + math.ceil(
+                    math.log(attrs["in_features"])
+                )
+            )
+            output_quant = {
+                "dtype": input_attrs[0]["quant"]["dtype"],
+                "bits": output_bits,
+                "method": input_attrs[0]["quant"]["method"],
+            }
+        output_attr = {"name": name, "quant": output_quant, "shape": output.shape}
+        self.nx_graph.add_node(
+            name,
+            attrs=attrs,
+            type="linear",
+            weight=weight_attrs,
+            bias=bias_attrs,
+            inputs=input_attrs,
+            output=output_attr,
+        )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
@@ -259,41 +294,100 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         if type(mod) in [qat.LinearReLU]:
             relu_name = target + "_relu"
-            self.add_nodes_relu(relu_name, None)
-            self.nx_graph.add_edge(name, relu_name)
+            relu_args = [NamedTensor(name, output, quantization=output_quant)]
+            self.add_nodes_relu(relu_name, None, relu_args, output)
 
             name = relu_name
-
+        
+        quantization = None
         activation_post_process = getattr(mod, "activation_post_process", None)
         if activation_post_process:
             if not isinstance(activation_post_process, torch.nn.Identity):
                 post_process_name = target + "_quant"
-                self.add_nodes_quantize(post_process_name, activation_post_process)
-                self.nx_graph.add_edge(name, post_process_name)
+                post_process_args = [
+                    NamedTensor(name, output, quantization=output_quant)
+                ]
+                quant_out = self.add_nodes_quantize(
+                    post_process_name,
+                    activation_post_process,
+                    post_process_args,
+                    output,
+                )
+                quantization = quant_out.quantization
                 name = post_process_name
 
-        return NamedTensor(name, output)
+        return NamedTensor(name, output, quantization=quantization)
 
     def add_nodes_pooling(self, target, mod, args, output):
-
-        features = to_one_hot("global_avg_pool", self.layer_encodings)
-        self.nx_graph.add_node(target, features=features)
+        quant_attrs = args[0].quantization
+        input_attrs = self.extract_input_attrs(args)
+        self.nx_graph.add_node(
+            target,
+            attrs={},  # TODO: Pool size?
+            output={"quant": quant_attrs, "shape": output.shape},
+            inputs=input_attrs,
+            type='pooling',
+            )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
             self.nx_graph.add_edge(input_name, target)
 
-        return NamedTensor(target, output)
+        return NamedTensor(target, output, quantization=quant_attrs)
 
     def add_nodes_add(self, target, mod, args, output):
-        features = to_one_hot("add", self.layer_encodings)
-        self.nx_graph.add_node(target, features=features)
+        quant_attrs = args[0].quantization
+        input_attrs = self.extract_input_attrs(args)
+
+        self.nx_graph.add_node(
+            target,
+            attrs={},  # TODO: Other add attributes?
+            output={"quant": quant_attrs, "shape": output.shape},
+            inputs=input_attrs,
+            type='add',
+            )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
             self.nx_graph.add_edge(input_name, target)
 
-        return NamedTensor(target, output)
+        return NamedTensor(target, output, quantization=quant_attrs)
+
+    def add_nodes_dropout(self, target, mod, args, output):
+        quant_attrs = args[0].quantization
+        input_attrs = self.extract_input_attrs(args)
+
+        self.nx_graph.add_node(
+            target,
+            attrs={},  # TODO: Other dropout attributes?
+            output={"quant": quant_attrs, "shape": output.shape},
+            inputs=input_attrs,
+            type='dropout',
+            )
+
+        input_names = [arg.name for arg in args]
+        for input_name in input_names:
+            self.nx_graph.add_edge(input_name, target)
+
+        return NamedTensor(target, output, quantization=quant_attrs)
+
+    def add_nodes_flatten(self, target, mod, args, output):
+        quant_attrs = args[0].quantization
+        input_attrs = self.extract_input_attrs(args)
+
+        self.nx_graph.add_node(
+            target,
+            attrs={},
+            output={"quant": quant_attrs, "shape": output.shape},
+            inputs=input_attrs,
+            type='flatten',
+            )
+
+        input_names = [arg.name for arg in args]
+        for input_name in input_names:
+            self.nx_graph.add_edge(input_name, target)
+
+        return NamedTensor(target, output, quantization=quant_attrs)
 
     def call_function(self, target, args: Tuple, kwargs: Dict) -> Any:
         self.func_num += 1
@@ -331,7 +425,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
     def placeholder(self, target, args, kwargs):
         tensor = super().placeholder(target, args, kwargs)
-        dimension = np.asarray(tensor.shape, dtype=np.float32)
+        dimension = np.asarray(tensor.shape, dtype=np.float32).tolist()
 
         quantizer = getattr(self.module, "activation_post_process", None)
         quant_attr = self.extract_quant_attrs(quantizer)
