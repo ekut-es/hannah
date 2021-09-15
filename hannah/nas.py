@@ -213,7 +213,6 @@ class OFANasTrainer(NASTrainerBase):
     def __init__(
         self,
         parent_config=None,
-        gpu=0,
         epochs_warmup=10,
         epochs_kernel_step=10,
         epochs_depth_step=10,
@@ -225,7 +224,6 @@ class OFANasTrainer(NASTrainerBase):
     ):
         super().__init__(*args, parent_config=parent_config, **kwargs)
         # currently no backend config for OFA
-        self.gpu = gpu
         self.epochs_warmup = epochs_warmup
         self.epochs_kernel_step = epochs_kernel_step
         self.epochs_depth_step = epochs_depth_step
@@ -244,7 +242,8 @@ class OFANasTrainer(NASTrainerBase):
             seed = seed[0]
         seed_everything(seed, workers=True)
 
-        config.trainer.gpus = [self.gpu]
+        # TODO: Select GPU if available
+        config.trainer.gpus = None
 
         callbacks = common_callbacks(config)
         opt_monitor = config.get("monitor", ["val_error"])
@@ -252,7 +251,15 @@ class OFANasTrainer(NASTrainerBase):
         callbacks.append(opt_callback)
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
-        trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
+        self.trainer_callbacks = callbacks
+        self.trainer_logger = logger
+        self.trainer_config = config.trainer
+        self.trainer = instantiate(
+            config.trainer,
+            callbacks=callbacks,
+            logger=logger,
+            max_epochs=self.epochs_warmup
+        )
         model = instantiate(
             config.module,
             dataset=config.dataset,
@@ -261,76 +268,95 @@ class OFANasTrainer(NASTrainerBase):
             features=config.features,
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
+            _recursive_=False
         )
-        kernel_step_count = model.ofa_steps_kernel
-        depth_step_count = model.ofa_steps_depth
-        width_step_count = model.ofa_steps_width
+        model.setup("fit")
+        ofa_model = model.model
+        kernel_step_count = ofa_model.ofa_steps_kernel
+        depth_step_count = ofa_model.ofa_steps_depth
+        width_step_count = ofa_model.ofa_steps_width
 
         # warm-up.
-        trainer.max_epochs = self.epochs_warmup
-        trainer.fit(model)
+        self.rebuild_trainer(self.epochs_warmup)
+        self.trainer.fit(model)
         ckpt_path = "best"
-        trainer.validate(ckpt_path=ckpt_path, verbose=False)
+        self.trainer.validate(ckpt_path=ckpt_path, verbose=False)
         logging.info("OFA completed warm-up.")
 
         # train elastic kernels
-        model.progressive_shrinking_from_warmup_to_kernel()
-        trainer.max_epochs = self.epochs_kernel_step
+        ofa_model.progressive_shrinking_from_warmup_to_kernel()
+        self.rebuild_trainer(self.epochs_kernel_step)
         for current_kernel_step in range(kernel_step_count):
-            model.progressive_shrinking_kernel_step()
-            trainer.fit(model)
+            if (current_kernel_step == 0):
+                # step 0 is the full model, and was processed during warm-up
+                continue
+            ofa_model.progressive_shrinking_kernel_step()
+            self.trainer.fit(model)
+        logging.info("OFA completed kernel matrices.")
 
         # train elastic depth
-        model.progressive_shrinking_from_kernel_to_depth()
-        trainer.max_epochs = self.epochs_depth_step
+        ofa_model.progressive_shrinking_from_kernel_to_depth()
+        self.rebuild_trainer(self.epochs_depth_step)
         for current_depth_step in range(depth_step_count):
-            model.progressive_shrinking_perform_depth_step()
-            trainer.fit(model)
+            if (current_depth_step == 0):
+                # step 0 is the full model, and was processed during warm-up
+                continue
+            ofa_model.progressive_shrinking_perform_depth_step()
+            self.trainer.fit(model)
+        logging.info("OFA completed depth steps.")
 
         # TODO: eval/save for width step 0
-        self.eval_model(model, trainer, 0)
+        self.eval_model(ofa_model, 0)
 
         # train elastic width
-        model.progressive_shrinking_from_depth_to_width()
-        trainer.max_epochs = self.epochs_warmup_after_width
+        ofa_model.progressive_shrinking_from_depth_to_width()
         for current_width_step in range(width_step_count):
             if (current_width_step == 0):
                 # the very first width step (step 0) was already processed before this loop was entered.
                 continue
 
             # re-run warmup with reduced epoch count to re-optimize with reduced width
-            model.progressive_shrinking_perform_width_step()
-            model.progressive_shrinking_restart_non_width()
-            trainer.max_epochs = self.epochs_warmup_after_width
-            trainer.fit(model)
+            ofa_model.progressive_shrinking_perform_width_step()
+            ofa_model.progressive_shrinking_restart_non_width()
+            self.rebuild_trainer(self.epochs_warmup_after_width)
+            self.trainer.fit(model)
 
             # re-train elastic kernels, re-optimizing after a width step with reduced epoch count
-            model.progressive_shrinking_from_warmup_to_kernel()
-            trainer.max_epochs = self.epochs_kernel_after_width
+            ofa_model.progressive_shrinking_from_warmup_to_kernel()
+            self.rebuild_trainer(self.epochs_kernel_after_width)
             for current_kernel_step in range(kernel_step_count):
-                model.progressive_shrinking_kernel_step()
-                trainer.fit(model)
+                if (current_kernel_step == 0):
+                    # step 0 is the full model, and was processed during warm-up
+                    continue
+                ofa_model.progressive_shrinking_kernel_step()
+                self.trainer.fit(model)
 
             # re-train elastic depth, re-optimizing after a width step with reduced epoch count
-            model.progressive_shrinking_from_kernel_to_depth()
-            trainer.max_epochs = self.epochs_depth_after_width
+            ofa_model.progressive_shrinking_from_kernel_to_depth()
+            self.rebuild_trainer(self.epochs_depth_after_width)
             for current_depth_step in range(depth_step_count):
-                model.progressive_shrinking_perform_depth_step()
-                trainer.fit(model)
+                if (current_depth_step == 0):
+                    # step 0 is the full model, and was processed during warm-up
+                    continue
+                ofa_model.progressive_shrinking_perform_depth_step()
+                self.trainer.fit(model)
 
-        # TODO: eval/save for width step n
-        self.eval_model(model, trainer, current_width_step)
+            logging.info(f"OFA completed re-training for width step {current_width_step}.")
+
+            # TODO: eval/save for width step n
+            self.eval_model(ofa_model, current_width_step)
 
         # for current_depth_step in range(depth_step_count):
 
     # should cycle through submodels, test them, store results (under a given width step)
-    def eval_model(self, model, trainer, current_depth_step):
-        ckpt_path = "best"
-        if trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
-            )
-            ckpt_path = None
-
+    def eval_model(self, model, current_width_step):
         # reset_seed()  # run_training does this (?)
-        trainer.validate(ckpt_path=ckpt_path, verbose=False)
+        self.trainer.validate(ckpt_path=None, verbose=False)
+
+    def rebuild_trainer(self, epochs: int):
+        self.trainer = instantiate(
+            self.trainer_config,
+            callbacks=self.trainer_callbacks,
+            logger=self.trainer_logger,
+            max_epochs=epochs
+        )
