@@ -1,7 +1,6 @@
 import logging
 import torch.nn as nn
 
-
 # Conv1d with automatic padding for the set kernel size
 def conv1d_auto_padding(conv1d: nn.Conv1d):
     conv1d.padding = conv1d_get_padding(conv1d.kernel_size[0])
@@ -22,23 +21,26 @@ def sub_filter_start_end(kernel_size, sub_kernel_size):
     return start, end
 
 
-# flatten nested iterable modules, usually over a ModuleList. nn.Sequential is also an iterable module and a valid input.
+# flatten nested iterable modules, usually over a ModuleList. nn.Sequential is
+# also an iterable module and a valid input.
 def flatten_module_list(modules: nn.Module) -> nn.Module:
-    if not hasattr(modules, '__iter__'):
+    if not hasattr(modules, "__iter__"):
         if isinstance(modules, nn.Module):
             # if the input is non-iterable and is already a module, it can be returned as a list of one element
             return nn.ModuleList([modules])
 
     else:
         # flatten any nested Sequential or ModuleList
-        contains_nested = (isinstance(x, nn.Sequential) for x in modules) or (isinstance(x, nn.ModuleList) for x in modules)
+        contains_nested = (isinstance(x, nn.Sequential) for x in modules) or (
+            isinstance(x, nn.ModuleList) for x in modules
+        )
         # repeat until the cycle no longer finds nested modules
         while contains_nested:
             # print(f"Nested? {type(modules)} {len(modules)}")
             contains_nested = False
             new_module_list = nn.ModuleList([])
             for old_item in modules:
-                if hasattr(old_item, '__iter__'):
+                if hasattr(old_item, "__iter__"):
                     contains_nested = True
                     for old_subitem in old_item:
                         new_module_list.append(old_subitem)
@@ -55,22 +57,26 @@ def module_list_to_module(module_list):
     if isinstance(module_list, nn.Sequential):
         return module_list
     # if the input is not already a module, it must be iterable
-    if not hasattr(module_list, '__iter__'):
+    if not hasattr(module_list, "__iter__"):
         if isinstance(module_list, nn.Module):
             return module_list
         raise TypeError("input is neither iterable nor module")
     if len(module_list) == 1:
         module = module_list[0]
-        assert isinstance(module, nn.Module), "Iterable single-length input does not contain module"
+        assert isinstance(
+            module, nn.Module
+        ), "Iterable single-length input does not contain module"
         return module
     else:
         return nn.Sequential(*module_list)
 
 
-# recurse through any iterable (sub)structures. Attempt to call the specified function from any discovered objects if it is available.
+# recurse through any iterable (sub)structures. Attempt to call the specified
+# function from any discovered objects if it is available.
 # return true if any of the calls returned true
-# for modules: both ModuleList and Sequential are iterable, so this should be able to descend into any module substructures
-def call_function_from_deep_nested(input, function, type_selection : type = None):
+# for modules: both ModuleList and Sequential are iterable, so this should be
+# able to descend into any module substructures
+def call_function_from_deep_nested(input, function, type_selection: type = None):
     if input is None:
         return False
     # print(".")
@@ -84,15 +90,19 @@ def call_function_from_deep_nested(input, function, type_selection : type = None
             # print("deep call!")
 
     # if the input is iterable, recursively check any nested objects
-    if hasattr(input, '__iter__'):
+    if hasattr(input, "__iter__"):
         for item in input:
-            new_return_value = call_function_from_deep_nested(item, function, type_selection)
+            new_return_value = call_function_from_deep_nested(
+                item, function, type_selection
+            )
             call_return_value = call_return_value or new_return_value
 
     # if the object has a function to return nested modules, also check them.
     if callable(getattr(input, "get_nested_modules", None)):
         nested_modules = getattr(input, "get_nested_modules", None)()
-        new_return_value = call_function_from_deep_nested(nested_modules, function, type_selection)
+        new_return_value = call_function_from_deep_nested(
+            nested_modules, function, type_selection
+        )
         call_return_value = call_return_value or new_return_value
 
     return call_return_value
@@ -103,7 +113,7 @@ def set_basic_weight_grad(input, state: bool):
     if input is None:
         return
     # if the input is iterable, recursively check any nested objects
-    if hasattr(input, '__iter__'):
+    if hasattr(input, "__iter__"):
         for item in input:
             set_basic_weight_grad(item, state)
     # if the object has a function to return nested modules, also check them.
@@ -112,7 +122,11 @@ def set_basic_weight_grad(input, state: bool):
         set_basic_weight_grad(nested_modules, state)
 
     # freeze weight/bias, if present.
-    if isinstance(input, nn.Conv1d) or isinstance(input, nn.Linear) or isinstance(input, nn.BatchNorm1d):
+    if (
+        isinstance(input, nn.Conv1d)
+        or isinstance(input, nn.Linear)
+        or isinstance(input, nn.BatchNorm1d)
+    ):
         set_weight_maybe_bias_grad(input, state)
     # for batchnorms, switch running stats to/from eval mode.
     elif isinstance(input, nn.BatchNorm1d):
@@ -127,6 +141,8 @@ def set_weight_maybe_bias_grad(module: nn.Module, state: bool):
     if getattr(module, "weight", None) is not None:
         module.weight.requires_grad = state
     else:
-        logging.warn(f"unable to set weight grad for module with no weight attribute: {module}")
+        logging.warn(
+            f"unable to set weight grad for module with no weight attribute: {module}"
+        )
     if getattr(module, "bias", None) is not None:
         module.bias.requires_grad = state
