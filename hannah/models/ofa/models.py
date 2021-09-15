@@ -442,6 +442,7 @@ class OFAModel(nn.Module):
     def forward(self, x):
         self.last_input = x
         self.current_step = self.current_step + 1
+        # if the network is currently being evaluated, don't sample a subnetwork!
         if (self.sampling_max_depth_step > 0 or self.sampling_max_kernel_step > 0) and not self.eval_mode:
             self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
@@ -457,14 +458,8 @@ class OFAModel(nn.Module):
     def sample_subnetwork(self):
         new_kernel_step = np.random.randint(self.sampling_max_kernel_step + 1)
         new_depth_step = np.random.randint(self.sampling_max_depth_step + 1)
-        self.active_depth = new_depth_step
-        if new_kernel_step > self.current_kernel_step:
-            for i in range(new_kernel_step - self.current_kernel_step):
-                self.step_down_all_kernels()
-        else:
-            self.reset_all_kernel_sizes()
-            for i in range(new_kernel_step):
-                self.step_down_all_kernels()
+        self.active_depth = self.max_depth - new_depth_step
+        self.go_to_kernel_step(new_kernel_step)
 
     # return an extracted module sequence for a given depth
     def extract_elastic_depth_sequence(
