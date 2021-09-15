@@ -3,7 +3,7 @@ from typing import List, Tuple
 import torch.nn as nn
 
 # import torch.nn.functional as nnf
-# import numpy as np
+import numpy as np
 import logging
 import torch
 
@@ -14,11 +14,11 @@ from .submodules.elastickernelconv import ElasticKernelConv1d
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .utilities import (
     flatten_module_list,
-    set_basic_weight_grad,
+    # set_basic_weight_grad,
     module_list_to_module,
     conv1d_auto_padding,
     call_function_from_deep_nested,
-    set_weight_maybe_bias_grad,
+    # set_weight_maybe_bias_grad,
 )
 
 
@@ -407,6 +407,10 @@ class OFAModel(nn.Module):
         self.current_step = 0
         self.current_kernel_step = 0
         self.current_channel_step = 0
+        self.current_width_step = 0
+        self.sampling_max_kernel_step = 0
+        self.sampling_max_depth_step = 0
+        self.eval_mode = False
         self.last_input = None
         # will be updated with the output channel count
         self.active_elastic_output_helper: ElasticChannelHelper = None
@@ -438,6 +442,8 @@ class OFAModel(nn.Module):
     def forward(self, x):
         self.last_input = x
         self.current_step = self.current_step + 1
+        if (self.sampling_max_depth_step > 0 or self.sampling_max_kernel_step > 0) and not self.eval_mode:
+            self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
             x = layer(x)
 
@@ -447,6 +453,18 @@ class OFAModel(nn.Module):
         result = self.get_output_linear_layer(self.active_depth)(result)
 
         return result
+
+    def sample_subnetwork(self):
+        new_kernel_step = np.random.randint(self.sampling_max_kernel_step + 1)
+        new_depth_step = np.random.randint(self.sampling_max_depth_step + 1)
+        self.active_depth = new_depth_step
+        if new_kernel_step > self.current_kernel_step:
+            for i in range(new_kernel_step - self.current_kernel_step):
+                self.step_down_all_kernels()
+        else:
+            self.reset_all_kernel_sizes()
+            for i in range(new_kernel_step):
+                self.step_down_all_kernels()
 
     # return an extracted module sequence for a given depth
     def extract_elastic_depth_sequence(
@@ -495,6 +513,11 @@ class OFAModel(nn.Module):
     # step all input widths within the model down by one, if possible
     def step_down_all_channels(self):
         # print("stepping down input widths by one!")
+        self.current_width_step += 1
+        if (self.current_width_step > self.ofa_steps_width):
+            logging.warn(
+                f"excessive OFA width stepping! Attempting to step down width when step limit {self.ofa_steps_width} already reached."
+            )
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_input_width",
@@ -582,6 +605,7 @@ class OFAModel(nn.Module):
                 # there were no kernels to step down. Further iterations are not necessary
                 break
 
+    """
     # step active depth down by one. Freeze output weights of the previous depth step (now no longer in use)
     def step_active_depth(self):
         previous_output_linear = self.get_output_linear_layer(self.active_depth)
@@ -664,6 +688,30 @@ class OFAModel(nn.Module):
         self.reset_all_kernel_sizes()
         self.unfreeze_all_depths()
         self.reset_active_depth()
+    """
+
+    def progressive_shrinking_perform_width_step(self):
+        self.step_down_all_channels()
+
+    def progressive_shrinking_add_kernel(self):
+        self.sampling_max_kernel_step += 1
+        if self.sampling_max_kernel_step > self.ofa_steps_kernel:
+            self.sampling_max_kernel_step -= 1
+            logging.warn(
+                f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
+            )
+
+    def progressive_shrinking_add_depth(self):
+        self.sampling_max_depth_step += 1
+        if self.sampling_max_depth_step > self.ofa_steps_depth:
+            self.sampling_max_depth_step -= 1
+            logging.warn(
+                f"excessive OFA depth stepping! Attempting to add a depth step when max ({self.ofa_steps_kernel}) already reached"
+            )
+
+    def progressive_shrinking_disable_sampling(self):
+        self.sampling_max_kernel_step = 0
+        self.sampling_max_depth_step = 0
 
 
 def rebuild_extracted_blocks(blocks, quantized=False):
