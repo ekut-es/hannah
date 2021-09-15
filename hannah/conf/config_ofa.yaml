@@ -17,7 +17,7 @@ defaults:
       optional: true
 
 experiment_id: test_OFA
-output_dir: trained_models_OFA
+output_dir: trained_models
 auto_lr: false
 seed: [1234]
 
