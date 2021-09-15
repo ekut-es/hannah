@@ -270,7 +270,7 @@ class OFANasTrainer(NASTrainerBase):
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
 
-        self.submodel_metrics = {}
+        self.submodel_metrics_csv = "width, kernel, depth, result"
 
         # warm-up.
         self.rebuild_trainer("warmup", self.epochs_warmup)
@@ -340,19 +340,19 @@ class OFANasTrainer(NASTrainerBase):
 
             self.eval_model(model, ofa_model, current_width_step)
 
-        print(self.submodel_metrics)
-        np.save("ofa_submodel_metrics_dict.npy", self.submodel_metrics)
+        # save self.submodel_metrics_csv
+        print(self.submodel_metrics_csv)
+        with open("OFA_elastic_metrics.csv", "w") as f:
+            f.write(self.submodel_metrics_csv)
 
     # cycle through submodels, test them, store results (under a given width step)
     def eval_model(self, lightning_model, model, current_width_step):
         # disable sampling in forward during evaluation.
         model.eval_mode = True
-        self.submodel_metrics[current_width_step] = {}
         # reset_seed()  # run_training does this (?)
         # reset target values to step through
         model.reset_all_kernel_sizes()
         for current_kernel_step in range(self.kernel_step_count):
-            self.submodel_metrics[current_width_step][current_kernel_step] = {}
             if (current_kernel_step > 0):
                 # iteration 0 is the full model with no stepping
                 model.step_down_all_kernels()
@@ -369,7 +369,8 @@ class OFANasTrainer(NASTrainerBase):
                     f"OFA validating Kernel {current_kernel_step}, Depth {current_depth_step}, Width {current_width_step}"
                 )
                 validation_results = self.trainer.validate(lightning_model, ckpt_path=None, verbose=True)
-                self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
+                # self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
+                self.submodel_metrics_csv += f"{current_width_step}, {current_kernel_step}, {current_depth_step}" + str(validation_results[0]).replace(",", ";") + "\n"
                 # print(validation_results)
 
         # revert to normal operation after eval.
