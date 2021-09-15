@@ -176,7 +176,7 @@ class ElasticChannelHelper(nn.Module):
     def add_secondary_target_item(self, target: nn.Module):
         if self.is_valid_primary_target(target):
             self.additional_targets.append(target)
-        if isinstance(target, nn.BatchNorm1d):
+        elif isinstance(target, nn.BatchNorm1d):
             # trailing batchnorms between the channel helper and the next 'real'
             # module will also need to have their channels adjusted
             logging.info(
