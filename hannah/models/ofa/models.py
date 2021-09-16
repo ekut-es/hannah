@@ -462,7 +462,7 @@ class OFAModel(nn.Module):
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
         state = {"depth_step": 0, "kernel_steps": []}
-        new_depth_step = np.random.randint(self.sampling_max_depth_step + 1)
+        new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
         self.active_depth = self.max_depth - new_depth_step
         state["depth_step"] = new_depth_step
         # this would step every kernel the same amount
@@ -471,9 +471,10 @@ class OFAModel(nn.Module):
         for conv in self.elastic_kernel_convs:
             # pick an available kernel index for every elastic kernel conv, independently.
             max_available_sampling_step = min(self.sampling_max_kernel_step, conv.get_available_kernel_steps())
-            new_kernel_step = np.random.randint(max_available_sampling_step)
+            new_kernel_step = np.random.randint(max_available_sampling_step+1)
             conv.pick_kernel_index(new_kernel_step)
             state["kernel_steps"].append(new_kernel_step)
+        print(state)
         return state
 
     # return an extracted module sequence for a given depth
@@ -705,7 +706,7 @@ class OFAModel(nn.Module):
 
     def progressive_shrinking_add_kernel(self):
         self.sampling_max_kernel_step += 1
-        if self.sampling_max_kernel_step > self.ofa_steps_kernel:
+        if self.sampling_max_kernel_step >= self.ofa_steps_kernel:
             self.sampling_max_kernel_step -= 1
             logging.warn(
                 f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
@@ -713,7 +714,7 @@ class OFAModel(nn.Module):
 
     def progressive_shrinking_add_depth(self):
         self.sampling_max_depth_step += 1
-        if self.sampling_max_depth_step > self.ofa_steps_depth:
+        if self.sampling_max_depth_step >= self.ofa_steps_depth:
             self.sampling_max_depth_step -= 1
             logging.warn(
                 f"excessive OFA depth stepping! Attempting to add a depth step when max ({self.ofa_steps_kernel}) already reached"
