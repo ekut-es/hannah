@@ -148,7 +148,7 @@ class ElasticKernelConv1d(nn.Conv1d):
         self.set_kernel_size(self.kernel_sizes[target_kernel_index])
 
     def get_available_kernel_steps(self):
-        return len(self.kernel_size)
+        return len(self.kernel_sizes)
 
     """
     # lock/unlock training of the kernels
