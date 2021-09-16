@@ -382,6 +382,10 @@ class OFANasTrainer(NASTrainerBase):
                 # print(validation_results)
 
         # sample a few random combinations
+        prev_max_kernel = model.sampling_max_kernel_step
+        prev_max_depth = model.sampling_max_depth_step
+        model.sampling_max_kernel_step = model.ofa_steps_kernel
+        model.sampling_max_depth_step = model.ofa_steps_depth
         for i in range(100):
             random_state = model.sample_subnetwork()
             selected_depth = random_state["depth_step"]
@@ -395,6 +399,8 @@ class OFANasTrainer(NASTrainerBase):
             self.random_metrics_csv += "\n"
 
         # revert to normal operation after eval.
+        model.sampling_max_kernel_step = prev_max_kernel
+        model.sampling_max_depth_step = prev_max_depth
         model.eval_mode = False
 
     def rebuild_trainer(self, step_name: str, epochs: int = 1):
