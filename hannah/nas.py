@@ -395,7 +395,7 @@ class OFANasTrainer(NASTrainerBase):
             logging.info(f"OFA validating random sample under Width {current_width_step}:\n{random_state}")
             validation_results = self.trainer.validate(lightning_model, ckpt_path=None, verbose=True)
             results = validation_results[0]
-            self.random_metrics_csv += f"{current_width_step}, {selected_depth}, {selected_kernels_string},"
+            self.random_metrics_csv += f"{current_width_step}, {selected_depth}, {selected_kernels_string}, "
             self.random_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
             self.random_metrics_csv += "\n"
 
