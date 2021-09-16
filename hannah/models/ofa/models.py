@@ -474,7 +474,7 @@ class OFAModel(nn.Module):
             new_kernel_step = np.random.randint(max_available_sampling_step+1)
             conv.pick_kernel_index(new_kernel_step)
             state["kernel_steps"].append(new_kernel_step)
-        print(state)
+        # print(state)
         return state
 
     # return an extracted module sequence for a given depth
@@ -615,91 +615,6 @@ class OFAModel(nn.Module):
                 # if this iteration of stepping down kernel size returned false,
                 # there were no kernels to step down. Further iterations are not necessary
                 break
-
-    """
-    # step active depth down by one. Freeze output weights of the previous depth step (now no longer in use)
-    def step_active_depth(self):
-        previous_output_linear = self.get_output_linear_layer(self.active_depth)
-        set_basic_weight_grad(previous_output_linear, False)
-        if self.active_depth > self.min_depth:
-            self.active_depth -= 1
-        else:
-            logging.warn(
-                f"Excess OFA depth stepping: step_active_depth called when min depth ({self.min_depth}) was already reached!"
-            )
-
-    # freeze 'normal' weights of modules. To be called after warm-up
-    # this will freeze: conv weights (not elastic kernel transforms), batchnorm weights, linear weights
-    def freeze_basic_module_weights(self):
-        set_basic_weight_grad(self.conv_layers, False)
-
-    # freeze all kernel weights of elastic kernel modules - both full kernels and kernel transforms.
-    # to be called after the elastic kernel training step has completed.
-    def freeze_elastic_kernels(self):
-        call_function_from_deep_nested(
-            input=self.conv_layers,
-            function="freeze_kernel_weights",
-            type_selection=ElasticKernelConv1d,
-        )
-
-    # freeze the weights of the full-depth output linear.
-    # To be called after initial warm-up period (before elastic kernel training).
-    def freeze_full_depth_linear(self):
-        set_weight_maybe_bias_grad(self.linears[-1], False)
-
-    # unfreeze elastic depth output layers (the full depth output layer weights remain frozen).
-    def unfreeze_elastic_depths(self):
-        for linear in self.linears[:-1]:
-            set_weight_maybe_bias_grad(linear, True)
-
-    # freeze weights of all output layers.
-    # To be called after elastic depth training is completed.
-    def freeze_all_depths(self):
-        for linear in self.linears:
-            set_weight_maybe_bias_grad(linear, False)
-
-    def unfreeze_all_depths(self):
-        for linear in self.linears:
-            set_weight_maybe_bias_grad(linear, True)
-
-    # called when warmup is completed and elastic kernel training should start.
-    def progressive_shrinking_from_warmup_to_kernel(self):
-        self.freeze_basic_module_weights()
-        self.freeze_full_depth_linear()
-
-    # called to perform one kernel step.
-    def progressive_shrinking_kernel_step(self):
-        self.step_down_all_kernels()
-
-    # called when elastic kernel training is completed and elastic depth training should start.
-    def progressive_shrinking_from_kernel_to_depth(self):
-        self.reset_all_kernel_sizes()
-        # setting kernel size to full can unfreeze the base conv module kernel weights.
-        self.freeze_basic_module_weights()
-        self.freeze_elastic_kernels()
-        # (technically not required: elastic depth output linears should not be frozen at this point in time.)
-        self.unfreeze_elastic_depths()
-
-    # called to perform one depth step.
-    def progressive_shrinking_perform_depth_step(self):
-        self.step_active_depth()
-
-    # called when elastic depth training is completed and elastic width training should start.
-    def progressive_shrinking_from_depth_to_width(self):
-        self.reset_active_depth()
-        self.freeze_all_depths()
-
-    # called to perform one width step.
-    def progressive_shrinking_perform_width_step(self):
-        self.step_down_all_channels()
-
-    # restart all elastic values, except for the width
-    def progressive_shrinking_restart_non_width(self):
-        set_basic_weight_grad(self.conv_layers, True)
-        self.reset_all_kernel_sizes()
-        self.unfreeze_all_depths()
-        self.reset_active_depth()
-    """
 
     def progressive_shrinking_perform_width_step(self):
         self.step_down_all_channels()
