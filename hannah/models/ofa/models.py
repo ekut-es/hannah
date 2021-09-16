@@ -14,6 +14,7 @@ from .submodules.elastickernelconv import ElasticKernelConv1d
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .utilities import (
     flatten_module_list,
+    get_instances_from_deep_nested,
     # set_basic_weight_grad,
     module_list_to_module,
     conv1d_auto_padding,
@@ -438,6 +439,9 @@ class OFAModel(nn.Module):
         self.ofa_steps_kernel = 1
         self.ofa_steps_depth = 1
         self.ofa_steps_width = 1
+        # create a list of every elastic kernel conv, for sampling
+        self.elastic_kernel_convs = get_instances_from_deep_nested(input=self.conv_layers, type_selection=ElasticKernelConv1d)
+        logging.info(f"OFA model accumulated {len(self.elastic_kernel_convs)} elastic kernel convolutions for sampling.")
 
     def forward(self, x):
         self.last_input = x
@@ -456,10 +460,16 @@ class OFAModel(nn.Module):
         return result
 
     def sample_subnetwork(self):
-        new_kernel_step = np.random.randint(self.sampling_max_kernel_step + 1)
         new_depth_step = np.random.randint(self.sampling_max_depth_step + 1)
         self.active_depth = self.max_depth - new_depth_step
-        self.go_to_kernel_step(new_kernel_step)
+        # this would step every kernel the same amount
+        # new_kernel_step = np.random.randint(self.sampling_max_kernel_step + 1)
+        # self.go_to_kernel_step(new_kernel_step)
+        for conv in self.elastic_kernel_convs:
+            # pick an available kernel index for every elastic kernel conv, independently.
+            max_available_sampling_step = min(self.sampling_max_kernel_step, conv.get_available_kernel_steps(self))
+            new_kernel_step = np.random.randint(max_available_sampling_step + 1)
+            conv.pick_kernel_index(new_kernel_step)
 
     # return an extracted module sequence for a given depth
     def extract_elastic_depth_sequence(

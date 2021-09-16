@@ -1,5 +1,6 @@
-import logging
+# import logging
 import torch.nn as nn
+
 
 # Conv1d with automatic padding for the set kernel size
 def conv1d_auto_padding(conv1d: nn.Conv1d):
@@ -108,6 +109,35 @@ def call_function_from_deep_nested(input, function, type_selection: type = None)
     return call_return_value
 
 
+# recurse like call_function_from_deep_nested;
+# return a list of every found object of <type>
+def get_instances_from_deep_nested(input, type_selection: type = None):
+    results = []
+    if input is None:
+        return results
+    if type_selection is None or isinstance(input, type_selection):
+        results.append(input)
+    # if the input is iterable, recursively check any nested objects
+    if hasattr(input, "__iter__"):
+        for item in input:
+            additional_results = get_instances_from_deep_nested(
+                item, type_selection
+            )
+            # concatenate the lists
+            results += additional_results
+
+    # if the object has a function to return nested modules, also check them.
+    if callable(getattr(input, "get_nested_modules", None)):
+        nested_modules = getattr(input, "get_nested_modules", None)()
+        additional_results = get_instances_from_deep_nested(
+            nested_modules, type_selection
+        )
+        results += additional_results
+
+    return results
+
+
+"""
 # recurse like call_function_from_deep_nested; freeze/unfreeze weights of any "normal" modules found.
 def set_basic_weight_grad(input, state: bool):
     if input is None:
@@ -146,3 +176,4 @@ def set_weight_maybe_bias_grad(module: nn.Module, state: bool):
         )
     if getattr(module, "bias", None) is not None:
         module.bias.requires_grad = state
+"""

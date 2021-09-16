@@ -6,7 +6,7 @@ import logging
 import torch
 from ..utilities import (
     conv1d_get_padding,
-    set_weight_maybe_bias_grad,
+    # set_weight_maybe_bias_grad,
     sub_filter_start_end,
 )
 
@@ -90,11 +90,12 @@ class ElasticKernelConv1d(nn.Conv1d):
                 f"requested elastic kernel size {new_kernel_size} is not an available kernel size. Defaulting to full size ({self.max_kernel_size})"
             )
 
+        """
         # if the largest kernel is selected, train the actual kernel weights.
         # For elastic sub-kernels, only the 'final' transform in the chain should be trained.
         if self.target_kernel_index == 0:
             # primary kernel weights are unfrozen
-            set_weight_maybe_bias_grad(self, True)
+            # set_weight_maybe_bias_grad(self, True)
             for i in range(len(self.kernel_transforms)):
                 # if the full kernel is selected for training, do not train the transforms
                 set_weight_maybe_bias_grad(self.kernel_transforms[i], False)
@@ -108,14 +109,16 @@ class ElasticKernelConv1d(nn.Conv1d):
                 set_weight_maybe_bias_grad(
                     self.kernel_transforms[i], this_layer_requires_grad
                 )
+        """
         # if self.kernel_sizes[self.target_kernel_index] != previous_kernel_size:
         # print(f"\nkernel size was changed: {previous_kernel_size} -> {self.kernel_sizes[self.target_kernel_index]}")
-
+    """
     # freeze all weights for every kernel step.
     def freeze_kernel_weights(self):
         set_weight_maybe_bias_grad(self, False)
         for i in range(len(self.kernel_transforms)):
             set_weight_maybe_bias_grad(self.kernel_transforms[i], False)
+    """
 
     # the initial kernel size is the first element of the list of available sizes
     # set the kernel back to its initial size
@@ -136,6 +139,18 @@ class ElasticKernelConv1d(nn.Conv1d):
             )
             return False
 
+    def pick_kernel_index(self, target_kernel_index: int):
+        if (target_kernel_index < 0) or (target_kernel_index >= len(self.kernel_sizes)):
+            logging.warn(
+                f"selected kernel index {target_kernel_index} is out of range: 0 .. {len(self.kernel_sizes)}. Setting to last index."
+            )
+            target_kernel_index = len(self.kernel_sizes - 1)
+        self.set_kernel_size(self.kernel_sizes[target_kernel_index])
+
+    def get_available_kernel_steps(self):
+        return len(self.kernel_size) - 1
+
+    """
     # lock/unlock training of the kernels
     # should only need to set requires_grad for the currently active kernel,
     # the weights of other kernel sizes should be frozen
@@ -147,9 +162,8 @@ class ElasticKernelConv1d(nn.Conv1d):
             self.kernel_transforms[
                 self.target_kernel_index - 1
             ].weight.requires_grad = state
+    """
 
-    # TODO: while kernel transform size (and therefore the required computation) is almost negligible, the transformed second-to-last kernel could be cached
-    # only the very last kernel transform should change unless the target kernel size changes.
     def get_kernel(self, in_channel=None):
         current_kernel_index = 0
         current_kernel = self.weight.data
