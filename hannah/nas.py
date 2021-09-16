@@ -386,7 +386,7 @@ class OFANasTrainer(NASTrainerBase):
         prev_max_depth = model.sampling_max_depth_step
         model.sampling_max_kernel_step = model.ofa_steps_kernel - 1
         model.sampling_max_depth_step = model.ofa_steps_depth - 1
-        for i in range(100):
+        for i in range(40):
             random_state = model.sample_subnetwork()
             selected_depth = random_state["depth_step"]
             selected_kernels = random_state["kernel_steps"]
