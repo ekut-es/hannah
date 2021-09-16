@@ -470,7 +470,7 @@ class OFAModel(nn.Module):
         # self.go_to_kernel_step(new_kernel_step)
         for conv in self.elastic_kernel_convs:
             # pick an available kernel index for every elastic kernel conv, independently.
-            max_available_sampling_step = min(self.sampling_max_kernel_step, conv.get_available_kernel_steps(self))
+            max_available_sampling_step = min(self.sampling_max_kernel_step, conv.get_available_kernel_steps())
             new_kernel_step = np.random.randint(max_available_sampling_step + 1)
             conv.pick_kernel_index(new_kernel_step)
             state["kernel_steps"].append(new_kernel_step)
