@@ -271,6 +271,7 @@ class OFANasTrainer(NASTrainerBase):
         self.width_step_count = ofa_model.ofa_steps_width
 
         self.submodel_metrics_csv = "width, kernel, depth, acc, total_macs, total_weights\n"
+        self.random_metrics_csv = "width, depth, kernel_steps, acc, total_macs, total_weights\n"
 
         # warm-up.
         self.rebuild_trainer("warmup", self.epochs_warmup)
@@ -340,6 +341,10 @@ class OFANasTrainer(NASTrainerBase):
 
             self.eval_model(model, ofa_model, current_width_step)
 
+        # save random metrics
+        print(self.random_metrics_csv)
+        with open("OFA_random_sample_metrics.csv", "w") as f:
+            f.write(self.random_metrics_csv)
         # save self.submodel_metrics_csv
         print(self.submodel_metrics_csv)
         with open("OFA_elastic_metrics.csv", "w") as f:
@@ -375,6 +380,19 @@ class OFANasTrainer(NASTrainerBase):
                 self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
                 self.submodel_metrics_csv += "\n"
                 # print(validation_results)
+
+        # sample a few random combinations
+        for i in range(100):
+            random_state = model.sample_subnetwork()
+            selected_depth = random_state["depth_step"]
+            selected_kernels = random_state["kernel_steps"]
+            selected_kernels_string = str(selected_kernels).replace(',', ';')
+            self.rebuild_trainer(f"Eval random sample: W {current_width_step}, D {selected_depth}, Ks {selected_kernels}")
+            logging.info(f"OFA validating random sample under Width {current_width_step}:\n{random_state}")
+            validation_results = self.trainer.validate(lightning_model, ckpt_path=None, verbose=True)
+            self.random_metrics_csv += f"{current_width_step}, {selected_depth}, {selected_kernels_string},"
+            self.random_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
+            self.random_metrics_csv += "\n"
 
         # revert to normal operation after eval.
         model.eval_mode = False
