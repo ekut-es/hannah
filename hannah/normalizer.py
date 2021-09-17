@@ -7,15 +7,33 @@ import torch.nn as nn
 class FixedPointNormalizer(nn.Module):
     "Simple feature normalizer for fixed point models"
 
-    def __init__(self, normalize_bits: int = 8, normalize_max: int = 256):
+    def __init__(self, normalize_bits: int = 8, normalize_max: int = 256, divide=False):
         super().__init__()
         self.normalize_bits = normalize_bits
         self.normalize_max = normalize_max
+        self.divide = divide
 
     def forward(self, x):
         normalize_factor = 2.0 ** (self.normalize_bits - 1)
         x = x * normalize_factor / self.normalize_max
         x = x.round()
+        if self.divide:
+            x = x.to(int)
+            lower = torch.bitwise_and(
+                input=x.to(dtype=torch.int32), other=torch.tensor(15, dtype=torch.int32)
+            )
+            upper = (
+                torch.bitwise_and(
+                    input=x.to(dtype=torch.int32),
+                    other=torch.tensor(240, dtype=torch.int32),
+                )
+                >> 4
+            )
+            lower = torch.copysign(lower, x)
+            upper = torch.copysign(upper, x)
+
+            x = torch.cat((upper, lower), 1)
+
         x = x / normalize_factor
         x = x.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
 
