@@ -24,7 +24,7 @@ from .utilities import (
 
 
 def create(
-    name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_order=None
+    name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_order=None, skew_sampling_distribution: bool = False
 ) -> nn.Module:
     # if no orders for the norm operator are specified, fall back to default
     if not (
@@ -120,6 +120,7 @@ def create(
         out_channels=final_out_channels,
         min_depth=min_depth,
         block_config=conv,
+        skew_sampling_distribution=skew_sampling_distribution
     )
 
     # store the name onto the model
@@ -394,6 +395,7 @@ class OFAModel(nn.Module):
         out_channels: int,
         min_depth: int = 1,
         block_config=[],
+        skew_sampling_distribution=False
     ):
         super().__init__()
         self.conv_layers = conv_layers
@@ -413,6 +415,8 @@ class OFAModel(nn.Module):
         self.sampling_max_depth_step = 0
         self.eval_mode = False
         self.last_input = None
+        self.skew_sampling_distribution = skew_sampling_distribution
+        self.validation_model = None
         # will be updated with the output channel count
         self.active_elastic_output_helper: ElasticChannelHelper = None
         # self.pool = nn.AvgPool1d(pool_kernel)
@@ -446,6 +450,14 @@ class OFAModel(nn.Module):
     def forward(self, x):
         self.last_input = x
         self.current_step = self.current_step + 1
+
+        # in eval mode, run the forward on the extracted validation model.
+        if self.eval_mode:
+            if self.validation_model is None:
+                logging.warn("forward in validation mode called without building validation model!")
+                self.build_validation_model()
+            return self.validation_model.forward(x)
+
         # if the network is currently being evaluated, don't sample a subnetwork!
         if (self.sampling_max_depth_step > 0 or self.sampling_max_kernel_step > 0) and not self.eval_mode:
             self.sample_subnetwork()
@@ -462,7 +474,8 @@ class OFAModel(nn.Module):
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
         state = {"depth_step": 0, "kernel_steps": []}
-        new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
+        # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
+        new_depth_step = self.get_random_step(self.sampling_max_depth_step+1)
         self.active_depth = self.max_depth - new_depth_step
         state["depth_step"] = new_depth_step
         # this would step every kernel the same amount
@@ -471,11 +484,35 @@ class OFAModel(nn.Module):
         for conv in self.elastic_kernel_convs:
             # pick an available kernel index for every elastic kernel conv, independently.
             max_available_sampling_step = min(self.sampling_max_kernel_step, conv.get_available_kernel_steps())
-            new_kernel_step = np.random.randint(max_available_sampling_step+1)
+            # new_kernel_step = np.random.randint(max_available_sampling_step+1)
+            new_kernel_step = self.get_random_step(max_available_sampling_step+1)
             conv.pick_kernel_index(new_kernel_step)
             state["kernel_steps"].append(new_kernel_step)
         # print(state)
         return state
+
+    # get a step, with distribution biased towards taking less steps, if skew distribution is enabled.
+    # currently a sort-of pseudo-geometric distribution, may be replaced with better RNG
+    def get_random_step(self, upper_bound: int) -> int:
+        if not self.skew_sampling_distribution:
+            return np.random.randint(upper_bound)
+        else:
+            if upper_bound == 0:
+                logging.warn("requested impossible random step < 0. defaulting to 0.")
+                return 0
+            acc = 0
+            while np.random.randint(2) and acc < upper_bound:
+                # continue incrementing with a 1/2 chance per additional increment
+                acc += 1
+            if acc == upper_bound:
+                # if the bound was reached, go back below the bound.
+                # due to this, the distribution of probability toward the last element
+                # is not consistent with the distribution gradient across other elements
+                acc -= 1
+            return acc
+
+    def build_validation_model(self):
+        self.validation_model = self.extract_elastic_depth_sequence(self.active_depth)
 
     # return an extracted module sequence for a given depth
     def extract_elastic_depth_sequence(

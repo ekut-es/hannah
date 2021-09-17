@@ -373,6 +373,7 @@ class OFANasTrainer(NASTrainerBase):
                 logging.info(
                     f"OFA validating Kernel {current_kernel_step}, Depth {current_depth_step}, Width {current_width_step}"
                 )
+                model.build_validation_model()
                 validation_results = self.trainer.validate(lightning_model, ckpt_path=None, verbose=True)
                 # self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
                 self.submodel_metrics_csv += f"{current_width_step}, {current_kernel_step}, {current_depth_step}, "
@@ -393,6 +394,7 @@ class OFANasTrainer(NASTrainerBase):
             selected_kernels_string = str(selected_kernels).replace(',', ';')
             self.rebuild_trainer(f"Eval random sample: W {current_width_step}, D {selected_depth}, Ks {selected_kernels}")
             logging.info(f"OFA validating random sample under Width {current_width_step}:\n{random_state}")
+            model.build_validation_model()
             validation_results = self.trainer.validate(lightning_model, ckpt_path=None, verbose=True)
             results = validation_results[0]
             self.random_metrics_csv += f"{current_width_step}, {selected_depth}, {selected_kernels_string}, "

@@ -3,6 +3,7 @@
 #cls: speech_recognition.models.wip.models.WIPModel
 _target_: hannah.models.ofa.models.create
 name: ofa
+skew_sampling_distribution: false
 min_depth: 2
 norm_order:
   norm_before_act: true
