@@ -332,7 +332,7 @@ def create_norm_act_sequence(
     # create the norm module only if required. its reference will be passed back.
     new_norm = None
     if norm:
-        new_norm = nn.BatchNorm1d(channels)
+        new_norm = nn.BatchNorm1d(channels, track_running_stats=False)
     new_act = nn.ReLU()
     if norm and norm_before_act:
         norm_act_sequence.append(new_norm)
@@ -494,12 +494,13 @@ class OFAModel(nn.Module):
     # get a step, with distribution biased towards taking less steps, if skew distribution is enabled.
     # currently a sort-of pseudo-geometric distribution, may be replaced with better RNG
     def get_random_step(self, upper_bound: int) -> int:
-        if not self.skew_sampling_distribution:
+        if upper_bound <= 0:
+            logging.warn("requested impossible random step <= 0. defaulting to 0.")
+            return 0
+        if (not self.skew_sampling_distribution) or self.eval_mode:
+            # during random submodel evaluation, use uniform distribution
             return np.random.randint(upper_bound)
         else:
-            if upper_bound == 0:
-                logging.warn("requested impossible random step < 0. defaulting to 0.")
-                return 0
             acc = 0
             while np.random.randint(2) and acc < upper_bound:
                 # continue incrementing with a 1/2 chance per additional increment
