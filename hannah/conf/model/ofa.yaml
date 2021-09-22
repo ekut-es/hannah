@@ -1,13 +1,9 @@
-# @package _group_
-
-#cls: speech_recognition.models.wip.models.WIPModel
 _target_: hannah.models.ofa.models.create
 name: ofa
 skew_sampling_distribution: true
 min_depth: 2
-norm_order:
-  norm_before_act: true
-  norm_after_act: false
+norm_before_act: true
+dropout: 0.5
 # to add elastic channel count following a module which is not elastic_conv1d
 # an "elastic_channel_helper" module with only a channel_count list may be added after
 # the maximum channel count of the elastic helper must match the out_channels of the previous module
@@ -26,6 +22,7 @@ conv:
       - target: elastic_conv1d
         kernel_sizes:
           - 9
+          - 7
           - 5
           - 3
           - 1
@@ -35,18 +32,16 @@ conv:
           - 24
           - 16
           - 8
-      - target: conv1d
-        kernel_size: 1
-        out_channels: 24
       - target: elastic_conv1d
         kernel_sizes:
           - 9
+          - 7
           - 5
           - 3
           - 1
-        act: true
-        norm: true
-        out_channels: 
+        act: false
+        norm: false
+        out_channels:
           - 24
           - 16
           - 8
@@ -56,27 +51,26 @@ conv:
       - target: elastic_conv1d
         kernel_sizes:
           - 9
+          - 7
           - 5
           - 3
           - 1
         act: true
         norm: true
-        out_channels: 
+        out_channels:
           - 32
           - 24
           - 16
-      - target: conv1d
-        kernel_size: 1
-        out_channels: 32
       - target: elastic_conv1d
         kernel_sizes:
           - 9
+          - 7
           - 5
           - 3
           - 1
-        act: true
-        norm: true
-        out_channels: 
+        act: false
+        norm: false
+        out_channels:
           - 32
           - 24
           - 16
@@ -86,21 +80,7 @@ conv:
       - target: elastic_conv1d
         kernel_sizes:
           - 9
-          - 5
-          - 3
-          - 1
-        act: true
-        norm: true
-        out_channels: 
-          - 48
-          - 32
-          - 24
-      - target: conv1d
-        kernel_size: 1
-        out_channels: 48
-      - target: elastic_conv1d
-        kernel_sizes:
-          - 9
+          - 7
           - 5
           - 3
           - 1
@@ -110,3 +90,45 @@ conv:
           - 48
           - 32
           - 24
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+          - 1
+        act: false
+        norm: false
+        out_channels:
+          - 48
+          - 32
+          - 24
+  - target: residual1d
+    stride: 2
+    blocks:
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+          - 1
+        act: true
+        norm: true
+        out_channels:
+          - 64
+          - 48
+          - 32
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+          - 1
+        act: false
+        norm: false
+        out_channels:
+          - 64
+          - 48
+          - 32

@@ -17,21 +17,16 @@ from .utilities import (
     get_instances_from_deep_nested,
     # set_basic_weight_grad,
     module_list_to_module,
-    conv1d_auto_padding,
+    conv1d_get_padding,
     call_function_from_deep_nested,
     # set_weight_maybe_bias_grad,
 )
 
 
 def create(
-    name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_order=None, skew_sampling_distribution: bool = False
+    name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_before_act=True, skew_sampling_distribution: bool = False, dropout : int = 0.5,
 ) -> nn.Module:
     # if no orders for the norm operator are specified, fall back to default
-    if not (
-        hasattr(norm_order, "norm_before_act") or hasattr(norm_order, "norm_after_act")
-    ):
-        logging.info("order of norm before/after activation is not set!")
-        norm_order = {"norm_before_act": True, "norm_after_act": False}
 
     flatten_n = input_shape[0]
     in_channels = input_shape[1]
@@ -52,7 +47,7 @@ def create(
                 blocks=block_config.blocks,
                 in_channels=next_in_channels,
                 stride=block_config.stride,
-                norm_order=norm_order,
+                norm_before_act=norm_before_act,
                 sources=previous_sources,
             )
             # this major block is the source for the next block.
@@ -74,7 +69,7 @@ def create(
                 blocks=block_config.blocks,
                 in_channels=next_in_channels,
                 stride=block_config.stride,
-                norm_order=norm_order,
+                norm_before_act=norm_before_act,
                 sources=previous_sources,
             )
             # this major block is the source for the next block.
@@ -120,7 +115,8 @@ def create(
         out_channels=final_out_channels,
         min_depth=min_depth,
         block_config=conv,
-        skew_sampling_distribution=skew_sampling_distribution
+        skew_sampling_distribution=skew_sampling_distribution,
+        dropout=dropout,
     )
 
     # store the name onto the model
@@ -155,7 +151,7 @@ def create_minor_block_sequence(
     blocks,
     in_channels,
     stride=1,
-    norm_order=None,
+    norm_before_act=True,
     sources: List[nn.Module] = [nn.ModuleList([])],
 ) -> nn.Module:
     next_in_channels = in_channels
@@ -173,7 +169,7 @@ def create_minor_block_sequence(
             block_config=block_config,
             in_channels=next_in_channels,
             stride=next_stride,
-            norm_order=norm_order,
+            norm_before_act=norm_before_act,
             sources=sources,
         )
         if hasattr(minor_block, "__iter__") and isinstance(
@@ -210,7 +206,7 @@ def create_minor_block(
     block_config,
     in_channels: int,
     stride: int = 1,
-    norm_order=None,
+    norm_before_act=True,
     sources: List[nn.ModuleList] = [nn.ModuleList([])],
 ) -> Tuple[nn.Module, int]:
     new_block = None
@@ -222,21 +218,21 @@ def create_minor_block(
         out_channels = block_config.out_channels
         # create a conv minor block from the config, autoset padding
         minor_block_internal_sequence = nn.ModuleList([])
-        new_minor_block = conv1d_auto_padding(
-            nn.Conv1d(
+        new_minor_block = nn.Conv1d(
                 kernel_size=block_config.kernel_size,
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
+                padding=conv1d_get_padding(block_config.kernel_size)
             )
-        )
+
         minor_block_internal_sequence.append(new_minor_block)
 
         # add norm/act if requested
         add_norm = block_config.get("norm", False)
         add_act = block_config.get("act", False)
         norm_act_sequence = create_norm_act_sequence(
-            add_norm, add_act, out_channels, norm_order
+            add_norm, add_act, out_channels, norm_before_act
         )
 
         if norm_act_sequence is not None:
@@ -265,7 +261,7 @@ def create_minor_block(
 
         # add norm/act if requested
         norm_act_sequence = create_norm_act_sequence(
-            block_config.norm, block_config.act, out_channels_full, norm_order
+            block_config.norm, block_config.act, out_channels_full, norm_before_act
         )
         if norm_act_sequence is not None:
             minor_block_internal_sequence.append(norm_act_sequence)
@@ -311,7 +307,7 @@ def create_minor_block(
 
 # create a module representing a sequence of norm and act
 def create_norm_act_sequence(
-    norm: bool, act: bool, channels: int, norm_order=None
+    norm: bool, act: bool, channels: int, norm_before_act=None
 ) -> nn.Module:
     # batch norm will be added before and/or after activation depending on the configuration
     # fallback default is one norm before act, if no order is specified.
@@ -320,13 +316,6 @@ def create_norm_act_sequence(
     # going through the steps below and returning an empty module list would also be fine
     if not norm and not act:
         return None
-
-    if norm_order is None:
-        norm_before_act = True
-        norm_after_act = False
-    else:
-        norm_before_act = norm_order.norm_before_act
-        norm_after_act = norm_order.norm_after_act
 
     norm_act_sequence = nn.ModuleList([])
     # create the norm module only if required. its reference will be passed back.
@@ -339,8 +328,8 @@ def create_norm_act_sequence(
     if act:
         # add relu activation if act is set
         norm_act_sequence.append(new_act)
-    if norm and norm_after_act:
-        norm_act_sequence.append(norm)
+    if norm and not norm_before_act:
+        norm_act_sequence.append(new_norm)
 
     return module_list_to_module(norm_act_sequence)
 
@@ -350,11 +339,11 @@ def create_forward_block(
     blocks,
     in_channels,
     stride=1,
-    norm_order=None,
+    norm_before_act=None,
     sources: List[nn.ModuleList] = [nn.ModuleList([])],
 ) -> nn.Module:
     return create_minor_block_sequence(
-        blocks, in_channels, stride=stride, norm_order=norm_order, sources=sources
+        blocks, in_channels, stride=stride, norm_before_act=norm_before_act, sources=sources
     )
 
 
@@ -363,11 +352,11 @@ def create_residual_block_1d(
     blocks,
     in_channels,
     stride=1,
-    norm_order=None,
+    norm_before_act=None,
     sources: List[nn.ModuleList] = [nn.ModuleList([])],
 ) -> ResBlock1d:
     minor_blocks = create_minor_block_sequence(
-        blocks, in_channels, stride=stride, norm_order=norm_order, sources=sources
+        blocks, in_channels, stride=stride, norm_before_act=norm_before_act, sources=sources
     )
     # the output channel count of the residual major block is the output channel count of the last minor block
     out_channels = blocks[-1].out_channels
@@ -379,7 +368,8 @@ def create_residual_block_1d(
         out_channels=out_channels,
         minor_blocks=minor_blocks,
         stride=stride,
-        norm_order=norm_order,
+        norm_before_act=norm_before_act,
+
     )
     return residual_block
 
@@ -395,7 +385,8 @@ class OFAModel(nn.Module):
         out_channels: int,
         min_depth: int = 1,
         block_config=[],
-        skew_sampling_distribution=False
+        skew_sampling_distribution=False,
+        dropout=0.5,
     ):
         super().__init__()
         self.conv_layers = conv_layers
@@ -419,7 +410,7 @@ class OFAModel(nn.Module):
         self.validation_model = None
         # will be updated with the output channel count
         self.active_elastic_output_helper: ElasticChannelHelper = None
-        # self.pool = nn.AvgPool1d(pool_kernel)
+        self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
         self.flatten = nn.Flatten(flatten_dims)
         # one linear exit layer for each possible depth level
@@ -448,15 +439,16 @@ class OFAModel(nn.Module):
         logging.info(f"OFA model accumulated {len(self.elastic_kernel_convs)} elastic kernel convolutions for sampling.")
 
     def forward(self, x):
+        #print(self)
         self.last_input = x
         self.current_step = self.current_step + 1
 
         # in eval mode, run the forward on the extracted validation model.
-        if self.eval_mode:
-            if self.validation_model is None:
-                logging.warn("forward in validation mode called without building validation model!")
-                self.build_validation_model()
-            return self.validation_model.forward(x)
+        #if self.eval_mode:
+        #    if self.validation_model is None:
+        #        logging.warn("forward in validation mode called without building validation model!")
+        #        self.build_validation_model()
+        #    return self.validation_model.forward(x)
 
         # if the network is currently being evaluated, don't sample a subnetwork!
         if (self.sampling_max_depth_step > 0 or self.sampling_max_kernel_step > 0) and not self.eval_mode:
@@ -467,6 +459,7 @@ class OFAModel(nn.Module):
         result = x
         result = self.pool(result)
         result = self.flatten(result)
+        result = self.dropout(result)
         result = self.get_output_linear_layer(self.active_depth)(result)
 
         return result

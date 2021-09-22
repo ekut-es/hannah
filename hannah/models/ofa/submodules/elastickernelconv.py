@@ -38,7 +38,7 @@ class ElasticKernelConv1d(nn.Conv1d):
             out_channels=self.out_channels,
             kernel_size=self.max_kernel_size,
             stride=stride,
-            padding=padding,
+            padding=conv1d_get_padding(self.max_kernel_size),
             dilation=dilation,
             groups=groups,
             bias=bias,
@@ -63,7 +63,7 @@ class ElasticKernelConv1d(nn.Conv1d):
             # from the center of the larger kernel
             new_transform_module.weight.data.copy_(torch.eye(new_kernel_size))
             # transform weights are initially frozen
-            new_transform_module.weight.requires_grad = False
+            new_transform_module.weight.requires_grad = True
             self.kernel_transforms.append(new_transform_module)
         self.set_kernel_size(self.max_kernel_size)
 
@@ -112,6 +112,7 @@ class ElasticKernelConv1d(nn.Conv1d):
         """
         # if self.kernel_sizes[self.target_kernel_index] != previous_kernel_size:
         # print(f"\nkernel size was changed: {previous_kernel_size} -> {self.kernel_sizes[self.target_kernel_index]}")
+
     """
     # freeze all weights for every kernel step.
     def freeze_kernel_weights(self):
@@ -166,13 +167,14 @@ class ElasticKernelConv1d(nn.Conv1d):
 
     def get_kernel(self, in_channel=None):
         current_kernel_index = 0
-        current_kernel = self.weight.data
+        current_kernel = self.weight
         # for later: reduce channel count to first n channels
         if in_channel is not None:
             out_channel = in_channel
             current_kernel = current_kernel[:out_channel, :in_channel, :]
         # step through kernels until the target index is reached.
         while current_kernel_index < self.target_kernel_index:
+            # print("transform")
             if current_kernel_index >= len(self.kernel_sizes):
                 logging.warn(
                     f"kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel"

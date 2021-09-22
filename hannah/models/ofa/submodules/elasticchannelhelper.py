@@ -257,6 +257,3 @@ class ElasticChannelHelper(nn.Module):
                 f"ElasticChannelHelper zeroed channel count {zeroed/len(input)} does not match expected {removed_channels_count}"
             )
         return input_copy
-
-    def __call__(self, x):
-        return self.forward(x)

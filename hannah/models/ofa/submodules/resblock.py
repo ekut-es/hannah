@@ -6,16 +6,16 @@ class ResBlockBase(nn.Module):
         self,
         in_channels,
         out_channels,
-        act_after_res=False,
-        norm_after_res=False,
-        norm_order=None,
+        act_after_res=True,
+        norm_after_res=True,
+        norm_before_act=True,
     ):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.do_act = act_after_res
         self.do_norm = norm_after_res
-        self.norm_order = norm_order
+        self.norm_before_act = norm_before_act
         # if the input channel count does not match the output channel count,
         # apply skip to residual values
         self.apply_skip = self.in_channels != self.out_channels
@@ -36,16 +36,13 @@ class ResBlockBase(nn.Module):
         x = self.blocks(x)
         x += residual
         # do activation and norm after applying residual (if enabled)
-        if self.do_norm and self.norm_order.norm_before_act:
+        if self.do_norm and self.norm_before_act:
             x = self.norm(x)
         if self.do_act:
             x = self.act(x)
-        if self.do_norm and self.norm_order.norm_after_act:
+        if self.do_norm and not self.norm_before_act:
             x = self.norm(x)
         return x
-
-    def __call__(self, x):
-        return self.forward(x)
 
     def get_nested_modules(self):
         return nn.ModuleList([self.blocks, self.skip, self.norm, self.act])
@@ -58,17 +55,17 @@ class ResBlock1d(ResBlockBase):
         in_channels,
         out_channels,
         minor_blocks,
-        act_after_res=False,
-        norm_after_res=False,
+        act_after_res=True,
+        norm_after_res=True,
         stride=1,
-        norm_order=None,
+        norm_before_act=False,
     ):
         super().__init__(
             in_channels=in_channels,
             out_channels=out_channels,
             act_after_res=act_after_res,
             norm_after_res=norm_after_res,
-            norm_order=norm_order,
+            norm_before_act=norm_before_act,
         )
         # set the minor block sequence if specified in construction
         # if minor_blocks is not None:
