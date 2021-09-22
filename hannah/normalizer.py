@@ -14,24 +14,23 @@ class FixedPointNormalizer(nn.Module):
         if divide and self.normalize_bits % 2 == 0:
             self.divide = divide
             self.low_border = (2 ** (self.normalize_bits / 2)) - 1
-            self.high_border = (2 ** self.normalize_bits) - (2 ** (self.normalize_bits / 2))
+            self.high_border = (2 ** self.normalize_bits) - (
+                2 ** (self.normalize_bits / 2)
+            )
 
     def forward(self, x):
         normalize_factor = 2.0 ** (self.normalize_bits - 1)
         x = x * normalize_factor / self.normalize_max
         x = x.round()
         if self.divide:
-            x = x.to(int)
+            x = x.to(torch.int8)
+            xabs = torch.abs(x)
             lower = torch.bitwise_and(
-                input=x.to(dtype=torch.int32), other=torch.tensor(self.low_border, dtype=torch.int32)
+                input=xabs, other=torch.tensor(self.low_border, dtype=torch.int32)
             )
-            upper = (
-                torch.bitwise_and(
-                    input=x.to(dtype=torch.int32),
-                    other=torch.tensor(self.high_border, dtype=torch.int32),
-                )
-                >> int(self.normalize_bits / 2)
-            )
+            upper = torch.bitwise_and(
+                input=xabs, other=torch.tensor(self.high_border, dtype=torch.int32)
+            ) >> int(self.normalize_bits / 2)
             lower = torch.copysign(lower, x)
             upper = torch.copysign(upper, x)
 
