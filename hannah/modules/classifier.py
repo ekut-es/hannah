@@ -310,8 +310,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         else:
             self.augmentation = torch.nn.Identity()
 
-        self.normalizer.reset()
-
     @abstractmethod
     def get_example_input_array(self):
         pass

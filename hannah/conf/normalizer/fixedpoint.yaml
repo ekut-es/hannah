@@ -4,6 +4,5 @@ _target_: hannah.normalizer.FixedPointNormalizer
 normalize_bits: 8
 normalize_max: 256
 divide: False
-adaptive: False
 negative: True
 override_max: False

@@ -12,7 +12,6 @@ class FixedPointNormalizer(nn.Module):
         normalize_bits: int = 8,
         normalize_max: int = 256,
         divide=False,
-        adaptive=True,
         negative=True,
         override_max=False,
     ):
@@ -20,10 +19,9 @@ class FixedPointNormalizer(nn.Module):
         self.normalize_bits = normalize_bits
         self.normalize_max = normalize_max
         self.divide = divide
-        self.adaptive = adaptive
         self.negative = negative
-
         self.bits = self.normalize_bits
+
         if negative:
             self.bits = self.normalize_bits - 1
 
@@ -39,19 +37,8 @@ class FixedPointNormalizer(nn.Module):
 
             if not override_max:
                 self.normalize_max = self.high_border
-        if adaptive:
-            self.normalize_max = 0
-
-    def reset(self):
-        if self.adaptive:
-            self.normalize_max = 0
 
     def forward(self, x):
-        maxvalue = torch.max(x)
-        if self.training and self.adaptive and maxvalue > self.normalize_max:
-            self.normalize_max = maxvalue
-            print("new max value: " + str(self.normalize_max))
-
         normalize_factor = 2.0 ** self.bits
         x = x * normalize_factor / self.normalize_max
         x = x.round()
