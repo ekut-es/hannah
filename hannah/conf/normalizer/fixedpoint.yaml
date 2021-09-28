@@ -1,5 +1,5 @@
 
 
-_target_: hannah.normalizer.FixedPointNormalizer
+_target_: hannah.normalizer.AdaptiveFixedPointNormalizer
 normalize_bits: 8
 normalize_max: 256
