@@ -12,28 +12,19 @@ class FixedPointNormalizer(nn.Module):
         normalize_bits: int = 8,
         normalize_max: int = 256,
         divide=False,
-        negative=True,
         override_max=False,
     ):
         super().__init__()
         self.normalize_bits = normalize_bits
         self.normalize_max = normalize_max
         self.divide = divide
-        self.negative = negative
-        self.bits = self.normalize_bits
-
-        if negative:
-            self.bits = self.normalize_bits - 1
+        self.bits = self.normalize_bits - 1
 
         if self.divide and self.normalize_bits % 2 == 0:
-            if self.negative:
-                self.bits = int((self.normalize_bits / 2) - 1)
-                self.low_border = (2 ** self.bits) - 1
-                self.high_border = self.low_border << self.bits
-            else:
-                self.bits = int((self.normalize_bits / 2))
-                self.low_border = int((2 ** (self.normalize_bits / 2)) - 1)
-                self.high_border = self.low_border << self.bits
+
+            self.bits = int((self.normalize_bits / 2) - 1)
+            self.low_border = (2 ** self.bits) - 1
+            self.high_border = self.low_border << self.bits
 
             if not override_max:
                 self.normalize_max = self.high_border
@@ -64,9 +55,6 @@ class FixedPointNormalizer(nn.Module):
                 upper = torch.copysign(upper, x)
 
             x = torch.cat((upper, lower), 1)
-
-        if not self.negative:
-            x = torch.abs(x)
 
         x = x / normalize_factor
         x = x.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
