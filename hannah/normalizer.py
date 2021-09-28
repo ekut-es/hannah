@@ -21,14 +21,14 @@ class FixedPointNormalizer(nn.Module):
 
         if self.divide and self.normalize_bits % 2 == 0:
             if self.negative:
-                self.bits = (self.normalize_bits / 2) - 1
+                self.bits = int((self.normalize_bits / 2) - 1)
                 self.low_border = (2 ** self.bits) - 1
                 self.high_border = self.low_border << self.bits
             else:
-                self.bits = (self.normalize_bits / 2)
-                self.low_border = (2 ** (self.normalize_bits / 2)) - 1
+                self.bits = int((self.normalize_bits / 2))
+                self.low_border = int((2 ** (self.normalize_bits / 2)) - 1)
                 self.high_border = self.low_border << self.bits
-            self.normalize_max = self.high_border
+            #self.normalize_max = self.high_border
         if adaptive:
             self.normalize_max = 0
     
@@ -45,19 +45,28 @@ class FixedPointNormalizer(nn.Module):
         normalize_factor = 2.0 ** self.bits
         x = x * normalize_factor / self.normalize_max
         x = x.round()
+
         if self.divide:
+
             x = x.to(torch.int8)
             xabs = torch.abs(x)
+            
             lower = torch.bitwise_and(
                 input=xabs, other=torch.tensor(self.low_border, dtype=torch.int8)
             )
+            
             upper = torch.bitwise_and(
                 input=xabs, other=torch.tensor(self.high_border, dtype=torch.int8)
-            ) >> int(self.normalize_bits / 2)
-            lower = torch.copysign(lower, x)
-            upper = torch.copysign(upper, x)
+            ) >> self.bits
+            
+            if self.negative:
+                lower = torch.copysign(lower, x)
+                upper = torch.copysign(upper, x)
 
             x = torch.cat((upper, lower), 1)
+
+        if not self.negative:
+            x = torch.abs(x)
 
         x = x / normalize_factor
         x = x.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
