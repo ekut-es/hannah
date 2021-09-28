@@ -4,7 +4,7 @@ defaults:
     - model: tc-res8
     - scheduler: 1cycle
     - optimizer: sgd
-    - normalizer: fixedpoint
+    - normalizer: null
     - module: stream_classifier
     - compress: null
     - trainer: default
