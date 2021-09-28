@@ -5,4 +5,4 @@ normalize_bits: 8
 normalize_max: 256
 divide: False
 adaptive: False
-negative: False
+negative: True
