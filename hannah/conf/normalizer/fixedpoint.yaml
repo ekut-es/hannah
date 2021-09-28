@@ -6,3 +6,4 @@ normalize_max: 256
 divide: False
 adaptive: False
 negative: True
+override_max: False

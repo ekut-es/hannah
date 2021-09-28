@@ -7,7 +7,15 @@ import torch.nn as nn
 class FixedPointNormalizer(nn.Module):
     "Simple feature normalizer for fixed point models"
 
-    def __init__(self, normalize_bits: int = 8, normalize_max: int = 256, divide=False, adaptive=True, negative=True):
+    def __init__(
+        self,
+        normalize_bits: int = 8,
+        normalize_max: int = 256,
+        divide=False,
+        adaptive=True,
+        negative=True,
+        override_max=False,
+    ):
         super().__init__()
         self.normalize_bits = normalize_bits
         self.normalize_max = normalize_max
@@ -28,10 +36,12 @@ class FixedPointNormalizer(nn.Module):
                 self.bits = int((self.normalize_bits / 2))
                 self.low_border = int((2 ** (self.normalize_bits / 2)) - 1)
                 self.high_border = self.low_border << self.bits
-            #self.normalize_max = self.high_border
+
+            if not override_max:
+                self.normalize_max = self.high_border
         if adaptive:
             self.normalize_max = 0
-    
+
     def reset(self):
         if self.adaptive:
             self.normalize_max = 0
@@ -50,15 +60,18 @@ class FixedPointNormalizer(nn.Module):
 
             x = x.to(torch.int8)
             xabs = torch.abs(x)
-            
+
             lower = torch.bitwise_and(
                 input=xabs, other=torch.tensor(self.low_border, dtype=torch.int8)
             )
-            
-            upper = torch.bitwise_and(
-                input=xabs, other=torch.tensor(self.high_border, dtype=torch.int8)
-            ) >> self.bits
-            
+
+            upper = (
+                torch.bitwise_and(
+                    input=xabs, other=torch.tensor(self.high_border, dtype=torch.int8)
+                )
+                >> self.bits
+            )
+
             if self.negative:
                 lower = torch.copysign(lower, x)
                 upper = torch.copysign(upper, x)
