@@ -50,9 +50,8 @@ class FixedPointNormalizer(nn.Module):
                 >> self.bits
             )
 
-            if self.negative:
-                lower = torch.copysign(lower, x)
-                upper = torch.copysign(upper, x)
+            lower = torch.copysign(lower, x)
+            upper = torch.copysign(upper, x)
 
             x = torch.cat((upper, lower), 1)
 
