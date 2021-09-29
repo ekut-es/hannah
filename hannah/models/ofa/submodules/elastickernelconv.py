@@ -6,6 +6,8 @@ import logging
 import torch
 from ..utilities import (
     conv1d_get_padding,
+    filter_primary_module_weights,
+    filter_single_dimensional_weights,
     # set_weight_maybe_bias_grad,
     sub_filter_start_end,
 )
@@ -43,6 +45,9 @@ class ElasticKernelConv1d(nn.Conv1d):
             groups=groups,
             bias=bias,
         )
+
+        self.in_channel_filter = [True] * self.in_channels
+        self.out_channel_filter = [True] * self.out_channels
 
         # the list of kernel transforms will have one element less than the list of kernel sizes.
         # between every two sequential kernel sizes, there will be a kernel transform
@@ -90,36 +95,8 @@ class ElasticKernelConv1d(nn.Conv1d):
                 f"requested elastic kernel size {new_kernel_size} is not an available kernel size. Defaulting to full size ({self.max_kernel_size})"
             )
 
-        """
-        # if the largest kernel is selected, train the actual kernel weights.
-        # For elastic sub-kernels, only the 'final' transform in the chain should be trained.
-        if self.target_kernel_index == 0:
-            # primary kernel weights are unfrozen
-            # set_weight_maybe_bias_grad(self, True)
-            for i in range(len(self.kernel_transforms)):
-                # if the full kernel is selected for training, do not train the transforms
-                set_weight_maybe_bias_grad(self.kernel_transforms[i], False)
-        else:
-            # primary kernel weights are frozen
-            set_weight_maybe_bias_grad(self, False)
-            for i in range(len(self.kernel_transforms)):
-                # only the kernel transformation transforming to the current target index should be trained
-                # the n-th transformation transforms the n-th kernel to the (n+1)-th kernel
-                this_layer_requires_grad = i == (self.target_kernel_index - 1)
-                set_weight_maybe_bias_grad(
-                    self.kernel_transforms[i], this_layer_requires_grad
-                )
-        """
         # if self.kernel_sizes[self.target_kernel_index] != previous_kernel_size:
         # print(f"\nkernel size was changed: {previous_kernel_size} -> {self.kernel_sizes[self.target_kernel_index]}")
-
-    """
-    # freeze all weights for every kernel step.
-    def freeze_kernel_weights(self):
-        set_weight_maybe_bias_grad(self, False)
-        for i in range(len(self.kernel_transforms)):
-            set_weight_maybe_bias_grad(self.kernel_transforms[i], False)
-    """
 
     # the initial kernel size is the first element of the list of available sizes
     # set the kernel back to its initial size
@@ -145,36 +122,23 @@ class ElasticKernelConv1d(nn.Conv1d):
             logging.warn(
                 f"selected kernel index {target_kernel_index} is out of range: 0 .. {len(self.kernel_sizes)}. Setting to last index."
             )
-            target_kernel_index = len(self.kernel_sizes - 1)
+            target_kernel_index = len(self.kernel_sizes) - 1
         self.set_kernel_size(self.kernel_sizes[target_kernel_index])
 
     def get_available_kernel_steps(self):
         return len(self.kernel_sizes)
 
-    """
-    # lock/unlock training of the kernels
-    # should only need to set requires_grad for the currently active kernel,
-    # the weights of other kernel sizes should be frozen
-    def kernel_requires_grad(self, state: bool):
-        if self.target_kernel_index == 0:
-            self.weight.requires_grad = state
-        else:
-            # the (n-1)-th transform produces the weights of the n-th kernel from the (n-1)-th kernel.
-            self.kernel_transforms[
-                self.target_kernel_index - 1
-            ].weight.requires_grad = state
-    """
-
-    def get_kernel(self, in_channel=None):
+    def get_full_width_kernel(self):
         current_kernel_index = 0
         current_kernel = self.weight
+        """
         # for later: reduce channel count to first n channels
         if in_channel is not None:
             out_channel = in_channel
             current_kernel = current_kernel[:out_channel, :in_channel, :]
+        """
         # step through kernels until the target index is reached.
         while current_kernel_index < self.target_kernel_index:
-            # print("transform")
             if current_kernel_index >= len(self.kernel_sizes):
                 logging.warn(
                     f"kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel"
@@ -196,17 +160,37 @@ class ElasticKernelConv1d(nn.Conv1d):
 
         return current_kernel
 
+    def get_kernel(self):
+        full_kernel = self.get_full_width_kernel()
+        new_kernel = None
+        if all(self.in_channel_filter) and all(self.out_channel_filter):
+            # if no channel filtering is required, the full kernel can be kept
+            new_kernel = full_kernel
+        else:
+            # if channels need to be filtered, apply filters to the kernel
+            new_kernel = filter_primary_module_weights(full_kernel, self.in_channel_filter, self.out_channel_filter)
+        # if the module has a bias parameter, also apply the output filtering to it.
+        if self.bias is None:
+            return new_kernel, None
+        else:
+            if all(self.out_channel_filter):
+                # if out_channels are unfiltered, the output bias does not need filtering.
+                return new_kernel, self.bias
+            else:
+                new_bias = filter_single_dimensional_weights(self.bias, self.out_channel_filter)
+                return new_kernel, new_bias
+
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
-        kernel = self.get_kernel()
+        kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return nnf.conv1d(input, kernel, self.bias, self.stride, padding, self.dilation)
+        return nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
-        kernel = self.get_kernel()
+        kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
         new_conv = nn.Conv1d(
@@ -219,7 +203,8 @@ class ElasticKernelConv1d(nn.Conv1d):
             bias=False,
         )
         new_conv.weight.data = kernel
-        new_conv.bias = self.bias
+        new_conv.bias = bias
+        """
         # copy over elastic filter annotations if they are present
         elastic_width_filter_input = getattr(self, "elastic_width_filter_input", None)
         elastic_width_filter_output = getattr(self, "elastic_width_filter_output", None)
@@ -229,6 +214,7 @@ class ElasticKernelConv1d(nn.Conv1d):
             setattr(
                 new_conv, "elastic_width_filter_output", elastic_width_filter_output
             )
+        """
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 

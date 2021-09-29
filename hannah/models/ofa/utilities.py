@@ -1,4 +1,6 @@
 # import logging
+import logging
+import torch
 import torch.nn as nn
 
 
@@ -137,43 +139,73 @@ def get_instances_from_deep_nested(input, type_selection: type = None):
     return results
 
 
-"""
-# recurse like call_function_from_deep_nested; freeze/unfreeze weights of any "normal" modules found.
-def set_basic_weight_grad(input, state: bool):
-    if input is None:
-        return
-    # if the input is iterable, recursively check any nested objects
-    if hasattr(input, "__iter__"):
-        for item in input:
-            set_basic_weight_grad(item, state)
-    # if the object has a function to return nested modules, also check them.
-    if callable(getattr(input, "get_nested_modules", None)):
-        nested_modules = getattr(input, "get_nested_modules", None)()
-        set_basic_weight_grad(nested_modules, state)
-
-    # freeze weight/bias, if present.
-    if (
-        isinstance(input, nn.Conv1d)
-        or isinstance(input, nn.Linear)
-        or isinstance(input, nn.BatchNorm1d)
-    ):
-        set_weight_maybe_bias_grad(input, state)
-    # for batchnorms, switch running stats to/from eval mode.
-    elif isinstance(input, nn.BatchNorm1d):
-        if not state:
-            input.eval()
-        else:
-            input.train()
-
-
-# set requires_grad state of a module for weight, and for bias if present.
-def set_weight_maybe_bias_grad(module: nn.Module, state: bool):
-    if getattr(module, "weight", None) is not None:
-        module.weight.requires_grad = state
-    else:
-        logging.warn(
-            f"unable to set weight grad for module with no weight attribute: {module}"
+def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter):
+    # out_channel count will be length in dim 0
+    out_channel_count = len(weights)
+    # in_channel count will be length in second dim
+    in_channel_count = len(weights[0])
+    if len(in_channel_filter) != in_channel_count:
+        logging.error(
+            f"Unable to filter primary module weights: in_channel count {in_channel_count} does not match filter length {len(in_channel_filter)}"
         )
-    if getattr(module, "bias", None) is not None:
-        module.bias.requires_grad = state
-"""
+    if len(out_channel_filter) != out_channel_count:
+        logging.error(
+            f"Unable to filter primary module weights: out_channel count {out_channel_count} does not match filter length {len(out_channel_filter)}"
+        )
+
+    # if a channel filter is specified with 'False', the channel is dropped.
+    # simply skip the iteration of this channel
+
+    new_weights = None
+    for o in range(out_channel_count):
+        if out_channel_filter[o]:
+            # if this output channel will be kept
+            out_channel_segment = weights[o : o + 1]
+            new_out_channel = None
+            for i in range(in_channel_count):
+                # if this input channel will be kept
+                # segment = weights[:,i:i+1]
+                if (in_channel_filter[i]):
+                    in_channel_segment = out_channel_segment[:, i : i + 1]
+                    if new_out_channel is None:
+                        # for the first in_channel being kept, simply copy over the channel
+                        new_out_channel = in_channel_segment
+                    else:
+                        # append the input channel being kept, concatenate in dim 1 (dim 0 has length 1 and is the out_channel)
+                        new_out_channel = torch.cat(
+                            (new_out_channel, in_channel_segment), dim=1
+                        )
+            if new_out_channel is None:
+                logging.error(
+                    "zero in_channels were kept during channel filter application of primary module!"
+                )
+            if new_weights is None:
+                # if this is the first out_channel being kept, simply copy it over
+                new_weights = new_out_channel
+            else:
+                # for subsequent out_channels, cat them onto the weights in dim 0
+                new_weights = torch.cat((new_weights, new_out_channel), dim=0)
+    if new_weights is None:
+        logging.error(
+            "zero out_channels were kept during channel filter application of primary module!"
+        )
+
+    return new_weights
+
+
+def filter_single_dimensional_weights(weights, channel_filter):
+    if weights is None:
+        return None
+    channel_count = len(weights)
+    if len(channel_filter) != channel_count:
+        logging.error(
+            f"Unable to filter weights: channel count {channel_count} does not match filter length {len(channel_filter)}"
+        )
+    new_weights = None
+    # channels where the filter is true are kept.
+    for i in range(channel_count):
+        if channel_filter[i]:
+            if new_weights is None:
+                new_weights = weights[i : i + 1]
+            else:
+                new_weights = torch.cat((new_weights, weights[i : i + 1]), dim=0)

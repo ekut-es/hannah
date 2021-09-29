@@ -1,4 +1,7 @@
 import torch.nn as nn
+from .elasticwidthmodules import ElasticWidthBatchnorm1d
+from .elastickernelconv import ElasticKernelConv1d
+
 
 # base construct of a residual block
 class ResBlockBase(nn.Module):
@@ -19,9 +22,9 @@ class ResBlockBase(nn.Module):
         # if the input channel count does not match the output channel count,
         # apply skip to residual values
         self.apply_skip = self.in_channels != self.out_channels
-        self.act = nn.ReLU()
-        self.norm = nn.BatchNorm1d(out_channels)
         # placeholders:
+        self.act = nn.Identity()
+        self.norm = nn.Identity()
         self.blocks = nn.Identity()
         self.skip = nn.Identity()
 
@@ -70,13 +73,15 @@ class ResBlock1d(ResBlockBase):
         # set the minor block sequence if specified in construction
         # if minor_blocks is not None:
         self.blocks = minor_blocks
+        self.norm = ElasticWidthBatchnorm1d(out_channels)
+        self.act = nn.ReLU()
         # if applying skip to the residual values is required, create skip as a minimal conv1d
         # stride is also applied to the skip layer (if specified, default is 1)
         self.skip = nn.Sequential(
-            nn.Conv1d(
-                self.in_channels, out_channels, kernel_size=1, stride=stride, bias=False
+            ElasticKernelConv1d(
+                self.in_channels, out_channels, kernel_sizes=[1], stride=stride, bias=False
             ),
-            nn.BatchNorm1d(self.out_channels),
+            ElasticWidthBatchnorm1d(self.out_channels),
         )  # if self.apply_skip else None
         # as this does not know if an elastic width section may follow,
         # the skip connection is required! it will be needed if the width is modified later

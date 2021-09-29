@@ -1,4 +1,5 @@
 import copy
+from .submodules.elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
 from typing import List, Tuple
 import torch.nn as nn
 
@@ -17,7 +18,7 @@ from .utilities import (
     get_instances_from_deep_nested,
     # set_basic_weight_grad,
     module_list_to_module,
-    conv1d_get_padding,
+    # conv1d_get_padding,
     call_function_from_deep_nested,
     # set_weight_maybe_bias_grad,
 )
@@ -43,35 +44,39 @@ def create(
     previous_elastic_channel_helper: ElasticChannelHelper = None
     for block_config in conv:
         if block_config.target == "forward":
-            major_block = create_forward_block(
+            major_block, trailing_elastic_helper = create_forward_block(
                 blocks=block_config.blocks,
                 in_channels=next_in_channels,
                 stride=block_config.stride,
                 norm_before_act=norm_before_act,
                 sources=previous_sources,
             )
-            # this major block is the source for the next block.
-            # If it already ends in a channel helper and is passed to a second
-            # channel helper, the issue will be handled there.
-            previous_sources = [major_block]
+            # add as target to a preceding elastic channel helper
             if previous_elastic_channel_helper is not None:
                 # if an elastic channel helper directly precedes this block,
                 # this block is it's primary target.
                 previous_elastic_channel_helper.set_primary_target(major_block)
-            if hasattr(major_block, "__iter__") and isinstance(
-                major_block[-1], ElasticChannelHelper
-            ):
-                # if the block ends in an elastic channel helper, store it.
-                # It's targets are specified by the block which follows
-                previous_elastic_channel_helper = major_block[-1]
+            # this major block is the source for the next block.
+            # If it already ends in a channel helper and is passed to a second
+            # channel helper, the issue will be handled there.
+            previous_sources = [major_block]
+            # if the block ends in an elastic channel helper, store it.
+            # It's targets are specified by the block which follows
+            previous_elastic_channel_helper = trailing_elastic_helper
+
         elif block_config.target == "residual1d":
-            major_block = create_residual_block_1d(
+            major_block, trailing_elastic_helper = create_residual_block_1d(
                 blocks=block_config.blocks,
                 in_channels=next_in_channels,
                 stride=block_config.stride,
                 norm_before_act=norm_before_act,
                 sources=previous_sources,
             )
+            if previous_elastic_channel_helper is not None:
+                # if an elastic channel helper directly precedes this block, this block is it's primary target.
+                previous_elastic_channel_helper.set_primary_target(major_block.blocks)
+                # the input channels of the skip connection must also be modified by the channel helper
+                previous_elastic_channel_helper.add_secondary_targets(major_block.skip)
             # this major block is the source for the next block.
             # This involves both the main blocks and the skip connection
             # both sources MUST be processed in parallel, and not added to one ModuleList:
@@ -79,21 +84,11 @@ def create(
             # Modules before it must be unaffected.
             # duplicate elastic channel helpers will be found if the source is added to the second helper module.
             previous_sources = [major_block.blocks, major_block.skip]
-            if previous_elastic_channel_helper is not None:
-                # if an elastic channel helper directly precedes this block, this block is it's primary target.
-                previous_elastic_channel_helper.set_primary_target(major_block.blocks)
-                # the input channels of the skip connection must also be modified by the channel helper
-                previous_elastic_channel_helper.add_secondary_targets(major_block.skip)
-            if hasattr(major_block.blocks, "__iter__") and isinstance(
-                major_block.blocks[-1], ElasticChannelHelper
-            ):
-                helper: ElasticChannelHelper = major_block.blocks[-1]
-                # if the block ends in an elastic channel helper, store it.
-                # It's targets are specified by the block which follows
-                previous_elastic_channel_helper = helper
-                # additionally, this channel helper must be able to adjust the
+            previous_elastic_channel_helper = trailing_elastic_helper
+            if trailing_elastic_helper is not None:
+                # if the block ends in an elastic channel helper, it must be able to adjust the
                 # output channels of the skip connection, if the residual block adjusts it's output channels
-                helper.add_sources(major_block.skip)
+                trailing_elastic_helper.add_sources(major_block.skip)
         else:
             raise Exception(
                 f"Undefined target selected for major block: {block_config.target}"
@@ -118,6 +113,11 @@ def create(
         skew_sampling_distribution=skew_sampling_distribution,
         dropout=dropout,
     )
+
+    if previous_elastic_channel_helper is not None:
+        # if the layers ended in an elastic width connection, its primary target is the final output linear.
+        full_model_output_linear = model.linears[-1]
+        previous_elastic_channel_helper.set_primary_target(full_model_output_linear)
 
     # store the name onto the model
     setattr(model, "creation_name", name)
@@ -153,7 +153,7 @@ def create_minor_block_sequence(
     stride=1,
     norm_before_act=True,
     sources: List[nn.Module] = [nn.ModuleList([])],
-) -> nn.Module:
+):
     next_in_channels = in_channels
     minor_block_sequence = nn.ModuleList([])
     is_first_minor_block = True
@@ -172,6 +172,11 @@ def create_minor_block_sequence(
             norm_before_act=norm_before_act,
             sources=sources,
         )
+        # if the previous module ended in an elastic helper, it's target is given by this minor block
+        # reset the active helper module after applying
+        if elastic_helper is not None:
+            elastic_helper.set_primary_target(minor_block)
+            elastic_helper = None
         if hasattr(minor_block, "__iter__") and isinstance(
             minor_block[-1], ElasticChannelHelper
         ):
@@ -188,17 +193,15 @@ def create_minor_block_sequence(
             # reset sources: no additional elastic channel helper may be attached to this block
             sources = [nn.ModuleList([])]
         else:
-            # if the module does not end in any elastic helper, pass it as the target to a previous helper module, if present.
-            if elastic_helper is not None:
-                elastic_helper.set_primary_target(minor_block)
             # reset any previous stored helper if this block does not contain one
             elastic_helper = None
             # the minor block will be a source for the next minor block
             sources = minor_block
 
         minor_block_sequence.append(minor_block)
-
-    return module_list_to_module(minor_block_sequence)
+    if elastic_helper is not None:
+        logging.info("minor block sequence ends in elastic channel width, passing forward helper.")
+    return module_list_to_module(minor_block_sequence), elastic_helper
 
 
 # build a single minor block from its config. return the number of output channels with the block
@@ -218,12 +221,13 @@ def create_minor_block(
         out_channels = block_config.out_channels
         # create a conv minor block from the config, autoset padding
         minor_block_internal_sequence = nn.ModuleList([])
-        new_minor_block = nn.Conv1d(
-                kernel_size=block_config.kernel_size,
+        logging.info("block config contains a normal conv module. It will be converted to an elastic conv for elastic width support.")
+        new_minor_block = ElasticKernelConv1d(
+                kernel_sizes=[block_config.kernel_size],
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
-                padding=conv1d_get_padding(block_config.kernel_size)
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
 
         minor_block_internal_sequence.append(new_minor_block)
@@ -321,7 +325,7 @@ def create_norm_act_sequence(
     # create the norm module only if required. its reference will be passed back.
     new_norm = None
     if norm:
-        new_norm = nn.BatchNorm1d(channels, track_running_stats=False)
+        new_norm = ElasticWidthBatchnorm1d(channels)
     new_act = nn.ReLU()
     if norm and norm_before_act:
         norm_act_sequence.append(new_norm)
@@ -341,7 +345,7 @@ def create_forward_block(
     stride=1,
     norm_before_act=None,
     sources: List[nn.ModuleList] = [nn.ModuleList([])],
-) -> nn.Module:
+):
     return create_minor_block_sequence(
         blocks, in_channels, stride=stride, norm_before_act=norm_before_act, sources=sources
     )
@@ -355,7 +359,7 @@ def create_residual_block_1d(
     norm_before_act=None,
     sources: List[nn.ModuleList] = [nn.ModuleList([])],
 ) -> ResBlock1d:
-    minor_blocks = create_minor_block_sequence(
+    minor_blocks, elastic_helper = create_minor_block_sequence(
         blocks, in_channels, stride=stride, norm_before_act=norm_before_act, sources=sources
     )
     # the output channel count of the residual major block is the output channel count of the last minor block
@@ -371,7 +375,7 @@ def create_residual_block_1d(
         norm_before_act=norm_before_act,
 
     )
-    return residual_block
+    return residual_block, elastic_helper
 
 
 class OFAModel(nn.Module):
@@ -420,7 +424,7 @@ class OFAModel(nn.Module):
             self.active_depth = i
             self.update_output_channel_count()
             # create the linear output layer for this depth
-            new_output_linear = nn.Linear(self.out_channels, self.labels)
+            new_output_linear = ElasticWidthLinear(self.out_channels, self.labels)
             if self.active_elastic_output_helper is not None:
                 # add this output linear as a target to an elastic channel module
                 # preceding it. The in-channels of this linear will also need to be modified.
@@ -435,16 +439,20 @@ class OFAModel(nn.Module):
         self.ofa_steps_depth = 1
         self.ofa_steps_width = 1
         # create a list of every elastic kernel conv, for sampling
-        self.elastic_kernel_convs = get_instances_from_deep_nested(input=self.conv_layers, type_selection=ElasticKernelConv1d)
+        all_elastic_kernel_convs = get_instances_from_deep_nested(input=self.conv_layers, type_selection=ElasticKernelConv1d)
+        self.elastic_kernel_convs = []
+        for item in all_elastic_kernel_convs:
+            if item.get_available_kernel_steps() > 1:
+                # ignore convs with only one available kernel size, they do not need to be stored
+                self.elastic_kernel_convs.append(item)
         logging.info(f"OFA model accumulated {len(self.elastic_kernel_convs)} elastic kernel convolutions for sampling.")
 
     def forward(self, x):
-        #print(self)
         self.last_input = x
         self.current_step = self.current_step + 1
 
         # in eval mode, run the forward on the extracted validation model.
-        #if self.eval_mode:
+        # if self.eval_mode:
         #    if self.validation_model is None:
         #        logging.warn("forward in validation mode called without building validation model!")
         #        self.build_validation_model()
@@ -476,9 +484,9 @@ class OFAModel(nn.Module):
         # self.go_to_kernel_step(new_kernel_step)
         for conv in self.elastic_kernel_convs:
             # pick an available kernel index for every elastic kernel conv, independently.
-            max_available_sampling_step = min(self.sampling_max_kernel_step, conv.get_available_kernel_steps())
+            max_available_sampling_step = min(self.sampling_max_kernel_step+1, conv.get_available_kernel_steps())
             # new_kernel_step = np.random.randint(max_available_sampling_step+1)
-            new_kernel_step = self.get_random_step(max_available_sampling_step+1)
+            new_kernel_step = self.get_random_step(max_available_sampling_step)
             conv.pick_kernel_index(new_kernel_step)
             state["kernel_steps"].append(new_kernel_step)
         # print(state)
@@ -562,8 +570,8 @@ class OFAModel(nn.Module):
             )
         return call_function_from_deep_nested(
             input=self.conv_layers,
-            function="step_down_input_width",
-            type_selection=ElasticKernelConv1d,
+            function="step_down_channels",
+            type_selection=ElasticChannelHelper,
         )
 
     def reset_active_depth(self):
@@ -872,17 +880,19 @@ def apply_channel_filters(module: nn.Module) -> nn.Module:
         module.weight.data = new_weight
         # if the module has a bias parameter, also apply the output filtering to it.
         if module.bias is not None:
-            bias = module.bias.data
+            bias = module.bias.data.clone()
             new_bias = None
             for i in range(out_channel_count):
-                if elastic_width_filter_output[i]:
+                # if the filter is undefined, keep all channels
+                if elastic_width_filter_output is None or elastic_width_filter_output[i]:
                     if new_bias is None:
                         new_bias = bias[i : i + 1]
                     else:
                         new_bias = torch.cat((new_bias, bias[i : i + 1]), dim=0)
-            logging.error(
-                "zero bias channels were kept during channel filter application of primary module with bias parameter!"
-            )
+            if new_bias is None:
+                logging.error(
+                    "zero bias channels were kept during channel filter application of primary module with bias parameter!"
+                )
             module.bias.data = new_bias
         return module
 
@@ -912,26 +922,46 @@ def apply_channel_filters(module: nn.Module) -> nn.Module:
         for i in range(channel_count):
             if elastic_filter[i]:
                 this_channel = weight[i : i + 1]
-                this_mean = module.running_mean[i : i + 1]
-                this_var = module.running_var[i : i + 1]
+                if module.track_running_stats:
+                    this_mean = module.running_mean[i : i + 1]
+                    this_var = module.running_var[i : i + 1]
                 if new_weight is None:
                     # for the first channel being kept, simply copy over
                     new_weight = this_channel
-                    new_mean = this_mean
-                    new_var = this_var
+                    if module.track_running_stats:
+                        new_mean = this_mean
+                        new_var = this_var
                 else:
                     # if there are already channels being kept, concatenate this one onto the other weights
                     new_weight = torch.cat((new_weight, this_channel), dim=0)
-                    new_mean = torch.cat((new_mean, this_mean), dim=0)
-                    new_var = torch.cat((new_var, this_var), dim=0)
+                    if module.track_running_stats:
+                        new_mean = torch.cat((new_mean, this_mean), dim=0)
+                        new_var = torch.cat((new_var, this_var), dim=0)
         if new_weight is None:
             logging.error(
                 "zero channels were kept during channel filter application of batchnorm1d!"
             )
         # put the new weights back into the module and return it
         module.weight.data = new_weight
-        module.running_var = new_var
-        module.running_mean = new_mean
+        # if the module has a bias parameter, also apply the output filtering to it.
+        if module.bias is not None:
+            bias = module.bias.data.clone()
+            new_bias = None
+            for i in range(channel_count):
+                # if the filter is undefined, keep all channels
+                if elastic_filter is None or elastic_filter[i]:
+                    if new_bias is None:
+                        new_bias = bias[i : i + 1]
+                    else:
+                        new_bias = torch.cat((new_bias, bias[i : i + 1]), dim=0)
+            if new_bias is None:
+                logging.error(
+                    "zero bias channels were kept during channel filter application of primary module with bias parameter!"
+                )
+            module.bias.data = new_bias
+        if module.track_running_stats:
+            module.running_var = new_var
+            module.running_mean = new_mean
         return module
 
     else:

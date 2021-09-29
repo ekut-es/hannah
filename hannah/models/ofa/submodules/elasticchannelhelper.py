@@ -1,9 +1,12 @@
+from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
+from .elastickernelconv import ElasticKernelConv1d
 from typing import List
 import torch.nn as nn
 import numpy as np
 import logging
 import torch
 from ..utilities import flatten_module_list
+
 
 # helper module, deployed in an elastic width connection
 # can zero out input channels to train elastic channels without weight modification
@@ -23,7 +26,7 @@ class ElasticChannelHelper(nn.Module):
         # sort channel counts: largest -> smallest
         self.channel_counts = channel_counts
         self.channel_counts.sort(reverse=True)
-        self.sources = sources
+        self.sources = flatten_module_list(sources)
         self.target = target
         # additional target modules will not be used to compute channel priorities,
         # but will have to be known for reducing input channels
@@ -77,6 +80,7 @@ class ElasticChannelHelper(nn.Module):
 
     # set the channel filter list based on the channel priorities and the current channel count
     def set_channel_filter(self):
+        print("SCF call")
         # get the amount of channels to be removed from the max and current channel counts
         channel_reduction_amount: int = self.max_channels - self.current_channels
         # start with an empty filter, where every channel passes through, then remove channels by priority
@@ -90,6 +94,17 @@ class ElasticChannelHelper(nn.Module):
             filtered_channel_index = self.channels_by_priority[i]
             self.channel_pass_filter[filtered_channel_index] = False
 
+        if isinstance(self.target, ElasticKernelConv1d) or isinstance(self.target, ElasticWidthLinear):
+            self.apply_filter_to_module(self.target, is_target=True)
+        else:
+            logging.warn(
+                f"Elastic channel helper has no defined behavior for primary target type: {type(self.target)}"
+            )
+        for item in self.additional_targets:
+            self.apply_filter_to_module(item, is_target=True)
+        for item in self.sources:
+            self.apply_filter_to_module(item, is_target=False)
+        """
         # store the channel filter on every affected module, to make extraction more straightforward later.
         # then, in the extraction step, we no longer need to know about
         # the relation of modules, each module knows which channels must be removed.
@@ -105,6 +120,40 @@ class ElasticChannelHelper(nn.Module):
             )
         for source in self.sources:
             setattr(source, "elastic_width_filter_output", self.channel_pass_filter)
+        """
+
+    # if is_target is set to true, the module is a target module (filter its input).
+    # false -> source module -> filter its output
+    def apply_filter_to_module(self, module, is_target: bool):
+        if isinstance(module, ElasticKernelConv1d) or isinstance(module, ElasticWidthLinear):
+            if is_target:
+                # target module -> set module input filter
+                if len(module.in_channel_filter) != len(self.channel_pass_filter):
+                    logging.error(
+                        f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.in_channel_filter)} of {type(module)}! "
+                    )
+                    return
+                module.in_channel_filter = self.channel_pass_filter
+            else:
+                # source module -> set module output filter
+                if len(module.out_channel_filter) != len(self.channel_pass_filter):
+                    logging.error(
+                        f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.out_channel_filter)} of {type(module)}! "
+                    )
+                    return
+                module.out_channel_filter = self.channel_pass_filter
+
+        elif isinstance(module, ElasticWidthBatchnorm1d):
+            if is_target:
+                logging.warn("Batchnorm found in Elastic channel helper targets, it should usually be located in-front of the helper module.")
+            if len(module.channel_filter) != len(self.channel_pass_filter):
+                logging.error(
+                    f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.channel_filter)} of {type(module)}!"
+                )
+                return
+            module.channel_filter = self.channel_pass_filter
+        else:
+            logging.error(f"Elastic channel helper could not apply filter to module of unknown type: {type(module)}")
 
     # step down channel count by one channel step
     def step_down_channels(self):
@@ -149,7 +198,7 @@ class ElasticChannelHelper(nn.Module):
 
     # check if a module is valid as a primary target (to compute channel priorities from)
     def is_valid_primary_target(self, module: nn.Module) -> bool:
-        return isinstance(module, nn.Conv1d) or isinstance(module, nn.Linear)
+        return isinstance(module, ElasticKernelConv1d) or isinstance(module, ElasticWidthLinear)
 
     # add additional target(s) which must also have their inputs adjusted when
     # stepping down channels
@@ -176,16 +225,16 @@ class ElasticChannelHelper(nn.Module):
     def add_secondary_target_item(self, target: nn.Module):
         if self.is_valid_primary_target(target):
             self.additional_targets.append(target)
-        elif isinstance(target, nn.BatchNorm1d):
+        elif isinstance(target, ElasticWidthBatchnorm1d):
             # trailing batchnorms between the channel helper and the next 'real'
             # module will also need to have their channels adjusted
-            logging.info(
-                "found loose BatchNorm1d module trailing an elastic channel helper. These are usually located in-front of the helper"
+            logging.warn(
+                "found loose BatchNorm1d module trailing an elastic channel helper. These should be located in-front of the helper"
             )
             self.additional_targets.append(target)
         elif isinstance(target, nn.ReLU):
-            logging.info(
-                "found loose ReLu module trailing an elastic channel helper. These are usually located in-front of the helper"
+            logging.warn(
+                "found loose ReLu module trailing an elastic channel helper. These should be located in-front of the helper"
             )
         else:
             logging.warn(
@@ -200,10 +249,10 @@ class ElasticChannelHelper(nn.Module):
             for item in source_flat[::-1]:
                 # ascend the list of sources from the back
                 if isinstance(item, ElasticChannelHelper):
-                    logging.error(
+                    logging.exception(
                         "ElasticChannelHelper source accumulation reached another ElasticChannelHelper, with no primary target in-between!"
                     )
-                self.add_source_item(self, item)
+                self.add_source_item(item)
                 if self.is_valid_primary_target(item):
                     # if a valid primary target is found in the sources, the
                     # modules above it must not be affected by width changes
@@ -217,7 +266,7 @@ class ElasticChannelHelper(nn.Module):
         if self.is_valid_primary_target(source):
             # modules which are valid primary targets (Convs, Linears) are also valid sources
             self.sources.append(source)
-        if isinstance(source, nn.BatchNorm1d):
+        elif isinstance(source, ElasticWidthBatchnorm1d):
             # batchnorms before the channel helper will need to be adjusted if channels are removed
             self.sources.append(source)
         elif isinstance(source, nn.ReLU):
@@ -230,6 +279,8 @@ class ElasticChannelHelper(nn.Module):
 
     # in forward, zero out filtered channels
     def forward(self, x):
+        return x
+        """
         input = x
         null_input = torch.zeros_like(input)
         # work on a copy of the input to avoid in-place operations on the input tensor
@@ -257,3 +308,4 @@ class ElasticChannelHelper(nn.Module):
                 f"ElasticChannelHelper zeroed channel count {zeroed/len(input)} does not match expected {removed_channels_count}"
             )
         return input_copy
+        """
