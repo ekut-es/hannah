@@ -28,11 +28,20 @@ class AdaptiveFixedPointNormalizer(nn.Module):
     def __init__(self, normalize_bits: int = 8, normalize_max: int = 256):
         super().__init__()
         self.bn = nn.BatchNorm1d(num_features=40, affine=False)
+        self.normalize_bits = normalize_bits
 
     def forward(self, x):
         # print(torch.max(self.bn.running_mean))
         # print(torch.max(self.bn.running_var))
-        return self.bn(x)
+        bias_shape = [1,-1,1]
+        norm = self.bn.running_mean.reshape((1, 40, 1))
+        normalize_factor = 2.0 ** (self.normalize_bits - 1)
+        x = self.bn(x)
+        mean_max = torch.max(torch.abs(self.bn.running_mean))
+        var_max = torch.max(torch.abs(self.bn.running_var))
+        #x = x * var_max/ normalize_factor
+        x = x.clamp(torch.tensor(-1.0).to(device=x.device), 1.0 - 1.0 / self.bn.running_var.reshape((1,40, 1)))
+        return x
 
 
 class HistogramNormalizer(nn.Module):
