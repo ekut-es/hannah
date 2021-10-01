@@ -532,8 +532,6 @@ class StreamClassifierModule(BaseStreamClassifierModule):
         return self.get_test_dataloader_by_set(self.test_set)
 
     def test_end_callback(self, test_metrics):
-        print(self.normalizer.bn.running_mean)
-        print(self.normalizer.bn.running_var)
         metric_table = []
         for name, metric in test_metrics.items():
             metric_table.append((name, metric.compute().item()))
