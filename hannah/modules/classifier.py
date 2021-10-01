@@ -251,6 +251,8 @@ class BaseStreamClassifierModule(ClassifierModule):
         else:
             self.normalizer = torch.nn.Identity()
 
+        self.example_feature_array = self.normalizer(self.example_feature_array)
+
         # Instantiate Model
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
