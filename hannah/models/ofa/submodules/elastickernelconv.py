@@ -11,6 +11,7 @@ from ..utilities import (
     # set_weight_maybe_bias_grad,
     sub_filter_start_end,
 )
+from .elasticchannelhelper import SequenceDiscovery
 
 
 class ElasticKernelConv1d(nn.Conv1d):
@@ -181,6 +182,9 @@ class ElasticKernelConv1d(nn.Conv1d):
                 return new_kernel, new_bias
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if isinstance(input, SequenceDiscovery):
+            return input.discover(self)
+
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()

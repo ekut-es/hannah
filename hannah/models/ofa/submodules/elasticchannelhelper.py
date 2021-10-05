@@ -1,5 +1,3 @@
-from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
-from .elastickernelconv import ElasticKernelConv1d
 from typing import List
 import torch.nn as nn
 import numpy as np
@@ -18,20 +16,20 @@ class ElasticChannelHelper(nn.Module):
     def __init__(
         self,
         channel_counts: List[int],
-        sources: nn.ModuleList,
-        target: nn.Module,
-        additional_targets: nn.ModuleList = nn.ModuleList([]),
+        # sources: nn.ModuleList,
+        # target: nn.Module,
+        # additional_targets: nn.ModuleList = nn.ModuleList([]),
     ):
         super().__init__()
         # sort channel counts: largest -> smallest
         self.channel_counts = channel_counts
         self.channel_counts.sort(reverse=True)
-        self.sources = flatten_module_list(sources)
-        self.target = target
+        self.sources = nn.ModuleList([])
+        self.target = None
         # additional target modules will not be used to compute channel priorities,
         # but will have to be known for reducing input channels
         # this may contain additional exits, the skip layer of a following residual block
-        self.additional_targets = additional_targets
+        self.additional_targets = nn.ModuleList([])
         # initialize filter for channel reduction in training, channel priority list
         self.channel_pass_filter: List[int] = []
         # the first channel index in this list is least important, the last channel index ist most important
@@ -144,8 +142,9 @@ class ElasticChannelHelper(nn.Module):
                 module.out_channel_filter = self.channel_pass_filter
 
         elif isinstance(module, ElasticWidthBatchnorm1d):
-            if is_target:
-                logging.warn("Batchnorm found in Elastic channel helper targets, it should usually be located in-front of the helper module.")
+            # this is normal for residual blocks with a norm after applying residual output to blocks output
+            # if is_target:
+            #    logging.warn("Batchnorm found in Elastic channel helper targets, it should usually be located in-front of the helper module.")
             if len(module.channel_filter) != len(self.channel_pass_filter):
                 logging.error(
                     f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.channel_filter)} of {type(module)}!"
@@ -198,6 +197,11 @@ class ElasticChannelHelper(nn.Module):
 
     # check if a module is valid as a primary target (to compute channel priorities from)
     def is_valid_primary_target(self, module: nn.Module) -> bool:
+        # legacy function
+        return ElasticChannelHelper.is_primary_target(module)
+
+    # check if a module is valid as a primary target (to compute channel priorities from)
+    def is_primary_target(module: nn.Module) -> bool:
         return isinstance(module, ElasticKernelConv1d) or isinstance(module, ElasticWidthLinear)
 
     # add additional target(s) which must also have their inputs adjusted when
@@ -228,9 +232,10 @@ class ElasticChannelHelper(nn.Module):
         elif isinstance(target, ElasticWidthBatchnorm1d):
             # trailing batchnorms between the channel helper and the next 'real'
             # module will also need to have their channels adjusted
-            logging.warn(
-                "found loose BatchNorm1d module trailing an elastic channel helper. These should be located in-front of the helper"
-            )
+            # this is normal for residual blocks with a norm after applying residual output to blocks output
+            # logging.warn(
+            #     "found loose BatchNorm1d module trailing an elastic channel helper. These should be located in-front of the helper"
+            # )
             self.additional_targets.append(target)
         elif isinstance(target, nn.ReLU):
             logging.warn(
@@ -241,6 +246,7 @@ class ElasticChannelHelper(nn.Module):
                 f"module with undefined behavior found in ElasticChannelHelper targets: '{type(target)}'. Ignoring."
             )
 
+    """
     # add additional source(s) which must have their outputs adjusted if the channel width changes
     def add_sources(self, source: nn.Module):
         if hasattr(source, "__iter__"):
@@ -260,6 +266,22 @@ class ElasticChannelHelper(nn.Module):
                     break
         else:
             self.add_source_item(self, source)
+    """
+
+    # add additional source(s) which must have their outputs adjusted if the channel width changes
+    def add_sources(self, source: nn.Module):
+        if hasattr(source, "__iter__"):
+            # if the input source is iterable, check every item
+            source_flat = flatten_module_list(source)
+            for item in source_flat:
+                # ascend the list of sources from the back
+                if isinstance(item, ElasticChannelHelper):
+                    logging.exception(
+                        "ElasticChannelHelper source accumulation found another ElasticChannelHelper!"
+                    )
+                self.add_source_item(item)
+        else:
+            self.add_source_item(self, source)
 
     # check a module, add it as a source if its weights would need modification when channel width changes
     def add_source_item(self, source: nn.Module):
@@ -277,8 +299,16 @@ class ElasticChannelHelper(nn.Module):
                 f"module with undefined behavior found in ElasticChannelHelper sources: '{type(source)}'. Ignoring."
             )
 
-    # in forward, zero out filtered channels
+    def discover_target(self, new_target: nn.Module):
+        # if no target is set yet, take this module as the primary target
+        if self.is_valid_primary_target(new_target) and self.target is None:
+            self.set_primary_target(new_target)
+        else:
+            self.add_secondary_targets(new_target)
+
     def forward(self, x):
+        if isinstance(x, SequenceDiscovery):
+            return x.discover(self)
         return x
         """
         input = x
@@ -309,3 +339,112 @@ class ElasticChannelHelper(nn.Module):
             )
         return input_copy
         """
+
+
+class SequenceDiscovery():
+    def __init__(self, is_accumulating_sources: bool = True):
+        super().__init__()
+        # mode is either: accumulating sources for an upcoming elastic width connection
+        # or collecting targets of an elastic width connection
+        self.is_accumulating_sources = is_accumulating_sources
+        # when accumulating sources, they are added to the moduleList
+        self.accumulated_sources = nn.ModuleList([])
+        # when seeking targets, the relevant helper module is stored here.
+        self.helper: ElasticChannelHelper = None
+
+    # process a module, return the next sequence discovery for it to pass forward
+    # simply pass a reference to the new module, this includes helper modules.
+    def discover(self, new_module, force_secondary_target: bool = False):
+        # primary targets will re-set collected modules, and change mode to source accumulation
+        if ElasticChannelHelper.is_primary_target(new_module) and not force_secondary_target:
+            if not self.is_accumulating_sources:
+                # if in target finding mode, pass the newly discovered module as a target to the helper
+                if self.helper is None:
+                    logging.error("SequenceDiscovery is in target mode, but has no helper module!")
+                else:
+                    self.helper.discover_target(new_module)
+            # with primary modules, a new source sequence is always started:
+            # after a primary module, we are no longer seeking a target for a previous helper (if applicable)
+            # and the channel width of previous sources is irrelevant to subsequent helpers
+            new_discovery = SequenceDiscovery(is_accumulating_sources=True)
+            new_discovery.accumulated_sources.append(new_module)
+            return new_discovery
+
+        elif ElasticChannelHelper.is_primary_target(new_module):
+            # if the module is technically a primary target, but force_secondary_target is specified
+            # (this will happen on skip connection convs of a residual block, for example)
+            # process it as a secondary target in target discovery mode.
+            if not self.is_accumulating_sources:
+                # if accumulating targets with force_secondary_target, add module as secondary target
+                if self.helper is None:
+                    logging.error("SequenceDiscovery is in target mode, but has no helper module!")
+                else:
+                    self.helper.add_secondary_target_item(new_module)
+            # since the module is still a primary module, switch to a new source discovery (regardless of previous mode)
+            new_discovery = SequenceDiscovery(is_accumulating_sources=True)
+            new_discovery.accumulated_sources.append(new_module)
+            return new_discovery
+
+        elif isinstance(new_module, ElasticChannelHelper):
+            if self.is_accumulating_sources:
+                # if in source accumulation mode, pass accumulated sources to the helper.
+                print(f"Passing to elastic helper: {len(self.accumulated_sources)} modules as sources")
+                new_module.add_sources(self.accumulated_sources)
+            else:
+                logging.error("Elastic width helper target accumulation reached another helper module!")
+            # after discovery reaches a helper module, the mode is switched to target discovery.
+            new_discovery = SequenceDiscovery(is_accumulating_sources=False)
+            new_discovery.helper = new_module
+            return new_discovery
+
+        else:
+            # for secondary modules, simply add them to the known sources, or pass them as secondary targets
+            if self.is_accumulating_sources:
+                self.accumulated_sources.append(new_module)
+            else:
+                if self.helper is None:
+                    logging.error("SequenceDiscovery is in target mode, but has no helper module!")
+                else:
+                    self.helper.add_secondary_target_item(new_module)
+            return self
+
+    # process when two discovery modules would be added together (with parallel modules, e.g. skip connections)
+    def merge_sequence_discovery(self, second_discovery):
+        if self.is_accumulating_sources and second_discovery.is_accumulating_sources:
+            # if both are in source discovery mode, simply pass the sum of sources on.
+            for new_source in second_discovery.accumulated_sources:
+                self.accumulated_sources.append(new_source)
+            return self
+        elif not self.is_accumulating_sources and second_discovery.is_accumulating_sources:
+            # if this module is in find target mode, and is being merged with sources, add sources to this helper
+            # then, pass on the target discovery unmodified.
+            if self.helper is None:
+                logging.error("SequenceDiscovery is in target mode, but has no helper module!")
+            else:
+                self.helper.add_sources(second_discovery.accumulated_sources)
+            return self
+        elif self.is_accumulating_sources and not second_discovery.is_accumulating_sources:
+            # if the other discovery is in target mode, and this discovery is not,
+            # simply re-call the merge on the other module to avoid code duplication
+            return second_discovery.merge_sequence_discovery(self)
+        else:
+            # if both discoveries are in target mode, the next target(s) could theoretically be passed to both helpers
+            # as they would calculate the same norms, they should both pass forward the same filter
+            # optimally, both helpers should probably be merged
+            raise NotImplementedError("merging target discoveries of separate helpers from parallel blocks is NYI.")
+            # skip connections on residual blocks don't need to contain their own helper module.
+            # for parallel blocks, simply having the the last connection be elastic on only one of the blocks is sufficient:
+            # the 'sources' of the other block will be added to the helper of the 'primary' block during the merge
+
+    # return a second, new discovery with the same references, for splitting off a connection
+    # this may be done at the input of a resblock for example.
+    def split(self):
+        new_discovery = SequenceDiscovery(is_accumulating_sources=self.is_accumulating_sources)
+        # yield shallow copy of sources list
+        new_discovery.accumulated_sources = list(self.accumulated_sources)
+        new_discovery.helper = self.helper
+        return new_discovery
+
+# imports are located at the bottom to circumvent circular dependency import issues
+from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
+from .elastickernelconv import ElasticKernelConv1d

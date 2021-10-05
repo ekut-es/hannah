@@ -3,7 +3,11 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as nnf
+
 from ..utilities import filter_primary_module_weights, filter_single_dimensional_weights
+from .elasticchannelhelper import SequenceDiscovery
+# from .elastickernelconv import ElasticKernelConv1d
+# from hannah.models.ofa.submodules.elasticchannelhelper import ElasticChannelHelper
 
 
 class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
@@ -19,6 +23,8 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         self.channel_filter = [True] * num_features
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if isinstance(input, SequenceDiscovery):
+            return input.discover(self)
 
         if self.track_running_stats:
             logging.warn("ElasticWidthBatchnorm with tracked running stats currently not fully implemented!")
@@ -95,6 +101,9 @@ class ElasticWidthLinear(nn.Linear):
         self.out_channel_filter = [True] * self.out_features
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if isinstance(input, SequenceDiscovery):
+            return input.discover(self)
+
         if all(self.in_channel_filter) and all(self.out_channel_filter):
             # if no channel filtering is required, simply use the full linear
             return nnf.linear(input, self.weight, self.bias)
@@ -127,3 +136,15 @@ class ElasticWidthLinear(nn.Linear):
 
     def assemble_basic_linear(self):
         return copy.deepcopy(self.get_basic_linear())
+
+
+# just a ReLu, which can forward a SequenceDiscovery
+class ElasticPermissiveReLU(nn.ReLU):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        if isinstance(x, SequenceDiscovery):
+            return x
+        else:
+            return super().forward(x)
