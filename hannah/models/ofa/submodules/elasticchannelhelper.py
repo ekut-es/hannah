@@ -78,7 +78,6 @@ class ElasticChannelHelper(nn.Module):
 
     # set the channel filter list based on the channel priorities and the current channel count
     def set_channel_filter(self):
-        print("SCF call")
         # get the amount of channels to be removed from the max and current channel counts
         channel_reduction_amount: int = self.max_channels - self.current_channels
         # start with an empty filter, where every channel passes through, then remove channels by priority
@@ -166,6 +165,19 @@ class ElasticChannelHelper(nn.Module):
         else:
             # if the last channel step is already reached, no additional step-down operation can be performed
             return False
+
+    def set_channel_step(self, step: int):
+        if step not in range(len(self.channel_counts)):
+            logging.warn(f"Elastic channel helper step target {step} out of range for length {len(self.channel_counts)}. Defaulting to 0.")
+            step = 0
+        if step == self.channel_step:
+            # only re-apply filters if there is actually going to be a change.
+            return
+        self.channel_step = step
+        self.set_channel_filter()
+
+    def reset_channel_step(self):
+        self.channel_step = 0
 
     # set the primary target from an input module. For iterable inputs, extract additional secondary targets
     def set_primary_target(self, target: nn.Module):
@@ -306,6 +318,9 @@ class ElasticChannelHelper(nn.Module):
         else:
             self.add_secondary_targets(new_target)
 
+    def get_available_width_steps(self):
+        return len(self.channel_counts)
+
     def forward(self, x):
         if isinstance(x, SequenceDiscovery):
             return x.discover(self)
@@ -444,6 +459,7 @@ class SequenceDiscovery():
         new_discovery.accumulated_sources = list(self.accumulated_sources)
         new_discovery.helper = self.helper
         return new_discovery
+
 
 # imports are located at the bottom to circumvent circular dependency import issues
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear

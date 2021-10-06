@@ -427,6 +427,7 @@ class OFAModel(nn.Module):
         self.current_width_step = 0
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
+        self.sampling_max_width_step = 0
         self.eval_mode = False
         self.last_input = None
         self.skew_sampling_distribution = skew_sampling_distribution
@@ -469,6 +470,10 @@ class OFAModel(nn.Module):
                 # ignore convs with only one available kernel size, they do not need to be stored
                 self.elastic_kernel_convs.append(item)
         logging.info(f"OFA model accumulated {len(self.elastic_kernel_convs)} elastic kernel convolutions for sampling.")
+
+        # create a list of every elastic width helper, for sampling
+        self.elastic_channel_helpers = get_instances_from_deep_nested(input=self.conv_layers, type_selection=ElasticChannelHelper)
+        logging.info(f"OFA model accumulated {len(self.elastic_channel_helpers)} elastic width connections for sampling.")
 
     def forward(self, x):
         self.last_input = x
@@ -518,22 +523,30 @@ class OFAModel(nn.Module):
 
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
-        state = {"depth_step": 0, "kernel_steps": []}
+        state = {"depth_step": 0, "kernel_steps": [], "width_steps": []}
         # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
         new_depth_step = self.get_random_step(self.sampling_max_depth_step+1)
         self.active_depth = self.max_depth - new_depth_step
         state["depth_step"] = new_depth_step
+
         # this would step every kernel the same amount
         # new_kernel_step = np.random.randint(self.sampling_max_kernel_step + 1)
         # self.go_to_kernel_step(new_kernel_step)
+
         for conv in self.elastic_kernel_convs:
             # pick an available kernel index for every elastic kernel conv, independently.
             max_available_sampling_step = min(self.sampling_max_kernel_step+1, conv.get_available_kernel_steps())
-            # new_kernel_step = np.random.randint(max_available_sampling_step+1)
             new_kernel_step = self.get_random_step(max_available_sampling_step)
             conv.pick_kernel_index(new_kernel_step)
             state["kernel_steps"].append(new_kernel_step)
-        # print(state)
+
+        for helper in self.elastic_channel_helpers:
+            # pick an available width step for every elastic channel helper, independently.
+            max_available_sampling_step = min(self.sampling_max_width_step+1, helper.get_available_width_steps())
+            new_width_step = self.get_random_step(max_available_sampling_step)
+            helper.set_channel_step(new_width_step)
+            state["width_steps"].append(new_width_step)
+
         return state
 
     # get a step, with distribution biased towards taking less steps, if skew distribution is enabled.
@@ -607,11 +620,13 @@ class OFAModel(nn.Module):
     # step all input widths within the model down by one, if possible
     def step_down_all_channels(self):
         # print("stepping down input widths by one!")
+        """
         self.current_width_step += 1
         if (self.current_width_step > self.ofa_steps_width):
             logging.warn(
                 f"excessive OFA width stepping! Attempting to step down width when step limit {self.ofa_steps_width} already reached."
             )
+        """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_channels",
@@ -704,8 +719,18 @@ class OFAModel(nn.Module):
                 # there were no kernels to step down. Further iterations are not necessary
                 break
 
+    # reset all kernel sizes to their max value
+    def reset_all_widths(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="reset_channel_step",
+            type_selection=ElasticChannelHelper,
+        )
+
+    """
     def progressive_shrinking_perform_width_step(self):
         self.step_down_all_channels()
+    """
 
     def progressive_shrinking_add_kernel(self):
         self.sampling_max_kernel_step += 1
@@ -720,12 +745,28 @@ class OFAModel(nn.Module):
         if self.sampling_max_depth_step >= self.ofa_steps_depth:
             self.sampling_max_depth_step -= 1
             logging.warn(
-                f"excessive OFA depth stepping! Attempting to add a depth step when max ({self.ofa_steps_kernel}) already reached"
+                f"excessive OFA depth stepping! Attempting to add a depth step when max ({self.ofa_steps_depth}) already reached"
+            )
+
+    def progressive_shrinking_compute_channel_priorities(self):
+        call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="compute_channel_priorities",
+            type_selection=ElasticChannelHelper,
+        )
+
+    def progressive_shrinking_add_width(self):
+        self.sampling_max_width_step += 1
+        if self.sampling_max_width_step >= self.ofa_steps_width:
+            self.sampling_max_width_step -= 1
+            logging.warn(
+                f"excessive OFA depth stepping! Attempting to add a width step when max ({self.ofa_steps_width}) already reached"
             )
 
     def progressive_shrinking_disable_sampling(self):
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
+        self.sampling_max_width_step = 0
 
 
 def rebuild_extracted_blocks(blocks, quantized=False):

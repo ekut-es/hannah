@@ -216,9 +216,10 @@ class OFANasTrainer(NASTrainerBase):
         epochs_warmup=10,
         epochs_kernel_step=10,
         epochs_depth_step=10,
-        epochs_warmup_after_width=5,
-        epochs_kernel_after_width=5,
-        epochs_depth_after_width=5,
+        epochs_width_step=10,
+        # epochs_warmup_after_width=5,
+        # epochs_kernel_after_width=5,
+        # epochs_depth_after_width=5,
         *args,
         **kwargs,
     ):
@@ -227,9 +228,12 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_warmup = epochs_warmup
         self.epochs_kernel_step = epochs_kernel_step
         self.epochs_depth_step = epochs_depth_step
+        self.epochs_width_step = epochs_width_step
+        """
         self.epochs_warmup_after_width = epochs_warmup_after_width
         self.epochs_kernel_after_width = epochs_kernel_after_width
         self.epochs_depth_after_width = epochs_depth_after_width
+        """
 
     def run(self):
         os.makedirs("ofa_nas_dir", exist_ok=True)
@@ -274,7 +278,7 @@ class OFANasTrainer(NASTrainerBase):
             "width, kernel, depth, acc, total_macs, total_weights\n"
         )
         self.random_metrics_csv = (
-            "width, depth, kernel_steps, acc, total_macs, total_weights\n"
+            "width_steps, depth, kernel_steps, acc, total_macs, total_weights\n"
         )
 
         # warm-up.
@@ -308,54 +312,24 @@ class OFANasTrainer(NASTrainerBase):
             self.trainer.fit(model)
         logging.info("OFA completed depth steps.")
 
-        self.eval_model(model, ofa_model, 0)
-
         # train elastic width
+        # first, run channel priority computation
+        ofa_model.progressive_shrinking_compute_channel_priorities()
+
+        # self.eval_model(model, ofa_model, 0)
+
         for current_width_step in range(self.width_step_count):
             if current_width_step == 0:
                 # the very first width step (step 0) was already processed before this loop was entered.
                 continue
 
-            # re-run warmup with reduced epoch count to re-optimize with reduced width
-            ofa_model.progressive_shrinking_perform_width_step()
-            # lock sampling for re-warmup
-            ofa_model.progressive_shrinking_disable_sampling()
-            self.rebuild_trainer(
-                f"width_{current_width_step}_warmup", self.epochs_warmup_after_width
-            )
+            # add a width step
+            ofa_model.progressive_shrinking_add_width()
+            self.rebuild_trainer(f"width_{current_width_step}", self.epochs_width_step)
             self.trainer.fit(model)
+        logging.info("OFA completed width steps.")
 
-            # re-train elastic kernels, re-optimizing after a width step with reduced epoch count
-            for current_kernel_step in range(self.kernel_step_count):
-                if current_kernel_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
-                # re-add kernel steps
-                ofa_model.progressive_shrinking_add_kernel()
-                self.rebuild_trainer(
-                    f"width_{current_width_step}_kernel_{current_kernel_step}",
-                    self.epochs_kernel_after_width,
-                )
-                self.trainer.fit(model)
-
-            # re-train elastic depth, re-optimizing after a width step with reduced epoch count
-            for current_depth_step in range(self.depth_step_count):
-                if current_depth_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
-                # re-add depth steps
-                ofa_model.progressive_shrinking_add_depth()
-                self.rebuild_trainer(
-                    f"width_{current_width_step}_depth_{current_depth_step}",
-                    self.epochs_depth_after_width,
-                )
-                self.trainer.fit(model)
-
-            logging.info(
-                f"OFA completed re-training for width step {current_width_step}."
-            )
-
-            self.eval_model(model, ofa_model, current_width_step)
+        self.eval_model(model, ofa_model)
 
         # save random metrics
         print(self.random_metrics_csv)
@@ -367,56 +341,66 @@ class OFANasTrainer(NASTrainerBase):
             f.write(self.submodel_metrics_csv)
 
     # cycle through submodels, test them, store results (under a given width step)
-    def eval_model(self, lightning_model, model, current_width_step):
+    def eval_model(self, lightning_model, model):
         # disable sampling in forward during evaluation.
         model.eval_mode = True
         # reset_seed()  # run_training does this (?)
         # reset target values to step through
-        model.reset_all_kernel_sizes()
-        for current_kernel_step in range(self.kernel_step_count):
-            if current_kernel_step > 0:
+
+        model.reset_all_widths()
+        for current_width_step in range(self.width_step_count):
+            if current_width_step > 0:
                 # iteration 0 is the full model with no stepping
-                model.step_down_all_kernels()
+                model.step_down_all_channels()
 
-            model.reset_active_depth()
-            for current_depth_step in range(self.depth_step_count):
-                if current_depth_step > 0:
+            model.reset_all_kernel_sizes()
+            for current_kernel_step in range(self.kernel_step_count):
+                if current_kernel_step > 0:
                     # iteration 0 is the full model with no stepping
-                    model.active_depth -= 1
+                    model.step_down_all_kernels()
 
-                # extracted_model = model.extract_module_from_depth_step(current_depth_step)
-                self.rebuild_trainer(
-                    f"Eval K {current_kernel_step}, D {current_depth_step}, W {current_width_step}"
-                )
-                logging.info(
-                    f"OFA validating Kernel {current_kernel_step}, Depth {current_depth_step}, Width {current_width_step}"
-                )
-                model.build_validation_model()
-                validation_results = self.trainer.validate(
-                    lightning_model, ckpt_path=None, verbose=True
-                )
-                # self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
-                self.submodel_metrics_csv += f"{current_width_step}, {current_kernel_step}, {current_depth_step}, "
-                results = validation_results[0]
-                self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
-                self.submodel_metrics_csv += "\n"
-                # print(validation_results)
+                model.reset_active_depth()
+                for current_depth_step in range(self.depth_step_count):
+                    if current_depth_step > 0:
+                        # iteration 0 is the full model with no stepping
+                        model.active_depth -= 1
+
+                    self.rebuild_trainer(
+                        f"Eval K {current_kernel_step}, D {current_depth_step}, W {current_width_step}"
+                    )
+                    logging.info(
+                        f"OFA validating Kernel {current_kernel_step}, Depth {current_depth_step}, Width {current_width_step}"
+                    )
+                    model.build_validation_model()
+                    validation_results = self.trainer.validate(
+                        lightning_model, ckpt_path=None, verbose=True
+                    )
+                    # self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
+                    self.submodel_metrics_csv += f"{current_width_step}, {current_kernel_step}, {current_depth_step}, "
+                    results = validation_results[0]
+                    self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
+                    self.submodel_metrics_csv += "\n"
+                    # print(validation_results)
 
         # sample a few random combinations
         prev_max_kernel = model.sampling_max_kernel_step
         prev_max_depth = model.sampling_max_depth_step
+        prev_max_width = model.sampling_max_width_step
         model.sampling_max_kernel_step = model.ofa_steps_kernel - 1
         model.sampling_max_depth_step = model.ofa_steps_depth - 1
-        for i in range(40):
+        model.sampling_max_width_step = model.ofa_steps_width - 1
+        for i in range(100):
             random_state = model.sample_subnetwork()
             selected_depth = random_state["depth_step"]
             selected_kernels = random_state["kernel_steps"]
+            selected_widths = random_state["width_steps"]
             selected_kernels_string = str(selected_kernels).replace(",", ";")
+            selected_widths_string = str(selected_widths).replace(",", ";")
             self.rebuild_trainer(
-                f"Eval random sample: W {current_width_step}, D {selected_depth}, Ks {selected_kernels}"
+                f"Eval random sample: W {current_width_step}, Ds {selected_widths}, Ks {selected_kernels}"
             )
             logging.info(
-                f"OFA validating random sample under Width {current_width_step}:\n{random_state}"
+                f"OFA validating random sample:\n{random_state}"
             )
             model.build_validation_model()
             validation_results = self.trainer.validate(
@@ -424,7 +408,7 @@ class OFANasTrainer(NASTrainerBase):
             )
             results = validation_results[0]
             self.random_metrics_csv += (
-                f"{current_width_step}, {selected_depth}, {selected_kernels_string}, "
+                f"{selected_widths_string}, {selected_depth}, {selected_kernels_string}, "
             )
             self.random_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
             self.random_metrics_csv += "\n"
@@ -432,6 +416,7 @@ class OFANasTrainer(NASTrainerBase):
         # revert to normal operation after eval.
         model.sampling_max_kernel_step = prev_max_kernel
         model.sampling_max_depth_step = prev_max_depth
+        model.sampling_max_width_step = prev_max_width
         model.eval_mode = False
 
     def rebuild_trainer(self, step_name: str, epochs: int = 1):
