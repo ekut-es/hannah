@@ -101,23 +101,6 @@ class ElasticChannelHelper(nn.Module):
             self.apply_filter_to_module(item, is_target=True)
         for item in self.sources:
             self.apply_filter_to_module(item, is_target=False)
-        """
-        # store the channel filter on every affected module, to make extraction more straightforward later.
-        # then, in the extraction step, we no longer need to know about
-        # the relation of modules, each module knows which channels must be removed.
-        setattr(self.target, "elastic_width_filter_input", self.channel_pass_filter)
-        # any modules which also get inputs from this elastic width connection
-        # should also know the filter for extraction
-        # this may contain skip layers in following residual blocks or additional exit layers
-        for additional_target in self.additional_targets:
-            setattr(
-                additional_target,
-                "elastic_width_filter_input",
-                self.channel_pass_filter,
-            )
-        for source in self.sources:
-            setattr(source, "elastic_width_filter_output", self.channel_pass_filter)
-        """
 
     # if is_target is set to true, the module is a target module (filter its input).
     # false -> source module -> filter its output
@@ -258,28 +241,6 @@ class ElasticChannelHelper(nn.Module):
                 f"module with undefined behavior found in ElasticChannelHelper targets: '{type(target)}'. Ignoring."
             )
 
-    """
-    # add additional source(s) which must have their outputs adjusted if the channel width changes
-    def add_sources(self, source: nn.Module):
-        if hasattr(source, "__iter__"):
-            # if the input source is iterable, check every item
-            source_flat = flatten_module_list(source)
-            for item in source_flat[::-1]:
-                # ascend the list of sources from the back
-                if isinstance(item, ElasticChannelHelper):
-                    logging.exception(
-                        "ElasticChannelHelper source accumulation reached another ElasticChannelHelper, with no primary target in-between!"
-                    )
-                self.add_source_item(item)
-                if self.is_valid_primary_target(item):
-                    # if a valid primary target is found in the sources, the
-                    # modules above it must not be affected by width changes
-                    # only modules after a previous linear/conv will be affected
-                    break
-        else:
-            self.add_source_item(self, source)
-    """
-
     # add additional source(s) which must have their outputs adjusted if the channel width changes
     def add_sources(self, source: nn.Module):
         if hasattr(source, "__iter__"):
@@ -325,35 +286,6 @@ class ElasticChannelHelper(nn.Module):
         if isinstance(x, SequenceDiscovery):
             return x.discover(self)
         return x
-        """
-        input = x
-        null_input = torch.zeros_like(input)
-        # work on a copy of the input to avoid in-place operations on the input tensor
-        input_copy = torch.clone(input)
-        zeroed = 0
-        for input_index in range(len(input)):
-            # for every input index
-            for channel_index in range(len(input[input_index])):
-                # for every channel index within that input
-                # print(self.channel_pass_filter)
-                # print(channel_index)
-                if not self.channel_pass_filter[channel_index]:
-                    zeroed += 1
-                    # if this channel index is supposed to be filtered, copy
-                    # over zeroes from the equivalent null input
-                    input_copy[input_index][channel_index] = null_input[input_index][
-                        channel_index
-                    ]
-        # sanity check
-        removed_channels_count = self.max_channels - self.current_channels
-        if (zeroed / len(input) != removed_channels_count) or (
-            self.channel_step > 0 and zeroed == 0
-        ):
-            logging.warn(
-                f"ElasticChannelHelper zeroed channel count {zeroed/len(input)} does not match expected {removed_channels_count}"
-            )
-        return input_copy
-        """
 
 
 class SequenceDiscovery():

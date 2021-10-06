@@ -229,11 +229,6 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_kernel_step = epochs_kernel_step
         self.epochs_depth_step = epochs_depth_step
         self.epochs_width_step = epochs_width_step
-        """
-        self.epochs_warmup_after_width = epochs_warmup_after_width
-        self.epochs_kernel_after_width = epochs_kernel_after_width
-        self.epochs_depth_after_width = epochs_depth_after_width
-        """
 
     def run(self):
         os.makedirs("ofa_nas_dir", exist_ok=True)

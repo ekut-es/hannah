@@ -132,12 +132,7 @@ class ElasticKernelConv1d(nn.Conv1d):
     def get_full_width_kernel(self):
         current_kernel_index = 0
         current_kernel = self.weight
-        """
-        # for later: reduce channel count to first n channels
-        if in_channel is not None:
-            out_channel = in_channel
-            current_kernel = current_kernel[:out_channel, :in_channel, :]
-        """
+
         # step through kernels until the target index is reached.
         while current_kernel_index < self.target_kernel_index:
             if current_kernel_index >= len(self.kernel_sizes):
@@ -208,17 +203,7 @@ class ElasticKernelConv1d(nn.Conv1d):
         )
         new_conv.weight.data = kernel
         new_conv.bias = bias
-        """
-        # copy over elastic filter annotations if they are present
-        elastic_width_filter_input = getattr(self, "elastic_width_filter_input", None)
-        elastic_width_filter_output = getattr(self, "elastic_width_filter_output", None)
-        if elastic_width_filter_input is not None:
-            setattr(new_conv, "elastic_width_filter_input", elastic_width_filter_input)
-        if elastic_width_filter_output is not None:
-            setattr(
-                new_conv, "elastic_width_filter_output", elastic_width_filter_output
-            )
-        """
+
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 

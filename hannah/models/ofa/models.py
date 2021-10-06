@@ -40,10 +40,7 @@ def create(
         final_out_channels = max(final_out_channels)
     conv_layers = nn.ModuleList([])
     next_in_channels = in_channels
-    """
-    previous_sources = [nn.ModuleList([])]
-    previous_elastic_channel_helper: ElasticChannelHelper = None
-    """
+
     for block_config in conv:
         if block_config.target == "forward":
             major_block = create_forward_block(
@@ -53,20 +50,7 @@ def create(
                 norm_before_act=norm_before_act,
                 # sources=previous_sources,
             )
-            """
-            # add as target to a preceding elastic channel helper
-            if previous_elastic_channel_helper is not None:
-                # if an elastic channel helper directly precedes this block,
-                # this block is it's primary target.
-                previous_elastic_channel_helper.set_primary_target(major_block)
-            # this major block is the source for the next block.
-            # If it already ends in a channel helper and is passed to a second
-            # channel helper, the issue will be handled there.
-            previous_sources = [major_block]
-            # if the block ends in an elastic channel helper, store it.
-            # It's targets are specified by the block which follows
-            previous_elastic_channel_helper = trailing_elastic_helper
-            """
+
         elif block_config.target == "residual1d":
             major_block = create_residual_block_1d(
                 blocks=block_config.blocks,
@@ -75,25 +59,7 @@ def create(
                 norm_before_act=norm_before_act,
                 # sources=previous_sources,
             )
-            """
-            if previous_elastic_channel_helper is not None:
-                # if an elastic channel helper directly precedes this block, this block is it's primary target.
-                previous_elastic_channel_helper.set_primary_target(major_block.blocks)
-                # the input channels of the skip connection must also be modified by the channel helper
-                previous_elastic_channel_helper.add_secondary_targets(major_block.skip)
-            # this major block is the source for the next block.
-            # This involves both the main blocks and the skip connection
-            # both sources MUST be processed in parallel, and not added to one ModuleList:
-            # each source is only ascended until a primary target is found.
-            # Modules before it must be unaffected.
-            # duplicate elastic channel helpers will be found if the source is added to the second helper module.
-            previous_sources = [major_block.blocks, major_block.skip]
-            previous_elastic_channel_helper = trailing_elastic_helper
-            if trailing_elastic_helper is not None:
-                # if the block ends in an elastic channel helper, it must be able to adjust the
-                # output channels of the skip connection, if the residual block adjusts it's output channels
-                trailing_elastic_helper.add_sources(major_block.skip)
-            """
+
         else:
             raise Exception(
                 f"Undefined target selected for major block: {block_config.target}"
@@ -118,13 +84,6 @@ def create(
         skew_sampling_distribution=skew_sampling_distribution,
         dropout=dropout,
     )
-
-    """
-    if previous_elastic_channel_helper is not None:
-        # if the layers ended in an elastic width connection, its primary target is the final output linear.
-        full_model_output_linear = model.linears[-1]
-        previous_elastic_channel_helper.set_primary_target(full_model_output_linear)
-    """
 
     # store the name onto the model
     setattr(model, "creation_name", name)
@@ -166,9 +125,7 @@ def create_minor_block_sequence(
     next_in_channels = in_channels
     minor_block_sequence = nn.ModuleList([])
     is_first_minor_block = True
-    """
-    elastic_helper = None
-    """
+
     for block_config in blocks:
         # set stride on the first minor block in the sequence
         if is_first_minor_block:
@@ -183,39 +140,9 @@ def create_minor_block_sequence(
             norm_before_act=norm_before_act,
             # sources=sources,
         )
-        """
-        # if the previous module ended in an elastic helper, it's target is given by this minor block
-        # reset the active helper module after applying
-        if elastic_helper is not None:
-            elastic_helper.set_primary_target(minor_block)
-            elastic_helper = None
-        if hasattr(minor_block, "__iter__") and isinstance(
-            minor_block[-1], ElasticChannelHelper
-        ):
-            # if the minor block is iterable, check it's last element for an elastic width helper.
-            # It will already know it's source modules from the block
-            # store the elastic helper, it needs to know it's 'target' blocks, which follow it
-            elastic_helper = minor_block[-1]
-            # reset sources: this block is already attached to an elastic channel helper
-            sources = [nn.ModuleList([])]
-        elif isinstance(minor_block, ElasticChannelHelper):
-            # if the module is a standalone elastic channel helper, it has
-            # already received the sources, but must still be stored for passing it's targets
-            elastic_helper = minor_block
-            # reset sources: no additional elastic channel helper may be attached to this block
-            sources = [nn.ModuleList([])]
-        else:
-            # reset any previous stored helper if this block does not contain one
-            elastic_helper = None
-            # the minor block will be a source for the next minor block
-            sources = minor_block
-        """
 
         minor_block_sequence.append(minor_block)
-    """
-    if elastic_helper is not None:
-        logging.info("minor block sequence ends in elastic channel width, passing forward helper.")
-    """
+
     # return module_list_to_module(minor_block_sequence), elastic_helper
     return module_list_to_module(minor_block_sequence)
 
@@ -305,13 +232,7 @@ def create_minor_block(
         out_channels_list.sort(reverse=True)
         out_channels_full = out_channels_list[0]
         new_block = ElasticChannelHelper(out_channels_list)
-        """
-        for source in sources:
-            # add every source item as a source to the new block.
-            # this has to be done in parallel: each source is only ascended
-            # until a primary target is found (modules before it must be unaffected.)
-            new_block.add_sources(source)
-        """
+
         if out_channels_full != in_channels:
             logging.error(
                 f"standalone ElasticChannelHelper input width {in_channels} does not match max output channel width {out_channels_full} in list {out_channels_list}"
@@ -432,13 +353,11 @@ class OFAModel(nn.Module):
         self.last_input = None
         self.skew_sampling_distribution = skew_sampling_distribution
         self.validation_model = None
-        # will be updated with the output channel count
-        """
-        self.active_elastic_output_helper: ElasticChannelHelper = None
-        """
+
         self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
         self.flatten = nn.Flatten(flatten_dims)
+
         # one linear exit layer for each possible depth level
         self.linears = nn.ModuleList([])
         # for every possible depth level (from min_depth to including max_depth)
@@ -447,15 +366,8 @@ class OFAModel(nn.Module):
             self.update_output_channel_count()
             # create the linear output layer for this depth
             new_output_linear = ElasticWidthLinear(self.out_channels, self.labels)
-            """
-            if self.active_elastic_output_helper is not None:
-                # add this output linear as a target to an elastic channel module
-                # preceding it. The in-channels of this linear will also need to be modified.
-                self.active_elastic_output_helper.add_secondary_targets(
-                    new_output_linear
-                )
-            """
             self.linears.append(new_output_linear)
+
         # should now be redundant, as the loop will exit with the active depth being max_depth
         self.active_depth = self.max_depth
         # ofa step counts will be set by the create function.
@@ -528,10 +440,6 @@ class OFAModel(nn.Module):
         new_depth_step = self.get_random_step(self.sampling_max_depth_step+1)
         self.active_depth = self.max_depth - new_depth_step
         state["depth_step"] = new_depth_step
-
-        # this would step every kernel the same amount
-        # new_kernel_step = np.random.randint(self.sampling_max_kernel_step + 1)
-        # self.go_to_kernel_step(new_kernel_step)
 
         for conv in self.elastic_kernel_convs:
             # pick an available kernel index for every elastic kernel conv, independently.
@@ -619,14 +527,6 @@ class OFAModel(nn.Module):
 
     # step all input widths within the model down by one, if possible
     def step_down_all_channels(self):
-        # print("stepping down input widths by one!")
-        """
-        self.current_width_step += 1
-        if (self.current_width_step > self.ofa_steps_width):
-            logging.warn(
-                f"excessive OFA width stepping! Attempting to step down width when step limit {self.ofa_steps_width} already reached."
-            )
-        """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_channels",
@@ -645,10 +545,7 @@ class OFAModel(nn.Module):
         # the new out channel count is given by the last minor block of the last active major block
         last_active_major_block = self.block_config[: self.active_depth][-1].blocks[-1]
         self.out_channels = last_active_major_block.out_channels
-        """
-        # for error reporting below
-        out_channels_maybe_list = self.out_channels
-        """
+
         # the code below this is probably no longer doing anything, TBD.
         if hasattr(self.out_channels, "__iter__"):
             # if the out_channels count is a list, get the highest value
@@ -664,18 +561,6 @@ class OFAModel(nn.Module):
                 # a layer ususally contains multiple modules and is iterable.
                 # Pick the last module within the layer.
                 last_active_item = last_active_item[-1]
-            """
-            # store the ElasticChannelHelper ending the active layer.
-            # The correct output layer must be added as a secondary target.
-            if isinstance(last_active_item, ElasticChannelHelper):
-                self.active_elastic_output_helper = last_active_item
-            else:
-                logging.error(
-                    f"model layer ends with multiple possible output channels {out_channels_maybe_list}, but last module '{last_active_item}' is not ElasticChannelHelper"
-                )
-        else:
-            self.active_elastic_output_helper = None
-            """
 
     # return the linear layer which processes the output for the current elastic depth
     def get_output_linear_layer(self, target_depth):
@@ -688,7 +573,6 @@ class OFAModel(nn.Module):
             function="step_down_kernel_size",
             type_selection=ElasticKernelConv1d,
         )
-        # return call_function_from_deep_nested(input=self.conv_layers, function="step_down_kernel_size")
 
     # reset all kernel sizes to their max value
     def reset_all_kernel_sizes(self):
@@ -697,7 +581,6 @@ class OFAModel(nn.Module):
             function="reset_kernel_size",
             type_selection=ElasticKernelConv1d,
         )
-        # return call_function_from_deep_nested(input=self.conv_layers, function="reset_kernel_size")
 
     # go to a specific kernel step
     def go_to_kernel_step(self, step: int):
@@ -726,11 +609,6 @@ class OFAModel(nn.Module):
             function="reset_channel_step",
             type_selection=ElasticChannelHelper,
         )
-
-    """
-    def progressive_shrinking_perform_width_step(self):
-        self.step_down_all_channels()
-    """
 
     def progressive_shrinking_add_kernel(self):
         self.sampling_max_kernel_step += 1
