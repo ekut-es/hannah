@@ -157,6 +157,7 @@ class ElasticChannelHelper(nn.Module):
             # only re-apply filters if there is actually going to be a change.
             return
         self.channel_step = step
+        self.current_channels = self.channel_counts[self.channel_step]
         self.set_channel_filter()
 
     def reset_channel_step(self):
