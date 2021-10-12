@@ -1,6 +1,5 @@
 {
     "python.linting.pylintEnabled": false,
-    "python.defaultInterpreterPath": "/home/hald/.cache/pypoetry/virtualenvs/hannah-DXN79QMR-py3.8/bin/python",
     "python.linting.enabled": true,
     "git.ignoreLimitWarning": true,
     "python.linting.flake8Enabled": true,
@@ -17,6 +16,5 @@
     },
     "files.associations": {
         "*.inc": "cpp"
-    },
-    "python.pythonPath": "/home/hald/.cache/pypoetry/virtualenvs/hannah-DXN79QMR-py3.8/bin/python"
+    }
 }
