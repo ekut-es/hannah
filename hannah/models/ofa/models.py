@@ -5,7 +5,7 @@ import torch.nn as nn
 # import torch.nn.functional as nnf
 import numpy as np
 import logging
-import torch
+# import torch
 
 # from ..utils import ConfigType, SerializableModule
 from ..factory import qat as qat
@@ -392,14 +392,14 @@ class OFAModel(nn.Module):
         self.current_step = self.current_step + 1
 
         # in eval mode, run the forward on the extracted validation model.
-        # if self.eval_mode:
-        #    if self.validation_model is None:
-        #        logging.warn("forward in validation mode called without building validation model!")
-        #        self.build_validation_model()
-        #    return self.validation_model.forward(x)
+        if self.eval_mode:
+            if self.validation_model is None:
+                logging.warn("forward in validation mode called without building validation model!")
+                self.build_validation_model()
+            return self.validation_model.forward(x)
 
         # if the network is currently being evaluated, don't sample a subnetwork!
-        if (self.sampling_max_depth_step > 0 or self.sampling_max_kernel_step > 0) and not self.eval_mode:
+        if (self.sampling_max_depth_step > 0 or self.sampling_max_kernel_step > 0 or self.sampling_max_width_step > 0) and not self.eval_mode:
             self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
             x = layer(x)
@@ -478,8 +478,62 @@ class OFAModel(nn.Module):
                 acc -= 1
             return acc
 
+    # return max available step values
+    def get_max_submodel_steps(self):
+        max_depth_step = self.sampling_max_depth_step
+        kernel_steps = []
+        width_steps = []
+        for conv in self.elastic_kernel_convs:
+            kernel_steps.append(conv.get_available_kernel_steps())
+        for helper in self.elastic_channel_helpers:
+            width_steps.append(helper.get_available_width_steps())
+        state = {"depth_step": max_depth_step, "kernel_steps": kernel_steps, "width_steps": width_steps}
+        return state
+
+    # accept a state dict like the one returned in get_max_submodel_steps, return extracted submodel.
+    # also sets main model state to this submodel.
+    def get_submodel(self, state: dict):
+        if not self.set_submodel(state):
+            return None
+        else:
+            return self.extract_elastic_depth_sequence(self.active_depth)
+
+    # accept a state dict like the one returned in get_max_submodel_steps, sets model state.
+    def set_submodel(self, state: dict):
+        try:
+            depth_step = state['depth_step']
+            kernel_steps = state['kernel_steps']
+            width_steps = state['width_steps']
+        except KeyError:
+            logging.error("Invalid state dict passed to get_submodel! Keys should be 'depth_step', 'kernel_steps', 'width_steps'!")
+            return False
+        if len(kernel_steps) != len(self.elastic_kernel_convs):
+            print(f"State dict provides invalid amount of kernel steps: model has {len(self.elastic_kernel_convs)}, {len(kernel_steps)} provided.")
+            return False
+        if len(width_steps) != len(self.elastic_channel_helpers):
+            print(f"State dict provides invalid amount of width steps: model has {len(self.elastic_channel_helpers)}, {len(width_steps)} provided.")
+            return False
+
+        self.active_depth = self.max_depth - depth_step
+        for i in range(len(kernel_steps)):
+            self.elastic_kernel_convs[i].pick_kernel_index(kernel_steps[i])
+        for i in range(len(width_steps)):
+            self.elastic_channel_helpers[i].set_channel_step(width_steps[i])
+
+        return True
+
     def build_validation_model(self):
         self.validation_model = self.extract_elastic_depth_sequence(self.active_depth)
+
+    def get_validation_model_weight_count(self):
+        if self.validation_model is None:
+            return 0
+        else:
+            # create a dict of the pointer of each parameter to the item count within that parameter
+            # using a dict with pointers as keys ensures that no parameter is counted twice
+            parameter_pointers_dict = dict((p.data_ptr(), p.numel()) for p in self.validation_model.parameters())
+            # sum up the values of each dict item, yielding the total element count across params
+            return sum(parameter_pointers_dict.values())
 
     # return an extracted module sequence for a given depth
     def extract_elastic_depth_sequence(
@@ -502,12 +556,14 @@ class OFAModel(nn.Module):
 
         extracted_module_list.append(self.pool)
         extracted_module_list.append(self.flatten)
+        extracted_module_list.append(self.dropout)
         output_linear = self.get_output_linear_layer(target_depth)
-        # apply potential channel filters of the output linear
-        output_linear = apply_channel_filters(output_linear)
+        if isinstance(output_linear, ElasticWidthLinear):
+            output_linear = output_linear.assemble_basic_linear()
         extracted_module_list.append(output_linear)
-        extracted_module_list = flatten_module_list(extracted_module_list)
-        return copy.deepcopy(module_list_to_module(extracted_module_list))
+        # extracted_module_list = flatten_module_list(extracted_module_list)
+        # return copy.deepcopy(module_list_to_module(extracted_module_list))
+        return copy.deepcopy(nn.Sequential(*extracted_module_list))
 
     # return extracted module for a given progressive shrinking depth step
     def extract_module_from_depth_step(self, depth_step) -> nn.Module:
@@ -647,6 +703,32 @@ class OFAModel(nn.Module):
         self.sampling_max_width_step = 0
 
 
+def is_elastic_module(module: nn.Module) -> bool:
+    return isinstance(
+        module, ElasticKernelConv1d
+    ) or isinstance(
+        module, ElasticWidthBatchnorm1d
+    ) or isinstance(
+        module, ElasticWidthLinear
+    ) or isinstance(
+        module, ElasticPermissiveReLU
+    )
+
+
+def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
+    if isinstance(module, ElasticKernelConv1d):
+        return module.assemble_basic_conv1d()
+    elif isinstance(module, ElasticWidthBatchnorm1d):
+        return module.assemble_basic_batchnorm1d()
+    elif isinstance(module, ElasticWidthLinear):
+        return module.assemble_basic_linear()
+    elif isinstance(module, ElasticPermissiveReLU):
+        return nn.ReLU()
+    else:
+        logging.info(f"requested basic module for non-elastic source module: {type(module)}")
+        return module
+
+
 def rebuild_extracted_blocks(blocks, quantized=False):
     out_modules = nn.ModuleList([])
     module_set = DefaultModuleSet1d()
@@ -671,25 +753,24 @@ def rebuild_extracted_blocks(blocks, quantized=False):
 
         input_modules_flat_length = len(modules)
 
+        # if the module is an elastic module, it is replaced by an equivalent basic module for its current state
+        for i in range(len(modules)):
+            module = modules[i]
+            if is_elastic_module(module):
+                modules[i] = assemble_basic_from_elastic_module(module)
+
         i = 0
         while i in range(len(modules)):
             module = modules[i]
             reassembled_module = None
 
-            # if the module is an elastic kernel convolution, it is replaced by an equivalent basic conv1d for its current state
-            if isinstance(module, ElasticKernelConv1d):
-                replacement_module = module.assemble_basic_conv1d()
-                # assemble_basic_conv1d copies over the elastic filter information
-                module = replacement_module
-
             if isinstance(module, nn.Conv1d):
                 # apply channel filters to the conv, if present.
-                module = apply_channel_filters(module)
                 if i + 1 in range(len(modules)) and isinstance(
                     modules[i + 1], nn.BatchNorm1d
                 ):
                     # apply channel filters to the norm, if present.
-                    norm_module = apply_channel_filters(modules[i + 1])
+                    norm_module = modules[i + 1]
                     if i + 2 in range(len(modules)) and isinstance(
                         modules[i + 2], nn.ReLU
                     ):
@@ -722,16 +803,16 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                         module=module, norm=False, act=False
                     )
             elif isinstance(module, nn.BatchNorm1d):
+                reassembled_module = module
                 # for standalone batchnorms, apply any channel filters, if present.
-                module = apply_channel_filters(module)
-                if module_set.norm1d is not None:
-                    # pass the channel count on to the new norm type
-                    reassembled_module = module_set.norm1d(module.num_features)
-                    reassembled_module.weight = module.weight
-                else:
-                    logging.error(
-                        "Skipping stand-alone norm in reassembly: not available in the selected module set"
-                    )
+                # if module_set.norm1d is not None:
+                #     pass the channel count on to the new norm type
+                #     reassembled_module = module_set.norm1d(module.num_features)
+                #     reassembled_module.weight = module.weight
+                # else:
+                #     logging.error(
+                #         "Skipping stand-alone norm in reassembly: not available in the selected module set"
+                #     )
             elif isinstance(module, nn.ReLU):
                 if module_set.act is not None:
                     reassembled_module = module_set.act()
@@ -752,6 +833,15 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                 )
                 reassembled_module.blocks = reassembled_subblocks
                 reassembled_module.skip = reassembled_skip
+                norm = module.norm
+                act = module.act
+                if is_elastic_module(norm):
+                    norm = assemble_basic_from_elastic_module(norm)
+                if is_elastic_module(act):
+                    act = assemble_basic_from_elastic_module(act)
+                reassembled_module.norm = norm
+                reassembled_module.act = act
+
             elif isinstance(module, ElasticChannelHelper):
                 # elastic channel helper modules are not extracted in a rebuild.
                 # The active filter will be applied to each module.
@@ -771,173 +861,6 @@ def rebuild_extracted_blocks(blocks, quantized=False):
     if input_modules_flat_length != output_modules_flat_length and not quantized:
         logging.info("Reassembly changed length of module list")
     return out_modules
-
-
-# return a module with the in/out channel filters of the input module applied.
-# channels where the filter is false are dropped.
-def apply_channel_filters(module: nn.Module) -> nn.Module:
-    # first, copy the module. return a new module with channels filtered.
-    module = copy.deepcopy(module)
-    if not (
-        isinstance(module, nn.Conv1d)
-        or isinstance(module, nn.Linear)
-        or isinstance(module, nn.BatchNorm1d)
-    ):
-        logging.error(
-            f"channel filter application failed on module of invalid type: '{type(module)}'"
-        )
-        return module
-
-    elastic_width_filter_input = getattr(module, "elastic_width_filter_input", None)
-    elastic_width_filter_output = getattr(module, "elastic_width_filter_output", None)
-    # after extracting the filters from the module, set them to None.
-    # the returned module no longer requires filter application!
-    setattr(module, "elastic_width_filter_input", None)
-    setattr(module, "elastic_width_filter_output", None)
-
-    if (elastic_width_filter_output is None) and (elastic_width_filter_input is None):
-        # if there are no elastic filters to be applied to the module, it can be returned as is.
-        return module
-
-    if isinstance(module, nn.Conv1d) or isinstance(module, nn.Linear):
-        weight = module.weight.data.clone()
-        # conv weight tensor has dimensions out_channels, in_channels, kernel_size
-        # linear weight tensor has dimensions out_channels, in_channels
-        # out_channel count will be length in dim 0
-        out_channel_count = len(weight)
-        # in_channel count will be length in second dim
-        in_channel_count = len(weight[0])
-        new_weight = None
-        for o in range(out_channel_count):
-            # if the output filter is defined and this out_channel is specified with 'False', it is dropped.
-            # simply skip the iteration of this channel
-            if elastic_width_filter_output is None or elastic_width_filter_output[o]:
-                # if this output channel will be kept (no filter, or filter is true)
-                out_channel_segment = weight[o : o + 1]
-                new_out_channel = None
-                for i in range(in_channel_count):
-                    # segment = weight[:,i:i+1]
-                    if (
-                        elastic_width_filter_input is None
-                        or elastic_width_filter_input[i]
-                    ):
-                        in_channel_segment = out_channel_segment[:, i : i + 1]
-                        if new_out_channel is None:
-                            # for the first in_channel being kept, simply copy over the channel
-                            new_out_channel = in_channel_segment
-                        else:
-                            # append the input channel being kept, concatenate in dim 1 (dim 0 has length 1 and is the out_channel)
-                            new_out_channel = torch.cat(
-                                (new_out_channel, in_channel_segment), dim=1
-                            )
-                if new_out_channel is None:
-                    logging.error(
-                        "zero input channels were kept during channel filter application of primary module!"
-                    )
-                if new_weight is None:
-                    # if this is the first out_channel being kept, simply copy it over
-                    new_weight = new_out_channel
-                else:
-                    # for subsequent out_channels, cat them onto the weights in dim 0
-                    new_weight = torch.cat((new_weight, new_out_channel), dim=0)
-        if new_weight is None:
-            logging.error(
-                "zero output channels were kept during channel filter application of primary module!"
-            )
-        # put the new weights back into the module and return it
-        module.weight.data = new_weight
-        # if the module has a bias parameter, also apply the output filtering to it.
-        if module.bias is not None:
-            bias = module.bias.data.clone()
-            new_bias = None
-            for i in range(out_channel_count):
-                # if the filter is undefined, keep all channels
-                if elastic_width_filter_output is None or elastic_width_filter_output[i]:
-                    if new_bias is None:
-                        new_bias = bias[i : i + 1]
-                    else:
-                        new_bias = torch.cat((new_bias, bias[i : i + 1]), dim=0)
-            if new_bias is None:
-                logging.error(
-                    "zero bias channels were kept during channel filter application of primary module with bias parameter!"
-                )
-            module.bias.data = new_bias
-        return module
-
-    elif isinstance(module, nn.BatchNorm1d):
-        elastic_filter = None
-        if elastic_width_filter_output is not None:
-            elastic_filter = elastic_width_filter_output
-            if elastic_width_filter_input is not None:
-                # this should be impossible, as it would require two channel
-                # helpers with a norm but without a 'primary' module in-between
-                logging.error(
-                    "batchnorm1d channel filter application: a filter is specified from both sides (input, output)! defaulting to output filter."
-                )
-        elif elastic_width_filter_input is not None:
-            elastic_filter = elastic_width_filter_input
-        else:
-            # this case should not be reachable
-            logging.error(
-                "initiated batchnorm1d channel filtering with both filters None. This is supposed to be caught earlier!"
-            )
-            return module
-        weight = module.weight.data
-        new_weight = None
-        new_mean = None
-        new_var = None
-        channel_count = len(weight)
-        for i in range(channel_count):
-            if elastic_filter[i]:
-                this_channel = weight[i : i + 1]
-                if module.track_running_stats:
-                    this_mean = module.running_mean[i : i + 1]
-                    this_var = module.running_var[i : i + 1]
-                if new_weight is None:
-                    # for the first channel being kept, simply copy over
-                    new_weight = this_channel
-                    if module.track_running_stats:
-                        new_mean = this_mean
-                        new_var = this_var
-                else:
-                    # if there are already channels being kept, concatenate this one onto the other weights
-                    new_weight = torch.cat((new_weight, this_channel), dim=0)
-                    if module.track_running_stats:
-                        new_mean = torch.cat((new_mean, this_mean), dim=0)
-                        new_var = torch.cat((new_var, this_var), dim=0)
-        if new_weight is None:
-            logging.error(
-                "zero channels were kept during channel filter application of batchnorm1d!"
-            )
-        # put the new weights back into the module and return it
-        module.weight.data = new_weight
-        # if the module has a bias parameter, also apply the output filtering to it.
-        if module.bias is not None:
-            bias = module.bias.data.clone()
-            new_bias = None
-            for i in range(channel_count):
-                # if the filter is undefined, keep all channels
-                if elastic_filter is None or elastic_filter[i]:
-                    if new_bias is None:
-                        new_bias = bias[i : i + 1]
-                    else:
-                        new_bias = torch.cat((new_bias, bias[i : i + 1]), dim=0)
-            if new_bias is None:
-                logging.error(
-                    "zero bias channels were kept during channel filter application of primary module with bias parameter!"
-                )
-            module.bias.data = new_bias
-        if module.track_running_stats:
-            module.running_var = new_var
-            module.running_mean = new_mean
-        return module
-
-    else:
-        # this case should not be reachable
-        logging.error(
-            f"initiated channel filtering for invalid module type: '{type(module)}'. This is supposed to be caught earlier!"
-        )
-        return module
 
 
 class ModuleSet:

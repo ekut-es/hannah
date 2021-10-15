@@ -75,8 +75,8 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         # filter_single_dimensional_weights checks for None-input, no need to do it here.
         new_running_mean = filter_single_dimensional_weights(self.running_mean, self.channel_filter)
         new_running_var = filter_single_dimensional_weights(self.running_var, self.channel_filter)
-        new_weight = filter_single_dimensional_weights(self.weight, self.channel_filter)
-        new_bias = filter_single_dimensional_weights(self.bias, self.channel_filter)
+        new_weight = make_parameter(filter_single_dimensional_weights(self.weight, self.channel_filter))
+        new_bias = make_parameter(filter_single_dimensional_weights(self.bias, self.channel_filter))
         new_bn = nn.BatchNorm1d(
             num_features=self.num_features,
             eps=self.eps,
@@ -88,10 +88,11 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         new_bn.running_var = new_running_var
         new_bn.weight = new_weight
         new_bn.bias = new_bias
+        new_bn.training = self.training
         return new_bn
 
     def assemble_basic_batchnorm1d(self) -> nn.BatchNorm1d:
-        return copy.deepcopy(self.get_basic_batchnorm1d())
+        return copy.deepcopy(self).get_basic_batchnorm1d()
 
 
 class ElasticWidthLinear(nn.Linear):
@@ -128,14 +129,14 @@ class ElasticWidthLinear(nn.Linear):
             new_linear.bias = bias
             return new_linear
         else:
-            new_weight = filter_primary_module_weights(self.weight, self.in_channel_filter, self.out_channel_filter)
-            new_bias = filter_single_dimensional_weights(self.bias, self.out_channel_filter)
+            new_weight = make_parameter(filter_primary_module_weights(self.weight, self.in_channel_filter, self.out_channel_filter))
+            new_bias = make_parameter(filter_single_dimensional_weights(self.bias, self.out_channel_filter))
             new_linear.weight = new_weight
             new_linear.bias = new_bias
             return new_linear
 
     def assemble_basic_linear(self):
-        return copy.deepcopy(self.get_basic_linear())
+        return copy.deepcopy(self).get_basic_linear()
 
 
 # just a ReLu, which can forward a SequenceDiscovery
@@ -148,3 +149,15 @@ class ElasticPermissiveReLU(nn.ReLU):
             return x
         else:
             return super().forward(x)
+
+
+def make_parameter(t: torch.Tensor) -> nn.Parameter:
+    if t is None:
+        return t
+    if isinstance(t, nn.Parameter):
+        return t
+    elif isinstance(t, torch.Tensor):
+        return nn.parameter.Parameter(t)
+    else:
+        logging.error(f"Could not create parameter from input of type '{type(t)}'.")
+        return None

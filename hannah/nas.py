@@ -270,10 +270,10 @@ class OFANasTrainer(NASTrainerBase):
         self.width_step_count = ofa_model.ofa_steps_width
 
         self.submodel_metrics_csv = (
-            "width, kernel, depth, acc, total_macs, total_weights\n"
+            "width, kernel, depth, acc, total_macs, total_weights, torch_params\n"
         )
         self.random_metrics_csv = (
-            "width_steps, depth, kernel_steps, acc, total_macs, total_weights\n"
+            "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
         )
 
         # warm-up.
@@ -373,7 +373,8 @@ class OFANasTrainer(NASTrainerBase):
                     # self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
                     self.submodel_metrics_csv += f"{current_width_step}, {current_kernel_step}, {current_depth_step}, "
                     results = validation_results[0]
-                    self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
+                    torch_params = model.get_validation_model_weight_count()
+                    self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
                     self.submodel_metrics_csv += "\n"
                     # print(validation_results)
 
@@ -405,7 +406,8 @@ class OFANasTrainer(NASTrainerBase):
             self.random_metrics_csv += (
                 f"{selected_widths_string}, {selected_depth}, {selected_kernels_string}, "
             )
-            self.random_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}"
+            torch_params = model.get_validation_model_weight_count()
+            self.random_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
             self.random_metrics_csv += "\n"
 
         # revert to normal operation after eval.
