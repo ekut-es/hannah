@@ -1,6 +1,6 @@
 _target_: hannah.models.ofa.models.create
 name: ofa
-skew_sampling_distribution: true
+skew_sampling_distribution: false
 min_depth: 3
 norm_before_act: true
 dropout: 0.5
