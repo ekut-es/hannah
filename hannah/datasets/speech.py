@@ -110,7 +110,7 @@ class SpeechDataset(AbstractDataset):
 
     @classmethod
     def prepare(cls, config):
-        cls.download(config)
+        cls.prepare_data(config)
 
     def _timeshift_audio(self, data):
         """Shifts data by a random amount of ms given by parameter timeshift_ms"""
@@ -372,6 +372,10 @@ class SpeechCommandsDataset(SpeechDataset):
         return datasets
 
     @classmethod
+    def prepare_data(cls, config):
+        cls.download(config)
+
+    @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
@@ -485,6 +489,10 @@ class SpeechHotwordDataset(SpeechDataset):
         return res_datasets
 
     @classmethod
+    def prepare_data(cls, config):
+        cls.download(config)
+
+    @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
@@ -509,7 +517,7 @@ class SpeechHotwordDataset(SpeechDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        snips_filename = "hey_snips_kws_4.0.tar.gz"
+        snips_filename = "hey_snips_kws_4_0.tar.gz"
         url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1"
 
         extract_from_download_cache(
@@ -530,7 +538,7 @@ class VadDataset(SpeechDataset):
         self.label_names = {0: "noise", 1: "speech"}
 
     @classmethod
-    def prepare(cls, config):
+    def prepare_data(cls, config):
         override = config.get("override", False)
         wait = False
         if override:
@@ -933,6 +941,10 @@ class KeyWordDataset(SpeechDataset):
             cls(sets[2], DatasetType.TEST, config),
         )
         return datasets
+
+    @classmethod
+    def prepare_data(cls, config):
+        cls.download(config)
 
     @classmethod
     def download(cls, config):
