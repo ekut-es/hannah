@@ -361,10 +361,10 @@ class OFANasTrainer(NASTrainerBase):
                         model.active_depth -= 1
 
                     self.rebuild_trainer(
-                        f"Eval K {current_kernel_step}, D {current_depth_step}, W {current_width_step}"
+                        f"Eval D {current_depth_step}, K {current_kernel_step}, W {current_width_step}"
                     )
                     logging.info(
-                        f"OFA validating Kernel {current_kernel_step}, Depth {current_depth_step}, Width {current_width_step}"
+                        f"OFA validating  Depth {current_depth_step}, Kernel {current_kernel_step}, Width {current_width_step}"
                     )
                     model.build_validation_model()
                     validation_results = self.trainer.validate(
@@ -393,7 +393,7 @@ class OFANasTrainer(NASTrainerBase):
             selected_kernels_string = str(selected_kernels).replace(",", ";")
             selected_widths_string = str(selected_widths).replace(",", ";")
             self.rebuild_trainer(
-                f"Eval random sample: W {current_width_step}, Ds {selected_widths}, Ks {selected_kernels}"
+                f"Eval random sample: D {selected_depth}, Ks {selected_kernels}, Ws {selected_widths}"
             )
             logging.info(
                 f"OFA validating random sample:\n{random_state}"
