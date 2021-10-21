@@ -111,7 +111,7 @@ def train(config: DictConfig):
             profiler=profiler,
             callbacks=callbacks,
             logger=logger,
-            reload_dataloaders_every_epoch=True,
+            reload_dataloaders_every_n_epochs=1,
         )
 
         if config["auto_lr"]:
