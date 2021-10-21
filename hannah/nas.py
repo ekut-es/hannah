@@ -370,8 +370,8 @@ class OFANasTrainer(NASTrainerBase):
                     logging.info(
                         f"OFA validating  Depth {current_depth_step}, Kernel {current_kernel_step}, Width {current_width_step}"
                     )
-                    if model.validate_on_extracted:
-                        model.build_validation_model()
+
+                    model.build_validation_model()
                     validation_results = self.trainer.validate(
                         lightning_model, ckpt_path=None, verbose=True
                     )
