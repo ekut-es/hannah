@@ -5,6 +5,7 @@ import torch.nn as nn
 # import torch.nn.functional as nnf
 import numpy as np
 import logging
+
 # import torch
 
 # from ..utils import ConfigType, SerializableModule
@@ -12,7 +13,12 @@ from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
 from .submodules.elastickernelconv import ElasticKernelConv1d
 from .submodules.resblock import ResBlock1d, ResBlockBase
-from .submodules.elasticwidthmodules import ElasticPermissiveReLU, ElasticWidthBatchnorm1d, ElasticWidthLinear
+from .submodules.elasticwidthmodules import (
+    ElasticPermissiveReLU,
+    ElasticWidthBatchnorm1d,
+    ElasticWidthLinear,
+)
+
 # from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
     flatten_module_list,
@@ -26,7 +32,15 @@ from .utilities import (
 
 
 def create(
-    name: str, labels: int, input_shape, conv=[], min_depth: int = 1, norm_before_act=True, skew_sampling_distribution: bool = False, dropout : int = 0.5,
+    name: str,
+    labels: int,
+    input_shape,
+    conv=[],
+    min_depth: int = 1,
+    norm_before_act=True,
+    skew_sampling_distribution: bool = False,
+    dropout: int = 0.5,
+    validate_on_extracted=True,
 ) -> nn.Module:
     # if no orders for the norm operator are specified, fall back to default
 
@@ -83,6 +97,7 @@ def create(
         block_config=conv,
         skew_sampling_distribution=skew_sampling_distribution,
         dropout=dropout,
+        validate_on_extracted=validate_on_extracted,
     )
 
     # store the name onto the model
@@ -164,14 +179,16 @@ def create_minor_block(
         out_channels = block_config.out_channels
         # create a conv minor block from the config, autoset padding
         minor_block_internal_sequence = nn.ModuleList([])
-        logging.info("block config contains a normal conv module. It will be converted to an elastic conv for elastic width support.")
+        logging.info(
+            "block config contains a normal conv module. It will be converted to an elastic conv for elastic width support."
+        )
         new_minor_block = ElasticKernelConv1d(
-                kernel_sizes=[block_config.kernel_size],
-                in_channels=in_channels,
-                out_channels=out_channels,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
+            kernel_sizes=[block_config.kernel_size],
+            in_channels=in_channels,
+            out_channels=out_channels,
+            stride=stride,
+            # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+        )
 
         minor_block_internal_sequence.append(new_minor_block)
 
@@ -313,7 +330,6 @@ def create_residual_block_1d(
         minor_blocks=minor_blocks,
         stride=stride,
         norm_before_act=norm_before_act,
-
     )
     return residual_block
 
@@ -331,8 +347,10 @@ class OFAModel(nn.Module):
         block_config=[],
         skew_sampling_distribution=False,
         dropout=0.5,
+        validate_on_extracted=False,
     ):
         super().__init__()
+        self.validate_on_extracted = validate_on_extracted
         self.conv_layers = conv_layers
         self.max_depth = max_depth
         self.active_depth = self.max_depth
@@ -375,31 +393,45 @@ class OFAModel(nn.Module):
         self.ofa_steps_depth = 1
         self.ofa_steps_width = 1
         # create a list of every elastic kernel conv, for sampling
-        all_elastic_kernel_convs = get_instances_from_deep_nested(input=self.conv_layers, type_selection=ElasticKernelConv1d)
+        all_elastic_kernel_convs = get_instances_from_deep_nested(
+            input=self.conv_layers, type_selection=ElasticKernelConv1d
+        )
         self.elastic_kernel_convs = []
         for item in all_elastic_kernel_convs:
             if item.get_available_kernel_steps() > 1:
                 # ignore convs with only one available kernel size, they do not need to be stored
                 self.elastic_kernel_convs.append(item)
-        logging.info(f"OFA model accumulated {len(self.elastic_kernel_convs)} elastic kernel convolutions for sampling.")
+        logging.info(
+            f"OFA model accumulated {len(self.elastic_kernel_convs)} elastic kernel convolutions for sampling."
+        )
 
         # create a list of every elastic width helper, for sampling
-        self.elastic_channel_helpers = get_instances_from_deep_nested(input=self.conv_layers, type_selection=ElasticChannelHelper)
-        logging.info(f"OFA model accumulated {len(self.elastic_channel_helpers)} elastic width connections for sampling.")
+        self.elastic_channel_helpers = get_instances_from_deep_nested(
+            input=self.conv_layers, type_selection=ElasticChannelHelper
+        )
+        logging.info(
+            f"OFA model accumulated {len(self.elastic_channel_helpers)} elastic width connections for sampling."
+        )
 
     def forward(self, x):
         self.last_input = x
         self.current_step = self.current_step + 1
 
         # in eval mode, run the forward on the extracted validation model.
-        if self.eval_mode:
+        if self.eval_mode and self.validate_on_extracted:
             if self.validation_model is None:
-                logging.warn("forward in validation mode called without building validation model!")
+                logging.warn(
+                    "forward in validation mode called without building validation model!"
+                )
                 self.build_validation_model()
             return self.validation_model.forward(x)
 
         # if the network is currently being evaluated, don't sample a subnetwork!
-        if (self.sampling_max_depth_step > 0 or self.sampling_max_kernel_step > 0 or self.sampling_max_width_step > 0) and not self.eval_mode:
+        if (
+            self.sampling_max_depth_step > 0
+            or self.sampling_max_kernel_step > 0
+            or self.sampling_max_width_step > 0
+        ) and not self.eval_mode:
             self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
             x = layer(x)
@@ -429,7 +461,7 @@ class OFAModel(nn.Module):
         for i in range(self.min_depth, self.max_depth + 1):
             # range goes from min depth to including the max depth
             output_linear = self.get_output_linear_layer(i)
-            sequence_discovery = per_layer_output_discoveries[i-1]
+            sequence_discovery = per_layer_output_discoveries[i - 1]
             output_linear.forward(sequence_discovery)
             # the resulting output sequence discovery is dropped. no module trails the output linear.
 
@@ -437,20 +469,24 @@ class OFAModel(nn.Module):
     def sample_subnetwork(self):
         state = {"depth_step": 0, "kernel_steps": [], "width_steps": []}
         # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
-        new_depth_step = self.get_random_step(self.sampling_max_depth_step+1)
+        new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
         self.active_depth = self.max_depth - new_depth_step
         state["depth_step"] = new_depth_step
 
         for conv in self.elastic_kernel_convs:
             # pick an available kernel index for every elastic kernel conv, independently.
-            max_available_sampling_step = min(self.sampling_max_kernel_step+1, conv.get_available_kernel_steps())
+            max_available_sampling_step = min(
+                self.sampling_max_kernel_step + 1, conv.get_available_kernel_steps()
+            )
             new_kernel_step = self.get_random_step(max_available_sampling_step)
             conv.pick_kernel_index(new_kernel_step)
             state["kernel_steps"].append(new_kernel_step)
 
         for helper in self.elastic_channel_helpers:
             # pick an available width step for every elastic channel helper, independently.
-            max_available_sampling_step = min(self.sampling_max_width_step+1, helper.get_available_width_steps())
+            max_available_sampling_step = min(
+                self.sampling_max_width_step + 1, helper.get_available_width_steps()
+            )
             new_width_step = self.get_random_step(max_available_sampling_step)
             helper.set_channel_step(new_width_step)
             state["width_steps"].append(new_width_step)
@@ -487,7 +523,11 @@ class OFAModel(nn.Module):
             kernel_steps.append(conv.get_available_kernel_steps())
         for helper in self.elastic_channel_helpers:
             width_steps.append(helper.get_available_width_steps())
-        state = {"depth_step": max_depth_step, "kernel_steps": kernel_steps, "width_steps": width_steps}
+        state = {
+            "depth_step": max_depth_step,
+            "kernel_steps": kernel_steps,
+            "width_steps": width_steps,
+        }
         return state
 
     # accept a state dict like the one returned in get_max_submodel_steps, return extracted submodel.
@@ -501,17 +541,23 @@ class OFAModel(nn.Module):
     # accept a state dict like the one returned in get_max_submodel_steps, sets model state.
     def set_submodel(self, state: dict):
         try:
-            depth_step = state['depth_step']
-            kernel_steps = state['kernel_steps']
-            width_steps = state['width_steps']
+            depth_step = state["depth_step"]
+            kernel_steps = state["kernel_steps"]
+            width_steps = state["width_steps"]
         except KeyError:
-            logging.error("Invalid state dict passed to get_submodel! Keys should be 'depth_step', 'kernel_steps', 'width_steps'!")
+            logging.error(
+                "Invalid state dict passed to get_submodel! Keys should be 'depth_step', 'kernel_steps', 'width_steps'!"
+            )
             return False
         if len(kernel_steps) != len(self.elastic_kernel_convs):
-            print(f"State dict provides invalid amount of kernel steps: model has {len(self.elastic_kernel_convs)}, {len(kernel_steps)} provided.")
+            print(
+                f"State dict provides invalid amount of kernel steps: model has {len(self.elastic_kernel_convs)}, {len(kernel_steps)} provided."
+            )
             return False
         if len(width_steps) != len(self.elastic_channel_helpers):
-            print(f"State dict provides invalid amount of width steps: model has {len(self.elastic_channel_helpers)}, {len(width_steps)} provided.")
+            print(
+                f"State dict provides invalid amount of width steps: model has {len(self.elastic_channel_helpers)}, {len(width_steps)} provided."
+            )
             return False
 
         self.active_depth = self.max_depth - depth_step
@@ -531,7 +577,9 @@ class OFAModel(nn.Module):
         else:
             # create a dict of the pointer of each parameter to the item count within that parameter
             # using a dict with pointers as keys ensures that no parameter is counted twice
-            parameter_pointers_dict = dict((p.data_ptr(), p.numel()) for p in self.validation_model.parameters())
+            parameter_pointers_dict = dict(
+                (p.data_ptr(), p.numel()) for p in self.validation_model.parameters()
+            )
             # sum up the values of each dict item, yielding the total element count across params
             return sum(parameter_pointers_dict.values())
 
@@ -704,14 +752,11 @@ class OFAModel(nn.Module):
 
 
 def is_elastic_module(module: nn.Module) -> bool:
-    return isinstance(
-        module, ElasticKernelConv1d
-    ) or isinstance(
-        module, ElasticWidthBatchnorm1d
-    ) or isinstance(
-        module, ElasticWidthLinear
-    ) or isinstance(
-        module, ElasticPermissiveReLU
+    return (
+        isinstance(module, ElasticKernelConv1d)
+        or isinstance(module, ElasticWidthBatchnorm1d)
+        or isinstance(module, ElasticWidthLinear)
+        or isinstance(module, ElasticPermissiveReLU)
     )
 
 
@@ -725,7 +770,9 @@ def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
     elif isinstance(module, ElasticPermissiveReLU):
         return nn.ReLU()
     else:
-        logging.info(f"requested basic module for non-elastic source module: {type(module)}")
+        logging.info(
+            f"requested basic module for non-elastic source module: {type(module)}"
+        )
         return module
 
 

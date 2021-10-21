@@ -133,6 +133,8 @@ class ElasticKernelConv1d(nn.Conv1d):
         current_kernel_index = 0
         current_kernel = self.weight
 
+        logging.debug("Target kernel index: %s", str(self.target_kernel_index))
+
         # step through kernels until the target index is reached.
         while current_kernel_index < self.target_kernel_index:
             if current_kernel_index >= len(self.kernel_sizes):
@@ -164,7 +166,9 @@ class ElasticKernelConv1d(nn.Conv1d):
             new_kernel = full_kernel
         else:
             # if channels need to be filtered, apply filters to the kernel
-            new_kernel = filter_primary_module_weights(full_kernel, self.in_channel_filter, self.out_channel_filter)
+            new_kernel = filter_primary_module_weights(
+                full_kernel, self.in_channel_filter, self.out_channel_filter
+            )
         # if the module has a bias parameter, also apply the output filtering to it.
         if self.bias is None:
             return new_kernel, None
@@ -173,7 +177,9 @@ class ElasticKernelConv1d(nn.Conv1d):
                 # if out_channels are unfiltered, the output bias does not need filtering.
                 return new_kernel, self.bias
             else:
-                new_bias = filter_single_dimensional_weights(self.bias, self.out_channel_filter)
+                new_bias = filter_single_dimensional_weights(
+                    self.bias, self.out_channel_filter
+                )
                 return new_kernel, new_bias
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
