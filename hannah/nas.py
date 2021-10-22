@@ -269,12 +269,16 @@ class OFANasTrainer(NASTrainerBase):
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
 
+        logging.info("Kernel Steps: %d", self.kernel_step_count)
+        logging.info("Depth Steps: %d", self.depth_step_count)
+        logging.info("Width Steps: %d", self.width_step_count)
+
         self.submodel_metrics_csv = (
             "width, kernel, depth, acc, total_macs, total_weights, torch_params\n"
         )
-        self.random_metrics_csv = (
-            "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
-        )
+        self.random_metrics_csv = "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
+
+        logging.info("Once for all Model:\n %s", str(ofa_model))
 
         # warm-up.
         self.rebuild_trainer("warmup", self.epochs_warmup)
@@ -366,6 +370,7 @@ class OFANasTrainer(NASTrainerBase):
                     logging.info(
                         f"OFA validating  Depth {current_depth_step}, Kernel {current_kernel_step}, Width {current_width_step}"
                     )
+
                     model.build_validation_model()
                     validation_results = self.trainer.validate(
                         lightning_model, ckpt_path=None, verbose=True
@@ -395,17 +400,13 @@ class OFANasTrainer(NASTrainerBase):
             self.rebuild_trainer(
                 f"Eval random sample: D {selected_depth}, Ks {selected_kernels}, Ws {selected_widths}"
             )
-            logging.info(
-                f"OFA validating random sample:\n{random_state}"
-            )
+            logging.info(f"OFA validating random sample:\n{random_state}")
             model.build_validation_model()
             validation_results = self.trainer.validate(
                 lightning_model, ckpt_path=None, verbose=True
             )
             results = validation_results[0]
-            self.random_metrics_csv += (
-                f"{selected_widths_string}, {selected_depth}, {selected_kernels_string}, "
-            )
+            self.random_metrics_csv += f"{selected_widths_string}, {selected_depth}, {selected_kernels_string}, "
             torch_params = model.get_validation_model_weight_count()
             self.random_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
             self.random_metrics_csv += "\n"
