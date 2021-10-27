@@ -1,4 +1,0 @@
-# @package _group_
-
-name: test_net
-input_shape: [1, 40, 101]

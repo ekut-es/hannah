@@ -72,6 +72,9 @@ class InferenceBackendBase(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
         self.validation_epoch += 1
 
+    def on_test_epoch_start(self, trainer, pl_module):
+        self.prepare(pl_module)
+
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):

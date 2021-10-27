@@ -1,8 +1,0 @@
-# @package _group_
-
-name: local_cpu
-target: "llvm -mcpu=core-avx2"
-target_host: "llvm -mcpu=core-avx2"
-local: True
-opencl: True
-cuda: False

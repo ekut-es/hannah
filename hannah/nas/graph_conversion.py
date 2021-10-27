@@ -2,7 +2,6 @@ import logging
 import copy
 
 from dataclasses import dataclass
-from hannah.nas.performance_prediction.search_space.space import Conv1dEntity
 from typing import Dict, Tuple, Any
 
 import networkx as nx
@@ -139,8 +138,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             attrs={},
             output={"quant": quant_attrs, "shape": output.shape},
             inputs=input_attrs,
-            type='relu',
-            )
+            type="relu",
+        )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
@@ -268,9 +267,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             output_bits = (
                 input_attrs[0]["quant"]["bits"]
                 + weight_attrs["quant"]["bits"]
-                + math.ceil(
-                    math.log(attrs["in_features"])
-                )
+                + math.ceil(math.log(attrs["in_features"]))
             )
             output_quant = {
                 "dtype": input_attrs[0]["quant"]["dtype"],
@@ -298,7 +295,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             self.add_nodes_relu(relu_name, None, relu_args, output)
 
             name = relu_name
-        
+
         quantization = None
         activation_post_process = getattr(mod, "activation_post_process", None)
         if activation_post_process:
@@ -326,8 +323,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             attrs={},  # TODO: Pool size?
             output={"quant": quant_attrs, "shape": output.shape},
             inputs=input_attrs,
-            type='pooling',
-            )
+            type="pooling",
+        )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
@@ -344,8 +341,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             attrs={},  # TODO: Other add attributes?
             output={"quant": quant_attrs, "shape": output.shape},
             inputs=input_attrs,
-            type='add',
-            )
+            type="add",
+        )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
@@ -362,8 +359,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             attrs={},  # TODO: Other dropout attributes?
             output={"quant": quant_attrs, "shape": output.shape},
             inputs=input_attrs,
-            type='dropout',
-            )
+            type="dropout",
+        )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
@@ -380,8 +377,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             attrs={},
             output={"quant": quant_attrs, "shape": output.shape},
             inputs=input_attrs,
-            type='flatten',
-            )
+            type="flatten",
+        )
 
         input_names = [arg.name for arg in args]
         for input_name in input_names:
@@ -444,13 +441,8 @@ def model_to_graph(model, input):
     model.cpu()
     model.eval()
     traced_graph = tracer.trace(model)
-    # print(traced_graph)
+
     interpreter = GraphConversionInterpreter(torch.fx.GraphModule(model, traced_graph))
-    result = interpreter.run(input)
-
-    # print(interpreter.nx_graph)
-
-    # for edge in interpreter.nx_graph.edges:
-    #     print(edge)
+    interpreter.run(input)
 
     return interpreter.nx_graph
