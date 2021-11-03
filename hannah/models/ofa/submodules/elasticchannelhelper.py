@@ -91,7 +91,9 @@ class ElasticChannelHelper(nn.Module):
             filtered_channel_index = self.channels_by_priority[i]
             self.channel_pass_filter[filtered_channel_index] = False
 
-        if isinstance(self.target, ElasticKernelConv1d) or isinstance(self.target, ElasticWidthLinear):
+        if isinstance(self.target, ElasticKernelConv1d) or isinstance(
+            self.target, ElasticWidthLinear
+        ):
             self.apply_filter_to_module(self.target, is_target=True)
         else:
             logging.warn(
@@ -105,7 +107,9 @@ class ElasticChannelHelper(nn.Module):
     # if is_target is set to true, the module is a target module (filter its input).
     # false -> source module -> filter its output
     def apply_filter_to_module(self, module, is_target: bool):
-        if isinstance(module, ElasticKernelConv1d) or isinstance(module, ElasticWidthLinear):
+        if isinstance(module, ElasticKernelConv1d) or isinstance(
+            module, ElasticWidthLinear
+        ):
             if is_target:
                 # target module -> set module input filter
                 if len(module.in_channel_filter) != len(self.channel_pass_filter):
@@ -122,6 +126,25 @@ class ElasticChannelHelper(nn.Module):
                     )
                     return
                 module.out_channel_filter = self.channel_pass_filter
+        elif isinstance(module, ElasticConvBn1d) or isinstance(
+            module, ElasticWidthLinear
+        ):
+            if is_target:
+                # target module -> set module input filter
+                if len(module.in_channel_filter) != len(self.channel_pass_filter):
+                    logging.error(
+                        f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.in_channel_filter)} of {type(module)}! "
+                    )
+                    return
+                module.in_channel_filter = self.channel_pass_filter
+            else:
+                # source module -> set module output filter
+                if len(module.out_channel_filter) != len(self.channel_pass_filter):
+                    logging.error(
+                        f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.out_channel_filter)} of {type(module)}! "
+                    )
+                    return
+                module.set_out_channel_filter(self.channel_pass_filter)
 
         elif isinstance(module, ElasticWidthBatchnorm1d):
             # this is normal for residual blocks with a norm after applying residual output to blocks output
@@ -134,7 +157,9 @@ class ElasticChannelHelper(nn.Module):
                 return
             module.channel_filter = self.channel_pass_filter
         else:
-            logging.error(f"Elastic channel helper could not apply filter to module of unknown type: {type(module)}")
+            logging.error(
+                f"Elastic channel helper could not apply filter to module of unknown type: {type(module)}"
+            )
 
     # step down channel count by one channel step
     def step_down_channels(self):
@@ -151,7 +176,9 @@ class ElasticChannelHelper(nn.Module):
 
     def set_channel_step(self, step: int):
         if step not in range(len(self.channel_counts)):
-            logging.warn(f"Elastic channel helper step target {step} out of range for length {len(self.channel_counts)}. Defaulting to 0.")
+            logging.warn(
+                f"Elastic channel helper step target {step} out of range for length {len(self.channel_counts)}. Defaulting to 0."
+            )
             step = 0
         if step == self.channel_step:
             # only re-apply filters if there is actually going to be a change.
@@ -198,7 +225,9 @@ class ElasticChannelHelper(nn.Module):
 
     # check if a module is valid as a primary target (to compute channel priorities from)
     def is_primary_target(module: nn.Module) -> bool:
-        return isinstance(module, ElasticKernelConv1d) or isinstance(module, ElasticWidthLinear)
+        return isinstance(module, ElasticKernelConv1d) or isinstance(
+            module, ElasticWidthLinear
+        )
 
     # add additional target(s) which must also have their inputs adjusted when
     # stepping down channels
@@ -289,7 +318,7 @@ class ElasticChannelHelper(nn.Module):
         return x
 
 
-class SequenceDiscovery():
+class SequenceDiscovery:
     def __init__(self, is_accumulating_sources: bool = True):
         super().__init__()
         # mode is either: accumulating sources for an upcoming elastic width connection
@@ -304,11 +333,16 @@ class SequenceDiscovery():
     # simply pass a reference to the new module, this includes helper modules.
     def discover(self, new_module, force_secondary_target: bool = False):
         # primary targets will re-set collected modules, and change mode to source accumulation
-        if ElasticChannelHelper.is_primary_target(new_module) and not force_secondary_target:
+        if (
+            ElasticChannelHelper.is_primary_target(new_module)
+            and not force_secondary_target
+        ):
             if not self.is_accumulating_sources:
                 # if in target finding mode, pass the newly discovered module as a target to the helper
                 if self.helper is None:
-                    logging.error("SequenceDiscovery is in target mode, but has no helper module!")
+                    logging.error(
+                        "SequenceDiscovery is in target mode, but has no helper module!"
+                    )
                 else:
                     self.helper.discover_target(new_module)
             # with primary modules, a new source sequence is always started:
@@ -325,7 +359,9 @@ class SequenceDiscovery():
             if not self.is_accumulating_sources:
                 # if accumulating targets with force_secondary_target, add module as secondary target
                 if self.helper is None:
-                    logging.error("SequenceDiscovery is in target mode, but has no helper module!")
+                    logging.error(
+                        "SequenceDiscovery is in target mode, but has no helper module!"
+                    )
                 else:
                     self.helper.add_secondary_target_item(new_module)
             # since the module is still a primary module, switch to a new source discovery (regardless of previous mode)
@@ -336,10 +372,14 @@ class SequenceDiscovery():
         elif isinstance(new_module, ElasticChannelHelper):
             if self.is_accumulating_sources:
                 # if in source accumulation mode, pass accumulated sources to the helper.
-                print(f"Passing to elastic helper: {len(self.accumulated_sources)} modules as sources")
+                print(
+                    f"Passing to elastic helper: {len(self.accumulated_sources)} modules as sources"
+                )
                 new_module.add_sources(self.accumulated_sources)
             else:
-                logging.error("Elastic width helper target accumulation reached another helper module!")
+                logging.error(
+                    "Elastic width helper target accumulation reached another helper module!"
+                )
             # after discovery reaches a helper module, the mode is switched to target discovery.
             new_discovery = SequenceDiscovery(is_accumulating_sources=False)
             new_discovery.helper = new_module
@@ -351,7 +391,9 @@ class SequenceDiscovery():
                 self.accumulated_sources.append(new_module)
             else:
                 if self.helper is None:
-                    logging.error("SequenceDiscovery is in target mode, but has no helper module!")
+                    logging.error(
+                        "SequenceDiscovery is in target mode, but has no helper module!"
+                    )
                 else:
                     self.helper.add_secondary_target_item(new_module)
             return self
@@ -363,15 +405,23 @@ class SequenceDiscovery():
             for new_source in second_discovery.accumulated_sources:
                 self.accumulated_sources.append(new_source)
             return self
-        elif not self.is_accumulating_sources and second_discovery.is_accumulating_sources:
+        elif (
+            not self.is_accumulating_sources
+            and second_discovery.is_accumulating_sources
+        ):
             # if this module is in find target mode, and is being merged with sources, add sources to this helper
             # then, pass on the target discovery unmodified.
             if self.helper is None:
-                logging.error("SequenceDiscovery is in target mode, but has no helper module!")
+                logging.error(
+                    "SequenceDiscovery is in target mode, but has no helper module!"
+                )
             else:
                 self.helper.add_sources(second_discovery.accumulated_sources)
             return self
-        elif self.is_accumulating_sources and not second_discovery.is_accumulating_sources:
+        elif (
+            self.is_accumulating_sources
+            and not second_discovery.is_accumulating_sources
+        ):
             # if the other discovery is in target mode, and this discovery is not,
             # simply re-call the merge on the other module to avoid code duplication
             return second_discovery.merge_sequence_discovery(self)
@@ -379,7 +429,9 @@ class SequenceDiscovery():
             # if both discoveries are in target mode, the next target(s) could theoretically be passed to both helpers
             # as they would calculate the same norms, they should both pass forward the same filter
             # optimally, both helpers should probably be merged
-            raise NotImplementedError("merging target discoveries of separate helpers from parallel blocks is NYI.")
+            raise NotImplementedError(
+                "merging target discoveries of separate helpers from parallel blocks is NYI."
+            )
             # skip connections on residual blocks don't need to contain their own helper module.
             # for parallel blocks, simply having the the last connection be elastic on only one of the blocks is sufficient:
             # the 'sources' of the other block will be added to the helper of the 'primary' block during the merge
@@ -387,7 +439,9 @@ class SequenceDiscovery():
     # return a second, new discovery with the same references, for splitting off a connection
     # this may be done at the input of a resblock for example.
     def split(self):
-        new_discovery = SequenceDiscovery(is_accumulating_sources=self.is_accumulating_sources)
+        new_discovery = SequenceDiscovery(
+            is_accumulating_sources=self.is_accumulating_sources
+        )
         # yield shallow copy of sources list
         new_discovery.accumulated_sources = list(self.accumulated_sources)
         new_discovery.helper = self.helper
@@ -396,4 +450,4 @@ class SequenceDiscovery():
 
 # imports are located at the bottom to circumvent circular dependency import issues
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
-from .elastickernelconv import ElasticKernelConv1d
+from .elastickernelconv import ElasticKernelConv1d, ElasticConvBn1d
