@@ -11,7 +11,7 @@ import logging
 # from ..utils import ConfigType, SerializableModule
 from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
-from .submodules.elastickernelconv import ElasticKernelConv1d
+from .submodules.elastickernelconv import ElasticKernelConv1d, ElasticConvBn1d
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
     ElasticPermissiveReLU,
@@ -182,7 +182,7 @@ def create_minor_block(
         logging.info(
             "block config contains a normal conv module. It will be converted to an elastic conv for elastic width support."
         )
-        new_minor_block = ElasticKernelConv1d(
+        new_minor_block = ElasticConvBn1d(
             kernel_sizes=[block_config.kernel_size],
             in_channels=in_channels,
             out_channels=out_channels,
@@ -193,7 +193,7 @@ def create_minor_block(
         minor_block_internal_sequence.append(new_minor_block)
 
         # add norm/act if requested
-        add_norm = block_config.get("norm", False)
+        add_norm = False  # block_config.get("norm", False)
         add_act = block_config.get("act", False)
         norm_act_sequence = create_norm_act_sequence(
             add_norm, add_act, out_channels, norm_before_act
@@ -215,7 +215,7 @@ def create_minor_block(
         kernel_sizes = block_config.kernel_sizes
         # create a minor block, potentially with activation and norm
         minor_block_internal_sequence = nn.ModuleList([])
-        new_minor_block = ElasticKernelConv1d(
+        new_minor_block = ElasticConvBn1d(
             in_channels=in_channels,
             out_channels=out_channels_full,
             kernel_sizes=kernel_sizes,
@@ -225,7 +225,7 @@ def create_minor_block(
 
         # add norm/act if requested
         norm_act_sequence = create_norm_act_sequence(
-            block_config.norm, block_config.act, out_channels_full, norm_before_act
+            False, block_config.act, out_channels_full, norm_before_act
         )
         if norm_act_sequence is not None:
             minor_block_internal_sequence.append(norm_act_sequence)
