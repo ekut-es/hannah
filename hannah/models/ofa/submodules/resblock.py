@@ -1,6 +1,6 @@
 import torch.nn as nn
 from .elasticwidthmodules import ElasticWidthBatchnorm1d
-from .elastickernelconv import ElasticKernelConv1d
+from .elastickernelconv import ElasticConv1d
 from .elasticchannelhelper import SequenceDiscovery
 
 
@@ -79,8 +79,12 @@ class ResBlock1d(ResBlockBase):
         # if applying skip to the residual values is required, create skip as a minimal conv1d
         # stride is also applied to the skip layer (if specified, default is 1)
         self.skip = nn.Sequential(
-            ElasticKernelConv1d(
-                self.in_channels, out_channels, kernel_sizes=[1], stride=stride, bias=False
+            ElasticConv1d(
+                self.in_channels,
+                out_channels,
+                kernel_sizes=[1],
+                stride=stride,
+                bias=False,
             ),
             ElasticWidthBatchnorm1d(self.out_channels),
         )  # if self.apply_skip else None
@@ -96,7 +100,9 @@ class ResBlock1d(ResBlockBase):
             blocks_resulting_discovery = self.blocks.forward(x)
             skip_resulting_discovery = self.skip.forward(second_discovery)
             # merge the two discoveries together where the module outputs would normally be added.
-            new_discovery = blocks_resulting_discovery.merge_sequence_discovery(skip_resulting_discovery)
+            new_discovery = blocks_resulting_discovery.merge_sequence_discovery(
+                skip_resulting_discovery
+            )
             # pass it through the resblock internal norm - norm/act sequence is irrelevant
             # as the activation does not affect discovery whatsoever.
             return self.norm(new_discovery)

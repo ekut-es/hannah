@@ -9,9 +9,15 @@ import logging
 # import torch
 
 # from ..utils import ConfigType, SerializableModule
+from omegaconf import ListConfig
+
 from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
-from .submodules.elastickernelconv import ElasticKernelConv1d, ElasticConvBn1d
+from .submodules.elastickernelconv import (
+    ElasticConv1d,
+    ElasticConvBn1d,
+    ElasticConvBnReLU1d,
+)
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
     ElasticPermissiveReLU,
@@ -175,68 +181,60 @@ def create_minor_block(
     # use it as the default value if available, otherwise it must be set by the specific code handling the target type
     new_block_out_channels = getattr(block_config, "out_channels", 1)
 
-    if block_config.target == "conv1d":
+    if "conv1d" in block_config.target:
         out_channels = block_config.out_channels
-        # create a conv minor block from the config, autoset padding
-        minor_block_internal_sequence = nn.ModuleList([])
-        logging.info(
-            "block config contains a normal conv module. It will be converted to an elastic conv for elastic width support."
-        )
-        new_minor_block = ElasticConvBn1d(
-            kernel_sizes=[block_config.kernel_size],
-            in_channels=in_channels,
-            out_channels=out_channels,
-            stride=stride,
-            # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-        )
-
-        minor_block_internal_sequence.append(new_minor_block)
-
-        # add norm/act if requested
-        add_norm = False  # block_config.get("norm", False)
-        add_act = block_config.get("act", False)
-        norm_act_sequence = create_norm_act_sequence(
-            add_norm, add_act, out_channels, norm_before_act
-        )
-
-        if norm_act_sequence is not None:
-            minor_block_internal_sequence.append(norm_act_sequence)
-
-        new_block = module_list_to_module(
-            flatten_module_list(minor_block_internal_sequence)
-        )
-        # the input channel count of the next minor block is the output channel count of the previous block
-        new_block_out_channels = out_channels
-    elif block_config.target == "elastic_conv1d":
-        out_channels_list = block_config.out_channels
-        out_channels_list.sort(reverse=True)
+        if not isinstance(out_channels, ListConfig):
+            out_channels = [out_channels]
+        out_channels.sort(reverse=True)
         # the maximum available width is the initial output channel count
-        out_channels_full = out_channels_list[0]
-        kernel_sizes = block_config.kernel_sizes
-        # create a minor block, potentially with activation and norm
-        minor_block_internal_sequence = nn.ModuleList([])
-        new_minor_block = ElasticConvBn1d(
-            in_channels=in_channels,
-            out_channels=out_channels_full,
-            kernel_sizes=kernel_sizes,
-            stride=stride,
-        )
-        minor_block_internal_sequence.append(new_minor_block)
+        out_channels_full = out_channels[0]
 
-        # add norm/act if requested
-        norm_act_sequence = create_norm_act_sequence(
-            False, block_config.act, out_channels_full, norm_before_act
-        )
-        if norm_act_sequence is not None:
-            minor_block_internal_sequence.append(norm_act_sequence)
+        kernel_sizes = block_config.kernel_sizes
+        if not isinstance(kernel_sizes, ListConfig):
+            kernel_sizes = [kernel_sizes]
+
+        minor_block_internal_sequence = nn.ModuleList([])
+        norm = block_config.get("norm", False)
+        act = block_config.get("act", False)
+
+        if not norm and not act:
+            new_minor_block = ElasticConv1d(
+                kernel_sizes=kernel_sizes,
+                in_channels=in_channels,
+                out_channels=out_channels_full,
+                stride=stride,
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+            )
+        elif norm and not act:
+            new_minor_block = ElasticConvBn1d(
+                kernel_sizes=kernel_sizes,
+                in_channels=in_channels,
+                out_channels=out_channels_full,
+                stride=stride,
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+            )
+        elif norm and act:
+            new_minor_block = ElasticConvBnReLU1d(
+                kernel_sizes=kernel_sizes,
+                in_channels=in_channels,
+                out_channels=out_channels_full,
+                stride=stride,
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+            )
+        else:
+            raise Exception(
+                f"Undefined target selected in minor block sequence: {block_config.target}"
+            )
+
+        minor_block_internal_sequence.append(new_minor_block)
 
         new_block = module_list_to_module(
             flatten_module_list(minor_block_internal_sequence)
         )
         # if multiple output channel widths are specified (elastic width), add an elastic width helper module
-        if len(out_channels_list) > 1:
+        if len(out_channels) > 1:
             # the sources of the elastic channel helper module are the previous conv, and its potential norm/act
-            helper_module = ElasticChannelHelper(out_channels_list)
+            helper_module = ElasticChannelHelper(out_channels)
             # append the helper module to the sequence
             new_sequence = nn.ModuleList([new_block, helper_module])
             new_block = module_list_to_module(new_sequence)
@@ -394,7 +392,7 @@ class OFAModel(nn.Module):
         self.ofa_steps_width = 1
         # create a list of every elastic kernel conv, for sampling
         all_elastic_kernel_convs = get_instances_from_deep_nested(
-            input=self.conv_layers, type_selection=ElasticKernelConv1d
+            input=self.conv_layers, type_selection=ElasticConv1d
         )
         self.elastic_kernel_convs = []
         for item in all_elastic_kernel_convs:
@@ -675,7 +673,7 @@ class OFAModel(nn.Module):
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_kernel_size",
-            type_selection=ElasticKernelConv1d,
+            type_selection=ElasticConv1d,
         )
 
     # reset all kernel sizes to their max value
@@ -683,7 +681,7 @@ class OFAModel(nn.Module):
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_kernel_size",
-            type_selection=ElasticKernelConv1d,
+            type_selection=ElasticConv1d,
         )
 
     # go to a specific kernel step
@@ -753,7 +751,7 @@ class OFAModel(nn.Module):
 
 def is_elastic_module(module: nn.Module) -> bool:
     return (
-        isinstance(module, ElasticKernelConv1d)
+        isinstance(module, ElasticConv1d)
         or isinstance(module, ElasticWidthBatchnorm1d)
         or isinstance(module, ElasticWidthLinear)
         or isinstance(module, ElasticPermissiveReLU)
@@ -761,7 +759,7 @@ def is_elastic_module(module: nn.Module) -> bool:
 
 
 def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
-    if isinstance(module, ElasticKernelConv1d):
+    if isinstance(module, ElasticConv1d):
         return module.assemble_basic_conv1d()
     elif isinstance(module, ElasticWidthBatchnorm1d):
         return module.assemble_basic_batchnorm1d()

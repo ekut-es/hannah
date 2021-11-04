@@ -15,7 +15,7 @@ from .elasticchannelhelper import SequenceDiscovery
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticPermissiveReLU
 
 
-class ElasticKernelConv1d(nn.Conv1d):
+class ElasticConv1d(nn.Conv1d):
     def __init__(
         self,
         in_channels: int,

@@ -91,7 +91,7 @@ class ElasticChannelHelper(nn.Module):
             filtered_channel_index = self.channels_by_priority[i]
             self.channel_pass_filter[filtered_channel_index] = False
 
-        if isinstance(self.target, ElasticKernelConv1d) or isinstance(
+        if isinstance(self.target, ElasticConv1d) or isinstance(
             self.target, ElasticWidthLinear
         ):
             self.apply_filter_to_module(self.target, is_target=True)
@@ -107,9 +107,7 @@ class ElasticChannelHelper(nn.Module):
     # if is_target is set to true, the module is a target module (filter its input).
     # false -> source module -> filter its output
     def apply_filter_to_module(self, module, is_target: bool):
-        if isinstance(module, ElasticKernelConv1d) or isinstance(
-            module, ElasticWidthLinear
-        ):
+        if isinstance(module, ElasticConv1d) or isinstance(module, ElasticWidthLinear):
             if is_target:
                 # target module -> set module input filter
                 if len(module.in_channel_filter) != len(self.channel_pass_filter):
@@ -225,7 +223,7 @@ class ElasticChannelHelper(nn.Module):
 
     # check if a module is valid as a primary target (to compute channel priorities from)
     def is_primary_target(module: nn.Module) -> bool:
-        return isinstance(module, ElasticKernelConv1d) or isinstance(
+        return isinstance(module, ElasticConv1d) or isinstance(
             module, ElasticWidthLinear
         )
 
@@ -450,4 +448,4 @@ class SequenceDiscovery:
 
 # imports are located at the bottom to circumvent circular dependency import issues
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
-from .elastickernelconv import ElasticKernelConv1d, ElasticConvBn1d
+from .elastickernelconv import ElasticConv1d, ElasticConvBn1d
