@@ -124,8 +124,10 @@ class ElasticChannelHelper(nn.Module):
                     )
                     return
                 module.out_channel_filter = self.channel_pass_filter
-        elif isinstance(module, ElasticConvBn1d) or isinstance(
-            module, ElasticWidthLinear
+        elif (
+            isinstance(module, ElasticConvBn1d)
+            or isinstance(module, ElasticWidthLinear)
+            or isinstance(module, ElasticConvBnReLu1d)
         ):
             if is_target:
                 # target module -> set module input filter
