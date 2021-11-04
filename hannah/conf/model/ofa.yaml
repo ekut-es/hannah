@@ -12,9 +12,9 @@ conv:
     stride: 1
     blocks:
       - target: conv1d
-        kernel_size: 3
+        kernel_sizes: 3
         act: false
-        norm: true
+        norm: false
         out_channels: 16
   - target: residual1d
     stride: 2
