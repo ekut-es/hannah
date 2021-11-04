@@ -433,7 +433,7 @@ class ElasticConvBn1d(nn.Conv1d):
         return self.bn.assemble_basic_batchnorm1d()
 
 
-class ElasticConvBnReLU1d(nn.Conv1d):
+class ElasticConvBnReLu1d(nn.Conv1d):
     def __init__(
         self,
         in_channels: int,

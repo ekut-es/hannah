@@ -16,7 +16,7 @@ from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDisco
 from .submodules.elastickernelconv import (
     ElasticConv1d,
     ElasticConvBn1d,
-    ElasticConvBnReLU1d,
+    ElasticConvBnReLu1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -214,7 +214,7 @@ def create_minor_block(
                 # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
         elif norm and act:
-            new_minor_block = ElasticConvBnReLU1d(
+            new_minor_block = ElasticConvBnReLu1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
                 out_channels=out_channels_full,
