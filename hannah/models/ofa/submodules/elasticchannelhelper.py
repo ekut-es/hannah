@@ -223,8 +223,11 @@ class ElasticChannelHelper(nn.Module):
 
     # check if a module is valid as a primary target (to compute channel priorities from)
     def is_primary_target(module: nn.Module) -> bool:
-        return isinstance(module, ElasticConv1d) or isinstance(
-            module, ElasticWidthLinear
+        return (
+            isinstance(module, ElasticConv1d)
+            or isinstance(module, ElasticConvBn1d)
+            or isinstance(module, ElasticConvBnReLu1d)
+            or isinstance(module, ElasticWidthLinear)
         )
 
     # add additional target(s) which must also have their inputs adjusted when
@@ -448,4 +451,4 @@ class SequenceDiscovery:
 
 # imports are located at the bottom to circumvent circular dependency import issues
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
-from .elastickernelconv import ElasticConv1d, ElasticConvBn1d
+from .elastickernelconv import ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d
