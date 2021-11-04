@@ -21,6 +21,7 @@ output_dir: trained_models
 auto_lr: false
 print_metrics: false
 data_monitor: false
+svd_rank_compression: 6
 
 seed: [1234]
 
