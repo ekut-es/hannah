@@ -91,9 +91,7 @@ class ElasticChannelHelper(nn.Module):
             filtered_channel_index = self.channels_by_priority[i]
             self.channel_pass_filter[filtered_channel_index] = False
 
-        if isinstance(self.target, ElasticConv1d) or isinstance(
-            self.target, ElasticWidthLinear
-        ):
+        if isinstance(self.target, (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d, ElasticWidthLinear)):
             self.apply_filter_to_module(self.target, is_target=True)
         else:
             logging.warn(

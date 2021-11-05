@@ -282,6 +282,7 @@ class ElasticConvBn1d(nn.Conv1d):
     def set_out_channel_filter(self, out_channel_filter):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
+            self.bn.channel_filter = out_channel_filter
 
     def set_kernel_size(self, new_kernel_size):
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
@@ -498,6 +499,7 @@ class ElasticConvBnReLu1d(nn.Conv1d):
     def set_out_channel_filter(self, out_channel_filter):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
+            self.bn.channel_filter = out_channel_filter
 
     def set_kernel_size(self, new_kernel_size):
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
@@ -617,9 +619,9 @@ class ElasticConvBnReLu1d(nn.Conv1d):
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        t = nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
         return self.relu(
-            self.bn(
-                nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
+            self.bn(t
             )
         )
 

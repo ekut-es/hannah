@@ -392,7 +392,7 @@ class OFAModel(nn.Module):
         self.ofa_steps_width = 1
         # create a list of every elastic kernel conv, for sampling
         all_elastic_kernel_convs = get_instances_from_deep_nested(
-            input=self.conv_layers, type_selection=ElasticConv1d
+            input=self.conv_layers, type_selection=(ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d)
         )
         self.elastic_kernel_convs = []
         for item in all_elastic_kernel_convs:
