@@ -291,7 +291,7 @@ class ElasticConv1d(ElasticBase1d):
         return copy.deepcopy(self.get_basic_conv1d())
 
 
-class ElasticConvBn1d(nn.Conv1d):
+class ElasticConvBn1d(ElasticBase1d):
     def __init__(
         self,
         in_channels: int,
@@ -317,9 +317,9 @@ class ElasticConvBn1d(nn.Conv1d):
         super().__init__(
             in_channels=in_channels,
             out_channels=self.out_channels,
-            kernel_size=self.max_kernel_size,
+            kernel_sizes=kernel_sizes,
             stride=stride,
-            padding=conv1d_get_padding(self.max_kernel_size),
+            padding=padding,
             dilation=dilation,
             groups=groups,
             bias=bias,
@@ -355,115 +355,6 @@ class ElasticConvBn1d(nn.Conv1d):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
             self.bn.channel_filter = out_channel_filter
-
-    def set_kernel_size(self, new_kernel_size):
-        # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
-        if (
-            new_kernel_size < self.min_kernel_size
-            or new_kernel_size > self.max_kernel_size
-        ):
-            logging.warn(
-                f"requested elastic kernel size ({new_kernel_size}) outside of min/max range: ({self.max_kernel_size}, {self.min_kernel_size}). clamping."
-            )
-            if new_kernel_size < self.min_kernel_size:
-                new_kernel_size = self.min_kernel_size
-            else:
-                new_kernel_size = self.max_kernel_size
-
-        self.target_kernel_index = 0
-        try:
-            index = self.kernel_sizes.index(new_kernel_size)
-            self.target_kernel_index = index
-        except ValueError:
-            logging.warn(
-                f"requested elastic kernel size {new_kernel_size} is not an available kernel size. Defaulting to full size ({self.max_kernel_size})"
-            )
-
-        # if self.kernel_sizes[self.target_kernel_index] != previous_kernel_size:
-        # print(f"\nkernel size was changed: {previous_kernel_size} -> {self.kernel_sizes[self.target_kernel_index]}")
-
-    # the initial kernel size is the first element of the list of available sizes
-    # set the kernel back to its initial size
-    def reset_kernel_size(self):
-        self.set_kernel_size(self.kernel_sizes[0])
-
-    # step current kernel size down by one index, if possible.
-    # return True if the size limit was not reached
-    def step_down_kernel_size(self):
-        next_kernel_index = self.target_kernel_index + 1
-        if next_kernel_index < len(self.kernel_sizes):
-            self.set_kernel_size(self.kernel_sizes[next_kernel_index])
-            # print(f"stepped down kernel size of a module! Index is now {self.target_kernel_index}")
-            return True
-        else:
-            logging.debug(
-                f"unable to step down kernel size, no available index after current: {self.target_kernel_index} with size: {self.kernel_sizes[self.target_kernel_index]}"
-            )
-            return False
-
-    def pick_kernel_index(self, target_kernel_index: int):
-        if (target_kernel_index < 0) or (target_kernel_index >= len(self.kernel_sizes)):
-            logging.warn(
-                f"selected kernel index {target_kernel_index} is out of range: 0 .. {len(self.kernel_sizes)}. Setting to last index."
-            )
-            target_kernel_index = len(self.kernel_sizes) - 1
-        self.set_kernel_size(self.kernel_sizes[target_kernel_index])
-
-    def get_available_kernel_steps(self):
-        return len(self.kernel_sizes)
-
-    def get_full_width_kernel(self):
-        current_kernel_index = 0
-        current_kernel = self.weight
-
-        logging.debug("Target kernel index: %s", str(self.target_kernel_index))
-
-        # step through kernels until the target index is reached.
-        while current_kernel_index < self.target_kernel_index:
-            if current_kernel_index >= len(self.kernel_sizes):
-                logging.warn(
-                    f"kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel"
-                )
-                break
-            # find start, end pos of the kernel center for the given next kernel size
-            start, end = sub_filter_start_end(
-                self.kernel_sizes[current_kernel_index],
-                self.kernel_sizes[current_kernel_index + 1],
-            )
-            # extract the kernel center of the correct size
-            kernel_center = current_kernel[:, :, start:end]
-            # apply the kernel transformation to the next kernel. the n-th transformation
-            # is applied to the n-th kernel, yielding the (n+1)-th kernel
-            next_kernel = self.kernel_transforms[current_kernel_index](kernel_center)
-            # the kernel has now advanced through the available sizes by one
-            current_kernel = next_kernel
-            current_kernel_index += 1
-
-        return current_kernel
-
-    def get_kernel(self):
-        full_kernel = self.get_full_width_kernel()
-        new_kernel = None
-        if all(self.in_channel_filter) and all(self.out_channel_filter):
-            # if no channel filtering is required, the full kernel can be kept
-            new_kernel = full_kernel
-        else:
-            # if channels need to be filtered, apply filters to the kernel
-            new_kernel = filter_primary_module_weights(
-                full_kernel, self.in_channel_filter, self.out_channel_filter
-            )
-        # if the module has a bias parameter, also apply the output filtering to it.
-        if self.bias is None:
-            return new_kernel, None
-        else:
-            if all(self.out_channel_filter):
-                # if out_channels are unfiltered, the output bias does not need filtering.
-                return new_kernel, self.bias
-            else:
-                new_bias = filter_single_dimensional_weights(
-                    self.bias, self.out_channel_filter
-                )
-                return new_kernel, new_bias
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
@@ -506,7 +397,7 @@ class ElasticConvBn1d(nn.Conv1d):
         return self.bn.assemble_basic_batchnorm1d()
 
 
-class ElasticConvBnReLu1d(nn.Conv1d):
+class ElasticConvBnReLu1d(ElasticBase1d):
     def __init__(
         self,
         in_channels: int,
@@ -532,9 +423,9 @@ class ElasticConvBnReLu1d(nn.Conv1d):
         super().__init__(
             in_channels=in_channels,
             out_channels=self.out_channels,
-            kernel_size=self.max_kernel_size,
+            kernel_sizes=kernel_sizes,
             stride=stride,
-            padding=conv1d_get_padding(self.max_kernel_size),
+            padding=padding,
             dilation=dilation,
             groups=groups,
             bias=bias,
@@ -572,115 +463,6 @@ class ElasticConvBnReLu1d(nn.Conv1d):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
             self.bn.channel_filter = out_channel_filter
-
-    def set_kernel_size(self, new_kernel_size):
-        # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
-        if (
-            new_kernel_size < self.min_kernel_size
-            or new_kernel_size > self.max_kernel_size
-        ):
-            logging.warn(
-                f"requested elastic kernel size ({new_kernel_size}) outside of min/max range: ({self.max_kernel_size}, {self.min_kernel_size}). clamping."
-            )
-            if new_kernel_size < self.min_kernel_size:
-                new_kernel_size = self.min_kernel_size
-            else:
-                new_kernel_size = self.max_kernel_size
-
-        self.target_kernel_index = 0
-        try:
-            index = self.kernel_sizes.index(new_kernel_size)
-            self.target_kernel_index = index
-        except ValueError:
-            logging.warn(
-                f"requested elastic kernel size {new_kernel_size} is not an available kernel size. Defaulting to full size ({self.max_kernel_size})"
-            )
-
-        # if self.kernel_sizes[self.target_kernel_index] != previous_kernel_size:
-        # print(f"\nkernel size was changed: {previous_kernel_size} -> {self.kernel_sizes[self.target_kernel_index]}")
-
-    # the initial kernel size is the first element of the list of available sizes
-    # set the kernel back to its initial size
-    def reset_kernel_size(self):
-        self.set_kernel_size(self.kernel_sizes[0])
-
-    # step current kernel size down by one index, if possible.
-    # return True if the size limit was not reached
-    def step_down_kernel_size(self):
-        next_kernel_index = self.target_kernel_index + 1
-        if next_kernel_index < len(self.kernel_sizes):
-            self.set_kernel_size(self.kernel_sizes[next_kernel_index])
-            # print(f"stepped down kernel size of a module! Index is now {self.target_kernel_index}")
-            return True
-        else:
-            logging.debug(
-                f"unable to step down kernel size, no available index after current: {self.target_kernel_index} with size: {self.kernel_sizes[self.target_kernel_index]}"
-            )
-            return False
-
-    def pick_kernel_index(self, target_kernel_index: int):
-        if (target_kernel_index < 0) or (target_kernel_index >= len(self.kernel_sizes)):
-            logging.warn(
-                f"selected kernel index {target_kernel_index} is out of range: 0 .. {len(self.kernel_sizes)}. Setting to last index."
-            )
-            target_kernel_index = len(self.kernel_sizes) - 1
-        self.set_kernel_size(self.kernel_sizes[target_kernel_index])
-
-    def get_available_kernel_steps(self):
-        return len(self.kernel_sizes)
-
-    def get_full_width_kernel(self):
-        current_kernel_index = 0
-        current_kernel = self.weight
-
-        logging.debug("Target kernel index: %s", str(self.target_kernel_index))
-
-        # step through kernels until the target index is reached.
-        while current_kernel_index < self.target_kernel_index:
-            if current_kernel_index >= len(self.kernel_sizes):
-                logging.warn(
-                    f"kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel"
-                )
-                break
-            # find start, end pos of the kernel center for the given next kernel size
-            start, end = sub_filter_start_end(
-                self.kernel_sizes[current_kernel_index],
-                self.kernel_sizes[current_kernel_index + 1],
-            )
-            # extract the kernel center of the correct size
-            kernel_center = current_kernel[:, :, start:end]
-            # apply the kernel transformation to the next kernel. the n-th transformation
-            # is applied to the n-th kernel, yielding the (n+1)-th kernel
-            next_kernel = self.kernel_transforms[current_kernel_index](kernel_center)
-            # the kernel has now advanced through the available sizes by one
-            current_kernel = next_kernel
-            current_kernel_index += 1
-
-        return current_kernel
-
-    def get_kernel(self):
-        full_kernel = self.get_full_width_kernel()
-        new_kernel = None
-        if all(self.in_channel_filter) and all(self.out_channel_filter):
-            # if no channel filtering is required, the full kernel can be kept
-            new_kernel = full_kernel
-        else:
-            # if channels need to be filtered, apply filters to the kernel
-            new_kernel = filter_primary_module_weights(
-                full_kernel, self.in_channel_filter, self.out_channel_filter
-            )
-        # if the module has a bias parameter, also apply the output filtering to it.
-        if self.bias is None:
-            return new_kernel, None
-        else:
-            if all(self.out_channel_filter):
-                # if out_channels are unfiltered, the output bias does not need filtering.
-                return new_kernel, self.bias
-            else:
-                new_bias = filter_single_dimensional_weights(
-                    self.bias, self.out_channel_filter
-                )
-                return new_kernel, new_bias
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
