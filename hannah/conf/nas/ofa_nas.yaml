@@ -3,3 +3,6 @@ epochs_warmup: 35
 epochs_kernel_step: 35
 epochs_depth_step: 35
 epochs_width_step: 35
+elastic_kernels: False
+elastic_depth: False
+elastic_width: False

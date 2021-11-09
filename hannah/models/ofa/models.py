@@ -480,7 +480,7 @@ class OFAModel(nn.Module):
             conv.pick_kernel_index(new_kernel_step)
             state["kernel_steps"].append(new_kernel_step)
 
-        for helper in self.elastic_channel_helpers:
+        """for helper in self.elastic_channel_helpers:
             # pick an available width step for every elastic channel helper, independently.
             max_available_sampling_step = min(
                 self.sampling_max_width_step + 1, helper.get_available_width_steps()
@@ -488,7 +488,7 @@ class OFAModel(nn.Module):
             new_width_step = self.get_random_step(max_available_sampling_step)
             helper.set_channel_step(new_width_step)
             state["width_steps"].append(new_width_step)
-
+        """
         return state
 
     # get a step, with distribution biased towards taking less steps, if skew distribution is enabled.
@@ -759,7 +759,7 @@ def is_elastic_module(module: nn.Module) -> bool:
 
 
 def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
-    if isinstance(module, ElasticConv1d):
+    if isinstance(module, (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d)):
         return module.assemble_basic_conv1d()
     elif isinstance(module, ElasticWidthBatchnorm1d):
         return module.assemble_basic_batchnorm1d()
