@@ -195,6 +195,9 @@ class ElasticBase1d(nn.Conv1d):
     def assemble_basic_conv1d(self) -> nn.Conv1d:
         return None
 
+    def set_out_channel_filter(self, out_channel_filter):
+        pass
+
 
 class ElasticConv1d(ElasticBase1d):
     def __init__(
@@ -289,6 +292,10 @@ class ElasticConv1d(ElasticBase1d):
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
+
+    def set_out_channel_filter(self, out_channel_filter):
+        if out_channel_filter is not None:
+            self.out_channel_filter = out_channel_filter
 
 
 class ElasticConvBn1d(ElasticBase1d):

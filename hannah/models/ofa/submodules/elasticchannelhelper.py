@@ -105,7 +105,7 @@ class ElasticChannelHelper(nn.Module):
     # if is_target is set to true, the module is a target module (filter its input).
     # false -> source module -> filter its output
     def apply_filter_to_module(self, module, is_target: bool):
-        if isinstance(module, ElasticConv1d) or isinstance(module, ElasticWidthLinear):
+        if isinstance(module, ElasticWidthLinear):
             if is_target:
                 # target module -> set module input filter
                 if len(module.in_channel_filter) != len(self.channel_pass_filter):
@@ -123,10 +123,7 @@ class ElasticChannelHelper(nn.Module):
                     return
                 module.out_channel_filter = self.channel_pass_filter
         elif (
-            isinstance(module, ElasticConvBn1d)
-            or isinstance(module, ElasticWidthLinear)
-            or isinstance(module, ElasticConvBnReLu1d)
-        ):
+            isinstance(module, (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d))):
             if is_target:
                 # target module -> set module input filter
                 if len(module.in_channel_filter) != len(self.channel_pass_filter):
