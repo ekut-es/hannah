@@ -886,6 +886,9 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                     norm = assemble_basic_from_elastic_module(norm)
                 if is_elastic_module(act):
                     act = assemble_basic_from_elastic_module(act)
+                reassembled_module.norm_before_act = module.norm_before_act
+                reassembled_module.do_act = module.do_act
+                reassembled_module.do_norm = module.do_norm
                 reassembled_module.norm = norm
                 reassembled_module.act = act
 
