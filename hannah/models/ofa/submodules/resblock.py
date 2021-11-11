@@ -62,7 +62,7 @@ class ResBlock1d(ResBlockBase):
         act_after_res=True,
         norm_after_res=True,
         stride=1,
-        norm_before_act=False,
+        norm_before_act=True,
     ):
         super().__init__(
             in_channels=in_channels,
