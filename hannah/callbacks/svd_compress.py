@@ -15,8 +15,7 @@ class SVD(Callback):
         super().__init__()
 
 
-    def on_epoch_end(self, trainer, pl_module):
-        print(self.rank)
+    def on_epoch_start(self, trainer, pl_module):
         compressed_weights = 0
         for name, module in pl_module.named_modules():
             if type(module) in [nn.Linear] or name == "model.linear.0.0":
@@ -25,14 +24,14 @@ class SVD(Callback):
                 for i in range(self.rank, size_S):
                     S[i] = 0
                 compressed_weights = torch.matmul(U, torch.matmul(torch.diag(S), Vh[:12, :]))
-
+                print(compressed_weights.shape)
                 if type(module) in [nn.Linear]:
                     pl_module.model.fc.weight = torch.nn.Parameter(compressed_weights, requires_grad=True)
+
                 else:
                     pl_module.model.linear[0][0].weight = torch.nn.Parameter(compressed_weights, requires_grad=True)
                 
         return pl_module
-
 
 
 

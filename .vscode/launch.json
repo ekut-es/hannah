@@ -11,7 +11,29 @@
             "module": "hannah.train",
             "args": [
                 "trainer.limit_train_batches=0.1",
-                "trainer.max_epochs=3",
+                "trainer.max_epochs=100",
+                "model=tc-res8"
+            ]
+        },
+        {
+            "name": "svd",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.svd",
+            "args": [
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "model=conv-net-trax"
+            ]
+        },
+        {
+            "name": "quantized",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=10",
                 "model=tc-res8"
             ]
         },
