@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 import heapq
 
 
-class node:
-    def __init__(self, frq, left, right):
+class Node:
+    def __init__(self, frq, char, left=None, right=None, huff=''):
         self.frq = frq
+        self.char = char
         self.left = left
-        self. right = right
+        self.right = right
+        self.huff = huff
 
 
 def load_parameters(file_path):
@@ -24,33 +26,45 @@ def load_parameters(file_path):
 
 
 def get_frequencies(parameters):
-    frequency = {}
+    frq = {}
     for matrix in parameters:
         for weight in matrix:
-            if weight in frequency.keys():
-                frequency[weight] += 1
+            if weight in frq.keys():
+                frq[weight] += 1
             else:
-                frequency[weight] = 1
-        total = sum(frequency.values())
-        frequency = {key: value / total for key, value in frequency.items()}
-    return frequency
+                frq[weight] = 1
+        total = sum(frq.values())
+        frq = {key: value / total for key, value in frq.items()}
+    return frq
 
 
 
-def enocode_Huffman(frq):
+def create_tree(frq):
     nodes = []
     for char, frq in frq.items():
-        heapq.heappush(nodes, (frq, char))
-    while nodes:
+        node = Node(frq, char)
+        heapq.heappush(nodes, (node.frq, id(node), node))
+    while len(nodes) > 1:
         left = heapq.heappop(nodes)
         right = heapq.heappop(nodes)
-        sum_frq = left[0] + right[0]
+        sum_frq = left[0]+ right[0]
+        left[2].huff = '0'
+        right[2].huff = '1'
+        internal_node = Node(sum_frq, 0, left, right)
+        heapq.heappush(nodes, (internal_node.frq, id(internal_node), internal_node))
+    return nodes[0]
+        
+        
 
-        #k = node(frq=sum_frq, left=left[1], right=right[1])
-        #heapq.heappush(nodes, (sum_frq, ))
-        #print(heapq.heappop(nodes))
-    
-
+def encode_Huffman(tree, h, encoding):
+    k = h + tree[2].huff
+    if tree[2].left:
+        encode_Huffman(tree[2].left, k, encoding)
+    if tree[2].right:
+        encode_Huffman(tree[2].right, k, encoding)
+    else:
+        encoding[tree[2].char] = k
+    return encoding
 
 
 def decode_Huffman():
@@ -62,9 +76,21 @@ def main():
     file_path = '/../trained_models/test/conv_net_trax/model.onnx'
     parameters = load_parameters(file_path)
     frq = get_frequencies(parameters)
-    enocode_Huffman(frq)
-  
+    tree = create_tree(frq)
+    encoding = {}
+    huffman_encoding = encode_Huffman(tree, '', encoding)
+    params = list()
+    for i in range(len(parameters)):
+        params.append([huffman_encoding[code] for code in parameters[i]])
+    print(params)
+    '''for i in range(len(parameters)):
+        for j in range(len(parameters[i])):
+            print(str(parameters[i][j]))
+            parameters[i][j] = huffman_encoding[parameters[i][j]]
+            #print(huffman_encoding[parameters[i][j]])
 
+            break
+    #print(parameters)'''
 
 if __name__ == "__main__":
     main()

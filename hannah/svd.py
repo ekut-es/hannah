@@ -161,7 +161,6 @@ def train(config: DictConfig):
 
                 else:
                     original_fc = lit_module.model.linear[0][0]
-                    print(original_fc)
                     new_fc = nn.Sequential(
                         nn.Linear(original_fc.in_features, rank, bias=original_fc.bias),
                         nn.Linear(rank, original_fc.out_features, bias=original_fc.bias)
