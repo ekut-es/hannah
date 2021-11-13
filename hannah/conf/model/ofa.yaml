@@ -7,6 +7,15 @@ dropout: 0.5
 # to add elastic channel count following a module which is not elastic_conv1d
 # an "elastic_channel_helper" module with only a channel_count list may be added after
 # the maximum channel count of the elastic helper must match the out_channels of the previous module
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 8
+    bw_w: 6
+    bw_f: 8
+    power_of_2: false  # Use power of two quantization for weights
+    noise_prob: 0.7   # Probability of quantizing a value during training
+
 conv:
   - target: forward
     stride: 1

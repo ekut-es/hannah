@@ -10,6 +10,7 @@ import logging
 
 # from ..utils import ConfigType, SerializableModule
 from omegaconf import ListConfig
+from hydra.utils import instantiate
 
 from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
@@ -17,6 +18,7 @@ from .submodules.elastickernelconv import (
     ElasticConv1d,
     ElasticConvBn1d,
     ElasticConvBnReLu1d,
+    ElasticQuantConv1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -47,9 +49,12 @@ def create(
     skew_sampling_distribution: bool = False,
     dropout: int = 0.5,
     validate_on_extracted=True,
+    qconfig=None
 ) -> nn.Module:
     # if no orders for the norm operator are specified, fall back to default
-
+    default_qconfig = (
+        instantiate(qconfig) if qconfig else None
+    )
     flatten_n = input_shape[0]
     in_channels = input_shape[1]
     pool_n = input_shape[2]
@@ -198,7 +203,7 @@ def create_minor_block(
         act = block_config.get("act", False)
 
         if not norm and not act:
-            new_minor_block = ElasticConv1d(
+            new_minor_block = ElasticQuantConv1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
                 out_channels=out_channels_full,

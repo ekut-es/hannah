@@ -13,8 +13,9 @@ from ..utilities import (
 )
 from .elasticchannelhelper import SequenceDiscovery
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticPermissiveReLU
+from ...factory.qat import _EConvNd, _ConvBnNd, ConvBn1d, ConvBnReLU1d
 
-class ElasticBase1d(nn.Conv1d):
+class ElasticBase1d(object):
     def __init__(
         self,
         in_channels: int,
@@ -26,6 +27,7 @@ class ElasticBase1d(nn.Conv1d):
         groups: int = 1,
         bias: bool = False,
     ):
+        super().__init__(self)
         # sort available kernel sizes from largest to smallest (descending order)
         kernel_sizes.sort(reverse=True)
         self.kernel_sizes: List[int] = kernel_sizes
@@ -34,18 +36,9 @@ class ElasticBase1d(nn.Conv1d):
         self.min_kernel_size: int = kernel_sizes[-1]
         # initially, the target size is the full kernel
         self.target_kernel_index: int = 0
+        self.in_channels: int = in_channels
         self.out_channels: int = out_channels
         # print(self.out_channels)
-        super().__init__(
-            in_channels=in_channels,
-            out_channels=self.out_channels,
-            kernel_size=self.max_kernel_size,
-            stride=stride,
-            padding=conv1d_get_padding(self.max_kernel_size),
-            dilation=dilation,
-            groups=groups,
-            bias=bias,
-        )
 
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
@@ -197,7 +190,7 @@ class ElasticBase1d(nn.Conv1d):
         pass
 
 
-class ElasticConv1d(ElasticBase1d):
+class ElasticConv1d(ElasticBase1d, nn.Conv1d):
     def __init__(
         self,
         in_channels: int,
@@ -219,10 +212,21 @@ class ElasticConv1d(ElasticBase1d):
         self.target_kernel_index: int = 0
         self.out_channels: int = out_channels
         # print(self.out_channels)
-        super().__init__(
+        ElasticBase1d.__init__(self,
             in_channels=in_channels,
             out_channels=self.out_channels,
             kernel_sizes=kernel_sizes,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+        )
+
+        nn.Conv1d.__init__(self,
+            in_channels=in_channels,
+            out_channels=self.out_channels,
+            kernel_size=self.max_kernel_size,
             stride=stride,
             padding=padding,
             dilation=dilation,
@@ -296,7 +300,124 @@ class ElasticConv1d(ElasticBase1d):
             self.out_channel_filter = out_channel_filter
 
 
-class ElasticConvBn1d(ElasticBase1d):
+
+class ElasticQuantConv1d(ElasticBase1d, _EConvNd):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_sizes: List[int],
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: bool = False,
+        qconfig=None,
+        out_quant=True,
+    ):
+
+        # sort available kernel sizes from largest to smallest (descending order)
+        kernel_sizes.sort(reverse=True)
+        self.kernel_sizes: List[int] = kernel_sizes
+        # after sorting kernel sizes, the maximum and minimum size available are the first and last element
+        self.max_kernel_size: int = kernel_sizes[0]
+        self.min_kernel_size: int = kernel_sizes[-1]
+        # initially, the target size is the full kernel
+        self.target_kernel_index: int = 0
+
+        ElasticBase1d.__init__(self,
+                               in_channels=in_channels,
+                               out_channels=out_channels,
+                               kernel_sizes=kernel_sizes,
+                               stride=stride,
+                               padding=padding,
+                               dilation=dilation,
+                               groups=groups,
+                               bias=bias,
+                               )
+
+        _EConvNd.__init__(self,
+                           in_channels=in_channels,
+                           out_channels=self.out_channels,
+                           kernel_size=self.max_kernel_size,
+                           stride=stride,
+                           padding=padding,
+                           dilation=dilation,
+                           groups=groups,
+                           bias=bias,
+                           )
+
+
+        self.out_channels: int = out_channels
+        # print(self.out_channels)
+
+        self.in_channel_filter = [True] * self.in_channels
+        self.out_channel_filter = [True] * self.out_channels
+
+        # the list of kernel transforms will have one element less than the list of kernel sizes.
+        # between every two sequential kernel sizes, there will be a kernel transform
+        # the subsequent kernel is determined by applying the same-size center of the previous kernel to the transform
+        self.kernel_transforms = nn.ModuleList([])
+        for i in range(len(kernel_sizes) - 1):
+            # the target size of the kernel transform is the next kernel size in the sequence
+            new_kernel_size = kernel_sizes[i + 1]
+            # kernel transform is kept minimal by being shared between channels.
+            # It is simply a linear transformation from the center of the previous kernel to the new kernel
+            # directly applying the kernel to the transform is possible: nn.Linear accepts
+            # multi-dimensional input in a way where the last input dim is transformed
+            # from in_channels to out_channels for the last output dim
+            new_transform_module = nn.Linear(
+                new_kernel_size, new_kernel_size, bias=False
+            )
+            # initialise the transform as the identity matrix to start training
+            # from the center of the larger kernel
+            new_transform_module.weight.data.copy_(torch.eye(new_kernel_size))
+            # transform weights are initially frozen
+            new_transform_module.weight.requires_grad = True
+            self.kernel_transforms.append(new_transform_module)
+        self.set_kernel_size(self.max_kernel_size)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if isinstance(input, SequenceDiscovery):
+            return input.discover(self)
+
+        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
+        # get the kernel for the current index
+        kernel, bias = self.get_kernel()
+        # get padding for the size of the kernel
+        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        return nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
+
+    # return a normal conv1d equivalent to this module in the current state
+    def get_basic_conv1d(self) -> nn.Conv1d:
+        kernel, bias = self.get_kernel()
+        kernel_size = self.kernel_sizes[self.target_kernel_index]
+        padding = conv1d_get_padding(kernel_size)
+        new_conv = nn.Conv1d(
+            in_channels=self.in_channels,
+            out_channels=self.out_channels,
+            kernel_size=kernel_size,
+            stride=self.stride,
+            padding=padding,
+            dilation=self.dilation,
+            bias=False,
+        )
+        new_conv.weight.data = kernel
+        new_conv.bias = bias
+
+        # print("\nassembled a basic conv from elastic kernel!")
+        return new_conv
+
+    # return a safe copy of a conv1d equivalent to this module in the current state
+    def assemble_basic_conv1d(self) -> nn.Conv1d:
+        return copy.deepcopy(self.get_basic_conv1d())
+
+    def set_out_channel_filter(self, out_channel_filter):
+        if out_channel_filter is not None:
+            self.out_channel_filter = out_channel_filter
+
+
+class ElasticConvBn1d(ElasticBase1d, nn.Conv1d):
     def __init__(
         self,
         in_channels: int,
@@ -319,16 +440,27 @@ class ElasticConvBn1d(ElasticBase1d):
         self.target_kernel_index: int = 0
         self.out_channels: int = out_channels
         # print(self.out_channels)
-        super().__init__(
-            in_channels=in_channels,
-            out_channels=self.out_channels,
-            kernel_sizes=kernel_sizes,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            groups=groups,
-            bias=bias,
-        )
+        ElasticBase1d.__init__(self,
+                               in_channels=in_channels,
+                               out_channels=self.out_channels,
+                               kernel_sizes=kernel_sizes,
+                               stride=stride,
+                               padding=padding,
+                               dilation=dilation,
+                               groups=groups,
+                               bias=bias,
+                               )
+
+        nn.Conv1d.__init__(self,
+                           in_channels=in_channels,
+                           out_channels=self.out_channels,
+                           kernel_size=self.max_kernel_size,
+                           stride=stride,
+                           padding=padding,
+                           dilation=dilation,
+                           groups=groups,
+                           bias=bias,
+                           )
         self.bn = ElasticWidthBatchnorm1d(out_channels, track_running_stats)
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
@@ -379,7 +511,7 @@ class ElasticConvBn1d(ElasticBase1d):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
-        new_conv = ConvBn1d(
+        new_conv = BConvBn1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             kernel_size=kernel_size,
@@ -402,7 +534,7 @@ class ElasticConvBn1d(ElasticBase1d):
         return self.bn.assemble_basic_batchnorm1d()
 
 
-class ElasticConvBnReLu1d(ElasticBase1d):
+class ElasticConvBnReLu1d(ElasticBase1d, nn.Conv1d):
     def __init__(
         self,
         in_channels: int,
@@ -425,16 +557,27 @@ class ElasticConvBnReLu1d(ElasticBase1d):
         self.target_kernel_index: int = 0
         self.out_channels: int = out_channels
         # print(self.out_channels)
-        super().__init__(
-            in_channels=in_channels,
-            out_channels=self.out_channels,
-            kernel_sizes=kernel_sizes,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            groups=groups,
-            bias=bias,
-        )
+        ElasticBase1d.__init__(self,
+                               in_channels=in_channels,
+                               out_channels=self.out_channels,
+                               kernel_sizes=kernel_sizes,
+                               stride=stride,
+                               padding=padding,
+                               dilation=dilation,
+                               groups=groups,
+                               bias=bias,
+                               )
+
+        nn.Conv1d.__init__(self,
+                           in_channels=in_channels,
+                           out_channels=self.out_channels,
+                           kernel_size=self.max_kernel_size,
+                           stride=stride,
+                           padding=padding,
+                           dilation=dilation,
+                           groups=groups,
+                           bias=bias,
+                           )
         self.bn = ElasticWidthBatchnorm1d(out_channels, track_running_stats)
         self.relu = ElasticPermissiveReLU()
 
@@ -489,7 +632,7 @@ class ElasticConvBnReLu1d(ElasticBase1d):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
-        new_conv = ConvBnReLu1d(
+        new_conv = BConvBnReLu1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             kernel_size=kernel_size,
@@ -513,7 +656,7 @@ class ElasticConvBnReLu1d(ElasticBase1d):
 
 
 
-class ConvBnReLu1d(nn.Conv1d):
+class BConvBnReLu1d(nn.Conv1d):
     def __init__(
         self,
         in_channels: int,
@@ -544,11 +687,11 @@ class ConvBnReLu1d(nn.Conv1d):
             return input.discover(self)
 
         return self.relu(
-            self.bn(super(ConvBnReLu1d, self).forward(input)
+            self.bn(super(BConvBnReLu1d, self).forward(input)
             )
         )
 
-class ConvBn1d(nn.Conv1d):
+class BConvBn1d(nn.Conv1d):
     def __init__(
         self,
         in_channels: int,
@@ -577,5 +720,5 @@ class ConvBn1d(nn.Conv1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        return self.bn(super(ConvBn1d, self).forward(input))
+        return self.bn(super(BConvBn1d, self).forward(input))
 
