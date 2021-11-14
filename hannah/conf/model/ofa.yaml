@@ -47,7 +47,7 @@ conv:
           - 5
           - 3
         act: false
-        norm: false
+        norm: true
         out_channels:
           - 24
           - 16

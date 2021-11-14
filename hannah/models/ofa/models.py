@@ -18,6 +18,7 @@ from .submodules.elastickernelconv import (
     ElasticConv1d,
     ElasticConvBn1d,
     ElasticConvBnReLu1d,
+    ElasticQuantConvBn1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -70,6 +71,7 @@ def create(
                 in_channels=next_in_channels,
                 stride=block_config.stride,
                 norm_before_act=norm_before_act,
+                qconfig=default_qconfig
                 # sources=previous_sources,
             )
 
@@ -79,6 +81,7 @@ def create(
                 in_channels=next_in_channels,
                 stride=block_config.stride,
                 norm_before_act=norm_before_act,
+                qconfig=default_qconfig
                 # sources=previous_sources,
             )
 
@@ -143,6 +146,7 @@ def create_minor_block_sequence(
     in_channels,
     stride=1,
     norm_before_act=True,
+    qconfig=None,
     # sources: List[nn.Module] = [nn.ModuleList([])],
 ):
     next_in_channels = in_channels
@@ -161,6 +165,7 @@ def create_minor_block_sequence(
             in_channels=next_in_channels,
             stride=next_stride,
             norm_before_act=norm_before_act,
+            qconfig=qconfig,
             # sources=sources,
         )
 
@@ -177,6 +182,7 @@ def create_minor_block(
     stride: int = 1,
     norm_before_act=True,
     sources: List[nn.ModuleList] = [nn.ModuleList([])],
+    qconfig=None,
 ) -> Tuple[nn.Module, int]:
     new_block = None
     # the output channel count is usually stored in block_config.out_channels
@@ -208,11 +214,12 @@ def create_minor_block(
                 # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
         elif norm and not act:
-            new_minor_block = ElasticConvBn1d(
+            new_minor_block = ElasticQuantConvBn1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
                 out_channels=out_channels_full,
                 stride=stride,
+                qconfig=qconfig,
                 # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
         elif norm and act:
@@ -301,10 +308,15 @@ def create_forward_block(
     in_channels,
     stride=1,
     norm_before_act=None,
+    qconfig=None
     # sources: List[nn.ModuleList] = [nn.ModuleList([])],
 ):
     return create_minor_block_sequence(
-        blocks, in_channels, stride=stride, norm_before_act=norm_before_act
+        blocks,
+        in_channels,
+        stride=stride,
+        norm_before_act=norm_before_act,
+        qconfig=qconfig,
     )
 
 
@@ -314,10 +326,15 @@ def create_residual_block_1d(
     in_channels,
     stride=1,
     norm_before_act=None,
+    qconfig=None
     # sources: List[nn.ModuleList] = [nn.ModuleList([])],
 ) -> ResBlock1d:
     minor_blocks = create_minor_block_sequence(
-        blocks, in_channels, stride=stride, norm_before_act=norm_before_act
+        blocks,
+        in_channels,
+        stride=stride,
+        norm_before_act=norm_before_act,
+        qconfig=qconfig,
     )
     # the output channel count of the residual major block is the output channel count of the last minor block
     out_channels = blocks[-1].out_channels
