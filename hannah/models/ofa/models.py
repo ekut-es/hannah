@@ -18,7 +18,6 @@ from .submodules.elastickernelconv import (
     ElasticConv1d,
     ElasticConvBn1d,
     ElasticConvBnReLu1d,
-    ElasticQuantConv1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -49,12 +48,10 @@ def create(
     skew_sampling_distribution: bool = False,
     dropout: int = 0.5,
     validate_on_extracted=True,
-    qconfig=None
+    qconfig=None,
 ) -> nn.Module:
     # if no orders for the norm operator are specified, fall back to default
-    default_qconfig = (
-        instantiate(qconfig) if qconfig else None
-    )
+    default_qconfig = instantiate(qconfig) if qconfig else None
     flatten_n = input_shape[0]
     in_channels = input_shape[1]
     pool_n = input_shape[2]
@@ -203,7 +200,7 @@ def create_minor_block(
         act = block_config.get("act", False)
 
         if not norm and not act:
-            new_minor_block = ElasticQuantConv1d(
+            new_minor_block = ElasticConv1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
                 out_channels=out_channels_full,
@@ -397,7 +394,8 @@ class OFAModel(nn.Module):
         self.ofa_steps_width = 1
         # create a list of every elastic kernel conv, for sampling
         all_elastic_kernel_convs = get_instances_from_deep_nested(
-            input=self.conv_layers, type_selection=(ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d)
+            input=self.conv_layers,
+            type_selection=(ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d),
         )
         self.elastic_kernel_convs = []
         for item in all_elastic_kernel_convs:
