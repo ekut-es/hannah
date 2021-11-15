@@ -6,8 +6,30 @@ import torch.nn.functional as nnf
 
 from ..utilities import filter_primary_module_weights, filter_single_dimensional_weights
 from .elasticchannelhelper import SequenceDiscovery
+
 # from .elastickernelconv import ElasticKernelConv1d
 # from hannah.models.ofa.submodules.elasticchannelhelper import ElasticChannelHelper
+
+
+class ElasticBatchnorm1d(nn.Module):
+    def __init__(
+        self,
+        num_features,
+        track_running_stats=False,
+    ):
+        super().__init__()
+        self.bn = nn.BatchNorm1d(
+            num_features=num_features, track_running_stats=track_running_stats
+        )
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if isinstance(input, SequenceDiscovery):
+            return input.discover(self)
+
+        return self.bn.forward(input)
+
+    def assemble_basic_batchnorm1d(self) -> nn.BatchNorm1d:
+        return copy.deepcopy(self.bn)
 
 
 class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
@@ -17,8 +39,7 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         track_running_stats=False,
     ):
         super().__init__(
-            num_features=num_features,
-            track_running_stats=track_running_stats
+            num_features=num_features, track_running_stats=track_running_stats
         )
         self.channel_filter = [True] * num_features
 
@@ -27,7 +48,9 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
             return input.discover(self)
 
         if self.track_running_stats:
-            logging.warn("ElasticWidthBatchnorm with tracked running stats currently not fully implemented!")
+            logging.warn(
+                "ElasticWidthBatchnorm with tracked running stats currently not fully implemented!"
+            )
             # num_batches_tracked and exponential averaging are currently not implemented.
 
         running_mean = self.running_mean
@@ -48,15 +71,19 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
                 bias=bias,
                 training=training or not self.track_running_stats,
                 momentum=momentum,
-                eps=eps
+                eps=eps,
             )
 
         else:
             new_running_mean = None
             new_running_var = None
             if self.track_running_stats:
-                new_running_mean = filter_single_dimensional_weights(running_mean, self.channel_filter)
-                new_running_var = filter_single_dimensional_weights(running_var, self.channel_filter)
+                new_running_mean = filter_single_dimensional_weights(
+                    running_mean, self.channel_filter
+                )
+                new_running_var = filter_single_dimensional_weights(
+                    running_var, self.channel_filter
+                )
             new_weight = filter_single_dimensional_weights(weight, self.channel_filter)
             new_bias = filter_single_dimensional_weights(bias, self.channel_filter)
 
@@ -68,21 +95,29 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
                 bias=new_bias,
                 training=training or not self.track_running_stats,
                 momentum=momentum,
-                eps=eps
+                eps=eps,
             )
 
     def get_basic_batchnorm1d(self):
         # filter_single_dimensional_weights checks for None-input, no need to do it here.
-        new_running_mean = filter_single_dimensional_weights(self.running_mean, self.channel_filter)
-        new_running_var = filter_single_dimensional_weights(self.running_var, self.channel_filter)
-        new_weight = make_parameter(filter_single_dimensional_weights(self.weight, self.channel_filter))
-        new_bias = make_parameter(filter_single_dimensional_weights(self.bias, self.channel_filter))
+        new_running_mean = filter_single_dimensional_weights(
+            self.running_mean, self.channel_filter
+        )
+        new_running_var = filter_single_dimensional_weights(
+            self.running_var, self.channel_filter
+        )
+        new_weight = make_parameter(
+            filter_single_dimensional_weights(self.weight, self.channel_filter)
+        )
+        new_bias = make_parameter(
+            filter_single_dimensional_weights(self.bias, self.channel_filter)
+        )
         new_bn = nn.BatchNorm1d(
             num_features=self.num_features,
             eps=self.eps,
             momentum=self.momentum,
             affine=self.affine,
-            track_running_stats=self.track_running_stats
+            track_running_stats=self.track_running_stats,
         )
         new_bn.running_mean = new_running_mean
         new_bn.running_var = new_running_var
@@ -110,10 +145,14 @@ class ElasticWidthLinear(nn.Linear):
             return nnf.linear(input, self.weight, self.bias)
         else:
             # if channels need to be filtered, apply filters.
-            new_weight = filter_primary_module_weights(self.weight, self.in_channel_filter, self.out_channel_filter)
+            new_weight = filter_primary_module_weights(
+                self.weight, self.in_channel_filter, self.out_channel_filter
+            )
             # if the module has a bias parameter, also apply the output filtering to it.
             # filter_single_dimensional_weights checks for None-input, so no check is done here.
-            new_bias = filter_single_dimensional_weights(self.bias, self.out_channel_filter)
+            new_bias = filter_single_dimensional_weights(
+                self.bias, self.out_channel_filter
+            )
             return nnf.linear(input, new_weight, new_bias)
 
     def get_basic_linear(self):
@@ -129,8 +168,14 @@ class ElasticWidthLinear(nn.Linear):
             new_linear.bias = bias
             return new_linear
         else:
-            new_weight = make_parameter(filter_primary_module_weights(self.weight, self.in_channel_filter, self.out_channel_filter))
-            new_bias = make_parameter(filter_single_dimensional_weights(self.bias, self.out_channel_filter))
+            new_weight = make_parameter(
+                filter_primary_module_weights(
+                    self.weight, self.in_channel_filter, self.out_channel_filter
+                )
+            )
+            new_bias = make_parameter(
+                filter_single_dimensional_weights(self.bias, self.out_channel_filter)
+            )
             new_linear.weight = new_weight
             new_linear.bias = new_bias
             return new_linear
