@@ -770,16 +770,23 @@ class OFAModel(nn.Module):
 
 
 def is_elastic_module(module: nn.Module) -> bool:
-    return (
-        isinstance(module, ElasticConv1d)
-        or isinstance(module, ElasticWidthBatchnorm1d)
-        or isinstance(module, ElasticWidthLinear)
-        or isinstance(module, ElasticPermissiveReLU)
+    return isinstance(
+        module,
+        (
+            ElasticConv1d,
+            ElasticQuantConvBn1d,
+            ElasticWidthBatchnorm1d,
+            ElasticWidthLinear,
+            ElasticPermissiveReLU,
+        ),
     )
 
 
 def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
-    if isinstance(module, (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d)):
+    if isinstance(
+        module,
+        (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d, ElasticQuantConvBn1d),
+    ):
         return module.assemble_basic_conv1d()
     elif isinstance(module, ElasticWidthBatchnorm1d):
         return module.assemble_basic_batchnorm1d()
