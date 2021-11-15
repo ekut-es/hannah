@@ -755,6 +755,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         bias: bool = False,
         track_running_stats=False,
         qconfig=None,
+        out_quant=True,
     ):
         # sort available kernel sizes from largest to smallest (descending order)
         kernel_sizes.sort(reverse=True)
@@ -781,7 +782,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         self.bn = ElasticWidthBatchnorm1d(out_channels, track_running_stats)
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
-
+        self.qconfig = qconfig
+        self.out_quant = out_quant
         # the list of kernel transforms will have one element less than the list of kernel sizes.
         # between every two sequential kernel sizes, there will be a kernel transform
         # the subsequent kernel is determined by applying the same-size center of the previous kernel to the transform
@@ -828,17 +830,27 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
-        new_conv = BConvBn1d(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            kernel_size=kernel_size,
-            stride=self.stride,
-            padding=padding,
-            dilation=self.dilation,
-            bias=False,
+        new_conv = ConvBn1d(
+            self.in_channels,
+            self.out_channels,
+            kernel_size,
+            self.stride,
+            padding,
+            self.dilation,
+            self.groups,
+            bias,
+            eps=self.bn.eps,
+            momentum=self.bn.momentum,
+            qconfig=self.qconfig,
+            out_quant=self.out_quant,
         )
         new_conv.weight.data = kernel
         new_conv.bias = bias
+
+        new_conv.bn.weight = self.bn.weight
+        new_conv.bn.bias = self.bn.bias
+        new_conv.bn.running_var = self.bn.running_var
+        new_conv.bn.running_mean = self.bn.running_mean
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
