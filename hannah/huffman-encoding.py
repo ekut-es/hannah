@@ -47,7 +47,7 @@ def create_tree(frq):
     while len(nodes) > 1:
         left = heapq.heappop(nodes)
         right = heapq.heappop(nodes)
-        sum_frq = left[0]+ right[0]
+        sum_frq = left[0] + right[0]
         left[2].huff = '0'
         right[2].huff = '1'
         internal_node = Node(sum_frq, 0, left, right)
@@ -75,22 +75,18 @@ def decode_Huffman():
 def main():
     file_path = '/../trained_models/test/conv_net_trax/model.onnx'
     parameters = load_parameters(file_path)
+
     frq = get_frequencies(parameters)
     tree = create_tree(frq)
+
     encoding = {}
     huffman_encoding = encode_Huffman(tree, '', encoding)
-    params = list()
-    for i in range(len(parameters)):
-        params.append([huffman_encoding[code] for code in parameters[i]])
-    print(params)
-    '''for i in range(len(parameters)):
-        for j in range(len(parameters[i])):
-            print(str(parameters[i][j]))
-            parameters[i][j] = huffman_encoding[parameters[i][j]]
-            #print(huffman_encoding[parameters[i][j]])
 
-            break
-    #print(parameters)'''
+    params = [None] * len(parameters)
+    for i in range(len(parameters)):
+        params[i] = [huffman_encoding[code] for code in parameters[i]]
+    print(params)
+
 
 if __name__ == "__main__":
     main()

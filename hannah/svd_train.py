@@ -122,7 +122,7 @@ def train(config: DictConfig):
 
             # inspect results
             fig = lr_finder.plot()
-            fig.savefig("./learning_rate.png")
+            fig.fig("./learning_rate.png")
 
             # recreate module with updated config
             suggested_lr = lr_finder.suggestion()
@@ -136,17 +136,20 @@ def train(config: DictConfig):
 
 
 
+        '''torch.save(lit_module.state_dict(), "checkpoint.ckpt")
+        lit_module.load_state_dict(
+            torch.load("checkpoint.ckpt", map_location=lambda storage, loc: storage),
+            strict=False,
+        )'''
+
 
         for name, module in lit_module.named_modules():
             if type(module) in [nn.Linear] or name == "model.linear.0.0":
                 U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True)
-                rank = 4
+                rank = config.get("svd_rank_compression")
                 U = U[:, :rank]
                 SVh = torch.matmul(torch.diag(S), Vh[:12, :])
                 SVh = SVh[:rank, :]
-
-            
-
 
                 if type(module) in [nn.Linear]:
                     original_fc = lit_module.model.fc
@@ -169,9 +172,19 @@ def train(config: DictConfig):
 
                     lit_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                     lit_module.model.linear[0][0][1].weight = torch.nn.Parameter(U, requires_grad=True)
+        
+        #lit_module.trainer.current_epoch = 0
+        #lit_module.trainer.max_epochs = 11 
+        #lit_trainer.trainer.current_epoch = 0
+        lit_trainer = instantiate(
+            config.trainer,
+            profiler=profiler,
+            callbacks=callbacks,
+            logger=logger,
+            reload_dataloaders_every_epoch=True,
+        )
+        lit_trainer.fit(lit_module)
 
-
-        #ckpt_path = "best"
         ckpt_path = None
 
         if lit_trainer.fast_dev_run:
