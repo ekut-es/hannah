@@ -80,12 +80,25 @@ def main():
     tree = create_tree(frq)
 
     encoding = {}
-    huffman_encoding = encode_Huffman(tree, '', encoding)
+    huffman_encoding = encode_Huffman(tree, bitarray(''), encoding)
 
     params = [None] * len(parameters)
+    d = bitarray()
+    for i in range(len(parameters)):
+        #[huffman_encoding[code] for code in parameters[i]]
+        #encoded_array = 
+        np.array(bitarray([huffman_encoding[code] for code in parameters[i]]))
+        #print(encoded_array)
+        #print(type(encoded_array[0]))
+        #encoded_tensor = numpy_helper.from_array(encoded_array)
+        #print(encoded_tensor)
+        break
+    print(params)
+
+    '''params = [None] * len(parameters)
     for i in range(len(parameters)):
         params[i] = [huffman_encoding[code] for code in parameters[i]]
-    print(params)
+    print(params)'''
 
 
 if __name__ == "__main__":

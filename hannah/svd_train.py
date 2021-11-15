@@ -173,16 +173,8 @@ def train(config: DictConfig):
                     lit_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                     lit_module.model.linear[0][0][1].weight = torch.nn.Parameter(U, requires_grad=True)
         
-        #lit_module.trainer.current_epoch = 0
-        #lit_module.trainer.max_epochs = 11 
-        #lit_trainer.trainer.current_epoch = 0
-        lit_trainer = instantiate(
-            config.trainer,
-            profiler=profiler,
-            callbacks=callbacks,
-            logger=logger,
-            reload_dataloaders_every_epoch=True,
-        )
+
+        lit_trainer.fit_loop.current_epoch = 0
         lit_trainer.fit(lit_module)
 
         ckpt_path = None
