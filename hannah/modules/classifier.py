@@ -130,7 +130,7 @@ class ClassifierModule(LightningModule):
                     except ValueError:
                         logging.critical("Could not add histogram for param %s", name)
 
-        for name, module in self.named_modules():
+        """for name, module in self.named_modules():
             loggers = self._logger_iterator()
             if hasattr(module, "scaled_weight"):
                 for logger in loggers:
@@ -145,6 +145,7 @@ class ClassifierModule(LightningModule):
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )
+        """
 
     def _logger_iterator(self):
         if isinstance(self.logger, LoggerCollection):
