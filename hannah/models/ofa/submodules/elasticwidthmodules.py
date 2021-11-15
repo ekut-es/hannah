@@ -6,30 +6,30 @@ import torch.nn.functional as nnf
 
 from ..utilities import filter_primary_module_weights, filter_single_dimensional_weights
 from .elasticchannelhelper import SequenceDiscovery
+from torch.nn.modules.batchnorm import _BatchNorm
 
 # from .elastickernelconv import ElasticKernelConv1d
 # from hannah.models.ofa.submodules.elasticchannelhelper import ElasticChannelHelper
 
 
-class ElasticBatchnorm1d(nn.Module):
+class ElasticBatchnorm1d(nn.BatchNorm1d):
     def __init__(
         self,
         num_features,
         track_running_stats=False,
     ):
-        super().__init__()
-        self.bn = nn.BatchNorm1d(
+        super().__init__(
             num_features=num_features, track_running_stats=track_running_stats
         )
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if isinstance(x, SequenceDiscovery):
+            return x.discover(self)
 
-        return self.bn.forward(input)
+        return super().forward(x)
 
     def assemble_basic_batchnorm1d(self) -> nn.BatchNorm1d:
-        return copy.deepcopy(self.bn)
+        return copy.deepcopy(super())
 
 
 class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
