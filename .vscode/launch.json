@@ -24,8 +24,8 @@
                 "trainer.limit_train_batches=0.1",
                 "trainer.max_epochs=50",
                 "model=conv-net-trax",
-                "svd_rank_compression=2",
-                "output_dir=trained_models/svd_rank2"
+                "svd_rank_compression=3",
+                "output_dir=trained_models/svd_rank3"
             ]
         },
         {

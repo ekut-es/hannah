@@ -4,7 +4,8 @@ from onnx import numpy_helper
 import numpy as np
 import matplotlib.pyplot as plt
 import heapq
-
+from bitarray import bitarray
+from bitarray.util import ba2int
 
 class Node:
     def __init__(self, frq, char, left=None, right=None, huff=''):
@@ -76,29 +77,26 @@ def main():
     file_path = '/../trained_models/test/conv_net_trax/model.onnx'
     parameters = load_parameters(file_path)
 
+
     frq = get_frequencies(parameters)
     tree = create_tree(frq)
 
+
     encoding = {}
     huffman_encoding = encode_Huffman(tree, bitarray(''), encoding)
+    for k,v in huffman_encoding.items():
+        huffman_encoding[k] = np.binary_repr(ba2int(huffman_encoding[k]))
+    #print(huffman_encoding)
+
+
 
     params = [None] * len(parameters)
-    d = bitarray()
     for i in range(len(parameters)):
-        #[huffman_encoding[code] for code in parameters[i]]
-        #encoded_array = 
-        np.array(bitarray([huffman_encoding[code] for code in parameters[i]]))
-        #print(encoded_array)
-        #print(type(encoded_array[0]))
+        encoded_array = np.array([huffman_encoding[code] for code in parameters[i]], dtype=np.str_)
         #encoded_tensor = numpy_helper.from_array(encoded_array)
-        #print(encoded_tensor)
         break
     print(params)
 
-    '''params = [None] * len(parameters)
-    for i in range(len(parameters)):
-        params[i] = [huffman_encoding[code] for code in parameters[i]]
-    print(params)'''
 
 
 if __name__ == "__main__":

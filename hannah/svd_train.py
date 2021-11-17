@@ -141,7 +141,7 @@ def train(config: DictConfig):
             torch.load("checkpoint.ckpt", map_location=lambda storage, loc: storage),
             strict=False,
         )'''
-
+    
 
         for name, module in lit_module.named_modules():
             if type(module) in [nn.Linear] or name == "model.linear.0.0":
