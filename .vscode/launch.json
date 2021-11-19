@@ -29,6 +29,32 @@
             ]
         },
         {
+            "name": "backend",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "trainer.max_epochs=1",
+                "module.num_workers=4",
+                "model=conv-net-trax",
+                "normalizer=fixedpoint",
+                "backend=trax_ut", 
+                "backend.cols=8",
+                "backend.standalone=True",
+                "backend.rtl_simulation=False",
+                "backend.synthesis=False",
+                "backend.postsyn_simulation=False",
+                "backend.power_estimation=False",
+                "backend.num_inferences=1",
+                "backend.period=1000",
+                "backend.macro_type=RTL",
+                "backend.backend_dir=/local/wernerju/tc-resnet8-accelerator",
+                "backend.teda_dir=/local/wernerju/teda"
+            ]
+        }
+            ]
+        },
+        {
             "name": "quantized",
             "type": "python",
             "request": "launch",

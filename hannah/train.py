@@ -97,8 +97,8 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        svd_rank = config.get("svd_rank_compression")
-        callbacks.append(SVD(svd_rank))
+        #svd_rank = config.get("svd_rank_compression")
+        #callbacks.append(SVD(svd_rank))
         callbacks.extend(common_callbacks(config))
 
         opt_monitor = config.get("monitor", ["val_error"])
