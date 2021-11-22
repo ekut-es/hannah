@@ -775,6 +775,8 @@ def is_elastic_module(module: nn.Module) -> bool:
         (
             ElasticConv1d,
             ElasticQuantConvBn1d,
+            ElasticConvBn1d,
+            ElasticConvBnReLu1d,
             ElasticWidthBatchnorm1d,
             ElasticWidthLinear,
             ElasticPermissiveReLU,
