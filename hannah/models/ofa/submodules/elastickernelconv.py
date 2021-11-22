@@ -1117,7 +1117,7 @@ class BConvBnReLu1d(nn.Conv1d):
     ):
         super().__init__(
             in_channels=in_channels,
-            out_channels=self.out_channels,
+            out_channels=out_channels,
             kernel_size=(kernel_size,),
             stride=(stride,),
             padding=padding,
