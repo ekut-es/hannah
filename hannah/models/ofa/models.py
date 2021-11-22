@@ -816,7 +816,7 @@ def rebuild_extracted_blocks(blocks, quantized=False):
             raise TypeError("Input blocks are neither iterable nor Module")
         blocks = nn.ModuleList([blocks])
 
-    if isinstance(blocks, nn.Sequential) or isinstance(blocks, nn.ModuleList):
+    if isinstance(blocks, (nn.Sequential, nn.ModuleList)):
         modules = nn.ModuleList([])
         for item in blocks:
             modules.append(item)
