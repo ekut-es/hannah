@@ -16,6 +16,8 @@ from torch.nn import init
 from torch.nn.modules.utils import _pair, _single
 from torch.nn.parameter import Parameter
 
+import traceback
+
 from . import quantized as q
 
 _BN_CLASS_MAP = {1: nn.BatchNorm1d, 2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
@@ -166,14 +168,18 @@ class _ConvBnNd(
 
     @property
     def scaled_weight(self):
-        scale_factor = self.scale_factor
-        weight_shape = [1] * len(self.weight.shape)
-        weight_shape[0] = -1
-        bias_shape = [1] * len(self.weight.shape)
-        bias_shape[1] = -1
-        scaled_weight = self.weight_fake_quant(
-            self.weight * scale_factor.reshape(weight_shape)
-        )
+        try:
+            scale_factor = self.scale_factor
+            weight_shape = [1] * len(self.weight.shape)
+            weight_shape[0] = -1
+            bias_shape = [1] * len(self.weight.shape)
+            bias_shape[1] = -1
+            scaled_weight = self.weight_fake_quant(
+                self.weight * scale_factor.reshape(weight_shape)
+            )
+        except Exception as e:
+            print("SCALING EXCEPTION: {}".format(str(e)))
+            print(traceback.format_exc())
 
         return scaled_weight
 
@@ -544,7 +550,7 @@ class ConvBn2d(_ConvBnNd):
         if self.out_quant:
             self.activation_post_process = qconfig.activation()
         else:
-            self.activation_past_process = nn.Identity()
+            self.activation_post_process = nn.Identity()
 
     def forward(self, input):
         return self.activation_post_process(super(ConvBn2d, self)._forward(input))
