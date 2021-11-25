@@ -1,10 +1,12 @@
 import networkx as nx
 import torch
 from torch.nn import Module
-from hannah.models.factory.qat import ConvBn1d, ConvBnReLU1d
+from hannah.models.factory.qat import ConvBn1d, ConvBnReLU1d, Linear
 from hannah.models.factory.qconfig import get_trax_qat_qconfig
 
 from hannah.nas.graph_conversion import model_to_graph
+
+from hannah.models.factory.pooling import ApproximateGlobalAveragePooling1D
 
 from omegaconf import OmegaConf
 
@@ -19,6 +21,8 @@ class Model(Module):
         self.conv = ConvBn1d(16, 24, 9, padding=4, qconfig=qconfig)
         self.conv_relu = ConvBnReLU1d(24, 32, 3, padding=1, stride=2, qconfig=qconfig)
         self.skip_conv = ConvBnReLU1d(16, 32, 1, stride=2, qconfig=qconfig)
+        # self.pooling = ApproximateGlobalAveragePooling1D(2, qconfig=qconfig)
+        self.linear = Linear(25, 12, qconfig=qconfig)
 
     def forward(self, x):
         x = self.activation_post_process(x)
@@ -26,6 +30,9 @@ class Model(Module):
         x = self.conv(x)
         x = self.conv_relu(x)
         x = x + skip
+        if hasattr(self, 'pooling'):
+            x = self.pooling(x)
+        x = self.linear(x)
         return x
 
 
