@@ -766,6 +766,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         # initially, the target size is the full kernel
         self.target_kernel_index: int = 0
         self.out_channels: int = out_channels
+        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+
         # print(self.out_channels)
         _ElasticConvBnNd.__init__(
             self,
@@ -779,7 +781,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             bias=bias,
             qconfig=qconfig,
         )
-        self.bn = ElasticWidthBatchnorm1d(out_channels, track_running_stats)
+        self.bn = nn.BatchNorm1d(out_channels, track_running_stats)
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
         self.qconfig = qconfig
@@ -821,8 +823,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return self.bn(
-            nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
+        return self.bn(super()._forward(input)
+            #nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
         )
 
     # return a normal conv1d equivalent to this module in the current state
@@ -1004,6 +1006,8 @@ class ElasticConvBnReLu1d(ElasticBase1d, nn.Conv1d):
         # initially, the target size is the full kernel
         self.target_kernel_index: int = 0
         self.out_channels: int = out_channels
+        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+
         # print(self.out_channels)
         ElasticBase1d.__init__(
             self,
