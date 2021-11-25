@@ -83,9 +83,7 @@ build_docs:
   before_script:
     - python3 -m virtualenv venv
     - source venv/bin/activate
-    - pip install --upgrade pydoc-markdown
-    - pip install --upgrade mkdocs
-    - pip install --upgrade pymdown-extensions
+    - pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
 
   allow_failure: true
   script:
