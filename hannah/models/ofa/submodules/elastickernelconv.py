@@ -49,7 +49,7 @@ class _ElasticConvBnNd(
         momentum=0.1,
         freeze_bn=False,
         qconfig=None,
-        dim=2,
+        dim=1,
         out_quant=True,
         track_running_stats=False,
     ):
