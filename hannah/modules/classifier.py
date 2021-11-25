@@ -50,7 +50,8 @@ class ClassifierModule(LightningModule):
         frequency_masking: int = 0,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
-        export_onnx: bool = True,
+        export_onnx: bool = False,
+        export_relay: bool = False,
         gpus=None,
     ):
         super().__init__()
@@ -63,6 +64,7 @@ class ClassifierModule(LightningModule):
         self.dev_set = None
         self.logged_samples = 0
         self.export_onnx = export_onnx
+        self.export_relay = export_relay
         self.gpus = gpus
         print(dataset.data_folder)
 
@@ -168,16 +170,17 @@ class ClassifierModule(LightningModule):
 
     def save(self):
         output_dir = "."
-        quantized_model = copy.deepcopy(self.model)
-        quantized_model.cpu()
-        if hasattr(self.model, "qconfig") and self.model.qconfig:
-            quantized_model = torch.quantization.convert(
-                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
-            )
+        dummy_input = self.example_feature_array.cpu()
+
         if self.export_onnx:
+            quantized_model = copy.deepcopy(self.model)
+            quantized_model.cpu()
+            if hasattr(self.model, "qconfig") and self.model.qconfig:
+                quantized_model = torch.quantization.convert(
+                    quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
+                )
             logging.info("saving onnx...")
             try:
-                dummy_input = self.example_feature_array.cpu()
 
                 torch.onnx.export(
                     quantized_model,
@@ -188,6 +191,15 @@ class ClassifierModule(LightningModule):
                 )
             except Exception as e:
                 logging.error("Could not export onnx model ...\n {}".format(str(e)))
+
+        if self.export_relay:
+            logging.info("saving relay")
+            try:
+                from hannah_tvm.backend import export_relay
+
+                export_relay(self.model, dummy_input)
+            except Exception as e:
+                logging.error("Could not export relay model ...\n {}".format(str(e)))
 
     def on_load_checkpoint(self, checkpoint):
         for k, v in self.state_dict().items():

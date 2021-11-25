@@ -1,6 +1,3 @@
-[submodule "plugins/hannah-optimizer"]
-	path = plugins/hannah-optimizer
-	url = ../hannah-optimizer.git
 [submodule "external/hannah-tvm"]
 	path = external/hannah-tvm
 	url = ../hannah-tvm

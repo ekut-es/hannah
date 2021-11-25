@@ -1,4 +1,5 @@
 import logging
+import sys
 import yaml
 import hydra
 
@@ -13,6 +14,7 @@ from omegaconf import OmegaConf, DictConfig
 from hannah.nas.graph_conversion import model_to_graph
 from hannah.nas.performance_prediction.simple import to_dgl_graph
 from hannah.nas.parametrization import SearchSpace
+from hannah.nas.graph_conversion import model_to_graph
 
 import hannah.conf
 
@@ -51,7 +53,9 @@ def main(config: DictConfig):
         model.setup("test")
         model.eval()
 
-        results = backend.prepare(model)
+        network_graph = model_to_graph(model.model, model.example_feature_array)
+        results = backend.characterize(model)
+
         for result in results:
             board = result["board"]
             directory = Path(board)
