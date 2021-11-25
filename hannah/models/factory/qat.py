@@ -174,6 +174,7 @@ class _ConvBnNd(
         scaled_weight = self.weight_fake_quant(
             self.weight * scale_factor.reshape(weight_shape)
         )
+        
 
         return scaled_weight
 
@@ -544,7 +545,7 @@ class ConvBn2d(_ConvBnNd):
         if self.out_quant:
             self.activation_post_process = qconfig.activation()
         else:
-            self.activation_past_process = nn.Identity()
+            self.activation_post_process = nn.Identity()
 
     def forward(self, input):
         return self.activation_post_process(super(ConvBn2d, self)._forward(input))
