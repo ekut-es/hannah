@@ -106,13 +106,15 @@ def train(config: DictConfig):
         callbacks.append(checkpoint_callback)
 
         # INIT PYTORCH-LIGHTNING
-        lit_trainer = instantiate(
-            config.trainer,
-            profiler=profiler,
-            callbacks=callbacks,
-            logger=logger,
-            reload_dataloaders_every_n_epochs=1,
-        )
+        #lit_trainer = instantiate(
+        #    config.trainer,
+        #    profiler=profiler,
+        #    callbacks=callbacks,
+        #    logger=logger,
+        #    reload_dataloaders_every_n_epochs=1,
+        #)
+        import pytorch_lightning as pl
+        lit_trainer = pl.Trainer(gpus=2)
 
         if config["auto_lr"]:
             # run lr finder (counts as one epoch)
@@ -133,20 +135,15 @@ def train(config: DictConfig):
         lit_trainer.fit(lit_module)
         ckpt_path = "best"
 
-        if lit_trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
-            )
-            ckpt_path = None
-
-        reset_seed()
-        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
-
-        # PL TEST
-        reset_seed()
-        lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
-
         if not lit_trainer.fast_dev_run:
+            reset_seed()
+            lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
+
+            # PL TEST
+            reset_seed()
+            lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+
+        
             lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
                 shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")

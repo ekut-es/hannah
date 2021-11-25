@@ -67,21 +67,21 @@ class Cifar10Dataset(VisionDatasetBase):
         data_folder = config.data_folder
         root_folder = os.path.join(data_folder, "CIFAR10")
 
-        train_transform = A.load(
-            "/local/gerum/speech_recognition/albumentations/cifar10_autoalbument.json"
-        )
+        #train_transform = A.load(
+        #    "/local/gerum/speech_recognition/albumentations/cifar10_autoalbument.json"
+        #)
         # print(loaded_transform)
-        # train_transform = A.Compose(
-        #    [
-        #        A.SmallestMaxSize(max_size=32),
-        #        A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5),
-        #        A.RandomCrop(height=32, width=32),
-        #        A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
-        #        A.RandomBrightnessContrast(p=0.5),
-        #        A.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.247, 0.243, 0.261)),
-        #        ToTensorV2(),
-        #    ]
-        # )
+        train_transform = A.Compose(
+            [
+                A.SmallestMaxSize(max_size=32),
+                A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5),
+                A.RandomCrop(height=32, width=32),
+                A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
+                A.RandomBrightnessContrast(p=0.5),
+                A.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.247, 0.243, 0.261)),
+                ToTensorV2(),
+            ]
+        )
 
         val_transform = A.Compose(
             [

@@ -99,7 +99,7 @@ class ClassifierModule(LightningModule):
     @property
     def total_training_steps(self) -> int:
         """Total training steps inferred from datamodule and devices."""
-        if self.trainer.max_steps:
+        if self.trainer.max_steps > 0:
             return self.trainer.max_steps
 
         limit_batches = self.trainer.limit_train_batches

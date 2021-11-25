@@ -78,19 +78,9 @@ class ImageClassifierModule(ClassifierModule):
 
         logits = self(x)
 
-        # reg_loss = 0
-        # for param in self.parameters():
-        #    if param.requires_grad:
-        #        reg_loss += torch.abs(param).sum()
-
-        # reg_loss *= 0.00001
-
-        # self.log("reg_loss", reg_loss)
-
         loss = F.cross_entropy(logits, y.squeeze())
         self.log("train_loss", loss)
 
-        # loss = loss + reg_loss
         return loss
 
     def evaluate(self, batch, stage=None):
@@ -101,9 +91,9 @@ class ImageClassifierModule(ClassifierModule):
         acc = accuracy(preds, y.squeeze())
 
         if stage:
-            self.log(f"{stage}_loss", loss, prog_bar=True)
-            self.log(f"{stage}_accuracy", acc, prog_bar=True)
-            self.log(f"{stage}_error", 1.0 - acc, prog_bar=True)
+            self.log(f"{stage}_loss", loss, prog_bar=False)
+            self.log(f"{stage}_accuracy", acc, prog_bar=False)
+            self.log(f"{stage}_error", 1.0 - acc, prog_bar=False)
 
     def validation_step(self, batch, batch_idx):
         self.evaluate(batch, "val")
