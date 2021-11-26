@@ -16,6 +16,18 @@
             ]
         },
         {
+            "name": "ofa",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "module.num_workers=8"
+            ]
+        },
+        {
             "name": "kd",
             "type": "python",
             "request": "launch",
