@@ -728,7 +728,8 @@ class ElasticConv1d(ElasticBase1d, nn.Conv1d):
             bias=False,
         )
         new_conv.weight.data = kernel
-        new_conv.bias = bias
+        if bias is not None:
+            new_conv.bias = bias
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
