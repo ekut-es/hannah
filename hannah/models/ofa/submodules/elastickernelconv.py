@@ -651,6 +651,8 @@ class ElasticConv1d(ElasticBase1d, nn.Conv1d):
         # initially, the target size is the full kernel
         self.target_kernel_index: int = 0
         self.out_channels: int = out_channels
+        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+
         # print(self.out_channels)
         ElasticBase1d.__init__(
             self,
@@ -732,7 +734,7 @@ class ElasticConv1d(ElasticBase1d, nn.Conv1d):
             new_conv.bias = bias
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+        return self
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
@@ -856,7 +858,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         new_conv.bn.running_mean = self.bn.running_mean
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+        return self
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
@@ -889,6 +891,7 @@ class ElasticConvBn1d(ElasticBase1d, nn.Conv1d):
         self.target_kernel_index: int = 0
         self.out_channels: int = out_channels
         # print(self.out_channels)
+        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
         ElasticBase1d.__init__(
             self,
             in_channels=in_channels,
@@ -975,7 +978,7 @@ class ElasticConvBn1d(ElasticBase1d, nn.Conv1d):
         new_conv.bias = bias
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+        return self
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
@@ -1097,7 +1100,7 @@ class ElasticConvBnReLu1d(ElasticBase1d, nn.Conv1d):
         new_conv.bias = bias
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+        return self
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
