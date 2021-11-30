@@ -26,7 +26,8 @@ class ConnectivityConstrainer:
         subgraph = self.get_dag(idx)
         return subgraph
 
-    def get_dag(self, path_indices):
+    def get_dag(self, cfg):
+        path_indices = [v for k, v in cfg['paths'].items()]
         assert len(path_indices) == self.max_parallel_paths
         chosen_paths = []
         for i in path_indices:
@@ -40,6 +41,16 @@ class ConnectivityConstrainer:
 
         return subgraph
 
+    def get_default_graph(self):
+        return self.get_dag({'paths': {i: 0 for i in range(self.max_parallel_paths)}})
+
+    def get_knobs(self):
+        knobs = {'paths': {}}
+        for i in range(self.max_parallel_paths):
+            knobs['paths'][i] = list(range(len(self.paths)))
+
+        return knobs
+
     def reset_dag(self):
         self.dag = None
 
@@ -51,26 +62,6 @@ class ConnectivityConstrainer:
 
     def enumerate_path_combinations(self):
         return itertools.combinations_with_replacement(range(len(self.paths)), self.max_parallel_paths)
-
-    # def insert_subgraph(self, connectivity_graph):
-    #     graph = nx.DiGraph()
-    #     node_names = [str(s) for s in self.subgraph.nodes]
-    #     for n in connectivity_graph.nodes:
-
-    #         new_nodes = [str(n) + '_' + s for s in node_names]
-    #         new_edges = [(str(n) + '_' + str(u), str(n) + '_' + str(u))for u, v in self.subgraph.edges]
-    #         graph.add_nodes_from(new_nodes)
-    #         graph.add_edges_from(new_edges)
-
-    #         incoming = connectivity_graph.in_edges(n)
-
-    #         for i, edge in enumerate(incoming):
-    #             pre = str(edge[0]) + '_' + node_names[-1]
-    #             graph.add_edge(pre, new_nodes[0])
-
-    #             if len(incoming) > 1:
-    #                 graph.add_edge(pre, str(edge[1]) + '_add')
-    #     return graph
 
 
 # borrowed from NASLib

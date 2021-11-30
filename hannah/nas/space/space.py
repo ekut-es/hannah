@@ -3,7 +3,6 @@ import numpy as np
 
 from copy import deepcopy
 
-from hannah.nas.space.connectivity_constrainer import ConnectivityConstrainer
 import hannah.nas.space.utils as utils
 
 
@@ -141,18 +140,15 @@ class Subgraph(nx.DiGraph):
 class Space:
     def __init__(self,
                  cell_dict,
-                 max_parallel_paths=2,
+                 connectivity_gen,
                  ) -> None:
         self.cell_dict = cell_dict
-        self.max_parellel_paths = max_parallel_paths
-        max_nodes = len(cell_dict)
-        self.cc = ConnectivityConstrainer(max_parallel_paths=self.max_parellel_paths,
-                                          max_nodes=max_nodes)
+        self.connectivity_gen = connectivity_gen
         self.default_graph = self.get_default_graph()
         self.knobs = self.get_knobs()
 
     def get(self, cfg):
-        connect_graph = self.cc.get_dag([v for i, v in cfg['path'].items()])
+        connect_graph = self.connectivity_gen.get_dag(cfg)
         subgraph = Subgraph(cells=self.cell_dict, connectivity_graph=connect_graph)
         instance = subgraph.instantiate(cfg)
         return instance
@@ -163,10 +159,8 @@ class Space:
         return self.get(random_cfg)
 
     def get_knobs(self):
-        knobs = {'path': {}}
-
-        for i in range(self.max_parellel_paths):
-            knobs['path'][i] = list(range(len(self.cc.paths)))
+        knobs = {}
+        knobs.update(self.connectivity_gen.get_knobs())
 
         for node in self.default_graph:
             node_id = self.default_graph.nodes[node]['id']
@@ -176,7 +170,6 @@ class Space:
         return knobs
 
     def get_default_graph(self):
-        idx = [0] * self.max_parellel_paths
-        c_graph = self.cc.get_dag(idx)
+        c_graph = self.connectivity_gen.get_default_graph()
         return Subgraph(cells=self.cell_dict,
                         connectivity_graph=c_graph)
