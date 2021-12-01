@@ -23,8 +23,18 @@ _BN_CLASS_MAP = {1: nn.BatchNorm1d, 2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
 
 # pytype: disable=attribute-error
 class _ConvForwardMixin:
-    def _real_conv_forward(self, input, weight, bias):
-        if self.dim == 1:
+    def _real_conv_forward(self, input, weight, bias, padding=None):
+        if self.dim == 1 and padding is not None:
+            return F.conv1d(
+                input,
+                weight,
+                bias,
+                self.stride,
+                padding,
+                self.dilation,
+                self.groups,
+            )
+        elif self.dim == 1 and padding is None:
             return F.conv1d(
                 input,
                 weight,
