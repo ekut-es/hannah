@@ -24,6 +24,7 @@ conv:
         kernel_sizes: 3
         act: false
         norm: false
+        quat: false
         out_channels: 16
   - target: residual1d
     stride: 2
@@ -36,6 +37,7 @@ conv:
           - 3
         act: true
         norm: true
+        quat: false
         out_channels:
           - 24
           - 16
@@ -48,6 +50,7 @@ conv:
           - 3
         act: false
         norm: true
+        quat: false
         out_channels:
           - 24
           - 16
@@ -63,6 +66,7 @@ conv:
           - 3
         act: true
         norm: true
+        quat: false
         out_channels:
           - 32
           - 24
@@ -75,6 +79,7 @@ conv:
           - 3
         act: false
         norm: false
+        quat: false
         out_channels:
           - 32
           - 24
@@ -90,6 +95,7 @@ conv:
           - 3
         act: true
         norm: true
+        quat: false
         out_channels:
           - 48
           - 32
@@ -102,6 +108,7 @@ conv:
           - 3
         act: false
         norm: false
+        quat: false
         out_channels:
           - 48
           - 32
@@ -117,6 +124,7 @@ conv:
           - 3
         act: true
         norm: true
+        quat: false
         out_channels:
           - 64
           - 48
@@ -129,6 +137,7 @@ conv:
           - 3
         act: false
         norm: false
+        quat: false
         out_channels:
           - 64
           - 48
