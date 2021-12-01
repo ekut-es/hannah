@@ -3,8 +3,22 @@ import numpy as np
 import itertools
 
 
-class ConnectivityConstrainer:
-    def __init__(self, max_parallel_paths, max_nodes, share_dag=False) -> None:
+class ConnectivityGenerator:
+    def get_random_dag(self):
+        raise NotImplementedError
+
+    def get_dag(self):
+        raise NotImplementedError
+
+    def get_default_graph(self):
+        raise NotImplementedError
+
+    def get_knobs(self):
+        raise NotImplementedError
+
+
+class PathConstrainer(ConnectivityGenerator):
+    def __init__(self, max_parallel_paths, max_nodes, stack=[1], share_dag=False) -> None:
         self.max_parallel_paths = max_parallel_paths
         self.max_nodes = max_nodes
         self.complete_dag = []

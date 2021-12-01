@@ -1,7 +1,9 @@
+from typing import Dict
 import networkx as nx
 import numpy as np
 
 from copy import deepcopy
+from hannah.nas.space.connectivity_constrainer import ConnectivityGenerator
 
 import hannah.nas.space.utils as utils
 
@@ -139,8 +141,9 @@ class Subgraph(nx.DiGraph):
 
 class Space:
     def __init__(self,
-                 cell_dict,
-                 connectivity_gen,
+                 cell_dict: Dict,
+                 connectivity_gen: ConnectivityGenerator,
+                 max_stack=[1]
                  ) -> None:
         self.cell_dict = cell_dict
         self.connectivity_gen = connectivity_gen
