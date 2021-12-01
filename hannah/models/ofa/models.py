@@ -20,6 +20,7 @@ from .submodules.elastickernelconv import (
     ElasticConvBnReLu1d,
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
+    ElasticQuantConv1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -216,11 +217,12 @@ def create_minor_block(
                 # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
         elif not norm and not act and quant:
-            new_minor_block = ElasticConv1d(
+            new_minor_block = ElasticQuantConv1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
                 out_channels=out_channels_full,
                 stride=stride,
+                qconfig=qconfig,
                 # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
         elif norm and not act and not quant:
@@ -804,9 +806,11 @@ def is_elastic_module(module: nn.Module) -> bool:
             ElasticQuantConvBn1d,
             ElasticConvBn1d,
             ElasticConvBnReLu1d,
+            ElasticQuantConvBnReLu1d,
             ElasticWidthBatchnorm1d,
             ElasticWidthLinear,
             ElasticPermissiveReLU,
+            ElasticQuantConv1d
         ),
     )
 
@@ -814,7 +818,7 @@ def is_elastic_module(module: nn.Module) -> bool:
 def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
     if isinstance(
         module,
-        (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d, ElasticQuantConvBn1d),
+        (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d, ElasticQuantConvBn1d, ElasticQuantConvBnReLu1d, ElasticQuantConv1d),
     ):
         return module.assemble_basic_conv1d()
     elif isinstance(module, ElasticWidthBatchnorm1d):
@@ -905,7 +909,10 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                     )
             elif isinstance(module, ElasticQuantConvBn1d):
                 reassembled_module = module
-
+            elif isinstance(module, ElasticQuantConvBnReLu1d):
+                reassembled_module = module
+            elif isinstance(module, ElasticQuantConv1d):
+                reassembled_module = module
             elif isinstance(module, nn.BatchNorm1d):
                 reassembled_module = module
                 # for standalone batchnorms, apply any channel filters, if present.
