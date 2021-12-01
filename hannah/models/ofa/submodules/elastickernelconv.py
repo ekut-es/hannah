@@ -207,7 +207,7 @@ class _ElasticConvBnNd(
         else:
             bias = zero_bias
             if self.bias is not None:
-                bias = self.bias
+               _, bias = self.get_kernel()
             bias = self.bias_fake_quant(
                 (bias - self.bn.running_mean) * scale_factor + self.bn.bias
             ).reshape(bias_shape)
