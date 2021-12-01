@@ -19,6 +19,7 @@ from .submodules.elastickernelconv import (
     ElasticConvBn1d,
     ElasticConvBnReLu1d,
     ElasticQuantConvBn1d,
+    ElasticQuantConvBnReLu1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -204,8 +205,9 @@ def create_minor_block(
         minor_block_internal_sequence = nn.ModuleList([])
         norm = block_config.get("norm", False)
         act = block_config.get("act", False)
+        quant = block_config.get("quant", False)
 
-        if not norm and not act:
+        if not norm and not act and not quant:
             new_minor_block = ElasticConv1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
@@ -213,7 +215,23 @@ def create_minor_block(
                 stride=stride,
                 # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
-        elif norm and not act:
+        elif not norm and not act and quant:
+            new_minor_block = ElasticConv1d(
+                kernel_sizes=kernel_sizes,
+                in_channels=in_channels,
+                out_channels=out_channels_full,
+                stride=stride,
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+            )
+        elif norm and not act and not quant:
+            new_minor_block = ElasticConvBn1d(
+                kernel_sizes=kernel_sizes,
+                in_channels=in_channels,
+                out_channels=out_channels_full,
+                stride=stride,
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+            )
+        elif norm and not act and quant:
             new_minor_block = ElasticQuantConvBn1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
@@ -222,12 +240,21 @@ def create_minor_block(
                 qconfig=qconfig,
                 # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
-        elif norm and act:
+        elif norm and act and not quant:
             new_minor_block = ElasticConvBnReLu1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
                 out_channels=out_channels_full,
                 stride=stride,
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+            )
+        elif norm and act and quant:
+            new_minor_block = ElasticQuantConvBnReLu1d(
+                kernel_sizes=kernel_sizes,
+                in_channels=in_channels,
+                out_channels=out_channels_full,
+                stride=stride,
+                qconfig=qconfig,
                 # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
             )
         else:
