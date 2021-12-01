@@ -876,6 +876,9 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                     reassembled_module = module_set.reassemble(
                         module=module, norm=False, act=False
                     )
+            elif isinstance(module, ElasticQuantConvBn1d):
+                reassembled_module = module
+
             elif isinstance(module, nn.BatchNorm1d):
                 reassembled_module = module
                 # for standalone batchnorms, apply any channel filters, if present.
