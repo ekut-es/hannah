@@ -174,12 +174,13 @@ class _ElasticConvBnNd(
     @property
     def scaled_weight(self):
         scale_factor = self.scale_factor
-        weight_shape = [1] * len(self.weight.shape)
+        weight, bias = self.get_kernel()
+        weight_shape = [1] * len(weight.shape)
         weight_shape[0] = -1
-        bias_shape = [1] * len(self.weight.shape)
+        bias_shape = [1] * len(weight.shape)
         bias_shape[1] = -1
         scaled_weight = self.weight_fake_quant(
-            self.weight * scale_factor.reshape(weight_shape)
+            weight * scale_factor.reshape(weight_shape)
         )
 
         return scaled_weight
