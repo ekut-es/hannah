@@ -810,7 +810,7 @@ def is_elastic_module(module: nn.Module) -> bool:
             ElasticWidthBatchnorm1d,
             ElasticWidthLinear,
             ElasticPermissiveReLU,
-            ElasticQuantConv1d
+            ElasticQuantConv1d,
         ),
     )
 
@@ -818,7 +818,14 @@ def is_elastic_module(module: nn.Module) -> bool:
 def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
     if isinstance(
         module,
-        (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d, ElasticQuantConvBn1d, ElasticQuantConvBnReLu1d, ElasticQuantConv1d),
+        (
+            ElasticConv1d,
+            ElasticConvBn1d,
+            ElasticConvBnReLu1d,
+            ElasticQuantConvBn1d,
+            ElasticQuantConvBnReLu1d,
+            ElasticQuantConv1d,
+        ),
     ):
         return module.assemble_basic_conv1d()
     elif isinstance(module, ElasticWidthBatchnorm1d):
@@ -908,10 +915,13 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                         module=module, norm=False, act=False
                     )
             elif isinstance(module, ElasticQuantConvBn1d):
+                # TODO See conv1d above
                 reassembled_module = module
             elif isinstance(module, ElasticQuantConvBnReLu1d):
+                # TODO See conv1d above
                 reassembled_module = module
             elif isinstance(module, ElasticQuantConv1d):
+                # TODO See conv1d above
                 reassembled_module = module
             elif isinstance(module, nn.BatchNorm1d):
                 reassembled_module = module
