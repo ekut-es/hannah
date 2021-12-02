@@ -91,7 +91,18 @@ class ElasticChannelHelper(nn.Module):
             filtered_channel_index = self.channels_by_priority[i]
             self.channel_pass_filter[filtered_channel_index] = False
 
-        if isinstance(self.target, (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d, ElasticWidthLinear)):
+        if isinstance(
+            self.target,
+            (
+                ElasticConv1d,
+                ElasticConvBn1d,
+                ElasticConvBnReLu1d,
+                ElasticQuantConv1d,
+                ElasticQuantConvBn1d,
+                ElasticQuantConvBnReLu1d,
+                ElasticWidthLinear,
+            ),
+        ):
             self.apply_filter_to_module(self.target, is_target=True)
         else:
             logging.warn(
@@ -122,8 +133,17 @@ class ElasticChannelHelper(nn.Module):
                     )
                     return
                 module.out_channel_filter = self.channel_pass_filter
-        elif (
-            isinstance(module, (ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d))):
+        elif isinstance(
+            module,
+            (
+                ElasticConv1d,
+                ElasticConvBn1d,
+                ElasticConvBnReLu1d,
+                ElasticQuantConv1d,
+                ElasticQuantConvBn1d,
+                ElasticQuantConvBnReLu1d,
+            ),
+        ):
             if is_target:
                 # target module -> set module input filter
                 if len(module.in_channel_filter) != len(self.channel_pass_filter):
@@ -220,11 +240,17 @@ class ElasticChannelHelper(nn.Module):
 
     # check if a module is valid as a primary target (to compute channel priorities from)
     def is_primary_target(module: nn.Module) -> bool:
-        return (
-            isinstance(module, ElasticConv1d)
-            or isinstance(module, ElasticConvBn1d)
-            or isinstance(module, ElasticConvBnReLu1d)
-            or isinstance(module, ElasticWidthLinear)
+        return isinstance(
+            module,
+            (
+                ElasticConv1d,
+                ElasticConvBn1d,
+                ElasticConvBnReLu1d,
+                ElasticQuantConv1d,
+                ElasticQuantConvBn1d,
+                ElasticQuantConvBnReLu1d,
+                ElasticWidthLinear,
+            ),
         )
 
     # add additional target(s) which must also have their inputs adjusted when
@@ -448,4 +474,11 @@ class SequenceDiscovery:
 
 # imports are located at the bottom to circumvent circular dependency import issues
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
-from .elastickernelconv import ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d
+from .elastickernelconv import (
+    ElasticConv1d,
+    ElasticConvBn1d,
+    ElasticConvBnReLu1d,
+    ElasticQuantConv1d,
+    ElasticQuantConvBn1d,
+    ElasticQuantConvBnReLu1d,
+)
