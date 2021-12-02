@@ -28,6 +28,7 @@ conv:
         out_channels: 16
   - target: residual1d
     stride: 2
+    quant_skip: true
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -57,6 +58,7 @@ conv:
           - 8
   - target: residual1d
     stride: 2
+    quant_skip: true
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -86,6 +88,7 @@ conv:
           - 16
   - target: residual1d
     stride: 2
+    quant_skip: true
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -115,6 +118,7 @@ conv:
           - 24
   - target: residual1d
     stride: 2
+    quant_skip: true
     blocks:
       - target: elastic_conv1d
         kernel_sizes:

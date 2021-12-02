@@ -83,7 +83,8 @@ def create(
                 in_channels=next_in_channels,
                 stride=block_config.stride,
                 norm_before_act=norm_before_act,
-                qconfig=default_qconfig
+                qconfig=default_qconfig,
+                quant_skip=block_config.quant_skip
                 # sources=previous_sources,
             )
 
@@ -355,7 +356,8 @@ def create_residual_block_1d(
     in_channels,
     stride=1,
     norm_before_act=None,
-    qconfig=None
+    qconfig=None,
+    quant_skip=None,
     # sources: List[nn.ModuleList] = [nn.ModuleList([])],
 ) -> ResBlock1d:
     minor_blocks = create_minor_block_sequence(
@@ -376,6 +378,8 @@ def create_residual_block_1d(
         minor_blocks=minor_blocks,
         stride=stride,
         norm_before_act=norm_before_act,
+        quant_skip=quant_skip,
+        qconfig=qconfig,
     )
     return residual_block
 

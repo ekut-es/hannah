@@ -1,6 +1,6 @@
 import torch.nn as nn
 from .elasticwidthmodules import ElasticWidthBatchnorm1d
-from .elastickernelconv import ElasticConv1d
+from .elastickernelconv import ElasticConv1d, ElasticQuantConv1d
 from .elasticchannelhelper import SequenceDiscovery
 
 
@@ -63,6 +63,8 @@ class ResBlock1d(ResBlockBase):
         norm_after_res=True,
         stride=1,
         norm_before_act=True,
+        quant_skip=False,
+        qconfig=None,
     ):
         super().__init__(
             in_channels=in_channels,
@@ -78,16 +80,30 @@ class ResBlock1d(ResBlockBase):
         self.act = nn.ReLU()
         # if applying skip to the residual values is required, create skip as a minimal conv1d
         # stride is also applied to the skip layer (if specified, default is 1)
-        self.skip = nn.Sequential(
-            ElasticConv1d(
-                self.in_channels,
-                out_channels,
-                kernel_sizes=[1],
-                stride=stride,
-                bias=False,
-            ),
-            ElasticWidthBatchnorm1d(self.out_channels),
-        )  # if self.apply_skip else None
+        if not quant_skip:
+            self.skip = nn.Sequential(
+                ElasticConv1d(
+                    self.in_channels,
+                    out_channels,
+                    kernel_sizes=[1],
+                    stride=stride,
+                    bias=False,
+                ),
+                ElasticWidthBatchnorm1d(self.out_channels),
+            )  # if self.apply_skip else None
+        else:
+            self.skip = nn.Sequential(
+                ElasticQuantConv1d(
+                    self.in_channels,
+                    out_channels,
+                    kernel_sizes=[1],
+                    stride=stride,
+                    bias=False,
+                    qconfig=qconfig,
+                ),
+                ElasticWidthBatchnorm1d(self.out_channels),
+            )  # if self.apply_skip else None
+
         # as this does not know if an elastic width section may follow,
         # the skip connection is required! it will be needed if the width is modified later
 

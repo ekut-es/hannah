@@ -207,7 +207,7 @@ class _ElasticConvBnNd(
         else:
             bias = zero_bias
             if self.bias is not None:
-               _, bias = self.get_kernel()
+                _, bias = self.get_kernel()
             bias = self.bias_fake_quant(
                 (bias - self.bn.running_mean) * scale_factor + self.bn.bias
             ).reshape(bias_shape)
@@ -785,7 +785,7 @@ class ElasticQuantConv1d(ElasticBase1d, nn.Conv1d, _ConvForwardMixin):
             padding=padding,
             dilation=dilation,
             groups=groups,
-            bias=bias
+            bias=bias,
         )
 
         # print(self.out_channels)
@@ -854,9 +854,8 @@ class ElasticQuantConv1d(ElasticBase1d, nn.Conv1d, _ConvForwardMixin):
             self._real_conv_forward(
                 input,
                 self.weight_fake_quant(weight),
-                self.bias_fake_quant(
-                    bias) if self.bias is not None else None,
-                padding=padding
+                self.bias_fake_quant(bias) if self.bias is not None else None,
+                padding=padding,
             )
         )
         return y
@@ -889,10 +888,6 @@ class ElasticQuantConv1d(ElasticBase1d, nn.Conv1d, _ConvForwardMixin):
     def set_out_channel_filter(self, out_channel_filter):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
-
-
-
-
 
 
 class ElasticQuantConvBn1d(_ElasticConvBnNd):
@@ -976,9 +971,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return self.bn(super()._forward(input)
-            #nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
-        )
+        y = super(ElasticQuantConvBn1d, self)._forward(input)
+        return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
@@ -1016,7 +1010,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
 
     def assemble_basic_batchnorm1d(self):
         return self.bn.assemble_basic_batchnorm1d()
-
 
 
 class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
@@ -1101,9 +1094,8 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return self.bn(super()._forward(input)
-            #nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
-        )
+        y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
+        return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
@@ -1334,10 +1326,10 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
 
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
-        #kernel, bias = self.get_kernel()
+        # kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
-        #padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        #t = nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
+        # padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        # t = nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
         return self.relu(super(ElasticConvBnReLu1d, self).forward(input))
 
     # return a normal conv1d equivalent to this module in the current state
