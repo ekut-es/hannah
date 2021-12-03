@@ -7,7 +7,7 @@ class ConnectivityGenerator:
     def get_random_dag(self):
         raise NotImplementedError
 
-    def get_dag(self):
+    def get_dag(self, cfg):
         raise NotImplementedError
 
     def get_default_graph(self):
@@ -25,6 +25,7 @@ class PathConstrainer(ConnectivityGenerator):
         self.paths = []
         self.dag = None
         self.share_dag = share_dag
+        self.stack = stack
 
         complete_dag = nx.DiGraph()
         complete_dag.add_nodes_from([i for i in range(self.max_nodes)])
@@ -49,11 +50,22 @@ class PathConstrainer(ConnectivityGenerator):
 
         chosen_paths = [tuple(e) for e in chosen_paths]
         subgraph = nx.edge_subgraph(self.complete_dag, chosen_paths).copy()
-        if self.share_dag and self.dag:
-            subgraph = self.dag
-        self.dag = subgraph
-
         return subgraph
+
+        # dag = nx.DiGraph()
+        # idx = 0
+        # new_nodes = None
+        # for s in range(self.stack[cfg['stack']]):
+        #     if new_nodes:
+        #         idx = new_nodes[-1]
+        #     new_nodes = [n + idx + 1 for n in subgraph.nodes]
+        #     new_edges = [(idx + u, idx + v) for u, v in subgraph.edges]
+
+        #     dag.add_nodes_from(new_nodes)
+        #     dag.add_edges_from(new_edges)
+        #     if new_nodes[0] > 0:
+        #         dag.add_edge(new_nodes[0] - 1, new_nodes[0])
+        # return dag
 
     def get_default_graph(self):
         return self.get_dag({'paths': {i: 0 for i in range(self.max_parallel_paths)}})
@@ -76,6 +88,82 @@ class PathConstrainer(ConnectivityGenerator):
 
     def enumerate_path_combinations(self):
         return itertools.combinations_with_replacement(range(len(self.paths)), self.max_parallel_paths)
+
+
+class DARTSCell(nx.DiGraph):
+    def __init__(self, num_inputs=2, num_nodes=4, num_outputs=1) -> None:
+        super().__init__()
+        self.num_inputs = num_inputs
+        self.num_nodes = num_nodes
+        self.num_outputs = num_outputs
+
+        input_nodes = list(range(num_inputs))
+        intermediate_nodes = list(range(num_inputs, num_inputs + num_nodes))
+        output_nodes = list(range(num_inputs + num_nodes, num_inputs + num_nodes + num_outputs))
+
+        self.add_nodes_from(intermediate_nodes)
+        add_edges_densly(self)
+
+        self.add_nodes_from(input_nodes)
+        self.add_edges_from([(u, v) for u in input_nodes for v in intermediate_nodes])
+
+        self.add_nodes_from(output_nodes)
+        self.add_edges_from([(u, v) for u in intermediate_nodes for v in output_nodes])
+
+
+class DARTSMakroarchitecture(nx.DiGraph):
+    def __init__(self):
+        super().__init__()
+        # idx = 0
+
+    def add_cells(self, cells):
+        new_nodes = [0]  # input node
+        cell_nodes = []
+        cell_nodes.append(new_nodes)
+        self.add_nodes_from(new_nodes)
+        for i, cell in enumerate(cells):
+            idx = new_nodes[-1]
+            new_nodes = [n + idx + 1 for n in sorted(cell.nodes)]
+            new_edges = [(idx + 1 + u, idx + 1 + v) for u, v in sorted(cell.edges)]
+
+            self.add_nodes_from(new_nodes)
+            self.add_edges_from(new_edges)
+
+            if i == 0:
+                self.add_edges_from([(0, new_nodes[n]) for n in range(cell.num_inputs)])
+            else:
+                cell_edges = [(cell_nodes[-cell.num_inputs+n][-1], new_nodes[n]) for n in range(cell.num_inputs)]
+                self.add_edges_from(cell_edges)
+            cell_nodes.append(new_nodes)
+
+    def to_line_graph(self):
+        g = nx.line_graph(self)
+        nodes = list(g.nodes)
+        g.add_nodes_from(['in', 'out'])
+        g.add_edges_from([('in', (u, v)) for u, v in nodes if u == 0])
+        g.add_edges_from([((u, v), 'out') for u, v in nodes if v == len(self.nodes)-1])
+        g = nx.relabel_nodes(g, {old: i for i, old in enumerate(nx.topological_sort(g))})
+        return g
+
+
+class DARTSGraph(ConnectivityGenerator):
+    def __init__(self, dart_cells) -> None:
+        super().__init__()
+        self.m_arch = DARTSMakroarchitecture()
+        self.m_arch.add_cells(dart_cells)
+        self.m_arch = self.m_arch.to_line_graph()
+
+    def get_knobs(self):
+        return {}
+
+    def get_default_graph(self):
+        return self.m_arch
+
+    def get_dag(self, cfg):
+        return self.m_arch
+
+    def get_random_dag(self):
+        return self.m_arch
 
 
 # borrowed from NASLib
