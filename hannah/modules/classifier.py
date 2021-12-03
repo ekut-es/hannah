@@ -85,6 +85,8 @@ class ClassifierModule(LightningModule):
 
         if self.hparams.scheduler is not None:
             if self.hparams.scheduler._target_ == "torch.optim.lr_scheduler.OneCycleLR":
+                logging.info("Instantiating OneCycleLR Scheduler")
+                
                 scheduler = instantiate(
                     self.hparams.scheduler,
                     optimizer=optimizer,
@@ -101,23 +103,31 @@ class ClassifierModule(LightningModule):
     @property
     def total_training_steps(self) -> int:
         """Total training steps inferred from datamodule and devices."""
-        if self.trainer.max_steps:
-            return self.trainer.max_steps
+        breakpoint()
+        if not getattr(self, "trainer", None):
+            raise Exception("The LightningModule isn't attached to the trainer yet.")
+        if isinstance(self.trainer.limit_train_batches, int) and self.trainer.limit_train_batches > 0:
+            dataset_size = self.trainer.limit_train_batches
+        elif isinstance(self.trainer.limit_train_batches, float):
+            # limit_train_batches is a percentage of batches
+            dataset_size = len(self.train_dataloader())
+            dataset_size = int(dataset_size * self.trainer.limit_train_batches)
+        else:
+            dataset_size = len(self.train_dataloader())
 
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
+        logging.info("Dataset size %d", dataset_size)
 
         num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
         if self.trainer.tpu_cores:
             num_devices = max(num_devices, self.trainer.tpu_cores)
 
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
+        effective_batch_size = self.trainer.accumulate_grad_batches * num_devices
+        max_estimated_steps = (dataset_size // effective_batch_size) * self.trainer.max_epochs
+
+        if self.trainer.max_steps > 0 and self.trainer.max_steps < max_estimated_steps:
+            return self.trainer.max_steps
+        return max_estimated_steps
+
 
     def _log_weight_distribution(self):
         for name, params in self.named_parameters():
@@ -156,17 +166,6 @@ class ClassifierModule(LightningModule):
 
         return loggers
 
-    @staticmethod
-    def get_balancing_sampler(dataset):
-        distribution = dataset.class_counts
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
-        )
-
-        sampler_weights = weights[dataset.get_label_list()]
-
-        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
-        return sampler
 
     def save(self):
         output_dir = "."
@@ -369,11 +368,6 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_train_dataloader_by_set(self, train_set):
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
-        sampler_type = dataset_conf.get("sampler", "random")
-        if sampler_type == "weighted":
-            sampler = self.get_balancing_sampler(train_set)
-        else:
-            sampler = data.RandomSampler(train_set)
 
         train_loader = data.DataLoader(
             train_set,
@@ -381,7 +375,6 @@ class BaseStreamClassifierModule(ClassifierModule):
             drop_last=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
-            sampler=sampler,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 

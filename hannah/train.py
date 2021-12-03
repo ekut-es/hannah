@@ -7,8 +7,6 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
 
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
-
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
@@ -134,24 +132,23 @@ def train(config: DictConfig):
 
         if lit_trainer.fast_dev_run:
             logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
+                "Trainer is in fast dev run mode skipping validation and test"
             )
-            ckpt_path = None
+        else:
 
-        reset_seed()
-        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
+            reset_seed()
+            lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
 
-        # PL TEST
-        reset_seed()
-        lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+            # PL TEST
+            reset_seed()
+            lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
 
-        if not lit_trainer.fast_dev_run:
             lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
                 shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
 
-        test_output.append(opt_callback.test_result())
-        results.append(opt_callback.result())
+            test_output.append(opt_callback.test_result())
+            results.append(opt_callback.result())
 
     test_sum = defaultdict(int)
     for output in test_output:
@@ -174,7 +171,7 @@ def train(config: DictConfig):
 
 
 def nas(config: DictConfig):
-    print(OmegaConf.to_yaml(config))
+    logging.info("config:\n%s", OmegaConf.to_yaml(config))
     nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
     nas_trainer.run()
 

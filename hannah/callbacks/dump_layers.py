@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 
@@ -11,7 +12,7 @@ class TestDumperCallback(Callback):
         self.output_dir = output_dir
 
     def on_test_start(self, pl_trainer, pl_model):
-        print("Activating layer dumping")
+        logging.info("Activating layer dumping")
 
         def dump_layers(model, output_dir):
             class DumpForwardHook:

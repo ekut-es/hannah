@@ -202,7 +202,7 @@ def extract_from_download_cache(
     if filename not in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        print("download and extract: " + str(filename))
+        logging.info("download and extract: " + str(filename))
         download_and_extract_archive(
             url,
             target_cache,
@@ -213,7 +213,7 @@ def extract_from_download_cache(
     elif filename in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        print("extract from download_cache: " + str(filename))
+        logging.info("extract from download_cache: " + str(filename))
         extract_archive(
             os.path.join(target_cache, filename),
             target_folder,
