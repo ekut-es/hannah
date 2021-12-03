@@ -367,6 +367,7 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_train_dataloader_by_set(self, train_set):
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
+        sampler = data.RandomSampler(train_set)
 
         train_loader = data.DataLoader(
             train_set,
@@ -374,6 +375,7 @@ class BaseStreamClassifierModule(ClassifierModule):
             drop_last=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
+            sampler=sampler,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
@@ -431,7 +433,9 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
 
         logits = torch.nn.functional.softmax(output, dim=1)
-        self.test_confusion(logits, y)
+        if not torch.is_deterministic:
+            #FIXME: confusion matrix calculation is nondeterministic
+            self.test_confusion(logits, y)
         self.test_roc(logits, y)
 
         if isinstance(self.test_set, SpeechDataset):
@@ -544,15 +548,16 @@ class StreamClassifierModule(BaseStreamClassifierModule):
 
         logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
 
-        confusion_matrix = self.test_confusion.compute()
-        self.test_confusion.reset()
+        if not torch.is_deterministic:
+            confusion_matrix = self.test_confusion.compute()
+            self.test_confusion.reset()
 
-        confusion_plot = plot_confusion_matrix(
-            confusion_matrix.cpu().numpy(), self.get_class_names()
-        )
+            confusion_plot = plot_confusion_matrix(
+                confusion_matrix.cpu().numpy(), self.get_class_names()
+            )
 
-        confusion_plot.savefig("test_confusion.png")
-        confusion_plot.savefig("test_confusion.pdf")
+            confusion_plot.savefig("test_confusion.png")
+            confusion_plot.savefig("test_confusion.pdf")
 
         # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
         self.test_roc.reset()
