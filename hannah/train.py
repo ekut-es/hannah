@@ -150,19 +150,21 @@ def train(config: DictConfig):
             test_output.append(opt_callback.test_result())
             results.append(opt_callback.result())
 
-    test_sum = defaultdict(int)
-    for output in test_output:
-        for k, v in output.items():
-            if v.numel() == 1:
-                test_sum[k] += v.item()
-            else:
-                test_sum[k] += v
+    # Skip calculation of averaged metrics if test has not been run
+    if len(test_output) > 0:
+        test_sum = defaultdict(int)
+        for output in test_output:
+            for k, v in output.items():
+                if v.numel() == 1:
+                    test_sum[k] += v.item()
+                else:
+                    test_sum[k] += v
 
-    logging.info("Averaged Test Metrics:")
+        logging.info("Averaged Test Metrics:")
 
-    for k, v in test_sum.items():
-        logging.info(k + " : " + str(v / len(test_output)))
-    logging.info("validation_error : " + str(np.sum(results) / len(results)))
+        for k, v in test_sum.items():
+            logging.info(k + " : " + str(v / len(test_output)))
+        logging.info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]

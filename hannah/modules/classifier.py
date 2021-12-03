@@ -103,7 +103,6 @@ class ClassifierModule(LightningModule):
     @property
     def total_training_steps(self) -> int:
         """Total training steps inferred from datamodule and devices."""
-        breakpoint()
         if not getattr(self, "trainer", None):
             raise Exception("The LightningModule isn't attached to the trainer yet.")
         if isinstance(self.trainer.limit_train_batches, int) and self.trainer.limit_train_batches > 0:
@@ -292,7 +291,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_precision": Precision(
                     num_classes=self.num_classes, average="weighted"
                 ),
-                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
+                #"val_f1": F1(num_classes=self.num_classes, average="weighted"),
             }
         )
         self.test_metrics = MetricCollection(
@@ -303,7 +302,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_precision": Precision(
                     num_classes=self.num_classes, average="weighted"
                 ),
-                "test_f1": F1(num_classes=self.num_classes, average="weighted"),
+                #"test_f1": F1(num_classes=self.num_classes, average="weighted"),
             }
         )
 
