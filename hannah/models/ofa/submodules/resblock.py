@@ -1,6 +1,11 @@
 import torch.nn as nn
 from .elasticwidthmodules import ElasticWidthBatchnorm1d
-from .elastickernelconv import ElasticConv1d, ElasticQuantConv1d
+from .elastickernelconv import (
+    ElasticConv1d,
+    ElasticQuantConv1d,
+    ElasticConvBn1d,
+    ElasticQuantConvBn1d,
+)
 from .elasticchannelhelper import SequenceDiscovery
 
 
@@ -82,18 +87,17 @@ class ResBlock1d(ResBlockBase):
         # stride is also applied to the skip layer (if specified, default is 1)
         if not quant_skip:
             self.skip = nn.Sequential(
-                ElasticConv1d(
+                ElasticConvBn1d(
                     self.in_channels,
                     out_channels,
                     kernel_sizes=[1],
                     stride=stride,
                     bias=False,
                 ),
-                ElasticWidthBatchnorm1d(self.out_channels),
-            )  # if self.apply_skip else None
+            )
         else:
             self.skip = nn.Sequential(
-                ElasticQuantConv1d(
+                ElasticQuantConvBn1d(
                     self.in_channels,
                     out_channels,
                     kernel_sizes=[1],
@@ -101,7 +105,6 @@ class ResBlock1d(ResBlockBase):
                     bias=False,
                     qconfig=qconfig,
                 ),
-                ElasticWidthBatchnorm1d(self.out_channels),
             )  # if self.apply_skip else None
 
         # as this does not know if an elastic width section may follow,
