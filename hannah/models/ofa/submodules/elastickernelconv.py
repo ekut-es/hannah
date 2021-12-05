@@ -15,7 +15,6 @@ from ..utilities import (
 from .elasticchannelhelper import SequenceDiscovery
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticPermissiveReLU
 from ...factory.qat import (
-    _EConvNd,
     _ConvBnNd,
     ConvBn1d,
     ConvBnReLU1d,
