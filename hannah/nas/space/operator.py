@@ -8,7 +8,7 @@ import hannah.models.factory.qat as qat
 
 
 class Operator():
-    def __init__(self, op=None) -> None:
+    def __init__(self, op=['identity']) -> None:
         self.attrs = {}
         self.attrs['op'] = [op]
         self.instance = False
@@ -25,20 +25,24 @@ class Operator():
         return args[0]
 
     def to_torch(self, data_dim):
-        raise NotImplementedError
+        return nn.Identity()
 
     def new(self):
         return deepcopy(self)
 
-    def instantiate(self, cfg):
+    def instantiate(self, cfg=None):
         self.instance = True
-        if isinstance(cfg, dict):
-            for key, values in self.attrs.items():
-                self.attrs[key] = cfg[key]
+        if cfg:
+            if isinstance(cfg, dict):
+                for key, values in self.attrs.items():
+                    self.attrs[key] = cfg[key]
+            else:
+                assert len(cfg) == len(self.attrs)
+                for i, (key, values) in enumerate(self.attrs.items()):
+                    self.attrs[key] = values[cfg[i]]
         else:
-            assert len(cfg) == len(self.attrs)
-            for i, (key, values) in enumerate(self.attrs.items()):
-                self.attrs[key] = values[cfg[i]]
+            for key, values in self.attrs.items():
+                self.attrs[key] = self.attrs[key][0]
 
     def get_knobs(self):
         knobs = {}
@@ -105,8 +109,18 @@ class Convolution(Operator):
         self.attrs['in_channels'] = i_channel
         o_channel = self.attrs['out_channels']
         kernel = extend_size(self.attrs['kernel_size'], dims)
-        padding = extend_size(self.attrs['padding'], dims)
         stride = extend_size(self.attrs['stride'], dims)
+
+        # TODO: Support uneven padding
+        if self.attrs['padding'] == 'same':
+            padding = [0] * dims * 2
+            for d in range(0, dims * 2, 2):
+                p = (kernel[int(d/2)] - stride[int(d/2)]) / 2
+                assert p.is_integer()
+                padding[d] = p
+                padding[d+1] = p
+        else:
+            padding = extend_size(self.attrs['padding'], dims)
         output_dims = []
         for x, k, p, s in zip(input_size, kernel, padding, stride):
             output_size = (x - k + 2*p) / s + 1
@@ -210,7 +224,7 @@ class DepthwiseSeparableConvolution(Convolution):
                          out_channels=self.attrs['in_channels'] * self.attrs['intermediate_channels'],
                          kernel_size=self.attrs['kernel_size'],
                          stride=self.attrs['stride'],
-                         padding=1, # TODO: Fix padding
+                         padding=self.attrs['padding'],  # TODO: Fix padding
                          dilation=self.attrs['dilation'],
                          groups=self.attrs['in_channels'],
                          bias=False)
