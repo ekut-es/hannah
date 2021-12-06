@@ -1,0 +1,4 @@
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.vision.KvasirCapsuleDataset
+dataset: kvasir_capsule
+test_split: split_1.csv

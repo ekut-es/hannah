@@ -1,4 +1,7 @@
 import os
+import logging
+import pathlib
+import tarfile
 
 from hydra.utils import get_original_cwd
 import numpy as np
@@ -9,6 +12,8 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
 from .base import AbstractDataset
+
+logger = logging.getLogger(__name__)
 
 
 class VisionDatasetBase(AbstractDataset):
@@ -25,8 +30,8 @@ class VisionDatasetBase(AbstractDataset):
 
     def __getitem__(self, index):
         data, target = self.dataset[index]
-        data = np.array(data)
         if self.transform:
+            data = np.array(data)
             data = self.transform(image=data)["image"]
         return data, target
 
@@ -67,14 +72,16 @@ class Cifar10Dataset(VisionDatasetBase):
         data_folder = config.data_folder
         root_folder = os.path.join(data_folder, "CIFAR10")
 
-        #train_transform = A.load(
+        # train_transform = A.load(
         #    "/local/gerum/speech_recognition/albumentations/cifar10_autoalbument.json"
-        #)
+        # )
         # print(loaded_transform)
         train_transform = A.Compose(
             [
                 A.SmallestMaxSize(max_size=32),
-                A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5),
+                A.ShiftScaleRotate(
+                    shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5
+                ),
                 A.RandomCrop(height=32, width=32),
                 A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
                 A.RandomBrightnessContrast(p=0.5),
@@ -141,11 +148,51 @@ class FakeDataset(VisionDatasetBase):
 
 
 class KvasirCapsuleDataset(VisionDatasetBase):
-    DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/?zip="
+    DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_images/?zip="
 
     @classmethod
     def prepare(cls, config):
-        download_and_extract_archive(cls.DOWNLOAD_URL)
+        download_folder = os.path.join(config.data_folder, "download")
+        extract_root = os.path.join(
+            config.data_folder, "kvasir_capsule", "labelled_images"
+        )
+        # TODO: check if already downloaded and skip download and extract
+        # datasets.utils.download_and_extract_archive(cls.DOWNLOAD_URL, download_folder, extract_root=extract_root, filename="labelled_images.zip")
 
-    def splits():
-        pass
+        for tar_file in pathlib.Path(extract_root).glob("*.tar.gz"):
+            logger.info("Extracting: %s", str(tar_file))
+            with tarfile.open(tar_file) as archive:
+                archive.extractall(path=extract_root)
+            tar_file.unlink()
+
+    @classmethod
+    def splits(cls, config):
+        data_root = os.path.join(
+            config.data_folder, "kvasir_capsule", "labelled_images"
+        )
+        print(config.test_split)
+
+        # Todo: test und train transforms from kvasir capsule github
+        transforms = torchvision.transforms.Compose(
+            [
+                torchvision.transforms.Resize(256),
+                torchvision.transforms.CenterCrop(256),
+                torchvision.transforms.Resize(224),
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        )
+
+        data_loader = datasets.ImageFolder(data_root, transform=transforms)
+
+        # TODO: correct splits
+
+        return (
+            cls(config, data_loader),
+            cls(config, data_loader),
+            cls(config, data_loader),
+        )
+
+    @property
+    def class_names(self):
+        return self.dataset.classes

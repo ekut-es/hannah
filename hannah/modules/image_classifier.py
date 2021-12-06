@@ -24,14 +24,16 @@ class ImageClassifierModule(ClassifierModule):
             return
         self.initialized = True
 
-        logger.info("Setting up model %s", self.hparams.model.name)
-        self.model = instantiate(self.hparams.model)
-
         self.train_set, self.dev_set, self.test_set = get_class(
             self.hparams.dataset.cls
         ).splits(self.hparams.dataset)
         self.example_input_array = self.test_set[0][0].unsqueeze(0)
         self.example_feature_array = self.test_set[0][0].unsqueeze(0)
+
+        logger.info("Setting up model %s", self.hparams.model.name)
+        self.model = instantiate(
+            self.hparams.model, num_classes=len(self.train_set.class_names)
+        )
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -124,4 +126,4 @@ class ImageClassifierModule(ClassifierModule):
     def on_test_end(self):
         from ..visualization import log_distribution_plot
 
-        #log_distribution_plot(self.distribution_hooks)
+        # log_distribution_plot(self.distribution_hooks)
