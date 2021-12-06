@@ -281,7 +281,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_precision": Precision(
                     num_classes=self.num_classes, average="weighted"
                 ),
-                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
+                #"val_f1": F1(num_classes=self.num_classes, average="weighted"),
             }
         )
         self.test_metrics = MetricCollection(
@@ -292,7 +292,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_precision": Precision(
                     num_classes=self.num_classes, average="weighted"
                 ),
-                "test_f1": F1(num_classes=self.num_classes, average="weighted"),
+                #"test_f1": F1(num_classes=self.num_classes, average="weighted"),
             }
         )
 
@@ -427,7 +427,8 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
 
         logits = torch.nn.functional.softmax(output, dim=1)
-        self.test_confusion(logits, y)
+        if not torch.are_deterministic_algorithms_enabled():
+            self.test_confusion(logits, y)
         self.test_roc(logits, y)
 
         if isinstance(self.test_set, SpeechDataset):
@@ -540,15 +541,16 @@ class StreamClassifierModule(BaseStreamClassifierModule):
 
         logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
 
-        confusion_matrix = self.test_confusion.compute()
-        self.test_confusion.reset()
+        if not torch.are_deterministic_algorithms_enabled():
+            confusion_matrix = self.test_confusion.compute()
+            self.test_confusion.reset()
 
-        confusion_plot = plot_confusion_matrix(
-            confusion_matrix.cpu().numpy(), self.get_class_names()
-        )
+            confusion_plot = plot_confusion_matrix(
+                confusion_matrix.cpu().numpy(), self.get_class_names()
+            )
 
-        confusion_plot.savefig("test_confusion.png")
-        confusion_plot.savefig("test_confusion.pdf")
+            confusion_plot.savefig("test_confusion.png")
+            confusion_plot.savefig("test_confusion.pdf")
 
         # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
         self.test_roc.reset()
