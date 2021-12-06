@@ -106,15 +106,13 @@ def train(config: DictConfig):
         callbacks.append(checkpoint_callback)
 
         # INIT PYTORCH-LIGHTNING
-        #lit_trainer = instantiate(
-        #    config.trainer,
-        #    profiler=profiler,
-        #    callbacks=callbacks,
-        #    logger=logger,
-        #    reload_dataloaders_every_n_epochs=1,
-        #)
-        import pytorch_lightning as pl
-        lit_trainer = pl.Trainer(gpus=2)
+        lit_trainer = instantiate(
+            config.trainer,
+            profiler=profiler,
+            callbacks=callbacks,
+            logger=logger,
+            reload_dataloaders_every_n_epochs=1,
+        )
 
         if config["auto_lr"]:
             # run lr finder (counts as one epoch)

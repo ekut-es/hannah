@@ -124,4 +124,4 @@ class ImageClassifierModule(ClassifierModule):
     def on_test_end(self):
         from ..visualization import log_distribution_plot
 
-        log_distribution_plot(self.distribution_hooks)
+        #log_distribution_plot(self.distribution_hooks)
