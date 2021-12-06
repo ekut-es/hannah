@@ -101,57 +101,88 @@ class DARTSCell(nx.DiGraph):
         intermediate_nodes = list(range(num_inputs, num_inputs + num_nodes))
         output_nodes = list(range(num_inputs + num_nodes, num_inputs + num_nodes + num_outputs))
 
-        self.add_nodes_from(intermediate_nodes)
+        self.add_nodes_from([(n, {'type': 'intermediate'}) for n in intermediate_nodes])
         add_edges_densly(self)
 
-        self.add_nodes_from(input_nodes)
+        self.add_nodes_from([(n, {'type': 'input'}) for n in input_nodes])
         self.add_edges_from([(u, v) for u in input_nodes for v in intermediate_nodes])
 
-        self.add_nodes_from(output_nodes)
+        self.add_nodes_from([(n, {'type': 'output'}) for n in output_nodes])
         self.add_edges_from([(u, v) for u in intermediate_nodes for v in output_nodes])
 
 
 class DARTSMakroarchitecture(nx.DiGraph):
     def __init__(self):
         super().__init__()
-        # idx = 0
+        self.input_nodes = []
+        self.output_nodes = []
+        self.intermediate_nodes = []
 
     def add_cells(self, cells):
-        new_nodes = [0]  # input node
+        new_nodes = [(0, {'type': 'input'})]
         cell_nodes = []
         cell_nodes.append(new_nodes)
         self.add_nodes_from(new_nodes)
         for i, cell in enumerate(cells):
-            idx = new_nodes[-1]
-            new_nodes = [n + idx + 1 for n in sorted(cell.nodes)]
+            idx = new_nodes[-1][0]
+            types = nx.get_node_attributes(cell, 'type')
+            new_nodes = [(n + idx + 1, {'type': types[n], 'cell': i}) for n in sorted(cell.nodes)]
             new_edges = [(idx + 1 + u, idx + 1 + v) for u, v in sorted(cell.edges)]
 
             self.add_nodes_from(new_nodes)
             self.add_edges_from(new_edges)
 
             if i == 0:
-                self.add_edges_from([(0, new_nodes[n]) for n in range(cell.num_inputs)])
+                self.add_edges_from([(0, new_nodes[n][0]) for n in range(cell.num_inputs)])
             else:
-                cell_edges = [(cell_nodes[-cell.num_inputs+n][-1], new_nodes[n]) for n in range(cell.num_inputs)]
+                cell_edges = [(cell_nodes[-cell.num_inputs+n][-1][0], new_nodes[n][0]) for n in range(cell.num_inputs)]
+                print(cell_edges)
                 self.add_edges_from(cell_edges)
             cell_nodes.append(new_nodes)
 
     def to_line_graph(self):
         g = nx.line_graph(self)
         nodes = list(g.nodes)
+        node_types = nx.get_node_attributes(self, 'type')
+        cell_map = nx.get_node_attributes(self, 'cell')
+        print(cell_map)
+
         g.add_nodes_from(['in', 'out'])
         g.add_edges_from([('in', (u, v)) for u, v in nodes if u == 0])
         g.add_edges_from([((u, v), 'out') for u, v in nodes if v == len(self.nodes)-1])
+        node_labels = {i: old for i, old in enumerate(nx.topological_sort(g))}
+
         g = nx.relabel_nodes(g, {old: i for i, old in enumerate(nx.topological_sort(g))})
+        for node in g.nodes:
+            n = node_labels[node]
+            if n == 'in':
+
+                g.nodes[node]['type'] = 'identity'
+            elif n == 'out':
+                g.nodes[node]['type'] = 'concat'
+            else:
+                u, v = n
+                if node_types[v] == 'input':
+                    if node_types[u] == 'output':
+                        g.nodes[node]['type'] = 'concat'
+                    else:
+                        g.nodes[node]['type'] = 'identity'
+                elif node_types[v] == 'output':
+                    g.nodes[node]['type'] = 'add'
+                else:
+                    g.nodes[node]['cell'] = cell_map[v]
+                    g.nodes[node]['type'] = 'op'
+
+        g.node_labels = node_labels
         return g
 
 
 class DARTSGraph(ConnectivityGenerator):
     def __init__(self, dart_cells) -> None:
         super().__init__()
-        self.m_arch = DARTSMakroarchitecture()
-        self.m_arch.add_cells(dart_cells)
-        self.m_arch = self.m_arch.to_line_graph()
+        self.ooe = DARTSMakroarchitecture()
+        self.ooe.add_cells(dart_cells)
+        self.m_arch = self.ooe.to_line_graph()
 
     def get_knobs(self):
         return {}

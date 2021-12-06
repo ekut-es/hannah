@@ -23,7 +23,12 @@ class Model(nn.Module):
                     args.append(_compute(u, input))
                 if len(args) == 1:
                     args = args[0]
-                out = self.layers[self.g.nodes[node]['id']](args)
+                try:
+                    out = self.layers[self.g.nodes[node]['id']](args)
+                except Exception as e:
+                    print(str(e))
+                    print(self.g.nodes[node]['id'])
+
             else:
                 out = self.layers[self.g.nodes[node]['id']](input)
             return out
@@ -40,7 +45,12 @@ class Add(nn.Module):
 
     def __call__(self, args):
         # maybe do padding and stuff
-        return torch.add(*args)
+        if len(args) == 2:
+            return torch.add(*args)
+        elif len(args) > 1:
+            return torch.sum(torch.stack(args), dim=0)
+        else:
+            return args
 
     def forward(self, *seq):
         return torch.add(seq)

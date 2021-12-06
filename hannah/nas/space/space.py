@@ -1,4 +1,3 @@
-from typing import Dict
 import networkx as nx
 import numpy as np
 
@@ -55,7 +54,14 @@ class Subgraph(nx.DiGraph):
             self.add_edges_from(cells[c_node].edges())
             cell_nodes = list(cells[c_node])
             out_dict[c_node] = cell_nodes[-1]
-            in_dict[c_node] = [cell_nodes[0]] + [node for node in cell_nodes if 'add' in node.attrs['op']]
+            if len(cell_nodes) > 1:
+                in_dict[c_node] = {'regular': cell_nodes[0]}
+                in_dict[c_node].update({'add': node for node in cell_nodes if 'add' in node.attrs['op']})
+            else:
+                if 'add' in cell_nodes[0].attrs['op']:
+                    in_dict[c_node] = {'regular': cell_nodes[0], 'add': cell_nodes[0]}
+                else:
+                    in_dict[c_node] = {'regular': cell_nodes[0]}
 
         for c_node in self.connectivity_graph.nodes:
             in_edges = self.connectivity_graph.in_edges(c_node)
@@ -63,12 +69,12 @@ class Subgraph(nx.DiGraph):
                 if i == 0:
                     self.add_edge(
                         out_dict[e[0]],
-                        in_dict[e[1]][0]
+                        in_dict[e[1]]['regular']
                     )
                 else:
                     self.add_edge(
                         out_dict[e[0]],
-                        in_dict[e[1]][1]
+                        in_dict[e[1]]['add']
                     )
 
     def get_attribute(self, key):
@@ -110,7 +116,8 @@ class Subgraph(nx.DiGraph):
         return new_graph
 
     def infer_shapes(self, input):
-        for node in self.nodes:
+        #for node in self.nodes:
+        for node in nx.topological_sort(self):
             args = []
             in_edges = self.in_edges(node)
             if len(in_edges) == 0:
@@ -141,7 +148,7 @@ class Subgraph(nx.DiGraph):
 
 class Space:
     def __init__(self,
-                 cell_dict: Dict,
+                 cell_dict: dict,
                  connectivity_gen: ConnectivityGenerator,
                  max_stack=[1]
                  ) -> None:
