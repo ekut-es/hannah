@@ -451,8 +451,8 @@ class OFAModel(nn.Module):
                 ElasticConvBnReLu1d,
                 ElasticQuantConv1d,
                 ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d,
-            ),
+                ElasticQuantConvBnReLu1d
+            )
         )
         self.elastic_kernel_convs = []
         for item in all_elastic_kernel_convs:

@@ -196,7 +196,8 @@ class _ElasticConvBnNd(
             zero_bias = torch.zeros_like(self.bias)
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
-        conv = self._real_conv_forward(input, scaled_weight, zero_bias)
+        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        conv = self._real_conv_forward(input, scaled_weight, zero_bias, padding)
         if self.training:
             conv_orig = conv / scale_factor.reshape(bias_shape)
             if self.bias is not None:
