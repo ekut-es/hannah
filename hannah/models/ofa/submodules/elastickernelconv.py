@@ -14,17 +14,13 @@ from ..utilities import (
 )
 from .elasticchannelhelper import SequenceDiscovery
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticPermissiveReLU
-from ...factory.qat import (
-    _ConvBnNd,
-    ConvBn1d,
-    ConvBnReLU1d,
-    _ConvForwardMixin,
-)
+from ...factory import qat
+
 from torch.nn import init
 
 # pytype: enable=attribute-error
 class _ElasticConvBnNd(
-    nn.modules.conv._ConvNd, _ConvForwardMixin
+    nn.modules.conv._ConvNd, qat._ConvForwardMixin
 ):  # pytype: disable=module-attr
 
     _version = 2
@@ -746,7 +742,7 @@ class ElasticConv1d(ElasticBase1d, nn.Conv1d):
             self.out_channel_filter = out_channel_filter
 
 
-class ElasticQuantConv1d(ElasticBase1d, nn.Conv1d, _ConvForwardMixin):
+class ElasticQuantConv1d(ElasticBase1d, nn.Conv1d, qat._ConvForwardMixin):
 
     _FLOAT_MODULE = nn.Conv1d
 
@@ -804,6 +800,7 @@ class ElasticQuantConv1d(ElasticBase1d, nn.Conv1d, _ConvForwardMixin):
 
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
+        self.out_quant = out_quant
         self.weight_fake_quant = self.qconfig.weight()
         self.activation_post_process = (
             self.qconfig.activation() if out_quant else nn.Identity()
@@ -865,21 +862,24 @@ class ElasticQuantConv1d(ElasticBase1d, nn.Conv1d, _ConvForwardMixin):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
-        new_conv = nn.Conv1d(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            kernel_size=kernel_size,
-            stride=self.stride,
-            padding=padding,
-            dilation=self.dilation,
-            bias=False,
+        new_conv = qat.Conv1d(
+            self.in_channels,
+            self.out_channels,
+            kernel_size,
+            self.stride,
+            padding,
+            self.dilation,
+            self.groups,
+            bias,
+            qconfig=self.qconfig,
+            out_quant=self.out_quant,
         )
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return self
+        return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
@@ -979,7 +979,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
-        new_conv = ConvBn1d(
+        new_conv = qat.ConvBn1d(
             self.in_channels,
             self.out_channels,
             kernel_size,
@@ -1002,7 +1002,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         new_conv.bn.running_mean = self.bn.running_mean
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return self
+        return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
@@ -1102,7 +1102,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
-        new_conv = ConvBn1d(
+        new_conv = qat.ConvBnReLU1d(
             self.in_channels,
             self.out_channels,
             kernel_size,
@@ -1125,7 +1125,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         new_conv.bn.running_mean = self.bn.running_mean
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return self
+        return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:

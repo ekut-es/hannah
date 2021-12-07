@@ -29,6 +29,8 @@ from .submodules.elasticwidthmodules import (
     ElasticWidthLinear,
 )
 
+from ..factory import qat
+
 # from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
     flatten_module_list,
@@ -935,6 +937,12 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                 # TODO See conv1d above
                 reassembled_module = module
             elif isinstance(module, nn.BatchNorm1d):
+                reassembled_module = module
+            elif isinstance(module, qat.ConvBn1d):
+                reassembled_module = module
+            elif isinstance(module, qat.ConvBnReLU1d):
+                reassembled_module = module
+            elif isinstance(module, qat.Conv1d):
                 reassembled_module = module
                 # for standalone batchnorms, apply any channel filters, if present.
                 # if module_set.norm1d is not None:
