@@ -21,6 +21,8 @@ from .submodules.elastickernelconv import (
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
     ElasticQuantConv1d,
+    ConvBnReLu1d,
+    ConvBn1d
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -856,9 +858,6 @@ def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
 
 def rebuild_extracted_blocks(blocks, quantized=False):
     out_modules = nn.ModuleList([])
-    module_set = DefaultModuleSet1d()
-    if quantized:
-        module_set = QuantizedModuleSet1d()
 
     if blocks is None:
         raise ValueError("input blocks are None value")
@@ -890,43 +889,7 @@ def rebuild_extracted_blocks(blocks, quantized=False):
             reassembled_module = None
 
             if isinstance(module, nn.Conv1d):
-                # apply channel filters to the conv, if present.
-                if i + 1 in range(len(modules)) and isinstance(
-                    modules[i + 1], nn.BatchNorm1d
-                ):
-                    # apply channel filters to the norm, if present.
-                    norm_module = modules[i + 1]
-                    if i + 2 in range(len(modules)) and isinstance(
-                        modules[i + 2], nn.ReLU
-                    ):
-                        # if both norm and relu follow in sequence,
-                        # combine all three and skip the next two items (which are the norm, act)
-                        reassembled_module = module_set.reassemble(
-                            module=module, norm=True, act=True, norm_module=norm_module
-                        )
-                        i += 2
-                    else:
-                        # if only norm follows in sequence,
-                        # combine both and skip the next item (which is the norm)
-                        reassembled_module = module_set.reassemble(
-                            module=module, norm=True, act=False, norm_module=norm_module
-                        )
-                        i += 1
-                elif i + 1 in range(len(modules)) and isinstance(
-                    modules[i + 1], nn.ReLU
-                ):
-                    # if an act with no previous norm follows,
-                    # combine both and skip the next item (which is the act)
-                    reassembled_module = module_set.reassemble(
-                        module=module, norm=False, act=True
-                    )
-                    i += 1
-                else:
-                    # if there is no norm or act after the conv,
-                    # reassemble a standalone conv
-                    reassembled_module = module_set.reassemble(
-                        module=module, norm=False, act=False
-                    )
+                reassembled_module = module
             elif isinstance(module, ElasticQuantConvBn1d):
                 # TODO See conv1d above
                 reassembled_module = module
@@ -943,6 +906,10 @@ def rebuild_extracted_blocks(blocks, quantized=False):
             elif isinstance(module, qat.ConvBnReLU1d):
                 reassembled_module = module
             elif isinstance(module, qat.Conv1d):
+                reassembled_module = module
+            elif isinstance(module, ConvBnReLu1d):
+                reassembled_module = module
+            elif isinstance(module, ConvBn1d):
                 reassembled_module = module
                 # for standalone batchnorms, apply any channel filters, if present.
                 # if module_set.norm1d is not None:
@@ -1004,124 +971,3 @@ def rebuild_extracted_blocks(blocks, quantized=False):
     if input_modules_flat_length != output_modules_flat_length and not quantized:
         logging.info("Reassembly changed length of module list")
     return out_modules
-
-
-class ModuleSet:
-    conv1d = None
-    norm1d = None
-    act = None
-    conv1d_norm_act = None
-    conv1d_norm = None
-    conv1d_act = None
-
-    def reassemble(self, weights, norm, act, norm_module):
-        raise Exception("reassemble function of module set is undefined")
-
-
-class DefaultModuleSet1d(ModuleSet):
-    conv1d = nn.Conv1d
-    norm1d = nn.BatchNorm1d
-    act = nn.ReLU
-
-    def reassemble(
-        self,
-        module: nn.Conv1d,
-        norm=False,
-        act=False,
-        norm_module: nn.BatchNorm1d = None,
-        clone_conv=False,
-        clone_norm=False,
-    ):
-        modules = nn.ModuleList([])
-        # create a new conv1d under the same parameters, with the same weights
-        # this could technically re-use the input module directly, as nothing is changed
-        module = copy.deepcopy(module)
-        norm_module = copy.deepcopy(norm_module)
-        new_conv = module
-        if not clone_conv:
-            new_conv = self.conv1d(
-                in_channels=module.in_channels,
-                out_channels=module.out_channels,
-                kernel_size=module.kernel_size,
-                stride=module.stride,
-                padding=module.padding,
-            )
-            new_conv.weight = module.weight
-            new_conv.bias = module.bias
-        modules.append(new_conv)
-        if norm:
-            if norm_module is None:
-                raise ValueError(
-                    "reassembly with norm requested, no source norm module provided"
-                )
-            new_norm = norm_module
-            if not clone_norm:
-                new_norm = self.norm1d(norm_module.num_features)
-                new_norm.weight = norm_module.weight
-                new_norm.bias = norm_module.bias
-                new_norm.running_mean = norm_module.running_mean
-                new_norm.running_var = norm_module.running_var
-                new_norm.num_batches_tracked = norm_module.num_batches_tracked
-                new_norm.eps = norm_module.eps
-                new_norm.momentum = norm_module.momentum
-                new_norm.eval()
-            modules.append(new_norm)
-        if act:
-            modules.append(self.act())
-        return copy.deepcopy(nn.Sequential(*modules))
-
-
-# TODO: Quantization
-class QuantizedModuleSet1d(ModuleSet):
-    conv1d = qat.Conv1d
-    conv1d_norm_act = qat.ConvBnReLU1d
-    conv1d_norm = qat.ConvBn1d
-    conv1d_act = qat.ConvReLU1d
-
-    def reassemble(
-        self,
-        module: nn.Conv1d,
-        norm=False,
-        act=False,
-        norm_module: nn.BatchNorm1d = None,
-    ):
-        out_module = None
-        if norm and norm_module is None:
-            raise ValueError(
-                "module with norm requested, no source norm module provided"
-            )
-        if norm and act:
-            out_module = self.conv1d_norm_act(
-                module.in_channels,
-                module.out_channels,
-                module.kernel_size,
-                module.stride,
-                module.padding,
-            )
-        elif norm:
-            out_module = self.conv1d_norm(
-                module.in_channels,
-                module.out_channels,
-                module.kernel_size,
-                module.stride,
-                module.padding,
-            )
-        elif act:
-            out_module = self.conv1d_act(
-                module.in_channels,
-                module.out_channels,
-                module.kernel_size,
-                module.stride,
-                module.padding,
-            )
-        else:
-            out_module = self.conv1d(
-                module.in_channels,
-                module.out_channels,
-                module.kernel_size,
-                module.stride,
-                module.padding,
-            )
-        out_module.weight = module.weight
-        out_module.bias = module.bias
-        return copy.deepcopy(out_module)

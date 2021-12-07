@@ -731,7 +731,7 @@ class ElasticConv1d(ElasticBase1d, nn.Conv1d):
             new_conv.bias = bias
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return self
+        return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
@@ -1232,7 +1232,7 @@ class ElasticConvBn1d(ElasticBase1d, nn.Conv1d):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
-        new_conv = BConvBn1d(
+        new_conv = ConvBn1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             kernel_size=kernel_size,
@@ -1245,7 +1245,7 @@ class ElasticConvBn1d(ElasticBase1d, nn.Conv1d):
         new_conv.bias = bias
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return self
+        return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_conv1d(self) -> nn.Conv1d:
@@ -1337,7 +1337,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         padding = conv1d_get_padding(kernel_size)
-        new_conv = BConvBnReLu1d(
+        new_conv = ConvBnReLu1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             kernel_size=kernel_size,
@@ -1347,13 +1347,14 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             bias=False,
         )
         new_conv.weight.data = kernel
-        new_conv.bias = bias
+        if bias is not None:
+            new_conv.bias = bias
 
         # print("\nassembled a basic conv from elastic kernel!")
-        return self
+        return new_conv
 
 
-class BConvBn1d(nn.Conv1d):
+class ConvBn1d(nn.Conv1d):
     def __init__(
         self,
         in_channels: int,
@@ -1382,10 +1383,10 @@ class BConvBn1d(nn.Conv1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        return self.bn(super(BConvBn1d, self).forward(input))
+        return self.bn(super(ConvBn1d, self).forward(input))
 
 
-class BConvBnReLu1d(BConvBn1d):
+class ConvBnReLu1d(ConvBn1d):
     def __init__(
         self,
         in_channels: int,
@@ -1401,10 +1402,10 @@ class BConvBnReLu1d(BConvBn1d):
         super().__init__(
             in_channels=in_channels,
             out_channels=out_channels,
-            kernel_size=(kernel_size,),
-            stride=(stride,),
+            kernel_size=kernel_size,
+            stride=stride,
             padding=padding,
-            dilation=(dilation,),
+            dilation=dilation,
             groups=groups,
             bias=bias,
         )
@@ -1415,4 +1416,4 @@ class BConvBnReLu1d(BConvBn1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        return self.relu(super(BConvBnReLu1d, self).forward(input))
+        return self.relu(super(ConvBnReLu1d, self).forward(input))
