@@ -153,17 +153,17 @@ def vec_to_knob(vec, knobs):
     return cfg
 
 
-def draw_pretty(graph, labels, figsize=(20,8), box=True, enum=False, vertical=False, label_color='white'):
+def draw_pretty(graph, labels, figsize=(20, 8), box=True, enum=False, vertical=False, label_color='white'):
     if enum:
         if vertical:
-            pos = {node:(0, i) for i, node in enumerate(nx.topological_sort(graph))}
+            pos = {node: (0, i) for i, node in enumerate(nx.topological_sort(graph))}
         else:
-            pos = {node:(i, 0) for i, node in enumerate(nx.topological_sort(graph))}
+            pos = {node: (i, 0) for i, node in enumerate(nx.topological_sort(graph))}
     else:
         if vertical:
-            pos = {node:(0, node) for node in graph.nodes()}
+            pos = {node: (0, node) for node in graph.nodes()}
         else:
-            pos = {node:(node,0) for node in graph.nodes()}
+            pos = {node: (node, 0) for node in graph.nodes()}
     int_nodes = {n: i for i, n in enumerate(nx.topological_sort(graph))}
 
     plt.figure(figsize=figsize)
@@ -171,7 +171,7 @@ def draw_pretty(graph, labels, figsize=(20,8), box=True, enum=False, vertical=Fa
     for edge in graph.edges:
         source, target = edge
         rad = 0.8
-        rad = rad if int_nodes[source]%2 else -rad
+        rad = rad if int_nodes[source] % 2 else -rad
         ax.annotate("",
                     xy=pos[source],
                     xytext=pos[target],
@@ -180,7 +180,7 @@ def draw_pretty(graph, labels, figsize=(20,8), box=True, enum=False, vertical=Fa
                                     alpha=0.6,
                                     linewidth=1.5))
     nx.draw_networkx_nodes(graph, pos=pos, node_size=500, node_color='black')
-    nx.draw_networkx_labels(graph, labels = labels, pos=pos, font_color=label_color)
+    nx.draw_networkx_labels(graph, labels=labels, pos=pos, font_color=label_color)
     # plt.margins(y=0.5)
     plt.box(box)
     plt.show()
