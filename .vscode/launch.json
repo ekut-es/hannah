@@ -22,19 +22,19 @@
             "module": "hannah.svd_train",
             "args": [
                 "trainer.limit_train_batches=0.1",
-                "trainer.max_epochs=50",
+                "trainer.max_epochs=30",
                 "model=conv-net-trax",
-                "svd_rank_compression=3",
-                "output_dir=trained_models/svd_rank3"
+                "svd_rank_compression=4",
+                "output_dir=trained_models/svd_rank4"
             ]
         },
         {
             "name": "backend",
             "type": "python",
             "request": "launch",
-            "module": "hannah.train",
+            "module": "hannah.huffman_train",
             "args": [
-                "trainer.max_epochs=1",
+                "trainer.max_epochs=2",
                 "module.num_workers=4",
                 "model=conv-net-trax",
                 "normalizer=fixedpoint",

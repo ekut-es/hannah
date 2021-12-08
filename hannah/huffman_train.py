@@ -21,12 +21,17 @@ from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
+from .callbacks.huffman_compression import CompressionHuff
+from .callbacks.svd_compress import SVD
 from .utils import (
     log_execution_env_state,
     auto_select_gpus,
     common_callbacks,
     clear_outputs,
 )
+import matplotlib.pyplot as plt
+from .models.factory.qconfig import SymmetricQuantization
+from .models.factory.qat import QAT_MODULE_MAPPINGS
 
 def handleDataset(config=DictConfig):
     lit_module = instantiate(
@@ -96,6 +101,7 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
+        #callbacks.append(CompressionHuff())
         callbacks.extend(common_callbacks(config))
 
         opt_monitor = config.get("monitor", ["val_error"])
@@ -134,49 +140,60 @@ def train(config: DictConfig):
 
 
 
-        '''torch.save(lit_module.state_dict(), "checkpoint.ckpt")
-        lit_module.load_state_dict(
-            torch.load("checkpoint.ckpt", map_location=lambda storage, loc: storage),
-            strict=False,
-        )'''
-        #### Compression with Singular Value Decomposition (SVD) ###
+        state_dict = lit_module.state_dict()
 
-        for name, module in lit_module.named_modules():
-            if type(module) in [nn.Linear] or name == "model.linear.0.0":
-                U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True)
-                rank = config.get("svd_rank_compression")
-                U = U[:, :rank]
-                SVh = torch.matmul(torch.diag(S), Vh[:12, :])
-                SVh = SVh[:rank, :]
+        #for key in state_dict.keys():
+        #    state_dict[key] = state_dict[key]
+        lit_module.load_state_dict(state_dict)
 
-                if type(module) in [nn.Linear]:
-                    original_fc = lit_module.model.fc
-                    new_fc = nn.Sequential(
-                        nn.Linear(original_fc.in_features, rank, bias=original_fc.bias),
-                        nn.Linear(rank, original_fc.out_features, bias=original_fc.bias)
-                    )
-                    lit_module.model.fc = new_fc
-
-                    lit_module.model.fc[0].weight = torch.nn.Parameter(SVh, requires_grad=True)
-                    lit_module.model.fc[1].weight = torch.nn.Parameter(U, requires_grad=True)
-
-                else:
-                    original_fc = lit_module.model.linear[0][0]
-                    new_fc = nn.Sequential(
-                        nn.Linear(original_fc.in_features, rank, bias=original_fc.bias),
-                        nn.Linear(rank, original_fc.out_features, bias=original_fc.bias)
-                    )
-                    lit_module.model.linear[0][0] = new_fc
-
-                    lit_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
-                    lit_module.model.linear[0][0][1].weight = torch.nn.Parameter(U, requires_grad=True)
-        
-        # retrain/fine-tuning with same optimizer
         lit_module.trainer.fit_loop.current_epoch = 0
         lit_trainer.fit(lit_module)
+        lit_trainer.validate()
 
-        ckpt_path = None
+        ## save state_dict
+        ## quantize
+        ### load_State_dict auf ursprüngliches Modell
 
+
+
+        #lit_trainer.fit(lit_module)
+        
+        quantizer = SymmetricQuantization(6)
+        #def quant_weights(m):
+        #    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        #        return quantizer(m.weight)
+        #lit_module = lit_module.apply(quant_weights)
+        #lit_module = torch.quantization.convert(
+        #        lit_module, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True)
+        
+        #ws = np.array([])
+
+
+
+        
+        for module in lit_module.parameters():
+            module.data = quantizer(module.data)*0
+
+
+
+
+
+
+        #    ws = np.append(ws, module.detach().numpy().flatten())
+        #print(ws.size)
+        #print(np.min(ws))
+        #print(np.max(ws))
+
+        #fig = plt.figure()
+        #plt.hist(ws, bins=10000)
+        #plt.savefig('/local/wernerju/hannah/hist_weights.png')
+
+        #lit_trainer.fit_loop.current_epoch = 0
+        #lit_trainer.fit(lit_module)
+        #ckpt_path = None
+        lit_trainer.validate()
+
+        ckpt_path = "best"
         if lit_trainer.fast_dev_run:
             logging.warning(
                 "Trainer is in fast dev run mode, switching off loading of best model for test"
@@ -216,7 +233,6 @@ def train(config: DictConfig):
         return results[0]
     else:
         return results
-
 
 
 def nas(config: DictConfig):

@@ -19,7 +19,6 @@ from omegaconf import DictConfig
 from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
-from .callbacks.svd_compress import SVD
 from .callbacks.pruning import PruningAmountScheduler
 from .utils import (
     log_execution_env_state,
@@ -97,8 +96,6 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        #svd_rank = config.get("svd_rank_compression")
-        #callbacks.append(SVD(svd_rank))
         callbacks.extend(common_callbacks(config))
 
         opt_monitor = config.get("monitor", ["val_error"])
