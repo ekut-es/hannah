@@ -136,7 +136,6 @@ class DARTSMakroarchitecture(nx.DiGraph):
                 self.add_edges_from([(0, new_nodes[n][0]) for n in range(cell.num_inputs)])
             else:
                 cell_edges = [(cell_nodes[-cell.num_inputs+n][-1][0], new_nodes[n][0]) for n in range(cell.num_inputs)]
-                print(cell_edges)
                 self.add_edges_from(cell_edges)
             cell_nodes.append(new_nodes)
 
@@ -145,7 +144,6 @@ class DARTSMakroarchitecture(nx.DiGraph):
         nodes = list(g.nodes)
         node_types = nx.get_node_attributes(self, 'type')
         cell_map = nx.get_node_attributes(self, 'cell')
-        print(cell_map)
 
         g.add_nodes_from(['in', 'out'])
         g.add_edges_from([('in', (u, v)) for u, v in nodes if u == 0])
