@@ -159,7 +159,7 @@ def train(config: DictConfig):
                 if key == names[i]: # quantize only bits and weights
                     state_dict[key] = quantizer(state_dict[key])
                     #ws = np.append(ws, state_dict[key].cpu().detach().numpy())
-        #frq = Counter(ws)
+        #frq = Counter(ws) # get frequencies 
         #print(len(frq))
 
         lit_module.load_state_dict(state_dict)
