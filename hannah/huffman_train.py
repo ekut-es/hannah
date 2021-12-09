@@ -156,7 +156,8 @@ def train(config: DictConfig):
         #ws = []
         for i in range(len(names)):
             for key in state_dict.keys(): 
-                if key == names[i]: # quantize only bias and weights
+                # quantize only bias and weights
+                if key == names[i]: 
                     state_dict[key] = quantizer(state_dict[key])
                     #ws = np.append(ws, state_dict[key].cpu().detach().numpy())
         #frq = Counter(ws) # get frequencies 
