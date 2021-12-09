@@ -13,6 +13,7 @@ from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning import Trainer
 
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -114,7 +115,7 @@ def train(config: DictConfig):
         callbacks.append(checkpoint_callback)
 
         # INIT PYTORCH-LIGHTNING
-        lit_trainer = instantiate(
+        lit_trainer : Trainer = instantiate(
             config.trainer,
             profiler=profiler,
             callbacks=callbacks,
@@ -158,7 +159,7 @@ def train(config: DictConfig):
             for key in state_dict.keys(): 
                 # quantize only bias and weights
                 if key == names[i]: 
-                    state_dict[key] = quantizer(state_dict[key])
+                    state_dict[key] = quantizer(state_dict[key]) + 1.0
                     #ws = np.append(ws, state_dict[key].cpu().detach().numpy())
         #frq = Counter(ws) # get frequencies 
         #print(len(frq))
@@ -166,36 +167,18 @@ def train(config: DictConfig):
         lit_module.load_state_dict(state_dict)
 
         #lit_module.trainer.fit_loop.current_epoch = 0
-        lit_trainer.fit(lit_module)
+        #lit_trainer.fit(lit_module)
         #lit_module.eval()
         #lit_module.trainer.validate()
-        lit_trainer.validate()
-
         #############################################
 
-
-
-
-
-
-        ckpt_path = "best"
-        if lit_trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
-            )
-            ckpt_path = None
-
         reset_seed()
-        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
+        lit_trainer.validate(lit_module, verbose=False)
 
         # PL TEST
         reset_seed()
-        lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+        lit_trainer.test(lit_module, verbose=False)
 
-        if not lit_trainer.fast_dev_run:
-            lit_module.save()
-            if checkpoint_callback and checkpoint_callback.best_model_path:
-                shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
 
         test_output.append(opt_callback.test_result())
         results.append(opt_callback.result())
