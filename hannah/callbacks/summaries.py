@@ -8,6 +8,7 @@ import hannah.torch_extensions.nn.SNNActivationLayer
 from ..torch_extensions.nn import SNNLayers
 from ..models.sinc import SincNet
 from ..models.factory import qat
+from ..models.ofa.submodules import elastickernelconv as ekc
 
 import torchvision
 
@@ -80,6 +81,11 @@ def walk_model(model, dummy_input):
             qat.ConvBn2d: get_conv,
             qat.ConvBnReLU1d: get_conv,
             qat.ConvBnReLU2d: get_conv,
+            ekc.ConvBn1d: get_conv,
+            ekc.ConvBnReLu1d: get_conv,
+            ekc.ElasticQuantConv1d: get_elastic_conv,
+            ekc.ElasticQuantConvBn1d: get_elastic_conv,
+            ekc.ElasticQuantConvBnReLu1d: get_elastic_conv,
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
@@ -132,6 +138,10 @@ def walk_model(model, dummy_input):
         macs = get_1DSpiking_macs(module, output)
         attrs = get_spike_attrs(module)
         return weights, macs, attrs
+
+    def get_elastic_conv(module, volume_ofm, output):
+        tmp = module.assemble_basic_conv1d()
+        return get_conv(tmp, volume_ofm, output)
 
     def get_conv(module, volume_ofm, output):
         weights = (
