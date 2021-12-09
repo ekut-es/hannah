@@ -32,6 +32,8 @@ from .utils import (
 import matplotlib.pyplot as plt
 from .models.factory.qconfig import SymmetricQuantization
 from .models.factory.qat import QAT_MODULE_MAPPINGS
+from collections import Counter
+from torch.nn.modules.module import register_module_backward_hook
 
 def handleDataset(config=DictConfig):
     lit_module = instantiate(
@@ -140,58 +142,40 @@ def train(config: DictConfig):
 
 
 
-        state_dict = lit_module.state_dict()
 
-        #for key in state_dict.keys():
-        #    state_dict[key] = state_dict[key]
+
+        ##############################
+        state_dict = lit_module.state_dict()
+        quantizer = SymmetricQuantization(6)   # required change: get config value here for bias and weights
+
+
+        names = []
+        for name, module in lit_module.named_parameters():
+            names.append(name)
+
+        #ws = []
+        for i in range(len(names)):
+            for key in state_dict.keys(): 
+                if key == names[i]: # quantize only bits and weights
+                    state_dict[key] = quantizer(state_dict[key])
+                    #ws = np.append(ws, state_dict[key].cpu().detach().numpy())
+        #frq = Counter(ws)
+        #print(len(frq))
+
         lit_module.load_state_dict(state_dict)
 
-        lit_module.trainer.fit_loop.current_epoch = 0
+        #lit_module.trainer.fit_loop.current_epoch = 0
         lit_trainer.fit(lit_module)
+        #lit_module.eval()
+        #lit_module.trainer.validate()
         lit_trainer.validate()
 
-        ## save state_dict
-        ## quantize
-        ### load_State_dict auf ursprüngliches Modell
-
-
-
-        #lit_trainer.fit(lit_module)
-        
-        quantizer = SymmetricQuantization(6)
-        #def quant_weights(m):
-        #    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        #        return quantizer(m.weight)
-        #lit_module = lit_module.apply(quant_weights)
-        #lit_module = torch.quantization.convert(
-        #        lit_module, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True)
-        
-        #ws = np.array([])
-
-
-
-        
-        for module in lit_module.parameters():
-            module.data = quantizer(module.data)*0
+        #############################################
 
 
 
 
 
-
-        #    ws = np.append(ws, module.detach().numpy().flatten())
-        #print(ws.size)
-        #print(np.min(ws))
-        #print(np.max(ws))
-
-        #fig = plt.figure()
-        #plt.hist(ws, bins=10000)
-        #plt.savefig('/local/wernerju/hannah/hist_weights.png')
-
-        #lit_trainer.fit_loop.current_epoch = 0
-        #lit_trainer.fit(lit_module)
-        #ckpt_path = None
-        lit_trainer.validate()
 
         ckpt_path = "best"
         if lit_trainer.fast_dev_run:

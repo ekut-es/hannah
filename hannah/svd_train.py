@@ -177,6 +177,9 @@ def train(config: DictConfig):
 
         ckpt_path = None
 
+
+        
+
         if lit_trainer.fast_dev_run:
             logging.warning(
                 "Trainer is in fast dev run mode, switching off loading of best model for test"
