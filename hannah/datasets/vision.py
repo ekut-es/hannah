@@ -1,9 +1,12 @@
 import os
 
+from hydra.utils import get_original_cwd
+import numpy as np
 import torchvision
 import torchvision.datasets as datasets
 import torch.utils.data as data
-import torch
+import albumentations as A
+from albumentations.pytorch.transforms import ToTensorV2
 
 from .base import AbstractDataset
 
@@ -11,9 +14,10 @@ from .base import AbstractDataset
 class VisionDatasetBase(AbstractDataset):
     """Wrapper around torchvision classification datasets"""
 
-    def __init__(self, config, dataset):
+    def __init__(self, config, dataset, transform=None):
         self.config = config
         self.dataset = dataset
+        self.transform = transform
 
     @property
     def class_counts(self):
@@ -21,11 +25,10 @@ class VisionDatasetBase(AbstractDataset):
 
     def __getitem__(self, index):
         data, target = self.dataset[index]
-
-        data = torch.tensor(data)
-        target = torch.tensor([target])
-
-        return data, data.size(), target, 1
+        data = np.array(data)
+        if self.transform:
+            data = self.transform(image=data)["image"]
+        return data, target
 
     def size(self):
         dim = self[0][0].size()
@@ -64,28 +67,42 @@ class Cifar10Dataset(VisionDatasetBase):
         data_folder = config.data_folder
         root_folder = os.path.join(data_folder, "CIFAR10")
 
-        transform = torchvision.transforms.Compose(
+        #train_transform = A.load(
+        #    "/local/gerum/speech_recognition/albumentations/cifar10_autoalbument.json"
+        #)
+        # print(loaded_transform)
+        train_transform = A.Compose(
             [
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(
-                    mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
-                    std=[x / 255.0 for x in [63.0, 62.1, 66.7]],
-                ),
+                A.SmallestMaxSize(max_size=32),
+                A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5),
+                A.RandomCrop(height=32, width=32),
+                A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
+                A.RandomBrightnessContrast(p=0.5),
+                A.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.247, 0.243, 0.261)),
+                ToTensorV2(),
             ]
         )
 
-        test_set = datasets.CIFAR10(
-            root_folder, train=False, download=False, transform=transform
+        val_transform = A.Compose(
+            [
+                A.SmallestMaxSize(max_size=32),
+                A.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.247, 0.243, 0.261)),
+                ToTensorV2(),
+            ]
         )
-        train_val_set = datasets.CIFAR10(
-            root_folder, train=True, download=False, transform=transform
-        )
+
+        test_set = datasets.CIFAR10(root_folder, train=False, download=False)
+        train_val_set = datasets.CIFAR10(root_folder, train=True, download=False)
         train_val_len = len(train_val_set)
 
         split_sizes = [int(train_val_len * 0.9), int(train_val_len * 0.1)]
         train_set, val_set = data.random_split(train_val_set, split_sizes)
 
-        return cls(config, test_set), cls(config, val_set), cls(config, train_set)
+        return (
+            cls(config, train_set, train_transform),
+            cls(config, val_set, val_transform),
+            cls(config, test_set, val_transform),
+        )
 
 
 class FakeDataset(VisionDatasetBase):
@@ -116,7 +133,7 @@ class FakeDataset(VisionDatasetBase):
             transform=transform,
         )
 
-        return cls(config, test_data), cls(config, val_data), cls(config, train_data)
+        return cls(config, train_data), cls(config, val_data), cls(config, test_data)
 
     @property
     def class_names(self):

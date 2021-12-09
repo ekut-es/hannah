@@ -28,8 +28,6 @@ from torchvision.datasets.utils import (
 )
 
 import pytorch_lightning
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
-
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
