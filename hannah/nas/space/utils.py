@@ -183,6 +183,6 @@ def draw_pretty(graph, labels, figsize=(20, 8), box=True, enum=False, vertical=F
     nx.draw_networkx_labels(graph, labels=labels, pos=pos, font_color=label_color)
     # plt.margins(y=0.5)
     plt.box(box)
-    plt.show()
     if save_as:
         plt.savefig(save_as)
+    plt.show()
