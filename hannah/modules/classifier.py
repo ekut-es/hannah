@@ -109,22 +109,22 @@ class BaseStreamClassifierModule(ClassifierModule):
             {
                 "val_accuracy": Accuracy(),
                 "val_error": Error(),
-                "val_recall": Recall(num_classes=self.num_classes, average="weighted"),
+                "val_recall": Recall(num_classes=self.num_classes),
                 "val_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
+                    num_classes=self.num_classes
                 ),
-                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
+                "val_f1": F1(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
             {
                 "test_accuracy": Accuracy(),
                 "test_error": Error(),
-                "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
+                "test_recall": Recall(num_classes=self.num_classes),
                 "test_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
+                    num_classes=self.num_classes
                 ),
-                "test_f1": F1(num_classes=self.num_classes, average="weighted"),
+                "test_f1": F1(num_classes=self.num_classes),
             }
         )
 
