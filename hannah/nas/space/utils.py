@@ -153,7 +153,7 @@ def vec_to_knob(vec, knobs):
     return cfg
 
 
-def draw_pretty(graph, labels, figsize=(20, 8), box=True, enum=False, vertical=False, label_color='white'):
+def draw_pretty(graph, labels, figsize=(20, 8), box=True, enum=False, vertical=False, label_color='white', save_as=None):
     if enum:
         if vertical:
             pos = {node: (0, i) for i, node in enumerate(nx.topological_sort(graph))}
@@ -184,3 +184,5 @@ def draw_pretty(graph, labels, figsize=(20, 8), box=True, enum=False, vertical=F
     # plt.margins(y=0.5)
     plt.box(box)
     plt.show()
+    if save_as:
+        plt.savefig(save_as)
