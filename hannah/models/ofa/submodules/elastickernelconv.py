@@ -183,6 +183,7 @@ class _ElasticConvBnNd(
     def _forward(self, input):
         bias_shape = [1] * len(self.weight.shape)
         bias_shape[1] = -1
+        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
 
         scale_factor = self.scale_factor
         scaled_weight = self.scaled_weight
@@ -193,7 +194,7 @@ class _ElasticConvBnNd(
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        conv = self._real_conv_forward(input, scaled_weight, zero_bias, padding)
+        conv = self._real_conv_forward(input, scaled_weight, zero_bias)
         if self.training:
             conv_orig = conv / scale_factor.reshape(bias_shape)
             if self.bias is not None:
@@ -1063,14 +1064,12 @@ class ElasticQuantConv1d(ElasticBase1d, nn.Conv1d, qat._ConvForwardMixin):
         # get the kernel for the current index
         weight, bias = self.get_kernel()
         # get padding for the size of the kernel
-        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-
+        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
         y = self.activation_post_process(
             self._real_conv_forward(
                 input,
                 self.weight_fake_quant(weight),
                 self.bias_fake_quant(bias) if self.bias is not None else None,
-                padding=padding,
             )
         )
         return y
