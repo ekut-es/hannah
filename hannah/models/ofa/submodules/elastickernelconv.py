@@ -1151,6 +1151,9 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         self.out_channel_filter = [True] * self.out_channels
         self.qconfig = qconfig
         self.out_quant = out_quant
+        self.activation_post_process = (
+            qconfig.activation() if out_quant else nn.Identity()
+        )
         # the list of kernel transforms will have one element less than the list of kernel sizes.
         # between every two sequential kernel sizes, there will be a kernel transform
         # the subsequent kernel is determined by applying the same-size center of the previous kernel to the transform
@@ -1273,6 +1276,9 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         self.out_channel_filter = [True] * self.out_channels
         self.qconfig = qconfig
         self.out_quant = out_quant
+        self.activation_post_process = (
+            qconfig.activation() if out_quant else nn.Identity()
+        )
         self.relu = ElasticPermissiveReLU()
         # the list of kernel transforms will have one element less than the list of kernel sizes.
         # between every two sequential kernel sizes, there will be a kernel transform
