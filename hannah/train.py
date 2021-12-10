@@ -98,7 +98,7 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        compress_after = config.trainer.max_epochs-1
+        compress_after = config.trainer.max_epochs
         callbacks.append(CompressionHuff(compress_after))
         callbacks.extend(common_callbacks(config))
 
