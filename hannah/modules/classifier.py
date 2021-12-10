@@ -382,7 +382,7 @@ class StreamClassifierModule(BaseStreamClassifierModule):
         self.test_confusion.reset()
 
         confusion_plot = plot_confusion_matrix(
-            confusion_matrix.cpu().numpy(), self.get_class_names()
+            confusion_matrix.cpu().numpy(), categories=self.get_class_names(), figsize=(12.0, 12.0)
         )
 
         confusion_plot.savefig("test_confusion.png")
