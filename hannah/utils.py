@@ -27,6 +27,8 @@ from torchvision.datasets.utils import (
     extract_archive,
 )
 
+from contextlib import contextmanager
+
 import pytorch_lightning
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
@@ -294,3 +296,16 @@ def fullname(o):
     if module == "builtins":
         return klass.__qualname__  # avoid outputs like 'builtins.str'
     return module + "." + klass.__qualname__
+
+
+@contextmanager
+def set_deterministic(mode):
+    "A contextmanager to set deterministic algorithms"
+
+    old_mode = torch.are_deterministic_algorithms_enabled()
+
+    try:
+        torch.use_deterministic_algorithms(mode)
+        yield
+    finally:
+        torch.use_deterministic_algorithms(old_mode)

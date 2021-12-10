@@ -1,8 +1,10 @@
+import io
 import logging
 import platform
 
 from abc import abstractmethod
 
+import torchvision
 from torchmetrics import (
     Accuracy,
     Recall,
@@ -14,7 +16,9 @@ from torchmetrics import (
 )
 from pytorch_lightning.loggers import TensorBoardLogger
 from .config_utils import get_loss_function, get_model
+from ..utils import set_deterministic
 from typing import  Dict, Union
+from PIL import Image
 
 from hannah.datasets.base import ctc_collate_fn
 
@@ -259,7 +263,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
 
         logits = torch.nn.functional.softmax(output, dim=1)
-        if not torch.are_deterministic_algorithms_enabled():
+        with set_deterministic(False):
             self.test_confusion(logits, y)
         self.test_roc(logits, y)
 
@@ -373,16 +377,29 @@ class StreamClassifierModule(BaseStreamClassifierModule):
 
         logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
 
-        if not torch.are_deterministic_algorithms_enabled():
-            confusion_matrix = self.test_confusion.compute()
-            self.test_confusion.reset()
+        
+        confusion_matrix = self.test_confusion.compute()
+        self.test_confusion.reset()
 
-            confusion_plot = plot_confusion_matrix(
-                confusion_matrix.cpu().numpy(), self.get_class_names()
-            )
+        confusion_plot = plot_confusion_matrix(
+            confusion_matrix.cpu().numpy(), self.get_class_names()
+        )
 
-            confusion_plot.savefig("test_confusion.png")
-            confusion_plot.savefig("test_confusion.pdf")
+        confusion_plot.savefig("test_confusion.png")
+        confusion_plot.savefig("test_confusion.pdf")
+
+        buf = io.BytesIO()
+    
+        confusion_plot.savefig(buf, format='jpeg')
+        buf.seek(0)
+        im = Image.open(buf)
+        im = torchvision.transforms.ToTensor()(im)
+
+        loggers = self._logger_iterator()
+        for logger in loggers:
+            if hasattr(logger.experiment, "add_image"):
+                logger.experiment.add_image("test_confusion_matrix", im, global_step=self.current_epoch)
+
 
         # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
         self.test_roc.reset()
