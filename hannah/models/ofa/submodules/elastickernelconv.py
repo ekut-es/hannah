@@ -1306,13 +1306,8 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
-        # get the kernel for the current index
-        kernel, bias = self.get_kernel()
-        # get padding for the size of the kernel
-        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        y = super(ElasticQuantConvBnReLu1d, self).forward(input)
-        return self.activation_post_process(y)
+        y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
+        return self.activation_post_process(self.relu(y))
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
