@@ -1188,7 +1188,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        y = super(ElasticQuantConvBn1d, self)._forward(input)
+        y = super(ElasticQuantConvBn1d, self).forward(input)
         return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
@@ -1311,7 +1311,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
+        y = super(ElasticQuantConvBnReLu1d, self).forward(input)
         return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
@@ -1350,8 +1350,6 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
 
     def assemble_basic_batchnorm1d(self):
         return self.bn.assemble_basic_batchnorm1d()
-
-
 
 class ConvBn1d(nn.Conv1d):
     def __init__(
