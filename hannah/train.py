@@ -12,6 +12,7 @@ from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning import Trainer
 
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -20,6 +21,7 @@ from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
+from .callbacks.huffman_compression import CompressionHuff
 from .utils import (
     log_execution_env_state,
     auto_select_gpus,
@@ -96,6 +98,8 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
+        compress_after = config.trainer.max_epochs-1
+        callbacks.append(CompressionHuff(compress_after))
         callbacks.extend(common_callbacks(config))
 
         opt_monitor = config.get("monitor", ["val_error"])

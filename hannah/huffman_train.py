@@ -22,7 +22,6 @@ from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
-from .callbacks.huffman_compression import CompressionHuff
 from .callbacks.svd_compress import SVD
 from .utils import (
     log_execution_env_state,
@@ -34,7 +33,6 @@ import matplotlib.pyplot as plt
 from .models.factory.qconfig import SymmetricQuantization
 from .models.factory.qat import QAT_MODULE_MAPPINGS
 from collections import Counter
-from torch.nn.modules.module import register_module_backward_hook
 
 def handleDataset(config=DictConfig):
     lit_module = instantiate(
@@ -104,7 +102,6 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        #callbacks.append(CompressionHuff())
         callbacks.extend(common_callbacks(config))
 
         opt_monitor = config.get("monitor", ["val_error"])
@@ -169,7 +166,6 @@ def train(config: DictConfig):
         #lit_module.trainer.fit_loop.current_epoch = 0
         #lit_trainer.fit(lit_module)
         #lit_module.eval()
-        #lit_module.trainer.validate()
         #############################################
 
         reset_seed()

@@ -8,23 +8,25 @@ from ..models.factory.qconfig import SymmetricQuantization
 from collections import Counter
 
 class CompressionHuff(Callback):
+    def __init__(self, compress_after):
+        self.compress_after = compress_after
+
 
     def on_epoch_end(self, trainer, pl_module):
-        ws = []
-        quantizer = SymmetricQuantization(6)
-        for param in pl_module.parameters():
-            param.data = quantizer(param.data)
-            #ws = np.append(ws, param.cpu().detach().numpy())
-        #ws.tolist()
-        #frq = Counter(ws.tolist())
-        #print(frq)
-        '''frq = {} 
-        for i in range(len(ws)):
-            if ws[i] in frq.keys():
-                frq[ws[i]] += 1
-            else:
-                frq[ws[i]] = 1
-        total = sum(frq.values())
-        frq = {key: value / total for key, value in frq.items()}'''
-        #print(frq)
-        #print('##############')
+        if trainer.current_epoch == self.compress_after:
+            ws = []
+            #quantizer = SymmetricQuantization(6)
+            with torch.no_grad():
+                for name, module in pl_module.named_modules():
+                    print(name)
+                    if hasattr(module, "scaled_weight"):
+                        print(name)
+                        #print(module.scaled_weight)
+                        
+                    #module.data = quantizer(module)
+                    #print(module.scaled_weight)
+                #ws = np.append(ws, module.cpu().detach().numpy())
+            #frq = Counter(ws.tolist())
+            #print(frq)
+            #print(len(frq))
+            print('##############')
