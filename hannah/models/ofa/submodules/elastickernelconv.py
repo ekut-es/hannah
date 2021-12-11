@@ -476,6 +476,7 @@ class ElasticBase1d(nn.Conv1d):
         self.in_channels: int = in_channels
         self.out_channels: int = out_channels
         # print(self.out_channels)
+        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
 
         nn.Conv1d.__init__(
             self,
@@ -741,7 +742,7 @@ class ElasticConv1d(ElasticBase1d):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
 
-class ElasticConvBn1d(ElasticBase1d):
+class ElasticConvBn1d(ElasticConv1d):
     def __init__(
         self,
         in_channels: int,
@@ -816,9 +817,8 @@ class ElasticConvBn1d(ElasticBase1d):
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
-        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return self.bn(
-            nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
+        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        return self.bn(super(ElasticConvBn1d, self).forward(input)
         )
 
     # return a normal conv1d equivalent to this module in the current state
