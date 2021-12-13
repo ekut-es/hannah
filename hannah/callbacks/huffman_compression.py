@@ -21,6 +21,7 @@ class CompressionHuff(Callback):
                         module.weight.data = module.scaled_weight
 
 
+
             def replace_modules(module):
                 for name, child in module.named_children():
                     replace_modules(child)
@@ -39,6 +40,10 @@ class CompressionHuff(Callback):
                         dilation=child.dilation,
                         qconfig=child.qconfig,
                         out_quant=True))
+                        getattr(module, name).weight.data = child.weight
+                        #print(getattr(module, name).bias)
+                        #module[0].weight.data = child.weight
+                        #print(module[0].bias)
 
                     if isinstance(child, ConvBnReLU1d):
                         setattr(module, name, 
@@ -54,6 +59,8 @@ class CompressionHuff(Callback):
                         dilation=child.dilation,
                         qconfig=child.qconfig,
                         out_quant=True))
+                        getattr(module, name).weight.data = child.weight
+                        #module[0].weight.data = child.weight
 
             device = pl_module.device
             replace_modules(pl_module)
@@ -68,7 +75,8 @@ class CompressionHuff(Callback):
                 #print(module)
                 ws = np.append(ws, module.cpu().detach().numpy())
             frq = Counter(ws.tolist())
-            print(frq)
-            print(len(frq))
+            #print(frq)
+            print('##############')
+            print(len(frq))     
 
             print('##############')
