@@ -19,6 +19,7 @@ class CompressionHuff(Callback):
                 for name, module in pl_module.named_modules():
                     if hasattr(module, "scaled_weight"):
                         module.weight.data = module.scaled_weight
+                        module.weight.bias = module.bias
 
 
 
@@ -27,8 +28,7 @@ class CompressionHuff(Callback):
                     replace_modules(child)
 
                     if isinstance(child, ConvBn1d):
-                        setattr(module, name, 
-                        Conv1d(
+                        tmp =  Conv1d(
                         child.in_channels,
                         child.out_channels,
                         child.kernel_size, 
@@ -39,15 +39,17 @@ class CompressionHuff(Callback):
                         bias=child.bias,
                         dilation=child.dilation,
                         qconfig=child.qconfig,
-                        out_quant=True))
-                        getattr(module, name).weight.data = child.weight
+                        out_quant=True)
+                        tmp.weight.data = child.weight
+                        tmp.bias = child.bias
+                        setattr(module, name, tmp)
                         #print(getattr(module, name).bias)
                         #module[0].weight.data = child.weight
                         #print(module[0].bias)
 
+
                     if isinstance(child, ConvBnReLU1d):
-                        setattr(module, name, 
-                        ConvReLU1d(
+                        tmp = ConvReLU1d(
                         child.in_channels,
                         child.out_channels,
                         child.kernel_size, 
@@ -58,8 +60,10 @@ class CompressionHuff(Callback):
                         bias=child.bias,
                         dilation=child.dilation,
                         qconfig=child.qconfig,
-                        out_quant=True))
-                        getattr(module, name).weight.data = child.weight
+                        out_quant=True)
+                        tmp.weight.data = child.weight
+                        tmp.bias = child.bias
+                        setattr(module, name, tmp)
                         #module[0].weight.data = child.weight
 
             device = pl_module.device
