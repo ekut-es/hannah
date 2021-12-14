@@ -70,6 +70,7 @@ class ResBlock1d(ResBlockBase):
         norm_before_act=True,
         quant_skip=False,
         qconfig=None,
+        out_quant=True,
     ):
         super().__init__(
             in_channels=in_channels,
@@ -83,6 +84,8 @@ class ResBlock1d(ResBlockBase):
         self.blocks = minor_blocks
         self.norm = ElasticWidthBatchnorm1d(out_channels)
         self.act = nn.ReLU()
+        self.qconfig = qconfig
+        self.quant_skip = quant_skip
         # if applying skip to the residual values is required, create skip as a minimal conv1d
         # stride is also applied to the skip layer (if specified, default is 1)
         if not quant_skip:
@@ -106,7 +109,9 @@ class ResBlock1d(ResBlockBase):
                     qconfig=qconfig,
                 ),
             )  # if self.apply_skip else None
-
+        self.activation_post_process = (
+            self.qconfig.activation() if out_quant else nn.Identity()
+        )
         # as this does not know if an elastic width section may follow,
         # the skip connection is required! it will be needed if the width is modified later
 
@@ -126,4 +131,4 @@ class ResBlock1d(ResBlockBase):
             # as the activation does not affect discovery whatsoever.
             return self.norm(new_discovery)
         else:
-            return super().forward(x)
+            return self.activation_post_process(super().forward(x))
