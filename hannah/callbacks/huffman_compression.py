@@ -6,7 +6,7 @@ from pytorch_lightning.callbacks import Callback
 from torch.nn.modules.module import register_module_backward_hook
 from ..models.factory.qconfig import SymmetricQuantization
 from collections import Counter
-from ..models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d
+from ..models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d, Linear
 
 class CompressionHuff(Callback):
     def __init__(self, compress_after):
@@ -14,12 +14,13 @@ class CompressionHuff(Callback):
 
 
     def on_epoch_end(self, trainer, pl_module):
-        if trainer.current_epoch == self.compress_after-1:
+        if trainer.current_epoch == self.compress_after-2:
             with torch.no_grad():
                 for name, module in pl_module.named_modules():
                     if hasattr(module, "scaled_weight"):
                         module.weight.data = module.scaled_weight
                         module.weight.bias = module.bias
+
 
 
 
@@ -40,12 +41,11 @@ class CompressionHuff(Callback):
                         dilation=child.dilation,
                         qconfig=child.qconfig,
                         out_quant=True)
-                        tmp.weight.data = child.weight
-                        tmp.bias = child.bias
+                        #tmp.weight.data = child.weight
+                        #tmp.bias = child.bias
                         setattr(module, name, tmp)
-                        #print(getattr(module, name).bias)
-                        #module[0].weight.data = child.weight
-                        #print(module[0].bias)
+                        getattr(module, name).weight.data = child.weight
+                        getattr(module, name).bias = child.bias
 
 
                     if isinstance(child, ConvBnReLU1d):
@@ -61,26 +61,55 @@ class CompressionHuff(Callback):
                         dilation=child.dilation,
                         qconfig=child.qconfig,
                         out_quant=True)
-                        tmp.weight.data = child.weight
-                        tmp.bias = child.bias
+                        #tmp.weight.data = child.weight
+                        #tmp.bias = child.bias
                         setattr(module, name, tmp)
-                        #module[0].weight.data = child.weight
+                        getattr(module, name).weight.data = child.weight
+                        getattr(module, name).bias = child.bias
 
-            device = pl_module.device
-            replace_modules(pl_module)
-            pl_module.to(device=device) # otherwise cuda error
-            #print(pl_module)
+            #device = pl_module.device
+            #replace_modules(pl_module)
+            #pl_module.to(device=device) # otherwise cuda error
 
 
-            # get frequencies
+
+            '''# get frequencies
             ws = []
             for name, module in pl_module.named_parameters():
-                #print(name)
-                #print(module)
                 ws = np.append(ws, module.cpu().detach().numpy())
             frq = Counter(ws.tolist())
-            #print(frq)
-            print('##############')
-            print(len(frq))     
 
             print('##############')
+            print(frq)   
+            max_key = max(frq, key=frq.get)
+            min_key = min(frq, key=frq.get) # key of rarest element
+            #print(max_key)
+            print(min_key)
+
+            import collections
+            import bisect
+            frq = collections.OrderedDict(sorted(frq.items()))
+            #frq = dict(sorted(frq.items(), key=lambda item: item[1]))
+            min_v = list(frq)[bisect.bisect_left(list(frq.keys()), min_key)-1]
+            #print(bisect.bisect_left(list(frq.keys()), min_key))
+            #print(bisect.bisect_right(list(frq.keys()), min_key))
+            
+
+            def test_hook(module, grad_input, grad_output):
+                with torch.no_grad():
+                    module.weight[module.weight==max_key].data = torch.tensor(max_key)
+                    #module.weight[module.weight==min_key].data = torch.tensor(min_v)
+
+
+
+            for name, module in pl_module.named_modules():
+                if hasattr(module, "weight"):
+                    if module.weight != None:
+                        module.weight[module.weight==min_key].data = torch.tensor(min_v)
+                        #module.register_backward_hook(test_hook)
+                    #if module.weight != None:
+                        #module.weight.data = torch.tensor(module.weight*0.0)
+                        #module.weight[module.weight==0.03125].data = torch.tensor(0.0)
+                        '''
+
+    
