@@ -19,7 +19,7 @@ class CompressionHuff(Callback):
                 for name, module in pl_module.named_modules():
                     if hasattr(module, "scaled_weight"):
                         module.weight.data = module.scaled_weight
-                        module.weight.bias = module.bias
+                        module.weight.bias = module.bias_fake_quant
 
 
 
@@ -39,8 +39,7 @@ class CompressionHuff(Callback):
                         padding_mode=child.padding_mode,
                         bias=child.bias,
                         dilation=child.dilation,
-                        qconfig=child.qconfig,
-                        out_quant=True)
+                        qconfig=child.qconfig)
                         tmp.weight.data = child.weight
                         tmp.bias = child.bias
                         setattr(module, name, tmp)
@@ -58,8 +57,7 @@ class CompressionHuff(Callback):
                         padding_mode=child.padding_mode,
                         bias=child.bias,
                         dilation=child.dilation,
-                        qconfig=child.qconfig,
-                        out_quant=True)
+                        qconfig=child.qconfig)
                         tmp.weight.data = child.weight
                         tmp.bias = child.bias
                         setattr(module, name, tmp)
@@ -69,7 +67,7 @@ class CompressionHuff(Callback):
             replace_modules(pl_module)
             pl_module.to(device=device) # otherwise cuda error
 
-
+            
 
             '''# get frequencies
             ws = []
