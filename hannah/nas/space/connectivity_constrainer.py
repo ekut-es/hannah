@@ -139,11 +139,15 @@ class DARTSMakroarchitecture(nx.DiGraph):
                 self.add_edges_from(cell_edges)
             cell_nodes.append(new_nodes)
 
-    def to_line_graph(self):
+    def to_line_graph(self, redux_cell_indices=[]):
         g = nx.line_graph(self)
         nodes = list(g.nodes)
         node_types = nx.get_node_attributes(self, 'type')
         cell_map = nx.get_node_attributes(self, 'cell')
+        cell_map.update({0: -1})
+        redux_cells = np.zeros(max(cell_map.values()) + 1)
+        for index in redux_cell_indices:
+            redux_cells[index] = 1
 
         g.add_nodes_from(['in', 'out'])
         g.add_edges_from([('in', (u, v)) for u, v in nodes if u == 0])
@@ -154,19 +158,23 @@ class DARTSMakroarchitecture(nx.DiGraph):
         for node in g.nodes:
             n = node_labels[node]
             if n == 'in':
-
                 g.nodes[node]['type'] = 'identity'
             elif n == 'out':
                 g.nodes[node]['type'] = 'concat'
             else:
                 u, v = n
                 if node_types[v] == 'input':
-                    if node_types[u] == 'output':
+                    if v > u+2 and (u, u+2) in node_labels.values() and redux_cells[cell_map[u+2]]:
+                        g.nodes[node]['type'] = 'factorize_reduce'
+
+                    else:  # elif node_types[u] == 'output':
                         g.nodes[node]['type'] = 'concat'
-                    else:
-                        g.nodes[node]['type'] = 'identity'
+
                 elif node_types[v] == 'output':
                     g.nodes[node]['type'] = 'add'
+                elif node_types[u] == 'input' and redux_cells[cell_map[u]]:
+                    g.nodes[node]['cell'] = cell_map[v]
+                    g.nodes[node]['type'] = 'redux'
                 else:
                     g.nodes[node]['cell'] = cell_map[v]
                     g.nodes[node]['type'] = 'op'
@@ -176,11 +184,11 @@ class DARTSMakroarchitecture(nx.DiGraph):
 
 
 class DARTSGraph(ConnectivityGenerator):
-    def __init__(self, dart_cells) -> None:
+    def __init__(self, dart_cells, redux_cell_indices=[]) -> None:
         super().__init__()
         self.ooe = DARTSMakroarchitecture()
         self.ooe.add_cells(dart_cells)
-        self.m_arch = self.ooe.to_line_graph()
+        self.m_arch = self.ooe.to_line_graph(redux_cell_indices)
 
     def get_knobs(self):
         return {}
