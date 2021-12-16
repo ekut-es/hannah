@@ -67,9 +67,9 @@ class CompressionHuff(Callback):
                         getattr(module, name).weight.data = child.weight
                         getattr(module, name).bias = child.bias
 
-            #device = pl_module.device
-            #replace_modules(pl_module)
-            #pl_module.to(device=device) # otherwise cuda error
+            device = pl_module.device
+            replace_modules(pl_module)
+            pl_module.to(device=device) # otherwise cuda error
 
 
 
