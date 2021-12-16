@@ -119,7 +119,11 @@ def flatten_knobs(knobs):
     flattened_knobs = {}
     for k, v in knobs.items():
         for i, j in v.items():
-            flattened_knobs['{}_{}'.format(str(k), str(i))] = j
+            if isinstance(j, dict):
+                for ki, vi in j.items():
+                    flattened_knobs['{}_{}_{}'.format(str(k), str(i), str(ki))] = vi
+            else:
+                flattened_knobs['{}_{}'.format(str(k), str(i))] = j
     return flattened_knobs
 
 
@@ -148,8 +152,14 @@ def vec_to_knob(vec, knobs):
     for k, v in knobs.items():
         cfg[k] = {}
         for x, y in v.items():
-            cfg[k][x] = y[vec[ct]]
-            ct += 1
+            if isinstance(y, dict):
+                cfg[k][x] = {}
+                for ki, vi in y.items():
+                    cfg[k][x][ki] = vi[vec[ct]]
+                    ct += 1
+            else:
+                cfg[k][x] = y[vec[ct]]
+                ct += 1
     return cfg
 
 

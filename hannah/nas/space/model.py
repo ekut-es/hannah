@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 import numpy as np
 import hannah.models.factory.qconfig as qc
@@ -12,7 +13,7 @@ class Model(nn.Module):
         self.g = g
         g.infer_shapes(input_shape)
         for node in g:
-            self.layers[self.g.nodes[node]['id']] = node.to_torch(len(input_shape[2:]))
+            self.layers[self.g.nodes[node]['id']] = node.to_torch(len(input_shape[2:]), self.g)
 
     def forward(self, x):
         def _compute(node, input):
@@ -40,14 +41,13 @@ class Model(nn.Module):
 
 # Wrapper for torch.add
 class Add(nn.Module):
-    def __init__(self, dim=0) -> None:
+    def __init__(self, in_channels, out_channel, dim=0) -> None:
         super(Add, self).__init__()
-
     def __call__(self, args):
         # maybe do padding and stuff
         if len(args) == 2:
             return torch.add(*args)
-        elif len(args) > 1:
+        elif len(args) > 2:
             return torch.sum(torch.stack(args), dim=0)
         else:
             return args
@@ -114,3 +114,60 @@ class Quantize(nn.Module):
 
     def forward(self, *seq):
         return self.quantizer(seq)
+
+
+class Zero(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, seq):
+        return torch.zeros_like(seq)
+
+
+class FactorizedReduce(nn.Module):
+    """
+    Factorized reduce as used in ResNet to add some sort
+    of Identity connection even though the resolution does not
+    match.
+    If the resolution matches it resolves to identity
+    """
+
+    def __init__(self, C_in, C_out, stride=1, affine=True, **kwargs):
+        super().__init__()
+        self.stride = stride
+        if stride == 1 and C_in == C_out:
+            self.is_identity = True
+        elif stride == 1:
+            self.is_identity = False
+            self.relu = nn.ReLU(inplace=False)
+            self.conv = nn.Conv2d(C_in, C_out, 1, stride=stride, padding=0, bias=False)
+            self.bn = nn.BatchNorm2d(C_out, affine=affine)
+
+        else:
+            self.is_identity = False
+            assert C_out % 2 == 0
+            self.relu = nn.ReLU(inplace=False)
+            self.conv_1 = nn.Conv2d(
+                C_in, C_out // 2, 1, stride=stride, padding=0, bias=False
+            )
+            self.conv_2 = nn.Conv2d(
+                C_in, C_out // 2, 1, stride=stride, padding=0, bias=False
+            )
+            self.bn = nn.BatchNorm2d(C_out, affine=affine)
+
+    def forward(self, x):
+        if self.is_identity:
+            return x
+        elif self.stride == 1:
+            x = self.relu(x)
+            out = self.conv(x)
+            self.bn(out)
+            return out
+        else:
+            x = self.relu(x)
+            if x.shape[2] % 2 == 1 or x.shape[3] % 2 == 1:
+                x = F.pad(x, (0, x.shape[3] % 2, 0, x.shape[2] % 2), 'constant', 0)
+            out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
+            # print('Outshape', out.shape)
+            out = self.bn(out)
+            return out

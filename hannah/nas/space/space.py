@@ -8,8 +8,10 @@ import hannah.nas.space.utils as utils
 
 
 class Cell(nx.DiGraph):
-    def __init__(self) -> None:
+    def __init__(self, ops=None) -> None:
         super().__init__()
+        if ops:
+            self.add_sequential_operators(ops)
 
     def add_sequential_operators(self, operators):
         operators = list(operators)
@@ -46,6 +48,7 @@ class Subgraph(nx.DiGraph):
         for c_node in self.connectivity_graph.nodes:
             nodes = [(c, {
                      'connectivity': c_node,
+                     'edges': self.connectivity_graph.node_labels[c_node],  # for debugging
                      'id': '{}_{}_{}'.format(c.attrs['op'], c_node, i).replace("['", '').replace("']", '')
                      })
                      for i, c in enumerate(cells[c_node])]
@@ -116,7 +119,7 @@ class Subgraph(nx.DiGraph):
         return new_graph
 
     def infer_shapes(self, input):
-        #for node in self.nodes:
+        # for node in self.nodes:
         for node in nx.topological_sort(self):
             args = []
             in_edges = self.in_edges(node)
@@ -129,6 +132,7 @@ class Subgraph(nx.DiGraph):
 
             args = np.array(args)
             self.nodes[node]['output_shape'] = node.infer_shape(args)
+            # print(self.nodes[node]['id'], self.nodes[node]['edges'], self.nodes[node]['output_shape'])
 
     def get_draw_coord(self, vertical=False, scale=1):
         con_pos = utils.get_node_coord(self.connectivity_graph)
@@ -174,9 +178,7 @@ class Space:
 
         for node in self.default_graph:
             node_id = self.default_graph.nodes[node]['id']
-            knobs[node_id] = {}
-            for key, value in node.attrs.items():
-                knobs[node_id][key] = value
+            knobs[node_id] = node.get_knobs()
         return knobs
 
     def get_default_graph(self):

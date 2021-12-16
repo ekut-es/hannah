@@ -1,3 +1,4 @@
+from networkx.algorithms.tree.recognition import is_forest
 import numpy as np
 from copy import deepcopy
 from torch import nn
@@ -24,7 +25,7 @@ class Operator():
         # For undefined op, just pass through input, i.e. return input shape
         return args[0]
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         return nn.Identity()
 
     def new(self):
@@ -36,13 +37,12 @@ class Operator():
             if isinstance(cfg, dict):
                 for key, values in self.attrs.items():
                     self.attrs[key] = cfg[key]
-            else:
-                assert len(cfg) == len(self.attrs)
-                for i, (key, values) in enumerate(self.attrs.items()):
-                    self.attrs[key] = values[cfg[i]]
-        else:
-            for key, values in self.attrs.items():
-                self.attrs[key] = self.attrs[key][0]
+        # else:
+        #     for key, values in self.attrs.items():
+        #         if isinstance(values, list):
+        #             self.attrs[key] = self.attrs[key][0]
+        #         else:
+        #             self.attrs[key] = self.attrs[key]
 
     def get_knobs(self):
         knobs = {}
@@ -110,22 +110,35 @@ class Convolution(Operator):
         o_channel = self.attrs['out_channels']
         kernel = extend_size(self.attrs['kernel_size'], dims)
         stride = extend_size(self.attrs['stride'], dims)
+        dilation = extend_size(self.attrs['dilation'], dims)
 
         # TODO: Support uneven padding
         if self.attrs['padding'] == 'same':
             padding = [0] * dims * 2
-            for d in range(0, dims * 2, 2):
-                p = (kernel[int(d/2)] - stride[int(d/2)]) / 2
+            for dim in range(0, dims * 2, 2):
+                p = (kernel[int(dim/2)] - stride[int(dim/2)]) / 2
                 assert p.is_integer()
-                padding[d] = p
-                padding[d+1] = p
+                padding[dim] = p
+                padding[dim+1] = p
+        elif self.attrs['padding'] == 'half':
+            self.attrs['padding'] = [0] * dims
+            padding = [0] * dims * 2
+            for dim in range(dims):
+                assert stride[dim] == 2, 'Padding for the input to be halved can only be used when stride == 2 (not {} in dim {})'.format(stride[dim], dim)
+                assert input_size[dim] % 2 == 0, 'Padding for the input to be halved only possible for input divisable by 2 (input {})'.format(input_size[dim])
+                p = int(np.floor((dilation[dim] * (kernel[dim] - 1) + 1) / 2))
+                padding[dim*2] = p
+                padding[dim*2+1] = p
+                self.attrs['padding'][dim] = p
+            self.attrs['padding'] = tuple(self.attrs['padding'])
         else:
             padding = extend_size(self.attrs['padding'], dims)
+
         output_dims = []
-        for x, k, p, s in zip(input_size, kernel, padding, stride):
-            output_size = (x - k + 2*p) / s + 1
+        for x, k, p, s, d in zip(input_size, kernel, padding, stride, dilation):
+            output_size = np.floor(((x + (2 * p) - d * (k - 1) - 1) / s) + 1)
             if not output_size.is_integer():
-                raise Exception('Dimensions & parameter do not work out')
+                raise Exception('Dimensions & parameter do not work out x: {} k: {} p: {} s: {} output: {}'.format(x, k, p, s, output_size))
 
             output_dims.append(int(output_size))
 
@@ -142,7 +155,7 @@ class Convolution(Operator):
         kernel_shape = [self.attrs['out_channels'], input[1]] + kernel_size
         return kernel_shape
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         assert self.instance
         args = {'in_channels'  : self.attrs['in_channels'],
                 'out_channels' : self.attrs['out_channels'],
@@ -194,7 +207,6 @@ class Convolution(Operator):
 class DepthwiseSeparableConvolution(Convolution):
     def __init__(self,
                  out_channels,
-                 intermediate_channels,
                  kernel_size,
                  stride=1,
                  padding=0,
@@ -203,7 +215,6 @@ class DepthwiseSeparableConvolution(Convolution):
                  bias=False,
                  batch_norm=False) -> None:
         super().__init__(out_channels, kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias, batch_norm=batch_norm)
-        self.attrs['intermediate_channels'] = intermediate_channels
 
         for k, v in self.attrs.items():
             if not isinstance(v, list):
@@ -212,7 +223,7 @@ class DepthwiseSeparableConvolution(Convolution):
     def get_kernel_shape(self, input):
         raise NotImplementedError
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         if data_dim == 1:
             conv = nn.Conv1d
         elif data_dim == 2:
@@ -221,16 +232,17 @@ class DepthwiseSeparableConvolution(Convolution):
             conv = nn.Conv3d
 
         depthwise = conv(in_channels=self.attrs['in_channels'],
-                         out_channels=self.attrs['in_channels'] * self.attrs['intermediate_channels'],
+                         out_channels=self.attrs['in_channels'],
                          kernel_size=self.attrs['kernel_size'],
                          stride=self.attrs['stride'],
                          padding=self.attrs['padding'],  # TODO: Fix padding
                          dilation=self.attrs['dilation'],
                          groups=self.attrs['in_channels'],
                          bias=False)
-        pointwise = conv(in_channels=self.attrs['in_channels'] * self.attrs['intermediate_channels'],
+        pointwise = conv(in_channels=self.attrs['in_channels'],
                          out_channels=self.attrs['out_channels'],
                          kernel_size=1,
+                         padding=0,
                          bias=self.attrs['bias'])
 
         class depthwise_separable_conv(nn.Module):
@@ -264,7 +276,7 @@ class Linear(Operator):
         self.attrs['in_features'] = in_features
         return np.hstack((batch_size, self.attrs['out_features']))
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         assert self.instance
 
         return model.Linear(self.attrs['in_features'], self.attrs['out_features'])
@@ -275,7 +287,7 @@ class Activation(Operator):
         super().__init__(op='act')
         self.attrs['func'] = [func]
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         assert self.instance
 
         # add more activation options here
@@ -289,13 +301,16 @@ class Relu(Activation):
 
 
 class Combine(Operator):
-    def __init__(self, mode=['add']) -> None:
+    def __init__(self, mode=['add'], one_by_one_conv=[False]) -> None:
         super().__init__(op='add')
         self.attrs['mode'] = mode if isinstance(mode, list) else [mode]
+        # self.attrs['one_by_one_conv'] = one_by_one_conv
 
     def infer_shape(self, args):
         output = None
         if self.attrs['mode'] == 'add':
+            # print("Args", args)
+            oc = args[0][1]
             output = np.max(args, axis=0)
         elif self.attrs['mode'] == 'concat':
             # assuming the second dim are the channel
@@ -305,9 +320,20 @@ class Combine(Operator):
             output[1] = channel
         return output
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g):
         if self.attrs['mode'] == 'add':
-            return model.Add()
+            in_edges = g.in_edges(self)
+            out_channel = g.nodes[self]['output_shape'][1]
+
+            if len(in_edges) > 0:
+                in_channels = []
+                for i, o in in_edges:
+                    oc = g.nodes[i]['output_shape'][1]
+                    in_channels.append(oc)
+                # print('in_channels', in_channels)
+                # print('out_channels', out_channel)
+
+            return model.Add(in_channels=in_channels, out_channel=out_channel)
         elif self.attrs['mode'] == 'concat':
             return model.Concat(dim=1)
 
@@ -327,7 +353,7 @@ class Quantize(Operator):
                 # TODO: Change this later to better attr-types (OneOf, ...)
                 self.attrs[k] = [v]
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         assert self.instance
         if self.attrs['quant']:
             return model.Quantize(self.attrs['quant'])
@@ -340,7 +366,7 @@ class Dequantize(Operator):
         super().__init__(op='dequant')
         self.attrs['active'] = active
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         assert self.instance
         if self.attrs['active']:
             return torch.quantization.DeQuantStub()
@@ -388,7 +414,7 @@ class Pooling(Operator):
 
         return np.array([batch_size, o_channel] + output_dims)
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         assert self.instance
         if self.attrs['mode'] == 'max':
             if data_dim == 1:
@@ -408,25 +434,83 @@ class Choice(Operator):
     def __init__(self, ops: list) -> None:
         super().__init__(op='choice')
         self.attrs['ops'] = ops
-        for op in ops:
-            assert op.instance, 'Currently not supporting nested search spaces in Choice nodes'
+        # for op in ops:
+        #     assert op.instance, 'Currently not supporting nested search spaces in Choice nodes'
             # self.attrs.update(op.attrs)
 
     def instantiate(self, cfg):
-        super().instantiate(cfg)
+        op = self.attrs['ops'][cfg['choice']]
+        self.attrs['ops'] = op
+        op_id = str(op.attrs['op'][0]) + '_{}'.format(str(cfg['choice']))
+        super().instantiate(cfg[op_id].update({'ops': {}}))
+        self.attrs['ops'].instantiate(cfg[op_id])
+
+    def get_knobs(self):
+        knobs = {'choice': list(range(len(self.attrs['ops']))), 'ops': self.attrs['ops']}
+        for i, op in enumerate(self.attrs['ops']):
+            knobs[str(op.attrs['op'][0]) + '_{}'.format(i)] = op.get_knobs()
+        return knobs
 
     def infer_shape(self, args):
         assert self.instance
+        # return super().infer_shape(args)
         return self.attrs['ops'].infer_shape(args)
 
-    def to_torch(self, data_dim):
+    def to_torch(self, data_dim, g=None):
         assert self.instance
-
         return self.attrs['ops'].to_torch(data_dim)
 
 
-# @dataclass
-# class QuantizationParameter:
+class FactorizedReduce(Operator):
+    def __init__(self, out_channels, stride=[1], affine=[True]) -> None:
+        super().__init__(op='factorized_reduce')
+        self.attrs['out_channels'] = out_channels
+        self.attrs['stride'] = stride
+        self.attrs['affine'] = affine
+
+        for k, v in self.attrs.items():
+            if not isinstance(v, list):
+                self.attrs[k] = [v]
+
+    def infer_shape(self, args):
+        input_shape = args[0]
+        batch_size = input_shape[0]
+        i_channel = input_shape[1]
+        self.attrs['in_channels'] = i_channel
+
+        input_size = input_shape[2:]
+        dims = len(input_size)
+        if callable(self.attrs['out_channels']):
+            o_channel = self.attrs['out_channels'](i_channel)
+            self.attrs['out_channels'] = o_channel
+        else:
+            o_channel = self.attrs['out_channels']
+        stride = extend_size(self.attrs['stride'], dims)
+        output_dims = []
+        for x, s in zip(input_size, stride):
+            output_size = np.floor(((x - 1) / s) + 1)
+            if not output_size.is_integer():
+                raise Exception('Invalid parameter/dimension combination (output_size {})'.format(output_size))
+
+            output_dims.append(int(output_size))
+
+        return np.array([batch_size, o_channel] + output_dims)
+
+    def to_torch(self, data_dim, g=None):
+        # print(self.attrs['in_channels'], self.attrs['out_channels'])
+        return model.FactorizedReduce(self.attrs['in_channels'],
+                                      self.attrs['out_channels'],
+                                      self.attrs['stride'],
+                                      self.attrs['affine'])
+
+
+class Zero(Operator):
+    def __init__(self) -> None:
+        super().__init__(op='zero')
+
+    def to_torch(self, data_dim, g=None):
+        return model.Zero()
+
 
 def extend_size(value, dim):
     if not isinstance(value, list):
