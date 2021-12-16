@@ -41,11 +41,10 @@ class CompressionHuff(Callback):
                         dilation=child.dilation,
                         qconfig=child.qconfig,
                         out_quant=True)
-                        #tmp.weight.data = child.weight
-                        #tmp.bias = child.bias
+                        tmp.weight.data = child.weight
+                        tmp.bias = child.bias
                         setattr(module, name, tmp)
-                        getattr(module, name).weight.data = child.weight
-                        getattr(module, name).bias = child.bias
+
 
 
                     if isinstance(child, ConvBnReLU1d):
@@ -61,11 +60,10 @@ class CompressionHuff(Callback):
                         dilation=child.dilation,
                         qconfig=child.qconfig,
                         out_quant=True)
-                        #tmp.weight.data = child.weight
-                        #tmp.bias = child.bias
+                        tmp.weight.data = child.weight
+                        tmp.bias = child.bias
                         setattr(module, name, tmp)
-                        getattr(module, name).weight.data = child.weight
-                        getattr(module, name).bias = child.bias
+
 
             device = pl_module.device
             replace_modules(pl_module)
