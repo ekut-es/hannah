@@ -101,94 +101,61 @@ class DARTSCell(nx.DiGraph):
         intermediate_nodes = list(range(num_inputs, num_inputs + num_nodes))
         output_nodes = list(range(num_inputs + num_nodes, num_inputs + num_nodes + num_outputs))
 
-        self.add_nodes_from([(n, {'type': 'intermediate'}) for n in intermediate_nodes])
+        self.add_nodes_from([(n, {'type': 'sum'}) for n in intermediate_nodes])
         add_edges_densly(self)
 
         self.add_nodes_from([(n, {'type': 'input'}) for n in input_nodes])
         self.add_edges_from([(u, v) for u in input_nodes for v in intermediate_nodes])
 
-        self.add_nodes_from([(n, {'type': 'output'}) for n in output_nodes])
+        self.add_nodes_from([(n, {'type': 'cat'}) for n in output_nodes])
         self.add_edges_from([(u, v) for u in intermediate_nodes for v in output_nodes])
 
 
 class DARTSMakroarchitecture(nx.DiGraph):
     def __init__(self):
         super().__init__()
-        self.input_nodes = []
-        self.output_nodes = []
-        self.intermediate_nodes = []
 
     def add_cells(self, cells):
-        new_nodes = [(0, {'type': 'input'})]
+        new_nodes = None
         cell_nodes = []
-        cell_nodes.append(new_nodes)
-        self.add_nodes_from(new_nodes)
         for i, cell in enumerate(cells):
-            idx = new_nodes[-1][0]
+            if new_nodes:
+                idx = new_nodes[-1][0]
+            else:
+                idx = 0
             types = nx.get_node_attributes(cell, 'type')
             new_nodes = [(n + idx + 1, {'type': types[n], 'cell': i}) for n in sorted(cell.nodes)]
-            new_edges = [(idx + 1 + u, idx + 1 + v) for u, v in sorted(cell.edges)]
+            new_edges = [(idx + u + 1, idx + v + 1, {'cell': i}) for u, v in sorted(cell.edges)]
 
             self.add_nodes_from(new_nodes)
             self.add_edges_from(new_edges)
 
-            if i == 0:
-                self.add_edges_from([(0, new_nodes[n][0]) for n in range(cell.num_inputs)])
-            else:
+            if i == 1:
+                self.add_edges_from([(cell_nodes[0][-1][0], new_nodes[n][0]) for n in range(cell.num_inputs)])
+            elif i > 1:
                 cell_edges = [(cell_nodes[-cell.num_inputs+n][-1][0], new_nodes[n][0]) for n in range(cell.num_inputs)]
                 self.add_edges_from(cell_edges)
             cell_nodes.append(new_nodes)
 
-    def to_line_graph(self, redux_cell_indices=[]):
-        g = nx.line_graph(self)
-        nodes = list(g.nodes)
-        node_types = nx.get_node_attributes(self, 'type')
-        cell_map = nx.get_node_attributes(self, 'cell')
-        cell_map.update({0: -1})
-        redux_cells = np.zeros(max(cell_map.values()) + 1)
-        for index in redux_cell_indices:
-            redux_cells[index] = 1
-
-        g.add_nodes_from(['in', 'out'])
-        g.add_edges_from([('in', (u, v)) for u, v in nodes if u == 0])
-        g.add_edges_from([((u, v), 'out') for u, v in nodes if v == len(self.nodes)-1])
-        node_labels = {i: old for i, old in enumerate(nx.topological_sort(g))}
-
-        g = nx.relabel_nodes(g, {old: i for i, old in enumerate(nx.topological_sort(g))})
-        for node in g.nodes:
-            n = node_labels[node]
-            if n == 'in':
-                g.nodes[node]['type'] = 'identity'
-            elif n == 'out':
-                g.nodes[node]['type'] = 'concat'
-            else:
-                u, v = n
-                if node_types[v] == 'input':
-                    if v > u+2 and (u, u+2) in node_labels.values() and redux_cells[cell_map[u+2]]:
-                        g.nodes[node]['type'] = 'factorize_reduce'
-
-                    else:  # elif node_types[u] == 'output':
-                        g.nodes[node]['type'] = 'concat'
-
-                elif node_types[v] == 'output':
-                    g.nodes[node]['type'] = 'add'
-                elif node_types[u] == 'input' and redux_cells[cell_map[u]]:
-                    g.nodes[node]['cell'] = cell_map[v]
-                    g.nodes[node]['type'] = 'redux'
-                else:
-                    g.nodes[node]['cell'] = cell_map[v]
-                    g.nodes[node]['type'] = 'op'
-
-        g.node_labels = node_labels
+    def add_operator_nodes(self):
+        g = self.copy()
+        for edge in self.edges:
+            cells = (self.nodes[edge[0]]['cell'], self.nodes[edge[1]]['cell'])
+            g.add_node(edge, type='op', cell=cells)
+            g.add_edges_from([(edge[0], edge), (edge, edge[1])])
+            g.remove_edge(*edge)
         return g
 
 
 class DARTSGraph(ConnectivityGenerator):
-    def __init__(self, dart_cells, redux_cell_indices=[]) -> None:
+    def __init__(self, dart_cells) -> None:
         super().__init__()
         self.ooe = DARTSMakroarchitecture()
         self.ooe.add_cells(dart_cells)
-        self.m_arch = self.ooe.to_line_graph(redux_cell_indices)
+        # self.m_arch = self.ooe.to_line_graph(redux_cell_indices)
+        tmp = self.ooe.copy()
+        self.m_arch = self.ooe.add_operator_nodes()
+        self.ooe = tmp
 
     def get_knobs(self):
         return {}

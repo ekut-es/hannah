@@ -1,11 +1,13 @@
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
 
-from hannah.nas.space.connectivity_constrainer import PathConstrainer
-from hannah.nas.space.operator import Convolution, Activation, Combine, Quantize, Linear, Pooling
-import hannah.nas.space.space as space
+import hannah.nas.search_space.space as space
 from hannah.models.factory.qconfig import QConfig, STEQuantize
+from hannah.nas.search_space.connectivity_constrainer import PathConstrainer
+from hannah.nas.search_space.operator import (Activation, Combine, Convolution,
+                                              Linear, Pooling, Quantize)
 
 
 def get_node_coord(g, first_node=0):
@@ -163,7 +165,7 @@ def vec_to_knob(vec, knobs):
     return cfg
 
 
-def draw_pretty(graph, labels, figsize=(20, 8), box=True, enum=False, vertical=False, label_color='white', save_as=None):
+def draw_pretty(graph, labels=None, figsize=(20, 8), edge_labels=None, box=True, enum=False, vertical=False, label_color='white', save_as=None):
     if enum:
         if vertical:
             pos = {node: (0, i) for i, node in enumerate(nx.topological_sort(graph))}
@@ -176,23 +178,80 @@ def draw_pretty(graph, labels, figsize=(20, 8), box=True, enum=False, vertical=F
             pos = {node: (node, 0) for node in graph.nodes()}
     int_nodes = {n: i for i, n in enumerate(nx.topological_sort(graph))}
 
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
     ax = plt.gca()
     for edge in graph.edges:
         source, target = edge
         rad = 0.8
         rad = rad if int_nodes[source] % 2 else -rad
+
+        arc = mpl.patches.ConnectionStyle.Arc3(rad)
+        # arc = arc(pos[target], pos[source])
+
         ax.annotate("",
                     xy=pos[source],
                     xytext=pos[target],
                     arrowprops=dict(arrowstyle="-", color="black",
-                                    connectionstyle=f"arc3,rad={rad}",
+                                    connectionstyle=arc,  # f"arc3,rad={rad}",
                                     alpha=0.6,
                                     linewidth=1.5))
+        if edge_labels:
+            edge_pos = arc.connect(pos[source], pos[target]).vertices[1]
+        #     edge_pos[0] *= 0# .95
+            edge_pos[1] /= - (180 - (180/np.pi))
+            ax.annotate(edge_labels[edge],
+                        xy=edge_pos,
+                        xycoords='data')
+
     nx.draw_networkx_nodes(graph, pos=pos, node_size=500, node_color='black')
     nx.draw_networkx_labels(graph, labels=labels, pos=pos, font_color=label_color)
+    # if edge_labels:
+    #     nx.draw_networkx_edge_labels(graph, pos=pos, edge_labels=edge_labels, font_size=6)
     # plt.margins(y=0.5)
     plt.box(box)
+
     if save_as:
         plt.savefig(save_as)
+    # ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
     plt.show()
+    return fig
+
+
+def draw_pretty_nodes(graph, labels=None, figsize=(25, 7)):
+    xpos = {}
+    ypos = {}
+    successors = nx.dfs_successors(graph)
+    successors_ct = np.zeros(len(successors))
+    even = 1
+    for x, node in enumerate(nx.topological_sort(graph)):
+        if isinstance(node, int):
+            xpos[node] = node
+            ypos[node] = 0
+        elif isinstance(node, tuple):
+            xpos[node] = ((node[1] - node[0]) / 2) + node[0]
+            ypos[node] = successors_ct[node[0]] + 1
+            if even == 1:
+                ypos[node] *= -1
+            even *= -1
+            successors_ct[node[0]] += 1
+
+    ymax = np.max(list(ypos.values()))
+    ypos = {k: v + (v*ymax) if isinstance(k, tuple) else v for k, v in ypos.items()}
+    pos = {n: (xpos[n], ypos[n]) for n in graph.nodes}
+
+    fig = plt.figure(figsize=figsize)
+    rad = 0.3
+    nx.draw_networkx_nodes(graph, pos=pos, node_size=1000, node_color='black')
+    for edge in graph.edges:
+        if pos[edge[1]][1] > 0 and pos[edge[0]][1] == 0:
+            r = -rad
+        elif pos[edge[0]][1] > 0 and pos[edge[1]][1] == 0:
+            r = -rad
+        else:
+            r = rad
+        nx.draw_networkx_edges(graph, edgelist=[edge], pos=pos, connectionstyle="arc3,rad={}".format(r), alpha=0.6)
+    labels = labels
+    nx.draw_networkx_labels(graph, labels=labels, pos=pos, font_color='white')
+    plt.show()
+
+    return fig

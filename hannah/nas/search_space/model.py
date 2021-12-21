@@ -32,6 +32,8 @@ class Model(nn.Module):
 
             else:
                 out = self.layers[self.g.nodes[node]['id']](input)
+
+            # print("node: {} out: {}".format(node, out.shape))
             return out
 
         last = list(self.g.nodes)[-1]

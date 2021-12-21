@@ -4,7 +4,7 @@ from copy import deepcopy
 from torch import nn
 import torch
 
-import hannah.nas.space.model as model
+import hannah.nas.search_space.model as model
 import hannah.models.factory.qat as qat
 
 
@@ -107,12 +107,18 @@ class Convolution(Operator):
         input_size = input_shape[2:]
         dims = len(input_size)
         self.attrs['in_channels'] = i_channel
+
+        if callable(self.attrs['out_channels']):
+            o_channel = self.attrs['out_channels'](i_channel)
+            self.attrs['out_channels'] = o_channel
+        else:
+            o_channel = self.attrs['out_channels']
+
         o_channel = self.attrs['out_channels']
         kernel = extend_size(self.attrs['kernel_size'], dims)
         stride = extend_size(self.attrs['stride'], dims)
         dilation = extend_size(self.attrs['dilation'], dims)
 
-        # TODO: Support uneven padding
         if self.attrs['padding'] == 'same':
             padding = [0] * dims * 2
             for dim in range(0, dims * 2, 2):
@@ -402,13 +408,38 @@ class Pooling(Operator):
 
         o_channel = i_channel
         kernel = extend_size(self.attrs['kernel_size'], dims)
-        padding = extend_size(self.attrs['padding'], dims)
         stride = extend_size(self.attrs['stride'], dims)
+        dilation = extend_size(self.attrs['dilation'], dims)
+
+        if self.attrs['padding'] == 'same':
+            self.attrs['padding'] = [0] * dims
+            padding = [0] * dims * 2
+            for dim in range(dims):
+                p = (kernel[dim] - stride[dim]) / 2
+                assert p.is_integer()
+                p = int(p)
+                padding[dim*2] = p
+                padding[dim*2+1] = p
+                self.attrs['padding'][dim] = p
+        elif self.attrs['padding'] == 'half':
+            self.attrs['padding'] = [0] * dims
+            padding = [0] * dims * 2
+            for dim in range(dims):
+                assert stride[dim] == 2, 'Padding for the input to be halved can only be used when stride == 2 (not {} in dim {})'.format(stride[dim], dim)
+                assert input_size[dim] % 2 == 0, 'Padding for the input to be halved only possible for input divisable by 2 (input {})'.format(input_size[dim])
+                p = int(np.floor((dilation[dim] * (kernel[dim] - 1) + 1) / 2))
+                padding[dim*2] = p
+                padding[dim*2+1] = p
+                self.attrs['padding'][dim] = p
+            self.attrs['padding'] = tuple(self.attrs['padding'])
+        else:
+            padding = extend_size(self.attrs['padding'], dims)
+
         output_dims = []
-        for x, k, p, s in zip(input_size, kernel, padding, stride):
-            output_size = (x - k + 2*p) / s + 1
+        for x, k, p, s, d in zip(input_size, kernel, padding, stride, dilation):
+            output_size = np.floor(((x + (2 * p) - d * (k - 1) - 1) / s) + 1)
             if not output_size.is_integer():
-                raise Exception('Invalid parameter/dimension combination (output_size {})'.format(output_size))
+                raise Exception('Invalid parameter/dimension combination (inp: {} outp: {})'.format(x, output_size))
 
             output_dims.append(int(output_size))
 
@@ -416,6 +447,9 @@ class Pooling(Operator):
 
     def to_torch(self, data_dim, g=None):
         assert self.instance
+        attrs = {'kernel_size': self.attrs['kernel_size'],
+                 'stride': self.attrs['stride'],
+                 'padding': self.attrs['padding']}
         if self.attrs['mode'] == 'max':
             if data_dim == 1:
                 pool = nn.MaxPool1d
@@ -423,11 +457,16 @@ class Pooling(Operator):
                 pool = nn.MaxPool2d
             elif data_dim == 3:
                 pool = nn.MaxPool3d
+            attrs.update({'dilation': self.attrs['dilation']})
+        elif self.attrs['mode'] == 'avg':
+            if data_dim == 1:
+                pool = nn.AvgPool1d
+            elif data_dim == 2:
+                pool = nn.AvgPool2d
+            elif data_dim == 3:
+                pool = nn.AvgPool3d
         # TODO: Support more pool variants
-        return pool(self.attrs['kernel_size'],
-                    self.attrs['stride'],
-                    self.attrs['padding'],
-                    self.attrs['dilation'])
+        return pool(**attrs)
 
 
 class Choice(Operator):

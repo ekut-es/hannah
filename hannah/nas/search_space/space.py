@@ -1,10 +1,9 @@
 import networkx as nx
 import numpy as np
+import hannah.nas.search_space.utils as utils
 
 from copy import deepcopy
-from hannah.nas.space.connectivity_constrainer import ConnectivityGenerator
-
-import hannah.nas.space.utils as utils
+from hannah.nas.search_space.connectivity_constrainer import ConnectivityGenerator
 
 
 class Cell(nx.DiGraph):
@@ -48,7 +47,6 @@ class Subgraph(nx.DiGraph):
         for c_node in self.connectivity_graph.nodes:
             nodes = [(c, {
                      'connectivity': c_node,
-                     'edges': self.connectivity_graph.node_labels[c_node],  # for debugging
                      'id': '{}_{}_{}'.format(c.attrs['op'], c_node, i).replace("['", '').replace("']", '')
                      })
                      for i, c in enumerate(cells[c_node])]
@@ -124,7 +122,7 @@ class Subgraph(nx.DiGraph):
             args = []
             in_edges = self.in_edges(node)
             if len(in_edges) == 0:
-                args = [input]
+                args = np.array([input])
                 self.nodes[node]['output_shape'] = node.infer_shape(args)
             else:
                 for u, v in self.in_edges(node):
@@ -132,7 +130,7 @@ class Subgraph(nx.DiGraph):
 
             args = np.array(args)
             self.nodes[node]['output_shape'] = node.infer_shape(args)
-            # print(self.nodes[node]['id'], self.nodes[node]['edges'], self.nodes[node]['output_shape'])
+            # print(self.nodes[node]['id'], self.nodes[node]['output_shape'])
 
     def get_draw_coord(self, vertical=False, scale=1):
         con_pos = utils.get_node_coord(self.connectivity_graph)
