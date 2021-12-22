@@ -14,22 +14,35 @@ class CompressionHuff(Callback):
 
 
     def on_epoch_end(self, trainer, pl_module):
+        '''for name, module in pl_module.named_modules():
+            if hasattr(module, "bias"):
+                    #    print(name)
+                print(module.bias)'''
+
         if trainer.current_epoch == self.compress_after-2:
             with torch.no_grad():
+                counter = 0
                 for name, module in pl_module.named_modules():
                     if hasattr(module, "scaled_weight"):
+                        #print("MODULE WEIGHT: ",module.weight.data)
+                        #print("Difference: ",module.weight.data-module.scaled_weight)
                         module.weight.data = module.scaled_weight
-                        module.weight.bias = module.bias_fake_quant
 
-
-
+                        if not isinstance(module, nn.Linear):
+                            bias_shape = [1] * len(module.weight.shape)
+                            bias_shape[1] = -1
+                            bias = torch.zeros(module.out_channels, device=module.weight.device)
+                            bias = module.bias_fake_quant((bias - module.bn.running_mean) * module.scale_factor + module.bn.bias) #.reshape(bias_shape)
+                            module.bias = torch.nn.Parameter(bias)
+    
+                    
 
             def replace_modules(module):
                 for name, child in module.named_children():
                     replace_modules(child)
 
                     if isinstance(child, ConvBn1d):
-                        tmp =  Conv1d(
+                        tmp = Conv1d(
                         child.in_channels,
                         child.out_channels,
                         child.kernel_size, 
@@ -37,12 +50,15 @@ class CompressionHuff(Callback):
                         padding=child.padding,
                         groups=child.groups,
                         padding_mode=child.padding_mode,
-                        bias=child.bias,
                         dilation=child.dilation,
-                        qconfig=child.qconfig)
+                        bias=True,
+                        qconfig=child.qconfig
+                        )
                         tmp.weight.data = child.weight
                         tmp.bias = child.bias
+                        #tmp.bias = torch.nn.Parameter(torch.zeros(child.out_channels, device=child.weight.device))
                         setattr(module, name, tmp)
+                        #getattr(module,name, tmp).bias = child.bias
 
 
 
@@ -55,19 +71,23 @@ class CompressionHuff(Callback):
                         padding=child.padding,
                         groups=child.groups,
                         padding_mode=child.padding_mode,
-                        bias=child.bias,
+                        bias=True,
                         dilation=child.dilation,
                         qconfig=child.qconfig)
                         tmp.weight.data = child.weight
                         tmp.bias = child.bias
+                        #tmp.bias = True
+                        #tmp.bias = torch.nn.Parameter(torch.zeros(child.out_channels, device=child.weight.device))
                         setattr(module, name, tmp)
+                        #getattr(module,name, tmp).bias = child.bias
+                        #getattr(module,name, tmp).weight.data = child.weight
+                        
+
 
 
             device = pl_module.device
             replace_modules(pl_module)
             pl_module.to(device=device) # otherwise cuda error
-
-            
 
             '''# get frequencies
             ws = []

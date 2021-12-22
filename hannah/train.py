@@ -142,7 +142,7 @@ def train(config: DictConfig):
                 "Trainer is in fast dev run mode, switching off loading of best model for test"
             )
             ckpt_path = None
-
+        ckpt_path = None
         reset_seed()
         lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
 
