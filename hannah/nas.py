@@ -217,9 +217,10 @@ class OFANasTrainer(NASTrainerBase):
         epochs_kernel_step=10,
         epochs_depth_step=10,
         epochs_width_step=10,
-        elastic_kernels = False,
-        elastic_depth = False,
-        elastic_width = False,
+        elastic_kernels=False,
+        elastic_depth=False,
+        elastic_width=False,
+        evaluate=True,
         # epochs_warmup_after_width=5,
         # epochs_kernel_after_width=5,
         # epochs_depth_after_width=5,
@@ -235,7 +236,7 @@ class OFANasTrainer(NASTrainerBase):
         self.elastic_kernels = elastic_kernels
         self.elastic_depth = elastic_depth
         self.elastic_width = elastic_width
-        print()
+        self.evaluate = evaluate
 
     def run(self):
         os.makedirs("ofa_nas_dir", exist_ok=True)
@@ -315,7 +316,9 @@ class OFANasTrainer(NASTrainerBase):
                     continue
                 # add a depth reduction step
                 ofa_model.progressive_shrinking_add_depth()
-                self.rebuild_trainer(f"depth_{current_depth_step}", self.epochs_depth_step)
+                self.rebuild_trainer(
+                    f"depth_{current_depth_step}", self.epochs_depth_step
+                )
                 self.trainer.fit(model)
             logging.info("OFA completed depth steps.")
 
@@ -333,20 +336,22 @@ class OFANasTrainer(NASTrainerBase):
 
                 # add a width step
                 ofa_model.progressive_shrinking_add_width()
-                self.rebuild_trainer(f"width_{current_width_step}", self.epochs_width_step)
+                self.rebuild_trainer(
+                    f"width_{current_width_step}", self.epochs_width_step
+                )
                 self.trainer.fit(model)
             logging.info("OFA completed width steps.")
+        if self.evaluate:
+            self.eval_model(model, ofa_model)
 
-        self.eval_model(model, ofa_model)
-
-        # save random metrics
-        print(self.random_metrics_csv)
-        with open("OFA_random_sample_metrics.csv", "w") as f:
-            f.write(self.random_metrics_csv)
-        # save self.submodel_metrics_csv
-        print(self.submodel_metrics_csv)
-        with open("OFA_elastic_metrics.csv", "w") as f:
-            f.write(self.submodel_metrics_csv)
+            # save random metrics
+            print(self.random_metrics_csv)
+            with open("OFA_random_sample_metrics.csv", "w") as f:
+                f.write(self.random_metrics_csv)
+            # save self.submodel_metrics_csv
+            print(self.submodel_metrics_csv)
+            with open("OFA_elastic_metrics.csv", "w") as f:
+                f.write(self.submodel_metrics_csv)
 
     # cycle through submodels, test them, store results (under a given width step)
     def eval_model(self, lightning_model, model):
@@ -416,7 +421,9 @@ class OFANasTrainer(NASTrainerBase):
                         lightning_model, ckpt_path=None, verbose=True
                     )
                     # self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
-                    self.submodel_metrics_csv += f"{current_kernel_step}, {current_depth_step}, "
+                    self.submodel_metrics_csv += (
+                        f"{current_kernel_step}, {current_depth_step}, "
+                    )
                     results = validation_results[0]
                     torch_params = model.get_validation_model_weight_count()
                     self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"

@@ -6,3 +6,4 @@ epochs_width_step: 35
 elastic_kernels: True
 elastic_depth: True
 elastic_width: False
+evaluate: False
