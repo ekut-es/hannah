@@ -11,8 +11,7 @@
             "module": "hannah.train",
             "args": [
                 "trainer.limit_train_batches=0.1",
-                "trainer.max_epochs=1",
-                "--config-name=config_unas"
+                "trainer.max_epochs=1"
             ]
         },
         {
@@ -34,8 +33,8 @@
             "request": "launch",
             "module": "hannah.train",
             "args": [
-                "trainer.max_epochs=5",
-                "module.num_workers=4",
+                "trainer.max_epochs=2",
+                "module.num_workers=3",
                 "model=conv-net-trax",
                 "normalizer=fixedpoint",
                 "backend=trax_ut", 

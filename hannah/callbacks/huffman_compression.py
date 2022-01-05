@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 
 from pytorch_lightning.callbacks import Callback
-from torch.nn.modules.module import register_module_backward_hook
+from torch.nn.modules.module import register_module_full_backward_hook
 from ..models.factory.qconfig import SymmetricQuantization
 from collections import Counter
 from ..models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d, Linear
@@ -14,28 +14,19 @@ class CompressionHuff(Callback):
 
 
     def on_epoch_end(self, trainer, pl_module):
-        '''for name, module in pl_module.named_modules():
-            if hasattr(module, "bias"):
-                    #    print(name)
-                print(module.bias)'''
-
         if trainer.current_epoch == self.compress_after-2:
             with torch.no_grad():
                 counter = 0
                 for name, module in pl_module.named_modules():
                     if hasattr(module, "scaled_weight"):
-                        #print("MODULE WEIGHT: ",module.weight.data)
-                        #print("Difference: ",module.weight.data-module.scaled_weight)
                         module.weight.data = module.scaled_weight
-
                         if not isinstance(module, nn.Linear):
                             bias_shape = [1] * len(module.weight.shape)
                             bias_shape[1] = -1
                             bias = torch.zeros(module.out_channels, device=module.weight.device)
-                            bias = module.bias_fake_quant((bias - module.bn.running_mean) * module.scale_factor + module.bn.bias) #.reshape(bias_shape)
+                            bias = module.bias_fake_quant((bias - module.bn.running_mean) * module.scale_factor + module.bn.bias) #.reshape(bias_shape) #.view(-1, 1, 1) #.reshape(bias_shape)
                             module.bias = torch.nn.Parameter(bias)
     
-                    
 
             def replace_modules(module):
                 for name, child in module.named_children():
@@ -56,7 +47,6 @@ class CompressionHuff(Callback):
                         )
                         tmp.weight.data = child.weight
                         tmp.bias = child.bias
-                        #tmp.bias = torch.nn.Parameter(torch.zeros(child.out_channels, device=child.weight.device))
                         setattr(module, name, tmp)
                         #getattr(module,name, tmp).bias = child.bias
 
@@ -76,8 +66,6 @@ class CompressionHuff(Callback):
                         qconfig=child.qconfig)
                         tmp.weight.data = child.weight
                         tmp.bias = child.bias
-                        #tmp.bias = True
-                        #tmp.bias = torch.nn.Parameter(torch.zeros(child.out_channels, device=child.weight.device))
                         setattr(module, name, tmp)
                         #getattr(module,name, tmp).bias = child.bias
                         #getattr(module,name, tmp).weight.data = child.weight
@@ -89,14 +77,18 @@ class CompressionHuff(Callback):
             replace_modules(pl_module)
             pl_module.to(device=device) # otherwise cuda error
 
-            '''# get frequencies
+            # get frequencies
             ws = []
-            for name, module in pl_module.named_parameters():
-                ws = np.append(ws, module.cpu().detach().numpy())
+            for name, module in pl_module.named_modules():
+                if hasattr(module, "weight") and module.weight != None:
+                    ws = np.append(ws, module.weight.data.cpu().detach().numpy())
             frq = Counter(ws.tolist())
-
+            #print(frq)
             print('##############')
-            print(frq)   
+            print(len(frq))
+
+
+            ##### Testing manipulation of weights ###
             max_key = max(frq, key=frq.get)
             min_key = min(frq, key=frq.get) # key of rarest element
             #print(max_key)
@@ -113,19 +105,22 @@ class CompressionHuff(Callback):
 
             def test_hook(module, grad_input, grad_output):
                 with torch.no_grad():
-                    module.weight[module.weight==max_key].data = torch.tensor(max_key)
+                    print('Testing hook')
+                    #module.weight.data = torch.tensor(module.weight.data*0)
+                    #module.weight[module.weight==max_key].data = torch.tensor(max_key)
                     #module.weight[module.weight==min_key].data = torch.tensor(min_v)
 
 
 
             for name, module in pl_module.named_modules():
-                if hasattr(module, "weight"):
-                    if module.weight != None:
-                        module.weight[module.weight==min_key].data = torch.tensor(min_v)
-                        #module.register_backward_hook(test_hook)
+                if hasattr(module, "weight") and module.weight != None:
+                    #module.weight.data = torch.tensor(module.weight.data+1)
+                    #module.weight[module.weight==min_key].data = torch.tensor(min_v)
+
+                    module.register_backward_hook(test_hook) # runtime error in reduction.py
+                    #module.register_module_full_backward_hook(test_hook) #module has no such attribute
                     #if module.weight != None:
                         #module.weight.data = torch.tensor(module.weight*0.0)
                         #module.weight[module.weight==0.03125].data = torch.tensor(0.0)
-                        '''
+                        
 
-    
