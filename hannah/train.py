@@ -101,6 +101,8 @@ def train(config: DictConfig):
 
         compress_after = config.trainer.max_epochs
         #callbacks.append(CompressionHuff(compress_after))
+        if compress_after % 2 == 1: # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
+            compress_after -= 1
         callbacks.append(SVD(rank_svd=config.get("svd_rank_compression"), compress_after=compress_after))
         callbacks.extend(common_callbacks(config))
 

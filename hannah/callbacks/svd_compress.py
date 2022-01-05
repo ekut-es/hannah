@@ -8,7 +8,7 @@ from torch.nn.modules.module import register_module_backward_hook
 
 
                 
-
+''' Singular Value Decomposition of the linear layer of a neural network - tested for conv-net-trax and tc-res8'''
 class SVD(Callback):
     def __init__(self, rank_svd, compress_after):
         self.rank = rank_svd
@@ -18,14 +18,21 @@ class SVD(Callback):
 
     def on_epoch_start(self, trainer, pl_module):
 
-        if trainer.current_epoch == self.compress_after-10:
+        if trainer.current_epoch == self.compress_after/2: # train - apply SVD - restructure - retrain
             with torch.no_grad():
                 for name, module in pl_module.named_modules():
+
+                    # First case: conv-net-trax model with Sequential Layers
                     if name == "model.linear.0.0" and not isinstance(pl_module.model.linear[0][0], nn.Sequential):
-                        U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True)
+                        U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True) # apply SVD
+
+                        # Slicing of matrices for rank r and reassembly
                         U = U[:, :self.rank]
                         SVh = torch.matmul(torch.diag(S), Vh[:S.size()[0], :]) 
                         SVh = SVh[:self.rank, :]
+
+                        '''Replace linear layer by sequential layer with two linear layers,
+                        one containing SVh and the other U, approximating the original fully connected layer'''
                         original_fc = pl_module.model.linear[0][0]
                         new_fc = nn.Sequential(
                                 nn.Linear(original_fc.in_features, self.rank, bias=original_fc.bias),
@@ -35,10 +42,11 @@ class SVD(Callback):
 
                         pl_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.linear[0][0][1].weight = torch.nn.Parameter(U, requires_grad=True)
+                    
+                    # Second case: tc-res8 model
                     elif type(module) in [nn.Linear] and name != "model.linear.0.0.0" and name != "model.linear.0.0.1" and not isinstance(pl_module.model.fc, nn.Sequential):
                         U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True)
                         U = U[:, :self.rank]
-                        print(S.size()[0]) # 12
                         SVh = torch.matmul(torch.diag(S), Vh[:S.size()[0], :]) 
                         SVh = SVh[:self.rank, :]
                         original_fc = pl_module.model.fc

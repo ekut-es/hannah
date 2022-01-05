@@ -11,9 +11,9 @@
             "module": "hannah.train",
             "args": [
                 "trainer.limit_train_batches=1.0",
-                "model=conv-net-trax",
+                "model=tc-res8",
                 "trainer.max_epochs=20",
-                "svd_rank_compression=2"
+                "svd_rank_compression=3"
             ]
         },
         {
