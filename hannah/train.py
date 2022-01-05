@@ -22,6 +22,7 @@ from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 from .callbacks.huffman_compression import CompressionHuff
+from .callbacks.svd_compress import SVD
 from .utils import (
     log_execution_env_state,
     auto_select_gpus,
@@ -99,7 +100,8 @@ def train(config: DictConfig):
             callbacks.append(backend)
 
         compress_after = config.trainer.max_epochs
-        callbacks.append(CompressionHuff(compress_after))
+        #callbacks.append(CompressionHuff(compress_after))
+        callbacks.append(SVD(rank_svd=config.get("svd_rank_compression"), compress_after=compress_after))
         callbacks.extend(common_callbacks(config))
 
         opt_monitor = config.get("monitor", ["val_error"])
@@ -143,7 +145,7 @@ def train(config: DictConfig):
             )
             ckpt_path = None
         ckpt_path = None
-        reset_seed()
+        #reset_seed()
         lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
 
         # PL TEST

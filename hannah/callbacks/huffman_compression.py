@@ -85,7 +85,7 @@ class CompressionHuff(Callback):
             frq = Counter(ws.tolist())
             #print(frq)
             print('##############')
-            print(len(frq))
+            #print(len(frq))
 
 
             ##### Testing manipulation of weights ###
@@ -105,10 +105,11 @@ class CompressionHuff(Callback):
 
             def test_hook(module, grad_input, grad_output):
                 with torch.no_grad():
-                    print('Testing hook')
-                    #module.weight.data = torch.tensor(module.weight.data*0)
-                    #module.weight[module.weight==max_key].data = torch.tensor(max_key)
-                    #module.weight[module.weight==min_key].data = torch.tensor(min_v)
+                    # print('Testing hook')
+                    # module.weight.data = torch.tensor(module.weight.data*0.0)
+                    print(module.weight[module.weight==max_key])
+                    # module.weight[module.weight==max_key].data = torch.tensor(max_key)
+                    # module.weight[module.weight==min_key].data = torch.tensor(min_v)
 
 
 
@@ -116,11 +117,18 @@ class CompressionHuff(Callback):
                 if hasattr(module, "weight") and module.weight != None:
                     #module.weight.data = torch.tensor(module.weight.data+1)
                     #module.weight[module.weight==min_key].data = torch.tensor(min_v)
-
-                    module.register_backward_hook(test_hook) # runtime error in reduction.py
-                    #module.register_module_full_backward_hook(test_hook) #module has no such attribute
+                    print(module.weight)
+                    print(module.weight[module.weight==max_key])
+                    module.register_backward_hook(test_hook) # register_full_backward_hook(test_hook) - runtime error in reduction.py
+                    # module.register_module_full_backward_hook(test_hook) #module has no such attribute
                     #if module.weight != None:
                         #module.weight.data = torch.tensor(module.weight*0.0)
                         #module.weight[module.weight==0.03125].data = torch.tensor(0.0)
+        
+        # test if backward hook works
+        '''if trainer.current_epoch > self.compress_after-3:
+            for name, module in pl_module.named_modules():
+                if hasattr(module, "weight") and module.weight != None:
+                    print(module.weight.data)'''
                         
 
