@@ -1105,7 +1105,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
-        track_running_stats=False,
+        track_running_stats=True,
         qconfig=None,
         out_quant=True,
     ):
@@ -1133,7 +1133,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             bias=bias,
             qconfig=qconfig,
         )
-        self.bn = nn.BatchNorm1d(out_channels, track_running_stats)
+        self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
         self.qconfig = qconfig
@@ -1230,7 +1230,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
-        track_running_stats=False,
+        track_running_stats=True,
         qconfig=None,
         out_quant=True,
     ):
@@ -1258,7 +1258,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             bias=bias,
             qconfig=qconfig,
         )
-        self.bn = nn.BatchNorm1d(out_channels, track_running_stats)
+        self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
         self.qconfig = qconfig
