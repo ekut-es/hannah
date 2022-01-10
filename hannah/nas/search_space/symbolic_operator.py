@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 
 class SymbolicOperator:
-    def __init__(self, name, mod: nn.Module, **kwargs) -> None:
+    def __init__(self, name, mod, **kwargs) -> None:
         self.name = name
         self.mod = mod
         self.params = {}
@@ -33,7 +33,7 @@ class Parameter(ABC):
         super().__init__()
         self.name = name
 
-    def get(self, name, ctx):
+    def get(self, mod_name, ctx):
         pass
 
 
@@ -42,8 +42,8 @@ class Choice(Parameter):
         super().__init__(name)
         self.values = list(args)
 
-    def get(self, name, ctx):
-        idx = ctx.get('config').get(name).get(self.name)
+    def get(self, mod_name, ctx):
+        idx = ctx.get('config').get(mod_name).get(self.name)
         return self.values[idx]
 
     def __repr__(self) -> str:
@@ -55,11 +55,11 @@ class Variable(Parameter):
         super().__init__(name)
         self.infer_func = infer_func
 
-    def get(self, name, ctx):
-        return self.infer(ctx)
+    def get(self, mod_name, ctx):
+        return self.infer(mod_name, ctx)
 
-    def infer(self, ctx):
-        return self.infer_func(self.name, ctx)
+    def infer(self, mod_name, ctx):
+        return self.infer_func(self.name, mod_name, ctx)
 
 
 class Context:
