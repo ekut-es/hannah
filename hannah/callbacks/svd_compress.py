@@ -17,8 +17,9 @@ class SVD(Callback):
 
 
     def on_epoch_start(self, trainer, pl_module):
-
-        if trainer.current_epoch == self.compress_after/2: # train - apply SVD - restructure - retrain
+        
+        # Train - apply SVD - restructure - retrain
+        if trainer.current_epoch == self.compress_after/2: 
             with torch.no_grad():
                 for name, module in pl_module.named_modules():
 
@@ -43,6 +44,7 @@ class SVD(Callback):
                         pl_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.linear[0][0][1].weight = torch.nn.Parameter(U, requires_grad=True)
                     
+
                     # Second case: tc-res8 model
                     elif type(module) in [nn.Linear] and name != "model.linear.0.0.0" and name != "model.linear.0.0.1" and not isinstance(pl_module.model.fc, nn.Sequential):
                         U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True)
