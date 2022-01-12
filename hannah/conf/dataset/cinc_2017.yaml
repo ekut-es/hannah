@@ -1,0 +1,23 @@
+# @package _group_
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.physio.PhysioCincDataset
+dataset: cinc_2017
+
+test_pct: 10
+dev_pct: 10
+train_pct: 80
+
+input_length: 18000
+samplingrate: 300
+num_channels: 1
+
+overlap_ratio: 0.0
+
+clear_download: true
+variants: ["cinc_2017"]
+data_split: []
+noise_dataset: []
+download_folder: ${dataset.data_folder}/downloads
+
+sampler: weighted

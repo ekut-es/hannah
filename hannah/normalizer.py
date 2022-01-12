@@ -7,18 +7,74 @@ import torch.nn as nn
 class FixedPointNormalizer(nn.Module):
     "Simple feature normalizer for fixed point models"
 
-    def __init__(self, normalize_bits: int = 8, normalize_max: int = 256):
+    def __init__(
+        self,
+        normalize_bits: int = 8,
+        normalize_max: int = 256,
+        divide=False,
+        override_max=False,
+    ):
         super().__init__()
         self.normalize_bits = normalize_bits
         self.normalize_max = normalize_max
+        self.divide = divide
+        self.bits = self.normalize_bits - 1
+
+        if self.divide and self.normalize_bits % 2 == 0:
+
+            self.bits = int((self.normalize_bits / 2) - 1)
+            self.low_border = (2 ** self.bits) - 1
+            self.high_border = self.low_border << self.bits
+
+            if not override_max:
+                self.normalize_max = self.high_border
 
     def forward(self, x):
-        normalize_factor = 2.0 ** (self.normalize_bits - 1)
+        normalize_factor = 2.0 ** self.bits
         x = x * normalize_factor / self.normalize_max
         x = x.round()
+
+        if self.divide:
+
+            x = x.to(torch.int8)
+            xabs = torch.abs(x)
+
+            lower = torch.bitwise_and(
+                input=xabs, other=torch.tensor(self.low_border, dtype=torch.int8)
+            )
+
+            upper = (
+                torch.bitwise_and(
+                    input=xabs, other=torch.tensor(self.high_border, dtype=torch.int8)
+                )
+                >> self.bits
+            )
+
+            lower = torch.copysign(lower, x)
+            upper = torch.copysign(upper, x)
+
+            x = torch.cat((upper, lower), 1)
+
         x = x / normalize_factor
         x = x.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
 
+        return x
+
+
+class AdaptiveFixedPointNormalizer(nn.Module):
+    "Simple feature normalizer for fixed point models"
+
+    def __init__(self, normalize_bits: int = 8, num_features: int = 40):
+        super().__init__()
+        self.bn = nn.BatchNorm1d(num_features=num_features, affine=True)
+        self.normalize_bits = normalize_bits
+
+    def forward(self, x):
+
+        normalize_factor = 2.0 ** (self.normalize_bits - 1)
+        x = self.bn(x)
+        x = x / normalize_factor
+        x = x.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
         return x
 
 
@@ -50,8 +106,5 @@ class HistogramNormalizer(nn.Module):
         histogram = torch.histc(
             x, min=int(self.min_val), max=int(self.max_val), bins=self.bins
         )
-
-        print(self.min_val)
-        print(self.max_val)
 
         return x_orig

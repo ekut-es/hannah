@@ -62,6 +62,7 @@ class Predictor:
                     batched_graph, batched_graph.ndata[self.fea_name].float()
                 ).squeeze()
                 loss = F.mse_loss(pred, labels, reduction="sum")
+                # loss = F.l1_loss(pred, labels, reduction="sum")
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -74,6 +75,7 @@ class Predictor:
                         vbatched_graph, vbatched_graph.ndata[self.fea_name].float()
                     ).squeeze()
                     vloss = F.mse_loss(vpred, vlabels, reduction="sum").item()
+                    # vloss = F.l1_loss(pred, labels, reduction="sum")
                     total_loss += vloss
                     num_tests += len(vlabels)
                 if (verbose and epoch % verbose == 0) or epoch == num_epochs - 1:
@@ -173,6 +175,7 @@ class GaussianProcessPredictor(Predictor):
         readout="mean",
         fea_name="features",
         kernel="default",
+        alpha=1e-10
     ) -> None:
         """Predictor that generates a graph embedding that is used as input for a gaussian process predictor.
 
@@ -206,7 +209,7 @@ class GaussianProcessPredictor(Predictor):
             kernel = RBF() + DotProduct() + WhiteKernel()
         else:
             assert isinstance(kernel, Kernel), "Not a valid kernel."
-        self.predictor = GaussianProcessRegressor(kernel=kernel, random_state=0)
+        self.predictor = GaussianProcessRegressor(kernel=kernel, random_state=0, normalize_y=True, n_restarts_optimizer=2, alpha=alpha)
 
     def set_predictor(self, predictor):
         self.predictor = predictor
@@ -216,6 +219,39 @@ class GaussianProcessPredictor(Predictor):
 
     def fit_predictor(self, embeddings, labels):
         self.predictor.fit(embeddings, labels)
+
+    def embedd_and_fit(self, dataloader, verbose=True):
+        embeddings = []
+        labels = []
+        for batched_graph, batched_labels in dataloader:
+            graphs = dgl.unbatch(batched_graph)
+            for g, l in zip(graphs, batched_labels):
+                embeddings.append(self.get_embedding(g))
+                labels.append(l)
+
+        embeddings = torch.vstack(embeddings).detach().numpy()
+        labels = torch.hstack(labels).detach().numpy()
+
+        self.fit_predictor(embeddings, labels)
+        score = self.predictor.score(embeddings, labels)
+        if verbose:
+            print("Predictor Score: {:.5f}".format(score))
+        return score
+
+    def embedd(self, dataloader):
+        embeddings = []
+        labels = []
+        for batched_graph, batched_labels in dataloader:
+            graphs = dgl.unbatch(batched_graph)
+            for g, l in zip(graphs, batched_labels):
+                embeddings.append(self.get_embedding(g))
+                labels.append(l)
+
+        embeddings = torch.vstack(embeddings).detach().numpy()
+        labels = torch.hstack(labels).detach().numpy()
+        return embeddings, labels
+
+
 
     def train_and_fit(
         self,
@@ -370,6 +406,8 @@ class XGBPredictor(Predictor):
                 "gamma": 0,
                 "objective": "reg:squarederror",
             }
+        else:
+            self.xgb_param = xgb_param
         self.predictor = None
 
     def set_predictor(self, predictor):
@@ -387,7 +425,7 @@ class XGBPredictor(Predictor):
         dataloader,
         learning_rate=1e-3,
         num_epochs=200,
-        num_round=800,
+        num_round=8000,
         validation_dataloader=None,
         verbose=1,
     ):
@@ -479,7 +517,22 @@ class XGBPredictor(Predictor):
         return preds
 
 
-def prepare_dataloader(dataset, batch_size=50, train_test_split=1, subset=0):
+    def embedd_and_fit(self, dataloader, verbose=True):
+        embeddings = []
+        labels = []
+        for batched_graph, batched_labels in dataloader:
+            graphs = dgl.unbatch(batched_graph)
+            for g, l in zip(graphs, batched_labels):
+                embeddings.append(self.get_embedding(g))
+                labels.append(l)
+
+        embeddings = torch.vstack(embeddings).detach().numpy()
+        labels = torch.hstack(labels).detach().numpy()
+
+        self.fit_predictor(embeddings, labels)
+
+
+def prepare_dataloader(dataset, batch_size=50, train_test_split=1, subset=0, seed=0, validation=False):
     """ helper function to construct dataloaders from NASGraphDataset
 
     Parameters
@@ -492,35 +545,52 @@ def prepare_dataloader(dataset, batch_size=50, train_test_split=1, subset=0):
         number between 0 and 1, the proportion of the dataset to be used for training, by default 1
     subset : int, optional
         choose only <subset> many samples from the dataset. Set 0 for disabling, i.e. whole dataset. by default 0
+    seed : int, optional
+        set seed for reproduceability
+    validation : bool, optional
+        also output a validation set e.g. for hyperparam tuning
 
     Returns
     -------
-    tuple(GraphDataLoader, GraphDataLoader)
+    tuple(GraphDataLoader, (GraphDataLoader), GraphDataLoader)
         training dataloader to be used in CostPredictor.train() and test/validation dataloader if train_test_split > 0,
         else len(test_dataloader) == 0
     """
+    np.random.seed(seed)
     valid_indices = np.arange(len(dataset), dtype=int)
     if subset:
         num_examples = subset
     else:
         num_examples = len(valid_indices)
     num_train = int(num_examples * train_test_split)
+    if validation:
+        num_val = int((num_examples - num_train) / 2)
+    else:
+        num_val = 0
 
     indices = np.random.choice(valid_indices, size=num_examples, replace=False)
+    print("Indices", indices)
     train_indices = indices[:num_train]
-    test_indices = indices[num_train:]
+    val_indices = indices[num_train:num_train + num_val]
+    test_indices = indices[num_train + num_val:]
 
     train_sampler = SubsetRandomSampler(train_indices)
+    val_sampler = SubsetRandomSampler(val_indices)
     test_sampler = SubsetRandomSampler(test_indices)
 
     train_dataloader = GraphDataLoader(
         dataset, sampler=train_sampler, batch_size=batch_size, drop_last=False
     )
+    val_dataloader = GraphDataLoader(
+        dataset, sampler=val_sampler, batch_size=batch_size, drop_last=False
+    )
     test_dataloader = GraphDataLoader(
         dataset, sampler=test_sampler, batch_size=batch_size, drop_last=False
     )
-
-    return train_dataloader, test_dataloader
+    if validation:
+        return train_dataloader, val_dataloader, test_dataloader
+    else:
+        return train_dataloader, test_dataloader
 
 
 def get_input_feature_size(dataset, fea_name="features"):

@@ -23,7 +23,7 @@ import hannah.conf
 def main(config: DictConfig):
     random_state = np.random.RandomState(seed=1234)
     search_space = SearchSpace(config.nas.parametrization, random_state)
-    print(search_space)
+  
     backend = instantiate(config.backend)
 
     for i in range(0, 20000):

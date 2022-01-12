@@ -1,10 +1,10 @@
 defaults:
     - dataset: kws
     - features: mfcc
-    - model: tc-res8
+    - model: conv-net-trax
     - scheduler: 1cycle
     - optimizer: sgd
-    - normalizer: null
+    - normalizer: fixedpoint
     - module: stream_classifier
     - compress: null
     - trainer: default

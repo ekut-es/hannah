@@ -93,6 +93,10 @@ And you might need to deactivate your conda environement:
 
 Datasets are downloaded automatically to the datasets data folder by default this is a subfolder of the dataset's data folder.
 
+For the VAD Dataset the following Flag is needed to Download/Override the Dataset
+
+    dataset.override=True
+
 ## Training - Keyword Spotting
 
 Training is invoked by

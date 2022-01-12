@@ -7,8 +7,6 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
 
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
-
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
@@ -110,7 +108,7 @@ def train(config: DictConfig):
             profiler=profiler,
             callbacks=callbacks,
             logger=logger,
-            reload_dataloaders_every_epoch=True,
+            reload_dataloaders_every_n_epochs=1,
         )
 
         if config["auto_lr"]:
@@ -134,38 +132,39 @@ def train(config: DictConfig):
 
         if lit_trainer.fast_dev_run:
             logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
+                "Trainer is in fast dev run mode skipping validation and test"
             )
-            ckpt_path = None
+        else:
 
-        reset_seed()
-        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
+            reset_seed()
+            lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
 
-        # PL TEST
-        reset_seed()
-        lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+            # PL TEST
+            reset_seed()
+            lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
 
-        if not lit_trainer.fast_dev_run:
             lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
                 shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
 
-        test_output.append(opt_callback.test_result())
-        results.append(opt_callback.result())
+            test_output.append(opt_callback.test_result())
+            results.append(opt_callback.result())
 
-    test_sum = defaultdict(int)
-    for output in test_output:
-        for k, v in output.items():
-            if v.numel() == 1:
-                test_sum[k] += v.item()
-            else:
-                test_sum[k] += v
+    # Skip calculation of averaged metrics if test has not been run
+    if len(test_output) > 0:
+        test_sum = defaultdict(int)
+        for output in test_output:
+            for k, v in output.items():
+                if v.numel() == 1:
+                    test_sum[k] += v.item()
+                else:
+                    test_sum[k] += v
 
-    logging.info("Averaged Test Metrics:")
+        logging.info("Averaged Test Metrics:")
 
-    for k, v in test_sum.items():
-        logging.info(k + " : " + str(v / len(test_output)))
-    logging.info("validation_error : " + str(np.sum(results) / len(results)))
+        for k, v in test_sum.items():
+            logging.info(k + " : " + str(v / len(test_output)))
+        logging.info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]
@@ -174,7 +173,7 @@ def train(config: DictConfig):
 
 
 def nas(config: DictConfig):
-    print(OmegaConf.to_yaml(config))
+    logging.info("config:\n%s", OmegaConf.to_yaml(config))
     nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
     nas_trainer.run()
 

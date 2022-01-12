@@ -6,6 +6,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _single
 
+from typing import Callable, Optional
+
+from torch import Tensor
+from torchaudio import functional as Ftorchaudio
+
 
 # Mirco Ravanelli, Yoshua Bengio, “Speaker Recognition from raw waveform with SincNet” Arxiv
 # https://github.com/mravanelli/SincNet
@@ -91,7 +96,6 @@ class SincConv(nn.Module):
 
     def forward(self, waveforms):
         f_low = torch.abs(self.low_freq_) + self.min_low_hz
-        # print(f_low[0:10])
         f_high = torch.clamp(
             f_low + self.min_band_hz + torch.abs(self.band_freq_),
             self.min_low_hz,
@@ -240,3 +244,98 @@ class SincConvFFT(nn.Module):
         sinc_test_features = sinc_test_features.div(sinc_test_features.max())
 
         return sinc_test_features
+
+
+class LogSpectrogram(torch.nn.Module):
+    r"""Create a spectrogram from a audio signal.
+
+    Args:
+        n_fft (int, optional): Size of FFT, creates ``n_fft // 2 + 1`` bins. (Default: ``400``)
+        win_length (int or None, optional): Window size. (Default: ``n_fft``)
+        hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``win_length // 2``)
+        pad (int, optional): Two sided padding of signal. (Default: ``0``)
+        window_fn (Callable[..., Tensor], optional): A function to create a window tensor
+            that is applied/multiplied to each frame/window. (Default: ``torch.hann_window``)
+        power (float or None, optional): Exponent for the magnitude spectrogram,
+            (must be > 0) e.g., 1 for energy, 2 for power, etc.
+            If None, then the complex spectrum is returned instead. (Default: ``2``)
+        normalized (bool, optional): Whether to normalize by magnitude after stft. (Default: ``False``)
+        wkwargs (dict or None, optional): Arguments for window function. (Default: ``None``)
+        center (bool, optional): whether to pad :attr:`waveform` on both sides so
+            that the :math:`t`-th frame is centered at time :math:`t \times \text{hop\_length}`.
+            Default: ``True``
+        pad_mode (string, optional): controls the padding method used when
+            :attr:`center` is ``True``. Default: ``"reflect"``
+        onesided (bool, optional): controls whether to return half of results to
+            avoid redundancy Default: ``True``
+    """
+    __constants__ = ["n_fft", "win_length", "hop_length", "pad", "power", "normalized"]
+
+    def __init__(
+        self,
+        n_fft: int = 400,
+        win_length: Optional[int] = None,
+        hop_length: Optional[int] = None,
+        pad: int = 0,
+        window_fn: Callable[..., Tensor] = torch.hann_window,
+        power: Optional[float] = 2.0,
+        normalized: bool = False,
+        wkwargs: Optional[dict] = None,
+        center: bool = True,
+        pad_mode: str = "reflect",
+        onesided: bool = True,
+    ) -> None:
+        super(LogSpectrogram, self).__init__()
+        self.n_fft = n_fft
+        # number of FFT bins. the returned STFT result will have n_fft // 2 + 1
+        # number of frequencies due to onesided=True in torch.stft
+
+        self.win_length = n_fft
+        if win_length is not None:
+            self.win_length = win_length
+
+        self.hop_length = self.win_length // 2
+        if hop_length is not None:
+            self.hop_length = hop_length
+
+        if wkwargs is None:
+            window = window_fn(self.win_length)
+        else:
+            window = window_fn(self.win_length, **wkwargs)
+
+        self.register_buffer("window", window)
+        self.pad = pad
+        self.power = power
+        self.normalized = normalized
+        self.center = center
+        self.pad_mode = pad_mode
+        self.onesided = onesided
+
+    def forward(self, waveform: Tensor) -> Tensor:
+        r"""
+        Args:
+            waveform (Tensor): Tensor of audio of dimension (..., time).
+
+        Returns:
+            Tensor: Dimension (..., freq, time), where freq is
+            ``n_fft // 2 + 1`` where ``n_fft`` is the number of
+            Fourier bins, and time is the number of window hops (n_frame).
+        """
+        specgram = Ftorchaudio.spectrogram(
+            waveform,
+            self.pad,
+            self.window,
+            self.n_fft,
+            self.hop_length,
+            self.win_length,
+            self.power,
+            self.normalized,
+            self.center,
+            self.pad_mode,
+            self.onesided,
+        )
+
+        log_offset = 1e-6
+        log_specgram = torch.log(specgram + log_offset)
+        # mel_specgram = self.mel_scale(specgram)
+        return log_specgram

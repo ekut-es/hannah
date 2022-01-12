@@ -172,7 +172,6 @@ class NetworkFactory:
         if isinstance(padding, int):
             padding = (padding, padding)
 
-        print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
             input_shape[0],
             out_channels,
@@ -363,7 +362,6 @@ class NetworkFactory:
 
         qconfig = self.default_qconfig
 
-        # print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
             input_shape[0],
             out_channels,
@@ -550,13 +548,9 @@ class NetworkFactory:
         for chain in input_chains:
             output_shapes.append(chain[-1][0] if len(chain) > 0 else input_shape)
 
-        print("Shapes", output_shapes)
-
         minimum_output_shape = tuple(map(min, zip(*output_shapes)))
         maximum_output_shape = tuple(map(max, zip(*output_shapes)))
         target_output_shape = maximum_output_shape[:2] + minimum_output_shape[2:]
-
-        print("Target Shape", target_output_shape)
 
         for output_shape, chain in zip(output_shapes, input_chains):
             if output_shape != target_output_shape:

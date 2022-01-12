@@ -47,7 +47,8 @@ albumentations = "^1.0.1"
 pycocotools = "^2.0.2"
 dgl = "^0.6.1"
 networkx = "^2.6.2"
-hydra-nevergrad-sweeper = "^1.1.5"
+xgboost = "^1.4.2"
+jupyter = "^1.0.0"
 
 
 [tool.poetry.dev-dependencies]
