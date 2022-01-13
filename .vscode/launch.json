@@ -35,7 +35,7 @@
             "request": "launch",
             "module": "hannah.train",
             "args": [
-                "trainer.max_epochs=5",
+                "trainer.max_epochs=10",
                 "module.num_workers=3",
                 "model=conv-net-trax",
                 "normalizer=fixedpoint",

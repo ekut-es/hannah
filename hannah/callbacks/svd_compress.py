@@ -85,16 +85,6 @@ class SVD(Callback):
 
 
 '''
-                def svd_test(module, grad_input, grad_output):
-                    ll_weights = module.weight
-                    print(ll_weights)
-                    U, S, Vh = torch.linalg.svd(ll_weights, full_matrices=True)
-                    size_S = list(S.size())[0]
-                    for i in range(self.rank, size_S):
-                        S[i] = 0
-                    compressed_weights = torch.matmul(U, torch.matmul(torch.diag(S), Vh[:12, :]))    
-                    pl_module.model.fc.weight = torch.nn.Parameter(compressed_weights, requires_grad=True)
-                module.register_full_backward_hook(svd_test)
 
         ########### Test if weights were updated #############
         for name, param in pl_module.named_parameters():
