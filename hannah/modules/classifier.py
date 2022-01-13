@@ -1,3 +1,4 @@
+import copy
 import io
 import logging
 import platform
@@ -14,10 +15,11 @@ from torchmetrics import (
     Precision,
     MetricCollection,
 )
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
+from pytorch_lightning import LightningModule
 from .config_utils import get_loss_function, get_model
 from ..utils import set_deterministic
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 from PIL import Image
 
 from hannah.datasets.base import ctc_collate_fn
@@ -33,6 +35,7 @@ from ..datasets import SpeechDataset
 from .metrics import Error, plot_confusion_matrix
 from ..utils import fullname
 from .base import ClassifierModule
+from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
 from omegaconf import DictConfig
 
@@ -151,7 +154,7 @@ class ClassifierModule(LightningModule):
 
     def _logger_iterator(self):
         if isinstance(self.logger, LoggerCollection):
-            loggers = self.loggerhannah / modules / classifier.py
+            loggers = self.logger
         else:
             loggers = [self.logger]
 

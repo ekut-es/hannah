@@ -27,8 +27,8 @@ class ImageClassifierModule(ClassifierModule):
         self.train_set, self.dev_set, self.test_set = dataset_cls.splits(
             self.hparams.dataset
         )
-        self.example_input_array = self.test_set[0][0].unsqueeze(0)
-        self.example_feature_array = self.test_set[0][0].unsqueeze(0)
+        self.example_input_array = torch.tensor(self.test_set[0][0]).unsqueeze(0)
+        self.example_feature_array = torch.tensor(self.test_set[0][0]).unsqueeze(0)
 
         logger.info("Setting up model %s", self.hparams.model.name)
         self.model = instantiate(
