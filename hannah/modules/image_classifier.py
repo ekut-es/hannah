@@ -1,16 +1,14 @@
 import logging
-import os
-import logging
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
 
+from torchmetrics.functional import accuracy
 from hydra.utils import instantiate, get_class
 
-from .classifier import ClassifierModule
-from torchmetrics.functional import accuracy
+
+from .base import ClassifierModule
 
 logger = logging.getLogger(__name__)
 
@@ -22,17 +20,21 @@ class ImageClassifierModule(ClassifierModule):
 
         if self.initialized:
             return
+
         self.initialized = True
 
-        self.train_set, self.dev_set, self.test_set = get_class(
-            self.hparams.dataset.cls
-        ).splits(self.hparams.dataset)
+        dataset_cls = get_class(self.hparams.dataset.cls)
+        self.train_set, self.dev_set, self.test_set = dataset_cls.splits(
+            self.hparams.dataset
+        )
         self.example_input_array = self.test_set[0][0].unsqueeze(0)
         self.example_feature_array = self.test_set[0][0].unsqueeze(0)
 
         logger.info("Setting up model %s", self.hparams.model.name)
         self.model = instantiate(
-            self.hparams.model, num_classes=len(self.train_set.class_names)
+            self.hparams.model,
+            labels=len(self.train_set.class_names),
+            input_shape=self.example_input_array.shape,
         )
 
     def prepare_data(self):

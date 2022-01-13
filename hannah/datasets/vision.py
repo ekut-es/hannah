@@ -15,7 +15,6 @@ import torchvision.datasets as datasets
 import torch.utils.data as data
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
-from torchvision.datasets.vision import VisionDataset
 
 from .base import AbstractDataset
 
@@ -39,8 +38,8 @@ class VisionDatasetBase(AbstractDataset):
 
     def __getitem__(self, index):
         data, target = self.dataset[index]
+        data = np.array(data)
         if self.transform:
-            data = np.array(data)
             data = self.transform(image=data)["image"]
         return data, target
 
@@ -81,9 +80,6 @@ class Cifar10Dataset(VisionDatasetBase):
         data_folder = config.data_folder
         root_folder = os.path.join(data_folder, "CIFAR10")
 
-        # train_transform = A.load(
-        #    "/local/gerum/speech_recognition/albumentations/cifar10_autoalbument.json"
-        # )
         # print(loaded_transform)
         train_transform = A.Compose(
             [

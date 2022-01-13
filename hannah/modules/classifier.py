@@ -1,11 +1,10 @@
+import io
 import logging
-import os
-import copy
 import platform
 
 from abc import abstractmethod
 
-from pytorch_lightning.core.lightning import LightningModule
+import torchvision
 from torchmetrics import (
     Accuracy,
     Recall,
@@ -15,10 +14,11 @@ from torchmetrics import (
     Precision,
     MetricCollection,
 )
-from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
-from torch._C import Value
+from pytorch_lightning.loggers import TensorBoardLogger
 from .config_utils import get_loss_function, get_model
-from typing import Optional, Dict, Union
+from ..utils import set_deterministic
+from typing import Dict, Union
+from PIL import Image
 
 from hannah.datasets.base import ctc_collate_fn
 
@@ -31,10 +31,13 @@ import numpy as np
 
 from ..datasets import SpeechDataset
 from .metrics import Error, plot_confusion_matrix
-from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import fullname
+from .base import ClassifierModule
 
 from omegaconf import DictConfig
+
+
+logger = logging.getLogger(__name__)
 
 
 class ClassifierModule(LightningModule):
@@ -148,7 +151,7 @@ class ClassifierModule(LightningModule):
 
     def _logger_iterator(self):
         if isinstance(self.logger, LoggerCollection):
-            loggers = self.logger
+            loggers = self.loggerhannah / modules / classifier.py
         else:
             loggers = [self.logger]
 
@@ -200,6 +203,14 @@ class ClassifierModule(LightningModule):
     def on_save_checkpoint(self, checkpoint):
         checkpoint["hyper_parameters"]["_target_"] = fullname(self)
 
+    def on_validation_epoch_end(self):
+        for logger in self._logger_iterator():
+            if isinstance(logger, TensorBoardLogger):
+                logger.log_hyperparams(
+                    self.hparams,
+                    {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
+                )
+
 
 class BaseStreamClassifierModule(ClassifierModule):
     def __init__(self, *args, **kwargs):
@@ -212,7 +223,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     def setup(self, stage):
         # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
+        logger.info("Setting up model")
         if self.logger:
             self.logger.log_hyperparams(self.hparams)
 
@@ -277,22 +288,18 @@ class BaseStreamClassifierModule(ClassifierModule):
             {
                 "val_accuracy": Accuracy(),
                 "val_error": Error(),
-                "val_recall": Recall(num_classes=self.num_classes, average="weighted"),
-                "val_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
-                ),
-                #"val_f1": F1(num_classes=self.num_classes, average="weighted"),
+                "val_recall": Recall(num_classes=self.num_classes),
+                "val_precision": Precision(num_classes=self.num_classes),
+                "val_f1": F1(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
             {
                 "test_accuracy": Accuracy(),
                 "test_error": Error(),
-                "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
-                "test_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
-                ),
-                #"test_f1": F1(num_classes=self.num_classes, average="weighted"),
+                "test_recall": Recall(num_classes=self.num_classes),
+                "test_precision": Precision(num_classes=self.num_classes),
+                "test_f1": F1(num_classes=self.num_classes),
             }
         )
 
@@ -427,8 +434,9 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
 
         logits = torch.nn.functional.softmax(output, dim=1)
-        if not torch.are_deterministic_algorithms_enabled():
+        with set_deterministic(False):
             self.test_confusion(logits, y)
+
         self.test_roc(logits, y)
 
         if isinstance(self.test_set, SpeechDataset):
@@ -503,14 +511,6 @@ class BaseStreamClassifierModule(ClassifierModule):
                         )
                 self.logged_samples += 1
 
-    def on_validation_epoch_end(self):
-        for logger in self._logger_iterator():
-            if isinstance(logger, TensorBoardLogger):
-                logger.log_hyperparams(
-                    self.hparams,
-                    {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
-                )
-
 
 class StreamClassifierModule(BaseStreamClassifierModule):
     def get_class_names(self):
@@ -541,16 +541,29 @@ class StreamClassifierModule(BaseStreamClassifierModule):
 
         logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
 
-        if not torch.are_deterministic_algorithms_enabled():
-            confusion_matrix = self.test_confusion.compute()
-            self.test_confusion.reset()
+        confusion_matrix = self.test_confusion.compute()
+        self.test_confusion.reset()
 
-            confusion_plot = plot_confusion_matrix(
-                confusion_matrix.cpu().numpy(), self.get_class_names()
-            )
+        confusion_plot = plot_confusion_matrix(
+            confusion_matrix.cpu().numpy(), self.get_class_names()
+        )
 
-            confusion_plot.savefig("test_confusion.png")
-            confusion_plot.savefig("test_confusion.pdf")
+        confusion_plot.savefig("test_confusion.png")
+        confusion_plot.savefig("test_confusion.pdf")
+
+        buf = io.BytesIO()
+
+        confusion_plot.savefig(buf, format="jpeg")
+        buf.seek(0)
+        im = Image.open(buf)
+        im = torchvision.transforms.ToTensor()(im)
+
+        loggers = self._logger_iterator()
+        for logger in loggers:
+            if hasattr(logger.experiment, "add_image"):
+                logger.experiment.add_image(
+                    "test_confusion_matrix", im, global_step=self.current_epoch
+                )
 
         # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
         self.test_roc.reset()
@@ -644,6 +657,6 @@ class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
 class SpeechClassifierModule(StreamClassifierModule):
     def __init__(self, *args, **kwargs):
         logging.critical(
-            "SpeechClassifierModule has been renamed to StreamClassifierModule"
+            "SpeechClassifierModule has been renamed to StreamClassifierModule speech classifier module will be removed soon"
         )
         super(SpeechClassifierModule, self).__init__(*args, **kwargs)

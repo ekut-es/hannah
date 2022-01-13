@@ -292,6 +292,7 @@ class TRaxUltraTrailBackend(Callback):
             self.use_acc_teda_data
             or self.rtl_simulation
             or self.synthesis
+            or self.postsyn_simulation
             or self.power_estimation
         ):
             backend.eda(
