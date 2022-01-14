@@ -110,14 +110,22 @@ class CompressionHuff(Callback):
             def test_hook(module, grad_input, grad_output):
                 with torch.no_grad():
                     #module.weight.data = torch.tensor(module.weight.data*0.0) 
-                    grad_output = grad_input
-                    grad_output[module.weight==max_key] = 0
+                    print(type(grad_output[0]), grad_input)
+                    breakpoint()
+                    #grad_output = grad_input
+                    grad_output[module.weight.data==max_key] = 0
                     #module.weight.data[module.weight==max_key] = torch.tensor(max_key).to(device=device)
                     #module.weight.data[module.weight==min_key] = torch.tensor(min_v).to(device=device)
+
+            '''for p in pl_module.parameters():
+                p.register_hook(lambda grad: torch.clamp(grad, min=0, max=0))'''
+
 
 
             for name, module in pl_module.named_modules():
                 if hasattr(module, "weight") and module.weight != None:
+                    #torch.nn.utils.clip_grad_value_(module.weight.data[module.weight==max_key], clip_value=50)
+                    #module.weight[module.weight==max_key].grad.data.zero_()
                     #module.weight.data[module.weight==min_key] = torch.tensor(min_v).to(device=device)
                     module.register_backward_hook(test_hook)
                     # module.register_full_backward_hook(test_hook) # runtime error in reduction.py (Output 0 of BackwardHookFunctionBackward is a view and is being modified inplace.)
