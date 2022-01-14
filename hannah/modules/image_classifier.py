@@ -6,7 +6,8 @@ import torch.utils.data as data
 
 from torchmetrics.functional import accuracy
 from hydra.utils import instantiate, get_class
-
+from torchmetrics import ConfusionMatrix
+from ..utils import set_deterministic
 
 from .base import ClassifierModule
 
@@ -30,12 +31,19 @@ class ImageClassifierModule(ClassifierModule):
         self.example_input_array = torch.tensor(self.test_set[0][0]).unsqueeze(0)
         self.example_feature_array = torch.tensor(self.test_set[0][0]).unsqueeze(0)
 
+        self.num_classes = len(self.train_set.class_names)
+
         logger.info("Setting up model %s", self.hparams.model.name)
         self.model = instantiate(
             self.hparams.model,
-            labels=len(self.train_set.class_names),
+            labels=self.num_classes,
             input_shape=self.example_input_array.shape,
         )
+
+        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+
+    def get_class_names(self):
+        return self.train_set.class_names
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -45,14 +53,16 @@ class ImageClassifierModule(ClassifierModule):
     def forward(self, x):
         return self.model(x)
 
-    def _get_dataloader(self, dataset):
+    def _get_dataloader(self, dataset, shuffle=False):
         batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
-        sampler_type = dataset_conf.get("sampler", "random")
-        if sampler_type == "weighted":
-            sampler = self.get_balancing_sampler(dataset)
-        else:
-            sampler = data.RandomSampler(dataset)
+        sampler = None
+        if shuffle:
+            sampler_type = dataset_conf.get("sampler", "random")
+            if sampler_type == "weighted":
+                sampler = self.get_balancing_sampler(dataset)
+            else:
+                sampler = data.RandomSampler(dataset)
 
         train_loader = data.DataLoader(
             dataset,
@@ -82,31 +92,41 @@ class ImageClassifierModule(ClassifierModule):
 
         logits = self(x)
 
-        loss = F.cross_entropy(logits, y.squeeze())
+        loss = F.cross_entropy(
+            logits, y.squeeze()
+        )  # , weight=torch.tensor([0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809], device=self.device))
         self.log("train_loss", loss)
 
         return loss
 
-    def evaluate(self, batch, stage=None):
+    def validation_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
         loss = F.cross_entropy(logits, y.squeeze())
         preds = torch.argmax(logits, dim=1)
         acc = accuracy(preds, y.squeeze())
 
-        if stage:
-            self.log(f"{stage}_loss", loss, prog_bar=False)
-            self.log(f"{stage}_accuracy", acc, prog_bar=False)
-            self.log(f"{stage}_error", 1.0 - acc, prog_bar=False)
-
-    def validation_step(self, batch, batch_idx):
-        self.evaluate(batch, "val")
+        self.log("val_loss", loss)
+        self.log("val_error", 1 - acc)
+        self.log("val_accuracy", acc)
 
     def test_step(self, batch, batch_idx):
-        self.evaluate(batch, "test")
+        x, y = batch
+        logits = self(x)
+        loss = F.cross_entropy(logits, y.squeeze())
+        preds = torch.argmax(logits, dim=1)
+        softmax = F.softmax(logits)
+        acc = accuracy(preds, y.squeeze())
+
+        with set_deterministic(False):
+            self.test_confusion(preds, y)
+
+        self.log("test_loss", loss)
+        self.log("test_error", 1 - acc)
+        self.log("test_accuracy", acc)
 
     def train_dataloader(self):
-        return self._get_dataloader(self.train_set)
+        return self._get_dataloader(self.train_set, shuffle=True)
 
     def test_dataloader(self):
         return self._get_dataloader(self.test_set)
@@ -118,14 +138,3 @@ class ImageClassifierModule(ClassifierModule):
         self.eval()
         self._log_weight_distribution()
         self.train()
-
-    def on_test_start(self):
-        from ..visualization import log_distribution_install_hooks
-
-        print("install_hooks")
-        self.distribution_hooks = log_distribution_install_hooks(self)
-
-    def on_test_end(self):
-        from ..visualization import log_distribution_plot
-
-        # log_distribution_plot(self.distribution_hooks)
