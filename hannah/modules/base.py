@@ -1,27 +1,33 @@
 import copy
+import io
 import logging
 import os
 
 
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Optional
 
 import torch
 import torch.utils.data as data
+import torchvision
 
+from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers import LoggerCollection
 from hydra.utils import instantiate
 
+from PIL import Image
 
+
+from .metrics import plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import fullname
 
 logger = logging.getLogger(__name__)
 
 
-class ClassifierModule(LightningModule):
+class ClassifierModule(LightningModule, ABC):
     def __init__(
         self,
         dataset: DictConfig,
@@ -40,6 +46,7 @@ class ClassifierModule(LightningModule):
         super().__init__()
 
         self.save_hyperparameters()
+        self.msglogger = logging.getLogger()
         self.initialized = False
         self.train_set = None
         self.test_set = None
@@ -47,6 +54,7 @@ class ClassifierModule(LightningModule):
         self.logged_samples = 0
         self.export_onnx = export_onnx
         self.gpus = gpus
+        print(dataset.data_folder)
 
     @abstractmethod
     def prepare_data(self):
@@ -55,6 +63,10 @@ class ClassifierModule(LightningModule):
 
     @abstractmethod
     def setup(self, stage):
+        pass
+
+    @abstractmethod
+    def get_class_names(self):
         pass
 
     def configure_optimizers(self):
@@ -110,7 +122,7 @@ class ClassifierModule(LightningModule):
                             name, params, self.current_epoch
                         )
                     except ValueError:
-                        logger.critical("Could not add histogram for param %s", name)
+                        logging.critical("Could not add histogram for param %s", name)
 
         for name, module in self.named_modules():
             loggers = self._logger_iterator()
@@ -124,7 +136,7 @@ class ClassifierModule(LightningModule):
                                 self.current_epoch,
                             )
                         except ValueError:
-                            logger.critical(
+                            logging.critical(
                                 "Could not add histogram for param %s", name
                             )
 
@@ -149,7 +161,6 @@ class ClassifierModule(LightningModule):
         return sampler
 
     def save(self):
-        """Save model to lightning data module"""
         output_dir = "."
         quantized_model = copy.deepcopy(self.model)
         quantized_model.cpu()
@@ -158,7 +169,7 @@ class ClassifierModule(LightningModule):
                 quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
         if self.export_onnx:
-            logger.info("saving onnx...")
+            logging.info("saving onnx...")
             try:
                 dummy_input = self.example_feature_array.cpu()
 
@@ -170,15 +181,60 @@ class ClassifierModule(LightningModule):
                     opset_version=11,
                 )
             except Exception as e:
-                logger.error("Could not export onnx model ...\n {}".format(str(e)))
+                logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
     def on_load_checkpoint(self, checkpoint):
         for k, v in self.state_dict().items():
             if k not in checkpoint["state_dict"]:
-                logger.warning(
+                self.msglogger.warning(
                     "%s not in state dict using pre initialized values", k
                 )
                 checkpoint["state_dict"][k] = v
 
     def on_save_checkpoint(self, checkpoint):
         checkpoint["hyper_parameters"]["_target_"] = fullname(self)
+
+    def on_validation_epoch_end(self):
+        for logger in self._logger_iterator():
+            if isinstance(logger, TensorBoardLogger) and hasattr(self, "val_metrics"):
+                logger.log_hyperparams(
+                    self.hparams,
+                    {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
+                )
+
+    def on_test_end(self):
+
+        if self.trainer and self.trainer.fast_dev_run:
+            return
+
+        if hasattr(self, "test_confusion"):
+            confusion_matrix = self.test_confusion.compute()
+            self.test_confusion.reset()
+
+            confusion_plot = plot_confusion_matrix(
+                confusion_matrix.cpu().numpy(),
+                categories=self.get_class_names(),
+                figsize=(self.num_classes, self.num_classes),
+            )
+
+            confusion_plot.savefig("test_confusion.png")
+            confusion_plot.savefig("test_confusion.pdf")
+
+            buf = io.BytesIO()
+
+            confusion_plot.savefig(buf, format="jpeg")
+
+            buf.seek(0)
+            im = Image.open(buf)
+            im = torchvision.transforms.ToTensor()(im)
+
+            loggers = self._logger_iterator()
+            for logger in loggers:
+                if hasattr(logger.experiment, "add_image"):
+                    logger.experiment.add_image(
+                        "test_confusion_matrix", im, global_step=self.current_epoch
+                    )
+
+        if hasattr(self, "test_roc"):
+            # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
+            self.test_roc.reset()

@@ -1,14 +1,27 @@
+from logging import config
+import collections
 import os
+import logging
+import pathlib
+from posixpath import split
+import tarfile
+import requests
 
 from hydra.utils import get_original_cwd
 import numpy as np
 import torchvision
+from torchvision import transforms
 import torchvision.datasets as datasets
 import torch.utils.data as data
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
 from .base import AbstractDataset
+
+from .utils import csv_dataset
+
+
+logger = logging.getLogger(__name__)
 
 
 class VisionDatasetBase(AbstractDataset):
@@ -48,7 +61,7 @@ class Cifar10Dataset(VisionDatasetBase):
 
     @property
     def class_names(self):
-        classes = [
+        q = [
             "airplane",
             "automobile",
             "bird",
@@ -60,21 +73,20 @@ class Cifar10Dataset(VisionDatasetBase):
             "ship",
             "truck",
         ]
-        return classes
+        return q
 
     @classmethod
     def splits(cls, config):
         data_folder = config.data_folder
         root_folder = os.path.join(data_folder, "CIFAR10")
 
-        #train_transform = A.load(
-        #    "/local/gerum/speech_recognition/albumentations/cifar10_autoalbument.json"
-        #)
         # print(loaded_transform)
         train_transform = A.Compose(
             [
                 A.SmallestMaxSize(max_size=32),
-                A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5),
+                A.ShiftScaleRotate(
+                    shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5
+                ),
                 A.RandomCrop(height=32, width=32),
                 A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
                 A.RandomBrightnessContrast(p=0.5),
@@ -95,7 +107,10 @@ class Cifar10Dataset(VisionDatasetBase):
         train_val_set = datasets.CIFAR10(root_folder, train=True, download=False)
         train_val_len = len(train_val_set)
 
-        split_sizes = [int(train_val_len * 0.9), int(train_val_len * 0.1)]
+        split_sizes = [
+            int(train_val_len * (1.0 - config.val_percent)),
+            int(train_val_len * config.val_percent),
+        ]
         train_set, val_set = data.random_split(train_val_set, split_sizes)
 
         return (
@@ -141,11 +156,134 @@ class FakeDataset(VisionDatasetBase):
 
 
 class KvasirCapsuleDataset(VisionDatasetBase):
-    DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/?zip="
+
+    # Kvasir_Capsule
+    DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_images/?zip="
 
     @classmethod
     def prepare(cls, config):
-        download_and_extract_archive(cls.DOWNLOAD_URL)
+        download_folder = os.path.join(config.data_folder, "download")
+        extract_root = os.path.join(
+            config.data_folder, "kvasir_capsule", "labelled_images"
+        )
 
-    def splits():
-        pass
+        # download and extract dataset
+        if not os.path.isdir(extract_root):
+            datasets.utils.download_and_extract_archive(
+                cls.DOWNLOAD_URL,
+                download_folder,
+                extract_root=extract_root,
+                filename="labelled_images.zip",
+            )
+
+            for tar_file in pathlib.Path(extract_root).glob("*.tar.gz"):
+                # ampulla , hematin and polyp removed from official_splits due to small findings
+                if str(tar_file) in [
+                    extract_root + "/ampulla_of_vater.tar.gz",
+                    extract_root + "/blood_hematin.tar.gz",
+                    extract_root + "/polyp.tar.gz",
+                ]:
+                    tar_file.unlink()
+                    continue
+                logger.info("Extracting: %s", str(tar_file))
+                with tarfile.open(tar_file) as archive:
+                    archive.extractall(path=extract_root)
+                tar_file.unlink()
+            # rename dataset image labels to match official splits csv
+            class_names = {
+                "Angiectasia": "Angiectasia",
+                "Erosion": "Erosion",
+                "Pylorus": "Pylorus",
+                "Blood - fresh": "Blood",
+                "Erythema": "Erythematous",
+                "Foreign body": "Foreign Bodies",
+                "Ileocecal valve": "Ileo-cecal valve",
+                "Lymphangiectasia": "Lymphangiectasia",
+                "Normal clean mucosa": "Normal",
+                "Pylorus": "Pylorus",
+                "Reduced mucosal view": "Reduced Mucosal View",
+                "Ulcer": "Ulcer",
+            }
+            for c_name in class_names:
+                new_file = os.path.join(extract_root, class_names[c_name])
+                old_file = os.path.join(extract_root, c_name)
+                os.rename(old_file, new_file)
+
+        # downlaod splits
+        official_splits_path = os.path.join(
+            config.data_folder, "kvasir_capsule", "official_splits"
+        )
+        if not os.path.isdir(official_splits_path):
+            os.mkdir(official_splits_path)
+            s0 = requests.get(
+                "https://raw.githubusercontent.com/simula/kvasir-capsule/master/official_splits/split_0.csv"
+            )
+            with open(os.path.join(official_splits_path, "split_0.csv"), "wb") as f:
+                f.write(s0.content)
+            s1 = requests.get(
+                "https://raw.githubusercontent.com/simula/kvasir-capsule/master/official_splits/split_1.csv"
+            )
+            with open(os.path.join(official_splits_path, "split_1.csv"), "wb") as f:
+                f.write(s1.content)
+
+    @classmethod
+    def splits(cls, config):
+        data_root = os.path.join(
+            config.data_folder, "kvasir_capsule", "labelled_images"
+        )
+
+        # Todo: test und train transforms from kvasir capsule github
+        train_transform = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(256),
+                transforms.Resize(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomRotation(90),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        )
+
+        test_transofrm = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(256),
+                transforms.Resize(224),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        )
+
+        train_val_set = csv_dataset.DatasetCSV(
+            config.train_val_split, data_root, transform=train_transform
+        )
+        test_set = csv_dataset.DatasetCSV(
+            config.test_split, data_root, transform=test_transofrm
+        )
+        train_val_len = len(train_val_set)
+        split_sizes = [
+            int(train_val_len * config.train_percent),
+            int(train_val_len * config.val_percent),
+        ]
+
+        # split_1 has odd number
+        if train_val_len != split_sizes[0] + split_sizes[1]:
+            split_sizes[0] = split_sizes[0] + 1
+
+        train_set, val_set = data.random_split(train_val_set, split_sizes)
+
+        return (
+            cls(config, train_set),
+            cls(config, val_set),
+            cls(config, test_set),
+        )
+
+    @property
+    def class_names(self):
+        data_root = os.path.join(
+            self.config.data_folder, "kvasir_capsule", "labelled_images"
+        )
+        Dataset = csv_dataset.DatasetCSV(self.config.train_val_split, data_root)
+        return Dataset.classes

@@ -1,4 +1,3 @@
-import io
 import logging
 import platform
 
@@ -14,11 +13,12 @@ from torchmetrics import (
     Precision,
     MetricCollection,
 )
-from pytorch_lightning.loggers import TensorBoardLogger
+
+from pytorch_lightning import LightningModule
 from .config_utils import get_loss_function, get_model
 from ..utils import set_deterministic
-from typing import  Dict, Union
-from PIL import Image
+from typing import Dict, Union, Optional
+
 
 from hannah.datasets.base import ctc_collate_fn
 
@@ -30,9 +30,12 @@ from hydra.utils import instantiate, get_class
 import numpy as np
 
 from ..datasets import SpeechDataset
-from .metrics import Error, plot_confusion_matrix
-from ..utils import fullname
+from .metrics import Error
 from .base import ClassifierModule
+from ..models.factory.qat import QAT_MODULE_MAPPINGS
+
+from omegaconf import DictConfig
+
 
 logger = logging.getLogger(__name__)
 
@@ -114,9 +117,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_accuracy": Accuracy(),
                 "val_error": Error(),
                 "val_recall": Recall(num_classes=self.num_classes),
-                "val_precision": Precision(
-                    num_classes=self.num_classes
-                ),
+                "val_precision": Precision(num_classes=self.num_classes),
                 "val_f1": F1(num_classes=self.num_classes),
             }
         )
@@ -125,9 +126,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_accuracy": Accuracy(),
                 "test_error": Error(),
                 "test_recall": Recall(num_classes=self.num_classes),
-                "test_precision": Precision(
-                    num_classes=self.num_classes
-                ),
+                "test_precision": Precision(num_classes=self.num_classes),
                 "test_f1": F1(num_classes=self.num_classes),
             }
         )
@@ -265,6 +264,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         logits = torch.nn.functional.softmax(output, dim=1)
         with set_deterministic(False):
             self.test_confusion(logits, y)
+
         self.test_roc(logits, y)
 
         if isinstance(self.test_set, SpeechDataset):
@@ -287,20 +287,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         )
 
         return test_loader
-
-    def on_test_end(self) -> None:
-        if self.trainer and self.trainer.fast_dev_run:
-            return
-
-        self.test_end_callback(self.test_metrics)
-
-    @abstractmethod
-    def test_end_callback(self, test_metrics):
-        pass
-
-    @abstractmethod
-    def get_class_names(self):
-        pass
 
     def _extract_features(self, x):
         x = self.features(x)
@@ -339,14 +325,6 @@ class BaseStreamClassifierModule(ClassifierModule):
                         )
                 self.logged_samples += 1
 
-    def on_validation_epoch_end(self):
-        for logger in self._logger_iterator():
-            if isinstance(logger, TensorBoardLogger):
-                logger.log_hyperparams(
-                    self.hparams,
-                    {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
-                )
-
 
 class StreamClassifierModule(BaseStreamClassifierModule):
     def get_class_names(self):
@@ -369,40 +347,6 @@ class StreamClassifierModule(BaseStreamClassifierModule):
 
     def test_dataloader(self):
         return self.get_test_dataloader_by_set(self.test_set)
-
-    def test_end_callback(self, test_metrics):
-        metric_table = []
-        for name, metric in test_metrics.items():
-            metric_table.append((name, metric.compute().item()))
-
-        logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
-
-        
-        confusion_matrix = self.test_confusion.compute()
-        self.test_confusion.reset()
-
-        confusion_plot = plot_confusion_matrix(
-            confusion_matrix.cpu().numpy(), categories=self.get_class_names(), figsize=(12.0, 12.0)
-        )
-
-        confusion_plot.savefig("test_confusion.png")
-        confusion_plot.savefig("test_confusion.pdf")
-
-        buf = io.BytesIO()
-    
-        confusion_plot.savefig(buf, format='jpeg')
-        buf.seek(0)
-        im = Image.open(buf)
-        im = torchvision.transforms.ToTensor()(im)
-
-        loggers = self._logger_iterator()
-        for logger in loggers:
-            if hasattr(logger.experiment, "add_image"):
-                logger.experiment.add_image("test_confusion_matrix", im, global_step=self.current_epoch)
-
-
-        # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
-        self.test_roc.reset()
 
 
 class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
