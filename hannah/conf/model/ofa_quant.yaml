@@ -24,11 +24,11 @@ conv:
         kernel_sizes: 3
         act: false
         norm: false
-        quant: false
+        quant: true
         out_channels: 16
   - target: residual1d
     stride: 2
-    quant_skip: false
+    quant_skip: true
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -38,7 +38,7 @@ conv:
           - 3
         act: true
         norm: true
-        quant: false
+        quant: true
         out_channels:
           - 24
           - 16
@@ -51,14 +51,14 @@ conv:
           - 3
         act: false
         norm: false
-        quant: false
+        quant: true
         out_channels:
           - 24
           - 16
           - 8
   - target: residual1d
     stride: 2
-    quant_skip: false
+    quant_skip: true
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -68,7 +68,7 @@ conv:
           - 3
         act: true
         norm: true
-        quant: false
+        quant: true
         out_channels:
           - 32
           - 24
@@ -81,14 +81,14 @@ conv:
           - 3
         act: false
         norm: false
-        quant: false
+        quant: true
         out_channels:
           - 32
           - 24
           - 16
   - target: residual1d
     stride: 2
-    quant_skip: false
+    quant_skip: true
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -98,7 +98,7 @@ conv:
           - 3
         act: true
         norm: true
-        quant: false
+        quant: true
         out_channels:
           - 48
           - 32
@@ -111,14 +111,14 @@ conv:
           - 3
         act: false
         norm: false
-        quant: false
+        quant: true
         out_channels:
           - 48
           - 32
           - 24
   - target: residual1d
     stride: 2
-    quant_skip: false
+    quant_skip: true
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -128,7 +128,7 @@ conv:
           - 3
         act: true
         norm: true
-        quant: false
+        quant: true
         out_channels:
           - 64
           - 48
@@ -141,7 +141,7 @@ conv:
           - 3
         act: false
         norm: false
-        quant: false
+        quant: true
         out_channels:
           - 64
           - 48
