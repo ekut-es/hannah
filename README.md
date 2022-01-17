@@ -1,4 +1,4 @@
-# HANNAH - Hardware Acccelerator and Neural network searcH
+# HANNAH - Hardware Accelerator and Neural network searcH
 
 # Getting Started
 
@@ -83,7 +83,7 @@ And install pytorch manually in your poetry env.
     poetry shell
     pip install torch==1.8.1 torchvision torchaudio
 
-And you might need to deactivate your conda environement:
+And you might need to deactivate your conda environment:
 
     conda deactivate
 
@@ -153,15 +153,15 @@ Training of PAMAP2 human activity detection dataset is invoked by:
 
 To launch multiple optimizations in parallel you can use a hydra launcher
 
-Submitit launcher is installed by default:
+Joblib launcher is installed by default:
 
    hannah-train --multirun hydra/sweeper=nevergrad hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
 
-Launches optimizer hyerparameter optimization with 5 parallel jobs.
+Launches optimizer hyperparameter optimization with 5 parallel jobs.
 
 # Early stopping
 
-To stop training early when a validation metric does not improve, you can use lighning's early stopping callback:
+To stop training early when a validation metric does not improve, you can use lightning's early stopping callback:
 
     hannah-train early_stopping=default
 

@@ -34,7 +34,7 @@ def symbolic_batch_dim(model):
 
 
 class InferenceBackendBase(Callback):
-    """ Base class to run val and test on a backend inference engine """
+    """Base class to run val and test on a backend inference engine"""
 
     def __init__(self, val_batches=1, test_batches=1, val_frequency=10):
         self.test_batches = test_batches
@@ -295,6 +295,7 @@ class TRaxUltraTrailBackend(Callback):
             self.use_acc_teda_data
             or self.rtl_simulation
             or self.synthesis
+            or self.postsyn_simulation
             or self.power_estimation
         ):
             backend.eda(

@@ -57,8 +57,6 @@ def train(config: DictConfig):
         if not config.trainer.fast_dev_run:
             clear_outputs()
 
-        log_execution_env_state()
-
         logging.info("Configuration: ")
         logging.info(OmegaConf.to_yaml(config))
         logging.info("Current working directory %s", os.getcwd())
@@ -93,7 +91,7 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        callbacks.extend(common_callbacks(config))
+        callbacks.extend(list(common_callbacks(config)))
 
         opt_monitor = config.get("monitor", ["val_error"])
         opt_callback = HydraOptCallback(monitor=opt_monitor)
@@ -108,7 +106,6 @@ def train(config: DictConfig):
             profiler=profiler,
             callbacks=callbacks,
             logger=logger,
-            reload_dataloaders_every_n_epochs=1,
         )
 
         if config["auto_lr"]:
@@ -130,12 +127,7 @@ def train(config: DictConfig):
         lit_trainer.fit(lit_module)
         ckpt_path = "best"
 
-        if lit_trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode skipping validation and test"
-            )
-        else:
-
+        if not lit_trainer.fast_dev_run:
             reset_seed()
             lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
 
@@ -180,6 +172,7 @@ def nas(config: DictConfig):
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config: DictConfig):
+    log_execution_env_state()
     if config.get("dataset_creation", None) is not None:
         handleDataset(config)
     if config.get("nas", None) is not None:

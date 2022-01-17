@@ -27,9 +27,9 @@ from torchvision.datasets.utils import (
     extract_archive,
 )
 
-import pytorch_lightning
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+from contextlib import contextmanager
 
+import pytorch_lightning
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.callbacks import GPUStatsMonitor
@@ -67,7 +67,7 @@ class SerializableModule(nn.Module):
         torch.save(self.state_dict(), filename)
 
     def load(self, filename):
-        """ Do not use model.load """
+        """Do not use model.load"""
         self.load_state_dict(
             torch.load(filename, map_location=lambda storage, loc: storage),
             strict=False,
@@ -187,16 +187,16 @@ def extract_from_download_cache(
 ):
     """extracts given file from cache or donwloads first from url
 
-        Args:
-            filename (str): name of the file to download or extract
-            url (str): possible url to download the file
-            cached_files (list(str)): cached files in download cache
-            target_cache (str): path to the folder to cache file if download necessary
-            target_folder (str): path where to extract file
-            target_test_folder (str, optional): folder to check if data are already there
-            clear_download (bool): clear download after usage
-            no_exist_check (bool): disables the check if folder exists
-        """
+    Args:
+        filename (str): name of the file to download or extract
+        url (str): possible url to download the file
+        cached_files (list(str)): cached files in download cache
+        target_cache (str): path to the folder to cache file if download necessary
+        target_folder (str): path where to extract file
+        target_test_folder (str, optional): folder to check if data are already there
+        clear_download (bool): clear download after usage
+        no_exist_check (bool): disables the check if folder exists
+    """
     if len(target_test_folder) == 0:
         target_test_folder = target_folder
     if filename not in cached_files and (
@@ -296,3 +296,16 @@ def fullname(o):
     if module == "builtins":
         return klass.__qualname__  # avoid outputs like 'builtins.str'
     return module + "." + klass.__qualname__
+
+
+@contextmanager
+def set_deterministic(mode):
+    "A contextmanager to set deterministic algorithms"
+
+    old_mode = torch.are_deterministic_algorithms_enabled()
+
+    try:
+        torch.use_deterministic_algorithms(mode)
+        yield
+    finally:
+        torch.use_deterministic_algorithms(old_mode)

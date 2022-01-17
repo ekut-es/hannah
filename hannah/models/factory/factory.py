@@ -5,14 +5,12 @@ allows to explore implementation alternatives using a common neural network cons
 interface.
 """
 
-import collections.abc
 import logging
 import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
-import torch.quantization as tqant
 from hydra.utils import instantiate
 from omegaconf import MISSING, OmegaConf
 
@@ -116,7 +114,9 @@ class NetworkConfig:
 
 
 class NetworkFactory:
-    def __init__(self,) -> None:
+    def __init__(
+        self,
+    ) -> None:
         self.default_norm = None
         self.default_act = None
         self.default_qconfig = None
@@ -561,9 +561,7 @@ class NetworkFactory:
 
                 if reduction == "add":
                     output_channels = target_output_shape[1]
-                    groups = (
-                        1
-                    )  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
+                    groups = 1  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
 
                 stride = tuple(
                     (

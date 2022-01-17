@@ -18,3 +18,4 @@ auto_scale_batch_size: null
 accumulate_grad_batches: 1
 plugins: ""
 precision: 32
+reload_dataloaders_every_n_epochs: 1
