@@ -3,7 +3,6 @@ cls: hannah.datasets.vision.KvasirCapsuleDataset
 dataset: kvasir_capsule
 val_percent: 0.1
 train_percent: 0.9
-sampler : weighted
 
 train_val_split : ${hydra:runtime.cwd}/datasets/kvasir_capsule/official_splits/split_0.csv
 test_split : ${hydra:runtime.cwd}/datasets/kvasir_capsule/official_splits/split_1.csv
