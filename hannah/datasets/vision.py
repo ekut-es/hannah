@@ -287,3 +287,18 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         )
         Dataset = csv_dataset.DatasetCSV(self.config.train_val_split, data_root)
         return Dataset.classes
+
+    @property
+    def class_counts(self):
+        data_root = os.path.join(
+            self.config.data_folder, "kvasir_capsule", "labelled_images"
+        )
+        Dataset = csv_dataset.DatasetCSV(self.config.train_val_split, data_root)
+        class_counts = {}
+        for c in Dataset.classes:
+            class_name = os.path.join(data_root, c)
+            class_counts[Dataset.class_to_idx[c]] = len(os.listdir(class_name))
+        return class_counts
+
+    def get_label_list(self):
+        return list(self.class_counts.values())
