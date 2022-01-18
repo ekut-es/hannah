@@ -80,7 +80,7 @@ class ClassifierModule(LightningModule, ABC):
                 scheduler = instantiate(
                     self.hparams.scheduler,
                     optimizer=optimizer,
-                    total_steps=self.total_training_steps,
+                    total_steps=self.total_training_steps(),
                 )
                 retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
             else:
@@ -155,7 +155,7 @@ class ClassifierModule(LightningModule, ABC):
             [distribution[i] for i in range(len(distribution))], dtype=torch.float
         )
 
-        sampler_weights = weights[dataset.get_label_list()]
+        sampler_weights = dataset.get_label_list()
 
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
