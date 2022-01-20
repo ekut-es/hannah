@@ -1,115 +1,135 @@
-from itertools import repeat
-import numpy as np
-import networkx as nx
+from hannah.nas.search_space.symbolic_operator import (SymbolicOperator,
+                                                       Choice,
+                                                       Variable,
+                                                       Context)
+from hannah.nas.search_space.examples.darts.darts_parameter_functions import (
+                                                       infer_in_channel,
+                                                       keep_channels,
+                                                       reduce_channels_by_edge_number,
+                                                       multiply_by_stem,
+                                                       reduce_and_double)
 import torch
+import networkx as nx
+import numpy as np
 
-from hannah.nas.search_space.space import Space, Cell
-from hannah.nas.search_space.operator import DepthwiseSeparableConvolution, Pooling, FactorizedReduce, Operator, Zero, Combine, Activation, Choice
-from hannah.nas.search_space.utils import get_random_cfg_vec, vec_to_knob
-from hannah.nas.search_space.model import Model
-from hannah.nas.search_space.connectivity_constrainer import DARTSCell, DARTSGraph
+from hannah.nas.search_space.symbolic_space import Space
+from hannah.nas.search_space.connectivity_constrainer import DARTSCell
+from hannah.nas.search_space.modules import Add, Concat
+from hannah.nas.search_space.examples.darts.darts_modules import MixedOp, Classifier, Stem, Input
+from copy import deepcopy
+
 
 class DARTSSpace(Space):
+    def __init__(self, num_cells=3, reduction_cells=[1]):
+        super().__init__()
 
-    def __init__(self, num_cells=3) -> None:
-        num_nodes = 4
-        num_input = 2
-        num_output = 1
+        in_channels = Variable('in_channels', func=infer_in_channel)
+        stem_channels = Variable('in_channels_stem', func=multiply_by_stem)
+        out_channels = Variable('out_channels', func=keep_channels)
+        out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_channels_by_edge_number)
+        double_out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_and_double)
+        stride1 = Choice('stride', 1)
+        stride2 = Choice('stride', 2)
+        choice = Choice('choice', 0, 1, 2, 3, 4, 5, 6, 7)
 
-        redux_cells = [1, 2]
+        normal_cell = DARTSCell()
+        normal_cell = normal_cell.add_operator_nodes()
+        mapping = {}
+        cfg = {'in_edges': 4, 'stem_multiplier': 4}
 
-        self.IN_EDGES = 4
+        for n in normal_cell.nodes:
+            if n == 0:
+                mapping[n] = SymbolicOperator('input_0', Input, in_channels=in_channels, out_channels=out_channels_adaptive, stride=stride1)
+                cfg.update({'input_{}'.format(n): {'stride': 0}})
+            elif n == 1:
+                mapping[n] = SymbolicOperator('input_1', Input, in_channels=in_channels, out_channels=out_channels_adaptive, stride=stride1)
+                cfg.update({'input_{}'.format(n): {'stride': 0}})
+            elif n in range(2, 6):
+                mapping[n] = SymbolicOperator('add_{}'.format(n), Add)
+            elif n == 6:
+                mapping[n] = SymbolicOperator('out', Concat)
+            else:
+                mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
+                cfg.update({'mixed_op_{}'.format(n): {'stride': 0, 'choice': np.random.randint(8)}})
 
-        def double_channel(x):
-            return 2*x
+        nx.relabel_nodes(normal_cell, mapping, copy=False)
 
-        def double_channel_mult(x):
-            return 2*x*self.IN_EDGES
+        reduction_cell = DARTSCell()
+        reduction_cell = reduction_cell.add_operator_nodes()
+        mapping = {}
+        for n in reduction_cell.nodes:
+            if n == 0:
+                mapping[n] = SymbolicOperator('input_0', Input, in_channels=in_channels, out_channels=double_out_channels_adaptive, stride=stride1)
+                cfg.update({'input_{}'.format(n): {'stride': 0}})
+            elif n == 1:
+                mapping[n] = SymbolicOperator('input_1', Input, in_channels=in_channels, out_channels=double_out_channels_adaptive, stride=stride1)
+                cfg.update({'input_{}'.format(n): {'stride': 0}})
 
-        def same_channel(x):
-            return x
+            elif n in range(2, 6):
+                mapping[n] = SymbolicOperator('add_{}'.format(n), Add)
+            elif n == 6:
+                mapping[n] = SymbolicOperator('out', Concat)
+            elif isinstance(n, tuple) and n[0] in [0, 1]:
+                mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride2)
+                cfg.update({'mixed_op_{}'.format(n): {'stride': 0, 'choice': np.random.randint(8)}})
+            else:
+                mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
+                cfg.update({'mixed_op_{}'.format(n): {'stride': 0, 'choice': np.random.randint(8)}})
 
-        def same_channel_mult(x):
-            return x*self.IN_EDGES
+        nx.relabel_nodes(reduction_cell, mapping, copy=False)
+        out_idx = 6
+        input_0_idx = 0
+        input_1_idx = 1
 
-        preprocess_cell = DARTSCell(num_inputs=0, num_nodes=0, num_outputs=1)
-        cells = list(repeat(DARTSCell(num_nodes=num_nodes, num_inputs=num_input, num_outputs=num_output), num_cells))
-        darts_graph = DARTSGraph([preprocess_cell] + cells)
+        stem = SymbolicOperator('stem0', Stem, C_out=stem_channels)
 
-        dw_conv = DepthwiseSeparableConvolution(same_channel, kernel_size=[3, 5],  dilation=[1], padding='same')
-        dw_conv_redux = DepthwiseSeparableConvolution(double_channel, kernel_size=[3, 5], dilation=[2], padding='half', stride=2)
+        cells = [deepcopy(normal_cell) for i in range(num_cells)]
+        for idx in reduction_cells:
+            cells[idx] = deepcopy(reduction_cell)
+            if idx < len(cells) - 1:
+                list(cells[idx+1].nodes)[input_0_idx].params['stride'] = stride2
+                list(cells[idx+1].nodes)[input_0_idx].params['out_channels'] = double_out_channels_adaptive
 
-        identity = Operator()
+        list(cells[0].nodes)[input_0_idx].params['out_channels'] = out_channels
+        list(cells[0].nodes)[input_1_idx].params['out_channels'] = out_channels
+        list(cells[1].nodes)[input_0_idx].params['out_channels'] = out_channels
 
+        for i in range(len(cells)):
+            self.add_nodes_from([n for n in cells[i].nodes])
+            self.add_edges_from([e for e in cells[i].edges])
 
-        factorized_reduce_normal = FactorizedReduce(stride=1, out_channels=same_channel)
-        factorized_reduce_redux = FactorizedReduce(stride=2, out_channels=double_channel)
+        self.add_edge(stem, list(cells[0].nodes)[input_0_idx])
+        self.add_edge(stem, list(cells[0].nodes)[input_1_idx])
+        self.add_edge(stem, list(cells[1].nodes)[input_0_idx])
 
+        for i in range(len(cells)):
+            if i < len(cells) - 2:
+                self.add_edge(list(cells[i].nodes)[out_idx], list(cells[i+2].nodes)[input_0_idx])
+            if i < len(cells) - 1:
+                self.add_edge(list(cells[i].nodes)[out_idx],   list(cells[i+1].nodes)[input_1_idx])
 
-        pool = Pooling(mode=['max', 'avg'], kernel_size=3, stride=1, padding='same')
-        pool_reduce = Pooling(mode=['max', 'avg'], kernel_size=3, stride=2, padding='half')
-        zero = Zero()
-        act = Activation('relu')
-        add = Combine('add')
-        add_1x1 = Combine('add')
-        concat = Combine('concat')
-        choice = Choice([dw_conv, factorized_reduce_normal])
-        choice_redux = Choice([dw_conv_redux, factorized_reduce_redux])
+        post = SymbolicOperator('post', Classifier, C=in_channels, num_classes=Choice('classes', 10))
+        cfg.update({'post': {'classes': 0}})
+        self.add_node(post)
+        self.add_edge(list(cells[-1].nodes)[out_idx], post)
 
-        factorized_reduce_redux_skip = FactorizedReduce(stride=2, out_channels=double_channel_mult)
-        factorized_reduce_normal_skip = FactorizedReduce(stride=1, out_channels=same_channel_mult)
+        self.ctx = Context(config=cfg)
 
-        operator_node = Cell([choice])
-        input_node = Cell([identity])
-        add_node = Cell([add_1x1])
-        output_node = Cell([concat])
-        fact_red_redux = Cell([factorized_reduce_redux_skip])
-        fact_red_normal = Cell([factorized_reduce_normal_skip])
-
-        operator_redux = Cell([choice_redux])
-        cell_dict = {}
-        types = nx.get_node_attributes(darts_graph.m_arch, 'type')
-        cells = nx.get_node_attributes(darts_graph.m_arch, 'cell')
-        label_dict = {}
-        for node in darts_graph.m_arch:
-
-            if types[node] == 'op' and isinstance(cells[node], tuple) and cells[node][0] == cells[node][1] and types[node[0]] == 'input' and cells[node][0] in redux_cells:
-                cell_dict[node] = operator_redux.new()
-                label_dict[node] = 'red'
-            elif types[node] == 'op' and cells[node][0] != cells[node][1]:
-                if cells[node[0] + 1] in redux_cells and cells[node][0] + 1 != cells[node][1]:
-                    cell_dict[node] = fact_red_redux.new()
-                    label_dict[node] = 'fr r'
-                elif cells[node[0] + 1] not in redux_cells and cells[node][0] + 1 != cells[node][1]:
-                    cell_dict[node] = fact_red_normal.new()
-                    label_dict[node] = 'fr n'
-                else:
-                    cell_dict[node] = input_node.new()
-                    label_dict[node] = 'id'
-            elif types[node] == 'op':
-                cell_dict[node] = operator_node.new()
-                label_dict[node] = "norm"
-            elif types[node] == 'input':
-                cell_dict[node] = input_node.new()
-            elif types[node] == 'sum':
-                cell_dict[node] = add_node.new()
-            elif types[node] == 'cat':
-                cell_dict[node] = output_node.new()
-
-        super().__init__(cell_dict, darts_graph)
+    def get_ctx(self):
+        return self.ctx
 
 
 if __name__ == "__main__":
-    space = DARTSSpace(num_cells=3)
+    num_cells = 9
+    # reduction_cells = [i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]]
+    reduction_cells = [2, 4, 6]
+    print(reduction_cells)
+    space = DARTSSpace(num_cells=num_cells, reduction_cells=reduction_cells)
+    ctx = space.get_ctx()
+    input = torch.ones([1, 3, 32, 32])
+    instance, out1 = space.infer_parameters(input, ctx)
+    print(out1.shape)
 
-    knobs = space.get_knobs()
-    vec = get_random_cfg_vec(knobs=knobs)
-    cfg = vec_to_knob(vec, knobs)
-    instance = space.get(cfg)
-
-    input_shape = np.array([1, 3, 32, 32])
-    model = Model(instance, input_shape)
-
-    input = torch.ones(tuple(input_shape))
-    output = model(input)
-    print(output.shape)
+    out2 = instance.forward(input)
+    print(out2.shape)
+    print(out1 == out2)
