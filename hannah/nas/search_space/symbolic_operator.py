@@ -68,6 +68,15 @@ class Variable(Parameter):
         return self.func(self, mod, ctx)
 
 
+class Constant(Parameter):
+    def __init__(self, name, value) -> None:
+        super().__init__(name)
+        self.value = value
+
+    def get(self, mod, ctx):
+        return self.value
+
+
 class Context:
     def __init__(self, config: dict) -> None:
         self.config = config

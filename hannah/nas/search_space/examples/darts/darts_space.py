@@ -1,6 +1,7 @@
 from hannah.nas.search_space.symbolic_operator import (SymbolicOperator,
                                                        Choice,
                                                        Variable,
+                                                       Constant,
                                                        Context)
 from hannah.nas.search_space.examples.darts.darts_parameter_functions import (
                                                        infer_in_channel,
@@ -28,29 +29,27 @@ class DARTSSpace(Space):
         out_channels = Variable('out_channels', func=keep_channels)
         out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_channels_by_edge_number)
         double_out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_and_double)
-        stride1 = Choice('stride', 1)
-        stride2 = Choice('stride', 2)
+        stride1 = Constant('stride', 1)
+        stride2 = Constant('stride', 2)
         choice = Choice('choice', 0, 1, 2, 3, 4, 5, 6, 7)
 
         normal_cell = DARTSCell()
         normal_cell = normal_cell.add_operator_nodes()
         mapping = {}
-        cfg = {'in_edges': 4, 'stem_multiplier': 4}
+        cfg_options = {'in_edges': [4], 'stem_multiplier': [4]}
 
         for n in normal_cell.nodes:
             if n == 0:
                 mapping[n] = SymbolicOperator('input_0', Input, in_channels=in_channels, out_channels=out_channels_adaptive, stride=stride1)
-                cfg.update({'input_{}'.format(n): {'stride': 0}})
             elif n == 1:
                 mapping[n] = SymbolicOperator('input_1', Input, in_channels=in_channels, out_channels=out_channels_adaptive, stride=stride1)
-                cfg.update({'input_{}'.format(n): {'stride': 0}})
             elif n in range(2, 6):
                 mapping[n] = SymbolicOperator('add_{}'.format(n), Add)
             elif n == 6:
                 mapping[n] = SymbolicOperator('out', Concat)
             else:
                 mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
-                cfg.update({'mixed_op_{}'.format(n): {'stride': 0, 'choice': np.random.randint(8)}})
+                cfg_options.update({'mixed_op_{}'.format(n): {'choice': list(range(8))}})
 
         nx.relabel_nodes(normal_cell, mapping, copy=False)
 
@@ -59,22 +58,19 @@ class DARTSSpace(Space):
         mapping = {}
         for n in reduction_cell.nodes:
             if n == 0:
-                mapping[n] = SymbolicOperator('input_0', Input, in_channels=in_channels, out_channels=double_out_channels_adaptive, stride=stride1)
-                cfg.update({'input_{}'.format(n): {'stride': 0}})
+                mapping[n] = SymbolicOperator('input_0_red', Input, in_channels=in_channels, out_channels=double_out_channels_adaptive, stride=stride1)
             elif n == 1:
-                mapping[n] = SymbolicOperator('input_1', Input, in_channels=in_channels, out_channels=double_out_channels_adaptive, stride=stride1)
-                cfg.update({'input_{}'.format(n): {'stride': 0}})
-
+                mapping[n] = SymbolicOperator('input_1_red', Input, in_channels=in_channels, out_channels=double_out_channels_adaptive, stride=stride1)
             elif n in range(2, 6):
-                mapping[n] = SymbolicOperator('add_{}'.format(n), Add)
+                mapping[n] = SymbolicOperator('add_{}_red'.format(n), Add)
             elif n == 6:
                 mapping[n] = SymbolicOperator('out', Concat)
             elif isinstance(n, tuple) and n[0] in [0, 1]:
-                mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride2)
-                cfg.update({'mixed_op_{}'.format(n): {'stride': 0, 'choice': np.random.randint(8)}})
+                mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride2)
+                cfg_options.update({'mixed_op_{}_red'.format(n): {'choice': list(range(8))}})
             else:
-                mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
-                cfg.update({'mixed_op_{}'.format(n): {'stride': 0, 'choice': np.random.randint(8)}})
+                mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
+                cfg_options.update({'mixed_op_{}_red'.format(n): {'choice': list(range(8))}})
 
         nx.relabel_nodes(reduction_cell, mapping, copy=False)
         out_idx = 6
@@ -109,9 +105,18 @@ class DARTSSpace(Space):
                 self.add_edge(list(cells[i].nodes)[out_idx],   list(cells[i+1].nodes)[input_1_idx])
 
         post = SymbolicOperator('post', Classifier, C=in_channels, num_classes=Choice('classes', 10))
-        cfg.update({'post': {'classes': 0}})
+        cfg_options.update({'post': {'classes': [0]}})
         self.add_node(post)
         self.add_edge(list(cells[-1].nodes)[out_idx], post)
+
+        cfg = {}
+        for k, v in cfg_options.items():
+            if isinstance(v, dict):
+                cfg[k] = {}
+                for k_, v_ in v.items():
+                    cfg[k][k_] = np.random.choice(v_)
+            else:
+                cfg[k] = np.random.choice(v)
 
         self.ctx = Context(config=cfg)
 
@@ -120,9 +125,8 @@ class DARTSSpace(Space):
 
 
 if __name__ == "__main__":
-    num_cells = 9
-    # reduction_cells = [i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]]
-    reduction_cells = [2, 4, 6]
+    num_cells = 20
+    reduction_cells = [i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]]
     print(reduction_cells)
     space = DARTSSpace(num_cells=num_cells, reduction_cells=reduction_cells)
     ctx = space.get_ctx()
