@@ -9,6 +9,9 @@ from hannah.nas.search_space.connectivity_constrainer import PathConstrainer
 from hannah.nas.search_space.operator import (Activation, Combine, Convolution,
                                               Linear, Pooling, Quantize)
 
+from hannah.nas.search_space.modules import Add, Concat, Input
+import torch.nn as nn
+
 
 def get_node_coord(g, first_node=0):
     positions = {first_node: [0, 0]}
@@ -252,6 +255,54 @@ def draw_pretty_nodes(graph, labels=None, figsize=(25, 7)):
         nx.draw_networkx_edges(graph, edgelist=[edge], pos=pos, connectionstyle="arc3,rad={}".format(r), alpha=0.6)
     labels = labels
     nx.draw_networkx_labels(graph, labels=labels, pos=pos, font_color='white')
+    plt.show()
+
+    return fig
+
+
+def draw_pretty_instance(graph, labels=None, figsize=(25, 7)):
+    xpos = {}
+    ypos = {}
+    successors = nx.dfs_successors(graph)
+    successors_ct = np.zeros(len(successors))
+    even = 1
+    # for x, node in enumerate(nx.topological_sort(graph)):
+    #     map[node] = x
+    ct = 0
+    for i, node in enumerate(graph.nodes):
+        if isinstance(node, (Add, Concat, Input)):
+            xpos[node] = ct
+            ct += 1
+            ypos[node] = 0
+
+    for i, node in enumerate(graph.nodes):
+        if isinstance(node, nn.Conv2d):
+            in_n = list(graph.in_edges(node))[0][0]
+            out_n = list(graph.out_edges(node))[0][1]
+            xpos[node] = ((xpos[out_n] - xpos[in_n]) / 2) + xpos[in_n]
+            ypos[node] = successors_ct[xpos[in_n]] + 1
+
+            if even == 1:
+                ypos[node] *= -1
+            even *= -1
+            successors_ct[xpos[in_n]] += 1
+    ymax = np.max(list(ypos.values()))
+    ypos = {k: v + (v*ymax) if isinstance(k, tuple) else v for k, v in ypos.items()}
+    pos = {n: (xpos[n], ypos[n]) for n in graph.nodes}
+
+    fig = plt.figure(figsize=figsize)
+    rad = 0.3
+    nx.draw_networkx_nodes(graph, pos=pos, node_size=1000, node_color='black')
+    for edge in graph.edges:
+        if pos[edge[1]][1] > 0 and pos[edge[0]][1] == 0:
+            r = -rad
+        elif pos[edge[0]][1] > 0 and pos[edge[1]][1] == 0:
+            r = -rad
+        else:
+            r = rad
+        nx.draw_networkx_edges(graph, edgelist=[edge], pos=pos, connectionstyle="arc3,rad={}".format(r), alpha=0.6)
+    labels = labels
+    nx.draw_networkx_labels(graph, labels=labels, pos=pos, font_color='white', font_size=8)
     plt.show()
 
     return fig
