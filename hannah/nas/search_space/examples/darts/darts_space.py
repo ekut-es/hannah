@@ -24,22 +24,38 @@ class DARTSSpace(Space):
     def __init__(self, num_cells=3, reduction_cells=[1]):
         super().__init__()
 
-        in_channels = Variable('in_channels', func=infer_in_channel)
-        stem_channels = Variable('in_channels_stem', func=multiply_by_stem)
-        out_channels = Variable('out_channels', func=keep_channels)
-        out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_channels_by_edge_number)
-        double_out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_and_double)
+        # Define parameters
+        # Variable -> parameter is inferred with a custom function
+        # Constant -> directly set value
+        # Choice -> choose from given options
+
+        in_channels = Variable('in_channels', func=infer_in_channel)                                    # Infer the in_channels from the input automatically
+        stem_channels = Variable('in_channels_stem', func=multiply_by_stem)                             # DARTS specific channel multiplicator
+        out_channels = Variable('out_channels', func=keep_channels)                                     # Out_channel == in_channel
+        out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_channels_by_edge_number)  # After the Concat, the channels are *4 -> reduce by dividing by 4
+        double_out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_and_double)        # Same as above but with DARTS specific channel doubeling in red.-cells
         stride1 = Constant('stride', 1)
         stride2 = Constant('stride', 2)
         choice = Choice('choice', 0, 1, 2, 3, 4, 5, 6, 7)
 
+        # Define connectivity of graph
+        # This could be any graph and is not really necessary, its basically just offloading the
+        # graph-construction to the DARTSCell() class
         normal_cell = DARTSCell()
         normal_cell = normal_cell.add_operator_nodes()
-        mapping = {}
+
+        # Create an options-dict to store the values that can be used for a config later on
         cfg_options = {'in_edges': [4], 'stem_multiplier': [4]}
 
+        # The DARTSCell() class creates just the connectivity, to fill the nodes with meaningful operators
+        # we create a mapping here.
+        mapping = {}
         for n in normal_cell.nodes:
             if n == 0:
+                # We create SymbolicOperators like this:
+                # SymbolicOperators(name, module, **kwargs_of_the_respective_module)
+                # If we use the name again, the new operator shares the attributes with the old one
+                # Thus we can create cells that have similar topology, if desired
                 mapping[n] = SymbolicOperator('input_0', Input, in_channels=in_channels, out_channels=out_channels_adaptive, stride=stride1)
             elif n == 1:
                 mapping[n] = SymbolicOperator('input_1', Input, in_channels=in_channels, out_channels=out_channels_adaptive, stride=stride1)
@@ -49,10 +65,16 @@ class DARTSSpace(Space):
                 mapping[n] = SymbolicOperator('out', Concat)
             else:
                 mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
+                # The choice Parameter() needs an entry in the config
+                # The config can be created arbitrarily (with yaml, by hand, CL-arguments, ...) but
+                # it seems convinient to store the possible values here, at the creation of the Operator
                 cfg_options.update({'mixed_op_{}'.format(n): {'choice': list(range(8))}})
 
         nx.relabel_nodes(normal_cell, mapping, copy=False)
 
+        # Create another cell, this time a reduction cell
+        # note the different names of the operators, meaning that a unique entry in the config
+        # is required, prohibiting the sharing of Parameter between the normal- and reduction-cell
         reduction_cell = DARTSCell()
         reduction_cell = reduction_cell.add_operator_nodes()
         mapping = {}
@@ -73,67 +95,86 @@ class DARTSSpace(Space):
                 cfg_options.update({'mixed_op_{}_red'.format(n): {'choice': list(range(8))}})
 
         nx.relabel_nodes(reduction_cell, mapping, copy=False)
+
         out_idx = 6
         input_0_idx = 0
         input_1_idx = 1
 
+        # DARTS preprocessing stem
         stem = SymbolicOperator('stem0', Stem, C_out=stem_channels)
 
+        # create the desired num of cells from the prototypes and
+        # edit parameter depending on the reduction cells
         cells = [deepcopy(normal_cell) for i in range(num_cells)]
         for idx in reduction_cells:
             cells[idx] = deepcopy(reduction_cell)
             if idx < len(cells) - 1:
+                # if the previous cell was a reduction cell, we must modify
+                # the incoming data from the skip connection
                 list(cells[idx+1].nodes)[input_0_idx].params['stride'] = stride2
                 list(cells[idx+1].nodes)[input_0_idx].params['out_channels'] = double_out_channels_adaptive
 
+        # The data coming from the stem is not concatenated, therefore we can leave the channels as is
         list(cells[0].nodes)[input_0_idx].params['out_channels'] = out_channels
         list(cells[0].nodes)[input_1_idx].params['out_channels'] = out_channels
         list(cells[1].nodes)[input_0_idx].params['out_channels'] = out_channels
 
+        # Add cell nodes and edges to SearchSpace (self) and
         for i in range(len(cells)):
             self.add_nodes_from([n for n in cells[i].nodes])
             self.add_edges_from([e for e in cells[i].edges])
 
+        # connect stem to cell-nodes
         self.add_edge(stem, list(cells[0].nodes)[input_0_idx])
         self.add_edge(stem, list(cells[0].nodes)[input_1_idx])
         self.add_edge(stem, list(cells[1].nodes)[input_0_idx])
 
+        # connect cells + skip-connections
         for i in range(len(cells)):
             if i < len(cells) - 2:
                 self.add_edge(list(cells[i].nodes)[out_idx], list(cells[i+2].nodes)[input_0_idx])
             if i < len(cells) - 1:
                 self.add_edge(list(cells[i].nodes)[out_idx],   list(cells[i+1].nodes)[input_1_idx])
 
+        # create and add post-process (i.e. fully connected) to graph
         post = SymbolicOperator('post', Classifier, C=in_channels, num_classes=Choice('classes', 10))
         cfg_options.update({'post': {'classes': [0]}})
         self.add_node(post)
         self.add_edge(list(cells[-1].nodes)[out_idx], post)
 
+        self.config_options = cfg_options
+
+    def get_ctx(self):
+        return self.ctx
+
+    def get_random_cfg(self):
+        """ Create random config
+
+        Returns
+        -------
+        dict
+            a random config
+        """
         cfg = {}
-        for k, v in cfg_options.items():
+        for k, v in self.config_options.items():
             if isinstance(v, dict):
                 cfg[k] = {}
                 for k_, v_ in v.items():
                     cfg[k][k_] = np.random.choice(v_)
             else:
                 cfg[k] = np.random.choice(v)
-
-        self.ctx = Context(config=cfg)
-
-    def get_ctx(self):
-        return self.ctx
+        return cfg
 
 
 if __name__ == "__main__":
     num_cells = 20
     reduction_cells = [i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]]
-    print(reduction_cells)
     space = DARTSSpace(num_cells=num_cells, reduction_cells=reduction_cells)
-    ctx = space.get_ctx()
+    cfg = space.get_random_cfg()
+    ctx = Context(config=cfg)
     input = torch.ones([1, 3, 32, 32])
     instance, out1 = space.infer_parameters(input, ctx)
     print(out1.shape)
 
     out2 = instance.forward(input)
     print(out2.shape)
-    print(out1 == out2)
