@@ -1,15 +1,18 @@
+import logging
+
 from abc import ABC, abstractmethod, abstractclassmethod, abstractproperty
 
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
-
 import torch
 
 from torch.utils.data import Dataset
 
+logger = logging.getLogger(__name__)
+
 
 class DatasetType(Enum):
-    """ The type of a dataset partition e.g. train, dev, test """
+    """The type of a dataset partition e.g. train, dev, test"""
 
     TRAIN = 0
     DEV = 1
@@ -47,12 +50,24 @@ class AbstractDataset(Dataset, ABC):
 
     @abstractproperty
     def class_names(self) -> List[str]:
-        """ Returns the names of the classes in the classification dataset """
+        """Returns the names of the classes in the classification dataset"""
         pass  # pytype: disable=bad-return-type
+
+    @property
+    def class_names_abbreviated(self) -> List[str]:
+        max_len = 0
+        for name in self.class_names:
+            max_len = max(max_len, len(name))
+        if max_len > 6:
+            logger.warning(
+                "Datasets class names contain classes that are longer than the recommended lenght of 5 characters, consider implementing class_names_abbreviated in your dataset"
+            )
+
+        return self.class_names
 
     @abstractproperty
     def class_counts(self) -> Optional[Dict[int, int]]:
-        """ Returns the number of items in each class of the dataset
+        """Returns the number of items in each class of the dataset
 
         If this is not applicable to a dataset type e.g. ASR, Semantic Segementation,
         it may return None

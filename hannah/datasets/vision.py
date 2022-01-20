@@ -7,6 +7,8 @@ from posixpath import split
 import tarfile
 import requests
 
+from typing import List
+
 from hydra.utils import get_original_cwd
 import numpy as np
 import torchvision
@@ -287,3 +289,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         )
         Dataset = csv_dataset.DatasetCSV(self.config.train_val_split, data_root)
         return Dataset.classes
+
+    @property
+    def class_names_abbreviated(self) -> List[str]:
+        return [cn[0:3] for cn in self.class_names]
