@@ -110,6 +110,14 @@ class DARTSCell(nx.DiGraph):
         self.add_nodes_from([(n, {'type': 'cat'}) for n in output_nodes])
         self.add_edges_from([(u, v) for u in intermediate_nodes for v in output_nodes])
 
+    def add_operator_nodes(self):
+        g = self.copy()
+        for edge in self.edges:
+            g.add_node(edge, type='op')
+            g.add_edges_from([(edge[0], edge), (edge, edge[1])])
+            g.remove_edge(*edge)
+        return g
+
 
 class DARTSMakroarchitecture(nx.DiGraph):
     def __init__(self):
@@ -140,10 +148,11 @@ class DARTSMakroarchitecture(nx.DiGraph):
     def add_operator_nodes(self):
         g = self.copy()
         for edge in self.edges:
-            cells = (self.nodes[edge[0]]['cell'], self.nodes[edge[1]]['cell'])
-            g.add_node(edge, type='op', cell=cells)
-            g.add_edges_from([(edge[0], edge), (edge, edge[1])])
-            g.remove_edge(*edge)
+            if not (self.nodes[edge[0]]['type'] == 'cat' and self.nodes[edge[1]]['type'] == 'input'):
+                cells = (self.nodes[edge[0]]['cell'], self.nodes[edge[1]]['cell'])
+                g.add_node(edge, type='op', cell=cells)
+                g.add_edges_from([(edge[0], edge), (edge, edge[1])])
+                g.remove_edge(*edge)
         return g
 
 
