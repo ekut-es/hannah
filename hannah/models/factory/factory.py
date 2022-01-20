@@ -5,14 +5,12 @@ allows to explore implementation alternatives using a common neural network cons
 interface.
 """
 
-import collections.abc
 import logging
 import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
-import torch.quantization as tqant
 from hydra.utils import instantiate
 from omegaconf import MISSING, OmegaConf
 

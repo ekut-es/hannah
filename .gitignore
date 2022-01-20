@@ -21,6 +21,8 @@ datasets/downsampled/
 datasets/hey_snips_research_6k_en_train_eval_clean_ter/
 datasets/atrial_fibrillation
 datasets/atrial_fibrillation_prepared
+datasets/cinc_2017
+datasets/cinc_2017_prepared
 datasets/pamap
 datasets/*.lock
 datasets/*.csv

@@ -7,9 +7,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
 
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
-
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
@@ -59,8 +57,6 @@ def train(config: DictConfig):
         if not config.trainer.fast_dev_run:
             clear_outputs()
 
-        log_execution_env_state()
-
         logging.info("Configuration: ")
         logging.info(OmegaConf.to_yaml(config))
         logging.info("Current working directory %s", os.getcwd())
@@ -88,15 +84,14 @@ def train(config: DictConfig):
                 "CSVLogger is not compatible with logging with SWA, disabling csv logger"
             )
         else:
-            pass
-            # logger.append(CSVLogger(".", version=None, name=""))
+            logger.append(CSVLogger(".", version=None, name=""))
 
         callbacks = []
         if config.get("backend", None):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        callbacks.extend(common_callbacks(config))
+        callbacks.extend(list(common_callbacks(config)))
 
         opt_monitor = config.get("monitor", ["val_error"])
         opt_callback = HydraOptCallback(monitor=opt_monitor)
@@ -111,7 +106,6 @@ def train(config: DictConfig):
             profiler=profiler,
             callbacks=callbacks,
             logger=logger,
-            reload_dataloaders_every_epoch=True,
         )
 
         if config["auto_lr"]:
@@ -133,20 +127,14 @@ def train(config: DictConfig):
         lit_trainer.fit(lit_module)
         ckpt_path = "best"
 
-        if lit_trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
-            )
-            ckpt_path = None
-
-        reset_seed()
-        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
-
-        # PL TEST
-        reset_seed()
-        lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
-
         if not lit_trainer.fast_dev_run:
+            reset_seed()
+            lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
+
+            # PL TEST
+            reset_seed()
+            lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+
             lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
                 shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
@@ -182,6 +170,7 @@ def nas(config: DictConfig):
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config: DictConfig):
+    log_execution_env_state()
     if config.get("dataset_creation", None) is not None:
         handleDataset(config)
     if config.get("nas", None) is not None:

@@ -27,7 +27,6 @@ channel_division:
 conv1_output_channels: 16
 conv1_size: 3
 conv1_stride: 1
-
 conv1_trainable_parameter: False
 dropout_prob: 0.5
 fully_convolutional: false
