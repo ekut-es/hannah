@@ -232,7 +232,6 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
 
-        # Todo: test und train transforms from kvasir capsule github
         train_transform = transforms.Compose(
             [
                 transforms.Resize(256),
@@ -300,5 +299,13 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             class_counts[Dataset.class_to_idx[c]] = len(os.listdir(class_name))
         return class_counts
 
-    def get_label_list(self):
-        return list(self.class_counts.values())
+    # retuns a list of enumerated labels from train_val split
+    def get_label_list(self) -> list[int]:
+        data_root = os.path.join(
+            self.config.data_folder, "kvasir_capsule", "labelled_images"
+        )
+        Dataset = csv_dataset.DatasetCSV(self.config.train_val_split, data_root)
+        label_list = [
+            Dataset.class_to_idx[Dataset.imgs.iloc[i, 1]] for i in range(len(Dataset))
+        ]
+        return label_list
