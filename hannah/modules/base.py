@@ -150,13 +150,28 @@ class ClassifierModule(LightningModule, ABC):
 
     @staticmethod
     def get_balancing_sampler(dataset):
-        distribution = dataset.class_counts
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
-        )
-
-        sampler_weights = dataset.get_label_list()
-
+        kvasir_weights = [
+            0.0285,
+            1.0000,
+            0.1068,
+            0.1667,
+            0.0373,
+            0.0196,
+            0.0982,
+            0.0014,
+            0.0235,
+            0.0236,
+            0.0809,
+        ]
+        class_weights_list = list(dataset.class_counts.values())
+        class_weights = [1 / i for i in class_weights_list]
+        label_list = dataset.get_label_list()
+        sampler_weights = []
+        for i in range(len(dataset)):
+            # replace class_weights with kvasir_weights to use the default weights from kvasir_github repo
+            sampler_weights.append(
+                torch.tensor(class_weights[label_list[i]], dtype=float)
+            )
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
 
