@@ -45,9 +45,6 @@ class Choice(Parameter):
         result = self.values[idx]
         return result
 
-    def infer(self, mod, ctx):
-        return self.func(self, mod, ctx)
-
     def __repr__(self) -> str:
         return str(self.values)
 
