@@ -228,7 +228,7 @@ class ClassifierModule(LightningModule, ABC):
 
             confusion_plot = plot_confusion_matrix(
                 confusion_matrix.cpu().numpy(),
-                categories=self.get_class_names(),
+                categories=self.test_set.class_names_abbreviated,
                 figsize=(self.num_classes, self.num_classes),
             )
 
