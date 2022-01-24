@@ -22,15 +22,22 @@ class HydraOptCallback(Callback):
                 self.values[monitor] = callback_metrics[monitor]
 
     def on_validation_end(self, trainer, pl_module):
+        print("===========================")
+        print("on_validation_end")
+        print("global_rank", trainer.global_rank)
+
         callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
             if k.startswith("val"):
                 self.val_values[k] = v
+                print(f"{k}:", v)
 
         for monitor in self.monitor:
             if monitor in callback_metrics:
                 self.values[monitor] = callback_metrics[monitor]
+
+        print("=============================")
 
     def test_result(self):
         return self.test_values
