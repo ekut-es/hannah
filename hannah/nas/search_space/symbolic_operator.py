@@ -36,17 +36,13 @@ class Parameter(ABC):
 
 
 class Choice(Parameter):
-    def __init__(self, name, *args, func=None) -> None:
+    def __init__(self, name, *args) -> None:
         super().__init__(name)
         self.values = list(args)
-        self.func = func
 
     def get(self, mod, ctx):
-        if self.func:
-            result = self.infer(mod, ctx)
-        else:
-            idx = ctx.config.get(mod.name).get(self.name)
-            result = self.values[idx]
+        idx = ctx.config.get(mod.name).get(self.name)
+        result = self.values[idx]
         return result
 
     def infer(self, mod, ctx):
