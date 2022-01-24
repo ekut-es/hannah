@@ -473,6 +473,17 @@ docspec = ">=1.2.0,<2.0.0"
 test = ["types-deprecated"]
 
 [[package]]
+name = "fairscale"
+version = "0.4.5"
+description = "FairScale: A PyTorch library for large-scale and high-performance training."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+torch = ">=1.8.0"
+
+[[package]]
 name = "filelock"
 version = "3.4.0"
 description = "A platform independent file lock."
@@ -2321,7 +2332,7 @@ tf-backend = ["onnx-tf", "tensorflow-addons"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1 <3.10"
-content-hash = "df64609dcb0fdaf368c12c1ce437f4b01eb54bbc4da1ae9a0aad7720ccad7a64"
+content-hash = "96cb2b4e9af2601e6138ef22795721596f8ecb8dec6e69eb8780115e99bb9f46"
 
 [metadata.files]
 absl-py = [
@@ -2675,6 +2686,9 @@ docspec = [
 docspec-python = [
     {file = "docspec-python-1.2.0.tar.gz", hash = "sha256:491755689aec1f7b5abaed8e7b11b013ab6bfb979c5e7d9855f41cf40cb82192"},
     {file = "docspec_python-1.2.0-py3-none-any.whl", hash = "sha256:347aae3e2ef3f41d4e27e5e0e4996935286087cf9b7a948d512a6c03b277e530"},
+]
+fairscale = [
+    {file = "fairscale-0.4.5.tar.gz", hash = "sha256:853124bc09d0c88cbd5189156c6418ce73f19a0754d21aa63a836eb75fc24884"},
 ]
 filelock = [
     {file = "filelock-3.4.0-py3-none-any.whl", hash = "sha256:2e139a228bcf56dd8b2274a65174d005c4a6b68540ee0bdbb92c76f43f29f7e8"},
