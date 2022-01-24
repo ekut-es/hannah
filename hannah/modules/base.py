@@ -80,7 +80,7 @@ class ClassifierModule(LightningModule, ABC):
                 scheduler = instantiate(
                     self.hparams.scheduler,
                     optimizer=optimizer,
-                    total_steps=self.total_training_steps(),
+                    total_steps=self.total_training_steps,
                 )
                 retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
             else:
@@ -170,7 +170,7 @@ class ClassifierModule(LightningModule, ABC):
         for i in range(len(dataset)):
             # replace class_weights with kvasir_weights to use the default weights from kvasir_github repo
             sampler_weights.append(
-                torch.tensor(class_weights[label_list[i]], dtype=float)
+                torch.tensor(kvasir_weights[label_list[i]], dtype=float)
             )
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler

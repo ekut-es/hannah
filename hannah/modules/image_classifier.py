@@ -15,26 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class ImageClassifierModule(ClassifierModule):
-    def total_training_steps(self) -> int:
-        """Total training steps inferred from datamodule and devices."""
-        if self.trainer.max_steps > 0:
-            return self.trainer.max_steps
-
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
-
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
-
     def setup(self, stage):
         if self.logger:
             self.logger.log_hyperparams(self.hparams)
@@ -113,23 +93,23 @@ class ImageClassifierModule(ClassifierModule):
         logits = self(x)
         loss = F.cross_entropy(
             logits,
-            y.squeeze(),
-            weight=torch.tensor(
-                [
-                    0.0285,
-                    1.0000,
-                    0.1068,
-                    0.1667,
-                    0.0373,
-                    0.0196,
-                    0.0982,
-                    0.0014,
-                    0.0235,
-                    0.0236,
-                    0.0809,
-                ],
-                device=self.device,
-            ),
+            y.squeeze()  # ,
+            # weight=torch.tensor(
+            #     [
+            #         0.0285,
+            #         1.0000,
+            #         0.1068,
+            #         0.1667,
+            #         0.0373,
+            #         0.0196,
+            #         0.0982,
+            #         0.0014,
+            #         0.0235,
+            #         0.0236,
+            #         0.0809,
+            #     ],
+            #     device=self.device,
+            # ),
         )
         self.log("train_loss", loss)
 
