@@ -4,7 +4,7 @@ defaults:
     - model: ofa
     - scheduler: 1cycle
     - optimizer: sgd
-    - normalizer: null
+    - normalizer: fixedpoint
     - module: stream_classifier
     - compress: null
     - trainer: default
