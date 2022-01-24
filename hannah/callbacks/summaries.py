@@ -236,4 +236,4 @@ class MacSummaryCallback(Callback):
             msglogger.critical(str(e))
 
         for k, v in res.items():
-            pl_module.log(k, v)
+            pl_module.log(k, float(v))
