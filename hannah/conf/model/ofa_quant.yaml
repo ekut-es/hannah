@@ -23,7 +23,7 @@ conv:
       - target: conv1d
         kernel_sizes: 3
         act: false
-        norm: false
+        norm: true
         quant: true
         out_channels: 16
   - target: residual1d
