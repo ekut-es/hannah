@@ -1,3 +1,4 @@
+from fileinput import filename
 from hannah.nas.search_space.symbolic_operator import (SymbolicOperator,
                                                        Choice,
                                                        Variable,
@@ -16,13 +17,21 @@ import numpy as np
 from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.connectivity_constrainer import DARTSCell
 from hannah.nas.search_space.modules import Add, Concat
+from hannah.nas.search_space.utils import generate_cfg_file
 from hannah.nas.search_space.examples.darts.darts_modules import MixedOp, Classifier, Stem, Input
 from copy import deepcopy
+import os
 
 
 class DARTSSpace(Space):
-    def __init__(self, num_cells=3, reduction_cells=[1]):
+    def __init__(self, num_cells=3, reduction_cells=[1], in_edges=[4], stem_multiplier=[4]):
         super().__init__()
+
+        # search space specific configuration options
+        # TODO: convert to Choice parameter
+        self.cfg_options = {}
+        self.cfg_options['in_edges'] = in_edges
+        self.cfg_options['stem_multiplier'] = stem_multiplier
 
         # Define parameters
         # Variable -> parameter is inferred with a custom function
@@ -43,9 +52,6 @@ class DARTSSpace(Space):
         # graph-construction to the DARTSCell() class
         normal_cell = DARTSCell()
         normal_cell = normal_cell.add_operator_nodes()
-
-        # Create an options-dict to store the values that can be used for a config later on
-        cfg_options = {'in_edges': [4], 'stem_multiplier': [4]}
 
         # The DARTSCell() class creates just the connectivity, to fill the nodes with meaningful operators
         # we create a mapping here.
@@ -68,7 +74,6 @@ class DARTSSpace(Space):
                 # The choice Parameter() needs an entry in the config
                 # The config can be created arbitrarily (with yaml, by hand, CL-arguments, ...) but
                 # it seems convinient to store the possible values here, at the creation of the Operator
-                cfg_options.update({'mixed_op_{}'.format(n): {'choice': list(range(8))}})
 
         nx.relabel_nodes(normal_cell, mapping, copy=False)
 
@@ -89,10 +94,8 @@ class DARTSSpace(Space):
                 mapping[n] = SymbolicOperator('out', Concat)
             elif isinstance(n, tuple) and n[0] in [0, 1]:
                 mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride2)
-                cfg_options.update({'mixed_op_{}_red'.format(n): {'choice': list(range(8))}})
             else:
                 mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
-                cfg_options.update({'mixed_op_{}_red'.format(n): {'choice': list(range(8))}})
 
         nx.relabel_nodes(reduction_cell, mapping, copy=False)
 
@@ -138,16 +141,25 @@ class DARTSSpace(Space):
 
         # create and add post-process (i.e. fully connected) to graph
         post = SymbolicOperator('post', Classifier, C=in_channels, num_classes=Choice('classes', 10))
-        cfg_options.update({'post': {'classes': [0]}})
         self.add_node(post)
         self.add_edge(list(cells[-1].nodes)[out_idx], post)
-
-        self.config_options = cfg_options
 
     def get_ctx(self):
         return self.ctx
 
-    def get_random_cfg(self):
+    def get_config_dims(self):
+        # cfg options of the nodes
+        cfg = super().get_config_dims()
+
+        # search space specific options
+        for k, v in self.cfg_options.items():
+            # cfg.update({k: list(range(len(v)))})
+            # NOTE currently, op parameter are idxes and global SS parameter have to
+            # be the final values
+            cfg.update({k: v})
+        return cfg
+
+    def get_random_cfg(self, cfg_dims):
         """ Create random config
 
         Returns
@@ -156,21 +168,34 @@ class DARTSSpace(Space):
             a random config
         """
         cfg = {}
-        for k, v in self.config_options.items():
+        for k, v in cfg_dims.items():
             if isinstance(v, dict):
                 cfg[k] = {}
                 for k_, v_ in v.items():
-                    cfg[k][k_] = np.random.choice(v_)
+                    cfg[k][k_] = int(np.random.choice(v_))
             else:
-                cfg[k] = np.random.choice(v)
+                cfg[k] = int(np.random.choice(v))
         return cfg
+
+
+def get_space_and_instance(cfg):
+    space = DARTSSpace(num_cells=20, reduction_cells=[i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]])
+    ctx = Context(config=cfg)
+    input = torch.ones([1, 3, 32, 32])
+    instance, out1 = space.infer_parameters(input, ctx)
+    return instance
 
 
 if __name__ == "__main__":
     num_cells = 20
     reduction_cells = [i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]]
     space = DARTSSpace(num_cells=num_cells, reduction_cells=reduction_cells)
-    cfg = space.get_random_cfg()
+    cfg_dims = space.get_config_dims()
+    file_name = './hannah/nas/search_space/examples/darts/cfg_dims.yml'
+    # if not os.path.isfile(file_name):
+    #     generate_cfg_file(cfg_dims, file_name)
+    cfg = space.get_random_cfg(cfg_dims)
+    generate_cfg_file(cfg, './hannah/nas/search_space/examples/darts/random_darts_model.yaml')
     ctx = Context(config=cfg)
     input = torch.ones([1, 3, 32, 32])
     instance, out1 = space.infer_parameters(input, ctx)

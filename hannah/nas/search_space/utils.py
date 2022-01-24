@@ -11,6 +11,7 @@ from hannah.nas.search_space.operator import (Activation, Combine, Convolution,
 
 from hannah.nas.search_space.modules import Add, Concat, Input
 import torch.nn as nn
+import yaml
 
 
 def get_node_coord(g, first_node=0):
@@ -306,3 +307,8 @@ def draw_pretty_instance(graph, labels=None, figsize=(25, 7)):
     plt.show()
 
     return fig
+
+
+def generate_cfg_file(cfg, file_name):
+    with open(file_name, 'w') as outfile:
+        yaml.dump(cfg, outfile, default_flow_style=False)

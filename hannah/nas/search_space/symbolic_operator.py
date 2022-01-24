@@ -19,8 +19,14 @@ class SymbolicOperator:
     def new(self):
         return deepcopy(self)
 
-    def get_params(self):
-        return self.mod_args
+    def get_config_dims(self):
+        param_cfg = {}
+        for k, v in self.params.items():
+            try:
+                param_cfg[v.name] = v.get_config_dims()
+            except Exception:
+                pass
+        return {self.name: param_cfg}
 
     def __repr__(self):
         return 'SymOp {}'.format(self.name)
@@ -44,6 +50,9 @@ class Choice(Parameter):
         idx = ctx.config.get(mod.name).get(self.name)
         result = self.values[idx]
         return result
+
+    def get_config_dims(self):
+        return list(range(len(self.values)))
 
     def __repr__(self) -> str:
         return str(self.values)

@@ -57,6 +57,14 @@ class Space(nx.DiGraph):
         instance = Instance(nx.relabel_nodes(graph, relabel_dict))
         return instance
 
+    def get_config_dims(self):
+        cfg = {}
+        for node in self.nodes:
+            cfg_dims = node.get_config_dims()
+            if len(cfg_dims[node.name]) > 0:
+                cfg.update(cfg_dims)
+        return cfg
+
 
 class Instance(nx.DiGraph, nn.Module):
     def __init__(self, incoming_graph_data=None, **attr):
