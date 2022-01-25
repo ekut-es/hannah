@@ -60,9 +60,11 @@ pre_commit = "^2.7.1"
 pytest-cov = ">2.10.1"
 rope = "^0.19.0"
 mypy = "^0.910"
-pydoc-markdown = "^4.1.0"
 torch-tb-profiler = "^0.2.0"
 black = "^21.7b0"
+pydoc-markdown = "^4.5.0"
+mkdocs = "^1.2.3"
+pymdown-extensions = "^9.1"
 
 [tool.poetry.extras]
 tf-backend = ["onnx-tf", "tensorflow-addons"]

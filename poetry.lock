@@ -380,7 +380,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "databind.core"
-version = "1.2.4"
+version = "1.4.0"
 description = "Databind is a library inspired by jackson-databind to de-/serialize Python dataclasses. Compatible with Python 3.7 and newer."
 category = "dev"
 optional = false
@@ -391,6 +391,7 @@ Deprecated = ">=1.2.12,<2.0.0"
 "nr.optional" = ">=0.1.1,<1.0.0"
 "nr.parsing.date" = ">=1.0.1,<2.0.0"
 "nr.preconditions" = ">=0.0.4,<1.0.0"
+"nr.pylang.utils" = ">=0.1.3,<1.0.0"
 "nr.stream" = ">=0.1.1,<1.0.0"
 typing-extensions = ">=3.10.0,<4.0.0"
 
@@ -399,14 +400,14 @@ test = ["types-dataclasses", "types-deprecated", "types-pkg-resources"]
 
 [[package]]
 name = "databind.json"
-version = "1.2.4"
+version = "1.4.0"
 description = "De-/serialize Python dataclasses to or from JSON payloads. Compatible with Python 3.7 and newer."
 category = "dev"
 optional = false
 python-versions = ">=3.7.0,<4.0.0"
 
 [package.dependencies]
-"databind.core" = ">=1.2.4,<2.0.0"
+"databind.core" = ">=1.4.0,<2.0.0"
 "nr.optional" = ">=0.1.1,<1.0.0"
 "nr.parsing.date" = ">=1.0.1,<2.0.0"
 "nr.preconditions" = ">=0.0.4,<1.0.0"
@@ -471,6 +472,17 @@ docspec = ">=1.2.0,<2.0.0"
 
 [package.extras]
 test = ["types-deprecated"]
+
+[[package]]
+name = "docstring-parser"
+version = "0.13"
+description = "\"Parse Python docstrings in reST, Google and Numpydoc format\""
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+test = ["pytest", "black"]
 
 [[package]]
 name = "fairscale"
@@ -587,6 +599,20 @@ description = "Clean single-source support for Python 3 and 2"
 category = "main"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
+
+[[package]]
+name = "ghp-import"
+version = "2.0.2"
+description = "Copy your docs directly to the gh-pages branch."
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+python-dateutil = ">=2.8.1"
+
+[package.extras]
+dev = ["twine", "markdown", "flake8", "wheel"]
 
 [[package]]
 name = "gitdb"
@@ -865,6 +891,20 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "jinja2"
+version = "3.0.3"
+description = "A very fast and expressive template engine."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+MarkupSafe = ">=2.0"
+
+[package.extras]
+i18n = ["Babel (>=2.7)"]
+
+[[package]]
 name = "joblib"
 version = "1.1.0"
 description = "Lightweight pipelining with Python functions"
@@ -946,7 +986,7 @@ name = "markupsafe"
 version = "2.0.1"
 description = "Safely add untrusted strings to HTML/XML markup."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [[package]]
@@ -975,6 +1015,37 @@ description = "McCabe checker, plugin for flake8"
 category = "dev"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "mergedeep"
+version = "1.3.4"
+description = "A deep merge function for 🐍."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
+name = "mkdocs"
+version = "1.2.3"
+description = "Project documentation with Markdown."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+click = ">=3.3"
+ghp-import = ">=1.0"
+importlib-metadata = ">=3.10"
+Jinja2 = ">=2.10.1"
+Markdown = ">=3.2.1"
+mergedeep = ">=1.3.4"
+packaging = ">=20.5"
+PyYAML = ">=3.10"
+pyyaml-env-tag = ">=0.1"
+watchdog = ">=2.0"
+
+[package.extras]
+i18n = ["babel (>=2.9.0)"]
 
 [[package]]
 name = "mpmath"
@@ -1515,7 +1586,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "pydoc-markdown"
-version = "4.3.2"
+version = "4.5.0"
 description = "Create Python API documentation in Markdown format."
 category = "dev"
 optional = false
@@ -1527,12 +1598,11 @@ click = ">=7.1,<9.0"
 "databind.json" = ">=1.2.2,<2.0.0"
 docspec = ">=1.0.0,<2.0.0"
 docspec-python = ">=1.0.0,<2.0.0"
+docstring-parser = ">=0.11.0,<1.0.0"
 "nr.fs" = ">=1.6.0,<2.0.0"
-"nr.pylang.utils" = ">=0.1.1,<1.0.0"
 "nr.stream" = ">=0.1.2,<1.0.0"
 PyYAML = ">=5.3.0,<6.0.0"
 requests = ">=2.23.0,<3.0.0"
-six = ">=1.11.0,<2.0.0"
 toml = ">=0.10.1,<1.0.0"
 watchdog = "*"
 
@@ -1555,6 +1625,17 @@ description = "passive checker of Python programs"
 category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[[package]]
+name = "pymdown-extensions"
+version = "9.1"
+description = "Extension pack for Python Markdown."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+Markdown = ">=3.2"
 
 [[package]]
 name = "pyparsing"
@@ -1704,6 +1785,17 @@ description = "YAML parser and emitter for Python"
 category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
+
+[[package]]
+name = "pyyaml-env-tag"
+version = "0.1"
+description = "A custom YAML tag for referencing environment variables in YAML files. "
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+pyyaml = "*"
 
 [[package]]
 name = "qudida"
@@ -2332,7 +2424,7 @@ tf-backend = ["onnx-tf", "tensorflow-addons"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1 <3.10"
-content-hash = "96cb2b4e9af2601e6138ef22795721596f8ecb8dec6e69eb8780115e99bb9f46"
+content-hash = "53321db7044775fdc24081f0c7c8f78d45cb73a3e0ea1f1708cdf441f0885801"
 
 [metadata.files]
 absl-py = [
@@ -2660,12 +2752,12 @@ cython = [
     {file = "Cython-0.29.25.tar.gz", hash = "sha256:a87cbe3756e7c464acf3e9420d8741e62d3b2eace0846cb39f664ad378aab284"},
 ]
 "databind.core" = [
-    {file = "databind.core-1.2.4-py3-none-any.whl", hash = "sha256:867a91ee58e7b484e7f765b6d51735d737e6e6deb4b1a2409552f055a1962ea8"},
-    {file = "databind.core-1.2.4.tar.gz", hash = "sha256:9e644b4f3d3573239e5994c07d86fe606e6adf60420318a3525582e7b844de5e"},
+    {file = "databind.core-1.4.0-py3-none-any.whl", hash = "sha256:cff3f43b6966a9374e084baf42322cd5091e01ef38298673f24d5ce345e05c0c"},
+    {file = "databind.core-1.4.0.tar.gz", hash = "sha256:ae6e13da4e30ebff447e003f92c0f2fe38b70f03502ef9e2afed24991d6b54bc"},
 ]
 "databind.json" = [
-    {file = "databind.json-1.2.4-py3-none-any.whl", hash = "sha256:4b0a522e68a67aee34ba5bbddac0218be376ba80849571953ca46e9efb9e85c2"},
-    {file = "databind.json-1.2.4.tar.gz", hash = "sha256:0b5d74b8a484aa9968c0cfff6609d97e67314f6a4d50a587a93a19301d439e81"},
+    {file = "databind.json-1.4.0-py3-none-any.whl", hash = "sha256:b8730986f039435302b2b21afbde2f6b045e0fb4268517c493c38c50fc674fcf"},
+    {file = "databind.json-1.4.0.tar.gz", hash = "sha256:b53b51cecb59d8b2f6eaafdc1f39e1ab887f6c4d99bcd6ca09e42f7df6175641"},
 ]
 dataclasses = [
     {file = "dataclasses-0.6-py3-none-any.whl", hash = "sha256:454a69d788c7fda44efd71e259be79577822f5e3f53f029a22d08004e951dc9f"},
@@ -2686,6 +2778,9 @@ docspec = [
 docspec-python = [
     {file = "docspec-python-1.2.0.tar.gz", hash = "sha256:491755689aec1f7b5abaed8e7b11b013ab6bfb979c5e7d9855f41cf40cb82192"},
     {file = "docspec_python-1.2.0-py3-none-any.whl", hash = "sha256:347aae3e2ef3f41d4e27e5e0e4996935286087cf9b7a948d512a6c03b277e530"},
+]
+docstring-parser = [
+    {file = "docstring_parser-0.13.tar.gz", hash = "sha256:66dd7eac7232202bf220fd98a5f11491863c01f958a75fdd535c7eccac9ced78"},
 ]
 fairscale = [
     {file = "fairscale-0.4.5.tar.gz", hash = "sha256:853124bc09d0c88cbd5189156c6418ce73f19a0754d21aa63a836eb75fc24884"},
@@ -2786,6 +2881,10 @@ fsspec = [
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
+]
+ghp-import = [
+    {file = "ghp-import-2.0.2.tar.gz", hash = "sha256:947b3771f11be850c852c64b561c600fdddf794bab363060854c1ee7ad05e071"},
+    {file = "ghp_import-2.0.2-py3-none-any.whl", hash = "sha256:5f8962b30b20652cdffa9c5a9812f7de6bcb56ec475acac579807719bf242c46"},
 ]
 gitdb = [
     {file = "gitdb-4.0.9-py3-none-any.whl", hash = "sha256:8033ad4e853066ba6ca92050b9df2f89301b8fc8bf7e9324d412a63f8bf1a8fd"},
@@ -2973,6 +3072,10 @@ iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
     {file = "iniconfig-1.1.1.tar.gz", hash = "sha256:bc3af051d7d14b2ee5ef9969666def0cd1a000e121eaea580d4a313df4b37f32"},
 ]
+jinja2 = [
+    {file = "Jinja2-3.0.3-py3-none-any.whl", hash = "sha256:077ce6014f7b40d03b47d1f1ca4b0fc8328a692bd284016f806ed0eaca390ad8"},
+    {file = "Jinja2-3.0.3.tar.gz", hash = "sha256:611bb273cd68f3b993fabdc4064fc858c5b47a973cb5aa7999ec1ba405c87cd7"},
+]
 joblib = [
     {file = "joblib-1.1.0-py2.py3-none-any.whl", hash = "sha256:f21f109b3c7ff9d95f8387f752d0d9c34a02aa2f7060c2135f465da0e5160ff6"},
     {file = "joblib-1.1.0.tar.gz", hash = "sha256:4158fcecd13733f8be669be0683b96ebdbbd38d23559f54dca7205aea1bf1e35"},
@@ -3149,6 +3252,14 @@ matplotlib = [
 mccabe = [
     {file = "mccabe-0.6.1-py2.py3-none-any.whl", hash = "sha256:ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42"},
     {file = "mccabe-0.6.1.tar.gz", hash = "sha256:dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f"},
+]
+mergedeep = [
+    {file = "mergedeep-1.3.4-py3-none-any.whl", hash = "sha256:70775750742b25c0d8f36c55aed03d24c3384d17c951b3175d898bd778ef0307"},
+    {file = "mergedeep-1.3.4.tar.gz", hash = "sha256:0096d52e9dad9939c3d975a774666af186eda617e6ca84df4c94dec30004f2a8"},
+]
+mkdocs = [
+    {file = "mkdocs-1.2.3-py3-none-any.whl", hash = "sha256:a1fa8c2d0c1305d7fc2b9d9f607c71778572a8b110fb26642aa00296c9e6d072"},
+    {file = "mkdocs-1.2.3.tar.gz", hash = "sha256:89f5a094764381cda656af4298727c9f53dc3e602983087e1fe96ea1df24f4c1"},
 ]
 mpmath = [
     {file = "mpmath-1.2.1-py3-none-any.whl", hash = "sha256:604bc21bd22d2322a177c73bdb573994ef76e62edd595d17e00aff24b0667e5c"},
@@ -3664,8 +3775,8 @@ pydeprecate = [
     {file = "pyDeprecate-0.3.1.tar.gz", hash = "sha256:fa26870924d3475621c344045c2c01a16ba034113a902600c78e75b3fac5f72c"},
 ]
 pydoc-markdown = [
-    {file = "pydoc-markdown-4.3.2.tar.gz", hash = "sha256:d2ec788eb20e5bbcf6be5d08afe4b6a814e83631f75f91ffd37957d397f18e9c"},
-    {file = "pydoc_markdown-4.3.2-py3-none-any.whl", hash = "sha256:c953860e6e3b8ddb9c11969fa978d3b9477e27d413500108c3af64fb6bdc427d"},
+    {file = "pydoc-markdown-4.5.0.tar.gz", hash = "sha256:131636ed32324d255816e476d72eb592542f120fce0d9a4ddca888934bc51282"},
+    {file = "pydoc_markdown-4.5.0-py3-none-any.whl", hash = "sha256:925fd854a477157fbda811bdb3046a570fe83bb5d410504ff5e46410d40ad8fa"},
 ]
 pydoe = [
     {file = "pyDOE-0.3.8.zip", hash = "sha256:cbd6f14ae26d3c9f736013205f53ea1191add4567033c3ee77b7dd356566c4b6"},
@@ -3673,6 +3784,10 @@ pydoe = [
 pyflakes = [
     {file = "pyflakes-2.3.1-py2.py3-none-any.whl", hash = "sha256:7893783d01b8a89811dd72d7dfd4d84ff098e5eed95cfa8905b22bbffe52efc3"},
     {file = "pyflakes-2.3.1.tar.gz", hash = "sha256:f5bc8ecabc05bb9d291eb5203d6810b49040f6ff446a756326104746cc00c1db"},
+]
+pymdown-extensions = [
+    {file = "pymdown-extensions-9.1.tar.gz", hash = "sha256:74247f2c80f1d9e3c7242abe1c16317da36c6f26c7ad4b8a7f457f0ec20f0365"},
+    {file = "pymdown_extensions-9.1-py3-none-any.whl", hash = "sha256:b03e66f91f33af4a6e7a0e20c740313522995f69a03d86316b1449766c473d0e"},
 ]
 pyparsing = [
     {file = "pyparsing-3.0.6-py3-none-any.whl", hash = "sha256:04ff808a5b90911829c55c4e26f75fa5ca8a2f5f36aa3a51f68e27033341d3e4"},
@@ -3787,6 +3902,10 @@ pyyaml = [
     {file = "PyYAML-5.4.1-cp39-cp39-win32.whl", hash = "sha256:49d4cdd9065b9b6e206d0595fee27a96b5dd22618e7520c33204a4a3239d5b10"},
     {file = "PyYAML-5.4.1-cp39-cp39-win_amd64.whl", hash = "sha256:c20cfa2d49991c8b4147af39859b167664f2ad4561704ee74c1de03318e898db"},
     {file = "PyYAML-5.4.1.tar.gz", hash = "sha256:607774cbba28732bfa802b54baa7484215f530991055bb562efbed5b2f20a45e"},
+]
+pyyaml-env-tag = [
+    {file = "pyyaml_env_tag-0.1-py3-none-any.whl", hash = "sha256:af31106dec8a4d68c60207c1886031cbf839b68aa7abccdb19868200532c2069"},
+    {file = "pyyaml_env_tag-0.1.tar.gz", hash = "sha256:70092675bda14fdec33b31ba77e7543de9ddc88f2e5b99160396572d11525bdb"},
 ]
 qudida = [
     {file = "qudida-0.0.4-py3-none-any.whl", hash = "sha256:4519714c40cd0f2e6c51e1735edae8f8b19f4efe1f33be13e9d644ca5f736dd6"},
