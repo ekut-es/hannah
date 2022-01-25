@@ -18,7 +18,7 @@ from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.connectivity_constrainer import DARTSCell
 from hannah.nas.search_space.modules import Add, Concat
 from hannah.nas.search_space.utils import generate_cfg_file
-from hannah.nas.search_space.examples.darts.darts_modules import MixedOp, Classifier, Stem, Input
+from hannah.nas.search_space.examples.darts.darts_modules import MixedOpWS, Classifier, Stem, Input
 from copy import deepcopy
 import os
 
@@ -70,7 +70,7 @@ class DARTSSpace(Space):
             elif n == 6:
                 mapping[n] = SymbolicOperator('out', Concat)
             else:
-                mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
+                mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOpWS, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
                 # The choice Parameter() needs an entry in the config
                 # The config can be created arbitrarily (with yaml, by hand, CL-arguments, ...) but
                 # it seems convinient to store the possible values here, at the creation of the Operator
@@ -93,9 +93,9 @@ class DARTSSpace(Space):
             elif n == 6:
                 mapping[n] = SymbolicOperator('out', Concat)
             elif isinstance(n, tuple) and n[0] in [0, 1]:
-                mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride2)
+                mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOpWS, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride2)
             else:
-                mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOp, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
+                mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOpWS, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
 
         nx.relabel_nodes(reduction_cell, mapping, copy=False)
 
@@ -201,5 +201,8 @@ if __name__ == "__main__":
     instance, out1 = space.infer_parameters(input, ctx)
     print(out1.shape)
 
-    out2 = instance.forward(input)
-    print(out2.shape)
+    mse = torch.nn.MSELoss()
+    output = instance(input)
+    loss = mse(output, torch.ones(output.shape))
+    loss.backward()
+    print(loss)

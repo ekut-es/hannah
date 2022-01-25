@@ -112,6 +112,25 @@ class MixedOp(nn.Module):
         return out
 
 
+class MixedOpWS(nn.Module):
+    def __init__(self, choice, stride, in_channels, out_channels) -> None:
+        super().__init__()
+        self.choice = choice
+        self.ops = []
+        self.ops.append(Identity() if stride == 1 else FactorizedReduce(in_channels, out_channels))
+        self.ops.append(Zero(stride=stride))
+        self.ops.append(nn.MaxPool2d(3, stride, padding=1))
+        self.ops.append(nn.AvgPool2d(3, stride, padding=1))
+        self.ops.append(SepConv(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, affine=False))
+        self.ops.append(SepConv(in_channels, out_channels, kernel_size=5, stride=stride, padding=2, affine=False))
+        self.ops.append(DilConv(in_channels, out_channels, kernel_size=3, stride=stride, padding=2, dilation=2, affine=False))
+        self.ops.append(DilConv(in_channels, out_channels, kernel_size=5, stride=stride, padding=4, dilation=2, affine=False))
+
+    def forward(self, *seq):
+        out = self.ops[self.choice](seq[0])
+        return out
+
+
 class Classifier(nn.Module):
     def __init__(self, C, num_classes) -> None:
         super().__init__()
