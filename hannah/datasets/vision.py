@@ -7,6 +7,8 @@ from posixpath import split
 import tarfile
 import requests
 
+from typing import List
+
 from hydra.utils import get_original_cwd
 import numpy as np
 import torchvision
@@ -309,3 +311,6 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             Dataset.class_to_idx[Dataset.imgs.iloc[i, 1]] for i in range(len(Dataset))
         ]
         return label_list
+
+    def class_names_abbreviated(self) -> List[str]:
+        return [cn[0:3] for cn in self.class_names]
