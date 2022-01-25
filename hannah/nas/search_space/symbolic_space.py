@@ -66,15 +66,17 @@ class Space(nx.DiGraph):
         return cfg
 
 
-class Instance(nx.DiGraph, nn.Module):
-    def __init__(self, incoming_graph_data=None, **attr):
-        super().__init__(incoming_graph_data=incoming_graph_data, **attr)
+# class Instance(nx.DiGraph, nn.Module):
+class Instance(nn.Module):
+    def __init__(self, graph):
+        super().__init__()
+        self.graph = graph
 
     def forward(self, x):
         outputs = {}
 
         def _compute(node, input):
-            in_edges = self.in_edges(node)
+            in_edges = self.graph.in_edges(node)
             if len(in_edges) > 0:
                 args = []
                 for u, v in in_edges:
@@ -94,6 +96,6 @@ class Instance(nx.DiGraph, nn.Module):
                 outputs[node] = out
             return out
 
-        last = list(nx.topological_sort(self))[-1]
+        last = list(nx.topological_sort(self.graph))[-1]
         out = _compute(last, x)
         return out
