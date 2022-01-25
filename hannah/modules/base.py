@@ -15,7 +15,6 @@ import torchvision
 from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
-from pytorch_lightning.loggers import LoggerCollection
 from hydra.utils import instantiate
 
 from PIL import Image

@@ -1,4 +1,3 @@
-import logging
 from pytorch_lightning.callbacks import Callback
 from torch import Tensor
 
@@ -27,7 +26,7 @@ class HydraOptCallback(Callback):
         for k, v in callback_metrics.items():
             if k.startswith("val"):
                 self.val_values[k] = v
-                
+
         for monitor in self.monitor:
             if monitor in callback_metrics:
                 self.values[monitor] = callback_metrics[monitor]

@@ -6,11 +6,8 @@ from pytorch_lightning.utilities.distributed import rank_zero_only
 import torch
 
 import hannah.torch_extensions.nn.SNNActivationLayer
-from ..torch_extensions.nn import SNNLayers
 from ..models.sinc import SincNet
 from ..models.factory import qat
-
-import torchvision
 
 from pytorch_lightning.callbacks import Callback
 from tabulate import tabulate
@@ -102,9 +99,9 @@ def walk_model(model, dummy_input):
 
     def get_1DSpiking_macs(module, output):
         neuron_macs = {"eLIF": 4, "LIF": 5, "eALIF": 5, "ALIF": 6}
-        if module.flatten_output == False:
+        if module.flatten_output is False:
             return module.channels * output.shape[2] * neuron_macs[module.type]
-        elif module.flatten_output == True:
+        elif module.flatten_output is True:
             return module.channels * output.shape[1] * neuron_macs[module.type]
 
     def get_conv_attrs(module):

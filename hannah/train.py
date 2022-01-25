@@ -12,12 +12,9 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
 
 from hydra.utils import instantiate
-from omegaconf import DictConfig
 
 from . import conf  # noqa
-from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
 from .utils import (
     log_execution_env_state,
     auto_select_gpus,
@@ -153,11 +150,11 @@ def train(config: DictConfig):
                 else:
                     test_sum[k] += v
 
-    rank_zero_info("Averaged Test Metrics:")
+        rank_zero_info("Averaged Test Metrics:")
 
-    for k, v in test_sum.items():
-        rank_zero_info(k + " : " + str(v / len(test_output)))
-    rank_zero_info("validation_error : " + str(np.sum(results) / len(results)))
+        for k, v in test_sum.items():
+            rank_zero_info(k + " : " + str(v / len(test_output)))
+        rank_zero_info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]
