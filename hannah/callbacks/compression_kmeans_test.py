@@ -90,10 +90,10 @@ class CompressionHuff(Callback):
                     sparse_matrix = csr_matrix(params)
                     max_value = max(sparse_matrix.data)
                     min_value = min(sparse_matrix.data)
-                    range_cluster = np.linspace(min_value, max_value, num=6)
+                    range_cluster = np.linspace(min_value, max_value, num=5)
 
-                    # KMeans applied to each layer
-                    kmeans = KMeans(n_clusters=len(range_cluster), init=range_cluster.reshape(-1,1), n_init=1, algorithm="full")
+                    # KMeans applied to each layer #init=range_cluster.reshape(-1,1)
+                    kmeans = KMeans(n_clusters=len(range_cluster), init='k-means++', n_init=1, algorithm="full", random_state=1234)
                     kmeans.fit(sparse_matrix.reshape(-1,1))
                     centers = kmeans.cluster_centers_.reshape(-1)
                     c.extend(centers)
@@ -124,9 +124,12 @@ class CompressionHuff(Callback):
                     module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers) #_ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                     module.to(device=device)'''
 
-        
-    '''def on_epoch_end(self, trainer, pl_module):
-        if trainer.current_epoch == self.compress_after-4: #if trainer.current_epoch % 4 == 0: #if trainer.current_epoch == self.compress_after-2:#if trainer.current_epoch >= self.compress_after-2: #
+
+    def on_epoch_end(self, trainer, pl_module):
+        print(trainer.callback_metrics['val_accuracy'].item())
+        if (trainer.callback_metrics['val_accuracy'].item() > 0.9 ) and (trainer.current_epoch % 4 == 0):
+            print('Clustering.')
+        #if trainer.current_epoch % 4 == 0: #if trainer.current_epoch == self.compress_after-2:#if trainer.current_epoch >= self.compress_after-2: #
             device = pl_module.device
             c = []
             #### Testing kmeans clustering ###
@@ -136,15 +139,13 @@ class CompressionHuff(Callback):
                     m = csr_matrix(w) 
                     min_value = min(m.data)
                     max_value = max(m.data)
-                    range_cluster = np.linspace(min_value, max_value, num=6)
-                    kmeans = KMeans(n_clusters=len(range_cluster), init=range_cluster.reshape(-1,1), n_init=1, algorithm="full")
-                    #kmeans.fit(w.reshape(-1,1))
+                    range_cluster = np.linspace(min_value, max_value, num=5)
+                    kmeans = KMeans(n_clusters=len(range_cluster), init='k-means++', n_init=1, algorithm="full", random_state=1234)
                     kmeans.fit(m.data.reshape(-1,1))
                     centers = kmeans.cluster_centers_.reshape(-1)
-                    #c.append(centers)
                     c.extend(centers)
                     def replace_values_by_centers(x):
                         i = (np.abs(centers - x)).argmin() 
                         return centers[i] # returns center that is closest to given value x
                     module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers) #_ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
-                    module.to(device=device) # move from cpu to gpu'''
+                    module.to(device=device) # move from cpu to gpu
