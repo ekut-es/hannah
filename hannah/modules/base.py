@@ -6,6 +6,7 @@ import os
 
 from abc import abstractmethod, ABC
 from typing import Optional
+from pytorch_lightning.utilities.distributed import rank_zero_only
 
 import torch
 import torch.utils.data as data
@@ -111,6 +112,7 @@ class ClassifierModule(LightningModule, ABC):
         effective_accum = self.trainer.accumulate_grad_batches * num_devices
         return int((batches // effective_accum) * self.trainer.max_epochs)
 
+    @rank_zero_only
     def _log_weight_distribution(self):
         for name, params in self.named_parameters():
             loggers = self._logger_iterator()
@@ -160,6 +162,7 @@ class ClassifierModule(LightningModule, ABC):
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
 
+    @rank_zero_only
     def save(self):
         output_dir = "."
         quantized_model = copy.deepcopy(self.model)
@@ -207,9 +210,24 @@ class ClassifierModule(LightningModule, ABC):
         if self.trainer and self.trainer.fast_dev_run:
             return
 
+        self._plot_confusion_matrix()
+        self._plot_roc()
+
+    def _plot_roc(self):
+        if hasattr(self, "test_roc"):
+            # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
+            self.test_roc.reset()
+
+        if self.trainer.global_rank > 0:
+            return
+
+    def _plot_confusion_matrix(self):
         if hasattr(self, "test_confusion"):
             confusion_matrix = self.test_confusion.compute()
             self.test_confusion.reset()
+
+            if self.trainer.global_rank > 0:
+                return
 
             confusion_plot = plot_confusion_matrix(
                 confusion_matrix.cpu().numpy(),
@@ -232,9 +250,7 @@ class ClassifierModule(LightningModule, ABC):
             for logger in loggers:
                 if hasattr(logger.experiment, "add_image"):
                     logger.experiment.add_image(
-                        "test_confusion_matrix", im, global_step=self.current_epoch
+                        "test_confusion_matrix",
+                        im,
+                        global_step=self.current_epoch,
                     )
-
-        if hasattr(self, "test_roc"):
-            # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
-            self.test_roc.reset()
