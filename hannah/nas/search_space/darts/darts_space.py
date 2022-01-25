@@ -1,15 +1,18 @@
 from fileinput import filename
-from hannah.nas.search_space.symbolic_operator import (SymbolicOperator,
-                                                       Choice,
-                                                       Variable,
-                                                       Constant,
-                                                       Context)
-from hannah.nas.search_space.examples.darts.darts_parameter_functions import (
-                                                       infer_in_channel,
-                                                       keep_channels,
-                                                       reduce_channels_by_edge_number,
-                                                       multiply_by_stem,
-                                                       reduce_and_double)
+from hannah.nas.search_space.symbolic_operator import (
+    SymbolicOperator,
+    Choice,
+    Variable,
+    Constant,
+    Context,
+)
+from hannah.nas.search_space.darts.darts_parameter_functions import (
+    infer_in_channel,
+    keep_channels,
+    reduce_channels_by_edge_number,
+    multiply_by_stem,
+    reduce_and_double,
+)
 import torch
 import networkx as nx
 import numpy as np
@@ -18,34 +21,51 @@ from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.connectivity_constrainer import DARTSCell
 from hannah.nas.search_space.modules import Add, Concat
 from hannah.nas.search_space.utils import generate_cfg_file
-from hannah.nas.search_space.examples.darts.darts_modules import MixedOpWS, Classifier, Stem, Input
+from hannah.nas.search_space.darts.darts_modules import (
+    MixedOpWS,
+    Classifier,
+    Stem,
+    Input,
+)
 from copy import deepcopy
 import os
 
 
 class DARTSSpace(Space):
-    def __init__(self, num_cells=3, reduction_cells=[1], in_edges=[4], stem_multiplier=[4]):
+    def __init__(
+        self, num_cells=3, reduction_cells=[1], in_edges=[4], stem_multiplier=[4]
+    ):
         super().__init__()
 
         # search space specific configuration options
         # TODO: convert to Choice parameter
         self.cfg_options = {}
-        self.cfg_options['in_edges'] = in_edges
-        self.cfg_options['stem_multiplier'] = stem_multiplier
+        self.cfg_options["in_edges"] = in_edges
+        self.cfg_options["stem_multiplier"] = stem_multiplier
 
         # Define parameters
         # Variable -> parameter is inferred with a custom function
         # Constant -> directly set value
         # Choice -> choose from given options
 
-        in_channels = Variable('in_channels', func=infer_in_channel)                                    # Infer the in_channels from the input automatically
-        stem_channels = Variable('in_channels_stem', func=multiply_by_stem)                             # DARTS specific channel multiplicator
-        out_channels = Variable('out_channels', func=keep_channels)                                     # Out_channel == in_channel
-        out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_channels_by_edge_number)  # After the Concat, the channels are *4 -> reduce by dividing by 4
-        double_out_channels_adaptive = Variable('out_channels_adaptive', func=reduce_and_double)        # Same as above but with DARTS specific channel doubeling in red.-cells
-        stride1 = Constant('stride', 1)
-        stride2 = Constant('stride', 2)
-        choice = Choice('choice', 0, 1, 2, 3, 4, 5, 6, 7)
+        in_channels = Variable(
+            "in_channels", func=infer_in_channel
+        )  # Infer the in_channels from the input automatically
+        stem_channels = Variable(
+            "in_channels_stem", func=multiply_by_stem
+        )  # DARTS specific channel multiplicator
+        out_channels = Variable(
+            "out_channels", func=keep_channels
+        )  # Out_channel == in_channel
+        out_channels_adaptive = Variable(
+            "out_channels_adaptive", func=reduce_channels_by_edge_number
+        )  # After the Concat, the channels are *4 -> reduce by dividing by 4
+        double_out_channels_adaptive = Variable(
+            "out_channels_adaptive", func=reduce_and_double
+        )  # Same as above but with DARTS specific channel doubeling in red.-cells
+        stride1 = Constant("stride", 1)
+        stride2 = Constant("stride", 2)
+        choice = Choice("choice", 0, 1, 2, 3, 4, 5, 6, 7)
 
         # Define connectivity of graph
         # This could be any graph and is not really necessary, its basically just offloading the
@@ -62,15 +82,34 @@ class DARTSSpace(Space):
                 # SymbolicOperators(name, module, **kwargs_of_the_respective_module)
                 # If we use the name again, the new operator shares the attributes with the old one
                 # Thus we can create cells that have similar topology, if desired
-                mapping[n] = SymbolicOperator('input_0', Input, in_channels=in_channels, out_channels=out_channels_adaptive, stride=stride1)
+                mapping[n] = SymbolicOperator(
+                    "input_0",
+                    Input,
+                    in_channels=in_channels,
+                    out_channels=out_channels_adaptive,
+                    stride=stride1,
+                )
             elif n == 1:
-                mapping[n] = SymbolicOperator('input_1', Input, in_channels=in_channels, out_channels=out_channels_adaptive, stride=stride1)
+                mapping[n] = SymbolicOperator(
+                    "input_1",
+                    Input,
+                    in_channels=in_channels,
+                    out_channels=out_channels_adaptive,
+                    stride=stride1,
+                )
             elif n in range(2, 6):
-                mapping[n] = SymbolicOperator('add_{}'.format(n), Add)
+                mapping[n] = SymbolicOperator("add_{}".format(n), Add)
             elif n == 6:
-                mapping[n] = SymbolicOperator('out', Concat)
+                mapping[n] = SymbolicOperator("out", Concat)
             else:
-                mapping[n] = SymbolicOperator('mixed_op_{}'.format(n), MixedOpWS, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
+                mapping[n] = SymbolicOperator(
+                    "mixed_op_{}".format(n),
+                    MixedOpWS,
+                    choice=choice,
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    stride=stride1,
+                )
                 # The choice Parameter() needs an entry in the config
                 # The config can be created arbitrarily (with yaml, by hand, CL-arguments, ...) but
                 # it seems convinient to store the possible values here, at the creation of the Operator
@@ -85,17 +124,43 @@ class DARTSSpace(Space):
         mapping = {}
         for n in reduction_cell.nodes:
             if n == 0:
-                mapping[n] = SymbolicOperator('input_0_red', Input, in_channels=in_channels, out_channels=double_out_channels_adaptive, stride=stride1)
+                mapping[n] = SymbolicOperator(
+                    "input_0_red",
+                    Input,
+                    in_channels=in_channels,
+                    out_channels=double_out_channels_adaptive,
+                    stride=stride1,
+                )
             elif n == 1:
-                mapping[n] = SymbolicOperator('input_1_red', Input, in_channels=in_channels, out_channels=double_out_channels_adaptive, stride=stride1)
+                mapping[n] = SymbolicOperator(
+                    "input_1_red",
+                    Input,
+                    in_channels=in_channels,
+                    out_channels=double_out_channels_adaptive,
+                    stride=stride1,
+                )
             elif n in range(2, 6):
-                mapping[n] = SymbolicOperator('add_{}_red'.format(n), Add)
+                mapping[n] = SymbolicOperator("add_{}_red".format(n), Add)
             elif n == 6:
-                mapping[n] = SymbolicOperator('out', Concat)
+                mapping[n] = SymbolicOperator("out", Concat)
             elif isinstance(n, tuple) and n[0] in [0, 1]:
-                mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOpWS, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride2)
+                mapping[n] = SymbolicOperator(
+                    "mixed_op_{}_red".format(n),
+                    MixedOpWS,
+                    choice=choice,
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    stride=stride2,
+                )
             else:
-                mapping[n] = SymbolicOperator('mixed_op_{}_red'.format(n), MixedOpWS, choice=choice, in_channels=in_channels, out_channels=out_channels, stride=stride1)
+                mapping[n] = SymbolicOperator(
+                    "mixed_op_{}_red".format(n),
+                    MixedOpWS,
+                    choice=choice,
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    stride=stride1,
+                )
 
         nx.relabel_nodes(reduction_cell, mapping, copy=False)
 
@@ -104,7 +169,7 @@ class DARTSSpace(Space):
         input_1_idx = 1
 
         # DARTS preprocessing stem
-        stem = SymbolicOperator('stem0', Stem, C_out=stem_channels)
+        stem = SymbolicOperator("stem0", Stem, C_out=stem_channels)
 
         # create the desired num of cells from the prototypes and
         # edit parameter depending on the reduction cells
@@ -114,13 +179,15 @@ class DARTSSpace(Space):
             if idx < len(cells) - 1:
                 # if the previous cell was a reduction cell, we must modify
                 # the incoming data from the skip connection
-                list(cells[idx+1].nodes)[input_0_idx].params['stride'] = stride2
-                list(cells[idx+1].nodes)[input_0_idx].params['out_channels'] = double_out_channels_adaptive
+                list(cells[idx + 1].nodes)[input_0_idx].params["stride"] = stride2
+                list(cells[idx + 1].nodes)[input_0_idx].params[
+                    "out_channels"
+                ] = double_out_channels_adaptive
 
         # The data coming from the stem is not concatenated, therefore we can leave the channels as is
-        list(cells[0].nodes)[input_0_idx].params['out_channels'] = out_channels
-        list(cells[0].nodes)[input_1_idx].params['out_channels'] = out_channels
-        list(cells[1].nodes)[input_0_idx].params['out_channels'] = out_channels
+        list(cells[0].nodes)[input_0_idx].params["out_channels"] = out_channels
+        list(cells[0].nodes)[input_1_idx].params["out_channels"] = out_channels
+        list(cells[1].nodes)[input_0_idx].params["out_channels"] = out_channels
 
         # Add cell nodes and edges to SearchSpace (self) and
         for i in range(len(cells)):
@@ -135,12 +202,18 @@ class DARTSSpace(Space):
         # connect cells + skip-connections
         for i in range(len(cells)):
             if i < len(cells) - 2:
-                self.add_edge(list(cells[i].nodes)[out_idx], list(cells[i+2].nodes)[input_0_idx])
+                self.add_edge(
+                    list(cells[i].nodes)[out_idx], list(cells[i + 2].nodes)[input_0_idx]
+                )
             if i < len(cells) - 1:
-                self.add_edge(list(cells[i].nodes)[out_idx],   list(cells[i+1].nodes)[input_1_idx])
+                self.add_edge(
+                    list(cells[i].nodes)[out_idx], list(cells[i + 1].nodes)[input_1_idx]
+                )
 
         # create and add post-process (i.e. fully connected) to graph
-        post = SymbolicOperator('post', Classifier, C=in_channels, num_classes=Choice('classes', 10))
+        post = SymbolicOperator(
+            "post", Classifier, C=in_channels, num_classes=Choice("classes", 10)
+        )
         self.add_node(post)
         self.add_edge(list(cells[-1].nodes)[out_idx], post)
 
@@ -177,9 +250,22 @@ class DARTSSpace(Space):
                 cfg[k] = int(np.random.choice(v))
         return cfg
 
+    def sample(self, size):
+        cfg_dims = self.get_config_dims()
+        random_cfg = self.get_random_cfg(cfg_dims)
+        ctx = Context(config=random_cfg)
+        input = torch.ones(size)
+        instance, _ = self.infer_parameters(input, ctx)
+        return instance
+
 
 def get_space_and_instance(cfg):
-    space = DARTSSpace(num_cells=20, reduction_cells=[i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]])
+    space = DARTSSpace(
+        num_cells=20,
+        reduction_cells=[
+            i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]
+        ],
+    )
     ctx = Context(config=cfg)
     input = torch.ones([1, 3, 32, 32])
     instance, out1 = space.infer_parameters(input, ctx)
@@ -188,14 +274,18 @@ def get_space_and_instance(cfg):
 
 if __name__ == "__main__":
     num_cells = 20
-    reduction_cells = [i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]]
+    reduction_cells = [
+        i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]
+    ]
     space = DARTSSpace(num_cells=num_cells, reduction_cells=reduction_cells)
     cfg_dims = space.get_config_dims()
-    file_name = './hannah/nas/search_space/examples/darts/cfg_dims.yml'
+    file_name = "./hannah/nas/search_space/examples/darts/cfg_dims.yml"
     # if not os.path.isfile(file_name):
     #     generate_cfg_file(cfg_dims, file_name)
     cfg = space.get_random_cfg(cfg_dims)
-    generate_cfg_file(cfg, './hannah/nas/search_space/examples/darts/random_darts_model.yaml')
+    generate_cfg_file(
+        cfg, "./hannah/nas/search_space/examples/darts/random_darts_model.yaml"
+    )
     ctx = Context(config=cfg)
     input = torch.ones([1, 3, 32, 32])
     instance, out1 = space.infer_parameters(input, ctx)

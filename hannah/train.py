@@ -173,12 +173,6 @@ def train(config: DictConfig):
         return results
 
 
-def nas(config: DictConfig):
-    print(OmegaConf.to_yaml(config))
-    nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
-    nas_trainer.run()
-
-
 @hydra.main(config_name="config", config_path="conf")
 def main(config: DictConfig):
     if config.get("dataset_creation", None) is not None:

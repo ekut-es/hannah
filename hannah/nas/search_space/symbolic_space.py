@@ -1,6 +1,7 @@
 import networkx as nx
 import torch.nn as nn
 import traceback
+from copy import deepcopy
 
 
 class Space(nx.DiGraph):
@@ -44,6 +45,8 @@ class Space(nx.DiGraph):
         nodes = list(nx.topological_sort(self))
         last = nodes[-1]
         out = _traverse(last, x)
+        # instance_graph = deepcopy(self)
+        # nx.relabel_nodes(instance_graph, ctx.relabel_dict, copy=False)
         instance = Instance(nx.relabel_nodes(self, ctx.relabel_dict))
         return instance, out
 
@@ -71,6 +74,7 @@ class Instance(nn.Module):
     def __init__(self, graph):
         super().__init__()
         self.graph = graph
+        self.nodes = nn.ModuleList([n for n in graph.nodes if isinstance(n, nn.Module)])
 
     def forward(self, x):
         outputs = {}

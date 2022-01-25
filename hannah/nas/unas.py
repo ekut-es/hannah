@@ -103,38 +103,6 @@ def run_training(num, config):
     return opt_callback.result(dict=True)
 
 
-class NASTrainerBase(ABC):
-    def __init__(
-        self,
-        budget=2000,
-        parent_config=None,
-        parametrization=None,
-        bounds=None,
-        n_jobs=5,
-    ):
-        self.config = parent_config
-        self.budget = budget
-        self.parametrization = parametrization
-        self.bounds = bounds
-        self.n_jobs = n_jobs
-
-    @abstractmethod
-    def run(self, model):
-        pass
-
-
-class RandomNASTrainer(NASTrainerBase):
-    def __init__(self, budget=2000, *args, **kwargs):
-        super().__init__(*args, budget=budget, **kwargs)
-
-    def fit(self, module: LightningModule):
-        # Presample Population
-
-        # Sample Population
-
-        pass
-
-
 class AgingEvolutionNASTrainer(NASTrainerBase):
     def __init__(
         self,

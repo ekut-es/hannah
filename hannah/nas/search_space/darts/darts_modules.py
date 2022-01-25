@@ -11,21 +11,35 @@ class ReLUConvBN(nn.Module):
         super(ReLUConvBN, self).__init__()
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine))
+            nn.Conv2d(
+                C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False
+            ),
+            nn.BatchNorm2d(C_out, affine=affine),
+        )
 
     def forward(self, x):
         return self.op(x)
 
 
 class DilConv(nn.Module):
-    def __init__(self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True):
+    def __init__(
+        self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True
+    ):
         super(DilConv, self).__init__()
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=C_in, bias=False),
+            nn.Conv2d(
+                C_in,
+                C_in,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=C_in,
+                bias=False,
+            ),
             nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine)
+            nn.BatchNorm2d(C_out, affine=affine),
         )
 
     def forward(self, x):
@@ -37,11 +51,27 @@ class SepConv(nn.Module):
         super(SepConv, self).__init__()
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
+            nn.Conv2d(
+                C_in,
+                C_in,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                groups=C_in,
+                bias=False,
+            ),
             nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
             nn.BatchNorm2d(C_in, affine=affine),
             nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
+            nn.Conv2d(
+                C_in,
+                C_in,
+                kernel_size=kernel_size,
+                stride=1,
+                padding=padding,
+                groups=C_in,
+                bias=False,
+            ),
             nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
             nn.BatchNorm2d(C_out, affine=affine),
         )
@@ -65,8 +95,8 @@ class Zero(nn.Module):
 
     def forward(self, x):
         if self.stride == 1:
-            return x.mul(0.)
-        return x[:, :, ::self.stride, ::self.stride].mul(0.)
+            return x.mul(0.0)
+        return x[:, :, :: self.stride, :: self.stride].mul(0.0)
 
 
 class FactorizedReduce(nn.Module):
@@ -89,7 +119,11 @@ class MixedOp(nn.Module):
     def __init__(self, choice, stride, in_channels, out_channels) -> None:
         super().__init__()
         if choice == 0:
-            self.op = Identity() if stride == 1 else FactorizedReduce(in_channels, out_channels)
+            self.op = (
+                Identity()
+                if stride == 1
+                else FactorizedReduce(in_channels, out_channels)
+            )
         elif choice == 1:
             self.op = Zero(stride=stride)
         elif choice == 2:
@@ -97,15 +131,45 @@ class MixedOp(nn.Module):
         elif choice == 3:
             self.op = nn.AvgPool2d(3, stride, padding=1)
         elif choice == 4:
-            self.op = SepConv(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, affine=False)
+            self.op = SepConv(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                stride=stride,
+                padding=1,
+                affine=False,
+            )
         elif choice == 5:
-            self.op = SepConv(in_channels, out_channels, kernel_size=5, stride=stride, padding=2, affine=False)
+            self.op = SepConv(
+                in_channels,
+                out_channels,
+                kernel_size=5,
+                stride=stride,
+                padding=2,
+                affine=False,
+            )
         elif choice == 6:
-            self.op = DilConv(in_channels, out_channels, kernel_size=3, stride=stride, padding=2, dilation=2, affine=False)
+            self.op = DilConv(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                stride=stride,
+                padding=2,
+                dilation=2,
+                affine=False,
+            )
         elif choice == 7:
-            self.op = DilConv(in_channels, out_channels, kernel_size=5, stride=stride, padding=4, dilation=2, affine=False)
+            self.op = DilConv(
+                in_channels,
+                out_channels,
+                kernel_size=5,
+                stride=stride,
+                padding=4,
+                dilation=2,
+                affine=False,
+            )
         else:
-            raise Exception('Invalid choice')
+            raise Exception("Invalid choice")
 
     def forward(self, *seq):
         out = self.op(seq[0])
@@ -117,14 +181,54 @@ class MixedOpWS(nn.Module):
         super().__init__()
         self.choice = choice
         self.ops = []
-        self.ops.append(Identity() if stride == 1 else FactorizedReduce(in_channels, out_channels))
+        self.ops.append(
+            Identity() if stride == 1 else FactorizedReduce(in_channels, out_channels)
+        )
         self.ops.append(Zero(stride=stride))
         self.ops.append(nn.MaxPool2d(3, stride, padding=1))
         self.ops.append(nn.AvgPool2d(3, stride, padding=1))
-        self.ops.append(SepConv(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, affine=False))
-        self.ops.append(SepConv(in_channels, out_channels, kernel_size=5, stride=stride, padding=2, affine=False))
-        self.ops.append(DilConv(in_channels, out_channels, kernel_size=3, stride=stride, padding=2, dilation=2, affine=False))
-        self.ops.append(DilConv(in_channels, out_channels, kernel_size=5, stride=stride, padding=4, dilation=2, affine=False))
+        self.ops.append(
+            SepConv(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                stride=stride,
+                padding=1,
+                affine=False,
+            )
+        )
+        self.ops.append(
+            SepConv(
+                in_channels,
+                out_channels,
+                kernel_size=5,
+                stride=stride,
+                padding=2,
+                affine=False,
+            )
+        )
+        self.ops.append(
+            DilConv(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                stride=stride,
+                padding=2,
+                dilation=2,
+                affine=False,
+            )
+        )
+        self.ops.append(
+            DilConv(
+                in_channels,
+                out_channels,
+                kernel_size=5,
+                stride=stride,
+                padding=4,
+                dilation=2,
+                affine=False,
+            )
+        )
 
     def forward(self, *seq):
         out = self.ops[self.choice](seq[0])
@@ -149,13 +253,15 @@ class AuxiliaryHeadCIFAR(nn.Module):
         super(AuxiliaryHeadCIFAR, self).__init__()
         self.features = nn.Sequential(
             nn.ReLU(inplace=True),
-            nn.AvgPool2d(5, stride=3, padding=0, count_include_pad=False),  # image size = 2 x 2
+            nn.AvgPool2d(
+                5, stride=3, padding=0, count_include_pad=False
+            ),  # image size = 2 x 2
             nn.Conv2d(C, 128, 1, bias=False),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.Conv2d(128, 768, 2, bias=False),
             # nn.BatchNorm2d(768),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
         self.classifier = nn.Linear(768, num_classes)
 
@@ -193,16 +299,28 @@ class Input(nn.Module):
 
         if self.in_channels != self.out_channels and stride == 1:
             self.relu = nn.ReLU(inplace=False)
-            self.conv = nn.Conv2d(self.in_channels, self.out_channels, 1, stride=1, padding=0, bias=False)
+            self.conv = nn.Conv2d(
+                self.in_channels, self.out_channels, 1, stride=1, padding=0, bias=False
+            )
             self.bn = nn.BatchNorm2d(self.out_channels, affine=True)
         elif stride == 2:
             assert self.out_channels % 2 == 0
             self.relu = nn.ReLU(inplace=False)
             self.conv_1 = nn.Conv2d(
-                self.in_channels, self.out_channels // 2, 1, stride=stride, padding=0, bias=False
+                self.in_channels,
+                self.out_channels // 2,
+                1,
+                stride=stride,
+                padding=0,
+                bias=False,
             )
             self.conv_2 = nn.Conv2d(
-                self.in_channels, self.out_channels // 2, 1, stride=stride, padding=0, bias=False
+                self.in_channels,
+                self.out_channels // 2,
+                1,
+                stride=stride,
+                padding=0,
+                bias=False,
             )
             self.bn = nn.BatchNorm2d(self.out_channels, affine=True)
 
@@ -210,7 +328,7 @@ class Input(nn.Module):
         if self.stride == 2:
             x = self.relu(seq[0])
             if x.shape[2] % 2 == 1 or x.shape[3] % 2 == 1:
-                x = F.pad(x, (0, x.shape[3] % 2, 0, x.shape[2] % 2), 'constant', 0)
+                x = F.pad(x, (0, x.shape[3] % 2, 0, x.shape[2] % 2), "constant", 0)
             out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
             # print('Outshape', out.shape)
             out = self.bn(out)

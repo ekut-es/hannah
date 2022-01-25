@@ -1,4 +1,8 @@
-from hannah.nas.search_space.symbolic_operator import Parameter, SymbolicOperator, Context
+from hannah.nas.search_space.symbolic_operator import (
+    Parameter,
+    SymbolicOperator,
+    Context,
+)
 
 
 def infer_in_channel(parameter: Parameter, op: SymbolicOperator, ctx: Context):
@@ -8,9 +12,9 @@ def infer_in_channel(parameter: Parameter, op: SymbolicOperator, ctx: Context):
 
 # example for modified choice param
 def restricted_stride(parameter: Parameter, op: SymbolicOperator, ctx: Context):
-    padding = op.params['padding'].get(op, ctx)
+    padding = op.params["padding"].get(op, ctx)
     # print("paddong", padding)
-    if padding == 'same':
+    if padding == "same":
         stride = 1
     else:
         # print("P", parameter)
@@ -21,7 +25,7 @@ def restricted_stride(parameter: Parameter, op: SymbolicOperator, ctx: Context):
 
 
 def reduce_channels_by_edge_number(parameter, op, ctx):
-    out_channels = ctx.input.shape[1] / ctx.config['in_edges']
+    out_channels = ctx.input.shape[1] / ctx.config["in_edges"]
     return int(out_channels)
 
 
@@ -31,7 +35,7 @@ def keep_channels(parameter, op, ctx):
 
 
 def multiply_by_stem(parameter, op, ctx):
-    return ctx.input.shape[1] * ctx.config['stem_multiplier']
+    return ctx.input.shape[1] * ctx.config["stem_multiplier"]
 
 
 def double_channels(parameter, op, ctx):
@@ -40,5 +44,5 @@ def double_channels(parameter, op, ctx):
 
 
 def reduce_and_double(parameter, op, ctx):
-    out_channels = ctx.input.shape[1] / ctx.config['in_edges']
+    out_channels = ctx.input.shape[1] / ctx.config["in_edges"]
     return int(out_channels * 2)

@@ -40,10 +40,10 @@ from omegaconf import DictConfig
 class ClassifierModule(LightningModule):
     def __init__(
         self,
-        dataset: DictConfig,
         model: DictConfig,
         optimizer: DictConfig,
         features: DictConfig,
+        dataset: DictConfig = None,
         num_workers: int = 0,
         batch_size: int = 128,
         time_masking: int = 0,
@@ -52,11 +52,13 @@ class ClassifierModule(LightningModule):
         normalizer: Optional[DictConfig] = None,
         export_onnx: bool = False,
         export_relay: bool = False,
-        gpus=None,
+        example_input_array: Optional[torch.Tensor] = None,
+        num_classes: Optional[int] = None,
     ):
         super().__init__()
 
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["model"])
+        self.model = model
         self.msglogger = logging.getLogger()
         self.initialized = False
         self.train_set = None
@@ -65,8 +67,8 @@ class ClassifierModule(LightningModule):
         self.logged_samples = 0
         self.export_onnx = export_onnx
         self.export_relay = export_relay
-        self.gpus = gpus
-        print(dataset.data_folder)
+        self.num_classes = num_classes
+        self.example_input_array = example_input_array
 
     @abstractmethod
     def prepare_data(self):
@@ -79,7 +81,6 @@ class ClassifierModule(LightningModule):
 
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
-
         retval = {}
         retval["optimizer"] = optimizer
 
@@ -101,7 +102,8 @@ class ClassifierModule(LightningModule):
     @property
     def total_training_steps(self) -> int:
         """Total training steps inferred from datamodule and devices."""
-        if self.trainer.max_steps:
+
+        if self.trainer.max_steps > 0:
             return self.trainer.max_steps
 
         limit_batches = self.trainer.limit_train_batches
@@ -220,7 +222,8 @@ class BaseStreamClassifierModule(ClassifierModule):
     def prepare_data(self):
         # get all the necessary data stuff
         if not self.train_set or not self.test_set or not self.dev_set:
-            get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
+            if self.hparams.dataset:
+                get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
 
     def setup(self, stage):
         # TODO stage variable is not used!
@@ -242,20 +245,17 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Create example input
         device = self.device
-        self.example_input_array = self.get_example_input_array()
-        dummy_input = self.example_input_array.to(device)
+        if self.example_input_array is not None:
+            self.example_input_array = self.get_example_input_array()
+        dummy_input = self.example_input_array
+
         logging.info("Example input array shape: %s", str(dummy_input.shape))
-        if platform.machine() == "ppc64le":
-            dummy_input = dummy_input.to("cuda:" + str(self.gpus[0]))
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
-        self.features.to(device)
-        if platform.machine() == "ppc64le":
-            self.features.to("cuda:" + str(self.gpus[0]))
 
         features = self._extract_features(dummy_input)
-        self.example_feature_array = features.to(self.device)
+        self.example_feature_array = features
 
         # Instantiate normalizer
         if self.hparams.normalizer is not None:
@@ -264,7 +264,9 @@ class BaseStreamClassifierModule(ClassifierModule):
             self.normalizer = torch.nn.Identity()
 
         # Instantiate Model
-        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+        if isinstance(self.model, torch.nn.Module):
+            self.model = self.model
+        elif hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,
@@ -360,9 +362,9 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         return loss
 
-    @abstractmethod
-    def train_dataloader(self):
-        pass
+    # @abstractmethod
+    # def train_dataloader(self):
+    #    pass
 
     def get_train_dataloader_by_set(self, train_set):
         train_batch_size = self.hparams["batch_size"]
@@ -532,7 +534,10 @@ class StreamClassifierModule(BaseStreamClassifierModule):
         return len(self.train_set.class_names)
 
     def get_example_input_array(self):
-        return torch.zeros(1, *self.train_set.size())
+        if self.train_set is not None:
+            return torch.zeros(1, *self.train_set.size())
+        else:
+            return self.example_input_array
 
     def train_dataloader(self):
         return self.get_train_dataloader_by_set(self.train_set)
