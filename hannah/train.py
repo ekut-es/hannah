@@ -150,11 +150,11 @@ def train(config: DictConfig):
                 else:
                     test_sum[k] += v
 
-        rank_zero_info("Averaged Test Metrics:")
+    rank_zero_info("Averaged Test Metrics:")
 
-        for k, v in test_sum.items():
-            rank_zero_info(k + " : " + str(v / len(test_output)))
-        rank_zero_info("validation_error : " + str(np.sum(results) / len(results)))
+    for k, v in test_sum.items():
+        rank_zero_info(k + " : " + str(v / len(test_output)))
+    rank_zero_info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]
