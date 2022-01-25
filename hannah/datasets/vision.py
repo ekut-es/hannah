@@ -302,7 +302,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         return class_counts
 
     # retuns a list of enumerated labels from train_val split
-    def get_label_list(self) -> list[int]:
+    def get_label_list(self) -> List[int]:
         data_root = os.path.join(
             self.config.data_folder, "kvasir_capsule", "labelled_images"
         )
