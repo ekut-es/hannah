@@ -22,7 +22,7 @@ from .submodules.elastickernelconv import (
     ElasticQuantConvBnReLu1d,
     ElasticQuantConv1d,
     ConvBnReLu1d,
-    ConvBn1d
+    ConvBn1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -425,6 +425,9 @@ class OFAModel(nn.Module):
         self.last_input = None
         self.skew_sampling_distribution = skew_sampling_distribution
         self.validation_model = None
+        self.elastic_kernels = True
+        self.elastic_depth = True
+        self.elastic_width = True
 
         self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
@@ -455,8 +458,8 @@ class OFAModel(nn.Module):
                 ElasticConvBnReLu1d,
                 ElasticQuantConv1d,
                 ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d
-            )
+                ElasticQuantConvBnReLu1d,
+            ),
         )
         self.elastic_kernel_convs = []
         for item in all_elastic_kernel_convs:
@@ -530,29 +533,32 @@ class OFAModel(nn.Module):
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
         state = {"depth_step": 0, "kernel_steps": [], "width_steps": []}
-        # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
-        new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
-        self.active_depth = self.max_depth - new_depth_step
-        state["depth_step"] = new_depth_step
+        if self.elastic_depth:
+            # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
+            new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
+            self.active_depth = self.max_depth - new_depth_step
+            state["depth_step"] = new_depth_step
 
-        for conv in self.elastic_kernel_convs:
-            # pick an available kernel index for every elastic kernel conv, independently.
-            max_available_sampling_step = min(
-                self.sampling_max_kernel_step + 1, conv.get_available_kernel_steps()
-            )
-            new_kernel_step = self.get_random_step(max_available_sampling_step)
-            conv.pick_kernel_index(new_kernel_step)
-            state["kernel_steps"].append(new_kernel_step)
+        if self.elastic_kernels:
+            for conv in self.elastic_kernel_convs:
+                # pick an available kernel index for every elastic kernel conv, independently.
+                max_available_sampling_step = min(
+                    self.sampling_max_kernel_step + 1, conv.get_available_kernel_steps()
+                )
+                new_kernel_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_kernel_index(new_kernel_step)
+                state["kernel_steps"].append(new_kernel_step)
 
-        """for helper in self.elastic_channel_helpers:
-            # pick an available width step for every elastic channel helper, independently.
-            max_available_sampling_step = min(
-                self.sampling_max_width_step + 1, helper.get_available_width_steps()
-            )
-            new_width_step = self.get_random_step(max_available_sampling_step)
-            helper.set_channel_step(new_width_step)
-            state["width_steps"].append(new_width_step)
-        """
+        if self.elastic_width:
+            for helper in self.elastic_channel_helpers:
+                # pick an available width step for every elastic channel helper, independently.
+                max_available_sampling_step = min(
+                    self.sampling_max_width_step + 1, helper.get_available_width_steps()
+                )
+                new_width_step = self.get_random_step(max_available_sampling_step)
+                helper.set_channel_step(new_width_step)
+                state["width_steps"].append(new_width_step)
+
         return state
 
     # get a step, with distribution biased towards taking less steps, if skew distribution is enabled.

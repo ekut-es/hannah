@@ -276,6 +276,9 @@ class OFANasTrainer(NASTrainerBase):
         self.kernel_step_count = ofa_model.ofa_steps_kernel
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
+        ofa_model.elastic_kernels = self.elastic_kernels
+        ofa_model.elastic_depth = self.elastic_depth
+        ofa_model.elastic_width = self.elastic_width
 
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
@@ -396,7 +399,7 @@ class OFANasTrainer(NASTrainerBase):
                         self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
                         self.submodel_metrics_csv += "\n"
                         # print(validation_results)
-        else:
+        elif self.elastic_depth:
             model.reset_all_kernel_sizes()
             for current_kernel_step in range(self.kernel_step_count):
                 if current_kernel_step > 0:
@@ -429,6 +432,28 @@ class OFANasTrainer(NASTrainerBase):
                     self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
                     self.submodel_metrics_csv += "\n"
                     # print(validation_results)
+        else:
+            model.reset_all_kernel_sizes()
+            model.reset_active_depth()
+            for current_kernel_step in range(self.kernel_step_count):
+                if current_kernel_step > 0:
+                    # iteration 0 is the full model with no stepping
+                    model.step_down_all_kernels()
+
+                self.rebuild_trainer(f"Eval K {current_kernel_step}")
+                logging.info(f"OFA validating Kernel {current_kernel_step}")
+
+                model.build_validation_model()
+                validation_results = self.trainer.validate(
+                    lightning_model, ckpt_path=None, verbose=True
+                )
+                # self.submodel_metrics[current_width_step][current_kernel_step][current_depth_step] = validation_results[0]
+                self.submodel_metrics_csv += f"{current_kernel_step}, "
+                results = validation_results[0]
+                torch_params = model.get_validation_model_weight_count()
+                self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
+                self.submodel_metrics_csv += "\n"
+                # print(validation_results)
 
         # sample a few random combinations
         prev_max_kernel = model.sampling_max_kernel_step
