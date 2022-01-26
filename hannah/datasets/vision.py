@@ -312,5 +312,6 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         ]
         return label_list
 
+    @property
     def class_names_abbreviated(self) -> List[str]:
         return [cn[0:3] for cn in self.class_names]
