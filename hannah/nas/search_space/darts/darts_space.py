@@ -1,4 +1,3 @@
-from fileinput import filename
 from hannah.nas.search_space.symbolic_operator import (
     SymbolicOperator,
     Choice,
@@ -28,7 +27,6 @@ from hannah.nas.search_space.darts.darts_modules import (
     Input,
 )
 from copy import deepcopy
-import os
 
 
 class DARTSSpace(Space):
@@ -142,7 +140,7 @@ class DARTSSpace(Space):
             elif n in range(2, 6):
                 mapping[n] = SymbolicOperator("add_{}_red".format(n), Add)
             elif n == 6:
-                mapping[n] = SymbolicOperator("out", Concat)
+                mapping[n] = SymbolicOperator("out_red", Concat)
             elif isinstance(n, tuple) and n[0] in [0, 1]:
                 mapping[n] = SymbolicOperator(
                     "mixed_op_{}_red".format(n),
@@ -261,7 +259,7 @@ class DARTSSpace(Space):
 
 def get_space_and_instance(cfg):
     space = DARTSSpace(
-        num_cells=20,
+        num_cells=12,
         reduction_cells=[
             i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]
         ],
@@ -273,7 +271,7 @@ def get_space_and_instance(cfg):
 
 
 if __name__ == "__main__":
-    num_cells = 20
+    num_cells = 8
     reduction_cells = [
         i for i in range(num_cells) if i in [num_cells // 3, 2 * num_cells // 3]
     ]
