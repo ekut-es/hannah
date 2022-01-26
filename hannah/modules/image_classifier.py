@@ -5,6 +5,10 @@ import torch.nn.functional as F
 import torch.utils.data as data
 
 from torchmetrics.functional import accuracy
+from torchmetrics.functional import precision
+from torchmetrics.functional import recall
+from torchmetrics.functional import f1
+
 from hydra.utils import instantiate, get_class
 from torchmetrics import ConfusionMatrix
 from ..utils import set_deterministic
@@ -60,7 +64,12 @@ class ImageClassifierModule(ClassifierModule):
         if shuffle:
             sampler_type = dataset_conf.get("sampler", "random")
             if sampler_type == "weighted":
-                sampler = self.get_balancing_sampler(dataset)
+                if self.hparams.dataset.default_weights:
+                    sampler = self.get_balancing_sampler_with_weights(
+                        dataset, self.hparams.dataset.weights
+                    )
+                else:
+                    sampler = self.get_balancing_sampler(dataset)
             else:
                 sampler = data.RandomSampler(dataset)
 
@@ -91,26 +100,14 @@ class ImageClassifierModule(ClassifierModule):
                     logger.experiment.add_image(f"input{batch_idx}", images)
 
         logits = self(x)
-        loss = F.cross_entropy(
-            logits,
-            y.squeeze()  # ,
-            # weight=torch.tensor(
-            #     [
-            #         0.0285,
-            #         1.0000,
-            #         0.1068,
-            #         0.1667,
-            #         0.0373,
-            #         0.0196,
-            #         0.0982,
-            #         0.0014,
-            #         0.0235,
-            #         0.0236,
-            #         0.0809,
-            #     ],
-            #     device=self.device,
-            # ),
-        )
+        if self.hparams.dataset.weighted_loss:
+            loss = F.cross_entropy(
+                logits,
+                y.squeeze(),
+                weight=torch.tensor(self.hparams.dataset.weights, device=self.device),
+            )
+        else:
+            loss = F.cross_entropy(logits, y.squeeze())
         self.log("train_loss", loss)
 
         return loss
@@ -118,7 +115,14 @@ class ImageClassifierModule(ClassifierModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
-        loss = F.cross_entropy(logits, y.squeeze())
+        if self.hparams.dataset.weighted_loss:
+            loss = F.cross_entropy(
+                logits,
+                y.squeeze(),
+                weight=torch.tensor(self.hparams.dataset.weights, device=self.device),
+            )
+        else:
+            loss = F.cross_entropy(logits, y.squeeze())
         preds = torch.argmax(logits, dim=1)
         acc = accuracy(preds, y.squeeze())
 
@@ -129,17 +133,40 @@ class ImageClassifierModule(ClassifierModule):
     def test_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
-        loss = F.cross_entropy(logits, y.squeeze())
+        if self.hparams.dataset.weighted_loss:
+            loss = F.cross_entropy(
+                logits,
+                y.squeeze(),
+                weight=torch.tensor(self.hparams.dataset.weights, device=self.device),
+            )
+        else:
+            loss = F.cross_entropy(logits, y.squeeze())
         preds = torch.argmax(logits, dim=1)
-        softmax = F.softmax(logits)
+        softmax = F.softmax(logits, dim=1)
         acc = accuracy(preds, y.squeeze())
 
         with set_deterministic(False):
             self.test_confusion(preds, y)
+        preds = preds.to("cpu")
+        y = y.to("cpu")
 
+        precision_micro = precision(preds, y)
+        recall_micro = recall(preds, y)
+        f1_micro = f1(preds, y)
+        precision_macro = precision(
+            preds, y, num_classes=self.num_classes, average="macro"
+        )
+        recall_macro = recall(preds, y, num_classes=self.num_classes, average="macro")
+        f1_macro = f1(preds, y, num_classes=self.num_classes, average="macro")
         self.log("test_loss", loss)
         self.log("test_error", 1 - acc)
         self.log("test_accuracy", acc)
+        self.log("test_precesion_micro", precision_micro)
+        self.log("test_recall_micro", recall_micro)
+        self.log("test_f1_micro", f1_micro)
+        self.log("test_precesion_macro", precision_macro)
+        self.log("test_recall_macro", recall_macro)
+        self.log("test_f1_macro", f1_macro)
 
     def train_dataloader(self):
         return self._get_dataloader(self.train_set, shuffle=True)
