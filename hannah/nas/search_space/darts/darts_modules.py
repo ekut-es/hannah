@@ -180,7 +180,7 @@ class MixedOpWS(nn.Module):
     def __init__(self, choice, stride, in_channels, out_channels) -> None:
         super().__init__()
         self.choice = choice
-        self.ops = []
+        self.ops = nn.ModuleList()
         self.ops.append(
             Identity() if stride == 1 else FactorizedReduce(in_channels, out_channels)
         )
