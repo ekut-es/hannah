@@ -296,6 +296,7 @@ class OFANasTrainer(NASTrainerBase):
         self.trainer.fit(model)
         ckpt_path = "best"
         self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
+        ofa_model.on_warmup_end()
         logging.info("OFA completed warm-up.")
         if self.elastic_kernels == True:
             # train elastic kernels

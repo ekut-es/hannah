@@ -606,6 +606,11 @@ class OFAModel(nn.Module):
         else:
             return self.extract_elastic_depth_sequence(self.active_depth)
 
+    def on_warmup_end(self):
+        for element in self.elastic_kernel_convs:
+            if hasattr(element, "on_warmup_end"):
+                element.on_warmup_end()
+
     # accept a state dict like the one returned in get_max_submodel_steps, sets model state.
     def set_submodel(self, state: dict):
         try:

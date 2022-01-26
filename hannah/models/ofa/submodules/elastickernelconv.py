@@ -46,7 +46,7 @@ class _ElasticConvBnNd(
         qconfig=None,
         dim=1,
         out_quant=True,
-        track_running_stats=False,
+        track_running_stats=True,
     ):
         # sort available kernel sizes from largest to smallest (descending order)
         kernel_sizes.sort(reverse=True)
@@ -77,7 +77,15 @@ class _ElasticConvBnNd(
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
         self.freeze_bn = freeze_bn if self.training else True
-        self.bn = ElasticWidthBatchnorm1d(out_channels, track_running_stats)
+        self.bn = nn.ModuleList()
+        self.bn.append(
+            nn.BatchNorm1d(
+                out_channels,
+                eps=eps,
+                momentum=momentum,
+                track_running_stats=track_running_stats,
+            )
+        )
 
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
@@ -133,13 +141,19 @@ class _ElasticConvBnNd(
         else:
             self.freeze_bn_stats()
 
+    def on_warmup_end(self):
+        for i in range(len(self.kernel_sizes) - 1):
+            self.bn.append(copy.deepcopy(self.bn[0]))
+
     def reset_running_stats(self):
-        self.bn.reset_running_stats()
+        for idx in range(len(self.bn)):
+            self.bn[idx].reset_running_stats()
 
     def reset_bn_parameters(self):
-        self.bn.reset_running_stats()
-        init.uniform_(self.bn.weight)
-        init.zeros_(self.bn.bias)
+        for idx in range(len(self.bn)):
+            self.bn[idx].reset_running_stats()
+            init.uniform_(self.bn[idx].weight)
+            init.zeros_(self.bn[idx].bias)
         # note: below is actully for conv, not BN
         if self.bias is not None:
             fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
@@ -151,18 +165,23 @@ class _ElasticConvBnNd(
 
     def update_bn_stats(self):
         self.freeze_bn = False
-        self.bn.training = True
+        for idx in range(len(self.bn) - 1):
+            self.bn[idx].training = True
         return self
 
     def freeze_bn_stats(self):
         self.freeze_bn = True
-        self.bn.training = False
+        for idx in range(len(self.bn) - 1):
+            self.bn[idx].training = False
         return self
 
     @property
     def scale_factor(self):
-        running_std = torch.sqrt(self.bn.running_var + self.bn.eps)
-        scale_factor = self.bn.weight / running_std
+        running_std = torch.sqrt(
+            self.bn[self.target_kernel_index].running_var
+            + self.bn[self.target_kernel_index].eps
+        )
+        scale_factor = self.bn[self.target_kernel_index].weight / running_std
 
         return scale_factor
 
@@ -199,14 +218,15 @@ class _ElasticConvBnNd(
             conv_orig = conv / scale_factor.reshape(bias_shape)
             if self.bias is not None:
                 conv_orig = conv_orig + self.bias.reshape(bias_shape)
-            conv = self.bn(conv_orig)
+            conv = self.bn[self.target_kernel_index](conv_orig)
             # conv = conv - (self.bn.bias - self.bn.running_mean).reshape(bias_shape)
         else:
             bias = zero_bias
             if self.bias is not None:
                 _, bias = self.get_kernel()
             bias = self.bias_fake_quant(
-                (bias - self.bn.running_mean) * scale_factor + self.bn.bias
+                (bias - self.bn[self.target_kernel_index].running_mean) * scale_factor
+                + self.bn[self.target_kernel_index].bias
             ).reshape(bias_shape)
             conv = conv + bias
 
@@ -742,6 +762,7 @@ class ElasticConv1d(ElasticBase1d):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
 
+
 class ElasticConvBn1d(ElasticConv1d):
     def __init__(
         self,
@@ -818,8 +839,7 @@ class ElasticConvBn1d(ElasticConv1d):
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
         self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return self.bn(super(ElasticConvBn1d, self).forward(input)
-        )
+        return self.bn(super(ElasticConvBn1d, self).forward(input))
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
@@ -1133,7 +1153,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             bias=bias,
             qconfig=qconfig,
         )
-        self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
+        # self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
         self.qconfig = qconfig
@@ -1195,18 +1215,18 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             self.dilation,
             self.groups,
             bias,
-            eps=self.bn.eps,
-            momentum=self.bn.momentum,
+            eps=self.bn[self.target_kernel_index].eps,
+            momentum=self.bn[self.target_kernel_index].momentum,
             qconfig=self.qconfig,
             out_quant=self.out_quant,
         )
         new_conv.weight.data = kernel
         new_conv.bias = bias
 
-        new_conv.bn.weight = self.bn.weight
-        new_conv.bn.bias = self.bn.bias
-        new_conv.bn.running_var = self.bn.running_var
-        new_conv.bn.running_mean = self.bn.running_mean
+        new_conv.bn.weight = self.bn[self.target_kernel_index].weight
+        new_conv.bn.bias = self.bn[self.target_kernel_index].bias
+        new_conv.bn.running_var = self.bn[self.target_kernel_index].running_var
+        new_conv.bn.running_mean = self.bn[self.target_kernel_index].running_mean
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
@@ -1258,7 +1278,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             bias=bias,
             qconfig=qconfig,
         )
-        self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
+        # self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
         self.in_channel_filter = [True] * self.in_channels
         self.out_channel_filter = [True] * self.out_channels
         self.qconfig = qconfig
@@ -1317,18 +1337,18 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             self.dilation,
             self.groups,
             bias,
-            eps=self.bn.eps,
-            momentum=self.bn.momentum,
+            eps=self.bn[self.target_kernel_index].eps,
+            momentum=self.bn[self.target_kernel_index].momentum,
             qconfig=self.qconfig,
             out_quant=self.out_quant,
         )
         new_conv.weight.data = kernel
         new_conv.bias = bias
 
-        new_conv.bn.weight = self.bn.weight
-        new_conv.bn.bias = self.bn.bias
-        new_conv.bn.running_var = self.bn.running_var
-        new_conv.bn.running_mean = self.bn.running_mean
+        new_conv.bn.weight = self.bn[self.target_kernel_index].weight
+        new_conv.bn.bias = self.bn[self.target_kernel_index].bias
+        new_conv.bn.running_var = self.bn[self.target_kernel_index].running_var
+        new_conv.bn.running_mean = self.bn[self.target_kernel_index].running_mean
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
@@ -1337,8 +1357,6 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
     def assemble_basic_conv1d(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
 
-    def assemble_basic_batchnorm1d(self):
-        return self.bn.assemble_basic_batchnorm1d()
 
 class ConvBn1d(nn.Conv1d):
     def __init__(
