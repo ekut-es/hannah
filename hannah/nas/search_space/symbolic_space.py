@@ -1,7 +1,6 @@
 import networkx as nx
 import torch.nn as nn
 import traceback
-from copy import deepcopy
 
 
 class Space(nx.DiGraph):
