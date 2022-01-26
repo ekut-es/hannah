@@ -1,5 +1,3 @@
-
-
 _target_: pytorch_lightning.trainer.Trainer
 gpus: 1
 auto_select_gpus: True
@@ -16,7 +14,5 @@ gradient_clip_val: 0
 stochastic_weight_avg: false
 auto_scale_batch_size: null
 accumulate_grad_batches: 1
-log_gpu_memory: False
-plugins: ""
-precision: 32
-reload_dataloaders_every_n_epochs: 1
+plugins: null
+reload_dataloaders_every_n_epochs: 0

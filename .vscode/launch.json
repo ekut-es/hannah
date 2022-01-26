@@ -4,6 +4,8 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
+
         {
             "name": "standard",
             "type": "python",
@@ -25,6 +27,20 @@
                 "nas_ofa",
                 "trainer.gpus=[0]",
                 "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "multi_gpu",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "trainer.gpus=[0,1]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.limit_val_batches=0.1",
+                "trainer.limit_test_batches=0.1",
+                "trainer.max_epochs=3",
+                "+trainer.strategy='ddp_spawn'"
             ]
         },
         {
