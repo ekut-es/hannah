@@ -13,14 +13,9 @@ class RandomSearchTask(SearchTask):
     def __init__(self, budget=2000, *args, **kwargs):
         super().__init__(*args, budget=budget, **kwargs)
 
-    def fit(self, module: LightningModule, train_set, val_set):
-        trainer = pytorch_lightning.Trainer(gpus=0, max_steps=100)
-
-        trainer.fit(
-            module,
-            train_dataloaders=torch.utils.data.DataLoader(train_set, batch_size=32),
-            val_dataloaders=[torch.utils.data.DataLoader(val_set, batch_size=32)],
-        )
+    def fit(self, module: LightningModule):
+        trainer = pytorch_lightning.Trainer(gpus=1)
+        trainer.fit(module)
 
     def run(self):
 
@@ -38,6 +33,7 @@ class RandomSearchTask(SearchTask):
             module = instantiate(
                 self.config.module,
                 model=model,
+                dataset=self.config.dataset,
                 optimizer=self.config.optimizer,
                 features=self.config.features,
                 normalizer=self.config.get("normalizer", None),
@@ -46,4 +42,4 @@ class RandomSearchTask(SearchTask):
                 num_classes=len(train_set.class_names),
                 _recursive_=False,
             )
-            self.fit(module, train_set, val_set)
+            self.fit(module)
