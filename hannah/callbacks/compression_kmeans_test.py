@@ -12,6 +12,19 @@ from sklearn.cluster import KMeans
 from scipy.sparse import csr_matrix, csc_matrix
 from sklearn.metrics import pairwise_distances_argmin_min
 
+def clustering(params):
+    sparse_matrix = csr_matrix(params)
+    max_value = max(sparse_matrix.data)
+    min_value = min(sparse_matrix.data)
+    range_cluster = np.linspace(min_value, max_value, num=10)
+
+    # KMeans applied to each layer 
+    kmeans = KMeans(n_clusters=len(range_cluster), n_init=1, init='k-means++', algorithm="full", random_state=1234)
+    kmeans.fit(sparse_matrix.reshape(-1,1))
+    centers = kmeans.cluster_centers_.reshape(-1)
+    return centers
+
+
 class CompressionHuff(Callback):
     def __init__(self, compress_after):
         self.compress_after = compress_after
@@ -81,22 +94,11 @@ class CompressionHuff(Callback):
             pl_module.to(device=device) # otherwise cuda error
 
             device = pl_module.device
-            c = []
-            #### Testing kmeans clustering ###
-            for name, module in pl_module.named_modules():
+            for module in pl_module.modules():
                 if hasattr(module, "weight") and module.weight != None:
-                    #print(name)
                     params = module.weight.data.cpu().numpy().flatten()
-                    sparse_matrix = csr_matrix(params)
-                    max_value = max(sparse_matrix.data)
-                    min_value = min(sparse_matrix.data)
-                    range_cluster = np.linspace(min_value, max_value, num=5)
+                    centers = clustering(params)
 
-                    # KMeans applied to each layer #init=range_cluster.reshape(-1,1)
-                    kmeans = KMeans(n_clusters=len(range_cluster), init='k-means++', n_init=1, algorithm="full", random_state=1234)
-                    kmeans.fit(sparse_matrix.reshape(-1,1))
-                    centers = kmeans.cluster_centers_.reshape(-1)
-                    c.extend(centers)
                     # Returns center that is closest to given value x
                     def replace_values_by_centers(x):
                         i = (np.abs(centers - x)).argmin() 
@@ -105,7 +107,6 @@ class CompressionHuff(Callback):
                     module.to(device=device) # move from cpu to gpu
                     #centers = np.unique(module.weight.data.cpu().numpy().flatten(), return_counts=False)
                     #print(centers)
-                    #print(module.weight)
 
 
             # Perform KMeans clustering again on all center coordinates
@@ -127,25 +128,18 @@ class CompressionHuff(Callback):
 
     def on_epoch_end(self, trainer, pl_module):
         print(trainer.callback_metrics['val_accuracy'].item())
-        if (trainer.callback_metrics['val_accuracy'].item() > 0.9 ) and (trainer.current_epoch % 4 == 0):
+        if trainer.current_epoch % 2 == 0: #if (trainer.callback_metrics['val_accuracy'].item() > 0.92) and (trainer.current_epoch % 3 == 0):
             print('Clustering.')
-        #if trainer.current_epoch % 4 == 0: #if trainer.current_epoch == self.compress_after-2:#if trainer.current_epoch >= self.compress_after-2: #
             device = pl_module.device
-            c = []
-            #### Testing kmeans clustering ###
             for module in pl_module.modules():
                 if hasattr(module, "weight") and module.weight != None:
                     w = module.weight.data.cpu().numpy().flatten()
-                    m = csr_matrix(w) 
-                    min_value = min(m.data)
-                    max_value = max(m.data)
-                    range_cluster = np.linspace(min_value, max_value, num=5)
-                    kmeans = KMeans(n_clusters=len(range_cluster), init='k-means++', n_init=1, algorithm="full", random_state=1234)
-                    kmeans.fit(m.data.reshape(-1,1))
-                    centers = kmeans.cluster_centers_.reshape(-1)
-                    c.extend(centers)
+                    centers = clustering(w)
                     def replace_values_by_centers(x):
                         i = (np.abs(centers - x)).argmin() 
                         return centers[i] # returns center that is closest to given value x
                     module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers) #_ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                     module.to(device=device) # move from cpu to gpu
+
+
+                
