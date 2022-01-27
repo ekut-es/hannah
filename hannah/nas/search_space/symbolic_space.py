@@ -75,27 +75,27 @@ class Instance(nn.Module):
         self.nodes = nn.ModuleList([n for n in graph.nodes])
 
     def forward(self, x):
-        outputs = {}
+        self.outputs = {}
 
         def _compute(node, input):
             in_edges = self.graph.in_edges(node)
             if len(in_edges) > 0:
                 args = []
                 for u, v in in_edges:
-                    if u not in outputs:
+                    if u not in self.outputs:
                         args.append(_compute(u, input))
                     else:
-                        args.append(outputs[u])
+                        args.append(self.outputs[u])
                 if len(args) == 1:
                     args = args[0]
                 try:
                     out = node(args)
-                    outputs[node] = out
+                    self.outputs[node] = out
                 except Exception as e:
                     print(str(e))
             else:
                 out = node(input)
-                outputs[node] = out
+                self.outputs[node] = out
             return out
 
         last = list(nx.topological_sort(self.graph))[-1]
