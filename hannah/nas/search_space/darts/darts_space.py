@@ -1,4 +1,5 @@
 from hannah.nas.search_space.symbolic_operator import (
+    FloatRangeVector,
     SymbolicOperator,
     Choice,
     Variable,
@@ -19,7 +20,7 @@ import numpy as np
 from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.connectivity_constrainer import DARTSCell
 from hannah.nas.search_space.modules import Add, Concat
-from hannah.nas.search_space.utils import generate_cfg_file
+# from hannah.nas.search_space.utils import generate_cfg_file
 from hannah.nas.search_space.darts.darts_modules import (
     MixedOpWS,
     Classifier,
@@ -31,7 +32,7 @@ from copy import deepcopy
 
 class DARTSSpace(Space):
     def __init__(
-        self, num_cells=3, reduction_cells=[1], in_edges=[4], stem_multiplier=[4]
+        self, num_cells=3, reduction_cells=[1], in_edges=[4], stem_multiplier=[4], weight_sharing=True
     ):
         super().__init__()
 
@@ -63,7 +64,8 @@ class DARTSSpace(Space):
         )  # Same as above but with DARTS specific channel doubeling in red.-cells
         stride1 = Constant("stride", 1)
         stride2 = Constant("stride", 2)
-        choice = Choice("choice", 0, 1, 2, 3, 4, 5, 6, 7)
+        # choice = Choice("choice", 0, 1, 2, 3, 4, 5, 6, 7)
+        alphas = FloatRangeVector('alphas', 0, 1, 8)
 
         # Define connectivity of graph
         # This could be any graph and is not really necessary, its basically just offloading the
@@ -103,7 +105,7 @@ class DARTSSpace(Space):
                 mapping[n] = SymbolicOperator(
                     "mixed_op_{}".format(n),
                     MixedOpWS,
-                    choice=choice,
+                    alphas=alphas,
                     in_channels=in_channels,
                     out_channels=out_channels,
                     stride=stride1,
@@ -145,7 +147,7 @@ class DARTSSpace(Space):
                 mapping[n] = SymbolicOperator(
                     "mixed_op_{}_red".format(n),
                     MixedOpWS,
-                    choice=choice,
+                    alphas=alphas,
                     in_channels=in_channels,
                     out_channels=out_channels,
                     stride=stride2,
@@ -154,7 +156,7 @@ class DARTSSpace(Space):
                 mapping[n] = SymbolicOperator(
                     "mixed_op_{}_red".format(n),
                     MixedOpWS,
-                    choice=choice,
+                    alphas=alphas,
                     in_channels=in_channels,
                     out_channels=out_channels,
                     stride=stride1,
@@ -230,6 +232,7 @@ class DARTSSpace(Space):
             cfg.update({k: v})
         return cfg
 
+    # TODO: Simplify and maybe move to other symbolic_space.py
     def get_random_cfg(self, cfg_dims):
         """ Create random config
 
@@ -243,7 +246,11 @@ class DARTSSpace(Space):
             if isinstance(v, dict):
                 cfg[k] = {}
                 for k_, v_ in v.items():
-                    cfg[k][k_] = int(np.random.choice(v_))
+                    if isinstance(v_, list):
+                        cfg[k][k_] = int(np.random.choice(v_))
+                    elif isinstance(v_, dict) and 'min' in v_ and 'size':
+                        cfg[k][k_] = np.random.uniform(v_['min'], v_['max'], v_['size'])
+                        np.random.uniform()
             else:
                 cfg[k] = int(np.random.choice(v))
         return cfg
@@ -281,9 +288,9 @@ if __name__ == "__main__":
     # if not os.path.isfile(file_name):
     #     generate_cfg_file(cfg_dims, file_name)
     cfg = space.get_random_cfg(cfg_dims)
-    generate_cfg_file(
-        cfg, "./hannah/nas/search_space/examples/darts/random_darts_model.yaml"
-    )
+    # generate_cfg_file(
+    #     cfg, "./hannah/nas/search_space/examples/darts/random_darts_model.yaml"
+    # )
     ctx = Context(config=cfg)
     input = torch.ones([1, 3, 32, 32])
     instance, out1 = space.infer_parameters(input, ctx)

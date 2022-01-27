@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
+import traceback
 
 # Taken from DARTS :
 # https://github.com/quark0/darts/blob/master/cnn/operations.py
@@ -177,9 +178,9 @@ class MixedOp(nn.Module):
 
 
 class MixedOpWS(nn.Module):
-    def __init__(self, choice, stride, in_channels, out_channels) -> None:
+    def __init__(self, alphas, stride, in_channels, out_channels) -> None:
         super().__init__()
-        self.choice = choice
+        self.alphas = alphas
         self.ops = nn.ModuleList()
         self.ops.append(
             Identity() if stride == 1 else FactorizedReduce(in_channels, out_channels)
@@ -229,9 +230,22 @@ class MixedOpWS(nn.Module):
                 affine=False,
             )
         )
+        assert len(self.ops) == len(self.alphas)
 
     def forward(self, *seq):
-        out = self.ops[self.choice](seq[0])
+        softmaxed_alphas = F.softmax(torch.tensor(self.alphas), dim=0)
+        out = None
+        try:
+            for i, op in enumerate(self.ops):
+                if out is None:
+                    out = softmaxed_alphas[i] * op(seq[0])
+                else:
+                    out += softmaxed_alphas[i] * op(seq[0])
+        except Exception as e:
+            print(str(e))
+            print(traceback.format_exc())
+
+            print("Error")
         return out
 
 

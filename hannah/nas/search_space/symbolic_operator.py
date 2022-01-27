@@ -1,5 +1,6 @@
 from copy import deepcopy
 from abc import ABC
+import numpy as np
 
 
 class SymbolicOperator:
@@ -77,6 +78,36 @@ class Constant(Parameter):
 
     def get(self, mod, ctx):
         return self.value
+
+
+class FloatRange(Parameter):
+    def __init__(self, name, min, max) -> None:
+        self.name = name
+        self.min = min
+        self.max = max
+        super().__init__(name)
+
+
+class FloatRangeVector(Parameter):
+    def __init__(self, name, min, max, size, init=None) -> None:
+        assert max >= min
+        self.name = name
+        self.min = min
+        self.max = max
+        self.size = size
+        if init:
+            self.value = init
+        else:
+            self.value = np.ones(self.size) * (self.min + ((self.max - self.min) / 2))
+        super().__init__(name)
+
+    def get(self, mod, ctx):
+        val = ctx.config.get(mod.name).get(self.name)
+        # val = np.clip(val, self.min, self.max)
+        return val
+
+    def get_config_dims(self):
+        return {'min': self.min, 'max': self.max, 'size': self.size}
 
 
 class Context:
