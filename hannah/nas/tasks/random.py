@@ -1,12 +1,9 @@
 import torch
-import pytorch_lightning
 
 from .base import SearchTask
 
 from pytorch_lightning import LightningModule
 from hydra.utils import instantiate, get_class
-
-from hannah.datasets.base import ctc_collate_fn
 
 
 class RandomSearchTask(SearchTask):
@@ -14,7 +11,7 @@ class RandomSearchTask(SearchTask):
         super().__init__(*args, budget=budget, **kwargs)
 
     def fit(self, module: LightningModule):
-        trainer = pytorch_lightning.Trainer(gpus=1)
+        trainer = instantiate(self.config.trainer)
         trainer.fit(module)
 
     def run(self):
