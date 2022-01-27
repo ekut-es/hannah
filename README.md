@@ -149,6 +149,13 @@ Training of PAMAP2 human activity detection dataset is invoked by:
 
     hannah-train -cn config_activity
 
+## Training - Emergency Siren Dataset
+
+Training of emergency siren detection dataset is invoked by:
+
+    hannah-train -cn config_siren_detection
+
+
 # Parallel Launchers
 
 To launch multiple optimizations in parallel you can use a hydra launcher

@@ -2,17 +2,14 @@
 
 data_folder: ${hydra:runtime.cwd}/datasets/
 cls: hannah.datasets.emergency.EmergencySirenDataset
-dataset: emergency_siren
+dataset: siren
 
 test_pct: 0.1
 dev_pct: 0.1
 
 
-input_length: 410000
-samplingrate: 41000
+input_length: 160000
+samplingrate: 16000
 
 clear_download: False
-variants: ["emergency_siren"]
-data_split: []
-noise_dataset: []
 download_folder: ${dataset.data_folder}/downloads

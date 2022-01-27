@@ -57,8 +57,32 @@ class EmergencySirenDataset(AbstractDataset):
 
     @classmethod
     def prepare(cls, config):
-        #cls.prepare_data(config)
-        pass
+        cls.download(config)
+
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+        target_folder = os.path.join(data_folder, "siren_detection")
+
+        if os.path.isdir(target_folder):
+            return
+
+        if not os.path.isdir(downloadfolder_tmp):
+            os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
+
+        extract_from_download_cache(
+                "siren_detection.tar.gz",
+                "https://atreus.informatik.uni-tuebingen.de/seafile/f/239614bc48604cb1bf1c/?dl=1",
+                cached_files,
+                os.path.join(downloadfolder_tmp, "siren_detection"),
+                target_folder,
+                clear_download=clear_download,
+            )
 
     def get_class(self, index):
         return [self.audio_labels[index]]
@@ -87,7 +111,7 @@ class EmergencySirenDataset(AbstractDataset):
 
         path = self.audio_files[index]
 
-        data = load_audio(path)
+        data = load_audio(path, sr=self.samplingrate)
 
         data = torch.from_numpy(data)
 
@@ -102,7 +126,7 @@ class EmergencySirenDataset(AbstractDataset):
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
 
-        folder = os.path.join(config["data_folder"], "siren_detection")
+        folder = os.path.join(config["data_folder"], "siren_detection", "siren_detection")
 
         train_files = dict()
         test_files = dict()

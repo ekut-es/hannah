@@ -1,5 +1,5 @@
 defaults:
-    - dataset: emergency_siren
+    - dataset: siren
     - model: tc-res8
     - scheduler: 1cycle
     - optimizer: adamw
