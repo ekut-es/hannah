@@ -1,27 +1,12 @@
 import os
 import random
-import logging
-import os
 import torch
 
 from collections import defaultdict
 
-from .speech import _load_audio
+from .speech import load_audio
 from .base import AbstractDataset, DatasetType
 from ..utils import list_all_files, extract_from_download_cache
-
-from joblib import Memory
-
-msglogger = logging.getLogger()
-
-CACHE_DIR = os.getenv("HANNAH_CACHE_DIR", None)
-
-if CACHE_DIR:
-    CACHE_SIZE = os.getenv("HANNAH_CACHE_SIZE", None)
-    cache = Memory(location=CACHE_DIR, bytes_limit=CACHE_SIZE, verbose=0)
-    load_audio = cache.cache(_load_audio)
-else:
-    load_audio = _load_audio
 
 
 class EmergencySirenDataset(AbstractDataset):
@@ -46,14 +31,16 @@ class EmergencySirenDataset(AbstractDataset):
     def class_labels(cls):
         return ["ambient", "siren"]
 
-
     @property
     def class_names(self):
         return self.class_labels()
 
     @property
     def class_counts(self):
-        return len(self.class_names())
+        counts = defaultdict(int)
+        for label in self.audio_labels:
+            counts[label] += 1
+        return counts
 
     @classmethod
     def prepare(cls, config):
@@ -84,29 +71,11 @@ class EmergencySirenDataset(AbstractDataset):
                 clear_download=clear_download,
             )
 
-    def get_class(self, index):
-        return [self.audio_labels[index]]
-
-    def get_classes(self):
-        labels = []
-        for i in range(len(self)):
-            labels.append(self.get_class(i))
-
-        return labels
-
-    def get_class_nums(self):
-        classcounter = defaultdict(int)
-        for n in self.get_classes():
-            for c in n:
-                classcounter[c] += 1
-
-        return classcounter
-
     def __getitem__(self, index):
 
         index = self.random_order[index]
 
-        label = torch.Tensor(self.get_class(index))
+        label = torch.Tensor([self.audio_labels[index]])
         label = label.long()
 
         path = self.audio_files[index]
