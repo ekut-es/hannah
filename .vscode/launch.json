@@ -26,7 +26,8 @@
                 "--config-name",
                 "nas_ofa",
                 "trainer.gpus=[0]",
-                "module.num_workers=8"
+                "module.num_workers=8",
+                "model=ofa_quant"
             ]
         },
         {
