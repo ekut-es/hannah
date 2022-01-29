@@ -672,6 +672,11 @@ class ElasticConvBn1d(ElasticConv1d):
         new_conv.weight.data = kernel
         new_conv.bias = bias
 
+        new_conv.bn.weight = self.bn.weight
+        new_conv.bn.bias = self.bn.bias
+        new_conv.bn.running_var = self.bn.running_var
+        new_conv.bn.running_mean = self.bn.running_mean
+
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
@@ -751,6 +756,11 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
+
+        new_conv.bn.weight = self.bn.weight
+        new_conv.bn.bias = self.bn.bias
+        new_conv.bn.running_var = self.bn.running_var
+        new_conv.bn.running_mean = self.bn.running_mean
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
