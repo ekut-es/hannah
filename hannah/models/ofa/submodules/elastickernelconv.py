@@ -237,18 +237,6 @@ class _ElasticConvBnNd(
         out_quant=True,
         track_running_stats=True,
     ):
-        # sort available kernel sizes from largest to smallest (descending order)
-        kernel_sizes.sort(reverse=True)
-        self.kernel_sizes: List[int] = kernel_sizes
-        # after sorting kernel sizes, the maximum and minimum size available are the first and last element
-        self.max_kernel_size: int = kernel_sizes[0]
-        self.min_kernel_size: int = kernel_sizes[-1]
-        # initially, the target size is the full kernel
-        self.target_kernel_index: int = 0
-        self.in_channels: int = in_channels
-        self.out_channels: int = out_channels
-        # print(self.out_channels)
-
         ElasticBase1d.__init__(
             self,
             in_channels=in_channels,
@@ -537,22 +525,10 @@ class ElasticConv1d(ElasticBase1d):
         groups: int = 1,
         bias: bool = False,
     ):
-        # sort available kernel sizes from largest to smallest (descending order)
-        kernel_sizes.sort(reverse=True)
-        self.kernel_sizes: List[int] = kernel_sizes
-        # after sorting kernel sizes, the maximum and minimum size available are the first and last element
-        self.max_kernel_size: int = kernel_sizes[0]
-        self.min_kernel_size: int = kernel_sizes[-1]
-        # initially, the target size is the full kernel
-        self.target_kernel_index: int = 0
-        self.out_channels: int = out_channels
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-
-        # print(self.out_channels)
         ElasticBase1d.__init__(
             self,
             in_channels=in_channels,
-            out_channels=self.out_channels,
+            out_channels=out_channels,
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
@@ -615,21 +591,10 @@ class ElasticConvBn1d(ElasticConv1d):
         bias: bool = False,
         track_running_stats=False,
     ):
-        # sort available kernel sizes from largest to smallest (descending order)
-        kernel_sizes.sort(reverse=True)
-        self.kernel_sizes: List[int] = kernel_sizes
-        # after sorting kernel sizes, the maximum and minimum size available are the first and last element
-        self.max_kernel_size: int = kernel_sizes[0]
-        self.min_kernel_size: int = kernel_sizes[-1]
-        # initially, the target size is the full kernel
-        self.target_kernel_index: int = 0
-        self.out_channels: int = out_channels
-        # print(self.out_channels)
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
         ElasticBase1d.__init__(
             self,
             in_channels=in_channels,
-            out_channels=self.out_channels,
+            out_channels=out_channels,
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
@@ -701,25 +666,13 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         bias: bool = False,
         track_running_stats=False,
     ):
-        # sort available kernel sizes from largest to smallest (descending order)
-        kernel_sizes.sort(reverse=True)
-        self.kernel_sizes: List[int] = kernel_sizes
-        # after sorting kernel sizes, the maximum and minimum size available are the first and last element
-        self.max_kernel_size: int = kernel_sizes[0]
-        self.min_kernel_size: int = kernel_sizes[-1]
-        # initially, the target size is the full kernel
-        self.target_kernel_index: int = 0
-        self.out_channels: int = out_channels
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-
-        # print(self.out_channels)
         ElasticConvBn1d.__init__(
             self,
             in_channels=in_channels,
-            out_channels=self.out_channels,
+            out_channels=out_channels,
             kernel_sizes=kernel_sizes,
             stride=stride,
-            padding=self.padding,
+            padding=padding,
             dilation=dilation,
             groups=groups,
             bias=bias,
@@ -799,7 +752,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         ElasticBase1d.__init__(
             self,
             in_channels=in_channels,
-            out_channels=self.out_channels,
+            out_channels=out_channels,
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
@@ -913,25 +866,13 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         qconfig=None,
         out_quant=True,
     ):
-        # sort available kernel sizes from largest to smallest (descending order)
-        kernel_sizes.sort(reverse=True)
-        self.kernel_sizes: List[int] = kernel_sizes
-        # after sorting kernel sizes, the maximum and minimum size available are the first and last element
-        self.max_kernel_size: int = kernel_sizes[0]
-        self.min_kernel_size: int = kernel_sizes[-1]
-        # initially, the target size is the full kernel
-        self.target_kernel_index: int = 0
-        self.out_channels: int = out_channels
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-
-        # print(self.out_channels)
         _ElasticConvBnNd.__init__(
             self,
             in_channels=in_channels,
-            out_channels=self.out_channels,
+            out_channels=out_channels,
             kernel_sizes=kernel_sizes,
             stride=stride,
-            padding=self.padding,
+            padding=padding,
             dilation=dilation,
             groups=groups,
             bias=bias,
@@ -1006,25 +947,13 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         qconfig=None,
         out_quant=True,
     ):
-        # sort available kernel sizes from largest to smallest (descending order)
-        kernel_sizes.sort(reverse=True)
-        self.kernel_sizes: List[int] = kernel_sizes
-        # after sorting kernel sizes, the maximum and minimum size available are the first and last element
-        self.max_kernel_size: int = kernel_sizes[0]
-        self.min_kernel_size: int = kernel_sizes[-1]
-        # initially, the target size is the full kernel
-        self.target_kernel_index: int = 0
-        self.out_channels: int = out_channels
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-
-        # print(self.out_channels)
         ElasticQuantConvBn1d.__init__(
             self,
             in_channels=in_channels,
-            out_channels=self.out_channels,
+            out_channels=out_channels,
             kernel_sizes=kernel_sizes,
             stride=stride,
-            padding=self.padding,
+            padding=padding,
             dilation=dilation,
             groups=groups,
             bias=bias,
