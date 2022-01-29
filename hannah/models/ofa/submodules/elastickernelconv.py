@@ -641,6 +641,7 @@ class ElasticConvBn1d(ElasticConv1d):
         new_conv.bn.bias = self.bn.bias
         new_conv.bn.running_var = self.bn.running_var
         new_conv.bn.running_mean = self.bn.running_mean
+        new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
@@ -714,6 +715,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         new_conv.bn.bias = self.bn.bias
         new_conv.bn.running_var = self.bn.running_var
         new_conv.bn.running_mean = self.bn.running_mean
+        new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
@@ -923,6 +925,9 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         new_conv.bn.bias = self.bn[self.target_kernel_index].bias
         new_conv.bn.running_var = self.bn[self.target_kernel_index].running_var
         new_conv.bn.running_mean = self.bn[self.target_kernel_index].running_mean
+        new_conv.bn.num_batches_tracked = self.bn[
+            self.target_kernel_index
+        ].num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
@@ -1002,6 +1007,9 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         new_conv.bn.bias = self.bn[self.target_kernel_index].bias
         new_conv.bn.running_var = self.bn[self.target_kernel_index].running_var
         new_conv.bn.running_mean = self.bn[self.target_kernel_index].running_mean
+        new_conv.bn.num_batches_tracked = self.bn[
+            self.target_kernel_index
+        ].num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
