@@ -18,11 +18,13 @@ from .submodules.elastickernelconv import (
     ElasticConv1d,
     ElasticConvBn1d,
     ElasticConvBnReLu1d,
+    ConvBnReLu1d,
+    ConvBn1d,
+)
+from .submodules.elasticquantkernelconv import (
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
     ElasticQuantConv1d,
-    ConvBnReLu1d,
-    ConvBn1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (

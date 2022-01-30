@@ -10,6 +10,7 @@ from ..torch_extensions.nn import SNNLayers
 from ..models.sinc import SincNet
 from ..models.factory import qat
 from ..models.ofa.submodules import elastickernelconv as ekc
+from ..models.ofa.submodules import elasticquantkernelconv as eqkc
 
 import torchvision
 
@@ -84,9 +85,9 @@ def walk_model(model, dummy_input):
             qat.ConvBnReLU2d: get_conv,
             ekc.ConvBn1d: get_conv,
             ekc.ConvBnReLu1d: get_conv,
-            ekc.ElasticQuantConv1d: get_elastic_conv,
-            ekc.ElasticQuantConvBn1d: get_elastic_conv,
-            ekc.ElasticQuantConvBnReLu1d: get_elastic_conv,
+            eqkc.ElasticQuantConv1d: get_elastic_conv,
+            eqkc.ElasticQuantConvBn1d: get_elastic_conv,
+            eqkc.ElasticQuantConvBnReLu1d: get_elastic_conv,
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,

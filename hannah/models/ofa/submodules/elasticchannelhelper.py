@@ -478,6 +478,8 @@ from .elastickernelconv import (
     ElasticConv1d,
     ElasticConvBn1d,
     ElasticConvBnReLu1d,
+)
+from .elasticquantkernelconv import (
     ElasticQuantConv1d,
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
