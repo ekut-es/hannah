@@ -60,7 +60,6 @@ test_python_38:
   except:
     - branches
 
-
 test_python_39:
   stage: test
   image: python:3.9
