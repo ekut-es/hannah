@@ -2,6 +2,8 @@ stages:
   - build
   - test
   - deploy
+  - deploy_test
+  - deploy_run
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -164,6 +166,30 @@ deploy_image:
   dependencies:
     - build_image
     - test_image
+  only:
+    - master
+    - docker_container
+
+
+deploy_test:
+  stage: deploy_test
+  before_script:
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+  script:
+    - cd ml_cloud
+    - ssh cgerum05@134.2.168.52:/home/bringmann/cgerum05
+  dependencies:
+    - deploy_image
   only:
     - master
     - docker_container
