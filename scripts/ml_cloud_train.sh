@@ -48,14 +48,14 @@ scontrol show job $SLURM_JOB_ID
 
 echo "Copy training data to $SCRATCH"
 date
-cp /home/bringmann/cgerum05/ml_cloud.simg $SCRATCH
+cp /home/bringmann/cgerum05/ml_cloud.sif $SCRATCH
 cp -r hannah $SCRATCH
 
 echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/cache
 cd $SCRATCH
-singularity run --no-home --bind $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train dataset.data_folder=$SCRATCH/datasets
+singularity run --nv --no-home --bind $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train dataset.data_folder=$SCRATCH/datasets module.num_workers=4 trainer.max_epochs=30
 date
 echo "Copying data folders back to work"
 cp -r trained_models $WORK
