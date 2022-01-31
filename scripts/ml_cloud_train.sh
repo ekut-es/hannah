@@ -43,13 +43,11 @@
 
 #Script
 echo "Job information"
+date
 scontrol show job $SLURM_JOB_ID
 
-#echo "Copy training data"
-
-
-echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
-
+echo "Copy training data to $SCRATCH"
+date
 cp /home/bringmann/cgerum05/ml_cloud.simg $SCRATCH
 cp -r hannah $SCRATCH
 
@@ -57,7 +55,9 @@ echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/cache
 cd $SCRATCH
-singularity run --no-home --bind $PWD --bind $WORK:$WORK:rw $SCRATCH/ml_cloud.sif python -m hannah.train dataset.data_folder=$SCRATCH/datasets
+singularity run --no-home --bind $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train dataset.data_folder=$SCRATCH/datasets
 date
+echo "Copying data folders back to work"
+cp -r trained_models $WORK
 
 echo DONE!
