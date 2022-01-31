@@ -99,6 +99,8 @@ build_image:
   stage: build
   before_script:
     # Install poetry using recommended method
+    - apk add python3
+    - apk add curl
     - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
     - export PATH=${POETRY_HOME}/bin:${PATH}
   image:
