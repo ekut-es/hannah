@@ -4,22 +4,14 @@ import torch.nn as nn
 import numpy as np
 
 from pytorch_lightning.callbacks import Callback
-from torch.nn.modules.module import register_module_full_backward_hook
-from ..models.factory.qconfig import SymmetricQuantization
-from collections import Counter
 from ..models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d, Linear
 from sklearn.cluster import KMeans
-from scipy.sparse import csr_matrix, csc_matrix
-from sklearn.metrics import pairwise_distances_argmin_min
+from scipy.sparse import csr_matrix
+
 
 def clustering(params):
     sparse_matrix = csr_matrix(params)
-    max_value = max(sparse_matrix.data)
-    min_value = min(sparse_matrix.data)
-    range_cluster = np.linspace(min_value, max_value, num=10)
-
-    # KMeans applied to each layer 
-    kmeans = KMeans(n_clusters=len(range_cluster), n_init=1, init='k-means++', algorithm="full", random_state=1234)
+    kmeans = KMeans(n_clusters=10, n_init=1, init='k-means++', algorithm="full", random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1,1))
     centers = kmeans.cluster_centers_.reshape(-1)
     return centers
