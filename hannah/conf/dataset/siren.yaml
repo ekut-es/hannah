@@ -1,0 +1,15 @@
+
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.emergency.EmergencySirenDataset
+dataset: siren
+
+test_pct: 0.1
+dev_pct: 0.1
+
+
+input_length: 160000
+samplingrate: 16000
+
+clear_download: False
+download_folder: ${dataset.data_folder}/downloads
