@@ -115,7 +115,29 @@ build_image:
     expire_in: 1 day
   only:
     - master
-    - docker_image
+    - docker_container
+
+
+
+test_image:
+  stage: test
+  before_script:
+
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+    - privileged
+  script:
+    - singularity run --no-home --bind $PWD ml_cloud/ml_cloud.sif  python -m hannah.train trainer.fast_dev_run=True
+  dependencies:
+    - build_image
+  only:
+    - master
+    - docker_container
+
 
 
 deploy_image:
@@ -138,6 +160,7 @@ deploy_image:
     - scp ml_cloud.sif cgerum05@134.2.168.52:/home/bringmann/cgerum05
   dependencies:
     - build_image
+    - test_image
   only:
     - master
-    - docker_image
+    - docker_container
