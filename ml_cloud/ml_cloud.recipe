@@ -11,6 +11,7 @@ From: ubuntu:focal
    apt update -y
    apt install -y python3 python3-distutils python3-apt python3-dev curl libblas-dev liblapack-dev  libsox-dev git-lfs build-essential python3-pip vim
    ln -s /usr/bin/python3 /usr/bin/python
-   python3 -m pip install distutils
+   python3 -m pip install setuptools==59.5.0
    python3 -m pip install -r /requirements.txt
    python3 -m pip install --force-reinstall -r /requirements.txt
+   python3 -m pip install --force-reinstall setuptools==59.5.0
