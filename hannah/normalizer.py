@@ -61,6 +61,23 @@ class FixedPointNormalizer(nn.Module):
         return x
 
 
+class AdaptiveFixedPointNormalizer(nn.Module):
+    "Simple feature normalizer for fixed point models"
+
+    def __init__(self, normalize_bits: int = 8, num_features: int = 40):
+        super().__init__()
+        self.bn = nn.BatchNorm1d(num_features=num_features, affine=True)
+        self.normalize_bits = normalize_bits
+
+    def forward(self, x):
+
+        normalize_factor = 2.0 ** (self.normalize_bits - 1)
+        x = self.bn(x)
+        x = x / normalize_factor
+        x = x.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
+        return x
+
+
 class HistogramNormalizer(nn.Module):
     def __init__(self, bits: int = 8, bins: Optional[int] = None):
         super().__init__()

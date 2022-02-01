@@ -2,6 +2,7 @@ import logging
 from collections import OrderedDict
 
 import pandas as pd
+from pytorch_lightning.utilities.distributed import rank_zero_only
 import torch
 
 import hannah.torch_extensions.nn.SNNActivationLayer
@@ -214,6 +215,7 @@ class MacSummaryCallback(Callback):
 
         return res
 
+    @rank_zero_only
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
         try:
@@ -223,10 +225,12 @@ class MacSummaryCallback(Callback):
             msglogger.critical(str(e))
         pl_module.train()
 
+    @rank_zero_only
     def on_test_end(self, trainer, pl_module):
         pl_module.eval()
         self._do_summary(pl_module)
 
+    @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
         res = {}
         try:
@@ -236,4 +240,4 @@ class MacSummaryCallback(Callback):
             msglogger.critical(str(e))
 
         for k, v in res.items():
-            pl_module.log(k, v)
+            pl_module.log(k, float(v), rank_zero_only=True)

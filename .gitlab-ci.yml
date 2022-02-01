@@ -52,6 +52,7 @@ test_python_38:
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=hannah test
+    - pydoc-markdown --build --site-dir _build
   tags:
     - docker
     - nfs
@@ -83,9 +84,7 @@ build_docs:
   before_script:
     - python3 -m virtualenv venv
     - source venv/bin/activate
-    - pip install --upgrade pydoc-markdown
-    - pip install --upgrade mkdocs
-    - pip install --upgrade pymdown-extensions
+    - pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
 
   allow_failure: true
   script:
@@ -98,7 +97,12 @@ build_docs:
 
 build_image:
   stage: build
-  before_script:  [""]
+  before_script:
+    # Install poetry using recommended method
+    - apk add python3
+    - apk add curl
+    - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
+    - export PATH=${POETRY_HOME}/bin:${PATH}
   image:
     name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
@@ -112,10 +116,32 @@ build_image:
     - ./build_image.sh
   artifacts:
     paths:
-      - ml_cloud/ml_cloud.simg
+      - ml_cloud/ml_cloud.sif
     expire_in: 1 day
   only:
     - master
+    - docker_container
+
+
+
+test_image:
+  stage: test
+  before_script: [""]
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+    - privileged
+  script:
+    - singularity run --no-home --bind $PWD ml_cloud/ml_cloud.sif  python -m hannah.train trainer.fast_dev_run=True
+  dependencies:
+    - build_image
+  only:
+    - master
+    - docker_container
+
 
 
 deploy_image:
@@ -135,8 +161,10 @@ deploy_image:
     - privileged
   script:
     - cd ml_cloud
-    - scp ml_cloud.simg cgerum05@134.2.168.52:/home/bringmann/cgerum05
+    - scp ml_cloud.sif cgerum05@134.2.168.52:/home/bringmann/cgerum05
   dependencies:
     - build_image
+    - test_image
   only:
     - master
+    - docker_container

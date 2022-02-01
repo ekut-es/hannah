@@ -238,7 +238,7 @@ class PhysioCincDataset(PhysioDataset):
 
 
 class AtrialFibrillationDataset(PhysioDataset):
-    """ Atrial Fibrillation Database (https://physionet.org/content/afdb/1.0.0/)"""
+    """Atrial Fibrillation Database (https://physionet.org/content/afdb/1.0.0/)"""
 
     LABEL_ATRIAL_FIBRILLATION = "atrial_fibrillation"
     LABEL_ATRIAL_FLUTTER = "atrial_flutter"
@@ -319,7 +319,7 @@ class AtrialFibrillationDataset(PhysioDataset):
         variants = config["variants"]
 
         # download atrial fibrillation dataset
-        filename = "mit-bih-atrial-fibrillation-database-1.0.0.zip"
+        filename = "mit-bih-atrial-fibrillation-database-1_0_0.zip"
 
         if "atrial_fibrillation" in variants:
             extract_from_download_cache(

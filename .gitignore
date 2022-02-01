@@ -1,5 +1,6 @@
 .python-version
 *.simg
+*.sif
 *~
 *.pyc
 .DS_Store
