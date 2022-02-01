@@ -161,10 +161,10 @@ class ImageClassifierModule(ClassifierModule):
         self.log("test_loss", loss)
         self.log("test_error", 1 - acc)
         self.log("test_accuracy", acc)
-        self.log("test_precesion_micro", precision_micro)
+        self.log("test_precision_micro", precision_micro)
         self.log("test_recall_micro", recall_micro)
         self.log("test_f1_micro", f1_micro)
-        self.log("test_precesion_macro", precision_macro)
+        self.log("test_precision_macro", precision_macro)
         self.log("test_recall_macro", recall_macro)
         self.log("test_f1_macro", f1_macro)
 
