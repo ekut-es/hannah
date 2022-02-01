@@ -127,8 +127,8 @@ class ImageClassifierModule(ClassifierModule):
         acc = accuracy(preds, y.squeeze())
 
         self.log("val_loss", loss)
-        self.log("val_error", 1 - acc)
-        self.log("val_accuracy", acc)
+        self.log("val_error", 1 - acc, sync_dist=True)
+        self.log("val_accuracy", acc, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -158,15 +158,15 @@ class ImageClassifierModule(ClassifierModule):
         )
         recall_macro = recall(preds, y, num_classes=self.num_classes, average="macro")
         f1_macro = f1(preds, y, num_classes=self.num_classes, average="macro")
-        self.log("test_loss", loss)
-        self.log("test_error", 1 - acc)
-        self.log("test_accuracy", acc)
-        self.log("test_precision_micro", precision_micro)
-        self.log("test_recall_micro", recall_micro)
-        self.log("test_f1_micro", f1_micro)
-        self.log("test_precision_macro", precision_macro)
-        self.log("test_recall_macro", recall_macro)
-        self.log("test_f1_macro", f1_macro)
+        self.log("test_loss", loss, sync_dist=True)
+        self.log("test_error", 1 - acc, sync_dist=True)
+        self.log("test_accuracy", acc, sync_dist=True)
+        self.log("test_precision_micro", precision_micro, sync_dist=True)
+        self.log("test_recall_micro", recall_micro, sync_dist=True)
+        self.log("test_f1_micro", f1_micro, sync_dist=True)
+        self.log("test_precision_macro", precision_macro, sync_dist=True)
+        self.log("test_recall_macro", recall_macro, sync_dist=True)
+        self.log("test_f1_macro", f1_macro, sync_dist=True)
 
     def train_dataloader(self):
         return self._get_dataloader(self.train_set, shuffle=True)
