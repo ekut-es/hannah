@@ -34,18 +34,6 @@ before_script:
   # Show limits
   - ulimit -a
 
-
-test_python_37:
-  image: python:3.7
-  stage: test
-  script:
-    - set -e
-    - poetry run python3 -m pytest  -v --cov=hannah test
-  tags:
-    - docker
-    - nfs
-  interruptible: true
-
 test_python_38:
   stage: test
   image: python:3.8
