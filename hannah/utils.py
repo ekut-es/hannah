@@ -67,7 +67,7 @@ class SerializableModule(nn.Module):
         torch.save(self.state_dict(), filename)
 
     def load(self, filename):
-        """ Do not use model.load """
+        """Do not use model.load"""
         self.load_state_dict(
             torch.load(filename, map_location=lambda storage, loc: storage),
             strict=False,
@@ -144,7 +144,10 @@ def log_execution_env_state():
     logger.info("  CUDNN version: %s", torch.backends.cudnn.version())
     logger.info("  Kernel: %s", platform.release())
     if HAVE_LSB:
-        logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
+        try:
+            logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
+        except:
+            pass
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Pytorch Lightning: %s", pytorch_lightning.__version__)
@@ -187,16 +190,16 @@ def extract_from_download_cache(
 ):
     """extracts given file from cache or donwloads first from url
 
-        Args:
-            filename (str): name of the file to download or extract
-            url (str): possible url to download the file
-            cached_files (list(str)): cached files in download cache
-            target_cache (str): path to the folder to cache file if download necessary
-            target_folder (str): path where to extract file
-            target_test_folder (str, optional): folder to check if data are already there
-            clear_download (bool): clear download after usage
-            no_exist_check (bool): disables the check if folder exists
-        """
+    Args:
+        filename (str): name of the file to download or extract
+        url (str): possible url to download the file
+        cached_files (list(str)): cached files in download cache
+        target_cache (str): path to the folder to cache file if download necessary
+        target_folder (str): path where to extract file
+        target_test_folder (str, optional): folder to check if data are already there
+        clear_download (bool): clear download after usage
+        no_exist_check (bool): disables the check if folder exists
+    """
     if len(target_test_folder) == 0:
         target_test_folder = target_folder
     if filename not in cached_files and (
