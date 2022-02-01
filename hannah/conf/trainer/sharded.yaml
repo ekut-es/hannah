@@ -1,5 +1,4 @@
 defaults:
   - default # inherit from default trainer conf
-  - plugins: sharded
-accelerator: ddp
+strategy: ddp_sharded
 precision: 16
