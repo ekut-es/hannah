@@ -13,7 +13,9 @@ class TimmModel(nn.Module):
     ):
         super().__init__()
         self.name = name
-        self.model = timm.create_model(name, num_classes=labels, pretrained=pretrained)
+        self.model = timm.create_model(
+            name, num_classes=labels, pretrained=pretrained, **kwargs
+        )
         self.input_shape = input_shape
 
     def forward(self, x):
