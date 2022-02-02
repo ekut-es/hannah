@@ -13,9 +13,11 @@
             "module": "hannah.train",
             "args": [
                 "trainer.limit_train_batches=1.0",
-                "model=tc-res8",
-                "trainer.max_epochs=20",
-                "svd_rank_compression=3"
+                "model=timm_resnet152",
+                "trainer.max_epochs=5",
+                "svd_rank_compression=8",
+                "dataset=kvasir_capsule",
+                "clustering=true"
             ]
         },
         {
@@ -25,7 +27,7 @@
             "module": "hannah.svd_train",
             "args": [
                 "trainer.limit_train_batches=1.0",
-                "trainer.max_epochs=15",
+                "trainer.max_epochs=10",
                 "model=conv-net-trax",
                 "svd_rank_compression=4",
                 "output_dir=trained_models/svd_rank4"
@@ -37,10 +39,12 @@
             "request": "launch",
             "module": "hannah.train",
             "args": [
-                "trainer.max_epochs=5",
+                "trainer.max_epochs=25",
                 "module.num_workers=3",
                 "model=conv-net-trax",
+                "clustering=true",
                 "normalizer=fixedpoint",
+                "dataset=atrial_fibrillation",
                 "backend=trax_ut", 
                 "backend.cols=8",
                 "backend.standalone=True",

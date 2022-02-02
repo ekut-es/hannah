@@ -9,12 +9,7 @@ import torch
 
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
-<<<<<<< HEAD
-from pytorch_lightning.utilities.distributed import rank_zero_only
-from pytorch_lightning import Trainer
-=======
 from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
->>>>>>> origin/master
 
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -23,7 +18,7 @@ from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
-#from .callbacks.compression_hook_test import CompressionHuff
+# from .callbacks.compression_hook_test import CompressionHuff
 from .callbacks.compression_kmeans_test import CompressionHuff
 from .callbacks.svd_compress import SVD
 from .utils import (
@@ -100,16 +95,13 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-<<<<<<< HEAD
         compress_after = config.trainer.max_epochs
-        callbacks.append(CompressionHuff(compress_after))
-        if compress_after % 2 == 1: # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
+        if config.clustering is True:   
+            callbacks.append(CompressionHuff(compress_after))
+        if compress_after % 2 == 1:  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
             compress_after -= 1
         callbacks.append(SVD(rank_svd=config.get("svd_rank_compression"), compress_after=compress_after))
-        callbacks.extend(common_callbacks(config))
-=======
         callbacks.extend(list(common_callbacks(config)))
->>>>>>> origin/master
 
         opt_monitor = config.get("monitor", ["val_error"])
         opt_callback = HydraOptCallback(monitor=opt_monitor)
@@ -143,22 +135,17 @@ def train(config: DictConfig):
         logging.info("Starting training")
         # PL TRAIN
         lit_trainer.fit(lit_module)
-        ckpt_path = "best"
+        
+        # For KMeans-clustering last checkpoint needed
+        if config.clustering is True:
+            lit_trainer.save_checkpoint('last.ckpt')
+            ckpt_path = 'last.ckpt'
+        else:
+            ckpt_path = "best"
 
-<<<<<<< HEAD
-        if lit_trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
-            )
-            ckpt_path = None
-        ckpt_path = None
-        #reset_seed()
-        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
-=======
         if not lit_trainer.fast_dev_run:
             reset_seed()
             lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
->>>>>>> origin/master
 
             # PL TEST
             reset_seed()
