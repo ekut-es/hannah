@@ -120,6 +120,9 @@ class Context:
     def set_input(self, x):
         self.input = x
 
+    def set_cfg(self, cfg):
+        self.config = cfg
+
 
 def infer_in_channel(parameter: Parameter, op: SymbolicOperator, ctx: Context):
     in_channels = ctx.input.shape[1]
