@@ -19,6 +19,7 @@ from hannah_optimizer.aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything, reset_seed
 from .callbacks.optimization import HydraOptCallback
+from .callbacks.summaries import MacSummaryCallback
 from .utils import common_callbacks, clear_outputs, fullname
 
 msglogger = logging.getLogger("nas")
@@ -148,7 +149,6 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             bounds=bounds,
             random_state=self.random_state,
         )
-        self.backend = None
 
         self.worklist = []
         self.presample = presample
@@ -157,7 +157,12 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         parameters = self.optimizer.next_parameters()
 
         config = OmegaConf.merge(self.config, parameters.flatten())
-        backend = instantiate(config.backend, _recursive_=False)
+
+        if "backend" in config:
+            estimator = instantiate(config.backend, _recursive_=False)
+        else:
+            estimator = MacSummaryCallback()
+
         model = instantiate(
             config.module,
             dataset=config.dataset,
@@ -169,16 +174,16 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             _recursive_=False,
         )
         model.setup("train")
-        backend_metrics = backend.estimate(model)
+        estimated_metrics = estimator.estimate(model)
 
         satisfied_bounds = []
-        for k, v in backend_metrics.items():
+        for k, v in estimated_metrics.items():
             if k in self.bounds:
                 distance = v / self.bounds[k]
                 msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
                 satisfied_bounds.append(distance <= 1.2)
 
-        worklist_item = WorklistItem(parameters, backend_metrics)
+        worklist_item = WorklistItem(parameters, estimated_metrics)
 
         if self.presample:
             if all(satisfied_bounds):
