@@ -1,0 +1,7 @@
+
+defaults:
+  - _self_
+  - space: darts
+
+_target_: hannah.nas.tasks.darts.DartsSearchTask
+budget: 2000

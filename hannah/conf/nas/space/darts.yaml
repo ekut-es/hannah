@@ -1,5 +1,5 @@
 _target_: hannah.nas.search_space.darts.darts_space.DARTSSpace
-num_cells: 8
-reduction_cells:  [2, 5]
+num_cells: 4
+reduction_cells:  [2]
 in_edges: [4]
 stem_multiplier: [4]

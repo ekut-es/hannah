@@ -81,8 +81,10 @@ class Cifar10Dataset(VisionDatasetBase):
             root_folder, train=True, download=False, transform=transform
         )
         train_val_len = len(train_val_set)
-
-        split_sizes = [int(train_val_len * 0.9), int(train_val_len * 0.1)]
+        if 'train_val_split' in config:
+            split_sizes = [int(train_val_len * config.train_val_split[0]), int(train_val_len * config.train_val_split[1])]
+        else:
+            split_sizes = [int(train_val_len * 0.9), int(train_val_len * 0.1)]
         train_set, val_set = data.random_split(train_val_set, split_sizes)
 
         return cls(config, test_set), cls(config, val_set), cls(config, train_set)
