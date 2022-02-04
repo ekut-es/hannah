@@ -50,10 +50,16 @@ def run_training(num, config):
     opt_callback = HydraOptCallback(monitor=opt_monitor)
     callbacks.append(opt_callback)
 
-    checkpoint_callback = instantiate(config.checkpoint)
+    checkpoint_callback = instantiate(config.checkpoint, _recursive_=False)
     callbacks.append(checkpoint_callback)
     try:
-        trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
+        trainer = instantiate(
+            config.trainer,
+            callbacks=callbacks,
+            logger=logger,
+            _recursive_=False,
+            _convert_="partial",
+        )
         model = instantiate(
             config.module,
             dataset=config.dataset,
@@ -62,6 +68,7 @@ def run_training(num, config):
             features=config.features,
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
+            _recursive_=False,
         )
         trainer.fit(model)
         ckpt_path = "best"
@@ -150,7 +157,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         parameters = self.optimizer.next_parameters()
 
         config = OmegaConf.merge(self.config, parameters.flatten())
-        backend = instantiate(config.backend)
+        backend = instantiate(config.backend, _recursive_=False)
         model = instantiate(
             config.module,
             dataset=config.dataset,
@@ -159,6 +166,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             features=config.features,
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
+            _recursive_=False,
         )
         model.setup("train")
         backend_metrics = backend.estimate(model)
