@@ -8,7 +8,6 @@ import torch
 from torch.nn import BatchNorm1d
 from pytorch_lightning.callbacks import ModelPruning
 
-
 class PruningAmountScheduler:
     def __init__(self, target_amount, max_epochs):
         self.target_amount = target_amount

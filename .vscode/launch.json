@@ -13,11 +13,13 @@
             "module": "hannah.train",
             "args": [
                 "trainer.limit_train_batches=1.0",
-                "model=timm_resnet152",
+                "model=conv-net-trax",
                 "trainer.max_epochs=3",
                 "svd_rank_compression=4",
-                "dataset=kvasir_capsule",
-                "clustering=false"
+                "clustering=true",
+                "module.num_workers=1",
+                "pruning=l1_unstructured",
+                "pruning.amount=0.9"
             ]
         },
         {
@@ -44,7 +46,7 @@
                 "model=conv-net-trax",
                 "clustering=true",
                 "normalizer=fixedpoint",
-                "dataset=snips",
+                "dataset=atrial_fibrillation",
                 "backend=trax_ut", 
                 "backend.cols=8",
                 "backend.standalone=True",
