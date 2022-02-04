@@ -46,6 +46,7 @@ class Space(nx.DiGraph):
         out = _traverse(last, x)
         graph = nx.relabel_nodes(nx.DiGraph(self), ctx.relabel_dict, copy=True)
         instance = Instance(graph)
+        self.ctx = ctx
         return instance, out
 
     def get_instance(self, ctx):
@@ -67,7 +68,6 @@ class Space(nx.DiGraph):
         return cfg
 
 
-# class Instance(nx.DiGraph, nn.Module):
 class Instance(nn.Module):
     def __init__(self, graph):
         super().__init__()
