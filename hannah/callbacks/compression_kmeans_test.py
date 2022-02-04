@@ -10,7 +10,7 @@ from scipy.sparse import csr_matrix
 
 def clustering(params, inertia):
     sparse_matrix = csr_matrix(params)
-    kmeans = KMeans(n_clusters=16, n_init=1, init='k-means++', algorithm="full", random_state=1234)
+    kmeans = KMeans(n_clusters=9, n_init=1, init='k-means++', algorithm="full", random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1,1))
     centers = kmeans.cluster_centers_.reshape(-1)
     inertia += kmeans.inertia_
@@ -23,6 +23,9 @@ class CompressionHuff(Callback):
 
 
     def on_train_end(self, trainer, pl_module):
+        #pl_module.load_state_dict(torch.load("best"))
+        #trainer.load_checkpoint()
+        #trainer.resume_from_checkpoint("best")
         with torch.no_grad():
             for module in pl_module.modules():
                 if hasattr(module, "scaled_weight"):
@@ -72,7 +75,7 @@ class CompressionHuff(Callback):
                     setattr(module, name, tmp)
 
         device = pl_module.device
-        replace_modules(pl_module)
+        #replace_modules(pl_module)
         pl_module.to(device=device)  # otherwise cuda error
         inertia = 0
         for module in pl_module.modules():
@@ -86,7 +89,7 @@ class CompressionHuff(Callback):
                     return centers[i] 
                 module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers)  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                 module.to(device=device)  # move from cpu to gpu
-                # centers = np.unique(module.weight.data.cpu().numpy().flatten(), return_counts=False)
+                centers = np.unique(module.weight.data.cpu().numpy().flatten(), return_counts=False)
                 print(centers)
         print('Clustering error: ', inertia)
         
@@ -94,8 +97,11 @@ class CompressionHuff(Callback):
 
     def on_epoch_end(self, trainer, pl_module):
         inertia = 0
-        # print('Training validation accuracy: ', trainer.callback_metrics['val_accuracy'].item())
-        if trainer.current_epoch % 2 == 0:  # if (trainer.callback_metrics['val_accuracy'].item() > 0.92):
+        if trainer.current_epoch % 2 == 0 and trainer.current_epoch < trainer.max_epoch-1 and trainer.callback_metrics['val_accuracy'].item() > 0.9:
+            try:
+                print('Training validation accuracy: ', trainer.callback_metrics['val_accuracy'].item())
+            except:
+                print('No access to validation accuracy.')
             print('Clustering.')
             device = pl_module.device
             for module in pl_module.modules():
