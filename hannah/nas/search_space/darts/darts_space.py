@@ -12,6 +12,7 @@ from hannah.nas.search_space.darts.darts_parameter_functions import (
     reduce_channels_by_edge_number,
     multiply_by_stem,
     reduce_and_double,
+    double_channels
 )
 import torch
 import networkx as nx
@@ -32,7 +33,7 @@ from copy import deepcopy
 
 class DARTSSpace(Space):
     def __init__(
-        self, num_cells=3, reduction_cells=[1], in_edges=[4], stem_multiplier=[4], weight_sharing=True
+        self, num_cells=3, reduction_cells=[1], in_edges=[4], stem_multiplier=[4]
     ):
         super().__init__()
 
@@ -41,6 +42,7 @@ class DARTSSpace(Space):
         self.cfg_options = {}
         self.cfg_options["in_edges"] = in_edges
         self.cfg_options["stem_multiplier"] = stem_multiplier
+        self.weight_sharing = False
 
         # Define parameters
         # Variable -> parameter is inferred with a custom function
@@ -56,6 +58,9 @@ class DARTSSpace(Space):
         out_channels = Variable(
             "out_channels", func=keep_channels
         )  # Out_channel == in_channel
+        double_out_channels = Variable(
+            'out_channels', func=double_channels
+        )
         out_channels_adaptive = Variable(
             "out_channels_adaptive", func=reduce_channels_by_edge_number
         )  # After the Concat, the channels are *4 -> reduce by dividing by 4
@@ -185,9 +190,9 @@ class DARTSSpace(Space):
                 ] = double_out_channels_adaptive
 
         # The data coming from the stem is not concatenated, therefore we can leave the channels as is
-        list(cells[0].nodes)[input_0_idx].params["out_channels"] = out_channels
-        list(cells[0].nodes)[input_1_idx].params["out_channels"] = out_channels
-        list(cells[1].nodes)[input_0_idx].params["out_channels"] = out_channels
+        list(cells[0].nodes)[input_0_idx].params["out_channels"] = double_out_channels if 0 in reduction_cells else out_channels
+        list(cells[0].nodes)[input_1_idx].params["out_channels"] = double_out_channels if 0 in reduction_cells else out_channels
+        list(cells[1].nodes)[input_0_idx].params["out_channels"] = double_out_channels if 1 in reduction_cells else out_channels
 
         # Add cell nodes and edges to SearchSpace (self) and
         for i in range(len(cells)):
@@ -216,6 +221,15 @@ class DARTSSpace(Space):
         )
         self.add_node(post)
         self.add_edge(list(cells[-1].nodes)[out_idx], post)
+
+    def prepare_weight_sharing(self, size):
+        cfg_dims = self.get_config_dims()
+        random_cfg = self.get_random_cfg(cfg_dims)
+        ctx = Context(random_cfg)
+        input = torch.ones(size)
+        instance, _ = self.infer_parameters(input, ctx)
+        self.instance = instance
+        self.weight_sharing = True
 
     def get_ctx(self):
         return self.ctx
@@ -258,9 +272,21 @@ class DARTSSpace(Space):
     def sample(self, size):
         cfg_dims = self.get_config_dims()
         random_cfg = self.get_random_cfg(cfg_dims)
-        ctx = Context(config=random_cfg)
+        ctx = self.get_ctx()
+        ctx.set_cfg(random_cfg)
         input = torch.ones(size)
-        instance, _ = self.infer_parameters(input, ctx)
+        if self.weight_sharing:
+            instance = self.instance
+            alphas = {}
+            for node in self.nodes:
+                if 'alphas' in node.params:
+                    alphas[ctx.relabel_dict[node]] = node.params['alphas'].get(node, ctx)
+            for node in instance.nodes:
+                if node in alphas:
+                    node.set_alphas(alphas[node])
+        else:
+            instance, _ = self.infer_parameters(input, ctx)
+
         return instance
 
 
