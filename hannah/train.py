@@ -104,6 +104,7 @@ def train(config: DictConfig):
             profiler=profiler,
             callbacks=callbacks,
             logger=logger,
+            _convert_="partial",
         )
 
         if config["auto_lr"]:
@@ -164,6 +165,7 @@ def train(config: DictConfig):
 
 def nas(config: DictConfig):
     logging.info("config:\n%s", OmegaConf.to_yaml(config))
+
     nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
     nas_trainer.run()
 

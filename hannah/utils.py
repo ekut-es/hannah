@@ -144,7 +144,10 @@ def log_execution_env_state():
     logger.info("  CUDNN version: %s", torch.backends.cudnn.version())
     logger.info("  Kernel: %s", platform.release())
     if HAVE_LSB:
-        logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
+        try:
+            logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
+        except:
+            pass
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Pytorch Lightning: %s", pytorch_lightning.__version__)

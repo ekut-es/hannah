@@ -3,6 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import os
+import shutil
 from typing import Any, Dict
 import omegaconf
 
@@ -22,7 +23,8 @@ from .aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything, reset_seed
 from ..callbacks.optimization import HydraOptCallback
-from ..utils import common_callbacks, clear_outputs, fullname
+from .callbacks.summaries import MacSummaryCallback
+from .utils import common_callbacks, clear_outputs, fullname
 
 msglogger = logging.getLogger("nas")
 
@@ -34,71 +36,79 @@ class WorklistItem:
 
 
 def run_training(num, config):
+    if os.path.exists(str(num)):
+        shutil.rmtree(str(num))
+
     os.makedirs(str(num), exist_ok=True)
-    os.chdir(str(num))
-    config = OmegaConf.create(config)
-    logger = TensorBoardLogger(".")
 
-    seed = config.get("seed", 1234)
-    if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
-        seed = seed[0]
-    seed_everything(seed, workers=True)
-
-    if config.trainer.gpus is not None:
-        if isinstance(config.trainer.gpus, int):
-            num_gpus = config.trainer.gpus
-            gpu = num % num_gpus
-        elif len(config.trainer.gpus) == 0:
-            num_gpus = torch.cuda.device_count()
-            gpu = num % num_gpus
-        else:
-            gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
-
-        if gpu >= torch.cuda.device_count():
-            logger.warning(
-                "GPU %d is not available on this device using GPU %d instead",
-                gpu,
-                gpu % torch.cuda.device_count(),
-            )
-            gpu = gpu % torch.cuda.device_count()
-
-        config.trainer.gpus = [gpu]
-
-    callbacks = common_callbacks(config)
-    opt_monitor = config.get("monitor", ["val_error"])
-    opt_callback = HydraOptCallback(monitor=opt_monitor)
-    callbacks.append(opt_callback)
-
-    checkpoint_callback = instantiate(config.checkpoint)
-    callbacks.append(checkpoint_callback)
     try:
-        trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
-        model = instantiate(
-            config.module,
-            dataset=config.dataset,
-            model=config.model,
-            optimizer=config.optimizer,
-            features=config.features,
-            scheduler=config.get("scheduler", None),
-            normalizer=config.get("normalizer", None),
-            _recursive_=False,
-        )
-        trainer.fit(model)
-        ckpt_path = "best"
-        if trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
-            )
-            ckpt_path = None
+        os.chdir(str(num))
+        config = OmegaConf.create(config)
+        logger = TensorBoardLogger(".")
 
-        reset_seed()
-        trainer.validate(ckpt_path=ckpt_path, verbose=False)
-    except Exception as e:
-        msglogger.critical("Training failed with exception")
-        msglogger.critical(str(e))
-        res = {}
-        for monitor in opt_monitor:
-            res[monitor] = float("inf")
+        seed = config.get("seed", 1234)
+        if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
+            seed = seed[0]
+        seed_everything(seed, workers=True)
+
+        if config.trainer.gpus is not None:
+            if isinstance(config.trainer.gpus, int):
+                num_gpus = config.trainer.gpus
+                gpu = num % num_gpus
+            elif len(config.trainer.gpus) == 0:
+                num_gpus = torch.cuda.device_count()
+                gpu = num % num_gpus
+            else:
+                gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
+
+            if gpu >= torch.cuda.device_count():
+                logger.warning(
+                    "GPU %d is not available on this device using GPU %d instead",
+                    gpu,
+                    gpu % torch.cuda.device_count(),
+                )
+                gpu = gpu % torch.cuda.device_count()
+
+            config.trainer.gpus = [gpu]
+
+        callbacks = common_callbacks(config)
+        opt_monitor = config.get("monitor", ["val_error"])
+        opt_callback = HydraOptCallback(monitor=opt_monitor)
+        callbacks.append(opt_callback)
+
+        checkpoint_callback = instantiate(config.checkpoint)
+        callbacks.append(checkpoint_callback)
+        try:
+            trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
+            model = instantiate(
+                config.module,
+                dataset=config.dataset,
+                model=config.model,
+                optimizer=config.optimizer,
+                features=config.features,
+                scheduler=config.get("scheduler", None),
+                normalizer=config.get("normalizer", None),
+                _recursive_=False,
+            )
+            trainer.fit(model)
+            ckpt_path = "best"
+            if trainer.fast_dev_run:
+                logging.warning(
+                    "Trainer is in fast dev run mode, switching off loading of best model for test"
+                )
+                ckpt_path = None
+
+            reset_seed()
+            trainer.validate(ckpt_path=ckpt_path, verbose=False)
+        except Exception as e:
+            msglogger.critical("Training failed with exception")
+            msglogger.critical(str(e))
+            res = {}
+            for monitor in opt_monitor:
+                res[monitor] = float("inf")
+
+    finally:
+        os.chdir("..")
 
     return opt_callback.result(dict=True)
 
