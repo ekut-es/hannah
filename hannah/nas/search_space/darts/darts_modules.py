@@ -180,7 +180,7 @@ class MixedOp(nn.Module):
 class MixedOpWS(nn.Module):
     def __init__(self, alphas, stride, in_channels, out_channels) -> None:
         super().__init__()
-        self.alphas = alphas
+        self.alphas = nn.Parameter(torch.from_numpy(alphas))
         self.ops = nn.ModuleList()
         self.ops.append(
             Identity() if stride == 1 else FactorizedReduce(in_channels, out_channels)
@@ -232,8 +232,11 @@ class MixedOpWS(nn.Module):
         )
         assert len(self.ops) == len(self.alphas)
 
+    def set_alphas(self, alphas):
+        self.alphas = nn.Parameter(torch.from_numpy(alphas))
+
     def forward(self, *seq):
-        softmaxed_alphas = F.softmax(torch.tensor(self.alphas), dim=0)
+        softmaxed_alphas = F.softmax(self.alphas, dim=0)
         out = None
         try:
             for i, op in enumerate(self.ops):
