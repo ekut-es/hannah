@@ -3,6 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import os
+import shutil
 from typing import Any, Dict
 import omegaconf
 
@@ -32,63 +33,69 @@ class WorklistItem:
 
 
 def run_training(num, config):
+    if os.path.exists(str(num)):
+        shutil.rmtree(str(num))
+
     os.makedirs(str(num), exist_ok=True)
-    os.chdir(str(num))
-    config = OmegaConf.create(config)
-    logger = TensorBoardLogger(".")
-
-    seed = config.get("seed", 1234)
-    if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
-        seed = seed[0]
-    seed_everything(seed, workers=True)
-
-    num_gpus = torch.cuda.device_count()
-    gpu = num % num_gpus
-    config.trainer.gpus = [gpu]
-
-    callbacks = common_callbacks(config)
-    opt_monitor = config.get("monitor", ["val_error"])
-    opt_callback = HydraOptCallback(monitor=opt_monitor)
-    callbacks.append(opt_callback)
-
-    checkpoint_callback = instantiate(config.checkpoint, _recursive_=False)
-    callbacks.append(checkpoint_callback)
     try:
-        trainer = instantiate(
-            config.trainer,
-            callbacks=callbacks,
-            logger=logger,
-            _recursive_=False,
-            _convert_="partial",
-        )
-        model = instantiate(
-            config.module,
-            dataset=config.dataset,
-            model=config.model,
-            optimizer=config.optimizer,
-            features=config.features,
-            scheduler=config.get("scheduler", None),
-            normalizer=config.get("normalizer", None),
-            _recursive_=False,
-        )
-        trainer.fit(model)
-        ckpt_path = "best"
-        if trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
+        os.chdir(str(num))
+        config = OmegaConf.create(config)
+        logger = TensorBoardLogger(".")
+
+        seed = config.get("seed", 1234)
+        if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
+            seed = seed[0]
+        seed_everything(seed, workers=True)
+
+        num_gpus = torch.cuda.device_count()
+        gpu = num % num_gpus
+        config.trainer.gpus = [gpu]
+
+        callbacks = common_callbacks(config)
+        opt_monitor = config.get("monitor", ["val_error"])
+        opt_callback = HydraOptCallback(monitor=opt_monitor)
+        callbacks.append(opt_callback)
+
+        checkpoint_callback = instantiate(config.checkpoint, _recursive_=False)
+        callbacks.append(checkpoint_callback)
+        try:
+            trainer = instantiate(
+                config.trainer,
+                callbacks=callbacks,
+                logger=logger,
+                _recursive_=False,
+                _convert_="partial",
             )
-            ckpt_path = None
+            model = instantiate(
+                config.module,
+                dataset=config.dataset,
+                model=config.model,
+                optimizer=config.optimizer,
+                features=config.features,
+                scheduler=config.get("scheduler", None),
+                normalizer=config.get("normalizer", None),
+                _recursive_=False,
+            )
+            trainer.fit(model)
+            ckpt_path = "best"
+            if trainer.fast_dev_run:
+                logging.warning(
+                    "Trainer is in fast dev run mode, switching off loading of best model for test"
+                )
+                ckpt_path = None
 
-        reset_seed()
-        trainer.validate(ckpt_path=ckpt_path, verbose=False)
-    except Exception as e:
-        msglogger.critical("Training failed with exception")
-        msglogger.critical(str(e))
-        res = {}
-        for monitor in opt_monitor:
-            res[monitor] = float("inf")
+            reset_seed()
+            trainer.validate(ckpt_path=ckpt_path, verbose=False)
+        except Exception as e:
+            msglogger.critical("Training failed with exception")
+            msglogger.critical(str(e))
+            res = {}
+            for monitor in opt_monitor:
+                res[monitor] = float("inf")
 
-    return opt_callback.result(dict=True)
+        return opt_callback.result(dict=True)
+    finally:
+        os.chdir("..")
 
 
 class NASTrainerBase(ABC):
