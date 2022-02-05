@@ -241,6 +241,7 @@ class OFANasTrainer(NASTrainerBase):
         elastic_depth=False,
         elastic_width=False,
         evaluate=True,
+        random_evaluate=True,
         # epochs_warmup_after_width=5,
         # epochs_kernel_after_width=5,
         # epochs_depth_after_width=5,
@@ -257,6 +258,7 @@ class OFANasTrainer(NASTrainerBase):
         self.elastic_depth = elastic_depth
         self.elastic_width = elastic_width
         self.evaluate = evaluate
+        self.random_evaluate = random_evaluate
 
     def run(self):
         os.makedirs("ofa_nas_dir", exist_ok=True)
@@ -320,10 +322,11 @@ class OFANasTrainer(NASTrainerBase):
         if self.evaluate:
             self.eval_model(model, ofa_model)
 
-            # save random metrics
-            print(self.random_metrics_csv)
-            with open("OFA_random_sample_metrics.csv", "w") as f:
-                f.write(self.random_metrics_csv)
+            if self.random_evaluate:
+                # save random metrics
+                print(self.random_metrics_csv)
+                with open("OFA_random_sample_metrics.csv", "w") as f:
+                    f.write(self.random_metrics_csv)
             # save self.submodel_metrics_csv
             print(self.submodel_metrics_csv)
             with open("OFA_elastic_metrics.csv", "w") as f:
@@ -389,7 +392,16 @@ class OFANasTrainer(NASTrainerBase):
                 self.trainer.fit(model)
             logging.info("OFA completed kernel matrices.")
 
-    def eval_elastic_width(self, method_stack, method_index, lightning_model, model, trainer_path, loginfo_output, metrics_output):
+    def eval_elastic_width(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+    ):
         model.reset_all_widths()
         method = method_stack[method_index]
 
@@ -402,10 +414,26 @@ class OFANasTrainer(NASTrainerBase):
             loginfo_output_tmp = loginfo_output + f"Width {current_width_step}, "
             metrics_output_tmp = metrics_output + f"{current_width_step}, "
 
-            method(method_stack, method_index + 1, lightning_model, model, trainer_path_tmp, loginfo_output_tmp, metrics_output_tmp)
+            method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+            )
 
-
-    def eval_elastic_kernels(self, method_stack, method_index, lightning_model, model, trainer_path, loginfo_output, metrics_output):
+    def eval_elastic_kernels(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+    ):
         model.reset_all_kernel_sizes()
         method = method_stack[method_index]
 
@@ -418,10 +446,26 @@ class OFANasTrainer(NASTrainerBase):
             loginfo_output_tmp = loginfo_output + f"Kernel {current_kernel_step}, "
             metrics_output_tmp = metrics_output + f"{current_kernel_step}, "
 
-            method(method_stack, method_index + 1, lightning_model, model, trainer_path_tmp, loginfo_output_tmp, metrics_output_tmp)
+            method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+            )
 
-
-    def eval_elatic_depth(self, method_stack, method_index, lightning_model, model, trainer_path, loginfo_output, metrics_output):
+    def eval_elatic_depth(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+    ):
         model.reset_active_depth()
         method = method_stack[method_index]
 
@@ -434,10 +478,26 @@ class OFANasTrainer(NASTrainerBase):
             loginfo_output_tmp = loginfo_output + f"Depth {current_depth_step}, "
             metrics_output_tmp = metrics_output + f"{current_depth_step}, "
 
-            method(method_stack, method_index + 1, lightning_model, model, trainer_path_tmp, loginfo_output_tmp, metrics_output_tmp)
+            method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+            )
 
-
-    def eval_single_model(self, method_stack, method_index, lightning_model, model, trainer_path, loginfo_output, metrics_output):
+    def eval_single_model(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+    ):
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
 
@@ -472,9 +532,12 @@ class OFANasTrainer(NASTrainerBase):
 
         if len(eval_methods) > 0:
             eval_methods.append(self.eval_single_model)
-            eval_methods[0](eval_methods, 1, lightning_model, model, "Eval ", "OFA validating ", "")
+            eval_methods[0](
+                eval_methods, 1, lightning_model, model, "Eval ", "OFA validating ", ""
+            )
 
-        self.eval_random_combination(lightning_model, model)
+        if self.random_evaluate:
+            self.eval_random_combination(lightning_model, model)
 
         model.eval_mode = False
 
