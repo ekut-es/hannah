@@ -252,3 +252,15 @@ class MacSummaryCallback(Callback):
 
         for k, v in res.items():
             pl_module.log(k, float(v), rank_zero_only=True)
+
+    def estimate(self, pl_module):
+        pl_module.eval()
+        res = {}
+        try:
+            res = self._do_summary(pl_module, print_log=False)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
+
+        pl_module.train()
+        return res
