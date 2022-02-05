@@ -2,13 +2,49 @@ import os
 import onnx
 import numpy as np
 from onnx import numpy_helper
-file_path = '/../trained_models/test/conv_net_trax/model.onnx'
-model = onnx.load(os.path.dirname(__file__) + file_path)
-[print(t.name) for t in model.graph.initializer]
-m_graph = model.graph.initializer
-weights = numpy_helper.to_array(m_graph[0])
+import copy
+import torch
+from huffman import Huffman_encoding, Huffman_decoding
+
+def load_parameters(file_path):
+    model = onnx.load(os.path.dirname(__file__) + file_path)
+    parameters = []
+    for i in model.graph.initializer:
+        if "weight" in i.name:
+            param = numpy_helper.to_array(i)
+            parameters.append(param.flatten())
+    return parameters
 
 
+
+def replace_cluster_by_indices(parameters):
+    ws = copy.deepcopy(parameters)
+    cluster = 10  # number of clusters
+    ws_indexed = []
+    # index_LUT = np.full(shape=(len(length_layers), cluster+1), fill_value=0) 
+    for k in range(len(ws)):
+        centers = np.unique(ws[k], return_counts=False)  # get unique cluster centers
+        # print(len(centers))
+        #for j in range(len(centers)):  # fill LUT
+        #    index_LUT[i,j] = centers_layer[j]
+        intermediate_layer = np.select([ws[k]==centers[j] for j in range(len(centers))], 
+                    [i+1 for i in range(len(centers))], 
+                    ws[k])  # replace with index 1 to i for i cluster
+        ws_indexed.append(intermediate_layer)
+    return ws_indexed
+
+
+def main():
+    file_path = '/../trained_models/test/tc-res8/model.onnx'
+    parameters = load_parameters(file_path) 
+    ws_indexed = replace_cluster_by_indices(parameters)
+    print('----------- Huffman Encoding -------------')
+    hs, tree = Huffman_encoding(ws_indexed)
+    decoding = Huffman_decoding(hs, tree)
+    print('Norm of decoded weights and indexed weights: ', (np.linalg.norm(torch.FloatTensor(decoding)==ws_indexed))) # check if indexed ws and decoded sequence are equal
+    
+
+main()
 
 
 '''# Replace centroids by indices, 0. added through pading in linear layer results in one more cluster 
