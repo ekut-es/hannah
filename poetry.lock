@@ -832,6 +832,21 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "imagecorruptions"
+version = "1.1.2"
+description = "This package provides a set of image corruptions."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = ">=1.16"
+opencv-python = ">=3.4.5"
+Pillow = ">=5.4.1"
+scikit-image = ">=0.15"
+scipy = ">=1.2.1"
+
+[[package]]
 name = "imageio"
 version = "2.14.1"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
@@ -1126,6 +1141,17 @@ description = "A fast implementation of the Cassowary constraint solver"
 category = "main"
 optional = false
 python-versions = ">=3.7"
+
+[[package]]
+name = "libsvm"
+version = "3.23.0.4"
+description = "Pre-built LibSVM packages for Python."
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.extras]
+dev = ["pytest", "pytest-pep8", "pytest-cov"]
 
 [[package]]
 name = "lightning-bolts"
@@ -1596,6 +1622,22 @@ python-versions = "*"
 flatbuffers = "*"
 numpy = ">=1.16.6"
 protobuf = "*"
+
+[[package]]
+name = "opencv-python"
+version = "4.5.5.62"
+description = "Wrapper package for OpenCV python bindings."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+numpy = [
+    {version = ">=1.21.2", markers = "python_version >= \"3.6\" and platform_system == \"Darwin\" and platform_machine == \"arm64\""},
+    {version = ">=1.19.3", markers = "python_version >= \"3.6\" and platform_system == \"Linux\" and platform_machine == \"aarch64\" or python_version >= \"3.9\""},
+    {version = ">=1.14.5", markers = "python_version >= \"3.7\""},
+    {version = ">=1.17.3", markers = "python_version >= \"3.8\""},
+]
 
 [[package]]
 name = "opencv-python-headless"
@@ -2918,7 +2960,7 @@ tvm-backend = []
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "70cf17c93bf9d6ab5122becdd3f68e8445f8319db056eb2941be9404916536fa"
+content-hash = "1a5e9f686780de648fe28e87113c1e0fc6591669187cf4b183908ee7dd8cb576"
 
 [metadata.files]
 absl-py = [
@@ -3561,6 +3603,10 @@ idna = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
 ]
+imagecorruptions = [
+    {file = "imagecorruptions-1.1.2-py3-none-any.whl", hash = "sha256:d0e4bf529ba6fbb27d8aba1bde7c5db43bf2b969b2c767c11419e939e3e365b8"},
+    {file = "imagecorruptions-1.1.2.tar.gz", hash = "sha256:044e173f24d5934899bdbf3596bfbec917e8083e507eed583ab217abebbe084d"},
+]
 imageio = [
     {file = "imageio-2.14.1-py3-none-any.whl", hash = "sha256:4bc1257abe5d8c9ef89132dccd9d783c1c0bdbbcfb98c0e5fe84e8b7b9ee4975"},
     {file = "imageio-2.14.1.tar.gz", hash = "sha256:709c18f800981e4286abe4bd86b6c9b5bb6e285b6b933b5ba0962ef8e7994058"},
@@ -3679,6 +3725,9 @@ kiwisolver = [
     {file = "kiwisolver-1.3.2-pp37-pypy37_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:25405f88a37c5f5bcba01c6e350086d65e7465fd1caaf986333d2a045045a223"},
     {file = "kiwisolver-1.3.2-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:bcadb05c3d4794eb9eee1dddf1c24215c92fb7b55a80beae7a60530a91060560"},
     {file = "kiwisolver-1.3.2.tar.gz", hash = "sha256:fc4453705b81d03568d5b808ad8f09c77c47534f6ac2e72e733f9ca4714aa75c"},
+]
+libsvm = [
+    {file = "libsvm-3.23.0.4.tar.gz", hash = "sha256:ea61c748b7baa75d7de8d8d3278614a0f66f32830e6828dd307fc69d20210463"},
 ]
 lightning-bolts = [
     {file = "lightning-bolts-0.3.4.tar.gz", hash = "sha256:72b9c5fcc17ff85f76e27654c51951d837143ae930bbeae3e0c8880f9e7f4c5c"},
@@ -4051,6 +4100,15 @@ onnxruntime = [
     {file = "onnxruntime-1.10.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:34cfb07a8af91b3b7f82ad9db8f6dce67f0bd672cdaf659d0fd86aaba7a021d9"},
     {file = "onnxruntime-1.10.0-cp39-cp39-win32.whl", hash = "sha256:1fb57101581eaec64d335d0675908fd41cae91b496475fc96fc5bb2a58844e5b"},
     {file = "onnxruntime-1.10.0-cp39-cp39-win_amd64.whl", hash = "sha256:4087da19d2bb03ede012b9fd5f77f3b41f3ff500d2359d3d6361d593e47be59a"},
+]
+opencv-python = [
+    {file = "opencv-python-4.5.5.62.tar.gz", hash = "sha256:3efe232b32d5e1327e7c82bc6d61230737821c5190ce5c783e64a1bc8d514e18"},
+    {file = "opencv_python-4.5.5.62-cp36-abi3-macosx_10_15_x86_64.whl", hash = "sha256:2601388def0d6b957cc30dd88f8ff74a5651ae6940dd9e488241608cfa2b15c7"},
+    {file = "opencv_python-4.5.5.62-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:71fdc49df412b102d97f14927321309043c79c4a3582cce1dc803370ff9c39c0"},
+    {file = "opencv_python-4.5.5.62-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:130cc75d56b29aa3c5de8b6ac438242dd2574ba6eaa8bccdffdcfd6b78632f7f"},
+    {file = "opencv_python-4.5.5.62-cp36-abi3-win32.whl", hash = "sha256:3a75c7ad45b032eea0c72e389aac6dd435f5c87e87f60237095c083400bc23aa"},
+    {file = "opencv_python-4.5.5.62-cp36-abi3-win_amd64.whl", hash = "sha256:c463d2276d8662b972d20ca9644702188507de200ca5405b89e1fe71c5c99989"},
+    {file = "opencv_python-4.5.5.62-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:ac92e743e22681f30001942d78512c1e39bce53dbffc504e5645fdc45c0f2c47"},
 ]
 opencv-python-headless = [
     {file = "opencv-python-headless-4.5.5.62.tar.gz", hash = "sha256:12aa335156adf62efdaa6dc5966d6c3415a7e2834d336e4f10ee5fccc65202c8"},

@@ -51,6 +51,8 @@ networkx = "^2.6.2"
 xgboost = "^1.4.2"
 jupyter = "^1.0.0"
 fairscale = "^0.4.5"
+imagecorruptions = "^1.1.2"
+libsvm = "^3.23.0"
 
 
 [tool.poetry.dev-dependencies]
