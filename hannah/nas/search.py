@@ -19,9 +19,9 @@ from pytorch_lightning import LightningModule
 from hannah_optimizer.aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything, reset_seed
-from .callbacks.optimization import HydraOptCallback
-from .callbacks.summaries import MacSummaryCallback
-from .utils import common_callbacks, clear_outputs, fullname
+from ..callbacks.optimization import HydraOptCallback
+from ..callbacks.summaries import MacSummaryCallback
+from ..utils import common_callbacks, clear_outputs, fullname
 
 msglogger = logging.getLogger("nas")
 
