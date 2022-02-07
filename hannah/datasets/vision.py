@@ -1,14 +1,14 @@
-from logging import config
-import collections
+from collections import Counter
 import os
 import logging
 import pathlib
-from posixpath import split
 import tarfile
+from matplotlib.pyplot import cla
 import requests
-
-from typing import List
-
+from torch import default_generator, randperm
+from torch._utils import _accumulate
+from typing import Counter, List, Tuple, Dict, Sequence, Optional, Callable
+import pandas as pd
 from hydra.utils import get_original_cwd
 import numpy as np
 import torchvision
@@ -158,8 +158,25 @@ class FakeDataset(VisionDatasetBase):
 
 
 class KvasirCapsuleDataset(VisionDatasetBase):
+    def __init__(self, config, dataset, indices=None, csv_file=None, transform=None):
+        super().__init__(config, dataset, transform)
+        self.indices = indices
+        self.csv_file = csv_file
+        classes, class_to_idx = self.find_classes(config.data_root)
+        self.classes = classes
+        self.class_to_idx = class_to_idx
 
-    # Kvasir_Capsule
+    @staticmethod
+    def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
+        classes = sorted(
+            entry.name for entry in os.scandir(directory) if entry.is_dir()
+        )
+        if not classes:
+            raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
+
+        class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
+        return classes, class_to_idx
+
     DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_images/?zip="
 
     @classmethod
@@ -239,9 +256,9 @@ class KvasirCapsuleDataset(VisionDatasetBase):
                 transforms.Resize(256),
                 transforms.CenterCrop(256),
                 transforms.Resize(224),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.RandomRotation(90),
+                # transforms.RandomHorizontalFlip(),
+                # transforms.RandomVerticalFlip(),
+                # transforms.RandomRotation(90),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
             ]
@@ -273,44 +290,49 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         if train_val_len != split_sizes[0] + split_sizes[1]:
             split_sizes[0] = split_sizes[0] + 1
 
-        train_set, val_set = data.random_split(train_val_set, split_sizes)
-
+        # train_set, val_set = data.random_split(train_val_set, split_sizes)
+        train_val_splits, train_indices, val_indices = csv_dataset.random_split(
+            train_val_set, split_sizes
+        )
+        train_set = train_val_splits[0]
+        val_set = train_val_splits[1]
+        test_indices = [i for i in range(len(test_set.imgs))]
         return (
-            cls(config, train_set),
-            cls(config, val_set),
-            cls(config, test_set),
+            cls(config, train_set, train_indices, config.train_val_split),
+            cls(config, val_set, val_indices, config.train_val_split),
+            cls(config, test_set, test_indices, config.test_split),
         )
 
     @property
     def class_names(self):
-        data_root = os.path.join(
-            self.config.data_folder, "kvasir_capsule", "labelled_images"
-        )
-        classes = sorted(os.listdir(data_root))
-        return classes
+        return self.classes
 
     @property
     def class_counts(self):
-        data_root = os.path.join(
-            self.config.data_folder, "kvasir_capsule", "labelled_images"
-        )
-        classes = enumerate(sorted(os.listdir(data_root)))
-        class_counts = {
-            i: len(os.listdir(os.path.join(data_root, c))) for i, c in classes
-        }
-        return class_counts
+        csv = pd.read_csv(self.csv_file)
+        classes = [self.class_to_idx[csv.iloc[i][1]] for i in self.indices]
+        counter = Counter(classes)
+        classes_tupels = list(dict(counter).items())
+        dataset_classes = list(self.class_to_idx.values())
+        # random splits sometimes returns a val_split_Subset, that has 0 sampels from a dataset class, fill this with class index and None
+        for i in dataset_classes:
+            if i not in [j[0] for j in classes_tupels]:
+                classes_tupels.append((i, None))
+        counts = dict(sorted(classes_tupels))
+        return counts
 
-    # retuns a list of enumerated labels from train_val split used only for weighted sampler
-    def get_label_list(self) -> list[int]:
-        data_root = os.path.join(
-            self.config.data_folder, "kvasir_capsule", "labelled_images"
-        )
-        Dataset = csv_dataset.DatasetCSV(self.config.train_val_split, data_root)
-        label_list = [
-            Dataset.class_to_idx[Dataset.imgs.iloc[i, 1]] for i in range(len(Dataset))
-        ]
-        return label_list
+    # retuns a list of class index for every sample
+    @property
+    def get_label_list(self) -> List[int]:
+        csv = pd.read_csv(self.csv_file)
+        labels = [self.class_to_idx[csv.iloc[i][1]] for i in self.indices]
+        return labels
 
     @property
     def class_names_abbreviated(self) -> List[str]:
         return [cn[0:3] for cn in self.class_names]
+
+    @property
+    def class_weights(self):
+        weights = [1 / i for i in self.class_counts.values()]
+        return weights

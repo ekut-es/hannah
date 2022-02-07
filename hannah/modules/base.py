@@ -3,7 +3,6 @@ import io
 import logging
 import os
 
-
 from abc import abstractmethod, ABC
 from typing import Optional
 from pytorch_lightning.utilities.distributed import rank_zero_only
@@ -152,23 +151,10 @@ class ClassifierModule(LightningModule, ABC):
 
     @staticmethod
     def get_balancing_sampler(dataset):
-        class_weights_list = list(dataset.class_counts.values())
-        class_weights = [1 / i for i in class_weights_list]
-        label_list = dataset.get_label_list()
-        sampler_weights = []
-        for i in range(len(dataset)):
-            sampler_weights.append(
-                torch.tensor(class_weights[label_list[i]], dtype=float)
-            )
-        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
-        return sampler
-
-    @staticmethod
-    def get_balancing_sampler_with_weights(dataset, weights):
-        label_list = dataset.get_label_list()
-        sampler_weights = []
-        for i in range(len(dataset)):
-            sampler_weights.append(torch.tensor(weights[label_list[i]], dtype=float))
+        num_sampels = list(dataset.class_counts.values())
+        weights = [0 if i is None else 1 / i for i in num_sampels]
+        target_list = dataset.get_label_list
+        sampler_weights = [weights[i] for i in target_list]
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
 

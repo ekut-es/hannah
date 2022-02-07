@@ -3,7 +3,6 @@ import logging
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
-
 from torchmetrics.functional import accuracy
 from torchmetrics.functional import precision
 from torchmetrics.functional import recall
@@ -64,12 +63,7 @@ class ImageClassifierModule(ClassifierModule):
         if shuffle:
             sampler_type = dataset_conf.get("sampler", "random")
             if sampler_type == "weighted":
-                if self.hparams.dataset.default_weights:
-                    sampler = self.get_balancing_sampler_with_weights(
-                        dataset, self.hparams.dataset.weights
-                    )
-                else:
-                    sampler = self.get_balancing_sampler(dataset)
+                sampler = self.get_balancing_sampler(dataset)
             else:
                 sampler = data.RandomSampler(dataset)
 
@@ -104,7 +98,7 @@ class ImageClassifierModule(ClassifierModule):
             loss = F.cross_entropy(
                 logits,
                 y.squeeze(),
-                weight=torch.tensor(self.hparams.dataset.weights, device=self.device),
+                weight=torch.tensor(self.weights, device=self.device),
             )
         else:
             loss = F.cross_entropy(logits, y.squeeze())
@@ -119,7 +113,7 @@ class ImageClassifierModule(ClassifierModule):
             loss = F.cross_entropy(
                 logits,
                 y.squeeze(),
-                weight=torch.tensor(self.hparams.dataset.weights, device=self.device),
+                weight=torch.tensor(self.weights, device=self.device),
             )
         else:
             loss = F.cross_entropy(logits, y.squeeze())
@@ -137,7 +131,7 @@ class ImageClassifierModule(ClassifierModule):
             loss = F.cross_entropy(
                 logits,
                 y.squeeze(),
-                weight=torch.tensor(self.hparams.dataset.weights, device=self.device),
+                weight=torch.tensor(self.weights, device=self.device),
             )
         else:
             loss = F.cross_entropy(logits, y.squeeze())
