@@ -10,8 +10,18 @@ from ..torch_extensions.nn import SNNLayers
 from ..models.sinc import SincNet
 from ..models.factory import qat
 from ..models.ofa.submodules import elastickernelconv as ekc
-from ..models.ofa.submodules.elasticquantkernelconv import ElasticQuantConv1d, ElasticQuantConvBn1d, ElasticQuantConvBnReLu1d
-from ..models.ofa.submodules.elastickernelconv import ElasticConv1d, ElasticConvBn1d, ElasticConvBnReLu1d, ConvBnReLu1d, ConvBn1d
+from ..models.ofa.submodules.elasticquantkernelconv import (
+    ElasticQuantConv1d,
+    ElasticQuantConvBn1d,
+    ElasticQuantConvBnReLu1d,
+)
+from ..models.ofa.submodules.elastickernelconv import (
+    ElasticConv1d,
+    ElasticConvBn1d,
+    ElasticConvBnReLu1d,
+    ConvBnReLu1d,
+    ConvBn1d,
+)
 
 import torchvision
 
@@ -99,12 +109,10 @@ def walk_model(model, dummy_input):
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
         }
-
-        for _class, method in classes.items():
-            if isinstance(module, _class):
-                return method(module, volume_ofm, output)
-
-        return get_generic(module)
+        if type(module) in classes.keys():
+            return classes[type(module)](module, volume_ofm, output)
+        else:
+            return get_generic(module)
 
     def get_conv_macs(module, volume_ofm):
         return volume_ofm * (
