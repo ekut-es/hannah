@@ -1,10 +1,4 @@
-data = dict(KWS_5uw="nas_kws_5uw", VAD="nas_vad_1uw", WWD_5uw="nas_snips_1uw")
-
-bounds = {
-    "KWS_5uw": {"val_error": 0.065},
-    "VAD": {"val_error": 0.02},
-    "WWD_5uw": {"val_error": 0.035},
-}
+import logger
 
 
 def extract():
