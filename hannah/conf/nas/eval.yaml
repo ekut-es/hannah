@@ -1,5 +1,5 @@
 data:
-  KWS: trained_models/test_nas_no_backend/conv_net_trax
+  KWS: trained_models/nas_kws_no_backend/conv_net_trax
 
 metrics:
   total_act:

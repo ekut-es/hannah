@@ -1,4 +1,4 @@
-import logger
+import logging
 
 
 def extract():
