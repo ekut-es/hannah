@@ -7,7 +7,6 @@ from pathlib import Path
 
 from .utils import is_pareto
 from .parametrization import SearchSpace
-from .plot import plot_pareto_front, plot_history
 
 import numpy as np
 import yaml
@@ -147,10 +146,6 @@ class AgingEvolution:
                 new_points.append(point)
 
         self._pareto_points = new_points
-
-    def plot(self):
-        plot_history(self.history, self.output_folder)
-        plot_pareto_front(self.history, self.output_folder)
 
     def save(self):
         history_file = self.output_folder / "history.yml"
