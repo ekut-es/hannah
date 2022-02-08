@@ -12,7 +12,7 @@ metrics:
   val_accuracy:
     name: Accuracy [%]
     derived: (1.0 - data["val_error"]) * 100.0
-  act_m:
+  act_k:
     name: Activations [k]
     derived: data["total_act"] / 1000
 
@@ -23,7 +23,20 @@ plots:
     metrics:
       - val_accuracy
       - weights_m
-      - act_m
+      - act_k
+    # TODO: add bounds
+    bounds:
+      val_accuracy:
+          best: 100
+          worst:  98
+
+
+extract:
+  - KWS:
+      bounds:
+          val_accuracy:
+              best: 100
+              worst: 94
 
 experiment: test_nas_no_backend
 force: false
