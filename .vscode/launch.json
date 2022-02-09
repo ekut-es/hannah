@@ -14,10 +14,9 @@
             "args": [
                 "trainer.limit_train_batches=1.0",
                 "model=tc-res8",
-                "trainer.max_epochs=1",
-                "dataset=kvasir_capsule",
+                "trainer.max_epochs=10",
                 "svd_rank_compression=4",
-                "clustering=true"
+                "clustering=true",
             ]
         },
         {
@@ -39,12 +38,11 @@
             "request": "launch",
             "module": "hannah.train",
             "args": [
-                "trainer.max_epochs=30",
+                "trainer.max_epochs=3",
                 "module.num_workers=3",
                 "model=conv-net-trax",
                 "clustering=true",
                 "normalizer=fixedpoint",
-                "dataset=atrial_fibrillation",
                 "backend=trax_ut", 
                 "backend.cols=8",
                 "backend.standalone=True",

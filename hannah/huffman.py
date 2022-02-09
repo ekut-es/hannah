@@ -69,7 +69,7 @@ def decode_Sequence(seq, tree):
 
 
 def encode_Sequence(ws, huffman_dict):
-    k = np.asarray(ws)
+    k = np.asarray(ws, dtype=object)
     params = [None] * len(k)
     ws = []
     for i in range(len(k)):

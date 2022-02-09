@@ -23,9 +23,6 @@ class CompressionHuff(Callback):
 
 
     def on_train_end(self, trainer, pl_module):
-        #pl_module.load_state_dict(torch.load("best"))
-        #trainer.load_checkpoint()
-        #trainer.resume_from_checkpoint("best")
         with torch.no_grad():
             for module in pl_module.modules():
                 if hasattr(module, "scaled_weight"):
@@ -78,7 +75,7 @@ class CompressionHuff(Callback):
         replace_modules(pl_module)
         pl_module.to(device=device)  # otherwise cuda error
         inertia = 0
-        for module in pl_module.modules():
+        for name, module in pl_module.named_modules():
             if hasattr(module, "weight") and module.weight is not None:
                 params = module.weight.data.cpu().numpy().flatten()
                 centers, inertia = clustering(params, inertia)
@@ -89,13 +86,18 @@ class CompressionHuff(Callback):
                     return centers[i] 
                 module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers)  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                 module.to(device=device)  # move from cpu to gpu
-                centers = np.unique(module.weight.data.cpu().numpy().flatten(), return_counts=False)
+                #print(module.weight.flatten())
+                #centers = np.unique(module.weight.data.cpu().numpy().flatten(), return_counts=False)
         print('Clustering error: ', inertia)
         
 
 
     def on_epoch_end(self, trainer, pl_module):
         inertia = 0
+        try:
+            print(trainer.callback_metrics['val_accuracy'].item())
+        except:
+            print('could not print val_accuracy')
         if trainer.current_epoch % 2 == 0 and trainer.current_epoch < self.compress_after-1 and trainer.callback_metrics['val_accuracy'].item() > 0.9:
             print('Training validation accuracy: ', trainer.callback_metrics['val_accuracy'].item())
             print('Clustering.')
@@ -110,7 +112,7 @@ class CompressionHuff(Callback):
                         return centers[i] 
                     module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers) 
                     module.to(device=device) 
-        print('Clustering error: ', inertia)
+            print('Clustering error: ', inertia)
 
 
                 
