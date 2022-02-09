@@ -6,6 +6,7 @@ from pytorch_lightning.utilities.distributed import rank_zero_only
 import torch
 
 import hannah.torch_extensions.nn.SNNActivationLayer
+from ..models.ofa import OFAModel
 from ..torch_extensions.nn import SNNLayers
 from ..models.sinc import SincNet
 from ..models.factory import qat
@@ -217,9 +218,15 @@ class MacSummaryCallback(Callback):
         total_acts = 0.0
         total_weights = 0.0
         estimated_acts = 0.0
+        model = pl_module.model
+        if isinstance(model, OFAModel):
+            if model.validation_model == None:
+                model.build_validation_model()
+            model = model.validation_model
 
         try:
-            df = walk_model(pl_module.model, dummy_input)
+            df = walk_model(model, dummy_input)
+            pl_module.model.reset_validaton_model()
             t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
             total_macs = df["MACs"].sum()
             total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
@@ -234,6 +241,7 @@ class MacSummaryCallback(Callback):
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
         except RuntimeError as e:
+            pl_module.model.reset_validaton_model()
             msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
