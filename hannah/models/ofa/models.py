@@ -750,7 +750,14 @@ class OFAModel(nn.Module):
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_kernel_size",
-            type_selection=ElasticConv1d,
+            type_selection=(
+                ElasticConv1d,
+                ElasticConvBn1d,
+                ElasticConvBnReLu1d,
+                ElasticQuantConv1d,
+                ElasticQuantConvBn1d,
+                ElasticQuantConvBnReLu1d,
+            ),
         )
 
     # reset all kernel sizes to their max value
@@ -758,7 +765,14 @@ class OFAModel(nn.Module):
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_kernel_size",
-            type_selection=ElasticConv1d,
+            type_selection=(
+                ElasticConv1d,
+                ElasticConvBn1d,
+                ElasticConvBnReLu1d,
+                ElasticQuantConv1d,
+                ElasticQuantConvBn1d,
+                ElasticQuantConvBnReLu1d,
+            ),
         )
 
     # go to a specific kernel step
