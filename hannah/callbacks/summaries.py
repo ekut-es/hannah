@@ -23,6 +23,8 @@ from ..models.ofa.submodules.elastickernelconv import (
     ConvBn1d,
 )
 
+from ..models.ofa.submodules.elasticwidthmodules import ElasticWidthLinear
+
 import torchvision
 
 from pytorch_lightning.callbacks import Callback
@@ -92,6 +94,7 @@ def walk_model(model, dummy_input):
             ElasticConv1d: get_elastic_conv,
             ElasticConvBn1d: get_elastic_conv,
             ElasticConvBnReLu1d: get_elastic_conv,
+            ElasticWidthLinear: get_elastic_linear,
             ConvBn1d: get_conv,
             ConvBnReLu1d: get_conv,
             torch.nn.Conv1d: get_conv,
@@ -156,6 +159,10 @@ def walk_model(model, dummy_input):
     def get_elastic_conv(module, volume_ofm, output):
         tmp = module.assemble_basic_conv1d()
         return get_conv(tmp, volume_ofm, output)
+
+    def get_elastic_linear(module, volume_ofm, output):
+        tmp = module.assemble_basic_linear()
+        return get_fc(tmp, volume_ofm, output)
 
     def get_conv(module, volume_ofm, output):
         weights = (
