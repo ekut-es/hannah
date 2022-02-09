@@ -339,6 +339,7 @@ class OFANasTrainer(NASTrainerBase):
         ckpt_path = "best"
         self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
         ofa_model.on_warmup_end()
+        ofa_model.reset_validaton_model()
         logging.info("OFA completed warm-up.")
 
     def train_elastic_width(self, model, ofa_model):
