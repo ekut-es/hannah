@@ -646,6 +646,9 @@ class OFAModel(nn.Module):
     def build_validation_model(self):
         self.validation_model = self.extract_elastic_depth_sequence(self.active_depth)
 
+    def reset_validaton_model(self):
+        self.validation_model = None
+
     def get_validation_model_weight_count(self):
         if self.validation_model is None:
             return 0

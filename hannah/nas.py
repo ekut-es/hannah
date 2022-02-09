@@ -501,10 +501,10 @@ class OFANasTrainer(NASTrainerBase):
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
 
-        model.build_validation_model()
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
+        model.reset_validaton_model()
 
         self.submodel_metrics_csv += metrics_output
         results = validation_results[0]
