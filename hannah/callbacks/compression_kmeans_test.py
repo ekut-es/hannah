@@ -10,7 +10,7 @@ from scipy.sparse import csr_matrix
 
 def clustering(params, inertia):
     sparse_matrix = csr_matrix(params)
-    kmeans = KMeans(n_clusters=16, n_init=1, init='k-means++', algorithm="full", random_state=1234)
+    kmeans = KMeans(n_clusters=2, n_init=1, init='k-means++', algorithm="full", random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1,1))
     centers = kmeans.cluster_centers_.reshape(-1)
     inertia += kmeans.inertia_
@@ -88,6 +88,7 @@ class CompressionHuff(Callback):
                 module.to(device=device)  # move from cpu to gpu
                 #print(module.weight.flatten())
                 #centers = np.unique(module.weight.data.cpu().numpy().flatten(), return_counts=False)
+                #print(centers)
         print('Clustering error: ', inertia)
         
 

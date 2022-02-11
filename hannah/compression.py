@@ -9,10 +9,10 @@ import argparse
 def load_parameters(file_path):
     values = []
     lengths = []
-    clustered_model = torch.load(file_path)
+    clustered_model = torch.load(file_path, map_location='cpu')  # 'cpu' must be specified, otherwise a CUDA error can occur.
     for key, value in clustered_model["state_dict"].items():
         if "weight" in key and "downsample" not in key:
-            print(key)
+            #print(key)
             lengths.append(len(value.numpy().flatten()))
             values.append(value.numpy().flatten())
     return values, lengths
@@ -26,6 +26,9 @@ def replace_cluster_by_indices(parameters):
     index_LUT = np.full(shape=(len(ws), cluster+1), fill_value=0, dtype=float)  # needs to be float, otherwise, inserted values are automatically rounded
     for k in range(len(ws)):
         centers = np.unique(ws[k], return_counts=False)  # get unique cluster centers
+        #print(type(centers[0]))
+        #print(type(ws[0][0]))
+        #print(ws[0][0])
         for j in range(len(centers)):  # fill LUT
             index_LUT[k,j] = centers[j]
         intermediate_layer = np.select([ws[k]==centers[j] for j in range(len(centers))], 
