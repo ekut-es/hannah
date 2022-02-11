@@ -96,7 +96,7 @@ def train(config: DictConfig):
             callbacks.append(backend)
 
         compress_after = config.trainer.max_epochs
-        if config.clustering is True:   
+        if config.clustering:   
             callbacks.append(CompressionHuff(compress_after))
         #if compress_after % 2 == 1:  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
         #    compress_after -= 1
@@ -137,7 +137,7 @@ def train(config: DictConfig):
         lit_trainer.fit(lit_module)
         
         # For KMeans-clustering last checkpoint needed
-        if config.clustering is True:
+        if config.clustering:
             lit_trainer.save_checkpoint('last.ckpt')
             ckpt_path = 'last.ckpt'
         else:

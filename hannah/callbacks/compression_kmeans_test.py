@@ -10,7 +10,7 @@ from scipy.sparse import csr_matrix
 
 def clustering(params, inertia):
     sparse_matrix = csr_matrix(params)
-    kmeans = KMeans(n_clusters=2, n_init=1, init='k-means++', algorithm="full", random_state=1234)
+    kmeans = KMeans(n_clusters=10, n_init=1, init='k-means++', algorithm="full", random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1,1))
     centers = kmeans.cluster_centers_.reshape(-1)
     inertia += kmeans.inertia_
@@ -22,7 +22,7 @@ class CompressionHuff(Callback):
         self.compress_after = compress_after
 
 
-    def on_train_end(self, trainer, pl_module):
+    def on_fit_end(self, trainer, pl_module):
         with torch.no_grad():
             for module in pl_module.modules():
                 if hasattr(module, "scaled_weight"):
