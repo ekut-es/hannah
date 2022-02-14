@@ -2267,7 +2267,7 @@ tf-backend = ["onnx-tf", "tensorflow-addons"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "2b5c377900580a66ee52cbf206ccece0d9f8c6ccd1678e52dda69169622c7306"
+content-hash = "6a64c4865d184b6477143656108bb63cbd2697402da6cff04e6969b74c7fd8e3"
 
 [metadata.files]
 absl-py = [
