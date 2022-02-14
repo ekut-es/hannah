@@ -30,16 +30,15 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
         task_metrics["is_pareto"] = pareto_points
 
         candidates = task_metrics[task_metrics["is_pareto"]]
+
         for metric, bound in task_config.bounds.items():
             candidates = candidates[candidates[metric] < bound]
+        logger.info("Network candidates:\n %s", str(candidates))
 
         for metric in task_config.bounds.keys():
             sorted = candidates.sort_values(metric)
-
             point_metrics = sorted.head(1)
-            # print(point_metrics)
             index = point_metrics["Step"]
-            # print(index)
             num = 0
 
             parameters = task_parameters[int(index)].flatten()

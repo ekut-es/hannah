@@ -94,4 +94,6 @@ def calculate_derived_metrics(
                 logger.critical("Could not calculate derived metric %s", name)
                 logger.critical(str(e))
 
+    result_metrics = result_metrics.dropna()
+
     return result_metrics
