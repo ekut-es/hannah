@@ -15,28 +15,32 @@ metrics:
   act_k:
     name: Activations [k]
     derived: data["total_act"] / 1000
+  macs_m:
+    name: MACS [M]
+    derived: data["total_macs"] / 1000 / 1000
 
 plots:
-  # Comparison plots 2-3 metrics using y, x and size as metrics
+  # Comparison plots 2-3 metrics using y, x and size as visualization points
   - type: comparison
-    name: all
+    name: accuracy_memory
     metrics:
       - val_accuracy
       - weights_m
       - act_k
-    # TODO: add bounds
-    bounds:
-      val_accuracy:
-          best: 100
-          worst:  98
 
+  - type: comparison
+    name: accuracy_macs
+    metrics:
+      - val_accuracy
+      - macs_m
 
 extract:
-  - KWS:
-      bounds:
-          val_accuracy:
-              best: 100
-              worst: 94
+  KWS:
+    bounds:
+        val_error: 0.1
+        total_macs: 100000
+        total_weights: 1000000
+
 
 experiment: test_nas_no_backend
 force: false

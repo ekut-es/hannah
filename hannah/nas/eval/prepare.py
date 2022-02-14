@@ -1,13 +1,13 @@
 import logging
 import yaml
-
+import pickle
 
 import pandas as pd
 
 from pathlib import Path
 from typing import Any, Dict
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("nas_eval.prepare")
 
 
 def prepare_summary(
@@ -23,7 +23,8 @@ def prepare_summary(
 
     logger.info("Extracting design points")
 
-    results_file = Path("data.pkl")
+    results_file = Path("metrics.pkl")
+    parameters_file = Path("parameters.pkl")
     base_dir = Path(base_dir)
     if results_file.exists() and not force:
         changed = False
@@ -37,9 +38,14 @@ def prepare_summary(
                     break
         if not changed:
             logger.info("  reading design points from saved data.pkl")
-            return pd.read_pickle("data.pkl")
+            metrics = pd.read_pickle(results_file)
+            parameters = None
+            with parameters_file.open("rb") as param_f:
+                parameters = pickle.load(param_f)
+            return metrics, parameters
 
     result_stack = []
+    parameters_all = {}
     for name, source in data.items():
         logger.info("  Extracting design points for task: %s", name)
         history_path = base_dir / source / "history.yml"
@@ -47,9 +53,17 @@ def prepare_summary(
             history_file = yaml.unsafe_load(f)
 
         results = (h.result for h in history_file)
+
         metrics = pd.DataFrame(results)
         metrics["Task"] = name
         metrics["Step"] = metrics.index
+
+        parameters = [h.parameters for h in history_file]
+        parameters_all[name] = parameters
+
+        from pprint import pprint
+
+        pprint(parameters)
 
         result_stack.append(metrics)
 
@@ -62,8 +76,10 @@ def prepare_summary(
     result.insert(0, "Task", task_column)
 
     result.to_pickle(results_file)
+    with parameters_file.open("wb") as param_f:
+        pickle.dump(parameters_all, param_f)
 
-    return result
+    return result, parameters_all
 
 
 def calculate_derived_metrics(
