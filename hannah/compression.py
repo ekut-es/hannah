@@ -18,9 +18,8 @@ def load_parameters(file_path):
 
 
 
-def replace_cluster_by_indices(parameters):
+def replace_cluster_by_indices(parameters, cluster):
     ws = copy.deepcopy(parameters)
-    cluster = 2  # number of clusters
     ws_indexed = []
     index_LUT = np.full(shape=(len(ws), cluster+1), fill_value=0, dtype=float)  # needs to be float, otherwise, inserted values are automatically rounded
     for k in range(len(ws)):
@@ -61,10 +60,13 @@ def calc_diff(hs):
 
 
 def main():
+    # Only works for non-quantized models. For quantized models, please use backend encoding.
     parser = argparse.ArgumentParser(
         description="Replace Kmeans centroids by indices and perform Huffman encoding.")
     parser.add_argument("-i", "--filepath", dest="filename", type=str, required=True,
-                    help="File path to state dict of trained clustered model")
+                    help="File path to state dict of trained clustered (non-quantized) model")
+    parser.add_argument("-cluster", "--number_clusters", dest="n_clusters", type=int, required=True,
+                    help="Number of k-means clusters that were used during training.")
     args = parser.parse_args()
     #/home/wernerju/.cache/pypoetry/virtualenvs/hannah-Wne_DMqI-py3.9/bin/python /local/wernerju/hannah/hannah/compression.py -i /local/wernerju/hannah/trained_models/test/tc-res8/last.ckpt
 
@@ -72,7 +74,8 @@ def main():
     ws, lengths = load_parameters(file_path)
 
     print('----------- Replacement of Clusters by indices -------------')
-    ws_indexed, index_LUT = replace_cluster_by_indices(ws)
+    cluster = args.n_clusters
+    ws_indexed, index_LUT = replace_cluster_by_indices(ws, cluster)
 
     print('----------- Huffman Encoding -------------')
     hs, tree = Huffman_encoding(ws_indexed)

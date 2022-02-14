@@ -10,7 +10,7 @@ from scipy.sparse import csr_matrix
 
 def clustering(params, inertia):
     sparse_matrix = csr_matrix(params)
-    kmeans = KMeans(n_clusters=10, n_init=1, init='k-means++', algorithm="full", random_state=1234)
+    kmeans = KMeans(n_clusters=16, n_init=1, init='k-means++', algorithm="full", random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1,1))
     centers = kmeans.cluster_centers_.reshape(-1)
     inertia += kmeans.inertia_
