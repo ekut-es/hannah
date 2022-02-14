@@ -161,6 +161,7 @@ deploy_image:
 
 run_ml_cloud:
   stage: test
+  image: ubuntu:latest
   before_script:
     - eval $(ssh-agent -s)
     - ssh-add <(echo "$ML_CLOUD_KEY")
