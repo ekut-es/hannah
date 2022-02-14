@@ -157,3 +157,22 @@ deploy_image:
   only:
     - master
     - docker_container
+
+
+run_ml_cloud:
+  stage: deploy
+  before_script:
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  tags:
+    - docker
+  script:
+    - cd ml_cloud
+    - ssh cgerum05@134.2.168.52 ls
+  dependencies:
+    - build_image
+    - test_image
+  when: manual
