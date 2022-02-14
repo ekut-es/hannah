@@ -24,7 +24,7 @@
 
 #SBATCH --gres-flags=enforce-binding
 
-#SBATCH --time=05:00
+#SBATCH --time=0-05:00
 # the maximum time the scripts needs to run (5 minutes)
 
 #SBATCH --error=job_%j.err
