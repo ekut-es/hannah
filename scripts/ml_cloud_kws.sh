@@ -24,14 +24,13 @@
 
 #SBATCH --gres-flags=enforce-binding
 
-#SBATCH --time=0-05:00
-# the maximum time the scripts needs to run (5 minutes)
+#SBATCH --time=300
+# the maximum time the scripts needs to run (300 minutes = 5 hours)
 
-#SBATCH --error=job_%j.err
+#SBATCH --error=jobs/job_%j.err
 # write the error output to job.*jobID*.err
 
-#TSBATCH --output/home/bringmann/cgerum05/job_%j.out
-#SBATCH --output=job_%j.out
+#SBATCH --output=jobs/job_%j.out
 # write the standard output to your home directory job.*jobID*.out
 
 #SBATCH --mail-type=ALL
