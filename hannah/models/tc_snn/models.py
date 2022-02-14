@@ -746,7 +746,7 @@ class BranchyTCResNetModel(TCResNetModel):
         self.f_bits = config.get("exit_f_bits", 14)
 
         self.exit_max = 2 ** (self.n_bits - self.f_bits - 1) - 1 / (2 ** self.f_bits)
-        self.exit_min = -2 ** (self.n_bits - self.f_bits - 1)
+        self.exit_min = -(2 ** (self.n_bits - self.f_bits - 1))
         self.exit_divider = 2 ** (self.f_bits)
 
         self.earlyexit_thresholds = config["earlyexit_thresholds"]
@@ -949,8 +949,10 @@ class BranchyTCResNetModel(TCResNetModel):
                 estimated_losses_taylor = self._estimate_losses_taylor(
                     thresholded_result, estimated_labels
                 )
-                estimated_losses_taylor_approximate = self._estimate_losses_taylor_approximate(
-                    thresholded_result, estimated_labels
+                estimated_losses_taylor_approximate = (
+                    self._estimate_losses_taylor_approximate(
+                        thresholded_result, estimated_labels
+                    )
                 )
                 estimated_losses_sum = self._estimate_losses_sum(
                     thresholded_result, estimated_labels
