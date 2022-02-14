@@ -7,6 +7,7 @@ import hydra
 
 from omegaconf import OmegaConf
 
+from .extract import extract_models
 from .prepare import prepare_summary, calculate_derived_metrics
 from .plot import plot_comparison
 
@@ -16,7 +17,7 @@ logger = logging.getLogger("nas_eval")
 @hydra.main(config_path="../../conf/nas", config_name="eval")
 def main(config):
     logger.info("Current working directory %s", os.getcwd())
-    result_metrics = prepare_summary(
+    result_metrics, parameters = prepare_summary(
         config.data,
         base_dir=hydra.utils.get_original_cwd(),
         force=config.get("force", False),
@@ -42,6 +43,8 @@ def main(config):
             )
         else:
             logger.warning("unknown plot type: %s")
+
+    extract_models(parameters, derived_metrics, config.metrics, config.extract)
 
 
 if __name__ == "__main__":
