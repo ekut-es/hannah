@@ -7,6 +7,7 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   GIT_SUBMODULE_STRATEGY: recursive
+  DEBIAN_FRONTEND: "noninteractive"
 
 before_script:
   - cat /etc/os-release
@@ -157,3 +158,22 @@ deploy_image:
   only:
     - master
     - docker_container
+
+
+run_ml_cloud:
+  stage: test
+  image: ubuntu:latest
+  before_script:
+    - apt update
+    - apt -y install openssh-client
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  tags:
+    - docker
+  script:
+    - cd ml_cloud
+    - ssh cgerum05@134.2.168.52 ls
+  when: manual
