@@ -118,7 +118,7 @@ test_image:
   stage: test
   before_script: [""]
   image:
-    name: quay.io/singularity/singularity:latest
+    name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
 
   tags:
@@ -143,7 +143,7 @@ deploy_image:
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
 
   image:
-    name: quay.io/singularity/singularity:latest
+    name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
 
   tags:
@@ -169,7 +169,7 @@ deploy_test:
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
 
   image:
-    name: quay.io/singularity/singularity:latest
+    name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
 
   tags:
