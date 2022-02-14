@@ -19,7 +19,7 @@ from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 # from .callbacks.compression_hook_test import CompressionHuff
-from .callbacks.compression_kmeans_test import CompressionHuff
+from .callbacks.clustering import kMeans
 from .callbacks.svd_compress import SVD
 from .utils import (
     log_execution_env_state,
@@ -97,7 +97,7 @@ def train(config: DictConfig):
 
         compress_after = config.trainer.max_epochs
         if config.clustering:   
-            callbacks.append(CompressionHuff(compress_after))
+            callbacks.append(kMeans(compress_after))
         #if compress_after % 2 == 1:  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
         #    compress_after -= 1
         #callbacks.append(SVD(rank_svd=config.get("svd_rank_compression"), compress_after=compress_after))

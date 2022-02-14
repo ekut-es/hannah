@@ -17,7 +17,7 @@ def clustering(params, inertia):
     return centers, inertia
 
 
-class CompressionHuff(Callback):
+class kMeans(Callback):
     def __init__(self, compress_after):
         self.compress_after = compress_after
 
