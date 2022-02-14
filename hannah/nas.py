@@ -306,9 +306,22 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("Depth Steps: %d", self.depth_step_count)
         logging.info("Width Steps: %d", self.width_step_count)
 
-        self.submodel_metrics_csv = (
-            "width, kernel, depth, acc, total_macs, total_weights, torch_params\n"
-        )
+        self.submodel_metrics_csv = ""
+
+        if self.elastic_width:
+            self.submodel_metrics_csv += "width, "
+
+        if self.elastic_kernels:
+            self.submodel_metrics_csv += "kernel, "
+
+        if self.elastic_depth:
+            self.submodel_metrics_csv += "depth, "
+
+        if self.elastic_width | self.elastic_kernels | self.elastic_depth:
+            self.submodel_metrics_csv += (
+                "acc, total_macs, total_weights, torch_params\n"
+            )
+
         self.random_metrics_csv = "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
 
         logging.info("Once for all Model:\n %s", str(ofa_model))
