@@ -176,7 +176,7 @@ deploy_test:
     - docker
   script:
     - cd ml_cloud
-    - ssh cgerum05@134.2.168.52:/home/bringmann/cgerum05
+    - ssh cgerum05@134.2.168.52 ls
   dependencies:
     - deploy_image
   only:
