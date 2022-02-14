@@ -501,7 +501,7 @@ class OFANasTrainer(NASTrainerBase):
     ):
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
-
+        model.reset_validaton_model()
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
@@ -544,6 +544,7 @@ class OFANasTrainer(NASTrainerBase):
 
     def eval_random_combination(self, lightning_model, model):
         # sample a few random combinations
+        model.reset_validaton_model()
         prev_max_kernel = model.sampling_max_kernel_step
         prev_max_depth = model.sampling_max_depth_step
         prev_max_width = model.sampling_max_width_step
@@ -561,10 +562,10 @@ class OFANasTrainer(NASTrainerBase):
                 f"Eval random sample: D {selected_depth}, Ks {selected_kernels}, Ws {selected_widths}"
             )
             logging.info(f"OFA validating random sample:\n{random_state}")
-            model.build_validation_model()
             validation_results = self.trainer.validate(
                 lightning_model, ckpt_path=None, verbose=True
             )
+            model.reset_validaton_model()
             results = validation_results[0]
             self.random_metrics_csv += f"{selected_widths_string}, {selected_depth}, {selected_kernels_string}, "
             torch_params = model.get_validation_model_weight_count()

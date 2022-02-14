@@ -219,14 +219,17 @@ class MacSummaryCallback(Callback):
         total_weights = 0.0
         estimated_acts = 0.0
         model = pl_module.model
-        if isinstance(model, OFAModel):
+        ofamodel = isinstance(model, OFAModel)
+        if ofamodel:
+            ofamodel = True
             if model.validation_model == None:
                 model.build_validation_model()
             model = model.validation_model
 
         try:
             df = walk_model(model, dummy_input)
-            pl_module.model.reset_validaton_model()
+            if ofamodel:
+                pl_module.model.reset_validaton_model()
             t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
             total_macs = df["MACs"].sum()
             total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
@@ -241,7 +244,8 @@ class MacSummaryCallback(Callback):
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
         except RuntimeError as e:
-            pl_module.model.reset_validaton_model()
+            if ofamodel:
+                pl_module.model.reset_validaton_model()
             msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
