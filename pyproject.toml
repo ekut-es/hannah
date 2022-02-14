@@ -51,13 +51,8 @@ timm = "^0.4.12"
 albumentations = "^1.0.1"
 pycocotools = "^2.0.2"
 fairscale = "^0.4.5"
-llvmlite = "^0.38.0"
-SharedArray = "^3.2.1"
-numpy = ">=1.21.5"
-numba = "^0.55.1"
+numpy = "^1.22.2"
 spconv-cu102 = "^2.1.21"
-
-#hydra-nevergrad-sweeper = ">=1.1.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.0"
