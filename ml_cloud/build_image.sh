@@ -1,7 +1,9 @@
 #!/bin/bash
 
 fakeroot=""
-if [[ $EUID -ne 0 ]]; then
+if [ -f /.dockerenv ]; then
+   fakeroot=""
+elif [[ $EUID -ne 0 ]]; then
    fakeroot="--fakeroot"
 fi
 
