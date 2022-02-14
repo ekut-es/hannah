@@ -21,6 +21,8 @@ From: nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
    ln -s /usr/bin/python3.9 /usr/bin/python3
    ln -s /usr/bin/python3.9 /usr/bin/python
 
+   curl -sSL https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+   python3.9 get-pip.py
 
    python3 -m pip install -r /requirements.txt
    python3 -m pip install --force-reinstall setuptools==59.5.0
