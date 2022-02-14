@@ -172,7 +172,4 @@ run_ml_cloud:
   script:
     - cd ml_cloud
     - ssh cgerum05@134.2.168.52 ls
-  dependencies:
-    - build_image
-    - test_image
   when: manual
