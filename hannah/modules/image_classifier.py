@@ -28,19 +28,42 @@ class ImageClassifierModule(ClassifierModule):
         self.train_set, self.dev_set, self.test_set = dataset_cls.splits(
             self.hparams.dataset
         )
-        self.example_input_array = torch.tensor(self.test_set[0][0]).unsqueeze(0)
-        self.example_feature_array = torch.tensor(self.test_set[0][0]).unsqueeze(0)
 
-        self.num_classes = len(self.train_set.class_names)
+        example_data = self._decode_batch(self.test_set[0])["data"]
+        self.example_input_array = example_data.clone().detach().unsqueeze(0)
+        self.example_feature_array = example_data.clone().detach().unsqueeze(0)
+
+        self.num_classes = None
+        if self.train_set.class_names:
+            self.num_classes = len(self.train_set.class_names)
 
         logger.info("Setting up model %s", self.hparams.model.name)
-        self.model = instantiate(
-            self.hparams.model,
-            labels=self.num_classes,
-            input_shape=self.example_input_array.shape,
-        )
+        is_autoencoder = self.hparams.get("autoencoder", False)
+        if is_autoencoder:
+            self.model = instantiate(
+                self.hparams.model,
+                features_only=True,
+                out_indices=[2, 3, -1],
+                input_shape=self.example_input_array.shape,
+            )
+        else:
+            assert self.num_classes is not None
+            self.model = instantiate(
+                self.hparams.model,
+                labels=self.num_classes,
+                input_shape=self.example_input_array.shape,
+            )
 
-        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+            self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+
+    def _decode_batch(self, batch):
+        if isinstance(batch, list) or isinstance(batch, tuple):
+            assert len(batch) == 2
+            ret = {"data": batch[0], "labels": batch[1]}
+        else:
+            ret = batch
+
+        return ret
 
     def get_class_names(self):
         return self.train_set.class_names
@@ -78,7 +101,9 @@ class ImageClassifierModule(ClassifierModule):
         return train_loader
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
+        batch = self._decode_batch(batch)
+        x = batch["data"]
+        y = batch.get("labels", None)
 
         if batch_idx == 0:
             loggers = self._logger_iterator()
@@ -92,38 +117,49 @@ class ImageClassifierModule(ClassifierModule):
 
         logits = self(x)
 
-        loss = F.cross_entropy(
-            logits, y.squeeze()
-        )  # , weight=torch.tensor([0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809], device=self.device))
-        self.log("train_loss", loss)
+        loss = 0.0
+        if y is not None:
+            loss = F.cross_entropy(
+                logits, y.squeeze()
+            )  # , weight=torch.tensor([0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809], device=self.device))
+            self.log("train_loss", loss)
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
+        batch = self._decode_batch(batch)
+        x = batch["data"]
+        y = batch.get("labels", None)
         logits = self(x)
-        loss = F.cross_entropy(logits, y.squeeze())
-        preds = torch.argmax(logits, dim=1)
-        acc = accuracy(preds, y.squeeze())
 
-        self.log("val_loss", loss)
-        self.log("val_error", 1 - acc)
-        self.log("val_accuracy", acc)
+        loss = 0.0
+        if y is not None:
+            loss = F.cross_entropy(logits, y.squeeze())
+            preds = torch.argmax(logits, dim=1)
+            acc = accuracy(preds, y.squeeze())
+
+            self.log("val_loss", loss)
+            self.log("val_error", 1 - acc)
+            self.log("val_accuracy", acc)
 
     def test_step(self, batch, batch_idx):
-        x, y = batch
+        batch = self._decode_batch(batch)
+        x = batch["data"]
+        y = batch.get("labels", None)
         logits = self(x)
-        loss = F.cross_entropy(logits, y.squeeze())
-        preds = torch.argmax(logits, dim=1)
-        softmax = F.softmax(logits)
-        acc = accuracy(preds, y.squeeze())
 
-        with set_deterministic(False):
-            self.test_confusion(preds, y)
+        if y is not None:
+            loss = F.cross_entropy(logits, y.squeeze())
+            preds = torch.argmax(logits, dim=1)
+            softmax = F.softmax(logits)
+            acc = accuracy(preds, y.squeeze())
 
-        self.log("test_loss", loss)
-        self.log("test_error", 1 - acc)
-        self.log("test_accuracy", acc)
+            with set_deterministic(False):
+                self.test_confusion(preds, y)
+
+            self.log("test_loss", loss)
+            self.log("test_error", 1 - acc)
+            self.log("test_accuracy", acc)
 
     def train_dataloader(self):
         return self._get_dataloader(self.train_set, shuffle=True)

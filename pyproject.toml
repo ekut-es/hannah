@@ -50,6 +50,7 @@ libsvm="^3.23.0.4"
 imagecorruptions = "^1.1.2"
 timm = "^0.4.12"
 albumentations = "^1.0.1"
+gdown = "^4.2.1"
 pycocotools = "^2.0.2"
 fairscale = "^0.4.5"
 

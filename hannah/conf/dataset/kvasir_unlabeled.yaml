@@ -1,0 +1,4 @@
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.vision.KvasirCapsuleUnlabeled
+dataset: kvasir_unlabeled
+verify_files: False # Check md5 sums of downloaded files at start

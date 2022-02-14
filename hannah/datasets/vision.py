@@ -1,3 +1,4 @@
+import bisect
 from logging import config
 import collections
 import os
@@ -5,10 +6,15 @@ import logging
 import pathlib
 from posixpath import split
 import tarfile
+import cv2
 import requests
+import json
+import urllib.request
+import gdown
 
 from typing import List
 
+from tqdm import tqdm
 from hydra.utils import get_original_cwd
 import numpy as np
 import torchvision
@@ -17,10 +23,11 @@ import torchvision.datasets as datasets
 import torch.utils.data as data
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
+from PIL import Image
 
 from .base import AbstractDataset
 
-from .utils import csv_dataset
+from .utils import csv_dataset, generate_file_md5
 
 
 logger = logging.getLogger(__name__)
@@ -164,7 +171,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
 
     @classmethod
     def prepare(cls, config):
-        download_folder = os.path.join(config.data_folder, "download")
+        download_folder = os.path.join(config.data_folder, "downloads")
         extract_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
@@ -248,7 +255,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             ]
         )
 
-        test_transofrm = transforms.Compose(
+        test_transform = transforms.Compose(
             [
                 transforms.Resize(256),
                 transforms.CenterCrop(256),
@@ -262,7 +269,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             config.train_val_split, data_root, transform=train_transform
         )
         test_set = csv_dataset.DatasetCSV(
-            config.test_split, data_root, transform=test_transofrm
+            config.test_split, data_root, transform=test_transform
         )
         train_val_len = len(train_val_set)
         split_sizes = [
@@ -293,3 +300,207 @@ class KvasirCapsuleDataset(VisionDatasetBase):
     @property
     def class_names_abbreviated(self) -> List[str]:
         return [cn[0:3] for cn in self.class_names]
+
+
+class KvasirCapsuleUnlabeled(AbstractDataset):
+    """Dataset representing unalbelled videos"""
+
+    BASE_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/unlabelled_videos/"
+
+    def __init__(self, config, metadata, transform=None):
+        self.config = config
+        self.metadata = metadata
+        self.transform = transform
+
+        self.data_root = (
+            pathlib.Path(config.data_folder) / "kvasir_capsule" / "unlabelled_videos"
+        )
+
+        self.total_frames = 0
+        # End frame of each video file when concatenated
+        self.end_frames = []
+        for video_data in metadata:
+            self.total_frames += int(video_data["total_frames"])
+            self.end_frames.append(self.total_frames)
+
+        self._video_captures = {}
+
+    @property
+    def class_counts(self):
+        return None
+
+    @property
+    def class_names(self):
+        return []
+
+    @property
+    def class_names_abbreviated(self) -> List[str]:
+        return []
+
+    def _decode_frame(self, index):
+        video_index = bisect.bisect_left(self.end_frames, index)
+        assert video_index < len(self.metadata)
+
+        video_metadata = dict(self.metadata[video_index])
+
+        video_file = self.data_root / video_metadata["video_file"]
+        assert video_file.exists()
+
+        if video_file in self._video_captures:
+            video_capture = self._video_captures[video_file]
+        else:
+            video_capture = cv2.VideoCapture(str(video_file))
+            self._video_captures[video_file] = video_capture
+
+        start_frame = 0
+        if video_index > 0:
+            start_frame = self.end_frames[video_index - 1]
+
+        frame_index = index - start_frame
+
+        video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+
+        print("=============")
+        print(video_index, start_frame, video_index, frame_index)
+
+        ret, frame = video_capture.read()
+        # cv2.imshow("Video", frame)
+        # cv2.waitKey()
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = Image.fromarray(frame)
+
+        return frame, video_metadata
+
+    def __getitem__(self, index):
+        res = {}
+
+        data, metadata = self._decode_frame(index)
+
+        if self.transform:
+            data = self.transform(data)
+        else:
+            data = torchvision.transforms.ToTensor()(data)
+            data = transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(data)
+
+        res["data"] = data
+        res["metadata"] = metadata
+
+        return res
+
+    def size(self):
+        dim = self[0][0].size()
+
+        return list(dim)
+
+    def __len__(self):
+        return self.total_frames
+
+    @classmethod
+    def splits(cls, config):
+        data_root = (
+            pathlib.Path(config.data_folder) / "kvasir_capsule" / "unlabelled_videos"
+        )
+        files_json = data_root / "unlabelled_videos.json"
+        assert files_json.exists()
+
+        with files_json.open("r") as f:
+            json_data = json.load(f)
+
+        metadata = json_data["metadata"]
+        train_split = metadata[:-2]
+        val_split = [metadata[-2]]
+        test_split = [metadata[-1]]
+
+        train_set = cls(config, train_split)
+        test_set = cls(config, test_split)
+        val_set = cls(config, val_split)
+
+        logger.debug("Train Data: %f Frames", train_set.total_frames)
+        logger.debug("Val Data: %f Frames", val_set.total_frames)
+        logger.debug("Test Data: %f Frames", test_set.total_frames)
+
+        return train_set, val_set, test_set
+
+    @classmethod
+    def prepare(cls, config):
+
+        data_root = (
+            pathlib.Path(config.data_folder) / "kvasir_capsule" / "unlabelled_videos"
+        )
+        data_root.mkdir(parents=True, exist_ok=True)
+
+        files_json = data_root / "unlabelled_videos.json"
+
+        # download and extract dataset
+        if not files_json.exists():
+            logger.info("Getting file list from %s", cls.BASE_URL)
+            with urllib.request.urlopen(cls.BASE_URL) as url:
+                data = url.read()
+                with files_json.open("w") as f:
+                    f.write(data.decode())
+
+        with files_json.open("r") as f:
+            json_data = json.load(f)
+
+        file_list = json_data["data"]
+
+        video_metadata = []
+        video_captures = []
+        sum_frames = 0
+
+        for file_data in tqdm(file_list, desc="Preparing dataset"):
+            target_filename = data_root / file_data["attributes"]["name"]
+            download_url = file_data["links"]["download"]
+            expected_md5 = file_data["attributes"]["extra"]["hashes"]["md5"]
+
+            needs_download = False
+            if target_filename.exists():
+                if "verify_files" in config and config.verify_files:
+                    file_md5 = generate_file_md5(target_filename)
+                    if not expected_md5 == file_md5:
+                        logger.warning(
+                            "MD5 of downloaded file does not match is: %s excpected: %s",
+                            file_md5,
+                            expected_md5,
+                        )
+                        needs_download = True
+            else:
+                needs_download = True
+
+            if needs_download:
+                logger.info("downloading %s", target_filename)
+                gdown.download(
+                    url=download_url, output=str(target_filename), resume=True
+                )
+
+            if target_filename.suffix in [".mp4"]:
+                video_capture = cv2.VideoCapture(str(target_filename))
+                video_captures.append(video_capture)
+                total_frames = video_capture.get(cv2.CAP_PROP_FRAME_COUNT)
+                frame_height = video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                frame_width = video_capture.get(cv2.CAP_PROP_FRAME_WIDTH)
+                fps = video_capture.get(cv2.CAP_PROP_FPS)
+                logger.debug("Total frames:     %f", total_frames)
+                logger.debug("Frame height:     %f", frame_height)
+                logger.debug("Frame width:      %f", frame_width)
+                logger.debug("Frame rate (FPS): %f", fps)
+
+                metadata = {
+                    "video_file": target_filename.name,
+                    "total_frames": total_frames,
+                    "frame_height": frame_height,
+                    "frame_width": frame_width,
+                    "fps": fps,
+                }
+
+                video_metadata.append(metadata)
+
+                sum_frames += total_frames
+        logger.info("Sum of Frames total: %f", sum_frames)
+
+        json_data["metadata"] = video_metadata
+        with files_json.open("w") as f:
+            json.dump(json_data, f)
+
+        return None

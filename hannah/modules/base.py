@@ -43,6 +43,7 @@ class ClassifierModule(LightningModule, ABC):
         normalizer: Optional[DictConfig] = None,
         export_onnx: bool = True,
         gpus=None,
+        **kwargs,
     ):
         super().__init__()
 
