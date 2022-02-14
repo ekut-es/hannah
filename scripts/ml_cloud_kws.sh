@@ -24,7 +24,7 @@
 
 #SBATCH --gres-flags=enforce-binding
 
-#SBATCH --time=18000
+#SBATCH --time=05:00
 # the maximum time the scripts needs to run (5 minutes)
 
 #SBATCH --error=job_%j.err
@@ -62,7 +62,7 @@ echo "skipped"
 echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/tmp/cache
-singularity run --nv  --bind $PWD:/opt/hannah,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=$1 module.num_workers=4 hydra/launcher=joblib trainer.max_epochs=30  -m
+singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train dataset.data_folder=$SCRATCH/datasets module.num_workers=4 output_dir=$WORK/trained_models
 date
 
 echo "DONE!"
