@@ -2,6 +2,8 @@ stages:
   - build
   - test
   - deploy
+  - deploy_test
+  - deploy_run
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -49,7 +51,6 @@ test_python_38:
   interruptible: true
   except:
     - branches
-
 
 test_python_39:
   stage: test
@@ -160,6 +161,28 @@ deploy_image:
     - docker_container
 
 
+deploy_test:
+  stage: deploy_test
+  before_script:
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+  script:
+    - ssh cgerum05@134.2.168.52 ls
+  dependencies:
+    - deploy_image
+  only:
+    - master
+    - docker_container
+
 run_ml_cloud:
   stage: test
   image: ubuntu:latest
@@ -174,6 +197,7 @@ run_ml_cloud:
   tags:
     - docker
   script:
-    - cd ml_cloud
-    - ssh cgerum05@134.2.168.52 ls
+    - export
+    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
+    # - ssh cgerum05@134.2.168.52 ls -la
   when: manual
