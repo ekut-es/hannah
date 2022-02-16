@@ -195,6 +195,9 @@ class ElasticPermissiveReLU(nn.ReLU):
         else:
             return super().forward(x)
 
+    def assemble_basic_module(self):
+        return nn.ReLU()
+
 
 def make_parameter(t: torch.Tensor) -> nn.Parameter:
     if t is None:

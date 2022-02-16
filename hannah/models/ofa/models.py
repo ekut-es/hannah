@@ -835,7 +835,7 @@ def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
     elif isinstance(module, ElasticWidthLinear):
         return module.assemble_basic_module()
     elif isinstance(module, ElasticPermissiveReLU):
-        return nn.ReLU()
+        module.assemble_basic_module()
     else:
         logging.info(
             f"requested basic module for non-elastic source module: {type(module)}"
