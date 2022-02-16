@@ -158,11 +158,11 @@ def walk_model(model, dummy_input):
         return weights, macs, attrs
 
     def get_elastic_conv(module, volume_ofm, output):
-        tmp = module.assemble_basic_conv1d()
+        tmp = module.assemble_basic_module()
         return get_conv(tmp, volume_ofm, output)
 
     def get_elastic_linear(module, volume_ofm, output):
-        tmp = module.assemble_basic_linear()
+        tmp = module.assemble_basic_module()
         return get_fc(tmp, volume_ofm, output)
 
     def get_conv(module, volume_ofm, output):

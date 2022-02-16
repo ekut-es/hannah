@@ -28,7 +28,7 @@ class ElasticBatchnorm1d(nn.BatchNorm1d):
 
         return super().forward(x)
 
-    def assemble_basic_batchnorm1d(self) -> nn.BatchNorm1d:
+    def assemble_basic_module(self) -> nn.BatchNorm1d:
         return copy.deepcopy(super())
 
 
@@ -126,7 +126,7 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         new_bn.training = self.training
         return new_bn
 
-    def assemble_basic_batchnorm1d(self) -> nn.BatchNorm1d:
+    def assemble_basic_module(self) -> nn.BatchNorm1d:
         return copy.deepcopy(self).get_basic_batchnorm1d()
 
 
@@ -180,7 +180,7 @@ class ElasticWidthLinear(nn.Linear):
             new_linear.bias = new_bias
             return new_linear
 
-    def assemble_basic_linear(self):
+    def assemble_basic_module(self):
         return copy.deepcopy(self).get_basic_linear()
 
 

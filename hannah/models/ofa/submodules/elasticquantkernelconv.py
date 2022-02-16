@@ -324,6 +324,7 @@ class _ElasticConvBnNd(
         qat_convbn.bn.num_batches_tracked = bn.num_batches_tracked
         return qat_convbn
 
+
 class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
 
     _FLOAT_MODULE = nn.Conv1d
@@ -448,7 +449,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_conv1d(self) -> nn.Conv1d:
+    def assemble_basic_module(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
 
     def set_out_channel_filter(self, out_channel_filter):
@@ -536,7 +537,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_conv1d(self) -> nn.Conv1d:
+    def assemble_basic_module(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
 
 
@@ -618,6 +619,5 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_conv1d(self) -> nn.Conv1d:
+    def assemble_basic_module(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
-

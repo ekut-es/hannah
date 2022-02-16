@@ -680,7 +680,7 @@ class OFAModel(nn.Module):
         extracted_module_list.append(self.dropout)
         output_linear = self.get_output_linear_layer(target_depth)
         if isinstance(output_linear, ElasticWidthLinear):
-            output_linear = output_linear.assemble_basic_linear()
+            output_linear = output_linear.assemble_basic_module()
         extracted_module_list.append(output_linear)
         # extracted_module_list = flatten_module_list(extracted_module_list)
         # return copy.deepcopy(module_list_to_module(extracted_module_list))
@@ -829,11 +829,11 @@ def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
         module,
         elastic_conv_type,
     ):
-        return module.assemble_basic_conv1d()
+        return module.assemble_basic_module()
     elif isinstance(module, ElasticWidthBatchnorm1d):
-        return module.assemble_basic_batchnorm1d()
+        return module.assemble_basic_module()
     elif isinstance(module, ElasticWidthLinear):
-        return module.assemble_basic_linear()
+        return module.assemble_basic_module()
     elif isinstance(module, ElasticPermissiveReLU):
         return nn.ReLU()
     else:

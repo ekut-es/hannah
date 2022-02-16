@@ -200,11 +200,12 @@ class ElasticBase1d(nn.Conv1d):
         return None
 
     # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_conv1d(self) -> nn.Conv1d:
+    def assemble_basic_module(self) -> nn.Conv1d:
         return None
 
     def set_out_channel_filter(self, out_channel_filter):
         pass
+
 
 class ElasticConv1d(ElasticBase1d):
     def __init__(
@@ -263,7 +264,7 @@ class ElasticConv1d(ElasticBase1d):
         return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_conv1d(self) -> nn.Conv1d:
+    def assemble_basic_module(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
 
     def set_out_channel_filter(self, out_channel_filter):
@@ -340,11 +341,8 @@ class ElasticConvBn1d(ElasticConv1d):
         return new_conv
 
     # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_conv1d(self) -> nn.Conv1d:
+    def assemble_basic_module(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
-
-    def assemble_basic_batchnorm1d(self):
-        return self.bn.assemble_basic_batchnorm1d()
 
 
 class ElasticConvBnReLu1d(ElasticConvBn1d):
@@ -412,6 +410,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
+
 
 class ConvBn1d(nn.Conv1d):
     def __init__(
