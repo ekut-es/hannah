@@ -846,38 +846,9 @@ def rebuild_extracted_blocks(blocks):
         # if the module is an elastic module, it is replaced by an equivalent basic module for its current state
         for i in range(len(modules)):
             module = modules[i]
-            if isinstance(module, elastic_all_type):
-                modules[i] = module.assemble_basic_module()
-
-        i = 0
-        while i in range(len(modules)):
-            module = modules[i]
             reassembled_module = None
-
-            if isinstance(
-                module,
-                (
-                    nn.Conv1d,
-                    ElasticQuantConvBn1d,
-                    ElasticQuantConvBnReLu1d,
-                    ElasticQuantConv1d,
-                    nn.BatchNorm1d,
-                    qat.ConvBn1d,
-                    qat.ConvBnReLU1d,
-                    ConvBn1d,
-                    nn.ReLU,
-                ),
-            ):
-                reassembled_module = module
-                # for standalone batchnorms, apply any channel filters, if present.
-                # if module_set.norm1d is not None:
-                #     pass the channel count on to the new norm type
-                #     reassembled_module = module_set.norm1d(module.num_features)
-                #     reassembled_module.weight = module.weight
-                # else:
-                #     logging.error(
-                #         "Skipping stand-alone norm in reassembly: not available in the selected module set"
-                #     )
+            if isinstance(module, elastic_all_type):
+                reassembled_module = module.assemble_basic_module()
             elif isinstance(module, ResBlockBase):
                 # reassemble both the subblocks and the skip layer separately, then put them into a new ResBlock
                 reassembled_subblocks = module_list_to_module(
@@ -915,11 +886,9 @@ def rebuild_extracted_blocks(blocks):
 
             if reassembled_module is not None:
                 out_modules.append(reassembled_module)
-            i += 1
 
     out_modules = flatten_module_list(out_modules)
-    output_modules_flat_length = len(out_modules)
-    if input_modules_flat_length != output_modules_flat_length:
+    if input_modules_flat_length != len(out_modules):
         logging.info("Reassembly changed length of module list")
     return out_modules
 
