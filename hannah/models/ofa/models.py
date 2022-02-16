@@ -389,6 +389,14 @@ def create_residual_block_1d(
     )
     return residual_block
 
+elastic_conv_type = (
+                ElasticConv1d,
+                ElasticConvBn1d,
+                ElasticConvBnReLu1d,
+                ElasticQuantConv1d,
+                ElasticQuantConvBn1d,
+                ElasticQuantConvBnReLu1d,
+            )
 
 class OFAModel(nn.Module):
     def __init__(
@@ -451,17 +459,11 @@ class OFAModel(nn.Module):
         self.ofa_steps_kernel = 1
         self.ofa_steps_depth = 1
         self.ofa_steps_width = 1
+
         # create a list of every elastic kernel conv, for sampling
         all_elastic_kernel_convs = get_instances_from_deep_nested(
             input=self.conv_layers,
-            type_selection=(
-                ElasticConv1d,
-                ElasticConvBn1d,
-                ElasticConvBnReLu1d,
-                ElasticQuantConv1d,
-                ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d,
-            ),
+            type_selection=elastic_conv_type,
         )
         self.elastic_kernel_convs = []
         for item in all_elastic_kernel_convs:
@@ -753,14 +755,7 @@ class OFAModel(nn.Module):
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_kernel_size",
-            type_selection=(
-                ElasticConv1d,
-                ElasticConvBn1d,
-                ElasticConvBnReLu1d,
-                ElasticQuantConv1d,
-                ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d,
-            ),
+            type_selection=elastic_conv_type,
         )
 
     # reset all kernel sizes to their max value
@@ -768,14 +763,7 @@ class OFAModel(nn.Module):
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_kernel_size",
-            type_selection=(
-                ElasticConv1d,
-                ElasticConvBn1d,
-                ElasticConvBnReLu1d,
-                ElasticQuantConv1d,
-                ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d,
-            ),
+            type_selection=elastic_conv_type,
         )
 
     # go to a specific kernel step
@@ -863,14 +851,7 @@ def is_elastic_module(module: nn.Module) -> bool:
 def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
     if isinstance(
         module,
-        (
-            ElasticConv1d,
-            ElasticConvBn1d,
-            ElasticConvBnReLu1d,
-            ElasticQuantConvBn1d,
-            ElasticQuantConvBnReLu1d,
-            ElasticQuantConv1d,
-        ),
+        elastic_conv_type,
     ):
         return module.assemble_basic_conv1d()
     elif isinstance(module, ElasticWidthBatchnorm1d):
