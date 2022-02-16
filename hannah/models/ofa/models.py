@@ -482,9 +482,6 @@ class OFAModel(nn.Module):
         # in eval mode, run the forward on the extracted validation model.
         if self.eval_mode and self.validate_on_extracted:
             if self.validation_model is None:
-                logging.warn(
-                    "forward in validation mode called without building validation model!"
-                )
                 self.build_validation_model()
             return self.validation_model.forward(x)
 
@@ -645,16 +642,19 @@ class OFAModel(nn.Module):
         self.validation_model = None
 
     def get_validation_model_weight_count(self):
-        if self.validation_model is None:
-            return 0
-        else:
+        val_not_exist = self.validation_model is None
+
+        if val_not_exist:
+            self.build_validation_model()
             # create a dict of the pointer of each parameter to the item count within that parameter
             # using a dict with pointers as keys ensures that no parameter is counted twice
             parameter_pointers_dict = dict(
                 (p.data_ptr(), p.numel()) for p in self.validation_model.parameters()
             )
             # sum up the values of each dict item, yielding the total element count across params
-            return sum(parameter_pointers_dict.values())
+        if val_not_exist:
+            self.reset_validaton_model()
+        return sum(parameter_pointers_dict.values())
 
     # return an extracted module sequence for a given depth
     def extract_elastic_depth_sequence(
