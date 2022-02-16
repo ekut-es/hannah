@@ -856,28 +856,20 @@ def rebuild_extracted_blocks(blocks, quantized=False):
             module = modules[i]
             reassembled_module = None
 
-            if isinstance(module, nn.Conv1d):
-                reassembled_module = module
-            elif isinstance(module, ElasticQuantConvBn1d):
-                # TODO See conv1d above
-                reassembled_module = module
-            elif isinstance(module, ElasticQuantConvBnReLu1d):
-                # TODO See conv1d above
-                reassembled_module = module
-            elif isinstance(module, ElasticQuantConv1d):
-                # TODO See conv1d above
-                reassembled_module = module
-            elif isinstance(module, nn.BatchNorm1d):
-                reassembled_module = module
-            elif isinstance(module, qat.ConvBn1d):
-                reassembled_module = module
-            elif isinstance(module, qat.ConvBnReLU1d):
-                reassembled_module = module
-            elif isinstance(module, qat.Conv1d):
-                reassembled_module = module
-            elif isinstance(module, ConvBnReLu1d):
-                reassembled_module = module
-            elif isinstance(module, ConvBn1d):
+            if isinstance(
+                module,
+                (
+                    nn.Conv1d,
+                    ElasticQuantConvBn1d,
+                    ElasticQuantConvBnReLu1d,
+                    ElasticQuantConv1d,
+                    nn.BatchNorm1d,
+                    qat.ConvBn1d,
+                    qat.ConvBnReLU1d,
+                    ConvBn1d,
+                    nn.ReLU,
+                ),
+            ):
                 reassembled_module = module
                 # for standalone batchnorms, apply any channel filters, if present.
                 # if module_set.norm1d is not None:
@@ -888,13 +880,6 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                 #     logging.error(
                 #         "Skipping stand-alone norm in reassembly: not available in the selected module set"
                 #     )
-            elif isinstance(module, nn.ReLU):
-                if module_set.act is not None:
-                    reassembled_module = module_set.act()
-                else:
-                    logging.error(
-                        "Skipping stand-alone activation in reassembly: not available in the selected module set"
-                    )
             elif isinstance(module, ResBlockBase):
                 # reassemble both the subblocks and the skip layer separately, then put them into a new ResBlock
                 reassembled_subblocks = module_list_to_module(

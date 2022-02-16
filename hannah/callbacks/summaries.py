@@ -221,7 +221,6 @@ class MacSummaryCallback(Callback):
         model = pl_module.model
         ofamodel = isinstance(model, OFAModel)
         if ofamodel:
-            ofamodel = True
             if model.validation_model == None:
                 model.build_validation_model()
             model = model.validation_model
