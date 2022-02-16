@@ -12,6 +12,7 @@ import logging
 from omegaconf import ListConfig
 from hydra.utils import instantiate
 
+
 from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
 from .submodules.elastickernelconv import (
@@ -388,6 +389,7 @@ def create_residual_block_1d(
         qconfig=qconfig,
     )
     return residual_block
+
 
 class OFAModel(nn.Module):
     def __init__(
@@ -822,13 +824,6 @@ class OFAModel(nn.Module):
         self.sampling_max_width_step = 0
 
 
-def is_elastic_module(module: nn.Module) -> bool:
-    return isinstance(
-        module,
-        elastic_all_type,
-    )
-
-
 def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
     if isinstance(
         module,
@@ -872,7 +867,7 @@ def rebuild_extracted_blocks(blocks, quantized=False):
         # if the module is an elastic module, it is replaced by an equivalent basic module for its current state
         for i in range(len(modules)):
             module = modules[i]
-            if is_elastic_module(module):
+            if isinstance(module, elastic_all_type):
                 modules[i] = assemble_basic_from_elastic_module(module)
 
         i = 0
@@ -934,9 +929,9 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                 reassembled_module.skip = reassembled_skip
                 norm = module.norm
                 act = module.act
-                if is_elastic_module(norm):
+                if isinstance(norm, elastic_all_type):
                     norm = assemble_basic_from_elastic_module(norm)
-                if is_elastic_module(act):
+                if isinstance(act, elastic_all_type):
                     act = assemble_basic_from_elastic_module(act)
                 reassembled_module.norm_before_act = module.norm_before_act
                 reassembled_module.do_act = module.do_act
