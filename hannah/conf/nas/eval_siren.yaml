@@ -1,0 +1,50 @@
+data:
+  Siren: /local/schaefch/BA/hannah/trained_models/nas_siren_no_backend/conv_net_trax
+
+metrics:
+  total_act:
+    name: Activations
+  total_weights:
+    name: Weights
+  weights_m:
+    name: Weights [M]
+    derived: data["total_weights"] / 1000 / 1000
+  val_accuracy:
+    name: Accuracy [%]
+    derived: (1.0 - data["val_error"]) * 100.0
+  act_k:
+    name: Activations [k]
+    derived: data["total_act"] / 1000
+  macs_m:
+    name: MACS [M]
+    derived: data["total_macs"] / 1000 / 1000
+
+plots:
+  # Comparison plots 2-3 metrics using y, x and size as visualization points
+  - type: comparison
+    name: accuracy_memory
+    metrics:
+      - val_accuracy
+      - weights_m
+      - act_k
+
+  - type: comparison
+    name: accuracy_macs
+    metrics:
+      - val_accuracy
+      - macs_m
+
+extract:
+  Siren:
+    bounds:
+        val_error: 0.3
+        total_macs: 100000
+        total_weights: 1000000
+
+
+experiment: nas_siren
+force: false
+
+hydra:
+  run:
+    dir: ./nas_results/${experiment}

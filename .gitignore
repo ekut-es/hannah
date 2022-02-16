@@ -60,6 +60,7 @@ srf-poetry/tests/
 
 #doc
 doc/_build/
+nas_results/
 
 #exclude datasets as file for symlinks
 datasets
