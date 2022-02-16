@@ -307,22 +307,27 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("Width Steps: %d", self.width_step_count)
 
         self.submodel_metrics_csv = ""
+        self.random_metrics_csv = ""
 
         if self.elastic_width:
             self.submodel_metrics_csv += "width, "
+            self.random_metrics_csv += "width_steps, "
 
         if self.elastic_kernels:
             self.submodel_metrics_csv += "kernel, "
+            self.random_metrics_csv += "kernel_steps, "
 
         if self.elastic_depth:
             self.submodel_metrics_csv += "depth, "
+            self.random_metrics_csv += "depth, "
 
         if self.elastic_width | self.elastic_kernels | self.elastic_depth:
             self.submodel_metrics_csv += (
                 "acc, total_macs, total_weights, torch_params\n"
             )
+            self.random_metrics_csv += "acc, total_macs, total_weights, torch_params\n"
 
-        self.random_metrics_csv = "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
+        # self.random_metrics_csv = "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
 
         logging.info("Once for all Model:\n %s", str(ofa_model))
 
@@ -415,6 +420,7 @@ class OFANasTrainer(NASTrainerBase):
         trainer_path,
         loginfo_output,
         metrics_output,
+        metrics_csv,
     ):
         model.reset_all_widths()
         method = method_stack[method_index]
@@ -428,7 +434,7 @@ class OFANasTrainer(NASTrainerBase):
             loginfo_output_tmp = loginfo_output + f"Width {current_width_step}, "
             metrics_output_tmp = metrics_output + f"{current_width_step}, "
 
-            method(
+            metrics_csv = method(
                 method_stack,
                 method_index + 1,
                 lightning_model,
@@ -436,7 +442,10 @@ class OFANasTrainer(NASTrainerBase):
                 trainer_path_tmp,
                 loginfo_output_tmp,
                 metrics_output_tmp,
+                metrics_csv,
             )
+
+        return metrics_csv
 
     def eval_elastic_kernels(
         self,
@@ -447,6 +456,7 @@ class OFANasTrainer(NASTrainerBase):
         trainer_path,
         loginfo_output,
         metrics_output,
+        metrics_csv,
     ):
         model.reset_all_kernel_sizes()
         method = method_stack[method_index]
@@ -460,7 +470,7 @@ class OFANasTrainer(NASTrainerBase):
             loginfo_output_tmp = loginfo_output + f"Kernel {current_kernel_step}, "
             metrics_output_tmp = metrics_output + f"{current_kernel_step}, "
 
-            method(
+            metrics_csv = method(
                 method_stack,
                 method_index + 1,
                 lightning_model,
@@ -468,7 +478,10 @@ class OFANasTrainer(NASTrainerBase):
                 trainer_path_tmp,
                 loginfo_output_tmp,
                 metrics_output_tmp,
+                metrics_csv,
             )
+
+        return metrics_csv
 
     def eval_elatic_depth(
         self,
@@ -479,6 +492,7 @@ class OFANasTrainer(NASTrainerBase):
         trainer_path,
         loginfo_output,
         metrics_output,
+        metrics_csv,
     ):
         model.reset_active_depth()
         method = method_stack[method_index]
@@ -492,7 +506,7 @@ class OFANasTrainer(NASTrainerBase):
             loginfo_output_tmp = loginfo_output + f"Depth {current_depth_step}, "
             metrics_output_tmp = metrics_output + f"{current_depth_step}, "
 
-            method(
+            metrics_csv = method(
                 method_stack,
                 method_index + 1,
                 lightning_model,
@@ -500,7 +514,10 @@ class OFANasTrainer(NASTrainerBase):
                 trainer_path_tmp,
                 loginfo_output_tmp,
                 metrics_output_tmp,
+                metrics_csv,
             )
+
+        return metrics_csv
 
     def eval_single_model(
         self,
@@ -511,6 +528,7 @@ class OFANasTrainer(NASTrainerBase):
         trainer_path,
         loginfo_output,
         metrics_output,
+        metrics_csv,
     ):
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
@@ -520,11 +538,12 @@ class OFANasTrainer(NASTrainerBase):
         )
         model.reset_validaton_model()
 
-        self.submodel_metrics_csv += metrics_output
+        metrics_csv += metrics_output
         results = validation_results[0]
         torch_params = model.get_validation_model_weight_count()
-        self.submodel_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
-        self.submodel_metrics_csv += "\n"
+        metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
+        metrics_csv += "\n"
+        return metrics_csv
 
     # cycle through submodels, test them, store results (under a given width step)
     def eval_model(self, lightning_model, model):
@@ -546,8 +565,15 @@ class OFANasTrainer(NASTrainerBase):
 
         if len(eval_methods) > 0:
             eval_methods.append(self.eval_single_model)
-            eval_methods[0](
-                eval_methods, 1, lightning_model, model, "Eval ", "OFA validating ", ""
+            self.submodel_metrics_csv = eval_methods[0](
+                eval_methods,
+                1,
+                lightning_model,
+                model,
+                "Eval ",
+                "OFA validating ",
+                "",
+                self.submodel_metrics_csv,
             )
 
         if self.random_evaluate:
@@ -571,19 +597,22 @@ class OFANasTrainer(NASTrainerBase):
             selected_widths = random_state["width_steps"]
             selected_kernels_string = str(selected_kernels).replace(",", ";")
             selected_widths_string = str(selected_widths).replace(",", ";")
-            self.rebuild_trainer(
-                f"Eval random sample: D {selected_depth}, Ks {selected_kernels}, Ws {selected_widths}"
+
+            trainer_path = f"Eval random sample: D {selected_depth}, Ks {selected_kernels}, Ws {selected_widths}"
+            loginfo_output = f"OFA validating random sample:\n{random_state}"
+            metrics_output = f"{selected_widths_string}, {selected_kernels_string}, {selected_depth}, "
+
+            self.random_metrics_csv = self.eval_single_model(
+                None,
+                None,
+                lightning_model,
+                model,
+                trainer_path,
+                loginfo_output,
+                metrics_output,
+                self.random_metrics_csv,
             )
-            logging.info(f"OFA validating random sample:\n{random_state}")
-            validation_results = self.trainer.validate(
-                lightning_model, ckpt_path=None, verbose=True
-            )
-            model.reset_validaton_model()
-            results = validation_results[0]
-            self.random_metrics_csv += f"{selected_widths_string}, {selected_depth}, {selected_kernels_string}, "
-            torch_params = model.get_validation_model_weight_count()
-            self.random_metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
-            self.random_metrics_csv += "\n"
+
         # revert to normal operation after eval.
         model.sampling_max_kernel_step = prev_max_kernel
         model.sampling_max_depth_step = prev_max_depth
