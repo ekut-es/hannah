@@ -670,9 +670,7 @@ class OFAModel(nn.Module):
             for layer in self.conv_layers[:target_depth]:
                 extracted_module_list.append(layer)
         else:
-            rebuild_output = rebuild_extracted_blocks(
-                self.conv_layers[:target_depth], quantized=quantized
-            )
+            rebuild_output = rebuild_extracted_blocks(self.conv_layers[:target_depth])
             extracted_module_list.append(module_list_to_module(rebuild_output))
 
         extracted_module_list.append(self.pool)
@@ -824,7 +822,7 @@ class OFAModel(nn.Module):
         self.sampling_max_width_step = 0
 
 
-def rebuild_extracted_blocks(blocks, quantized=False):
+def rebuild_extracted_blocks(blocks):
     out_modules = nn.ModuleList([])
 
     if blocks is None:
@@ -883,10 +881,10 @@ def rebuild_extracted_blocks(blocks, quantized=False):
             elif isinstance(module, ResBlockBase):
                 # reassemble both the subblocks and the skip layer separately, then put them into a new ResBlock
                 reassembled_subblocks = module_list_to_module(
-                    rebuild_extracted_blocks(module.blocks, quantized=quantized)
+                    rebuild_extracted_blocks(module.blocks)
                 )
                 reassembled_skip = module_list_to_module(
-                    rebuild_extracted_blocks(module.skip, quantized=quantized)
+                    rebuild_extracted_blocks(module.skip)
                 )
                 reassembled_module = ResBlockBase(
                     module.in_channels, module.out_channels
@@ -921,7 +919,7 @@ def rebuild_extracted_blocks(blocks, quantized=False):
 
     out_modules = flatten_module_list(out_modules)
     output_modules_flat_length = len(out_modules)
-    if input_modules_flat_length != output_modules_flat_length and not quantized:
+    if input_modules_flat_length != output_modules_flat_length:
         logging.info("Reassembly changed length of module list")
     return out_modules
 
