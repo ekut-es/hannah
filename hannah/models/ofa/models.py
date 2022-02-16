@@ -824,25 +824,6 @@ class OFAModel(nn.Module):
         self.sampling_max_width_step = 0
 
 
-def assemble_basic_from_elastic_module(module: nn.Module) -> nn.Module:
-    if isinstance(
-        module,
-        elastic_conv_type,
-    ):
-        return module.assemble_basic_module()
-    elif isinstance(module, ElasticWidthBatchnorm1d):
-        return module.assemble_basic_module()
-    elif isinstance(module, ElasticWidthLinear):
-        return module.assemble_basic_module()
-    elif isinstance(module, ElasticPermissiveReLU):
-        module.assemble_basic_module()
-    else:
-        logging.info(
-            f"requested basic module for non-elastic source module: {type(module)}"
-        )
-        return module
-
-
 def rebuild_extracted_blocks(blocks, quantized=False):
     out_modules = nn.ModuleList([])
 
@@ -868,7 +849,7 @@ def rebuild_extracted_blocks(blocks, quantized=False):
         for i in range(len(modules)):
             module = modules[i]
             if isinstance(module, elastic_all_type):
-                modules[i] = assemble_basic_from_elastic_module(module)
+                modules[i] = module.assemble_basic_module()
 
         i = 0
         while i in range(len(modules)):
@@ -930,9 +911,9 @@ def rebuild_extracted_blocks(blocks, quantized=False):
                 norm = module.norm
                 act = module.act
                 if isinstance(norm, elastic_all_type):
-                    norm = assemble_basic_from_elastic_module(norm)
+                    norm = norm.assemble_basic_module()
                 if isinstance(act, elastic_all_type):
-                    act = assemble_basic_from_elastic_module(act)
+                    act = act.assemble_basic_module()
                 reassembled_module.norm_before_act = module.norm_before_act
                 reassembled_module.do_act = module.do_act
                 reassembled_module.do_norm = module.do_norm
