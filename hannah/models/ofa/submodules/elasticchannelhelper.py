@@ -93,15 +93,7 @@ class ElasticChannelHelper(nn.Module):
 
         if isinstance(
             self.target,
-            (
-                ElasticConv1d,
-                ElasticConvBn1d,
-                ElasticConvBnReLu1d,
-                ElasticQuantConv1d,
-                ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d,
-                ElasticWidthLinear,
-            ),
+            elastic_forward_type,
         ):
             self.apply_filter_to_module(self.target, is_target=True)
         else:
@@ -135,14 +127,7 @@ class ElasticChannelHelper(nn.Module):
                 module.out_channel_filter = self.channel_pass_filter
         elif isinstance(
             module,
-            (
-                ElasticConv1d,
-                ElasticConvBn1d,
-                ElasticConvBnReLu1d,
-                ElasticQuantConv1d,
-                ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d,
-            ),
+            elastic_conv_type,
         ):
             if is_target:
                 # target module -> set module input filter
@@ -242,15 +227,7 @@ class ElasticChannelHelper(nn.Module):
     def is_primary_target(module: nn.Module) -> bool:
         return isinstance(
             module,
-            (
-                ElasticConv1d,
-                ElasticConvBn1d,
-                ElasticConvBnReLu1d,
-                ElasticQuantConv1d,
-                ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d,
-                ElasticWidthLinear,
-            ),
+            elastic_forward_type,
         )
 
     # add additional target(s) which must also have their inputs adjusted when
@@ -484,3 +461,5 @@ from .elasticquantkernelconv import (
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
 )
+
+from ..type_utils import elastic_conv_type, elastic_forward_type

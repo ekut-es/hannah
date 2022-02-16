@@ -389,15 +389,6 @@ def create_residual_block_1d(
     )
     return residual_block
 
-elastic_conv_type = (
-                ElasticConv1d,
-                ElasticConvBn1d,
-                ElasticConvBnReLu1d,
-                ElasticQuantConv1d,
-                ElasticQuantConvBn1d,
-                ElasticQuantConvBnReLu1d,
-            )
-
 class OFAModel(nn.Module):
     def __init__(
         self,
@@ -834,17 +825,7 @@ class OFAModel(nn.Module):
 def is_elastic_module(module: nn.Module) -> bool:
     return isinstance(
         module,
-        (
-            ElasticConv1d,
-            ElasticQuantConvBn1d,
-            ElasticConvBn1d,
-            ElasticConvBnReLu1d,
-            ElasticQuantConvBnReLu1d,
-            ElasticWidthBatchnorm1d,
-            ElasticWidthLinear,
-            ElasticPermissiveReLU,
-            ElasticQuantConv1d,
-        ),
+        elastic_all_type,
     )
 
 
@@ -982,3 +963,6 @@ def rebuild_extracted_blocks(blocks, quantized=False):
     if input_modules_flat_length != output_modules_flat_length and not quantized:
         logging.info("Reassembly changed length of module list")
     return out_modules
+
+
+from .type_utils import elastic_conv_type, elastic_all_type
