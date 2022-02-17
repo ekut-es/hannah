@@ -1,3 +1,4 @@
+from asyncio.log import logger
 import torch
 import torch.nn as nn
 import numpy as np
@@ -95,13 +96,8 @@ class kMeans(Callback):
 
     def on_epoch_end(self, trainer, pl_module):
         inertia = 0
-        try:
-            print(trainer.callback_metrics['val_accuracy'].item())
-        except:
-            print('could not print val_accuracy')
         if trainer.current_epoch % 2 == 0 and trainer.current_epoch < self.compress_after-1 and trainer.callback_metrics['val_accuracy'].item() > 0.9:
-            print('Training validation accuracy: ', trainer.callback_metrics['val_accuracy'].item())
-            print('Clustering.')
+            logger.info('Training validation accuracy: %s', trainer.callback_metrics['val_accuracy'].item())
             device = pl_module.device
             for module in pl_module.modules():
                 if hasattr(module, "weight") and module.weight is not None:
@@ -113,7 +109,7 @@ class kMeans(Callback):
                         return centers[i] 
                     module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers) 
                     module.to(device=device) 
-            print('Clustering error: ', inertia)
+            logger.info('Clustering error: %s', inertia)
 
 
                 

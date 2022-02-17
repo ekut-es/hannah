@@ -13,12 +13,14 @@
             "module": "hannah.train",
             "args": [
                 "trainer.limit_train_batches=1.0",
-                "trainer.max_epochs=10",
-                "model=conv-net4-trax",
+                "trainer.max_epochs=3",
+                "model=conv-net-trax",
                 "normalizer=fixedpoint",
                 "svd_rank_compression=4",
                 "clustering=false",
-                "module.num_workers=1"
+                "module.num_workers=1",
+                "pruning.amount=0.9",
+                "pruning=l1_unstructured"
             ]
         },
         {
@@ -41,8 +43,7 @@
             "module": "hannah.train",
             "args": [
                 "trainer.max_epochs=10",
-                "module.num_workers=1",
-                "model=conv-net4-trax",
+                "model=conv-net-trax",
                 "clustering=true",
                 "normalizer=fixedpoint",
                 "backend=trax_ut", 

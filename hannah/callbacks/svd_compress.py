@@ -25,8 +25,7 @@ class SVD(Callback):
 
                     # First case: conv-net-trax model with Sequential Layers
                     if name == "model.linear.0.0" and not isinstance(pl_module.model.linear[0][0], nn.Sequential):
-                        module.weight.detach()
-                        U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True) # apply SVD
+                        U, S, Vh = torch.linalg.svd(module.weight.detach(), full_matrices=True) # apply SVD
 
                         # Slicing of matrices for rank r and reassembly
                         U = U[:, :self.rank]
@@ -41,11 +40,8 @@ class SVD(Callback):
                                 nn.Linear(self.rank, original_fc.out_features, bias=original_fc.bias)
                             )
                         pl_module.model.linear[0][0] = new_fc
-
                         pl_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.linear[0][0][1].weight = torch.nn.Parameter(U, requires_grad=True)
-                        #pl_module.model.linear[0][0][0].weight.detach()
-                        #pl_module.model.linear[0][0][1].weight.detach()
                     
 
                     # Second case: tc-res8 model
@@ -62,9 +58,6 @@ class SVD(Callback):
                         pl_module.model.fc = new_fc
                         pl_module.model.fc[0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.fc[1].weight = torch.nn.Parameter(U, requires_grad=True)
-                        #pl_module.model.fc[0].weight.detach()
-                        #pl_module.model.fc[1].weight.detach()
-
         return pl_module
 
 
