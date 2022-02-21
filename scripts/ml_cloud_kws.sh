@@ -8,16 +8,11 @@
 
 #resources:
 
-#SBATCH --cpus-per-task=4
-
 #SBATCH --partition=gpu-2080ti-preemptable
 # the slurm partition the job is queued to.
 
 #SBATCH --nodes=1
 # requests that the cores are all on one node
-
-#SBATCH --mem=8G
-# the job will need 64GB of memory equally distributed on 4 cpus.
 
 #SBATCH --gres=gpu:rtx2080ti:1
 #the job can use and see 5 GPUs (8 GPUs are available in total on one node)
@@ -44,11 +39,9 @@
 echo "Job information"
 scontrol show job $SLURM_JOB_ID
 
-#echo "Copy training data"
-
-#cd $tcml_wd
-#mkdir -p /scratch/$SLURM_JOB_ID/$tcml_output_dir
-#mkdir -p /scratch/$SLURM_JOB_ID/$tcml_data_dir
+echo "Copy training data"
+mkdir -p $SCRATCH/datasets
+cp -r $WORK/datasets/speech_commands_v0.02 $SCRATCH/datasets
 
 echo "Moving singularity image to local scratch"
 cp /home/bringmann/cgerum05/ml_cloud.sif  $SCRATCH
