@@ -56,7 +56,7 @@ echo "skipped"
 echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/tmp/cache
-singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train trainer.gpus=4 dataset.DATA_PATH=$WORK/datasets/ module.num_workers=4 output_dir=$WORK/trained_models
+singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train trainer.gpus=[0,1,2,3] dataset.DATA_PATH=$WORK/datasets/KITTI_3D module.num_workers=4 output_dir=$WORK/trained_models
 date
 
 echo "DONE!"
