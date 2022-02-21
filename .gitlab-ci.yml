@@ -201,5 +201,6 @@ run_ml_cloud:
     - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
     - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
     - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-    # - ssh cgerum05@134.2.168.52 ls -la
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && sbatch scripts/ml_cloud_kws.sh"
   when: manual
