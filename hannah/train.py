@@ -141,7 +141,7 @@ def train(config: DictConfig):
                     "Checkpoint '%s' not found restarting training from scratch",
                     str(expected_ckpt_path),
                 )
-        lit_trainer.fit(lit_module, ckpt_path)
+        lit_trainer.fit(lit_module, ckpt_path=ckpt_path)
         ckpt_path = "best"
 
         if not lit_trainer.fast_dev_run:
