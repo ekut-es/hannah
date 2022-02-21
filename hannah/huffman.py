@@ -88,7 +88,7 @@ def Huffman_encoding(ws):
     encoding = {}
     huffman_dict = encode_Huffman(tree, '', encoding)
     huffman_encoding = encode_Sequence(ws, huffman_dict)
-    return huffman_encoding, tree
+    return huffman_encoding, tree, frq
 
 
 def Huffman_decoding(huffman_encoding, tree):

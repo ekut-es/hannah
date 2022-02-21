@@ -1,10 +1,10 @@
 from cmath import nan
 import numpy as np
-from onnx import numpy_helper
 import copy
 import torch
 from huffman import Huffman_encoding, Huffman_decoding
 import argparse
+import copy
 
 def load_parameters(file_path):
     values = []
@@ -93,7 +93,7 @@ def main():
     ws_indexed, index_LUT = replace_cluster_by_indices(ws, cluster)
 
     print('----------- Huffman Encoding -------------')
-    hs, tree = Huffman_encoding(ws_indexed)
+    hs, tree, frq = Huffman_encoding(ws_indexed)
 
     total_bits = calc_diff(hs)
     print('Number of required Bits in total: ', total_bits)
@@ -108,13 +108,18 @@ def main():
     print('Norm of decoded weights and indexed weights: ', norm)
     ws_cluster, ws_tensor = rebuild_struc(decoding, index_LUT, ws, shapes, original_ws)
 
-    m = torch.load(file_path, map_location='cpu')  # 'cpu' must be specified, otherwise a CUDA error can occur.
+    original_m = torch.load(file_path, map_location='cpu')  # 'cpu' must be specified, otherwise a CUDA error can occur.
     idx = 0
     new_state_dict = dict()
-    for k, v in m["state_dict"].items():
+    for k, v in original_m["state_dict"].items():
         if "weight" in k and "downsample" not in k:
             new_state_dict[k] = ws_tensor[idx]
             idx += 1
+        else:
+            new_state_dict[k] = v
+    decoded_model = original_m.copy()
+    decoded_model['state_dict'] = new_state_dict
+    torch.save(decoded_model, '/local/wernerju/hannah/trained_models/test/tc-res8/decoded_test.ckpt')
 
 
 main()

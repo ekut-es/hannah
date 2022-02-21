@@ -14,7 +14,7 @@
             "args": [
                 "trainer.limit_train_batches=1.0",
                 "trainer.max_epochs=5",
-                "model=tc-res8",
+                "model=tc-res20",
                 "normalizer=fixedpoint",
                 "svd_rank_compression=4",
                 "clustering=true"

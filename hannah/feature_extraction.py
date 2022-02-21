@@ -1,7 +1,6 @@
 import logging
 import torch
 from hydra.utils import to_absolute_path, instantiate
-from pytorch_lightning import Trainer
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from hannah.huffman import Huffman_decoding, Huffman_encoding
 import seaborn as sns
@@ -9,6 +8,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from tabulate import tabulate
+from torch import nn
+import torchaudio
+from hannah.models.tc.models import TCResidualBlock
+
 
 def barplot(data):
     sns.set_theme(style="darkgrid")
@@ -37,11 +40,11 @@ def features(module):
         return hook
     names = []
     for name, mod in module.named_modules():
-        if hasattr(mod, "weight") and mod.weight != None and 'downsample' not in name:
+        if isinstance(mod, TCResidualBlock):
             names.append(name.replace('model.layers.', ''))
-            mod.register_forward_hook(conv_output(name))
-    input_rand = torch.randn(1, 500)
-    res = module(input_rand)
+            mod.downsample[2].register_forward_hook(conv_output(name)) # hook on ReLU output
+    data_wav, sample_rate = torchaudio.load('/local/datasets/speech_commands_v0.02/left/cd671b5f_nohash_2.wav')
+    result = module(data_wav)
 
     # Encode features with Huffman
     features = []
@@ -49,15 +52,22 @@ def features(module):
     for k,v in out.items():
         bits_features_original.append(len(v.numpy().flatten())*32)
         features.append(list(v.numpy().flatten()))
-
-    encoding, tree = Huffman_encoding(features)
+    encoding, tree, frq = Huffman_encoding(features)
     bits_features_encoded = []
     for i in encoding:
         bits_features_encoded.append(len(i))
     percentages = []
     for k in range(len(bits_features_encoded)):
         percentages.append(str(round(((1-(bits_features_encoded[k]/bits_features_original[k]))*100), 2))+' %')
-    return bits_features_encoded, bits_features_original, names, percentages
+    print('Size of Huffman Dictionary + encoded bits: ', (len(frq)*32)+(sum(bits_features_encoded)*2))
+    print('Total number of original bits: ', sum(bits_features_original))
+    data = pd.DataFrame(
+    {'Layer': names,
+    'Huffman encoding': bits_features_encoded,
+    '32-Bit encoding': bits_features_original,
+    'Compression rate': percentages
+    })
+    return data, tree, encoding, features
 
 
 def main():
@@ -80,16 +90,14 @@ def main():
 
     # until this point, code was taken from eval.py
     # -----
-    bits_features_encoded, bits_features_original, names, percentages = features(module)
-    #decoding = Huffman_decoding(encoding, tree)
-
-    data = pd.DataFrame(
-    {'Layer': names,
-    'Huffman encoding': bits_features_encoded,
-    '32-Bit encoding': bits_features_original,
-    'Compression rate': percentages
-    })
+    data, tree, encoding, feature = features(module)
+    decoding = Huffman_decoding(encoding, tree)
+    norm = 0
+    for i in range(len(decoding)):
+        norm += np.linalg.norm(np.asarray(decoding[i])-np.asarray(feature[i]))
+    print('Difference of original and decoded values: ', norm)
     barplot(data)
+    
     #print(bits_features_encoded, bits_features_original)
 
 main()
