@@ -176,6 +176,7 @@ deploy_test:
   tags:
     - docker
   script:
+    - cd ml_cloud
     - ssh cgerum05@134.2.168.52 ls
   dependencies:
     - deploy_image

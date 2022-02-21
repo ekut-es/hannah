@@ -12,15 +12,20 @@ Dependencies and virtual environments are managed using [poetry](https://python-
 - a blas implementation and development headers
 - git-lfs for management of checkpoints
 
-### Ubuntu 18.04+
+### Ubuntu 20.04+
+
+Install dependencies:
 
     sudo apt update
     sudo apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev git-lfs
 
 ### Centos / RHEL / Scientific Linux: 7+
 
-    sudo yum install python36 python36-devel -y
+Install dependencies:
+
     sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
+
+Install a python 3.8 or python 3.9 version using [pyenv](https://github.com/pyenv/pyenv).
 
 ### Mac OS
 Possible Ways to install all the needed Packages for Mac are with Homebrew
@@ -28,13 +33,13 @@ Python 3.9 should be installed
 
     brew install python@3.9
 
-### Mac with x86_64 processor
+#### Mac with x86_64 processor
 
 poetry environment should be created with
 
     poetry install
 
-### Mac with m1 processor
+#### Mac with m1 processor
 
 Install hdf5 should be installed
 

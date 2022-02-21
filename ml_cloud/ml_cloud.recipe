@@ -25,9 +25,11 @@ From: nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
    python3.9 get-pip.py
 
    export TORCH_CUDA_ARCH_LIST="5.0;5.2;5.3;6.0;6.1;6.2;7.0"
-   python3 -m pip install -r /requirements.txt
    python3 -m pip install --force-reinstall setuptools==59.5.0
-   python3 -m pip install git+https://github.com/cgerum/OpenPCDet.git@fix/missing_init_py
+   python3 -m pip install -r /requirements.txt
+   python3 -m pip install numpy==1.20
+   python3 -m pip install SharedArray llvmlite numba spconv-cu102
+   python3 -m pip install git+https://github.com/open-mmlab/OpenPCDet.git
 
    rm -rf ~/.cache
    apt-get clean -y
