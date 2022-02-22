@@ -4,7 +4,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=kws_default
+#SBATCH --job-name=lidar_default
 
 #resources:
 
@@ -15,7 +15,7 @@
 # requests that the cores are all on one node
 
 #SBATCH --gres=gpu:rtx2080ti:1
-#the job can use and see 5 GPUs (8 GPUs are available in total on one node)
+#the job can use and see 4 GPUs (8 GPUs are available in total on one node)
 
 #SBATCH --gres-flags=enforce-binding
 
@@ -39,22 +39,24 @@
 echo "Job information"
 scontrol show job $SLURM_JOB_ID
 
-echo "Copy training data"
-mkdir -p $SCRATCH/datasets
-cp -r $WORK/datasets/speech_commands_v0.02 $SCRATCH/datasets
+#echo "Copy training data"
+
+#cd $tcml_wd
+#mkdir -p /scratch/$SLURM_JOB_ID/$tcml_output_dir
+#mkdir -p /scratch/$SLURM_JOB_ID/$tcml_data_dir
 
 echo "Moving singularity image to local scratch"
 cp /home/bringmann/cgerum05/ml_cloud.sif  $SCRATCH
 
 
 echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
-echo "skipped"
+cp -r $WORK/datasets/KITTI_3D $SCRATCH
 
 
 echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/tmp/cache
-singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train dataset.data_folder=$SCRATCH/datasets module.num_workers=4 output_dir=$WORK/trained_models
+singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train experiment_id=lidar_test_1 +trainer.max_steps=10000 trainer.deterministic=false trainer.gpus=[0] dataset.DATA_PATH=$SCRATCH/KITTI_3D module.num_workers=4 output_dir=$WORK/trained_models
 date
 
 echo "DONE!"
