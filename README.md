@@ -6,26 +6,54 @@
 
 Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
 
-- python (>=3.7.1 <3.10) and development headers
+- python (>=3.8 <3.10) and development headers
 - libsndfile and development headers
 - libsox and development headers
 - a blas implementation and development headers
 - git-lfs for management of checkpoints
 
-### Ubuntu 18.04+
+### Ubuntu 20.04+
+
+Install dependencies:
 
     sudo apt update
     sudo apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev git-lfs
 
 ### Centos / RHEL / Scientific Linux: 7+
 
-    sudo yum install python36 python36-devel -y
+Install dependencies:
+
     sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
 
+Install a python 3.8 or python 3.9 version using [pyenv](https://github.com/pyenv/pyenv).
+
 ### Mac OS
-Python 3.9 should be installed. Possible way are Homebrew
+Possible Ways to install all the needed Packages for Mac are with Homebrew
+Python 3.9 should be installed
 
     brew install python@3.9
+
+#### Mac with x86_64 processor
+
+poetry environment should be created with
+
+    poetry install
+
+#### Mac with m1 processor
+
+Install hdf5 should be installed
+
+    brew install hdf5
+
+Install the h5py python Package manually
+
+    poetry run pip3 install h5py==3.6.0
+
+poetry environment should be created with
+
+    poetry install
+
+Environment installed successfully
 
 ### Install poetry
 
@@ -158,11 +186,13 @@ Training of emergency siren detection dataset is invoked by:
 
 # Parallel Launchers
 
-To launch multiple optimizations in parallel you can use a hydra launcher
+To launch multiple optimizations in parallel you can use a hydra launcher. The optuna Package must be installed first
+
+    poetry run pip install hydra-optuna-sweeper==1.1.1
 
 Joblib launcher is installed by default:
 
-   hannah-train --multirun hydra/sweeper=nevergrad hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
+   hannah-train --multirun hydra/sweeper=optuna hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
 
 Launches optimizer hyperparameter optimization with 5 parallel jobs.
 

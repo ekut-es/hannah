@@ -1,4 +1,4 @@
-cls: hannah.models.tc-snn.models.TCResNetModel
+cls: hannah.models.tc_snn.models.TCResNetModel
 name: tc-res8-snn
 separable:
 - 0
