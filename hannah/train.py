@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 import numpy as np
 import shutil
 from collections import defaultdict
@@ -52,7 +53,7 @@ def train(config: DictConfig):
         if isinstance(config.trainer.gpus, int):
             config.trainer.gpus = auto_select_gpus(config.trainer.gpus)
 
-        if not config.trainer.fast_dev_run:
+        if not config.trainer.fast_dev_run and not config.get("resume", False):
             clear_outputs()
 
         logging.info("Configuration: ")
@@ -123,7 +124,21 @@ def train(config: DictConfig):
 
         logging.info("Starting training")
         # PL TRAIN
-        lit_trainer.fit(lit_module)
+        ckpt_path = None
+        if config.get("resume", False):
+            expected_ckpt_path = Path(".") / "checkpoints" / "last.ckpt"
+            # breakpoint()
+            if expected_ckpt_path.exists():
+                logging.info(
+                    "Resuming training from checkpoint: %s", str(expected_ckpt_path)
+                )
+                ckpt_path = str(expected_ckpt_path)
+            else:
+                logging.info(
+                    "Checkpoint '%s' not found restarting training from scratch",
+                    str(expected_ckpt_path),
+                )
+        lit_trainer.fit(lit_module, ckpt_path=ckpt_path)
         ckpt_path = "best"
 
         if not lit_trainer.fast_dev_run:

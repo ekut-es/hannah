@@ -1,5 +1,5 @@
 data:
-  KWS: trained_models/nas_kws_no_backend/conv_net_trax
+  Siren: /local/schaefch/BA/hannah/trained_models/nas_siren_no_backend/conv_net_trax
 
 metrics:
   total_act:
@@ -35,14 +35,14 @@ plots:
       - macs_m
 
 extract:
-  KWS:
+  Siren:
     bounds:
-        val_error: 0.1
+        val_error: 0.3
         total_macs: 100000
         total_weights: 1000000
 
 
-experiment: test_nas_no_backend
+experiment: nas_siren
 force: false
 
 hydra:
