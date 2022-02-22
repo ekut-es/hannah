@@ -86,6 +86,9 @@ build_docs:
   only:
     - master
 
+  # Empty dependencies to disable artifacts passing
+  dependencies: []
+
 build_image:
   stage: build
   before_script:
