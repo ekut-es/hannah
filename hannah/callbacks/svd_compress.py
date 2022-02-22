@@ -42,7 +42,7 @@ class SVD(Callback):
                         pl_module.model.linear[0][0] = new_fc
                         pl_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.linear[0][0][1].weight = torch.nn.Parameter(U, requires_grad=True)
-                    
+
 
                     # Second case: tc-res8 model
                     elif type(module) in [nn.Linear] and name != "model.linear.0.0.0" and name != "model.linear.0.0.1" and not isinstance(pl_module.model.fc, nn.Sequential):
@@ -58,36 +58,7 @@ class SVD(Callback):
                         pl_module.model.fc = new_fc
                         pl_module.model.fc[0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.fc[1].weight = torch.nn.Parameter(U, requires_grad=True)
-        return pl_module
-
-
-
-
-        '''compressed_weights = 0
-        for name, module in pl_module.named_modules():
-            if type(module) in [nn.Linear] or name == "model.linear.0.0":
-                U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True)
-                size_S = list(S.size())[0]
-                for i in range(self.rank, size_S):
-                    S[i] = 0
-                compressed_weights = torch.matmul(U, torch.matmul(torch.diag(S), Vh[:12, :]))
-                print(compressed_weights.shape)
-                if type(module) in [nn.Linear]:
-                    pl_module.model.fc.weight = torch.nn.Parameter(compressed_weights, requires_grad=True)
-
-                else:
-                    pl_module.model.linear[0][0].weight = torch.nn.Parameter(compressed_weights, requires_grad=True)
-                
-        return pl_module'''
-  
-
-
-'''
-
-        ########### Test if weights were updated #############
-        for name, param in pl_module.named_parameters():
-            if "linear.0.0" in name:
-                print((param == compressed_weights).all())
-        '''
-
         
+        for n, m in pl_module.named_parameters(): # check if tensors are leaf nodes - however, not working with pruning
+            print(n, m.requires_grad) # True
+        return pl_module

@@ -8,11 +8,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from tabulate import tabulate
-from torch import nn
 import torchaudio
 from hannah.models.tc.models import TCResidualBlock
-
-
+from hannah.models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d
+from torch import nn
 def barplot(data):
     sns.set_theme(style="darkgrid")
     sns.set_context("paper", font_scale=0.9)
@@ -38,12 +37,18 @@ def features(module):
         def hook(model, input, output):
             out[name] = output.detach()
         return hook
-    names = []
+    #names = []
     for name, mod in module.named_modules():
-        if isinstance(mod, TCResidualBlock):
-            names.append(name.replace('model.layers.', ''))
+        if isinstance(mod, nn.ReLU): # conv-net-trax
+            #names.append(name.replace('model.layers.', ''))
+            mod.register_forward_hook(conv_output(name)) # hook on ReLU output
+        if isinstance(mod, TCResidualBlock): # tc-res8
+            #names.append(name.replace('model.layers.', ''))
             mod.downsample[2].register_forward_hook(conv_output(name)) # hook on ReLU output
     data_wav, sample_rate = torchaudio.load('/local/datasets/speech_commands_v0.02/left/cd671b5f_nohash_2.wav')
+    #for batch in module.val_dataloader():
+    #    print(batch)
+    #    result = module(batch)
     result = module(data_wav)
 
     # Encode features with Huffman
@@ -62,7 +67,7 @@ def features(module):
     print('Size of Huffman Dictionary + encoded bits: ', (len(frq)*32)+(sum(bits_features_encoded)*2))
     print('Total number of original bits: ', sum(bits_features_original))
     data = pd.DataFrame(
-    {'Layer': names,
+    {'Layer': ['ReLU 1', 'ReLU 2', 'ReLU 3'],
     'Huffman encoding': bits_features_encoded,
     '32-Bit encoding': bits_features_original,
     'Compression rate': percentages
@@ -71,13 +76,13 @@ def features(module):
 
 
 def main():
-    config = {'name': 'test', 'checkpoints': ['/local/wernerju/hannah/trained_models/test/tc-res8/last.ckpt'], 'noise': [], 'output_dir': 'eval', 'default_target': 'hannah.modules.classifier.StreamClassifierModule'}
+    # -------
+    config = {'name': 'test', 'checkpoints': ['/local/wernerju/hannah/trained_models/test/conv_net_trax/best.ckpt'], 'noise': [], 'output_dir': 'eval', 'default_target': 'hannah.modules.classifier.StreamClassifierModule'}
     seed_everything(1234, workers=True)
-    checkpoint_path = '/local/wernerju/hannah/trained_models/test/tc-res8/last.ckpt'
+    checkpoint_path = '/local/wernerju/hannah/trained_models/test/conv_net_trax/best.ckpt'
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
     hparams = checkpoint["hyper_parameters"]
-
     if "_target_" not in hparams:
         target = config.default_target
         logging.warning("Target class not given in checkpoint assuming: %s", target)
@@ -88,7 +93,7 @@ def main():
     module.setup("test")
     module.load_state_dict(checkpoint["state_dict"])
 
-    # until this point, code was taken from eval.py
+    # until this point, code was copied from eval.py
     # -----
     data, tree, encoding, feature = features(module)
     decoding = Huffman_decoding(encoding, tree)

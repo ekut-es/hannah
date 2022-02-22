@@ -84,10 +84,13 @@ def encode_Sequence(ws, huffman_dict):
 def Huffman_encoding(ws):
     frq = get_frequencies(ws)
     print('Huffman dictionary with relative frequencies as values, indices as keys: ', frq)
+    import sys
+    #print('Storage: ', sys.getsizeof(frq))
     tree = create_tree(frq)
     encoding = {}
     huffman_dict = encode_Huffman(tree, '', encoding)
     huffman_encoding = encode_Sequence(ws, huffman_dict)
+    #print('Storage: ', sys.getsizeof(tree))
     return huffman_encoding, tree, frq
 
 

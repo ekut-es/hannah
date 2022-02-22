@@ -13,8 +13,8 @@
             "module": "hannah.train",
             "args": [
                 "trainer.limit_train_batches=1.0",
-                "trainer.max_epochs=5",
-                "model=tc-res20",
+                "trainer.max_epochs=1",
+                "model=conv-net-trax",
                 "normalizer=fixedpoint",
                 "svd_rank_compression=4",
                 "clustering=true"
