@@ -15,6 +15,7 @@ from ..models.factory import qat
 from ..models.ofa.submodules.elastickernelconv import (
     ConvBnReLu1d,
     ConvBn1d,
+    ConvRelu1d,
 )
 
 from ..models.ofa.submodules.elasticwidthmodules import ElasticWidthLinear
@@ -85,6 +86,7 @@ def walk_model(model, dummy_input):
             elastic_conv_type: get_elastic_conv,
             ElasticWidthLinear: get_elastic_linear,
             ConvBn1d: get_conv,
+            ConvRelu1d: get_conv,
             ConvBnReLu1d: get_conv,
             torch.nn.Conv1d: get_conv,
             torch.nn.Conv2d: get_conv,

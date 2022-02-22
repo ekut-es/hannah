@@ -21,11 +21,13 @@ from .submodules.elastickernelconv import (
     ElasticConvBnReLu1d,
     ConvBnReLu1d,
     ConvBn1d,
+    ElasticConvReLu1d,
 )
 from .submodules.elasticquantkernelconv import (
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
     ElasticQuantConv1d,
+    ElasticQuantConvReLu1d,
 )
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
@@ -226,6 +228,23 @@ def create_minor_block(
             )
         elif not norm and not act and quant:
             new_minor_block = ElasticQuantConv1d(
+                kernel_sizes=kernel_sizes,
+                in_channels=in_channels,
+                out_channels=out_channels_full,
+                stride=stride,
+                qconfig=qconfig,
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+            )
+        elif not norm and act and not quant:
+            new_minor_block = ElasticConvReLu1d(
+                kernel_sizes=kernel_sizes,
+                in_channels=in_channels,
+                out_channels=out_channels_full,
+                stride=stride,
+                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
+            )
+        elif not norm and act and quant:
+            new_minor_block = ElasticQuantConvReLu1d(
                 kernel_sizes=kernel_sizes,
                 in_channels=in_channels,
                 out_channels=out_channels_full,

@@ -272,6 +272,74 @@ class ElasticConv1d(ElasticBase1d):
             self.out_channel_filter = out_channel_filter
 
 
+class ElasticConvReLu1d(ElasticBase1d):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_sizes: List[int],
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: bool = False,
+    ):
+        ElasticBase1d.__init__(
+            self,
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_sizes=kernel_sizes,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+        )
+        self.relu = ElasticPermissiveReLU()
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if isinstance(input, SequenceDiscovery):
+            return input.discover(self)
+
+        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
+        # get the kernel for the current index
+        kernel, bias = self.get_kernel()
+        # get padding for the size of the kernel
+        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        return self.relu(
+            nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
+        )
+
+    # return a normal conv1d equivalent to this module in the current state
+    def get_basic_conv1d(self) -> nn.Conv1d:
+        kernel, bias = self.get_kernel()
+        kernel_size = self.kernel_sizes[self.target_kernel_index]
+        padding = conv1d_get_padding(kernel_size)
+        new_conv = ConvRelu1d(
+            in_channels=self.in_channels,
+            out_channels=self.out_channels,
+            kernel_size=kernel_size,
+            stride=self.stride,
+            padding=padding,
+            dilation=self.dilation,
+            bias=False,
+        )
+        new_conv.weight.data = kernel
+        if bias is not None:
+            new_conv.bias = bias
+
+        # print("\nassembled a basic conv from elastic kernel!")
+        return new_conv
+
+    # return a safe copy of a conv1d equivalent to this module in the current state
+    def assemble_basic_module(self) -> nn.Conv1d:
+        return copy.deepcopy(self.get_basic_conv1d())
+
+    def set_out_channel_filter(self, out_channel_filter):
+        if out_channel_filter is not None:
+            self.out_channel_filter = out_channel_filter
+
+
 class ElasticConvBn1d(ElasticConv1d):
     def __init__(
         self,
@@ -410,6 +478,38 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
+
+
+class ConvRelu1d(nn.Conv1d):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: bool = False,
+        track_running_stats=False,
+    ):
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+        )
+        self.relu = nn.ReLU()
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if isinstance(input, SequenceDiscovery):
+            return input.discover(self)
+
+        return self.relu(super(ConvRelu1d, self).forward(input))
 
 
 class ConvBn1d(nn.Conv1d):
