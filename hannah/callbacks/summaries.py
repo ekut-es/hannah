@@ -7,19 +7,12 @@ import torch
 
 import hannah.torch_extensions.nn.SNNActivationLayer
 from ..models.ofa import OFAModel
+from ..models.ofa.type_utils import elastic_conv_type
 from ..torch_extensions.nn import SNNLayers
 from ..models.sinc import SincNet
 from ..models.factory import qat
-from ..models.ofa.submodules import elastickernelconv as ekc
-from ..models.ofa.submodules.elasticquantkernelconv import (
-    ElasticQuantConv1d,
-    ElasticQuantConvBn1d,
-    ElasticQuantConvBnReLu1d,
-)
+
 from ..models.ofa.submodules.elastickernelconv import (
-    ElasticConv1d,
-    ElasticConvBn1d,
-    ElasticConvBnReLu1d,
     ConvBnReLu1d,
     ConvBn1d,
 )
@@ -89,12 +82,7 @@ def walk_model(model, dummy_input):
 
     def get_extra(module, volume_ofm, output):
         classes = {
-            ElasticQuantConv1d: get_elastic_conv,
-            ElasticQuantConvBn1d: get_elastic_conv,
-            ElasticQuantConvBnReLu1d: get_elastic_conv,
-            ElasticConv1d: get_elastic_conv,
-            ElasticConvBn1d: get_elastic_conv,
-            ElasticConvBnReLu1d: get_elastic_conv,
+            elastic_conv_type: get_elastic_conv,
             ElasticWidthLinear: get_elastic_linear,
             ConvBn1d: get_conv,
             ConvBnReLu1d: get_conv,
