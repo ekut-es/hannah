@@ -53,8 +53,6 @@ onnx-tf = {git = "https://github.com/onnx/onnx-tensorflow.git", optional = true}
 tensorflow-addons = {version = "^0.11.2", optional = true}
 onnxruntime = {version = "^1.4.0", optional = true}
 
-
-
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.0"
 flake8 = "^3.8.3"
