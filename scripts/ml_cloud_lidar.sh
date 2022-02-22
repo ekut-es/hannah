@@ -14,7 +14,7 @@
 #SBATCH --nodes=1
 # requests that the cores are all on one node
 
-#SBATCH --gres=gpu:rtx2080ti:4
+#SBATCH --gres=gpu:rtx2080ti:1
 #the job can use and see 4 GPUs (8 GPUs are available in total on one node)
 
 #SBATCH --gres-flags=enforce-binding
@@ -50,13 +50,13 @@ cp /home/bringmann/cgerum05/ml_cloud.sif  $SCRATCH
 
 
 echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
-echo "skipped"
+cp -r $WORK/datasets/KITTI_3D $SCRATCH
 
 
 echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/tmp/cache
-singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train trainer.gpus=[0,1,2,3] dataset.DATA_PATH=$WORK/datasets/KITTI_3D module.num_workers=4 output_dir=$WORK/trained_models
+singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train experiment_id=lidar_test_1 +trainer.max_steps=10000 trainer.deterministic=false trainer.gpus=[0] dataset.DATA_PATH=$SCRATCH/KITTI_3D module.num_workers=4 output_dir=$WORK/trained_models
 date
 
 echo "DONE!"
