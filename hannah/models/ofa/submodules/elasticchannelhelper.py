@@ -451,15 +451,5 @@ class SequenceDiscovery:
 
 # imports are located at the bottom to circumvent circular dependency import issues
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
-from .elastickernelconv import (
-    ElasticConv1d,
-    ElasticConvBn1d,
-    ElasticConvBnReLu1d,
-)
-from .elasticquantkernelconv import (
-    ElasticQuantConv1d,
-    ElasticQuantConvBn1d,
-    ElasticQuantConvBnReLu1d,
-)
 
 from ..type_utils import elastic_conv_type, elastic_forward_type
