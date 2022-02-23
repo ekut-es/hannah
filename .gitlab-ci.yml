@@ -44,7 +44,7 @@ test_python_38:
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=hannah test
-    - pydoc-markdown --build --site-dir _build
+    - poetry run pydoc-markdown --build --site-dir _build
   tags:
     - docker
     - nfs
