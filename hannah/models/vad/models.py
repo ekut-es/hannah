@@ -1,5 +1,4 @@
 import torch.nn as nn
-from ..utils import ConfigType, SerializableModule
 import torch.nn.functional as F
 
 
@@ -128,7 +127,7 @@ class SimpleVad(nn.Module):
         return num_features
 
 
-class BottleneckVadModel(SerializableModule):
+class BottleneckVadModel(nn.Module):
     def __init__(self, config):
         super().__init__()
 
@@ -159,7 +158,7 @@ class BottleneckVadModel(SerializableModule):
         return x
 
 
-class SimpleVadModel(SerializableModule):
+class SimpleVadModel(nn.Module):
     def __init__(self, config):
         super().__init__()
 
@@ -190,7 +189,7 @@ class SimpleVadModel(SerializableModule):
         return x
 
 
-class SmallVadModel(SerializableModule):
+class SmallVadModel(nn.Module):
     def __init__(self, config):
         super().__init__()
 
@@ -205,32 +204,3 @@ class SmallVadModel(SerializableModule):
     def forward(self, x):
         x = self.net.forward(x)
         return x
-
-
-configs = {
-    ConfigType.SIMPLE_VAD.value: dict(
-        conv1_features=3,
-        conv1_size=2,
-        conv2_features=3,
-        conv2_size=2,
-        conv3_features=3,
-        conv3_size=2,
-        fc_size=11286,
-        stride=2,
-        batch_norm=False,
-    ),
-    ConfigType.BOTTLENECK_VAD.value: dict(
-        conv1_features=3,
-        conv1_size=2,
-        conv2_features=3,
-        conv2_size=2,
-        conv3_features=3,
-        conv3_size=2,
-        fc_size=11286,
-        stride=2,
-        batch_norm=False,
-    ),
-    ConfigType.SMALL_VAD.value: dict(
-        conv1_features=3, conv1_size=2, fc_size=11700, stride=2, batch_norm=False
-    ),
-}
