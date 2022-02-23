@@ -53,6 +53,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         # TODO stage variable is not used!
         logger.info("Setting up model")
         if self.logger:
+            self.msglogger.info("Model setup already completed skipping setup")
             self.logger.log_hyperparams(self.hparams)
 
         if self.initialized:
@@ -239,8 +240,8 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_val_dataloader_by_set(self, dev_set):
         dev_loader = data.DataLoader(
             dev_set,
-            batch_size=min(len(dev_set), 16),
-            shuffle=False,
+            batch_size=min(len(dev_set), self.hparams["batch_size"]),
+            shuffle=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
@@ -279,8 +280,8 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_test_dataloader_by_set(self, test_set):
         test_loader = data.DataLoader(
             test_set,
-            batch_size=min(len(test_set), 16),
-            shuffle=False,
+            batch_size=min(len(test_set), self.hparams["batch_size"]),
+            shuffle=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,

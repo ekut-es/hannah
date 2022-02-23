@@ -6,9 +6,19 @@ from pytorch_lightning.utilities.distributed import rank_zero_only
 import torch
 
 import hannah.torch_extensions.nn.SNNActivationLayer
+from ..models.ofa import OFAModel
+from ..models.ofa.type_utils import elastic_conv_type
 from ..torch_extensions.nn import SNNLayers
 from ..models.sinc import SincNet
 from ..models.factory import qat
+
+from ..models.ofa.submodules.elastickernelconv import (
+    ConvBnReLu1d,
+    ConvBn1d,
+    ConvRelu1d,
+)
+
+from ..models.ofa.submodules.elasticwidthmodules import ElasticWidthLinear
 
 import torchvision
 
@@ -73,6 +83,11 @@ def walk_model(model, dummy_input):
 
     def get_extra(module, volume_ofm, output):
         classes = {
+            elastic_conv_type: get_elastic_conv,
+            ElasticWidthLinear: get_elastic_linear,
+            ConvBn1d: get_conv,
+            ConvRelu1d: get_conv,
+            ConvBnReLu1d: get_conv,
             torch.nn.Conv1d: get_conv,
             torch.nn.Conv2d: get_conv,
             qat.Conv1d: get_conv,
@@ -88,12 +103,10 @@ def walk_model(model, dummy_input):
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
         }
-
-        for _class, method in classes.items():
-            if isinstance(module, _class):
-                return method(module, volume_ofm, output)
-
-        return get_generic(module)
+        if type(module) in classes.keys():
+            return classes[type(module)](module, volume_ofm, output)
+        else:
+            return get_generic(module)
 
     def get_conv_macs(module, volume_ofm):
         return volume_ofm * (
@@ -133,6 +146,14 @@ def walk_model(model, dummy_input):
         macs = get_1DSpiking_macs(module, output)
         attrs = get_spike_attrs(module)
         return weights, macs, attrs
+
+    def get_elastic_conv(module, volume_ofm, output):
+        tmp = module.assemble_basic_module()
+        return get_conv(tmp, volume_ofm, output)
+
+    def get_elastic_linear(module, volume_ofm, output):
+        tmp = module.assemble_basic_module()
+        return get_fc(tmp, volume_ofm, output)
 
     def get_conv(module, volume_ofm, output):
         weights = (
@@ -187,9 +208,17 @@ class MacSummaryCallback(Callback):
         total_acts = 0.0
         total_weights = 0.0
         estimated_acts = 0.0
+        model = pl_module.model
+        ofamodel = isinstance(model, OFAModel)
+        if ofamodel:
+            if model.validation_model == None:
+                model.build_validation_model()
+            model = model.validation_model
 
         try:
-            df = walk_model(pl_module.model, dummy_input)
+            df = walk_model(model, dummy_input)
+            if ofamodel:
+                pl_module.model.reset_validaton_model()
             t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
             total_macs = df["MACs"].sum()
             total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
@@ -204,6 +233,8 @@ class MacSummaryCallback(Callback):
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
         except RuntimeError as e:
+            if ofamodel:
+                pl_module.model.reset_validaton_model()
             msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
