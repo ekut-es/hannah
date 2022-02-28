@@ -58,7 +58,7 @@ class ElasticChannelHelper(nn.Module):
             weights = target.weight.data
             norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=0)
             channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
-        # the channel priorities for lienars need to also be computable:
+        # the channel priorities for linears need to also be computable:
         # especially for the exit connections, a linear may follow after an elastic width
         elif isinstance(target, nn.Linear):
             weights = target.weight.data

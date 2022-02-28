@@ -218,7 +218,7 @@ class MacSummaryCallback(Callback):
         try:
             df = walk_model(model, dummy_input)
             if ofamodel:
-                pl_module.model.reset_validaton_model()
+                pl_module.model.reset_validation_model()
             t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
             total_macs = df["MACs"].sum()
             total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
@@ -234,7 +234,7 @@ class MacSummaryCallback(Callback):
                 )
         except RuntimeError as e:
             if ofamodel:
-                pl_module.model.reset_validaton_model()
+                pl_module.model.reset_validation_model()
             msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 

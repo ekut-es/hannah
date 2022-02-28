@@ -657,7 +657,7 @@ class OFAModel(nn.Module):
     def build_validation_model(self):
         self.validation_model = self.extract_elastic_depth_sequence(self.active_depth)
 
-    def reset_validaton_model(self):
+    def reset_validation_model(self):
         self.validation_model = None
 
     def get_validation_model_weight_count(self):
@@ -672,7 +672,7 @@ class OFAModel(nn.Module):
             )
             # sum up the values of each dict item, yielding the total element count across params
         if val_not_exist:
-            self.reset_validaton_model()
+            self.reset_validation_model()
         return sum(parameter_pointers_dict.values())
 
     # return an extracted module sequence for a given depth
