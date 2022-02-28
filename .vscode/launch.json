@@ -18,6 +18,8 @@
                 "normalizer=fixedpoint",
                 "svd_rank_compression=4",
                 "clustering=false",
+                "svd=true",
+                "pruning=l1_unstructured"
             ]
         },
         {
