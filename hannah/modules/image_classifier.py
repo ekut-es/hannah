@@ -1,5 +1,4 @@
 import logging
-
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
@@ -7,11 +6,10 @@ from torchmetrics.functional import accuracy
 from torchmetrics.functional import precision
 from torchmetrics.functional import recall
 from torchmetrics.functional import f1
-
+from timm.data.mixup import Mixup
 from hydra.utils import instantiate, get_class
 from torchmetrics import ConfusionMatrix
 from ..utils import set_deterministic
-
 from .base import ClassifierModule
 
 logger = logging.getLogger(__name__)
@@ -85,20 +83,25 @@ class ImageClassifierModule(ClassifierModule):
 
         if batch_idx == 0:
             loggers = self._logger_iterator()
-
             for logger in loggers:
                 if hasattr(logger.experiment, "add_image"):
                     import torchvision.utils
 
                     images = torchvision.utils.make_grid(x, normalize=True)
                     logger.experiment.add_image(f"input{batch_idx}", images)
+        if self.hparams.dataset.use_augmentations.mixup_args:
+            mixup_args = self.hparams.dataset.augmentations.mixup_args
+            mixup_fn = Mixup(**mixup_args)
+            x, y = mixup_fn(x, y)
+            logits = self(x)
+        else:
+            logits = self(x)
 
-        logits = self(x)
         if self.hparams.dataset.weighted_loss:
             loss = F.cross_entropy(
                 logits,
                 y.squeeze(),
-                weight=torch.tensor(self.weights, device=self.device),
+                weight=torch.tensor(self.train_set.weights, device=self.device),
             )
         else:
             loss = F.cross_entropy(logits, y.squeeze())
@@ -109,40 +112,44 @@ class ImageClassifierModule(ClassifierModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
-        if self.hparams.dataset.weighted_loss:
-            loss = F.cross_entropy(
-                logits,
-                y.squeeze(),
-                weight=torch.tensor(self.weights, device=self.device),
-            )
-        else:
-            loss = F.cross_entropy(logits, y.squeeze())
+        loss = F.cross_entropy(logits, y.squeeze())
         preds = torch.argmax(logits, dim=1)
         acc = accuracy(preds, y.squeeze())
+
+        # preds = preds.to("cpu")
+        # y = y.to("cpu")
+        precision_micro = precision(preds, y)
+        recall_micro = recall(preds, y)
+        f1_micro = f1(preds, y)
+        precision_macro = precision(
+            preds, y, num_classes=self.num_classes, average="macro"
+        )
+        recall_macro = recall(preds, y, num_classes=self.num_classes, average="macro")
+        f1_macro = f1(preds, y, num_classes=self.num_classes, average="macro")
 
         self.log("val_loss", loss)
         self.log("val_error", 1 - acc, sync_dist=True)
         self.log("val_accuracy", acc, sync_dist=True)
+        self.log("test_precision_micro", precision_micro, sync_dist=True)
+        self.log("test_recall_micro", recall_micro, sync_dist=True)
+        self.log("test_f1_micro", f1_micro, sync_dist=True)
+        self.log("test_precision_macro", precision_macro, sync_dist=True)
+        self.log("test_recall_macro", recall_macro, sync_dist=True)
+        self.log("test_f1_macro", f1_macro, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
-        if self.hparams.dataset.weighted_loss:
-            loss = F.cross_entropy(
-                logits,
-                y.squeeze(),
-                weight=torch.tensor(self.weights, device=self.device),
-            )
-        else:
-            loss = F.cross_entropy(logits, y.squeeze())
+
+        loss = F.cross_entropy(logits, y.squeeze())
         preds = torch.argmax(logits, dim=1)
         softmax = F.softmax(logits, dim=1)
         acc = accuracy(preds, y.squeeze())
 
         with set_deterministic(False):
             self.test_confusion(preds, y)
-        preds = preds.to("cpu")
-        y = y.to("cpu")
+        # preds = preds.to("cpu")
+        # y = y.to("cpu")
 
         precision_micro = precision(preds, y)
         recall_micro = recall(preds, y)
