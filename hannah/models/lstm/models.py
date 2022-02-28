@@ -1,9 +1,7 @@
 import torch.nn as nn
 
-from ..utils import ConfigType, SerializableModule
 
-
-class LSTMModel(SerializableModule):
+class LSTMModel(nn.Module):
     """Simple LSTM model."""
 
     def __init__(self, config):
@@ -25,19 +23,3 @@ class LSTMModel(SerializableModule):
         x = self.dropout(ht[-1])
         x = self.fc(x)
         return x
-
-
-configs = {
-    ConfigType.LSTM_1.value: dict(
-        features="mel",
-        hidden_size=64,
-        n_layers=1,
-        dropout=0.2,
-        lr=0.001,
-        optimizer="adam",
-        freq_min=0,
-        freq_max=8000,
-        n_mels=32,
-        n_mfcc=13,
-    )
-}
