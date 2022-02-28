@@ -11,7 +11,22 @@ weighted_loss: false
 train_val_split : ${hydra:runtime.cwd}/datasets/kvasir_capsule/official_splits/split_0.csv
 test_split : ${hydra:runtime.cwd}/datasets/kvasir_capsule/official_splits/split_1.csv
 
+
+use_augmentations:
+    mixup_args: true
+
 augmentations:
     rand_augment:
-        N: 8
-        M: 10
+        N: 2
+        M: 4
+    trivial_augment_wide:
+        M:
+    mixup_args:
+        mixup_alpha: 0.1
+        cutmix_alpha: 0.
+        cutmix_minmax:
+        prob: 1.0
+        switch_prob: 0.
+        mode: batch
+        label_smoothing : 0
+        num_classes: 11
