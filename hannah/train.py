@@ -169,20 +169,6 @@ def train(config: DictConfig):
 
     rank_zero_info("Averaged Test Metrics:")
 
-    results_test = test_sum.copy()
-    results_test["clustering"] = config.clustering
-    results_test["cluster_amount"] = config.cluster_amount
-    results_test["svd"] = config.svd
-    results_test["svd_amount"] = config.svd_rank_compression
-    results_test["model"] = config.model.name
-    results_test["dataset"] = config.dataset.dataset
-    results_test["max_epochs"] = config.trainer.max_epochs
-    import json
-    with open('/local/wernerju/hannah/test_results', 'a') as f:
-        json.dump(results_test, f)
-        f.write(os.linesep)
-        # f.write('\n')
-
     for k, v in test_sum.items():
         rank_zero_info(k + " : " + str(v / len(test_output)))
     rank_zero_info("validation_error : " + str(np.sum(results) / len(results)))
