@@ -77,13 +77,12 @@ def create(
 
     for block_config in conv:
         if block_config.target == "forward":
-            major_block = create_forward_block(
-                blocks=block_config.blocks,
-                in_channels=next_in_channels,
+            major_block = create_minor_block_sequence(
+                block_config.blocks,
+                next_in_channels,
                 stride=block_config.stride,
                 norm_before_act=norm_before_act,
-                qconfig=default_qconfig
-                # sources=previous_sources,
+                qconfig=default_qconfig,
             )
 
         elif block_config.target == "residual1d":
@@ -274,54 +273,6 @@ def create_minor_block(
 
     # return the new block and its output channel count
     return new_block, new_block_out_channels
-
-
-# create a module representing a sequence of norm and act
-def create_norm_act_sequence(
-    norm: bool, act: bool, channels: int, norm_before_act=None
-) -> nn.Module:
-    # batch norm will be added before and/or after activation depending on the configuration
-    # fallback default is one norm before act, if no order is specified.
-
-    # if no norm or activation is requested, simply return None
-    # going through the steps below and returning an empty module list would also be fine
-    if not norm and not act:
-        return None
-
-    norm_act_sequence = nn.ModuleList([])
-    # create the norm module only if required. its reference will be passed back.
-    new_norm = None
-    if norm:
-        new_norm = ElasticWidthBatchnorm1d(channels)
-    # new_act = nn.ReLU()
-    new_act = ElasticPermissiveReLU()
-    if norm and norm_before_act:
-        norm_act_sequence.append(new_norm)
-    if act:
-        # add relu activation if act is set
-        norm_act_sequence.append(new_act)
-    if norm and not norm_before_act:
-        norm_act_sequence.append(new_norm)
-
-    return module_list_to_module(norm_act_sequence)
-
-
-# build a basic forward major block
-def create_forward_block(
-    blocks,
-    in_channels,
-    stride=1,
-    norm_before_act=None,
-    qconfig=None
-    # sources: List[nn.ModuleList] = [nn.ModuleList([])],
-):
-    return create_minor_block_sequence(
-        blocks,
-        in_channels,
-        stride=stride,
-        norm_before_act=norm_before_act,
-        qconfig=qconfig,
-    )
 
 
 # build a residual major block
