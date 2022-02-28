@@ -3,11 +3,8 @@ import os
 import logging
 import pathlib
 import tarfile
-from matplotlib.pyplot import cla
 import requests
-from torch import default_generator, randperm
-from torch._utils import _accumulate
-from typing import Counter, List, Tuple, Dict, Sequence, Optional, Callable
+from typing import Counter, List, Tuple, Dict
 import pandas as pd
 from hydra.utils import get_original_cwd
 import numpy as np
@@ -17,7 +14,6 @@ import torchvision.datasets as datasets
 import torch.utils.data as data
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
-
 from .base import AbstractDataset
 
 from .utils import csv_dataset
@@ -166,6 +162,16 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         self.classes = classes
         self.class_to_idx = class_to_idx
 
+    def __getitem__(self, index):
+        image, target = self.dataset[index]
+        # image = csv_dataset.pil_loader(image)
+        if self.transform:
+            image = self.transform(image)
+        return image, target
+
+    def __len__(self):
+        return len(self.dataset)
+
     @staticmethod
     def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
         classes = sorted(
@@ -256,9 +262,18 @@ class KvasirCapsuleDataset(VisionDatasetBase):
                 transforms.Resize(256),
                 transforms.CenterCrop(256),
                 transforms.Resize(224),
-                # transforms.RandomHorizontalFlip(),
-                # transforms.RandomVerticalFlip(),
-                # transforms.RandomRotation(90),
+                # transforms.RandAugment(config.augmentations.rand_augment.N, config.augmentations.rand_augment.M),
+                # transforms.TrivialAugmentWide(config.augmentations.trivial_augment_wide.M),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        )
+
+        val_transofrm = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(256),
+                transforms.Resize(224),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
             ]
@@ -275,11 +290,9 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         )
 
         train_val_set = csv_dataset.DatasetCSV(
-            config.train_val_split, data_root, transform=train_transform
+            config.train_val_split, data_root, transform=None
         )
-        test_set = csv_dataset.DatasetCSV(
-            config.test_split, data_root, transform=test_transofrm
-        )
+        test_set = csv_dataset.DatasetCSV(config.test_split, data_root, transform=None)
         train_val_len = len(train_val_set)
         split_sizes = [
             int(train_val_len * config.train_percent),
@@ -298,9 +311,27 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         val_set = train_val_splits[1]
         test_indices = [i for i in range(len(test_set.imgs))]
         return (
-            cls(config, train_set, train_indices, config.train_val_split),
-            cls(config, val_set, val_indices, config.train_val_split),
-            cls(config, test_set, test_indices, config.test_split),
+            cls(
+                config,
+                train_set,
+                train_indices,
+                config.train_val_split,
+                transform=train_transform,
+            ),
+            cls(
+                config,
+                val_set,
+                val_indices,
+                config.train_val_split,
+                transform=val_transofrm,
+            ),
+            cls(
+                config,
+                test_set,
+                test_indices,
+                config.test_split,
+                transform=test_transofrm,
+            ),
         )
 
     @property
@@ -333,6 +364,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         return [cn[0:3] for cn in self.class_names]
 
     @property
-    def class_weights(self):
-        weights = [1 / i for i in self.class_counts.values()]
+    def weights(self):
+        counts = list(self.class_counts.values())
+        weights = [1 / i for i in counts]
         return weights
