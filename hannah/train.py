@@ -17,7 +17,6 @@ from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
-# from .callbacks.compression_hook_test import CompressionHuff
 from .callbacks.clustering import kMeans
 from .callbacks.svd_compress import SVD
 from .utils import (

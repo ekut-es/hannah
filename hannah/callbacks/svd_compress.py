@@ -52,6 +52,4 @@ class SVD(Callback):
                         pl_module.model.fc[0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.fc[1].weight = torch.nn.Parameter(U, requires_grad=True)
 
-        for n, m in pl_module.named_parameters():  # check if tensors are leaf nodes - however, not working with pruning
-            print(n, m.is_leaf)  # True
         return pl_module
