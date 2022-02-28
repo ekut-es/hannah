@@ -107,7 +107,7 @@ def train(config: DictConfig):
             profiler=profiler,
             callbacks=callbacks,
             logger=logger,
-            _convert_="partial",
+            _convert_="all",
         )
 
         if config["auto_lr"]:
