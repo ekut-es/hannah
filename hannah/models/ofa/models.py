@@ -214,78 +214,26 @@ def create_minor_block(
             kernel_sizes = [kernel_sizes]
 
         minor_block_internal_sequence = nn.ModuleList([])
-        norm = block_config.get("norm", False)
-        act = block_config.get("act", False)
-        quant = block_config.get("quant", False)
+        key = ""
+        parameter = {
+            "kernel_sizes": kernel_sizes,
+            "in_channels": in_channels,
+            "out_channels": out_channels_full,
+            "stride": stride,
+        }
 
-        if not norm and not act and not quant:
-            new_minor_block = ElasticConv1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and not act and quant:
-            new_minor_block = ElasticQuantConv1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and act and not quant:
-            new_minor_block = ElasticConvReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and act and quant:
-            new_minor_block = ElasticQuantConvReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and not act and not quant:
-            new_minor_block = ElasticConvBn1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and not act and quant:
-            new_minor_block = ElasticQuantConvBn1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and act and not quant:
-            new_minor_block = ElasticConvBnReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and act and quant:
-            new_minor_block = ElasticQuantConvBnReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
+        if block_config.get("norm", False):
+            key += "norm"
+        if block_config.get("act", False):
+            key += "act"
+        if block_config.get("quant", False):
+            key += "quant"
+            parameter["qconfig"] = qconfig
+        if key == "":
+            key = "none"
+
+        if key in elasic_conv_classes.keys():
+            new_minor_block = elasic_conv_classes[key](**parameter)
         else:
             raise Exception(
                 f"Undefined target selected in minor block sequence: {block_config.target}"
@@ -912,4 +860,4 @@ def rebuild_extracted_blocks(blocks):
     return out_modules
 
 
-from .type_utils import elastic_conv_type, elastic_all_type
+from .type_utils import elastic_conv_type, elastic_all_type, elasic_conv_classes

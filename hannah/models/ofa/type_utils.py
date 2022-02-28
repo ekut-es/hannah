@@ -17,6 +17,18 @@ from hannah.models.ofa.submodules.elasticwidthmodules import (
     ElasticPermissiveReLU,
 )
 
+elasic_conv_classes = {
+    "none": ElasticConv1d,
+    "quant": ElasticQuantConv1d,
+    "act": ElasticConvReLu1d,
+    "actquant": ElasticQuantConvReLu1d,
+    "norm": ElasticConvBn1d,
+    "normquant": ElasticQuantConvBn1d,
+    "normact": ElasticConvBnReLu1d,
+    "normactquant": ElasticQuantConvBnReLu1d,
+}
+
+
 elastic_conv_type = (
     ElasticConv1d,
     ElasticConvReLu1d,
