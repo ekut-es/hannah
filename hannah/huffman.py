@@ -12,7 +12,7 @@ class Node:
 
 
 def get_frequencies(ws):
-    frq = {} 
+    frq = {}
     for i in range(len(ws)):
         for j in range(len(ws[i])):
             if ws[i][j] in frq.keys():
@@ -20,27 +20,25 @@ def get_frequencies(ws):
             else:
                 frq[ws[i][j]] = 1
     total = sum(frq.values())
-    frq = {key: value / total for key, value in frq.items()} # relative frequencies
+    frq = {key: value / total for key, value in frq.items()}  # relative frequencies
     return frq
-
 
 
 def create_tree(frq):
     nodes = []
     for char, frq in frq.items():
         node = Node(frq, char)
-        heapq.heappush(nodes, (node.frq, id(node), node)) # each character is a leaf node
+        heapq.heappush(nodes, (node.frq, id(node), node))  # each character is a leaf node
     while len(nodes) > 1:
         left = heapq.heappop(nodes)
         right = heapq.heappop(nodes)
-        sum_frq = left[0] + right[0] # join nodes of least frq
-        left[2].huff = '0' # left edge
-        right[2].huff = '1' #right edge
-        internal_node = Node(sum_frq, 0, left, right) 
-        heapq.heappush(nodes, (internal_node.frq, id(internal_node), internal_node)) # add new node into tree
+        sum_frq = left[0] + right[0]  # join nodes of least frq
+        left[2].huff = '0'  # left edge
+        right[2].huff = '1'  # right edge
+        internal_node = Node(sum_frq, 0, left, right)
+        heapq.heappush(nodes, (internal_node.frq, id(internal_node), internal_node))  # add new node into tree
     return nodes[0]
-        
- 
+
 
 def encode_Huffman(tree, h, encoding):
     k = h + tree[2].huff
@@ -57,15 +55,14 @@ def decode_Sequence(seq, tree):
     d = []
     root = tree
     for i in range(len(seq)):
-        if seq[i] == '0' and root[2].left: # bit = 0, go left
+        if seq[i] == '0' and root[2].left:  # bit = 0, go left
             root = root[2].left
-        elif root[2].right: # bit = 1, go right
+        elif root[2].right:  # bit = 1, go right
             root = root[2].right
-        if root[2].left is None and root[2].right is None: # leaf node
+        if root[2].left is None and root[2].right is None:  # leaf node
             d.append(root[2].char) 
             root = tree
     return d
-
 
 
 def encode_Sequence(ws, huffman_dict):
@@ -84,13 +81,11 @@ def encode_Sequence(ws, huffman_dict):
 def Huffman_encoding(ws):
     frq = get_frequencies(ws)
     print('Huffman dictionary with relative frequencies as values, indices as keys: ', frq)
-    import sys
-    #print('Storage: ', sys.getsizeof(frq))
+    print('Huffman dictionary length: ', len(frq))
     tree = create_tree(frq)
     encoding = {}
     huffman_dict = encode_Huffman(tree, '', encoding)
     huffman_encoding = encode_Sequence(ws, huffman_dict)
-    #print('Storage: ', sys.getsizeof(tree))
     return huffman_encoding, tree, frq
 
 
@@ -99,4 +94,3 @@ def Huffman_decoding(huffman_encoding, tree):
     for i in range(len(huffman_encoding)):
         decoding.append(decode_Sequence(huffman_encoding[i], tree))
     return decoding
-

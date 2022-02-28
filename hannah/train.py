@@ -12,7 +12,6 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
 
 from hydra.utils import instantiate
-from omegaconf import DictConfig
 
 from . import conf  # noqa
 from .callbacks.summaries import MacSummaryCallback
@@ -97,10 +96,11 @@ def train(config: DictConfig):
 
         compress_after = config.trainer.max_epochs
         if config.clustering:   
-            callbacks.append(kMeans(compress_after))
-        #if compress_after % 2 == 1:  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
-        #    compress_after -= 1
-        #callbacks.append(SVD(rank_svd=config.get("svd_rank_compression"), compress_after=compress_after))
+            callbacks.append(kMeans(compress_after, config.cluster_amount))
+        if compress_after % 2 == 1:  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
+            compress_after -= 1
+        if config.svd:
+            callbacks.append(SVD(rank_svd=config.get("svd_rank_compression"), compress_after=compress_after))
         callbacks.extend(list(common_callbacks(config)))
 
         opt_monitor = config.get("monitor", ["val_error"])
@@ -168,6 +168,20 @@ def train(config: DictConfig):
                 test_sum[k] += v
 
     rank_zero_info("Averaged Test Metrics:")
+
+    results_test = test_sum.copy()
+    results_test["clustering"] = config.clustering
+    results_test["cluster_amount"] = config.cluster_amount
+    results_test["svd"] = config.svd
+    results_test["svd_amount"] = config.svd_rank_compression
+    results_test["model"] = config.model.name
+    results_test["dataset"] = config.dataset.dataset
+    results_test["max_epochs"] = config.trainer.max_epochs
+    import json
+    with open('/local/wernerju/hannah/test_results', 'a') as f:
+        json.dump(results_test, f)
+        f.write(os.linesep)
+        # f.write('\n')
 
     for k, v in test_sum.items():
         rank_zero_info(k + " : " + str(v / len(test_output)))

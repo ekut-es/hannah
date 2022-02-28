@@ -13,11 +13,11 @@
             "module": "hannah.train",
             "args": [
                 "trainer.limit_train_batches=1.0",
-                "trainer.max_epochs=1",
+                "trainer.max_epochs=2",
                 "model=conv-net-trax",
                 "normalizer=fixedpoint",
                 "svd_rank_compression=4",
-                "clustering=true"
+                "clustering=false",
             ]
         },
         {
@@ -39,7 +39,7 @@
             "request": "launch",
             "module": "hannah.train",
             "args": [
-                "trainer.max_epochs=10",
+                "trainer.max_epochs=1",
                 "model=conv-net-trax",
                 "clustering=true",
                 "normalizer=fixedpoint",

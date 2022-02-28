@@ -21,8 +21,10 @@ output_dir: trained_models
 auto_lr: false
 print_metrics: false
 data_monitor: false
+svd: false
 svd_rank_compression: 4
 clustering: true
+cluster_amount: 10
 
 
 seed: [1234]

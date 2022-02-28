@@ -1,35 +1,29 @@
 import torch
 import torch.nn as nn
-import numpy as np
-
 from pytorch_lightning.callbacks import Callback
-from torch.nn.modules.module import register_module_backward_hook
-
-
-
-                
 ''' Singular Value Decomposition of the linear layer of a neural network - tested for conv-net-trax and tc-res8'''
+
+
 class SVD(Callback):
+
     def __init__(self, rank_svd, compress_after):
         self.rank = rank_svd
         self.compress_after = compress_after
         super().__init__()
 
-
     def on_epoch_start(self, trainer, pl_module):
-        
         # Train - apply SVD - restructure - retrain
-        if trainer.current_epoch == self.compress_after/2: 
+        if trainer.current_epoch == self.compress_after/2:
             with torch.no_grad():
                 for name, module in pl_module.named_modules():
 
                     # First case: conv-net-trax model with Sequential Layers
                     if name == "model.linear.0.0" and not isinstance(pl_module.model.linear[0][0], nn.Sequential):
-                        U, S, Vh = torch.linalg.svd(module.weight.detach(), full_matrices=True) # apply SVD
+                        U, S, Vh = torch.linalg.svd(module.weight.detach(), full_matrices=True)  # apply SVD
 
                         # Slicing of matrices for rank r and reassembly
                         U = U[:, :self.rank]
-                        SVh = torch.matmul(torch.diag(S), Vh[:S.size()[0], :]) 
+                        SVh = torch.matmul(torch.diag(S), Vh[:S.size()[0], :])
                         SVh = SVh[:self.rank, :]
 
                         '''Replace linear layer by sequential layer with two linear layers,
@@ -43,12 +37,11 @@ class SVD(Callback):
                         pl_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.linear[0][0][1].weight = torch.nn.Parameter(U, requires_grad=True)
 
-
                     # Second case: tc-res8 model
                     elif type(module) in [nn.Linear] and name != "model.linear.0.0.0" and name != "model.linear.0.0.1" and not isinstance(pl_module.model.fc, nn.Sequential):
-                        U, S, Vh = torch.linalg.svd(module.weight, full_matrices=True)
+                        U, S, Vh = torch.linalg.svd(module.weight.detach(), full_matrices=True)
                         U = U[:, :self.rank]
-                        SVh = torch.matmul(torch.diag(S), Vh[:S.size()[0], :]) 
+                        SVh = torch.matmul(torch.diag(S), Vh[:S.size()[0], :])
                         SVh = SVh[:self.rank, :]
                         original_fc = pl_module.model.fc
                         new_fc = nn.Sequential(
@@ -58,7 +51,7 @@ class SVD(Callback):
                         pl_module.model.fc = new_fc
                         pl_module.model.fc[0].weight = torch.nn.Parameter(SVh, requires_grad=True)
                         pl_module.model.fc[1].weight = torch.nn.Parameter(U, requires_grad=True)
-        
-        for n, m in pl_module.named_parameters(): # check if tensors are leaf nodes - however, not working with pruning
-            print(n, m.requires_grad) # True
+
+        for n, m in pl_module.named_parameters():  # check if tensors are leaf nodes - however, not working with pruning
+            print(n, m.is_leaf)  # True
         return pl_module

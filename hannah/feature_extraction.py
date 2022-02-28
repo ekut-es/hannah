@@ -1,6 +1,6 @@
 import logging
 import torch
-from hydra.utils import to_absolute_path, instantiate
+from hydra.utils import instantiate
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from hannah.huffman import Huffman_decoding, Huffman_encoding
 import seaborn as sns
@@ -8,17 +8,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from tabulate import tabulate
-import torchaudio
-from hannah.models.tc.models import TCResidualBlock
-from hannah.models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d
 from torch import nn
+from pytorch_lightning import Trainer
+from hannah.models.factory.qat import ConvBnReLU1d, Conv1d
+
+
 def barplot(data):
     sns.set_theme(style="darkgrid")
     sns.set_context("paper", font_scale=0.9)
     plt.rcParams['font.family'] = 'serif'
     fig = data.plot(x='Layer', y=['Huffman encoding', '32-Bit encoding'], kind='bar', width=0.8, color=['midnightblue', 'slategrey'])
-    fig.bar_label(fig.containers[0], fontsize=7, padding=1)
-    fig.bar_label(fig.containers[1], fontsize=7, padding=1)
+    # fig.bar_label(fig.containers[0], fontsize=7, padding=1)
+    # fig.bar_label(fig.containers[1], fontsize=7, padding=1)
     fig.set_xticklabels(rotation=45, labels=data['Layer'])
     fig.set_xlabel('Feature maps')
     fig.set_ylabel('Bits')
@@ -29,48 +30,67 @@ def barplot(data):
 
 
 def features(module):
-    module.eval()
+    # -- Register Forward hook on ReLU layer to get their output --
+    result = []
 
-    # Get feature maps with forward hook
-    out = {}
     def conv_output(name):
         def hook(model, input, output):
-            out[name] = output.detach()
+            test = dict()
+            test[name] = output.detach()  # one dict = one layer output
+            result.append(test)
         return hook
-    #names = []
-    for name, mod in module.named_modules():
-        if isinstance(mod, nn.ReLU): # conv-net-trax
-            #names.append(name.replace('model.layers.', ''))
-            mod.register_forward_hook(conv_output(name)) # hook on ReLU output
-        if isinstance(mod, TCResidualBlock): # tc-res8
-            #names.append(name.replace('model.layers.', ''))
-            mod.downsample[2].register_forward_hook(conv_output(name)) # hook on ReLU output
-    data_wav, sample_rate = torchaudio.load('/local/datasets/speech_commands_v0.02/left/cd671b5f_nohash_2.wav')
-    #for batch in module.val_dataloader():
-    #    print(batch)
-    #    result = module(batch)
-    result = module(data_wav)
 
-    # Encode features with Huffman
-    features = []
-    bits_features_original = []
-    for k,v in out.items():
-        bits_features_original.append(len(v.numpy().flatten())*32)
-        features.append(list(v.numpy().flatten()))
+    for name, mod in module.named_modules():
+        print(mod)
+        if isinstance(mod, nn.ReLU):
+            mod.register_forward_hook(conv_output(name))
+    #breakpoint()
+    # Input of test set
+    trainer = Trainer(gpus=1, deterministic=True)
+    reset_seed()
+    trainer.test(model=module, ckpt_path=None)
+
+    # -- Output separated into 3 lists, one for each ReLU layer --
+    features = [None] * 3  # feature output separated into 3 lists, one for each layer
+    bits_features_original = [None] * 3  # 32 bit encoding
+    layer1 = []
+    layer2 = []
+    layer3 = []
+    for value in result:
+        for k, v in value.items():
+            if k == 'model.convolutions.1.0.act':
+                layer1.extend(list(v.cpu().numpy().flatten()))
+                features[0] = layer1
+                bits_features_original[0] = len(layer1)*32
+            elif k == 'model.convolutions.2.0.act':
+                layer2.extend(list(v.cpu().numpy().flatten()))
+                features[1] = layer2
+                bits_features_original[1] = len(layer2)*32
+            elif k == 'model.convolutions.3.0.act':
+                layer3.extend(list(v.cpu().numpy().flatten()))
+                features[2] = layer3
+                bits_features_original[2] = len(layer3)*32
+    print('size', len(features))  # list of size 3
+
     encoding, tree, frq = Huffman_encoding(features)
-    bits_features_encoded = []
+
+    # -- Compute number of bits for encoded values --
+    bits_features_encoded = []  # array of length 3, huffman encoded bits
     for i in encoding:
         bits_features_encoded.append(len(i))
+
     percentages = []
     for k in range(len(bits_features_encoded)):
         percentages.append(str(round(((1-(bits_features_encoded[k]/bits_features_original[k]))*100), 2))+' %')
     print('Size of Huffman Dictionary + encoded bits: ', (len(frq)*32)+(sum(bits_features_encoded)*2))
     print('Total number of original bits: ', sum(bits_features_original))
-    data = pd.DataFrame(
-    {'Layer': ['ReLU 1', 'ReLU 2', 'ReLU 3'],
-    'Huffman encoding': bits_features_encoded,
-    '32-Bit encoding': bits_features_original,
-    'Compression rate': percentages
+    print('Estimated compression in total: ', ((len(frq)*32)+(sum(bits_features_encoded)*2))/(sum(bits_features_original)))
+
+    data = pd.DataFrame({
+        'Layer': ['ReLU 1', 'ReLU 2', 'ReLU 3'],
+        'Huffman encoding': bits_features_encoded,
+        '32-Bit encoding': bits_features_original,
+        'Compression rate': percentages
     })
     return data, tree, encoding, features
 
@@ -102,7 +122,6 @@ def main():
         norm += np.linalg.norm(np.asarray(decoding[i])-np.asarray(feature[i]))
     print('Difference of original and decoded values: ', norm)
     barplot(data)
-    
-    #print(bits_features_encoded, bits_features_original)
+
 
 main()

@@ -1,10 +1,9 @@
-from cmath import nan
 import numpy as np
 import copy
 import torch
 from huffman import Huffman_encoding, Huffman_decoding
 import argparse
-import copy
+
 
 def load_parameters(file_path):
     values = []
@@ -28,12 +27,13 @@ def replace_cluster_by_indices(parameters, cluster):
     for k in range(len(ws)):
         centers = np.unique(ws[k], return_counts=False)  # get unique cluster centers
         for j in range(len(centers)):  # fill LUT
-            index_LUT[k,j] = centers[j]
-        intermediate_layer = np.select([ws[k]==centers[x] for x in range(len(centers))], 
-                    [i+1 for i in range(len(centers))], 
+            index_LUT[k, j] = centers[j]
+        intermediate_layer = np.select(
+                    [ws[k] == centers[x] for x in range(len(centers))],
+                    [i + 1 for i in range(len(centers))],
                     ws[k])  # replace with index 1 to i for i cluster
         ws_indexed.append(intermediate_layer)
-    #print('LUT: ', index_LUT)
+    # print('LUT: ', index_LUT)
     return ws_indexed, index_LUT
 
 
@@ -42,12 +42,11 @@ def replace_indices_by_clusters(ws_ind, index_LUT, ws):
     ws_cluster = []
     for i in range(len(ws_indexed)):
         ws_indexed[i] = np.asarray(ws_indexed[i], dtype=float)
-        intermediate_layer = (np.select([ws_indexed[i]==x for x in range(1, index_LUT.shape[1]+1)],
-        [index_LUT[i,k] for k in range(index_LUT.shape[1])], ws_indexed[i]))
+        intermediate_layer = (np.select([ws_indexed[i] == x for x in range(1, index_LUT.shape[1] + 1)], [index_LUT[i, k] for k in range(index_LUT.shape[1])], ws_indexed[i]))
         ws_cluster.append(intermediate_layer)
     norm_cluster_original = 0
     for i in range(len(ws_cluster)):
-        norm_cluster_original += np.linalg.norm(ws_cluster[i]-ws[i])
+        norm_cluster_original += np.linalg.norm(ws_cluster[i] - ws[i])
     print('Norm of original and decoded/clustered weights: ', norm_cluster_original)
     return ws_cluster
 
@@ -61,10 +60,10 @@ def rebuild_struc(decoding, index_LUT, ws, shapes, original_ws):
         x = np.asarray(ws_cluster[j], dtype=np.float32).reshape(shapes[j])
         ws_tensor[j] = torch.from_numpy(x)
         norm += np.linalg.norm(original_ws[j]-ws_tensor[j])
-        #print(id(ws_cluster[j]), id(result[j]), id(original_ws[j])) # different objects
+        # print(id(ws_cluster[j]), id(result[j]), id(original_ws[j])) # different objects
     print('Norm of decoded and restructured weights and original input weights: ', norm)
     return ws_cluster, ws_tensor
-    
+
 
 def calc_diff(hs):
     total_bits = 0
@@ -73,17 +72,14 @@ def calc_diff(hs):
     return total_bits
 
 
-
 def main():
     # Only works for non-quantized models. For quantized models, please use backend encoding.
     parser = argparse.ArgumentParser(
         description="Replace Kmeans centroids by indices and perform Huffman encoding.")
-    parser.add_argument("-i", "--filepath", dest="filename", type=str, required=True,
-                    help="File path to state dict of trained clustered (non-quantized) model")
-    parser.add_argument("-cluster", "--number_clusters", dest="n_clusters", type=int, required=True,
-                    help="Number of k-means clusters that were used during training.")
+    parser.add_argument("-i", "--filepath", dest="filename", type=str, required=True, help="File path to state dict of trained clustered (non-quantized) model")
+    parser.add_argument("-cluster", "--number_clusters", dest="n_clusters", type=int, required=True, help="Number of k-means clusters that were used during training.")
     args = parser.parse_args()
-    #/home/wernerju/.cache/pypoetry/virtualenvs/hannah-Wne_DMqI-py3.9/bin/python /local/wernerju/hannah/hannah/compression.py -i /local/wernerju/hannah/trained_models/test/tc-res8/last.ckpt
+    # /home/wernerju/.cache/pypoetry/virtualenvs/hannah-Wne_DMqI-py3.9/bin/python /local/wernerju/hannah/hannah/compression.py -i /local/wernerju/hannah/trained_models/test/tc-res8/last.ckpt
 
     file_path = args.filename
     ws, lengths, shapes, original_ws = load_parameters(file_path)
@@ -98,7 +94,6 @@ def main():
     total_bits = calc_diff(hs)
     print('Number of required Bits in total: ', total_bits)
     print('Potential reduction: ', 1-(total_bits/(sum(lengths)*32)))
-
 
     print('----------- Huffman Decoding -------------')
     decoding = Huffman_decoding(hs, tree)
