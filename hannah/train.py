@@ -15,6 +15,9 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from . import conf  # noqa
 
 # from .callbacks.compression_hook_test import CompressionHuff
+from .callbacks.summaries import MacSummaryCallback
+from .callbacks.optimization import HydraOptCallback
+from .callbacks.pruning import PruningAmountScheduler
 from .callbacks.clustering import kMeans
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
