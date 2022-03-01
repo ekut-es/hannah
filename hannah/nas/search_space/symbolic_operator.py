@@ -1,6 +1,6 @@
 from copy import deepcopy
 from abc import ABC
-import numpy as np
+import torch
 
 
 class SymbolicOperator:
@@ -9,6 +9,8 @@ class SymbolicOperator:
         self.mod = mod
         self.params = {}
         for k, v in kwargs.items():
+            if not isinstance(v, Parameter):
+                v = Constant(str(k), v)
             self.params[k] = v
 
     def instantiate(self, ctx):
@@ -59,6 +61,28 @@ class Choice(Parameter):
         return str(self.values)
 
 
+class RestrictedChoice(Parameter):
+    def __init__(self, name, *args, func=None) -> None:
+        super().__init__(name)
+        self.values = list(args)
+        self.func = func
+
+    def get(self, mod, ctx):
+        self.infer(mod, ctx)
+        idx = ctx.config.get(mod.name).get(self.name)
+        result = self.values[idx]
+        return result
+
+    def infer(self, mod, ctx):
+        self.func(self, mod, ctx)
+
+    def get_config_dims(self):
+        return list(range(len(self.values)))
+
+    def __repr__(self) -> str:
+        return str(self.values)
+
+
 class Variable(Parameter):
     def __init__(self, name, func) -> None:
         super().__init__(name)
@@ -98,7 +122,7 @@ class FloatRangeVector(Parameter):
         if init:
             self.value = init
         else:
-            self.value = np.ones(self.size) * (self.min + ((self.max - self.min) / 2))
+            self.value = torch.ones(self.size) * (self.min + ((self.max - self.min) / 2))
         super().__init__(name)
 
     def get(self, mod, ctx):
