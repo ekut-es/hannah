@@ -196,33 +196,52 @@ class MixedOp(nn.Module):
 
 
 class FactorizedReduce(nn.Module):
-    def __init__(self, C_in, C_out, stride, affine=True):
-        super(FactorizedReduce, self).__init__()
-        if stride == 2:
-            self.is_identity = False
-            assert C_out % 2 == 0
-            self.relu = nn.ReLU(inplace=False)
-            self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
-            self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
-            self.bn = nn.BatchNorm2d(C_out, affine=affine)
-        elif C_in != C_out:
-            self.is_identity = False
-            assert C_out % 2 == 0
-            self.relu = nn.ReLU(inplace=False)
-            self.conv_1 = nn.Conv2d(C_in, C_out // 2, 1, stride=1, padding=0, bias=False)
-            self.conv_2 = nn.Conv2d(C_in, C_out // 2, 1, stride=1, padding=0, bias=False)
-            self.bn = nn.BatchNorm2d(C_out, affine=affine)
-        else:
+    """
+    Factorized reduce as used in ResNet to add some sort
+    of Identity connection even though the resolution does not
+    match.
+    If the resolution matches it resolves to identity
+    """
+
+    def __init__(self, C_in, C_out, stride=1, affine=True, **kwargs):
+        super().__init__()
+        self.stride = stride
+        if stride == 1 and C_in == C_out:
             self.is_identity = True
+        elif stride == 1:
+            self.is_identity = False
+            self.relu = nn.ReLU(inplace=False)
+            self.conv = nn.Conv2d(C_in, C_out, 1, stride=stride, padding=0, bias=False)
+            self.bn = nn.BatchNorm2d(C_out, affine=affine)
+
+        else:
+            self.is_identity = False
+            assert C_out % 2 == 0
+            self.relu = nn.ReLU(inplace=False)
+            self.conv_1 = nn.Conv2d(
+                C_in, C_out // 2, 1, stride=stride, padding=0, bias=False
+            )
+            self.conv_2 = nn.Conv2d(
+                C_in, C_out // 2, 1, stride=stride, padding=0, bias=False
+            )
+            self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
     def forward(self, x):
         if self.is_identity:
-            out = Identity(x)
+            return x
+        elif self.stride == 1:
+            x = self.relu(x)
+            out = self.conv(x)
+            self.bn(out)
+            return out
         else:
             x = self.relu(x)
+            if x.shape[2] % 2 == 1 or x.shape[3] % 2 == 1:
+                x = F.pad(x, (0, x.shape[3] % 2, 0, x.shape[2] % 2), 'constant', 0)
             out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
+            # print('Outshape', out.shape)
             out = self.bn(out)
-        return out
+            return out
 
 
 if __name__ == '__main__':
