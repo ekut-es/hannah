@@ -62,6 +62,32 @@ def create(
     validate_on_extracted=True,
     qconfig=None,
 ) -> nn.Module:
+    """
+    The function creates a ofaModel with the given name,
+    labels, input shape, convolutional layers, and other parameters
+
+    :param name: The name of the model
+    :type name: str
+    :param labels: The number of classes in the dataset
+    :type labels: int
+    :param input_shape: the shape of the input tensor
+    :param conv: a list of MajorBlockConfig objects
+    :param min_depth: The minimum depth of the model, defaults to 1
+    :type min_depth: int (optional)
+    :param norm_before_act: If True, the normalization is performed before the
+    activation function, defaults to True (optional)
+    :param skew_sampling_distribution: If True, the model will use a skewed sampling
+    distribution to sample the number of minor blocks in each major block, defaults
+    to False
+    :type skew_sampling_distribution: bool (optional)
+    :param dropout: float, default 0.5
+    :type dropout: int
+    :param validate_on_extracted: If True, the model will be validated on the
+    extracted data, defaults to True (optional)
+    :param qconfig: the quantization configuration to use
+    :return: A model object.
+    """
+
     # if no orders for the norm operator are specified, fall back to default
     default_qconfig = instantiate(qconfig) if qconfig else None
     flatten_n = input_shape[0]
