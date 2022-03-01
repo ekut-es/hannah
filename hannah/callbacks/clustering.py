@@ -83,8 +83,11 @@ class kMeans(Callback):
 
                 # Returns center that is closest to given value x
                 def replace_values_by_centers(x):
-                    i = (np.abs(centers - x)).argmin()
-                    return centers[i]
+                    if x == 0.0:
+                        return x
+                    else:
+                        i = (np.abs(centers - x)).argmin()
+                        return centers[i]
                 module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers)  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                 module.to(device=device)  # move from cpu to gpu
                 # print(module.weight.flatten())
@@ -103,8 +106,11 @@ class kMeans(Callback):
                     centers, inertia = clustering(w, inertia, self.cluster)
 
                     def replace_values_by_centers(x):
-                        i = (np.abs(centers - x)).argmin()
-                        return centers[i]
+                        if x == 0.0:
+                            return x
+                        else:
+                            i = (np.abs(centers - x)).argmin()
+                            return centers[i]
                     module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers)
                     module.to(device=device)
             logger.info('Clustering error: %s', inertia)

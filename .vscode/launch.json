@@ -17,8 +17,7 @@
                 "model=conv-net-trax",
                 "normalizer=fixedpoint",
                 "svd_rank_compression=4",
-                "clustering=false",
-                "svd=true",
+                "clustering=true",
                 "pruning=l1_unstructured"
             ]
         },
