@@ -4,6 +4,7 @@ from .base import SearchTask
 
 from pytorch_lightning import LightningModule
 from hydra.utils import instantiate, get_class
+from hannah.nas.search_space.utils import get_random_cfg
 
 
 class RandomSearchTask(SearchTask):
@@ -24,8 +25,9 @@ class RandomSearchTask(SearchTask):
             self.config.dataset
         )
 
+        self.search_space.prepare([1] + train_set.size())
         for i in range(self.budget):
-            model = self.search_space.sample([1] + train_set.size())
+            model = self.search_space.sample(config=get_random_cfg(self.search_space.get_config_dims()))
             example_input_array = torch.rand([1] + train_set.size())
             module = instantiate(
                 self.config.module,
