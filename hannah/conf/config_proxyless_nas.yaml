@@ -1,0 +1,40 @@
+defaults:
+    - dataset: cifar10
+    - features: identity
+    - scheduler: 1cycle
+    - optimizer: sgd
+    - normalizer: null
+    - module: stream_classifier
+    - compress: null
+    - trainer: default
+    - checkpoint: default
+    - backend: null
+    - early_stopping: null
+    - profiler: null
+    - pruning: null
+    - optional dataset/features: ${dataset}_${features}
+    - nas: proxyless_nas
+
+dataset:
+    train_val_split: [0.5, 0.5]
+
+
+experiment_id: test
+output_dir: trained_models
+auto_lr: false
+print_metrics: false
+data_monitor: false
+
+seed: [1234]
+
+#hydra:
+#    run:
+#      dir: ${output_dir}/${experiment_id}/${model.name}/
+#    sweep:
+#      dir: ${output_dir}/${experiment_id}/${model.name}/
+
+
+
+#TODO:
+dump_test: false
+input_file: ''

@@ -3,5 +3,5 @@ defaults:
   - _self_
   - space: proxyless
 
-_target_: hannah.nas.tasks.random.RandomSearchTask
+_target_: hannah.nas.tasks.darts.DartsSearchTask
 budget: 2000
