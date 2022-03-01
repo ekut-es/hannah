@@ -13,30 +13,14 @@ from omegaconf import ListConfig
 from hydra.utils import instantiate
 
 
-from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
-from .submodules.elastickernelconv import (
-    ElasticConv1d,
-    ElasticConvBn1d,
-    ElasticConvBnReLu1d,
-    ConvBnReLu1d,
-    ConvBn1d,
-    ElasticConvReLu1d,
-)
-from .submodules.elasticquantkernelconv import (
-    ElasticQuantConvBn1d,
-    ElasticQuantConvBnReLu1d,
-    ElasticQuantConv1d,
-    ElasticQuantConvReLu1d,
-)
+
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
-    ElasticPermissiveReLU,
-    ElasticWidthBatchnorm1d,
     ElasticWidthLinear,
 )
 
-from ..factory import qat
+from .type_utils import elastic_conv_type, elastic_all_type, elasic_conv_classes
 
 # from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
@@ -835,6 +819,3 @@ def rebuild_extracted_blocks(blocks):
     if input_modules_flat_length != len(out_modules):
         logging.info("Reassembly changed length of module list")
     return out_modules
-
-
-from .type_utils import elastic_conv_type, elastic_all_type, elasic_conv_classes
