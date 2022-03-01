@@ -5,6 +5,7 @@ from hannah.nas.search_space.symbolic_operator import Choice, RestrictedChoice, 
 from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.proxyless.proxyless_modules import MobileInvertedResidualBlock, Classifier
 from hannah.nas.search_space.proxyless.proxyless_parameter import restricted_stride
+from hannah.nas.search_space.utils import get_random_cfg
 
 
 # TODO: Rename
@@ -71,7 +72,7 @@ class ProxylessSpace(Space):
         if not hasattr(self, 'ctx'):
             if not cfg:
                 cfg_dims = self.get_config_dims()
-                cfg = self.get_random_cfg(cfg_dims)
+                cfg = get_random_cfg(cfg_dims)
             self.ctx = Context(config=cfg)
             self.ctx.max_reductions = 2
         return self.ctx
