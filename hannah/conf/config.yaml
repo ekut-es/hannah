@@ -14,6 +14,7 @@ defaults:
     - profiler: null
     - pruning: null
     - optional dataset/features: ${dataset}_${features}
+    - override hydra/job_logging: silent
 
 
 experiment_id: test
