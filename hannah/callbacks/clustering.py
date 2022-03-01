@@ -83,16 +83,13 @@ class kMeans(Callback):
 
                 # Returns center that is closest to given value x
                 def replace_values_by_centers(x):
-                    if x == 0.0:
+                    if x == 0.0: # required if pruning is used
                         return x
                     else:
                         i = (np.abs(centers - x)).argmin()
                         return centers[i]
                 module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers)  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                 module.to(device=device)  # move from cpu to gpu
-                # print(module.weight.flatten())
-                # centers = np.unique(module.weight.data.cpu().numpy().flatten(), return_counts=False)
-                # print(centers)
         print('Clustering error: ', inertia)
 
     def on_epoch_end(self, trainer, pl_module):
