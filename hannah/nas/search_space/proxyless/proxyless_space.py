@@ -1,11 +1,12 @@
 import torch
 from hannah.nas.search_space.modules.complex_operators import MBInvertedConvLayer
 from hannah.nas.search_space.modules.primitive_operators import Conv2dAct, ReLU6
-from hannah.nas.search_space.symbolic_operator import Choice, RestrictedChoice, SymbolicOperator, Context, Variable, infer_in_channel
+from hannah.nas.search_space.symbolic_operator import Choice, OneOf, RestrictedChoice, SymbolicOperator, Context, Variable, infer_in_channel
 from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.proxyless.proxyless_modules import MobileInvertedResidualBlock, Classifier
 from hannah.nas.search_space.proxyless.proxyless_parameter import restricted_stride
 from hannah.nas.search_space.utils import get_random_cfg
+from copy import deepcopy
 
 
 # TODO: Rename
@@ -35,16 +36,23 @@ class ProxylessSpace(Space):
                                        kernel_size=3,
                                        stride=stride,
                                        expand_ratio=1)
+
+        mb_conv_proto = SymbolicOperator("MBConv",
+                                         MBInvertedConvLayer,
+                                         in_channels=Variable("in_channels", func=infer_in_channel),
+                                         out_channels=width,
+                                         kernel_size=Choice('kernel_size', 3, 5, 7),
+                                         stride=stride,
+                                         expand_ratio=Choice('expand_ratio', 3, 6))
+
         blocks = [first_block]
         for i in range(n_cell):
             shortcut = None
-            conv = SymbolicOperator('MBConv_{}'.format(i),
+            mb_conv = deepcopy(mb_conv_proto)
+            mb_conv.update_name(mb_conv_proto.name + '_{}'.format(i))
+            conv = SymbolicOperator('BlockChoice_{}'.format(i),
                                     MobileInvertedResidualBlock,
-                                    in_channels=Variable("in_channels", func=infer_in_channel),
-                                    out_channels=width,
-                                    kernel_size=Choice('kernel_size', 3, 5, 7),
-                                    stride=stride,
-                                    expand_ratio=Choice('expand_ratio', 3, 6),
+                                    conv=OneOf('oneof', mb_conv),
                                     shortcut=shortcut)
             blocks.append(conv)
 

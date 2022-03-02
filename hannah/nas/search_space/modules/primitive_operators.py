@@ -244,6 +244,16 @@ class FactorizedReduce(nn.Module):
             return out
 
 
+class LayerChoice(nn.Module):
+    def __init__(self, layer) -> None:
+        super().__init__()
+        self.layer = layer
+
+    def forward(self, x):
+        out = self.layer(x)
+        return out
+
+
 if __name__ == '__main__':
     mixed = MixedOp(ops=[Conv2d(100, 100, 5), Conv2d(100, 32, 1), Conv2d(100, 50, 3)], choice=0, mask=[1, 1 , 1])
     num_param = sum(p.numel() for p in mixed.parameters())

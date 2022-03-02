@@ -1,5 +1,4 @@
 import hannah.nas.search_space.modules.primitive_operators as p_ops
-from hannah.nas.search_space.modules.complex_operators import MBInvertedConvLayer
 from torch.nn import Module
 import torch
 
@@ -21,30 +20,18 @@ class ZeroLayerModule(Module):
 
 class MobileInvertedResidualBlock(Module):
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size=3,
-                 stride=1,
-                 expand_ratio=6,
-                 mid_channels=None,
-                 shortcut=True):
+    def __init__(self, conv, shortcut=True):
         super(MobileInvertedResidualBlock, self).__init__()
 
-        self.mobile_inverted_conv = MBInvertedConvLayer(in_channels,
-                                                        out_channels,
-                                                        kernel_size,
-                                                        stride,
-                                                        expand_ratio,
-                                                        mid_channels)
+        self.conv = conv
         if shortcut:
-            shortcut = p_ops.FactorizedReduce(in_channels, out_channels, stride)
+            shortcut = p_ops.FactorizedReduce(self.conv.in_channels, self.conv.out_channels, self.conv.stride)
         else:
             shortcut = None
         self.zero_layer_module = ZeroLayerModule(shortcut)
 
     def forward(self, x):
-        out = self.mobile_inverted_conv(x)
+        out = self.conv(x)
         return self.zero_layer_module(x, out)
 
 

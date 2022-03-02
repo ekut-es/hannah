@@ -30,7 +30,13 @@ def get_random_cfg(cfg_dims):
                 elif isinstance(v_, dict) and 'min' in v_ and 'size':
                     # cfg[k][k_] = np.random.uniform(v_['min'], v_['max'], v_['size'])
                     cfg[k][k_] = torch.FloatTensor(v_['size']).uniform_(v_['min'], v_['max'])
-                    np.random.uniform()
+                elif isinstance(v_, dict):
+                    key = np.random.choice(list(v_.keys()))
+                    cfg[k][k_] = key
+                    cfg[key] = {}
+                    for k__, v__ in v_[key].items():
+                        cfg[key][k__] = int(np.random.choice(v__))
+
         else:
             cfg[k] = int(np.random.choice(v))
     return cfg

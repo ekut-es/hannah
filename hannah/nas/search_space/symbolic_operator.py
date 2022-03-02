@@ -4,9 +4,9 @@ import torch
 
 
 class SymbolicOperator:
-    def __init__(self, name, mod, **kwargs) -> None:
+    def __init__(self, name, target_cls, **kwargs) -> None:
         self.name = name
-        self.mod = mod
+        self.target_cls = target_cls
         self.params = {}
         for k, v in kwargs.items():
             if not isinstance(v, Parameter):
@@ -17,7 +17,8 @@ class SymbolicOperator:
         args = {}
         for key, param in self.params.items():
             args[key] = param.get(self, ctx)
-        return self.mod(**args)
+        mod = self.target_cls(**args)
+        return mod
 
     def new(self):
         return deepcopy(self)
@@ -31,6 +32,9 @@ class SymbolicOperator:
                 pass
         return {self.name: param_cfg}
 
+    def update_name(self, new_name):
+        self.name = new_name
+
     def __repr__(self):
         return 'SymOp {}'.format(self.name)
 
@@ -42,6 +46,23 @@ class Parameter(ABC):
 
     def get(self, mod_name, ctx):
         pass
+
+
+class OneOf(Parameter):
+    def __init__(self, name, *ops) -> None:
+        super().__init__(name)
+        self.ops = {op.name: op for op in ops}
+
+    def get(self, mod, ctx):
+        op_name = ctx.config.get(mod.name).get(self.name)
+        op = self.ops[op_name].instantiate(ctx)
+        return op
+
+    def get_config_dims(self):
+        dims = {}
+        for op_name, op in self.ops.items():
+            dims[op_name] = op.get_config_dims()[op_name]
+        return dims
 
 
 class Choice(Parameter):
