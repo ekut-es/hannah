@@ -147,7 +147,7 @@ def train(config: DictConfig):
         lit_trainer.fit(lit_module)
 
         # For KMeans-clustering last checkpoint needed
-        if config.clustering:
+        if config.clustering or config.svd:
             lit_trainer.save_checkpoint("last.ckpt")
             ckpt_path = "last.ckpt"
         else:
