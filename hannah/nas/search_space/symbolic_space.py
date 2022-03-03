@@ -6,6 +6,7 @@ import traceback
 class Space(nx.DiGraph):
     def __init__(self, incoming_graph_data=None, **attr):
         super().__init__(incoming_graph_data, **attr)
+        self.cfg_options = {}
 
     def infer_parameters(self, x, ctx):
         def _traverse(node, input):
@@ -66,6 +67,12 @@ class Space(nx.DiGraph):
             if len(cfg_dims[node.name]) > 0:
                 cfg.update(cfg_dims)
         return cfg
+
+    def sample(self, *args):
+        raise NotImplementedError()
+
+    def prepare(self, *args):
+        raise NotImplementedError()
 
 
 class Instance(nn.Module):
