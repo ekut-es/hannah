@@ -18,7 +18,10 @@ from ..models.ofa.submodules.elastickernelconv import (
     ConvRelu1d,
 )
 
-from ..models.ofa.submodules.elasticwidthmodules import ElasticWidthLinear
+from ..models.ofa.submodules.elasticwidthmodules import (
+    ElasticWidthLinear,
+    ElasticQuantWidthLinear,
+)
 
 import torchvision
 
@@ -84,6 +87,7 @@ def walk_model(model, dummy_input):
     def get_extra(module, volume_ofm, output):
         classes = {
             elastic_conv_type: get_elastic_conv,
+            ElasticQuantWidthLinear: get_elastic_linear,
             ElasticWidthLinear: get_elastic_linear,
             ConvBn1d: get_conv,
             ConvRelu1d: get_conv,
@@ -96,6 +100,7 @@ def walk_model(model, dummy_input):
             qat.ConvBn2d: get_conv,
             qat.ConvBnReLU1d: get_conv,
             qat.ConvBnReLU2d: get_conv,
+            # qat.Linear: get_fc,
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
