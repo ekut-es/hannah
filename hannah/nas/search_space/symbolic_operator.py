@@ -66,30 +66,14 @@ class OneOf(Parameter):
 
 
 class Choice(Parameter):
-    def __init__(self, name, *args) -> None:
-        super().__init__(name)
-        self.values = list(args)
-
-    def get(self, mod, ctx):
-        idx = ctx.config.get(mod.name).get(self.name)
-        result = self.values[idx]
-        return result
-
-    def get_config_dims(self):
-        return list(range(len(self.values)))
-
-    def __repr__(self) -> str:
-        return str(self.values)
-
-
-class RestrictedChoice(Parameter):
     def __init__(self, name, *args, func=None) -> None:
         super().__init__(name)
         self.values = list(args)
         self.func = func
 
     def get(self, mod, ctx):
-        self.infer(mod, ctx)
+        if self.func:
+            self.infer(mod, ctx)
         idx = ctx.config.get(mod.name).get(self.name)
         result = self.values[idx]
         return result
