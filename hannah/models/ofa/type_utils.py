@@ -17,6 +17,21 @@ from hannah.models.ofa.submodules.elasticwidthmodules import (
     ElasticPermissiveReLU,
 )
 
+# A dictionary that maps the combination string of the convolution type to the class that
+# implements it.
+elasic_conv_classes = {
+    "none": ElasticConv1d,
+    "quant": ElasticQuantConv1d,
+    "act": ElasticConvReLu1d,
+    "actquant": ElasticQuantConvReLu1d,
+    "norm": ElasticConvBn1d,
+    "normquant": ElasticQuantConvBn1d,
+    "normact": ElasticConvBnReLu1d,
+    "normactquant": ElasticQuantConvBnReLu1d,
+}
+
+
+# A tuple of all the classes that are subclasses of `ElasticBaseConv`.
 elastic_conv_type = (
     ElasticConv1d,
     ElasticConvReLu1d,

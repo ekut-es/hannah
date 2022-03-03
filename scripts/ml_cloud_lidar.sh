@@ -15,7 +15,7 @@
 # requests that the cores are all on one node
 
 #SBATCH --gres=gpu:rtx2080ti:1
-#the job can use and see 4 GPUs (8 GPUs are available in total on one node)
+#the job can use and see 1 GPUs (8 GPUs are available in total on one node)
 
 #SBATCH --gres-flags=enforce-binding
 
