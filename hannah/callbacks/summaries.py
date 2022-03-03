@@ -98,6 +98,7 @@ def walk_model(model, dummy_input):
             qat.ConvBnReLU2d: get_conv,
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
+            qat.Linear: get_fc,
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
             hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
