@@ -13,30 +13,14 @@ from omegaconf import ListConfig
 from hydra.utils import instantiate
 
 
-from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
-from .submodules.elastickernelconv import (
-    ElasticConv1d,
-    ElasticConvBn1d,
-    ElasticConvBnReLu1d,
-    ConvBnReLu1d,
-    ConvBn1d,
-    ElasticConvReLu1d,
-)
-from .submodules.elasticquantkernelconv import (
-    ElasticQuantConvBn1d,
-    ElasticQuantConvBnReLu1d,
-    ElasticQuantConv1d,
-    ElasticQuantConvReLu1d,
-)
+
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
-    ElasticPermissiveReLU,
-    ElasticWidthBatchnorm1d,
     ElasticWidthLinear,
 )
 
-from ..factory import qat
+from .type_utils import elastic_conv_type, elastic_all_type, elasic_conv_classes
 
 # from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
@@ -62,6 +46,32 @@ def create(
     validate_on_extracted=True,
     qconfig=None,
 ) -> nn.Module:
+    """
+    The function creates a ofaModel with the given name,
+    labels, input shape, convolutional layers, and other parameters
+
+    :param name: The name of the model
+    :type name: str
+    :param labels: The number of classes in the dataset
+    :type labels: int
+    :param input_shape: the shape of the input tensor
+    :param conv: a list of MajorBlockConfig objects
+    :param min_depth: The minimum depth of the model, defaults to 1
+    :type min_depth: int (optional)
+    :param norm_before_act: If True, the normalization is performed before the
+    activation function, defaults to True (optional)
+    :param skew_sampling_distribution: If True, the model will use a skewed sampling
+    distribution to sample the number of minor blocks in each major block, defaults
+    to False
+    :type skew_sampling_distribution: bool (optional)
+    :param dropout: float, default 0.5
+    :type dropout: int
+    :param validate_on_extracted: If True, the model will be validated on the
+    extracted data, defaults to True (optional)
+    :param qconfig: the quantization configuration to use
+    :return: A model object.
+    """
+
     # if no orders for the norm operator are specified, fall back to default
     default_qconfig = instantiate(qconfig) if qconfig else None
     flatten_n = input_shape[0]
@@ -77,13 +87,12 @@ def create(
 
     for block_config in conv:
         if block_config.target == "forward":
-            major_block = create_forward_block(
-                blocks=block_config.blocks,
-                in_channels=next_in_channels,
+            major_block = create_minor_block_sequence(
+                block_config.blocks,
+                next_in_channels,
                 stride=block_config.stride,
                 norm_before_act=norm_before_act,
-                qconfig=default_qconfig
-                # sources=previous_sources,
+                qconfig=default_qconfig,
             )
 
         elif block_config.target == "residual1d":
@@ -214,78 +223,26 @@ def create_minor_block(
             kernel_sizes = [kernel_sizes]
 
         minor_block_internal_sequence = nn.ModuleList([])
-        norm = block_config.get("norm", False)
-        act = block_config.get("act", False)
-        quant = block_config.get("quant", False)
+        key = ""
+        parameter = {
+            "kernel_sizes": kernel_sizes,
+            "in_channels": in_channels,
+            "out_channels": out_channels_full,
+            "stride": stride,
+        }
 
-        if not norm and not act and not quant:
-            new_minor_block = ElasticConv1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and not act and quant:
-            new_minor_block = ElasticQuantConv1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and act and not quant:
-            new_minor_block = ElasticConvReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and act and quant:
-            new_minor_block = ElasticQuantConvReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and not act and not quant:
-            new_minor_block = ElasticConvBn1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and not act and quant:
-            new_minor_block = ElasticQuantConvBn1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and act and not quant:
-            new_minor_block = ElasticConvBnReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and act and quant:
-            new_minor_block = ElasticQuantConvBnReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
+        if block_config.get("norm", False):
+            key += "norm"
+        if block_config.get("act", False):
+            key += "act"
+        if block_config.get("quant", False):
+            key += "quant"
+            parameter["qconfig"] = qconfig
+        if key == "":
+            key = "none"
+
+        if key in elasic_conv_classes.keys():
+            new_minor_block = elasic_conv_classes[key](**parameter)
         else:
             raise Exception(
                 f"Undefined target selected in minor block sequence: {block_config.target}"
@@ -326,54 +283,6 @@ def create_minor_block(
 
     # return the new block and its output channel count
     return new_block, new_block_out_channels
-
-
-# create a module representing a sequence of norm and act
-def create_norm_act_sequence(
-    norm: bool, act: bool, channels: int, norm_before_act=None
-) -> nn.Module:
-    # batch norm will be added before and/or after activation depending on the configuration
-    # fallback default is one norm before act, if no order is specified.
-
-    # if no norm or activation is requested, simply return None
-    # going through the steps below and returning an empty module list would also be fine
-    if not norm and not act:
-        return None
-
-    norm_act_sequence = nn.ModuleList([])
-    # create the norm module only if required. its reference will be passed back.
-    new_norm = None
-    if norm:
-        new_norm = ElasticWidthBatchnorm1d(channels)
-    # new_act = nn.ReLU()
-    new_act = ElasticPermissiveReLU()
-    if norm and norm_before_act:
-        norm_act_sequence.append(new_norm)
-    if act:
-        # add relu activation if act is set
-        norm_act_sequence.append(new_act)
-    if norm and not norm_before_act:
-        norm_act_sequence.append(new_norm)
-
-    return module_list_to_module(norm_act_sequence)
-
-
-# build a basic forward major block
-def create_forward_block(
-    blocks,
-    in_channels,
-    stride=1,
-    norm_before_act=None,
-    qconfig=None
-    # sources: List[nn.ModuleList] = [nn.ModuleList([])],
-):
-    return create_minor_block_sequence(
-        blocks,
-        in_channels,
-        stride=stride,
-        norm_before_act=norm_before_act,
-        qconfig=qconfig,
-    )
 
 
 # build a residual major block
@@ -910,6 +819,3 @@ def rebuild_extracted_blocks(blocks):
     if input_modules_flat_length != len(out_modules):
         logging.info("Reassembly changed length of module list")
     return out_modules
-
-
-from .type_utils import elastic_conv_type, elastic_all_type
