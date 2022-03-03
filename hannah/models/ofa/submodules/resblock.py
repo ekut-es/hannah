@@ -111,9 +111,10 @@ class ResBlock1d(ResBlockBase):
                     qconfig=qconfig,
                 ),
             )  # if self.apply_skip else None
-        self.activation_post_process = (
-            self.qconfig.activation() if out_quant else nn.Identity()
-        )
+        if qconfig is not None:
+            self.activation_post_process = (
+                self.qconfig.activation() if out_quant else nn.Identity()
+            )
         # as this does not know if an elastic width section may follow,
         # the skip connection is required! it will be needed if the width is modified later
 
@@ -133,4 +134,7 @@ class ResBlock1d(ResBlockBase):
             # as the activation does not affect discovery whatsoever.
             return self.norm(new_discovery)
         else:
-            return self.activation_post_process(super().forward(x))
+            if self.qconfig is not None:
+                return self.activation_post_process(super().forward(x))
+            else:
+                return super().forward(x)

@@ -34,6 +34,7 @@ from .submodules.elasticwidthmodules import (
     ElasticPermissiveReLU,
     ElasticWidthBatchnorm1d,
     ElasticWidthLinear,
+    ElasticQuantWidthLinear,
 )
 
 from ..factory import qat
@@ -121,6 +122,7 @@ def create(
         skew_sampling_distribution=skew_sampling_distribution,
         dropout=dropout,
         validate_on_extracted=validate_on_extracted,
+        qconfig=default_qconfig,
     )
 
     # store the name onto the model
@@ -424,6 +426,7 @@ class OFAModel(nn.Module):
         skew_sampling_distribution=False,
         dropout=0.5,
         validate_on_extracted=False,
+        qconfig=None,
     ):
         super().__init__()
         self.validate_on_extracted = validate_on_extracted
@@ -450,6 +453,7 @@ class OFAModel(nn.Module):
         self.elastic_kernels = True
         self.elastic_depth = True
         self.elastic_width = True
+        self.qconfig = qconfig
 
         self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
@@ -462,7 +466,12 @@ class OFAModel(nn.Module):
             self.active_depth = i
             self.update_output_channel_count()
             # create the linear output layer for this depth
-            new_output_linear = ElasticWidthLinear(self.out_channels, self.labels)
+            if self.qconfig is None:
+                new_output_linear = ElasticWidthLinear(self.out_channels, self.labels)
+            else:
+                new_output_linear = ElasticQuantWidthLinear(
+                    self.out_channels, self.labels, qconfig=self.qconfig
+                )
             self.linears.append(new_output_linear)
 
         # should now be redundant, as the loop will exit with the active depth being max_depth
