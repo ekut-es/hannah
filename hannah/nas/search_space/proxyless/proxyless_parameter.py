@@ -27,3 +27,12 @@ def stochastic_channel_expansion(parameter: Parameter, op: SymbolicOperator, ctx
     else:
         out_channels = in_channels
     return out_channels
+
+
+def double_if_stride2(parameter: Parameter, op: SymbolicOperator, ctx: Context):
+    stride = op.params['stride'].get(op, ctx)
+    in_channels = ctx.input.shape[1]
+    out_channels = in_channels
+    if stride == 2:
+        out_channels *= 2
+    return out_channels
