@@ -257,6 +257,9 @@ class ElasticQuantWidthLinear(nn.Linear):
         new_linear = qat.Linear(
             in_features=self.in_features,
             out_features=self.out_features,
+            bias=self.bias is not None,
+            out_quant=self.out_quant,
+            qconfig=self.qconfig,
         )
         if all(self.in_channel_filter) and all(self.out_channel_filter):
             new_linear.weight = weight
