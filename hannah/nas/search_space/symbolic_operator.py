@@ -20,8 +20,11 @@ class SymbolicOperator:
         mod = self.target_cls(**args)
         return mod
 
-    def new(self):
-        return deepcopy(self)
+    def new(self, name=None):
+        new_module = deepcopy(self)
+        if name:
+            new_module.update_name(name)
+        return new_module
 
     def get_config_dims(self):
         param_cfg = {}

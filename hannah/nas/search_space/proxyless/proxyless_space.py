@@ -6,7 +6,6 @@ from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.proxyless.proxyless_modules import MobileInvertedResidualBlock, Classifier
 from hannah.nas.search_space.proxyless.proxyless_parameter import restricted_stride
 from hannah.nas.search_space.utils import get_random_cfg
-from copy import deepcopy
 
 
 # TODO: Rename
@@ -47,11 +46,8 @@ class ProxylessSpace(Space):
         blocks = []
         for i in range(n_cell):
             shortcut = None
-            mb_conv = deepcopy(mb_conv_proto)
-            dw_conv = deepcopy(dw_conv_proto)
-
-            mb_conv.update_name(mb_conv_proto.name + '_{}'.format(i))
-            dw_conv.update_name(dw_conv_proto.name + '_{}'.format(i))
+            mb_conv = mb_conv_proto.new(mb_conv_proto.name + '_{}'.format(i))
+            dw_conv = dw_conv_proto.new(dw_conv_proto.name + '_{}'.format(i))
 
             conv = SymbolicOperator('BlockChoice_{}'.format(i),
                                     MobileInvertedResidualBlock,
