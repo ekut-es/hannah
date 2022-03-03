@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.nn.common_types import _size_2_t, _size_any_opt_t
 from typing import Union
 from torch import Tensor
+from hannah.nas.search_space.utils import get_same_padding
 
 
 class Add(nn.Module):
@@ -113,10 +114,20 @@ class Conv2dAct(Conv2d):
 
 
 class DepthwiseSeparableConvolution(nn.Module):
-    def __init__(self, nin, nout):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, mid_channels=None):
         super().__init__()
-        self.depthwise = nn.Conv2d(nin, nin, kernel_size=3, padding=1, groups=nin)
-        self.pointwise = nn.Conv2d(nin, nout, kernel_size=1)
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.pad = get_same_padding(kernel_size)
+        if mid_channels:
+            self.mid_channels = mid_channels
+        else:
+            self.mid_channels = in_channels
+
+        self.depthwise = nn.Conv2d(self.in_channels, self.mid_channels, kernel_size=self.kernel_size, padding=self.pad, stride=self.stride, groups=self.in_channels)
+        self.pointwise = nn.Conv2d(self.in_channels, self.out_channels, kernel_size=1)
 
     def forward(self, x):
         out = self.depthwise(x)

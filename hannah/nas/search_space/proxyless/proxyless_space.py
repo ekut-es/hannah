@@ -1,7 +1,7 @@
 import torch
 from hannah.nas.search_space.modules.complex_operators import MBInvertedConvLayer
-from hannah.nas.search_space.modules.primitive_operators import Conv2dAct, ReLU6
-from hannah.nas.search_space.symbolic_operator import Choice, OneOf, RestrictedChoice, SymbolicOperator, Context, Variable, infer_in_channel
+from hannah.nas.search_space.modules.primitive_operators import Conv2dAct, DepthwiseSeparableConvolution, ReLU6
+from hannah.nas.search_space.symbolic_operator import Choice, OneOf, SymbolicOperator, Context, Variable, infer_in_channel
 from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.proxyless.proxyless_modules import MobileInvertedResidualBlock, Classifier
 from hannah.nas.search_space.proxyless.proxyless_parameter import restricted_stride
@@ -17,7 +17,7 @@ class ProxylessSpace(Space):
                  width_mult=1, n_classes=10):
         super().__init__()
         relu = ReLU6()
-        stride = RestrictedChoice('stride', 1, 2, func=restricted_stride)
+        stride = Choice('stride', 1, 2, func=restricted_stride)
         width = Choice('width', *[i for i in range(4, 128, 4)])
 
         # first conv
@@ -28,14 +28,6 @@ class ProxylessSpace(Space):
                                       kernel_size=3,
                                       stride=stride,
                                       act_func=relu)
-        # first_block
-        first_block = SymbolicOperator("FirstBlock",
-                                       MBInvertedConvLayer,
-                                       in_channels=Variable("in_channels", func=infer_in_channel),
-                                       out_channels=width,
-                                       kernel_size=3,
-                                       stride=stride,
-                                       expand_ratio=1)
 
         mb_conv_proto = SymbolicOperator("MBConv",
                                          MBInvertedConvLayer,
@@ -45,14 +37,25 @@ class ProxylessSpace(Space):
                                          stride=stride,
                                          expand_ratio=Choice('expand_ratio', 3, 6))
 
-        blocks = [first_block]
+        dw_conv_proto = SymbolicOperator("DWConv",
+                                         DepthwiseSeparableConvolution,
+                                         in_channels=Variable("in_channels", func=infer_in_channel),
+                                         out_channels=width,
+                                         kernel_size=Choice('kernel_size', 3, 5, 7),
+                                         stride=stride)
+
+        blocks = []
         for i in range(n_cell):
             shortcut = None
             mb_conv = deepcopy(mb_conv_proto)
+            dw_conv = deepcopy(dw_conv_proto)
+
             mb_conv.update_name(mb_conv_proto.name + '_{}'.format(i))
+            dw_conv.update_name(dw_conv_proto.name + '_{}'.format(i))
+
             conv = SymbolicOperator('BlockChoice_{}'.format(i),
                                     MobileInvertedResidualBlock,
-                                    conv=OneOf('oneof', mb_conv),
+                                    conv=OneOf('oneof', mb_conv, dw_conv),
                                     shortcut=shortcut)
             blocks.append(conv)
 
@@ -61,7 +64,7 @@ class ProxylessSpace(Space):
                                       in_channels=Variable("in_channels", func=infer_in_channel),
                                       last_channels=Variable("in_channels", func=infer_in_channel),
                                       n_classes=n_classes)
-        self.add_edge(first_conv, first_block)
+        self.add_edge(first_conv, blocks[0])
         for i in range(len(blocks) - 1):
             self.add_edge(blocks[i], blocks[i+1])
         self.add_edge(blocks[-1], classifier)
@@ -83,6 +86,9 @@ class ProxylessSpace(Space):
                 cfg = get_random_cfg(cfg_dims)
             self.ctx = Context(config=cfg)
             self.ctx.max_reductions = 2
+        else:
+            if cfg:
+                self.ctx.config = cfg
         return self.ctx
 
     def get_supernetwork(self, x):
