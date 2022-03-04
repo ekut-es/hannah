@@ -361,6 +361,7 @@ class OFAModel(nn.Module):
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
         self.sampling_max_width_step = 0
+        self.sampling_max_dilation_step = 0
         self.eval_mode = False
         self.last_input = None
         self.skew_sampling_distribution = skew_sampling_distribution
@@ -465,7 +466,12 @@ class OFAModel(nn.Module):
 
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
-        state = {"depth_step": 0, "kernel_steps": [], "width_steps": []}
+        state = {
+            "depth_step": 0,
+            "kernel_steps": [],
+            "dilation_steps": [],
+            "width_steps": [],
+        }
         if self.elastic_depth_allowed:
             # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
             new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
@@ -481,6 +487,17 @@ class OFAModel(nn.Module):
                 new_kernel_step = self.get_random_step(max_available_sampling_step)
                 conv.pick_kernel_index(new_kernel_step)
                 state["kernel_steps"].append(new_kernel_step)
+
+        if self.elastic_dilation_allowed:
+            for conv in self.elastic_kernel_convs:
+                # pick an available kernel index for every elastic kernel conv, independently.
+                max_available_sampling_step = min(
+                    self.sampling_max_dilation_step + 1,
+                    conv.get_available_dilation_steps(),
+                )
+                new_dilation_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_dilation_index(new_dilation_step)
+                state["dilation_steps"].append(new_dilation_step)
 
         if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
