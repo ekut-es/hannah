@@ -243,6 +243,7 @@ class OFANasTrainer(NASTrainerBase):
         elastic_dilation_allowed=False,
         evaluate=True,
         random_evaluate=True,
+        random_eval_number=100,
         # epochs_warmup_after_width=5,
         # epochs_kernel_after_width=5,
         # epochs_depth_after_width=5,
@@ -261,6 +262,7 @@ class OFANasTrainer(NASTrainerBase):
         self.elastic_dilation_allowed = elastic_dilation_allowed
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
+        self.random_eval_number = random_eval_number
 
     def run(self):
         os.makedirs("ofa_nas_dir", exist_ok=True)
@@ -591,13 +593,14 @@ class OFANasTrainer(NASTrainerBase):
     def eval_random_combination(self, lightning_model, model):
         # sample a few random combinations
         model.reset_validaton_model()
+        random_eval_number = self.random_eval_number
         prev_max_kernel = model.sampling_max_kernel_step
         prev_max_depth = model.sampling_max_depth_step
         prev_max_width = model.sampling_max_width_step
         model.sampling_max_kernel_step = model.ofa_steps_kernel - 1
         model.sampling_max_depth_step = model.ofa_steps_depth - 1
         model.sampling_max_width_step = model.ofa_steps_width - 1
-        for i in range(100):
+        for i in range(random_eval_number):
             random_state = model.sample_subnetwork()
             selected_depth = random_state["depth_step"]
             selected_kernels = random_state["kernel_steps"]
