@@ -1,41 +1,35 @@
 import logging
 import platform
-
 from abc import abstractmethod
+from typing import Dict, Optional, Union
 
-import torchvision
-from torchmetrics import (
-    Accuracy,
-    Recall,
-    F1,
-    ROC,
-    ConfusionMatrix,
-    Precision,
-    MetricCollection,
-)
-
-from pytorch_lightning import LightningModule
-from .config_utils import get_loss_function, get_model
-from ..utils import set_deterministic
-from typing import Dict, Union, Optional
-
-
-from hannah.datasets.base import ctc_collate_fn
-
+import numpy as np
 import tabulate
 import torch
 import torch.utils.data as data
-from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
-from hydra.utils import instantiate, get_class
-import numpy as np
+import torchvision
+from hydra.utils import get_class, instantiate
+from omegaconf import DictConfig
+from pytorch_lightning import LightningModule
+from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
+from torchmetrics import (
+    F1Score,
+    ROC,
+    Accuracy,
+    ConfusionMatrix,
+    MetricCollection,
+    Precision,
+    Recall,
+)
+
+from hannah.datasets.base import ctc_collate_fn
 
 from ..datasets import SpeechDataset
-from .metrics import Error
-from .base import ClassifierModule
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
-
-from omegaconf import DictConfig
-
+from ..utils import set_deterministic
+from .base import ClassifierModule
+from .config_utils import get_loss_function, get_model
+from .metrics import Error
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +113,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_error": Error(),
                 "val_recall": Recall(num_classes=self.num_classes),
                 "val_precision": Precision(num_classes=self.num_classes),
-                "val_f1": F1(num_classes=self.num_classes),
+                "val_f1": F1Score(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
@@ -128,7 +122,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_error": Error(),
                 "test_recall": Recall(num_classes=self.num_classes),
                 "test_precision": Precision(num_classes=self.num_classes),
-                "test_f1": F1(num_classes=self.num_classes),
+                "test_f1": F1Score(num_classes=self.num_classes),
             }
         )
 
