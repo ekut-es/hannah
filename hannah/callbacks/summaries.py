@@ -2,31 +2,20 @@ import logging
 from collections import OrderedDict
 
 import pandas as pd
-from pytorch_lightning.utilities.distributed import rank_zero_only
 import torch
-
-import hannah.torch_extensions.nn.SNNActivationLayer
-from ..models.ofa import OFAModel
-from ..models.ofa.type_utils import elastic_conv_type
-from ..torch_extensions.nn import SNNLayers
-from ..models.sinc import SincNet
-from ..models.factory import qat
-
-from ..models.ofa.submodules.elastickernelconv import (
-    ConvBnReLu1d,
-    ConvBn1d,
-    ConvRelu1d,
-)
-
-from ..models.ofa.submodules.elasticwidthmodules import ElasticWidthLinear
-
-import torchvision
-
 from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.utilities.distributed import rank_zero_only
 from tabulate import tabulate
 
+from ..models.factory import qat
+from ..models.ofa import OFAModel
+from ..models.ofa.submodules.elastickernelconv import ConvBn1d, ConvBnReLu1d, ConvRelu1d
+from ..models.ofa.submodules.elasticwidthmodules import ElasticWidthLinear
+from ..models.ofa.type_utils import elastic_conv_type
+from ..models.sinc import SincNet
+from ..torch_extensions.nn import SNNActivationLayer, SNNLayers
 
-msglogger = logging.getLogger("mac_summary")
+msglogger = logging.getLogger(__name__)
 
 
 def walk_model(model, dummy_input):
@@ -79,7 +68,8 @@ def walk_model(model, dummy_input):
             data["Weights volume"] += [int(weights)]
             data["MACs"] += [int(macs)]
         except Exception as e:
-            pass
+            msglogger.error("Could not get summary from %s", str(module))
+            msglogger.error(str(e))
 
     def get_extra(module, volume_ofm, output):
         classes = {
@@ -99,10 +89,10 @@ def walk_model(model, dummy_input):
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
             qat.Linear: get_fc,
-            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
-            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
-            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
-            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
+            SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
+            SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
+            SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
+            SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
         }
         if type(module) in classes.keys():
             return classes[type(module)](module, volume_ofm, output)
