@@ -19,6 +19,12 @@ topdir = Path(__file__).parent.absolute() / ".."
 #     )
 
 
+@pytest.mark.parametrize("model,epochs", [("ofa_quant", "1"), ("ofa", "1")])
+def test_ofa(model, epochs):
+    command_line = f"python -m hannah.train --config-name nas_ofa trainer.fast_dev_run=True trainer.limit_train_batches=0.1 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model}"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
 @pytest.mark.parametrize(
     "model,features",
     [
@@ -84,13 +90,9 @@ def test_datasets(model, dataset, split):
 
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
+
 @pytest.mark.parametrize(
-    "model",
-    [
-        "conv-net-2d",
-        "timm_resnet50",
-        "timm_efficientnet_lite1"
-    ]
+    "model", ["conv-net-2d", "timm_resnet50", "timm_efficientnet_lite1"]
 )
 def test_2d(model):
     command_line = f"hannah-train module=image_classifier dataset=cifar10 features=identity trainer.gpus=[1] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5"
