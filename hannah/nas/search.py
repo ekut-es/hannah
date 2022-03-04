@@ -237,9 +237,10 @@ class OFANasTrainer(NASTrainerBase):
         epochs_kernel_step=10,
         epochs_depth_step=10,
         epochs_width_step=10,
-        elastic_kernels=False,
-        elastic_depth=False,
-        elastic_width=False,
+        elastic_kernels_allowed=False,
+        elastic_depth_allowed=False,
+        elastic_width_allowed=False,
+        elastic_dilation_allowed=False,
         evaluate=True,
         random_evaluate=True,
         # epochs_warmup_after_width=5,
@@ -254,9 +255,10 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_kernel_step = epochs_kernel_step
         self.epochs_depth_step = epochs_depth_step
         self.epochs_width_step = epochs_width_step
-        self.elastic_kernels = elastic_kernels
-        self.elastic_depth = elastic_depth
-        self.elastic_width = elastic_width
+        self.elastic_kernels_allowed = elastic_kernels_allowed
+        self.elastic_depth_allowed = elastic_depth_allowed
+        self.elastic_width_allowed = elastic_width_allowed
+        self.elastic_dilation_allowed = elastic_dilation_allowed
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
 
@@ -298,9 +300,10 @@ class OFANasTrainer(NASTrainerBase):
         self.kernel_step_count = ofa_model.ofa_steps_kernel
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
-        ofa_model.elastic_kernels = self.elastic_kernels
-        ofa_model.elastic_depth = self.elastic_depth
-        ofa_model.elastic_width = self.elastic_width
+        ofa_model.elastic_kernels = self.elastic_kernels_allowed
+        ofa_model.elastic_depth = self.elastic_depth_allowed
+        ofa_model.elastic_width = self.elastic_width_allowed
+        ofa_model.elastic_dilation = self.elastic_dilation_allowed
 
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
@@ -309,19 +312,23 @@ class OFANasTrainer(NASTrainerBase):
         self.submodel_metrics_csv = ""
         self.random_metrics_csv = ""
 
-        if self.elastic_width:
+        if self.elastic_width_allowed:
             self.submodel_metrics_csv += "width, "
             self.random_metrics_csv += "width_steps, "
 
-        if self.elastic_kernels:
+        if self.elastic_kernels_allowed:
             self.submodel_metrics_csv += "kernel, "
             self.random_metrics_csv += "kernel_steps, "
 
-        if self.elastic_depth:
+        if self.elastic_depth_allowed:
             self.submodel_metrics_csv += "depth, "
             self.random_metrics_csv += "depth, "
 
-        if self.elastic_width | self.elastic_kernels | self.elastic_depth:
+        if (
+            self.elastic_width_allowed
+            | self.elastic_kernels_allowed
+            | self.elastic_depth_allowed
+        ):
             self.submodel_metrics_csv += (
                 "acc, total_macs, total_weights, torch_params\n"
             )
@@ -361,7 +368,7 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("OFA completed warm-up.")
 
     def train_elastic_width(self, model, ofa_model):
-        if self.elastic_width:
+        if self.elastic_width_allowed:
             # train elastic width
             # first, run channel priority computation
             ofa_model.progressive_shrinking_compute_channel_priorities()
@@ -382,7 +389,7 @@ class OFANasTrainer(NASTrainerBase):
             logging.info("OFA completed width steps.")
 
     def train_elastic_depth(self, model, ofa_model):
-        if self.elastic_depth:
+        if self.elastic_depth_allowed:
             # train elastic depth
             for current_depth_step in range(self.depth_step_count):
                 if current_depth_step == 0:
@@ -397,7 +404,7 @@ class OFANasTrainer(NASTrainerBase):
             logging.info("OFA completed depth steps.")
 
     def train_elastic_kernel(self, model, ofa_model):
-        if self.elastic_kernels == True:
+        if self.elastic_kernels_allowed == True:
             # train elastic kernels
             for current_kernel_step in range(self.kernel_step_count):
                 if current_kernel_step == 0:
@@ -554,13 +561,13 @@ class OFANasTrainer(NASTrainerBase):
 
         eval_methods = list()
 
-        if self.elastic_width:
+        if self.elastic_width_allowed:
             eval_methods.append(self.eval_elastic_width)
 
-        if self.elastic_kernels:
+        if self.elastic_kernels_allowed:
             eval_methods.append(self.eval_elastic_kernels)
 
-        if self.elastic_depth:
+        if self.elastic_depth_allowed:
             eval_methods.append(self.eval_elatic_depth)
 
         if len(eval_methods) > 0:

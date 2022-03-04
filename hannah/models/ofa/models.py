@@ -365,9 +365,10 @@ class OFAModel(nn.Module):
         self.last_input = None
         self.skew_sampling_distribution = skew_sampling_distribution
         self.validation_model = None
-        self.elastic_kernels = True
-        self.elastic_depth = True
-        self.elastic_width = True
+        self.elastic_kernels_allowed = True
+        self.elastic_depth_allowed = True
+        self.elastic_width_allowed = True
+        self.elastic_dilation_allowed = True
 
         self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
@@ -465,13 +466,13 @@ class OFAModel(nn.Module):
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
         state = {"depth_step": 0, "kernel_steps": [], "width_steps": []}
-        if self.elastic_depth:
+        if self.elastic_depth_allowed:
             # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
             new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
             self.active_depth = self.max_depth - new_depth_step
             state["depth_step"] = new_depth_step
 
-        if self.elastic_kernels:
+        if self.elastic_kernels_allowed:
             for conv in self.elastic_kernel_convs:
                 # pick an available kernel index for every elastic kernel conv, independently.
                 max_available_sampling_step = min(
@@ -481,7 +482,7 @@ class OFAModel(nn.Module):
                 conv.pick_kernel_index(new_kernel_step)
                 state["kernel_steps"].append(new_kernel_step)
 
-        if self.elastic_width:
+        if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
                 # pick an available width step for every elastic channel helper, independently.
                 max_available_sampling_step = min(
