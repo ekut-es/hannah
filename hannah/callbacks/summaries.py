@@ -181,7 +181,8 @@ def walk_model(model, dummy_input):
         if module != model:
             hooks += [module.register_forward_hook(collect)]
 
-    _ = model(dummy_input)
+    with torch.no_grad():
+        _ = model(dummy_input)
 
     for hook in hooks:
         hook.remove()
@@ -238,9 +239,8 @@ class MacSummaryCallback(Callback):
         return res
 
     def predict(self, pl_module):
-        pl_module.eval()
-        res = self._do_summary(pl_module, print_log=False)
-        pl_module.train()
+
+        res = self.estimate(pl_module)
 
         return res
 
@@ -272,6 +272,14 @@ class MacSummaryCallback(Callback):
             pl_module.log(k, float(v), rank_zero_only=True)
 
     def estimate(self, pl_module):
+        """Generate Summary Metrics for neural network
+
+        Args:
+            pl_module (pytorch_lightning.LightningModule): pytorch lightning module to summarize
+
+        Returns:
+            dict[str, float]: Dict of MetricName => Metric Value
+        """
         pl_module.eval()
         res = {}
         try:
