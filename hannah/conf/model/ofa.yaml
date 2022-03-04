@@ -22,6 +22,7 @@ conv:
     blocks:
       - target: conv1d
         kernel_sizes: 3
+        dilation_sizes: 1
         act: false
         norm: true
         quant: false
@@ -36,6 +37,10 @@ conv:
           - 7
           - 5
           - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
         act: true
         norm: true
         quant: false
@@ -49,6 +54,10 @@ conv:
           - 7
           - 5
           - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
         act: false
         norm: false
         quant: false
@@ -66,6 +75,10 @@ conv:
           - 7
           - 5
           - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
         act: true
         norm: true
         quant: false
@@ -79,6 +92,10 @@ conv:
           - 7
           - 5
           - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
         act: false
         norm: false
         quant: false
@@ -96,6 +113,10 @@ conv:
           - 7
           - 5
           - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
         act: true
         norm: true
         quant: false
@@ -109,6 +130,10 @@ conv:
           - 7
           - 5
           - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
         act: false
         norm: false
         quant: false
@@ -126,6 +151,10 @@ conv:
           - 7
           - 5
           - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
         act: true
         norm: true
         quant: false
@@ -139,6 +168,10 @@ conv:
           - 7
           - 5
           - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
         act: false
         norm: false
         quant: false
