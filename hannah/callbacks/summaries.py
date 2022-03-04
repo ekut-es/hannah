@@ -3,7 +3,6 @@ from collections import OrderedDict
 
 import pandas as pd
 import torch
-import torchvision
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.distributed import rank_zero_only
 from tabulate import tabulate
