@@ -51,8 +51,8 @@ class ElasticBase1d(nn.Conv1d):
             dilation_sizes.remove(0)
         self.dilation_sizes: List[int] = dilation_sizes
         # after sorting dilation sizes, the maximum and minimum size available are the first and last element
-        self.max_dilation_size: int = dilation_sizes[0]
-        self.min_dilation_size: int = dilation_sizes[-1]
+        self.max_dilation_size: int = dilation_sizes[-1]
+        self.min_dilation_size: int = dilation_sizes[0]
         # initially, the target size is the smallest dilation (1)
         self.target_dilation_index: int = 0
 
@@ -108,7 +108,7 @@ class ElasticBase1d(nn.Conv1d):
             logging.warn(
                 f"requested elastic kernel size ({new_kernel_size}) outside of min/max range: ({self.max_kernel_size}, {self.min_kernel_size}). clamping."
             )
-            if new_kernel_size < self.min_kernel_size:
+            if new_kernel_size <= self.min_kernel_size:
                 new_kernel_size = self.min_kernel_size
             else:
                 new_kernel_size = self.max_kernel_size
