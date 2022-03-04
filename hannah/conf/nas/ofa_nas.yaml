@@ -1,0 +1,10 @@
+_target_: hannah.nas.OFANasTrainer
+epochs_warmup: 35
+epochs_kernel_step: 35
+epochs_depth_step: 35
+epochs_width_step: 35
+elastic_kernels: True
+elastic_depth: False
+elastic_width: False
+evaluate: True
+random_evaluate: False

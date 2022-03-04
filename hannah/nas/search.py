@@ -257,3 +257,400 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                         metrics[k] = float(v)
 
                     self.optimizer.tell_result(parameters, metrics)
+
+
+class OFANasTrainer(NASTrainerBase):
+    def __init__(
+        self,
+        parent_config=None,
+        epochs_warmup=10,
+        epochs_kernel_step=10,
+        epochs_depth_step=10,
+        epochs_width_step=10,
+        elastic_kernels=False,
+        elastic_depth=False,
+        elastic_width=False,
+        evaluate=True,
+        random_evaluate=True,
+        # epochs_warmup_after_width=5,
+        # epochs_kernel_after_width=5,
+        # epochs_depth_after_width=5,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, parent_config=parent_config, **kwargs)
+        # currently no backend config for OFA
+        self.epochs_warmup = epochs_warmup
+        self.epochs_kernel_step = epochs_kernel_step
+        self.epochs_depth_step = epochs_depth_step
+        self.epochs_width_step = epochs_width_step
+        self.elastic_kernels = elastic_kernels
+        self.elastic_depth = elastic_depth
+        self.elastic_width = elastic_width
+        self.evaluate = evaluate
+        self.random_evaluate = random_evaluate
+
+    def run(self):
+        os.makedirs("ofa_nas_dir", exist_ok=True)
+        os.chdir("ofa_nas_dir")
+        config = OmegaConf.create(self.config)
+        # logger = TensorBoardLogger(".")
+
+        seed = config.get("seed", 1234)
+        if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
+            seed = seed[0]
+        seed_everything(seed, workers=True)
+
+        if not torch.cuda.is_available():
+            config.trainer.gpus = None
+
+        callbacks = common_callbacks(config)
+        opt_monitor = config.get("monitor", ["val_error"])
+        opt_callback = HydraOptCallback(monitor=opt_monitor)
+        callbacks.append(opt_callback)
+        checkpoint_callback = instantiate(config.checkpoint)
+        callbacks.append(checkpoint_callback)
+        self.config = config
+        # trainer will be initialized by rebuild_trainer
+        self.trainer = None
+        model = instantiate(
+            config.module,
+            dataset=config.dataset,
+            model=config.model,
+            optimizer=config.optimizer,
+            features=config.features,
+            scheduler=config.get("scheduler", None),
+            normalizer=config.get("normalizer", None),
+            _recursive_=False,
+        )
+        model.setup("fit")
+        ofa_model = model.model
+        self.kernel_step_count = ofa_model.ofa_steps_kernel
+        self.depth_step_count = ofa_model.ofa_steps_depth
+        self.width_step_count = ofa_model.ofa_steps_width
+        ofa_model.elastic_kernels = self.elastic_kernels
+        ofa_model.elastic_depth = self.elastic_depth
+        ofa_model.elastic_width = self.elastic_width
+
+        logging.info("Kernel Steps: %d", self.kernel_step_count)
+        logging.info("Depth Steps: %d", self.depth_step_count)
+        logging.info("Width Steps: %d", self.width_step_count)
+
+        self.submodel_metrics_csv = ""
+        self.random_metrics_csv = ""
+
+        if self.elastic_width:
+            self.submodel_metrics_csv += "width, "
+            self.random_metrics_csv += "width_steps, "
+
+        if self.elastic_kernels:
+            self.submodel_metrics_csv += "kernel, "
+            self.random_metrics_csv += "kernel_steps, "
+
+        if self.elastic_depth:
+            self.submodel_metrics_csv += "depth, "
+            self.random_metrics_csv += "depth, "
+
+        if self.elastic_width | self.elastic_kernels | self.elastic_depth:
+            self.submodel_metrics_csv += (
+                "acc, total_macs, total_weights, torch_params\n"
+            )
+            self.random_metrics_csv += "acc, total_macs, total_weights, torch_params\n"
+
+        # self.random_metrics_csv = "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
+
+        logging.info("Once for all Model:\n %s", str(ofa_model))
+
+        self.warmup(model, ofa_model)
+
+        self.train_elastic_kernel(model, ofa_model)
+        self.train_elastic_depth(model, ofa_model)
+        self.train_elastic_width(model, ofa_model)
+
+        if self.evaluate:
+            self.eval_model(model, ofa_model)
+
+            if self.random_evaluate:
+                # save random metrics
+                print(self.random_metrics_csv)
+                with open("OFA_random_sample_metrics.csv", "w") as f:
+                    f.write(self.random_metrics_csv)
+            # save self.submodel_metrics_csv
+            print(self.submodel_metrics_csv)
+            with open("OFA_elastic_metrics.csv", "w") as f:
+                f.write(self.submodel_metrics_csv)
+
+    def warmup(self, model, ofa_model):
+        # warm-up.
+        self.rebuild_trainer("warmup", self.epochs_warmup)
+        self.trainer.fit(model)
+        ckpt_path = "best"
+        self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
+        ofa_model.on_warmup_end()
+        ofa_model.reset_validaton_model()
+        logging.info("OFA completed warm-up.")
+
+    def train_elastic_width(self, model, ofa_model):
+        if self.elastic_width:
+            # train elastic width
+            # first, run channel priority computation
+            ofa_model.progressive_shrinking_compute_channel_priorities()
+
+            # self.eval_model(model, ofa_model, 0)
+
+            for current_width_step in range(self.width_step_count):
+                if current_width_step == 0:
+                    # the very first width step (step 0) was already processed before this loop was entered.
+                    continue
+
+                # add a width step
+                ofa_model.progressive_shrinking_add_width()
+                self.rebuild_trainer(
+                    f"width_{current_width_step}", self.epochs_width_step
+                )
+                self.trainer.fit(model)
+            logging.info("OFA completed width steps.")
+
+    def train_elastic_depth(self, model, ofa_model):
+        if self.elastic_depth:
+            # train elastic depth
+            for current_depth_step in range(self.depth_step_count):
+                if current_depth_step == 0:
+                    # step 0 is the full model, and was processed during warm-up
+                    continue
+                # add a depth reduction step
+                ofa_model.progressive_shrinking_add_depth()
+                self.rebuild_trainer(
+                    f"depth_{current_depth_step}", self.epochs_depth_step
+                )
+                self.trainer.fit(model)
+            logging.info("OFA completed depth steps.")
+
+    def train_elastic_kernel(self, model, ofa_model):
+        if self.elastic_kernels == True:
+            # train elastic kernels
+            for current_kernel_step in range(self.kernel_step_count):
+                if current_kernel_step == 0:
+                    # step 0 is the full model, and was processed during warm-up
+                    continue
+                # add a kernel step
+                ofa_model.progressive_shrinking_add_kernel()
+                self.rebuild_trainer(
+                    f"kernel_{current_kernel_step}", self.epochs_kernel_step
+                )
+                self.trainer.fit(model)
+            logging.info("OFA completed kernel matrices.")
+
+    def eval_elastic_width(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+        metrics_csv,
+    ):
+        model.reset_all_widths()
+        method = method_stack[method_index]
+
+        for current_width_step in range(self.width_step_count):
+            if current_width_step > 0:
+                # iteration 0 is the full model with no stepping
+                model.step_down_all_channels()
+
+            trainer_path_tmp = trainer_path + f"W {current_width_step}, "
+            loginfo_output_tmp = loginfo_output + f"Width {current_width_step}, "
+            metrics_output_tmp = metrics_output + f"{current_width_step}, "
+
+            metrics_csv = method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+                metrics_csv,
+            )
+
+        return metrics_csv
+
+    def eval_elastic_kernels(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+        metrics_csv,
+    ):
+        model.reset_all_kernel_sizes()
+        method = method_stack[method_index]
+
+        for current_kernel_step in range(self.kernel_step_count):
+            if current_kernel_step > 0:
+                # iteration 0 is the full model with no stepping
+                model.step_down_all_kernels()
+
+            trainer_path_tmp = trainer_path + f"K {current_kernel_step}, "
+            loginfo_output_tmp = loginfo_output + f"Kernel {current_kernel_step}, "
+            metrics_output_tmp = metrics_output + f"{current_kernel_step}, "
+
+            metrics_csv = method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+                metrics_csv,
+            )
+
+        return metrics_csv
+
+    def eval_elatic_depth(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+        metrics_csv,
+    ):
+        model.reset_active_depth()
+        method = method_stack[method_index]
+
+        for current_depth_step in range(self.depth_step_count):
+            if current_depth_step > 0:
+                # iteration 0 is the full model with no stepping
+                model.active_depth -= 1
+
+            trainer_path_tmp = trainer_path + f"D {current_depth_step}, "
+            loginfo_output_tmp = loginfo_output + f"Depth {current_depth_step}, "
+            metrics_output_tmp = metrics_output + f"{current_depth_step}, "
+
+            metrics_csv = method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+                metrics_csv,
+            )
+
+        return metrics_csv
+
+    def eval_single_model(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+        metrics_csv,
+    ):
+        self.rebuild_trainer(trainer_path)
+        logging.info(loginfo_output)
+        model.reset_validaton_model()
+        validation_results = self.trainer.validate(
+            lightning_model, ckpt_path=None, verbose=True
+        )
+        model.reset_validaton_model()
+
+        metrics_csv += metrics_output
+        results = validation_results[0]
+        torch_params = model.get_validation_model_weight_count()
+        metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
+        metrics_csv += "\n"
+        return metrics_csv
+
+    # cycle through submodels, test them, store results (under a given width step)
+    def eval_model(self, lightning_model, model):
+        # disable sampling in forward during evaluation.
+        model.eval_mode = True
+        # reset_seed()  # run_training does this (?)
+        # reset target values to step through
+
+        eval_methods = list()
+
+        if self.elastic_width:
+            eval_methods.append(self.eval_elastic_width)
+
+        if self.elastic_kernels:
+            eval_methods.append(self.eval_elastic_kernels)
+
+        if self.elastic_depth:
+            eval_methods.append(self.eval_elatic_depth)
+
+        if len(eval_methods) > 0:
+            eval_methods.append(self.eval_single_model)
+            self.submodel_metrics_csv = eval_methods[0](
+                eval_methods,
+                1,
+                lightning_model,
+                model,
+                "Eval ",
+                "OFA validating ",
+                "",
+                self.submodel_metrics_csv,
+            )
+
+        if self.random_evaluate:
+            self.eval_random_combination(lightning_model, model)
+
+        model.eval_mode = False
+
+    def eval_random_combination(self, lightning_model, model):
+        # sample a few random combinations
+        model.reset_validaton_model()
+        prev_max_kernel = model.sampling_max_kernel_step
+        prev_max_depth = model.sampling_max_depth_step
+        prev_max_width = model.sampling_max_width_step
+        model.sampling_max_kernel_step = model.ofa_steps_kernel - 1
+        model.sampling_max_depth_step = model.ofa_steps_depth - 1
+        model.sampling_max_width_step = model.ofa_steps_width - 1
+        for i in range(100):
+            random_state = model.sample_subnetwork()
+            selected_depth = random_state["depth_step"]
+            selected_kernels = random_state["kernel_steps"]
+            selected_widths = random_state["width_steps"]
+            selected_kernels_string = str(selected_kernels).replace(",", ";")
+            selected_widths_string = str(selected_widths).replace(",", ";")
+
+            trainer_path = f"Eval random sample: D {selected_depth}, Ks {selected_kernels}, Ws {selected_widths}"
+            loginfo_output = f"OFA validating random sample:\n{random_state}"
+            metrics_output = f"{selected_widths_string}, {selected_kernels_string}, {selected_depth}, "
+
+            self.random_metrics_csv = self.eval_single_model(
+                None,
+                None,
+                lightning_model,
+                model,
+                trainer_path,
+                loginfo_output,
+                metrics_output,
+                self.random_metrics_csv,
+            )
+
+        # revert to normal operation after eval.
+        model.sampling_max_kernel_step = prev_max_kernel
+        model.sampling_max_depth_step = prev_max_depth
+        model.sampling_max_width_step = prev_max_width
+
+    def rebuild_trainer(self, step_name: str, epochs: int = 1):
+        logger = TensorBoardLogger(".", version=step_name)
+        callbacks = common_callbacks(self.config)
+        self.trainer = instantiate(
+            self.config.trainer, callbacks=callbacks, logger=logger, max_epochs=epochs
+        )

@@ -1,10 +1,10 @@
 defaults:
     - dataset: kws
     - features: mfcc
-    - model: conv-net-trax
-    - scheduler: 1cycle
-    - optimizer: sgd
-    - normalizer: fixedpoint
+    - model: ofa
+    - scheduler: step
+    - optimizer: adamw
+    - normalizer: null
     - module: stream_classifier
     - compress: null
     - trainer: default
@@ -13,16 +13,12 @@ defaults:
     - early_stopping: null
     - profiler: null
     - pruning: null
-    - optional dataset/features: ${dataset}_${features}
-    - override hydra/job_logging: silent
+    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
+      optional: true
 
-experiment_id: test
+experiment_id: test_OFA
 output_dir: trained_models
 auto_lr: false
-print_metrics: false
-data_monitor: false
-resume: false
-
 seed: [1234]
 
 hydra:

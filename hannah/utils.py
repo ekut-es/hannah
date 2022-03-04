@@ -47,33 +47,6 @@ except ImportError:
     HAVE_LSB = False
 
 
-class SerializableModule(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def on_val(self):
-        pass
-
-    def on_val_end(self):
-        pass
-
-    def on_test(self):
-        pass
-
-    def on_test_end(self):
-        pass
-
-    def save(self, filename):
-        torch.save(self.state_dict(), filename)
-
-    def load(self, filename):
-        """Do not use model.load"""
-        self.load_state_dict(
-            torch.load(filename, map_location=lambda storage, loc: storage),
-            strict=False,
-        )
-
-
 def config_pylogger(log_cfg_file, experiment_name, output_dir="logs"):
     """Configure the Python logger.
     For each execution of the application, we'd like to create a unique log directory.
