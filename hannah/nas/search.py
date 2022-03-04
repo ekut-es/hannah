@@ -300,10 +300,10 @@ class OFANasTrainer(NASTrainerBase):
         self.kernel_step_count = ofa_model.ofa_steps_kernel
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
-        ofa_model.elastic_kernels = self.elastic_kernels_allowed
-        ofa_model.elastic_depth = self.elastic_depth_allowed
-        ofa_model.elastic_width = self.elastic_width_allowed
-        ofa_model.elastic_dilation = self.elastic_dilation_allowed
+        ofa_model.elastic_kernels_allowed = self.elastic_kernels_allowed
+        ofa_model.elastic_depth_allowed = self.elastic_depth_allowed
+        ofa_model.elastic_width_allowed = self.elastic_width_allowed
+        ofa_model.elastic_dilation_allowed = self.elastic_dilation_allowed
 
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
