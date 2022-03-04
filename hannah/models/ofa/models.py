@@ -21,7 +21,12 @@ from .submodules.elasticwidthmodules import (
     ElasticQuantWidthLinear,
 )
 
-from .type_utils import elastic_conv_type, elastic_all_type, elasic_conv_classes
+from .type_utils import (
+    elastic_conv_type,
+    elastic_all_type,
+    elasic_conv_classes,
+    elastic_Linear_type,
+)
 
 # from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
@@ -614,7 +619,7 @@ class OFAModel(nn.Module):
         extracted_module_list.append(self.flatten)
         extracted_module_list.append(self.dropout)
         output_linear = self.get_output_linear_layer(target_depth)
-        if isinstance(output_linear, ElasticWidthLinear):
+        if isinstance(output_linear, elastic_Linear_type):
             output_linear = output_linear.assemble_basic_module()
         extracted_module_list.append(output_linear)
         # extracted_module_list = flatten_module_list(extracted_module_list)
