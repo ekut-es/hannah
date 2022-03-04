@@ -25,24 +25,40 @@ class ElasticBase1d(nn.Conv1d):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
         padding_mode: str = "zeros",
     ):
         # sort available kernel sizes from largest to smallest (descending order)
         kernel_sizes.sort(reverse=True)
+        # make sure 0 is not set as kernel size. Must be at least 1
+        if 0 in kernel_sizes:
+            kernel_sizes.remove(0)
         self.kernel_sizes: List[int] = kernel_sizes
         # after sorting kernel sizes, the maximum and minimum size available are the first and last element
         self.max_kernel_size: int = kernel_sizes[0]
         self.min_kernel_size: int = kernel_sizes[-1]
         # initially, the target size is the full kernel
         self.target_kernel_index: int = 0
+
+        # sort available dilation sizes from largest to smallest (descending order)
+        dilation_sizes.sort(reverse=False)
+        # make sure 0 is not set as dilation size. Must be at least 1
+        if 0 in dilation_sizes:
+            dilation_sizes.remove(0)
+        self.dilation_sizes: List[int] = dilation_sizes
+        # after sorting dilation sizes, the maximum and minimum size available are the first and last element
+        self.max_dilation_size: int = dilation_sizes[0]
+        self.min_dilation_size: int = dilation_sizes[-1]
+        # initially, the target size is the smallest dilation (1)
+        self.target_dilation_index: int = 0
+
         self.in_channels: int = in_channels
         self.out_channels: int = out_channels
-        # print(self.out_channels)
+
         self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
 
         nn.Conv1d.__init__(
@@ -52,7 +68,7 @@ class ElasticBase1d(nn.Conv1d):
             kernel_size=self.max_kernel_size,
             stride=stride,
             padding=self.padding,
-            dilation=dilation,
+            dilation=self.dilation_sizes[self.target_dilation_index],
             groups=groups,
             bias=bias,
         )
@@ -192,6 +208,62 @@ class ElasticBase1d(nn.Conv1d):
                 )
                 return new_kernel, new_bias
 
+    def set_dilation_size(self, new_dilation_size):
+        if (
+            new_dilation_size < self.min_dilation_size
+            or new_dilation_size > self.max_dilation_size
+        ):
+            logging.warn(
+                f"requested elastic dilation size ({new_dilation_size}) outside of min/max range: ({self.max_dilation_size}, {self.min_dilation_size}). clamping."
+            )
+            if new_dilation_size < self.min_dilation_size:
+                new_dilation_size = self.min_dilation_size
+            else:
+                new_dilation_size = self.max_dilation_size
+
+        self.target_dilation_index = 0
+        try:
+            index = self.dilation_sizes.index(new_dilation_size)
+            self.target_dilation_index = index
+        except ValueError:
+            logging.warn(
+                f"requested elastic dilation size {new_dilation_size} is not an available dilation size. Defaulting to full size ({self.max_dilation_size})"
+            )
+
+    # the initial dilation size is the first element of the list of available sizes
+    # set the dilation back to its initial size
+    def reset_dilation_size(self):
+        self.set_dilation_size(self.dilation_sizes[0])
+
+    # step current kernel size down by one index, if possible.
+    # return True if the size limit was not reached
+    def step_down_dilation_size(self):
+        next_dilation_index = self.target_dilation_index + 1
+        if next_dilation_index < len(self.dilation_sizes):
+            self.set_dilation_size(self.dilation_sizes[next_dilation_index])
+            return True
+        else:
+            logging.debug(
+                f"unable to step down dilation size, no available index after current: {self.target_dilation_index} with size: {self.dilation_sizes[self.target_dilation_index]}"
+            )
+            return False
+
+    def pick_dilation_index(self, target_dilation_index: int):
+        if (target_dilation_index < 0) or (
+            target_dilation_index >= len(self.dilation_sizes)
+        ):
+            logging.warn(
+                f"selected kernel index {target_dilation_index} is out of range: 0 .. {len(self.dilation_sizes)}. Setting to last index."
+            )
+            target_dilation_index = len(self.dilation_sizes) - 1
+        self.set_dilation_size(self.dilation_sizes[target_dilation_index])
+
+    def get_available_dilation_steps(self):
+        return len(self.dilation_sizes)
+
+    def get_dilation_size(self):
+        return self.dilation_sizes[self.target_dilation_index]
+
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         pass
 
@@ -213,9 +285,9 @@ class ElasticConv1d(ElasticBase1d):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
     ):
@@ -226,7 +298,7 @@ class ElasticConv1d(ElasticBase1d):
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
         )
@@ -278,9 +350,9 @@ class ElasticConvReLu1d(ElasticBase1d):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
     ):
@@ -291,7 +363,7 @@ class ElasticConvReLu1d(ElasticBase1d):
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
         )
@@ -346,9 +418,9 @@ class ElasticConvBn1d(ElasticConv1d):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
         track_running_stats=False,
@@ -360,7 +432,7 @@ class ElasticConvBn1d(ElasticConv1d):
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
         )
@@ -419,9 +491,9 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
         track_running_stats=False,
@@ -433,7 +505,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
         )
@@ -486,9 +558,9 @@ class ConvRelu1d(nn.Conv1d):
         in_channels: int,
         out_channels: int,
         kernel_size: int,
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
         track_running_stats=False,
@@ -499,7 +571,7 @@ class ConvRelu1d(nn.Conv1d):
             kernel_size=kernel_size,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
         )

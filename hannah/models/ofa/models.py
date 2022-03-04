@@ -139,13 +139,16 @@ def create(
     ofa_steps_depth = len(model.linears)
     ofa_steps_kernel = 1
     ofa_steps_width = 1
+    ofa_steps_dilation = 1
     for major_block in conv:
         for block in major_block.blocks:
             if block.target == "elastic_conv1d":
                 this_block_kernel_steps = len(block.kernel_sizes)
+                this_block_dilation_steps = len(block.dilation_sizes)
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
                 ofa_steps_kernel = max(ofa_steps_kernel, this_block_kernel_steps)
+                ofa_steps_dilation = max(ofa_steps_dilation, this_block_dilation_steps)
             elif block.target == "elastic_channel_helper":
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
@@ -155,6 +158,7 @@ def create(
     model.ofa_steps_kernel = ofa_steps_kernel
     model.ofa_steps_depth = ofa_steps_depth
     model.ofa_steps_width = ofa_steps_width
+    model.ofa_steps_dilation = ofa_steps_dilation
 
     model.perform_sequence_discovery()
 
@@ -222,6 +226,10 @@ def create_minor_block(
         if not isinstance(kernel_sizes, ListConfig):
             kernel_sizes = [kernel_sizes]
 
+        dilation_sizes = block_config.dilation_sizes
+        if not isinstance(dilation_sizes, ListConfig):
+            dilation_sizes = [dilation_sizes]
+
         minor_block_internal_sequence = nn.ModuleList([])
         key = ""
         parameter = {
@@ -229,6 +237,7 @@ def create_minor_block(
             "in_channels": in_channels,
             "out_channels": out_channels_full,
             "stride": stride,
+            "dilation_sizes": dilation_sizes,
         }
 
         if block_config.get("norm", False):
@@ -380,6 +389,7 @@ class OFAModel(nn.Module):
         self.ofa_steps_kernel = 1
         self.ofa_steps_depth = 1
         self.ofa_steps_width = 1
+        self.ofa_steps_dilation = 1
 
         # create a list of every elastic kernel conv, for sampling
         all_elastic_kernel_convs = get_instances_from_deep_nested(
