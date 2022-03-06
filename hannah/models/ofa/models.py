@@ -749,6 +749,14 @@ class OFAModel(nn.Module):
                 f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
             )
 
+    def progressive_shrinking_add_dilation(self):
+        self.sampling_max_dilation_step += 1
+        if self.sampling_max_dilation_step >= self.ofa_steps_dilation:
+            self.sampling_max_dilation_step -= 1
+            logging.warn(
+                f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
+            )
+
     def progressive_shrinking_add_depth(self):
         self.sampling_max_depth_step += 1
         if self.sampling_max_depth_step >= self.ofa_steps_depth:

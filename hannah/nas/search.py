@@ -237,6 +237,7 @@ class OFANasTrainer(NASTrainerBase):
         epochs_kernel_step=10,
         epochs_depth_step=10,
         epochs_width_step=10,
+        epochs_dilation_step=10,
         elastic_kernels_allowed=False,
         elastic_depth_allowed=False,
         elastic_width_allowed=False,
@@ -256,6 +257,7 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_kernel_step = epochs_kernel_step
         self.epochs_depth_step = epochs_depth_step
         self.epochs_width_step = epochs_width_step
+        self.epochs_dilation_step = epochs_dilation_step
         self.elastic_kernels_allowed = elastic_kernels_allowed
         self.elastic_depth_allowed = elastic_depth_allowed
         self.elastic_width_allowed = elastic_width_allowed
@@ -302,6 +304,7 @@ class OFANasTrainer(NASTrainerBase):
         self.kernel_step_count = ofa_model.ofa_steps_kernel
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
+        self.dilation_step_count = ofa_model.ofa_steps_dilation
         ofa_model.elastic_kernels_allowed = self.elastic_kernels_allowed
         ofa_model.elastic_depth_allowed = self.elastic_depth_allowed
         ofa_model.elastic_width_allowed = self.elastic_width_allowed
@@ -343,6 +346,7 @@ class OFANasTrainer(NASTrainerBase):
         self.warmup(model, ofa_model)
 
         self.train_elastic_kernel(model, ofa_model)
+        self.train_elastic_dilation(model, ofa_model)
         self.train_elastic_depth(model, ofa_model)
         self.train_elastic_width(model, ofa_model)
 
@@ -419,6 +423,21 @@ class OFANasTrainer(NASTrainerBase):
                 )
                 self.trainer.fit(model)
             logging.info("OFA completed kernel matrices.")
+
+    def train_elastic_dilation(self, model, ofa_model):
+        if self.elastic_dilation_allowed == True:
+            # train elastic kernels
+            for current_dilation_step in range(self.dilation_step_count):
+                if current_dilation_step == 0:
+                    # step 0 is the full model, and was processed during warm-up
+                    continue
+                # add a kernel step
+                ofa_model.progressive_shrinking_add_dilation()
+                self.rebuild_trainer(
+                    f"kernel_{current_dilation_step}", self.epochs_dilation_step
+                )
+                self.trainer.fit(model)
+            logging.info("OFA completed dilation matrices.")
 
     def eval_elastic_width(
         self,
