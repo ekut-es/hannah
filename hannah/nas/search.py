@@ -325,6 +325,10 @@ class OFANasTrainer(NASTrainerBase):
             self.submodel_metrics_csv += "kernel, "
             self.random_metrics_csv += "kernel_steps, "
 
+        if self.elastic_kernels_allowed:
+            self.submodel_metrics_csv += "dilation, "
+            self.random_metrics_csv += "dilation_steps, "
+
         if self.elastic_depth_allowed:
             self.submodel_metrics_csv += "depth, "
             self.random_metrics_csv += "depth, "
@@ -332,6 +336,7 @@ class OFANasTrainer(NASTrainerBase):
         if (
             self.elastic_width_allowed
             | self.elastic_kernels_allowed
+            | self.elastic_dilation_allowed
             | self.elastic_depth_allowed
         ):
             self.submodel_metrics_csv += (
@@ -475,7 +480,7 @@ class OFANasTrainer(NASTrainerBase):
 
         return metrics_csv
 
-    def eval_elastic_kernels(
+    def eval_elastic_kernel(
         self,
         method_stack,
         method_index,
@@ -497,6 +502,42 @@ class OFANasTrainer(NASTrainerBase):
             trainer_path_tmp = trainer_path + f"K {current_kernel_step}, "
             loginfo_output_tmp = loginfo_output + f"Kernel {current_kernel_step}, "
             metrics_output_tmp = metrics_output + f"{current_kernel_step}, "
+
+            metrics_csv = method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+                metrics_csv,
+            )
+
+        return metrics_csv
+
+    def eval_elastic_dilation(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+        metrics_csv,
+    ):
+        model.reset_all_kernel_sizes()
+        method = method_stack[method_index]
+
+        for current_dilation_step in range(self.dilation_step_count):
+            if current_dilation_step > 0:
+                # iteration 0 is the full model with no stepping
+                model.step_down_all_kernels()
+
+            trainer_path_tmp = trainer_path + f"K {current_dilation_step}, "
+            loginfo_output_tmp = loginfo_output + f"Kernel {current_dilation_step}, "
+            metrics_output_tmp = metrics_output + f"{current_dilation_step}, "
 
             metrics_csv = method(
                 method_stack,
@@ -586,7 +627,10 @@ class OFANasTrainer(NASTrainerBase):
             eval_methods.append(self.eval_elastic_width)
 
         if self.elastic_kernels_allowed:
-            eval_methods.append(self.eval_elastic_kernels)
+            eval_methods.append(self.eval_elastic_kernel)
+
+        if self.elastic_dilation_allowed:
+            eval_methods.append(self.eval_elastic_dilation)
 
         if self.elastic_depth_allowed:
             eval_methods.append(self.eval_elatic_depth)

@@ -713,6 +713,14 @@ class OFAModel(nn.Module):
             type_selection=elastic_conv_type,
         )
 
+    # reset all kernel sizes to their max value
+    def reset_all_dilation_sizes(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="reset_dilation_size",
+            type_selection=elastic_conv_type,
+        )
+
     # go to a specific kernel step
     def go_to_kernel_step(self, step: int):
         self.current_kernel_step = step
