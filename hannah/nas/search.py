@@ -527,7 +527,7 @@ class OFANasTrainer(NASTrainerBase):
         metrics_output,
         metrics_csv,
     ):
-        model.reset_all_kernel_sizes()
+        model.reset_all_dilation_sizes()
         method = method_stack[method_index]
 
         for current_dilation_step in range(self.dilation_step_count):
