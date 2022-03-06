@@ -536,7 +536,7 @@ class OFANasTrainer(NASTrainerBase):
                 model.step_down_all_kernels()
 
             trainer_path_tmp = trainer_path + f"K {current_dilation_step}, "
-            loginfo_output_tmp = loginfo_output + f"Kernel {current_dilation_step}, "
+            loginfo_output_tmp = loginfo_output + f"Dilation {current_dilation_step}, "
             metrics_output_tmp = metrics_output + f"{current_dilation_step}, "
 
             metrics_csv = method(
