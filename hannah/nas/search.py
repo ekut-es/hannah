@@ -325,7 +325,7 @@ class OFANasTrainer(NASTrainerBase):
             self.submodel_metrics_csv += "kernel, "
             self.random_metrics_csv += "kernel_steps, "
 
-        if self.elastic_kernels_allowed:
+        if self.elastic_dilation_allowed:
             self.submodel_metrics_csv += "dilation, "
             self.random_metrics_csv += "dilation_steps, "
 
