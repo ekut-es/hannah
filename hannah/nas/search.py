@@ -667,15 +667,33 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_width_step = model.ofa_steps_width - 1
         for i in range(random_eval_number):
             random_state = model.sample_subnetwork()
-            selected_depth = random_state["depth_step"]
-            selected_kernels = random_state["kernel_steps"]
-            selected_widths = random_state["width_steps"]
-            selected_kernels_string = str(selected_kernels).replace(",", ";")
-            selected_widths_string = str(selected_widths).replace(",", ";")
 
-            trainer_path = f"Eval random sample: D {selected_depth}, Ks {selected_kernels}, Ws {selected_widths}"
             loginfo_output = f"OFA validating random sample:\n{random_state}"
-            metrics_output = f"{selected_widths_string}, {selected_kernels_string}, {selected_depth}, "
+            trainer_path = f"Eval random sample: "
+            metrics_output = ""
+
+            if self.elastic_width_allowed:
+                selected_widths = random_state["width_steps"]
+                selected_widths_string = str(selected_widths).replace(",", ";")
+                metrics_output += f"{selected_widths_string}, "
+                trainer_path += f"Ws {selected_widths}, "
+
+            if self.elastic_kernels_allowed:
+                selected_kernels = random_state["kernel_steps"]
+                selected_kernels_string = str(selected_kernels).replace(",", ";")
+                metrics_output += f" {selected_kernels_string}, "
+                trainer_path += f"Ks {selected_kernels}, "
+
+            if self.elastic_dilation_allowed:
+                selected_dilations = random_state["dilation_steps"]
+                selected_dilations_string = str(selected_dilations).replace(",", ";")
+                metrics_output += f" {selected_dilations_string}, "
+                trainer_path += f"Dils {selected_dilations}, "
+
+            if self.elastic_depth_allowed:
+                selected_depth = random_state["depth_step"]
+                trainer_path += f"D {selected_depth}, "
+                metrics_output += f"{selected_depth}, "
 
             self.random_metrics_csv = self.eval_single_model(
                 None,
@@ -690,6 +708,7 @@ class OFANasTrainer(NASTrainerBase):
 
         # revert to normal operation after eval.
         model.sampling_max_kernel_step = prev_max_kernel
+        model.sampling_max_dilation_step = prev_max_dilation
         model.sampling_max_depth_step = prev_max_depth
         model.sampling_max_width_step = prev_max_width
 
