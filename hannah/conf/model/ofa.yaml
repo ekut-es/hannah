@@ -38,7 +38,6 @@ conv:
           - 5
           - 3
         dilation_sizes:
-            - 9
             - 3
             - 1
         act: true
@@ -55,7 +54,6 @@ conv:
           - 5
           - 3
         dilation_sizes:
-            - 9
             - 3
             - 1
         act: false
@@ -76,7 +74,6 @@ conv:
           - 5
           - 3
         dilation_sizes:
-            - 9
             - 3
             - 1
         act: true
@@ -93,7 +90,6 @@ conv:
           - 5
           - 3
         dilation_sizes:
-            - 9
             - 3
             - 1
         act: false
@@ -114,7 +110,6 @@ conv:
           - 5
           - 3
         dilation_sizes:
-            - 9
             - 3
             - 1
         act: true
@@ -131,7 +126,6 @@ conv:
           - 5
           - 3
         dilation_sizes:
-            - 9
             - 3
             - 1
         act: false
@@ -152,7 +146,6 @@ conv:
           - 5
           - 3
         dilation_sizes:
-            - 9
             - 3
             - 1
         act: true
@@ -169,7 +162,6 @@ conv:
           - 5
           - 3
         dilation_sizes:
-            - 9
             - 3
             - 1
         act: false
