@@ -225,6 +225,7 @@ class ElasticBase1d(nn.Conv1d):
         try:
             index = self.dilation_sizes.index(new_dilation_size)
             self.target_dilation_index = index
+            self.dilation = self.dilation_sizes[self.target_dilation_index]
         except ValueError:
             logging.warn(
                 f"requested elastic dilation size {new_dilation_size} is not an available dilation size. Defaulting to full size ({self.max_dilation_size})"
