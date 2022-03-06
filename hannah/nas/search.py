@@ -533,7 +533,7 @@ class OFANasTrainer(NASTrainerBase):
         for current_dilation_step in range(self.dilation_step_count):
             if current_dilation_step > 0:
                 # iteration 0 is the full model with no stepping
-                model.step_down_all_kernels()
+                model.step_down_all_dilations()
 
             trainer_path_tmp = trainer_path + f"K {current_dilation_step}, "
             loginfo_output_tmp = loginfo_output + f"Dilation {current_dilation_step}, "
