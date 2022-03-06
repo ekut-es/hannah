@@ -10,8 +10,10 @@ def conv1d_auto_padding(conv1d: nn.Conv1d):
     return conv1d
 
 
-def conv1d_get_padding(kernel_size):
-    padding = kernel_size // 2
+def conv1d_get_padding(kernel_size, dilation=1):
+    dil = (kernel_size - 1) * (dilation - 1)
+    new_kernel_size = kernel_size + dil
+    padding = new_kernel_size // 2
     return padding
 
 
@@ -122,9 +124,7 @@ def get_instances_from_deep_nested(input, type_selection: type = None):
     # if the input is iterable, recursively check any nested objects
     if hasattr(input, "__iter__"):
         for item in input:
-            additional_results = get_instances_from_deep_nested(
-                item, type_selection
-            )
+            additional_results = get_instances_from_deep_nested(item, type_selection)
             # concatenate the lists
             results += additional_results
 
@@ -165,7 +165,7 @@ def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter
             for i in range(in_channel_count):
                 # if this input channel will be kept
                 # segment = weights[:,i:i+1]
-                if (in_channel_filter[i]):
+                if in_channel_filter[i]:
                     in_channel_segment = out_channel_segment[:, i : i + 1]
                     if new_out_channel is None:
                         # for the first in_channel being kept, simply copy over the channel

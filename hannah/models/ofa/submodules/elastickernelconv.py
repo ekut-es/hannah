@@ -310,22 +310,28 @@ class ElasticConv1d(ElasticBase1d):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
+        dilation = self.get_dilation_size()
         # get padding for the size of the kernel
-        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
+
+        padding = conv1d_get_padding(
+            self.kernel_sizes[self.target_kernel_index], dilation
+        )
+
+        return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        padding = conv1d_get_padding(kernel_size)
+        dilation = self.get_dilation_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = nn.Conv1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             kernel_size=kernel_size,
             stride=self.stride,
             padding=padding,
-            dilation=self.dilation,
+            dilation=dilation,
             bias=False,
         )
         new_conv.weight.data = kernel
@@ -376,24 +382,28 @@ class ElasticConvReLu1d(ElasticBase1d):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
+        dilation = self.get_dilation_size()
         # get padding for the size of the kernel
-        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        padding = conv1d_get_padding(
+            self.kernel_sizes[self.target_kernel_index], dilation
+        )
         return self.relu(
-            nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
+            nnf.conv1d(input, kernel, bias, self.stride, padding, dilation)
         )
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        padding = conv1d_get_padding(kernel_size)
+        dilation = self.get_dilation_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvRelu1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             kernel_size=kernel_size,
             stride=self.stride,
             padding=padding,
-            dilation=self.dilation,
+            dilation=dilation,
             bias=False,
         )
         new_conv.weight.data = kernel
@@ -450,22 +460,27 @@ class ElasticConvBn1d(ElasticConv1d):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
+        dilation = self.get_dilation_size()
         # get padding for the size of the kernel
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        return self.bn(super(ElasticConvBn1d, self).forward(input))
+        padding = conv1d_get_padding(
+            self.kernel_sizes[self.target_kernel_index], dilation
+        )
+        tmp = super(ElasticConvBn1d, self).forward(input)
+        return self.bn(tmp)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_conv1d(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        padding = conv1d_get_padding(kernel_size)
+        dilation = self.get_dilation_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBn1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             kernel_size=kernel_size,
             stride=self.stride,
             padding=padding,
-            dilation=self.dilation,
+            dilation=dilation,
             bias=False,
         )
         new_conv.weight.data = kernel
@@ -528,14 +543,15 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
     def get_basic_conv1d(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        padding = conv1d_get_padding(kernel_size)
+        dilation = self.get_dilation_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBnReLu1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             kernel_size=kernel_size,
             stride=self.stride,
             padding=padding,
-            dilation=self.dilation,
+            dilation=dilation,
             bias=False,
         )
         new_conv.weight.data = kernel
