@@ -15,6 +15,7 @@ from hannah.models.ofa.submodules.elasticwidthmodules import (
     ElasticWidthBatchnorm1d,
     ElasticWidthLinear,
     ElasticPermissiveReLU,
+    ElasticQuantWidthLinear,
 )
 
 # A dictionary that maps the combination string of the convolution type to the class that
@@ -53,6 +54,12 @@ elastic_forward_type = (
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
     ElasticWidthLinear,
+    ElasticQuantWidthLinear,
+)
+
+elastic_Linear_type = (
+    ElasticWidthLinear,
+    ElasticQuantWidthLinear,
 )
 
 elastic_all_type = (
@@ -66,5 +73,6 @@ elastic_all_type = (
     ElasticQuantConvBnReLu1d,
     ElasticWidthBatchnorm1d,
     ElasticWidthLinear,
+    ElasticQuantWidthLinear,
     ElasticPermissiveReLU,
 )
