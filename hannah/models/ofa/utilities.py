@@ -167,46 +167,9 @@ def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter
     for element, out in zip(in_channel_filter, second):
         if element:
             outputs.append(out)
-    out = torch.cat(outputs, 1)
+    new_weights = torch.cat(outputs, 1)
 
-    # if a channel filter is specified with 'False', the channel is dropped.
-    # simply skip the iteration of this channel
-
-    """new_weights = None
-    for o in range(out_channel_count):
-        if out_channel_filter[o]:
-            # if this output channel will be kept
-            out_channel_segment = weights[o : o + 1]
-            new_out_channel = None
-            for i in range(in_channel_count):
-                # if this input channel will be kept
-                # segment = weights[:,i:i+1]
-                if in_channel_filter[i]:
-                    in_channel_segment = out_channel_segment[:, i : i + 1]
-                    if new_out_channel is None:
-                        # for the first in_channel being kept, simply copy over the channel
-                        new_out_channel = in_channel_segment
-                    else:
-                        # append the input channel being kept, concatenate in dim 1 (dim 0 has length 1 and is the out_channel)
-                        new_out_channel = torch.cat(
-                            (new_out_channel, in_channel_segment), dim=1
-                        )
-            if new_out_channel is None:
-                logging.error(
-                    "zero in_channels were kept during channel filter application of primary module!"
-                )
-            if new_weights is None:
-                # if this is the first out_channel being kept, simply copy it over
-                new_weights = new_out_channel
-            else:
-                # for subsequent out_channels, cat them onto the weights in dim 0
-                new_weights = torch.cat((new_weights, new_out_channel), dim=0)
-    if new_weights is None:
-        logging.error(
-            "zero out_channels were kept during channel filter application of primary module!"
-        )"""
-
-    return out
+    return new_weights
 
 
 def filter_single_dimensional_weights(weights, channel_filter):
