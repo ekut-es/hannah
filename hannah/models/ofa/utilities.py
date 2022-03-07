@@ -141,6 +141,8 @@ def get_instances_from_deep_nested(input, type_selection: type = None):
 
 def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter):
     # out_channel count will be length in dim 0
+    # possible mask
+    # ((tmpin.reshape(16,1).to(int) * tmpout.to(int)).T.reshape(24,16,1) * weights) == new_weights
     out_channel_count = len(weights)
     # in_channel count will be length in second dim
     in_channel_count = len(weights[0])
