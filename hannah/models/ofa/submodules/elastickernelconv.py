@@ -484,13 +484,16 @@ class ElasticConvBn1d(ElasticConv1d):
             dilation=dilation,
             bias=False,
         )
+        tmp_bn = self.bn.get_basic_batchnorm1d()
+
         new_conv.weight.data = kernel
         new_conv.bias = bias
 
-        new_conv.bn.weight = self.bn.weight
-        new_conv.bn.bias = self.bn.bias
-        new_conv.bn.running_var = self.bn.running_var
-        new_conv.bn.running_mean = self.bn.running_mean
+        new_conv.bn.num_features = tmp_bn.num_features
+        new_conv.bn.weight = tmp_bn.weight
+        new_conv.bn.bias = tmp_bn.bias
+        new_conv.bn.running_var = tmp_bn.running_var
+        new_conv.bn.running_mean = tmp_bn.running_mean
         new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
@@ -556,13 +559,16 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             bias=False,
         )
         new_conv.weight.data = kernel
-        if bias is not None:
-            new_conv.bias = bias
+        tmp_bn = self.bn.get_basic_batchnorm1d()
 
-        new_conv.bn.weight = self.bn.weight
-        new_conv.bn.bias = self.bn.bias
-        new_conv.bn.running_var = self.bn.running_var
-        new_conv.bn.running_mean = self.bn.running_mean
+        new_conv.weight.data = kernel
+        new_conv.bias = bias
+
+        new_conv.bn.num_features = tmp_bn.num_features
+        new_conv.bn.weight = tmp_bn.weight
+        new_conv.bn.bias = tmp_bn.bias
+        new_conv.bn.running_var = tmp_bn.running_var
+        new_conv.bn.running_mean = tmp_bn.running_mean
         new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
