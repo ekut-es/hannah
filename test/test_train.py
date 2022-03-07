@@ -49,15 +49,15 @@ def test_models(model, features):
 
 
 @pytest.mark.parametrize(
-    "model,epochs",
+    "model,epochs,random_evaluate,random_evaluate_number",
     [
-        ("ofa_quant", "True", "5"),
-        ("ofa", "True", "5"),
-        ("ofa_quant", "False", "5"),
-        ("ofa", "False", "5"),
+        ("ofa_quant", "1", "True", "5"),
+        ("ofa", "1", "True", "5"),
+        ("ofa_quant", "1", "False", "5"),
+        ("ofa", "1", "False", "5"),
     ],
 )
-def test_ofa(model, random_evaluate, random_evaluate_number):
+def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
     epochs = 1
     command_line = f"python -m hannah.train --config-name nas_ofa trainer.overfit_batches=5 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_dilation_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model} nas.random_evaluate={random_evaluate} nas.random_eval_number={random_evaluate_number}"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
