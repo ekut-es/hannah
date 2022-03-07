@@ -382,6 +382,7 @@ class OFAModel(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
         self.flatten = nn.Flatten(flatten_dims)
+        self.qconfig = qconfig
 
         # one linear exit layer for each possible depth level
         self.linears = nn.ModuleList([])
