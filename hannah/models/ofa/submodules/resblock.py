@@ -96,6 +96,7 @@ class ResBlock1d(ResBlockBase):
                     self.in_channels,
                     out_channels,
                     kernel_sizes=[1],
+                    dilation_sizes=[1],
                     stride=stride,
                     bias=False,
                 ),
@@ -106,12 +107,13 @@ class ResBlock1d(ResBlockBase):
                     self.in_channels,
                     out_channels,
                     kernel_sizes=[1],
+                    dilation_sizes=[1],
                     stride=stride,
                     bias=False,
                     qconfig=qconfig,
                 ),
             )  # if self.apply_skip else None
-        if qconfig is not None:
+        if self.qconfig is not None:
             self.activation_post_process = (
                 self.qconfig.activation() if out_quant else nn.Identity()
             )
@@ -134,7 +136,7 @@ class ResBlock1d(ResBlockBase):
             # as the activation does not affect discovery whatsoever.
             return self.norm(new_discovery)
         else:
+            output = super().forward(x)
             if self.qconfig is not None:
-                return self.activation_post_process(super().forward(x))
-            else:
-                return super().forward(x)
+                return self.activation_post_process(output)
+            return output

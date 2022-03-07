@@ -32,9 +32,9 @@ class _ElasticConvBnNd(
         in_channels,
         out_channels,
         kernel_sizes,
+        dilation_sizes,
         stride=1,
         padding=0,
-        dilation=1,
         transposed=False,
         output_padding=0,
         groups=1,
@@ -56,7 +56,7 @@ class _ElasticConvBnNd(
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
             padding_mode=padding_mode,
@@ -173,7 +173,9 @@ class _ElasticConvBnNd(
             zero_bias = torch.zeros_like(self.bias)
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
-        padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        kernelsize = self.kernel_sizes[self.target_kernel_index]
+        self.dilation = self.get_dilation_size()
+        self.padding = conv1d_get_padding(kernelsize, self.dilation)
         conv = self._real_conv_forward(input, scaled_weight, zero_bias)
         if self.training:
             conv_orig = conv / scale_factor.reshape(bias_shape)
@@ -334,9 +336,9 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: list[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
         padding_mode="zeros",
@@ -362,7 +364,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
         )
@@ -414,7 +416,10 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         # get the kernel for the current index
         weight, bias = self.get_kernel()
         # get padding for the size of the kernel
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        dilation = self.get_dilation_size()
+        self.padding = conv1d_get_padding(
+            self.kernel_sizes[self.target_kernel_index], dilation
+        )
         y = self.activation_post_process(
             self._real_conv_forward(
                 input,
@@ -428,14 +433,15 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
     def get_basic_conv1d(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        padding = conv1d_get_padding(kernel_size)
+        dilation = self.get_dilation_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.Conv1d(
             self.in_channels,
             self.out_channels,
             kernel_size,
             self.stride,
             padding,
-            self.dilation,
+            dilation,
             self.groups,
             bias,
             qconfig=self.qconfig,
@@ -466,9 +472,9 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: list[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
         padding_mode="zeros",
@@ -493,7 +499,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
         )
@@ -546,7 +552,10 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         # get the kernel for the current index
         weight, bias = self.get_kernel()
         # get padding for the size of the kernel
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        self.dilation = self.get_dilation_size()
+        self.padding = conv1d_get_padding(
+            self.kernel_sizes[self.target_kernel_index], self.dilation
+        )
         y = self.activation_post_process(
             self.relu(
                 self._real_conv_forward(
@@ -562,14 +571,15 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
     def get_basic_conv1d(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        padding = conv1d_get_padding(kernel_size)
+        dilation = self.get_dilation_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.ConvReLU1d(
             self.in_channels,
             self.out_channels,
             kernel_size,
             self.stride,
             padding,
-            self.dilation,
+            dilation,
             self.groups,
             bias,
             qconfig=self.qconfig,
@@ -597,9 +607,9 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: list[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
         track_running_stats=True,
@@ -613,7 +623,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
             qconfig=qconfig,
@@ -633,7 +643,10 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
         # get padding for the size of the kernel
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        dilation = self.get_dilation_size()
+        self.padding = conv1d_get_padding(
+            self.kernel_sizes[self.target_kernel_index], dilation
+        )
         y = super(ElasticQuantConvBn1d, self).forward(input)
         return self.activation_post_process(y)
 
@@ -641,14 +654,15 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
     def get_basic_conv1d(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        padding = conv1d_get_padding(kernel_size)
+        dilation = self.get_dilation_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.ConvBn1d(
             self.in_channels,
             self.out_channels,
             kernel_size,
             self.stride,
             padding,
-            self.dilation,
+            dilation,
             self.groups,
             bias,
             eps=self.bn[self.target_kernel_index].eps,
@@ -681,9 +695,9 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
+        dilation_sizes: list[int],
         stride: int = 1,
         padding: int = 0,
-        dilation: int = 1,
         groups: int = 1,
         bias: bool = False,
         track_running_stats=True,
@@ -697,7 +711,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             kernel_sizes=kernel_sizes,
             stride=stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
             qconfig=qconfig,
@@ -715,7 +729,10 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        dilation = self.get_dilation_size()
+        self.padding = conv1d_get_padding(
+            self.kernel_sizes[self.target_kernel_index], dilation
+        )
         y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
         return self.activation_post_process(self.relu(y))
 
@@ -723,14 +740,15 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
     def get_basic_conv1d(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        padding = conv1d_get_padding(kernel_size)
+        dilation = self.get_dilation_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.ConvBnReLU1d(
             self.in_channels,
             self.out_channels,
             kernel_size,
             self.stride,
             padding,
-            self.dilation,
+            dilation,
             self.groups,
             bias,
             eps=self.bn[self.target_kernel_index].eps,
