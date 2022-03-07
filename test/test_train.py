@@ -21,7 +21,7 @@ topdir = Path(__file__).parent.absolute() / ".."
 
 @pytest.mark.parametrize("model,epochs", [("ofa_quant", "1"), ("ofa", "1")])
 def test_ofa(model, epochs):
-    command_line = f"python -m hannah.train --config-name nas_ofa trainer.fast_dev_run=True trainer.limit_train_batches=0.1 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model}"
+    command_line = f"python -m hannah.train --config-name nas_ofa trainer.overfit_batches=5 trainer.limit_train_batches=0.1 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model}"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
