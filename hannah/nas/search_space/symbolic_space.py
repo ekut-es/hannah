@@ -9,6 +9,8 @@ class Space(nx.DiGraph):
         self.cfg_options = {}
 
     def infer_parameters(self, x, ctx):
+        names = {}
+
         def _traverse(node, input):
             # print(" Traverse node", node)
             in_edges = self.in_edges(node)
@@ -26,6 +28,7 @@ class Space(nx.DiGraph):
                 try:
                     ctx.set_input(args)
                     mod = node.instantiate(ctx)
+                    names[node.name] = mod
                     ctx.relabel_dict[node] = mod
                     out = mod(args)
                     ctx.outputs[node] = out
@@ -37,6 +40,7 @@ class Space(nx.DiGraph):
             else:
                 ctx.set_input(input)
                 mod = node.instantiate(ctx)
+                names[node.name] = mod
                 ctx.relabel_dict[node] = mod
                 out = mod(input)
                 ctx.outputs[node] = out
@@ -46,7 +50,7 @@ class Space(nx.DiGraph):
         last = nodes[-1]
         out = _traverse(last, x)
         graph = nx.relabel_nodes(nx.DiGraph(self), ctx.relabel_dict, copy=True)
-        instance = Instance(graph)
+        instance = Instance(graph, names=names)
         self.ctx = ctx
         return instance, out
 
@@ -76,10 +80,13 @@ class Space(nx.DiGraph):
 
 
 class Instance(nn.Module):
-    def __init__(self, graph):
+    def __init__(self, graph, names=None):
         super().__init__()
         self.graph = graph
-        self.nodes = nn.ModuleList([n for n in graph.nodes])
+        if names:
+            self.nodes = nn.ModuleDict({name: names[name] for name in names})
+        else:
+            self.nodes = nn.ModuleList([n for n in graph.nodes])
 
     def forward(self, x):
         self.outputs = {}
