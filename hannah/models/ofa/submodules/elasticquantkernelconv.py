@@ -144,7 +144,12 @@ class _ElasticConvBnNd(
         )
         scale_factor = self.bn[self.target_kernel_index].weight / running_std
 
-        return scale_factor
+        if all(self.out_channel_filter):
+            return scale_factor
+        else:
+            return filter_single_dimensional_weights(
+                scale_factor, self.out_channel_filter
+            )
 
     @property
     def scaled_weight(self):
@@ -167,6 +172,7 @@ class _ElasticConvBnNd(
 
         scale_factor = self.scale_factor
         scaled_weight = self.scaled_weight
+
         # using zero bias here since the bias for original conv
         # will be added later
         if self.bias is not None:
@@ -176,20 +182,41 @@ class _ElasticConvBnNd(
         kernelsize = self.kernel_sizes[self.target_kernel_index]
         self.dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(kernelsize, self.dilation)
+        if not all(self.out_channel_filter):
+            zero_bias = filter_single_dimensional_weights(
+                zero_bias, self.out_channel_filter
+            )
         conv = self._real_conv_forward(input, scaled_weight, zero_bias)
         if self.training:
             conv_orig = conv / scale_factor.reshape(bias_shape)
-            if self.bias is not None:
+            if self.bias is not None and all(self.out_channel_filter):
                 conv_orig = conv_orig + self.bias.reshape(bias_shape)
+            elif self.bias is not None and not all(self.out_channel_filter):
+                tmpbias = filter_single_dimensional_weights(
+                    self.bias, self.out_channel_filter
+                )
+                conv_orig = conv_orig + tmpbias.reshape(bias_shape)
             conv = self.bn[self.target_kernel_index](conv_orig)
             # conv = conv - (self.bn.bias - self.bn.running_mean).reshape(bias_shape)
         else:
             bias = zero_bias
             if self.bias is not None:
                 _, bias = self.get_kernel()
+                bias = filter_single_dimensional_weights(bias, self.out_channel_filter)
+            bn_rmean = self.bn[self.target_kernel_index].running_mean
+            bn_bias = self.bn[self.target_kernel_index].bias
+
+            if not all(self.out_channel_filter):
+
+                bn_rmean = filter_single_dimensional_weights(
+                    bn_rmean, self.out_channel_filter
+                )
+                bn_bias = filter_single_dimensional_weights(
+                    bn_bias, self.out_channel_filter
+                )
+
             bias = self.bias_fake_quant(
-                (bias - self.bn[self.target_kernel_index].running_mean) * scale_factor
-                + self.bn[self.target_kernel_index].bias
+                (bias - bn_rmean) * scale_factor + bn_bias
             ).reshape(bias_shape)
             conv = conv + bias
 
