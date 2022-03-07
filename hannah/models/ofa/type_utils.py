@@ -15,8 +15,24 @@ from hannah.models.ofa.submodules.elasticwidthmodules import (
     ElasticWidthBatchnorm1d,
     ElasticWidthLinear,
     ElasticPermissiveReLU,
+    ElasticQuantWidthLinear,
 )
 
+# A dictionary that maps the combination string of the convolution type to the class that
+# implements it.
+elasic_conv_classes = {
+    "none": ElasticConv1d,
+    "quant": ElasticQuantConv1d,
+    "act": ElasticConvReLu1d,
+    "actquant": ElasticQuantConvReLu1d,
+    "norm": ElasticConvBn1d,
+    "normquant": ElasticQuantConvBn1d,
+    "normact": ElasticConvBnReLu1d,
+    "normactquant": ElasticQuantConvBnReLu1d,
+}
+
+
+# A tuple of all the classes that are subclasses of `ElasticBaseConv`.
 elastic_conv_type = (
     ElasticConv1d,
     ElasticConvReLu1d,
@@ -38,6 +54,12 @@ elastic_forward_type = (
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
     ElasticWidthLinear,
+    ElasticQuantWidthLinear,
+)
+
+elastic_Linear_type = (
+    ElasticWidthLinear,
+    ElasticQuantWidthLinear,
 )
 
 elastic_all_type = (
@@ -51,5 +73,6 @@ elastic_all_type = (
     ElasticQuantConvBnReLu1d,
     ElasticWidthBatchnorm1d,
     ElasticWidthLinear,
+    ElasticQuantWidthLinear,
     ElasticPermissiveReLU,
 )

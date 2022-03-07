@@ -13,30 +13,20 @@ from omegaconf import ListConfig
 from hydra.utils import instantiate
 
 
-from ..factory import qat as qat
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
-from .submodules.elastickernelconv import (
-    ElasticConv1d,
-    ElasticConvBn1d,
-    ElasticConvBnReLu1d,
-    ConvBnReLu1d,
-    ConvBn1d,
-    ElasticConvReLu1d,
-)
-from .submodules.elasticquantkernelconv import (
-    ElasticQuantConvBn1d,
-    ElasticQuantConvBnReLu1d,
-    ElasticQuantConv1d,
-    ElasticQuantConvReLu1d,
-)
+
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
-    ElasticPermissiveReLU,
-    ElasticWidthBatchnorm1d,
     ElasticWidthLinear,
+    ElasticQuantWidthLinear,
 )
 
-from ..factory import qat
+from .type_utils import (
+    elastic_conv_type,
+    elastic_all_type,
+    elasic_conv_classes,
+    elastic_Linear_type,
+)
 
 # from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
@@ -62,6 +52,32 @@ def create(
     validate_on_extracted=True,
     qconfig=None,
 ) -> nn.Module:
+    """
+    The function creates a ofaModel with the given name,
+    labels, input shape, convolutional layers, and other parameters
+
+    :param name: The name of the model
+    :type name: str
+    :param labels: The number of classes in the dataset
+    :type labels: int
+    :param input_shape: the shape of the input tensor
+    :param conv: a list of MajorBlockConfig objects
+    :param min_depth: The minimum depth of the model, defaults to 1
+    :type min_depth: int (optional)
+    :param norm_before_act: If True, the normalization is performed before the
+    activation function, defaults to True (optional)
+    :param skew_sampling_distribution: If True, the model will use a skewed sampling
+    distribution to sample the number of minor blocks in each major block, defaults
+    to False
+    :type skew_sampling_distribution: bool (optional)
+    :param dropout: float, default 0.5
+    :type dropout: int
+    :param validate_on_extracted: If True, the model will be validated on the
+    extracted data, defaults to True (optional)
+    :param qconfig: the quantization configuration to use
+    :return: A model object.
+    """
+
     # if no orders for the norm operator are specified, fall back to default
     default_qconfig = instantiate(qconfig) if qconfig else None
     flatten_n = input_shape[0]
@@ -77,13 +93,12 @@ def create(
 
     for block_config in conv:
         if block_config.target == "forward":
-            major_block = create_forward_block(
-                blocks=block_config.blocks,
-                in_channels=next_in_channels,
+            major_block = create_minor_block_sequence(
+                block_config.blocks,
+                next_in_channels,
                 stride=block_config.stride,
                 norm_before_act=norm_before_act,
-                qconfig=default_qconfig
-                # sources=previous_sources,
+                qconfig=default_qconfig,
             )
 
         elif block_config.target == "residual1d":
@@ -121,6 +136,7 @@ def create(
         skew_sampling_distribution=skew_sampling_distribution,
         dropout=dropout,
         validate_on_extracted=validate_on_extracted,
+        qconfig=default_qconfig,
     )
 
     # store the name onto the model
@@ -130,13 +146,16 @@ def create(
     ofa_steps_depth = len(model.linears)
     ofa_steps_kernel = 1
     ofa_steps_width = 1
+    ofa_steps_dilation = 1
     for major_block in conv:
         for block in major_block.blocks:
             if block.target == "elastic_conv1d":
                 this_block_kernel_steps = len(block.kernel_sizes)
+                this_block_dilation_steps = len(block.dilation_sizes)
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
                 ofa_steps_kernel = max(ofa_steps_kernel, this_block_kernel_steps)
+                ofa_steps_dilation = max(ofa_steps_dilation, this_block_dilation_steps)
             elif block.target == "elastic_channel_helper":
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
@@ -146,6 +165,7 @@ def create(
     model.ofa_steps_kernel = ofa_steps_kernel
     model.ofa_steps_depth = ofa_steps_depth
     model.ofa_steps_width = ofa_steps_width
+    model.ofa_steps_dilation = ofa_steps_dilation
 
     model.perform_sequence_discovery()
 
@@ -213,79 +233,32 @@ def create_minor_block(
         if not isinstance(kernel_sizes, ListConfig):
             kernel_sizes = [kernel_sizes]
 
-        minor_block_internal_sequence = nn.ModuleList([])
-        norm = block_config.get("norm", False)
-        act = block_config.get("act", False)
-        quant = block_config.get("quant", False)
+        dilation_sizes = block_config.dilation_sizes
+        if not isinstance(dilation_sizes, ListConfig):
+            dilation_sizes = [dilation_sizes]
 
-        if not norm and not act and not quant:
-            new_minor_block = ElasticConv1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and not act and quant:
-            new_minor_block = ElasticQuantConv1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and act and not quant:
-            new_minor_block = ElasticConvReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif not norm and act and quant:
-            new_minor_block = ElasticQuantConvReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and not act and not quant:
-            new_minor_block = ElasticConvBn1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and not act and quant:
-            new_minor_block = ElasticQuantConvBn1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and act and not quant:
-            new_minor_block = ElasticConvBnReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
-        elif norm and act and quant:
-            new_minor_block = ElasticQuantConvBnReLu1d(
-                kernel_sizes=kernel_sizes,
-                in_channels=in_channels,
-                out_channels=out_channels_full,
-                stride=stride,
-                qconfig=qconfig,
-                # padding=conv1d_get_padding(block_config.kernel_size)  # elastic kernel conv will autoset padding
-            )
+        minor_block_internal_sequence = nn.ModuleList([])
+        key = ""
+        parameter = {
+            "kernel_sizes": kernel_sizes,
+            "in_channels": in_channels,
+            "out_channels": out_channels_full,
+            "stride": stride,
+            "dilation_sizes": dilation_sizes,
+        }
+
+        if block_config.get("norm", False):
+            key += "norm"
+        if block_config.get("act", False):
+            key += "act"
+        if block_config.get("quant", False):
+            key += "quant"
+            parameter["qconfig"] = qconfig
+        if key == "":
+            key = "none"
+
+        if key in elasic_conv_classes.keys():
+            new_minor_block = elasic_conv_classes[key](**parameter)
         else:
             raise Exception(
                 f"Undefined target selected in minor block sequence: {block_config.target}"
@@ -326,54 +299,6 @@ def create_minor_block(
 
     # return the new block and its output channel count
     return new_block, new_block_out_channels
-
-
-# create a module representing a sequence of norm and act
-def create_norm_act_sequence(
-    norm: bool, act: bool, channels: int, norm_before_act=None
-) -> nn.Module:
-    # batch norm will be added before and/or after activation depending on the configuration
-    # fallback default is one norm before act, if no order is specified.
-
-    # if no norm or activation is requested, simply return None
-    # going through the steps below and returning an empty module list would also be fine
-    if not norm and not act:
-        return None
-
-    norm_act_sequence = nn.ModuleList([])
-    # create the norm module only if required. its reference will be passed back.
-    new_norm = None
-    if norm:
-        new_norm = ElasticWidthBatchnorm1d(channels)
-    # new_act = nn.ReLU()
-    new_act = ElasticPermissiveReLU()
-    if norm and norm_before_act:
-        norm_act_sequence.append(new_norm)
-    if act:
-        # add relu activation if act is set
-        norm_act_sequence.append(new_act)
-    if norm and not norm_before_act:
-        norm_act_sequence.append(new_norm)
-
-    return module_list_to_module(norm_act_sequence)
-
-
-# build a basic forward major block
-def create_forward_block(
-    blocks,
-    in_channels,
-    stride=1,
-    norm_before_act=None,
-    qconfig=None
-    # sources: List[nn.ModuleList] = [nn.ModuleList([])],
-):
-    return create_minor_block_sequence(
-        blocks,
-        in_channels,
-        stride=stride,
-        norm_before_act=norm_before_act,
-        qconfig=qconfig,
-    )
 
 
 # build a residual major block
@@ -424,6 +349,7 @@ class OFAModel(nn.Module):
         skew_sampling_distribution=False,
         dropout=0.5,
         validate_on_extracted=False,
+        qconfig=None,
     ):
         super().__init__()
         self.validate_on_extracted = validate_on_extracted
@@ -443,17 +369,20 @@ class OFAModel(nn.Module):
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
         self.sampling_max_width_step = 0
+        self.sampling_max_dilation_step = 0
         self.eval_mode = False
         self.last_input = None
         self.skew_sampling_distribution = skew_sampling_distribution
         self.validation_model = None
-        self.elastic_kernels = True
-        self.elastic_depth = True
-        self.elastic_width = True
+        self.elastic_kernels_allowed = True
+        self.elastic_depth_allowed = True
+        self.elastic_width_allowed = True
+        self.elastic_dilation_allowed = True
 
         self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
         self.flatten = nn.Flatten(flatten_dims)
+        self.qconfig = qconfig
 
         # one linear exit layer for each possible depth level
         self.linears = nn.ModuleList([])
@@ -462,7 +391,12 @@ class OFAModel(nn.Module):
             self.active_depth = i
             self.update_output_channel_count()
             # create the linear output layer for this depth
-            new_output_linear = ElasticWidthLinear(self.out_channels, self.labels)
+            if self.qconfig is None:
+                new_output_linear = ElasticWidthLinear(self.out_channels, self.labels)
+            else:
+                new_output_linear = ElasticQuantWidthLinear(
+                    self.out_channels, self.labels, qconfig=self.qconfig
+                )
             self.linears.append(new_output_linear)
 
         # should now be redundant, as the loop will exit with the active depth being max_depth
@@ -471,6 +405,7 @@ class OFAModel(nn.Module):
         self.ofa_steps_kernel = 1
         self.ofa_steps_depth = 1
         self.ofa_steps_width = 1
+        self.ofa_steps_dilation = 1
 
         # create a list of every elastic kernel conv, for sampling
         all_elastic_kernel_convs = get_instances_from_deep_nested(
@@ -545,14 +480,19 @@ class OFAModel(nn.Module):
 
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
-        state = {"depth_step": 0, "kernel_steps": [], "width_steps": []}
-        if self.elastic_depth:
+        state = {
+            "depth_step": 0,
+            "kernel_steps": [],
+            "dilation_steps": [],
+            "width_steps": [],
+        }
+        if self.elastic_depth_allowed:
             # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
             new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
             self.active_depth = self.max_depth - new_depth_step
             state["depth_step"] = new_depth_step
 
-        if self.elastic_kernels:
+        if self.elastic_kernels_allowed:
             for conv in self.elastic_kernel_convs:
                 # pick an available kernel index for every elastic kernel conv, independently.
                 max_available_sampling_step = min(
@@ -562,7 +502,18 @@ class OFAModel(nn.Module):
                 conv.pick_kernel_index(new_kernel_step)
                 state["kernel_steps"].append(new_kernel_step)
 
-        if self.elastic_width:
+        if self.elastic_dilation_allowed:
+            for conv in self.elastic_kernel_convs:
+                # pick an available kernel index for every elastic kernel conv, independently.
+                max_available_sampling_step = min(
+                    self.sampling_max_dilation_step + 1,
+                    conv.get_available_dilation_steps(),
+                )
+                new_dilation_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_dilation_index(new_dilation_step)
+                state["dilation_steps"].append(new_dilation_step)
+
+        if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
                 # pick an available width step for every elastic channel helper, independently.
                 max_available_sampling_step = min(
@@ -696,7 +647,7 @@ class OFAModel(nn.Module):
         extracted_module_list.append(self.flatten)
         extracted_module_list.append(self.dropout)
         output_linear = self.get_output_linear_layer(target_depth)
-        if isinstance(output_linear, ElasticWidthLinear):
+        if isinstance(output_linear, elastic_Linear_type):
             output_linear = output_linear.assemble_basic_module()
         extracted_module_list.append(output_linear)
         # extracted_module_list = flatten_module_list(extracted_module_list)
@@ -776,6 +727,22 @@ class OFAModel(nn.Module):
             type_selection=elastic_conv_type,
         )
 
+    # reset all kernel sizes to their max value
+    def reset_all_dilation_sizes(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="reset_dilation_size",
+            type_selection=elastic_conv_type,
+        )
+
+    # step all elastic kernels within the model down by one, if possible
+    def step_down_all_dilations(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="step_down_dilation_size",
+            type_selection=elastic_conv_type,
+        )
+
     # go to a specific kernel step
     def go_to_kernel_step(self, step: int):
         self.current_kernel_step = step
@@ -808,6 +775,14 @@ class OFAModel(nn.Module):
         self.sampling_max_kernel_step += 1
         if self.sampling_max_kernel_step >= self.ofa_steps_kernel:
             self.sampling_max_kernel_step -= 1
+            logging.warn(
+                f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
+            )
+
+    def progressive_shrinking_add_dilation(self):
+        self.sampling_max_dilation_step += 1
+        if self.sampling_max_dilation_step >= self.ofa_steps_dilation:
+            self.sampling_max_dilation_step -= 1
             logging.warn(
                 f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
             )
@@ -910,6 +885,3 @@ def rebuild_extracted_blocks(blocks):
     if input_modules_flat_length != len(out_modules):
         logging.info("Reassembly changed length of module list")
     return out_modules
-
-
-from .type_utils import elastic_conv_type, elastic_all_type
