@@ -188,3 +188,4 @@ def filter_single_dimensional_weights(weights, channel_filter):
                 new_weights = weights[i : i + 1]
             else:
                 new_weights = torch.cat((new_weights, weights[i : i + 1]), dim=0)
+    return new_weights
