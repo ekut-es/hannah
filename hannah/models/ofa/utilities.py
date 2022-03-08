@@ -153,23 +153,7 @@ def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter
             f"Unable to filter primary module weights: out_channel count {out_channel_count} does not match filter length {len(out_channel_filter)}"
         )
 
-    # possible mask
-    # ((tmpin.reshape(16,1).to(int) * tmpout.to(int)).T.reshape(24,16,1) * weights) == new_weights
-
-    first = list(torch.split(weights, 1))
-    outputf = list()
-    for element, out in zip(out_channel_filter, first):
-        if element:
-            outputf.append(out)
-    second = torch.cat(outputf, 0)
-    second = torch.split(second, 1, 1)
-    outputs = list()
-    for element, out in zip(in_channel_filter, second):
-        if element:
-            outputs.append(out)
-    new_weights = torch.cat(outputs, 1)
-
-    return new_weights
+    return (weights[out_channel_filter])[:, in_channel_filter]
 
 
 def filter_single_dimensional_weights(weights, channel_filter):
