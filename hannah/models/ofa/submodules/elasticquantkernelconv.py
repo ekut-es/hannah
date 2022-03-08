@@ -660,7 +660,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
     def set_out_channel_filter(self, out_channel_filter):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
-            self.bn.channel_filter = out_channel_filter
+            for element in self.bn:
+                element.channel_filter = out_channel_filter
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
@@ -684,8 +685,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         dilation = self.get_dilation_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.ConvBn1d(
-            self.in_channels,
-            self.out_channels,
+            kernel.shape[1],
+            kernel.shape[0],
             kernel_size,
             self.stride,
             padding,
@@ -699,14 +700,13 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         )
         new_conv.weight.data = kernel
         new_conv.bias = bias
+        tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
 
-        new_conv.bn.weight = self.bn[self.target_kernel_index].weight
-        new_conv.bn.bias = self.bn[self.target_kernel_index].bias
-        new_conv.bn.running_var = self.bn[self.target_kernel_index].running_var
-        new_conv.bn.running_mean = self.bn[self.target_kernel_index].running_mean
-        new_conv.bn.num_batches_tracked = self.bn[
-            self.target_kernel_index
-        ].num_batches_tracked
+        new_conv.bn.weight = tmp_bn.weight
+        new_conv.bn.bias = tmp_bn.bias
+        new_conv.bn.running_var = tmp_bn.running_var
+        new_conv.bn.running_mean = tmp_bn.running_mean
+        new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
@@ -750,7 +750,8 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
     def set_out_channel_filter(self, out_channel_filter):
         if out_channel_filter is not None:
             self.out_channel_filter = out_channel_filter
-            self.bn.channel_filter = out_channel_filter
+            for element in self.bn:
+                element.channel_filter = out_channel_filter
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
@@ -770,8 +771,8 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         dilation = self.get_dilation_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.ConvBnReLU1d(
-            self.in_channels,
-            self.out_channels,
+            kernel.shape[1],
+            kernel.shape[0],
             kernel_size,
             self.stride,
             padding,
@@ -785,14 +786,13 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         )
         new_conv.weight.data = kernel
         new_conv.bias = bias
+        tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
 
-        new_conv.bn.weight = self.bn[self.target_kernel_index].weight
-        new_conv.bn.bias = self.bn[self.target_kernel_index].bias
-        new_conv.bn.running_var = self.bn[self.target_kernel_index].running_var
-        new_conv.bn.running_mean = self.bn[self.target_kernel_index].running_mean
-        new_conv.bn.num_batches_tracked = self.bn[
-            self.target_kernel_index
-        ].num_batches_tracked
+        new_conv.bn.weight = tmp_bn.weight
+        new_conv.bn.bias = tmp_bn.bias
+        new_conv.bn.running_var = tmp_bn.running_var
+        new_conv.bn.running_mean = tmp_bn.running_mean
+        new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv

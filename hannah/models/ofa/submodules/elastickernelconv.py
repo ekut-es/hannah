@@ -561,7 +561,6 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             dilation=dilation,
             bias=False,
         )
-        new_conv.weight.data = kernel
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
         new_conv.weight.data = kernel
