@@ -59,7 +59,10 @@ class ElasticBase1d(nn.Conv1d):
         self.in_channels: int = in_channels
         self.out_channels: int = out_channels
 
-        self.padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
+        self.padding = conv1d_get_padding(
+            self.kernel_sizes[self.target_kernel_index],
+            self.dilation_sizes[self.target_dilation_index],
+        )
 
         nn.Conv1d.__init__(
             self,
