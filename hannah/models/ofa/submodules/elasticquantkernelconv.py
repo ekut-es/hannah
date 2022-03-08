@@ -66,7 +66,7 @@ class _ElasticConvBnNd(
         self.freeze_bn = freeze_bn if self.training else True
         self.bn = nn.ModuleList()
         self.bn.append(
-            nn.BatchNorm1d(
+            ElasticWidthBatchnorm1d(
                 out_channels,
                 eps=eps,
                 momentum=momentum,

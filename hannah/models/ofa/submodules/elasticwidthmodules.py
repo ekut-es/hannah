@@ -38,22 +38,48 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         self,
         num_features,
         track_running_stats=False,
+        affine=True,
+        momentum=0.1,
+        eps=1e-5,
     ):
+
         super().__init__(
-            num_features=num_features, track_running_stats=track_running_stats
+            num_features=num_features,
+            eps=eps,
+            momentum=momentum,
+            affine=affine,
+            track_running_stats=track_running_stats,
         )
         self.channel_filter = [True] * num_features
+
+    @property
+    def running_mean(self):
+        if all(self.channel_filter):
+            return super().running_mean
+        else:
+            return filter_single_dimensional_weights(
+                super().running_mean, self.channel_filter
+            )
+
+    @property
+    def running_var(self):
+        if all(self.channel_filter):
+            return super().running_var
+        else:
+            return filter_single_dimensional_weights(
+                super().running_var, self.channel_filter
+            )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        if self.track_running_stats:
+        """if self.track_running_stats:
             logging.warn(
                 "ElasticWidthBatchnorm with tracked running stats currently not fully implemented!"
             )
             # num_batches_tracked and exponential averaging are currently not implemented.
-
+        """
         running_mean = self.running_mean
         running_var = self.running_var
         weight = self.weight

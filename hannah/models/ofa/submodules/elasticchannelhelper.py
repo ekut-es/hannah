@@ -81,8 +81,7 @@ class ElasticChannelHelper(nn.Module):
         # get the amount of channels to be removed from the max and current channel counts
         channel_reduction_amount: int = self.max_channels - self.current_channels
         # start with an empty filter, where every channel passes through, then remove channels by priority
-        for i in range(len(self.channel_pass_filter)):
-            self.channel_pass_filter[i] = True
+        self.channel_pass_filter = [True] * len(self.channel_pass_filter)
 
         # filter the least important n channels, specified by the reduction amount
         for i in range(channel_reduction_amount):
@@ -108,7 +107,7 @@ class ElasticChannelHelper(nn.Module):
     # if is_target is set to true, the module is a target module (filter its input).
     # false -> source module -> filter its output
     def apply_filter_to_module(self, module, is_target: bool):
-        if isinstance(module, ElasticWidthLinear):
+        if isinstance(module, elastic_Linear_type):
             if is_target:
                 # target module -> set module input filter
                 if len(module.in_channel_filter) != len(self.channel_pass_filter):
@@ -452,4 +451,4 @@ class SequenceDiscovery:
 # imports are located at the bottom to circumvent circular dependency import issues
 from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
 
-from ..type_utils import elastic_conv_type, elastic_forward_type
+from ..type_utils import elastic_conv_type, elastic_forward_type, elastic_Linear_type
