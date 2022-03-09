@@ -15,7 +15,7 @@ from ..utilities import (
     sub_filter_start_end,
 )
 from .elasticchannelhelper import SequenceDiscovery
-from .elasticwidthmodules import ElasticWidthBatchnorm1d
+from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
 from ...factory import qat
 
