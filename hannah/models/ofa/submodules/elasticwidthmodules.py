@@ -192,6 +192,14 @@ class ElasticWidthLinear(nn.Linear):
     def assemble_basic_module(self):
         return copy.deepcopy(self).get_basic_linear()
 
+    def set_out_channel_filter(self, out_filter):
+        if out_filter is not None:
+            self.out_channel_filter = out_filter
+
+    def set_in_channel_filter(self, in_filter):
+        if in_filter is not None:
+            self.in_channel_filter = in_filter
+
 
 class ElasticQuantWidthLinear(nn.Linear):
     def __init__(
@@ -318,6 +326,14 @@ class ElasticQuantWidthLinear(nn.Linear):
         qat_linear.weight = mod.weight
         qat_linear.bias = mod.bias
         return qat_linear
+
+    def set_out_channel_filter(self, out_filter):
+        if out_filter is not None:
+            self.out_channel_filter = out_filter
+
+    def set_in_channel_filter(self, in_filter):
+        if in_filter is not None:
+            self.in_channel_filter = in_filter
 
 
 # just a ReLu, which can forward a SequenceDiscovery

@@ -485,10 +485,6 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
     def assemble_basic_module(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
 
-    def set_out_channel_filter(self, out_channel_filter):
-        if out_channel_filter is not None:
-            self.out_channel_filter = out_channel_filter
-
 
 class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
 
@@ -623,10 +619,6 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
     def assemble_basic_module(self) -> nn.Conv1d:
         return copy.deepcopy(self.get_basic_conv1d())
 
-    def set_out_channel_filter(self, out_channel_filter):
-        if out_channel_filter is not None:
-            self.out_channel_filter = out_channel_filter
-
 
 class ElasticQuantConvBn1d(_ElasticConvBnNd):
     def __init__(
@@ -656,12 +648,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             qconfig=qconfig,
         )
         self.out_quant = out_quant
-
-    def set_out_channel_filter(self, out_channel_filter):
-        if out_channel_filter is not None:
-            self.out_channel_filter = out_channel_filter
-            for element in self.bn:
-                element.channel_filter = out_channel_filter
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
@@ -746,12 +732,6 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         self.out_quant = out_quant
 
         self.relu = ElasticPermissiveReLU()
-
-    def set_out_channel_filter(self, out_channel_filter):
-        if out_channel_filter is not None:
-            self.out_channel_filter = out_channel_filter
-            for element in self.bn:
-                element.channel_filter = out_channel_filter
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):

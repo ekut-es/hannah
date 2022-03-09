@@ -107,26 +107,9 @@ class ElasticChannelHelper(nn.Module):
     # if is_target is set to true, the module is a target module (filter its input).
     # false -> source module -> filter its output
     def apply_filter_to_module(self, module, is_target: bool):
-        if isinstance(module, elastic_Linear_type):
-            if is_target:
-                # target module -> set module input filter
-                if len(module.in_channel_filter) != len(self.channel_pass_filter):
-                    logging.error(
-                        f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.in_channel_filter)} of {type(module)}! "
-                    )
-                    return
-                module.in_channel_filter = self.channel_pass_filter
-            else:
-                # source module -> set module output filter
-                if len(module.out_channel_filter) != len(self.channel_pass_filter):
-                    logging.error(
-                        f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.out_channel_filter)} of {type(module)}! "
-                    )
-                    return
-                module.out_channel_filter = self.channel_pass_filter
-        elif isinstance(
+        if isinstance(
             module,
-            elastic_conv_type,
+            elastic_forward_type,
         ):
             if is_target:
                 # target module -> set module input filter
@@ -135,7 +118,7 @@ class ElasticChannelHelper(nn.Module):
                         f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.in_channel_filter)} of {type(module)}! "
                     )
                     return
-                module.in_channel_filter = self.channel_pass_filter
+                module.set_in_channel_filter(self.channel_pass_filter)
             else:
                 # source module -> set module output filter
                 if len(module.out_channel_filter) != len(self.channel_pass_filter):
