@@ -74,7 +74,7 @@ class ElasticChannelHelper(nn.Module):
         # norm to channel with largest norm
         # the least important channel index is at the beginning of the list,
         # the most important channel index is at the end
-        self.input_channels_by_priority = np.argsort(channel_norms)
+        self.channels_by_priority = np.argsort(channel_norms)
 
     # set the channel filter list based on the channel priorities and the current channel count
     def set_channel_filter(self):
