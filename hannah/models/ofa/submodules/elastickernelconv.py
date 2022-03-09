@@ -9,17 +9,10 @@ import torch
 from .elasticBase import ElasticBase1d
 from ..utilities import (
     conv1d_get_padding,
-    filter_primary_module_weights,
-    filter_single_dimensional_weights,
-    # set_weight_maybe_bias_grad,
-    sub_filter_start_end,
 )
 from .elasticchannelhelper import SequenceDiscovery
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
-from ...factory import qat
-
-from torch.nn import init
 
 
 class ElasticConv1d(ElasticBase1d):
@@ -180,15 +173,13 @@ class ElasticConvBn1d(ElasticConv1d):
             return input.discover(self)
 
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
-        # get the kernel for the current index
-        kernel, bias = self.get_kernel()
         dilation = self.get_dilation_size()
         # get padding for the size of the kernel
-        padding = conv1d_get_padding(
+        self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
-        tmp = super(ElasticConvBn1d, self).forward(input)
-        return self.bn(tmp)
+
+        return self.bn(super(ElasticConvBn1d, self).forward(input))
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
@@ -252,12 +243,6 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
-        # get the kernel for the current index
-        # kernel, bias = self.get_kernel()
-        # get padding for the size of the kernel
-        # padding = conv1d_get_padding(self.kernel_sizes[self.target_kernel_index])
-        # t = nnf.conv1d(input, kernel, bias, self.stride, padding, self.dilation)
         return self.relu(super(ElasticConvBnReLu1d, self).forward(input))
 
     # return a normal conv1d equivalent to this module in the current state

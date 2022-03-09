@@ -7,10 +7,7 @@ import math
 import torch
 from ..utilities import (
     conv1d_get_padding,
-    filter_primary_module_weights,
     filter_single_dimensional_weights,
-    # set_weight_maybe_bias_grad,
-    sub_filter_start_end,
 )
 from .elasticchannelhelper import SequenceDiscovery
 from .elasticBatchnorm import ElasticWidthBatchnorm1d

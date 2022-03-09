@@ -32,11 +32,8 @@ from .type_utils import (
 from .utilities import (
     flatten_module_list,
     get_instances_from_deep_nested,
-    # set_basic_weight_grad,
     module_list_to_module,
-    # conv1d_get_padding,
     call_function_from_deep_nested,
-    # set_weight_maybe_bias_grad,
 )
 
 
