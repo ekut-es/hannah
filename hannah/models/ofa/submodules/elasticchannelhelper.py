@@ -432,6 +432,7 @@ class SequenceDiscovery:
 
 
 # imports are located at the bottom to circumvent circular dependency import issues
-from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
+from .elasticwidthmodules import ElasticWidthBatchnorm1d
+from .elasticLinear import ElasticWidthLinear
 
 from ..type_utils import elastic_conv_type, elastic_forward_type, elastic_Linear_type

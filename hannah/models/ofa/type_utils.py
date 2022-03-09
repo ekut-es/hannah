@@ -11,8 +11,9 @@ from hannah.models.ofa.submodules.elasticquantkernelconv import (
     ElasticQuantConvBnReLu1d,
     ElasticQuantConvReLu1d,
 )
-from hannah.models.ofa.submodules.elasticwidthmodules import (
-    ElasticWidthBatchnorm1d,
+from hannah.models.ofa.submodules.elasticwidthmodules import ElasticWidthBatchnorm1d
+
+from hannah.models.ofa.submodules.elasticLinear import (
     ElasticWidthLinear,
     ElasticPermissiveReLU,
     ElasticQuantWidthLinear,

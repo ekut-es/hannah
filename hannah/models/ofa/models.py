@@ -16,7 +16,7 @@ from hydra.utils import instantiate
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
 
 from .submodules.resblock import ResBlock1d, ResBlockBase
-from .submodules.elasticwidthmodules import (
+from .submodules.elasticLinear import (
     ElasticWidthLinear,
     ElasticQuantWidthLinear,
 )

@@ -13,8 +13,9 @@ from ..utilities import (
     sub_filter_start_end,
 )
 from .elasticchannelhelper import SequenceDiscovery
-from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticPermissiveReLU
-from .elastickernelconv import ElasticBase1d
+from .elasticwidthmodules import ElasticWidthBatchnorm1d
+from .elasticLinear import ElasticPermissiveReLU
+from .elasticBase import ElasticBase1d
 from ...factory import qat
 
 from torch.nn import init
@@ -457,7 +458,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         return y
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_conv1d(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -480,10 +481,6 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
-
-    # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
-        return copy.deepcopy(self.get_basic_conv1d())
 
 
 class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
@@ -591,7 +588,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         return y
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_conv1d(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -614,10 +611,6 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
-
-    # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
-        return copy.deepcopy(self.get_basic_conv1d())
 
 
 class ElasticQuantConvBn1d(_ElasticConvBnNd):
@@ -665,7 +658,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_conv1d(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -696,10 +689,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
-
-    # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
-        return copy.deepcopy(self.get_basic_conv1d())
 
 
 class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
@@ -745,7 +734,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         return self.activation_post_process(self.relu(y))
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_conv1d(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -776,7 +765,3 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
-
-    # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
-        return copy.deepcopy(self.get_basic_conv1d())
