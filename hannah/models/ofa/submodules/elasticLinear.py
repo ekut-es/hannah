@@ -16,8 +16,8 @@ from ...factory import qat
 
 class ElasticWidthLinear(nn.Linear, _Elastic):
     def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
-        nn.Linear.__init__(in_features, out_features, bias=bias)
-        _Elastic.__init__([True] * in_features, [True] * out_features)
+        nn.Linear.__init__(self, in_features, out_features, bias=bias)
+        _Elastic.__init__(self, [True] * in_features, [True] * out_features)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
