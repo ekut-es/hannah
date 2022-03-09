@@ -52,24 +52,6 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         )
         self.channel_filter = [True] * num_features
 
-    @property
-    def running_mean(self):
-        if all(self.channel_filter):
-            return super().running_mean
-        else:
-            return filter_single_dimensional_weights(
-                super().running_mean, self.channel_filter
-            )
-
-    @property
-    def running_var(self):
-        if all(self.channel_filter):
-            return super().running_var
-        else:
-            return filter_single_dimensional_weights(
-                super().running_var, self.channel_filter
-            )
-
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
