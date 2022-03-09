@@ -4,7 +4,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as nnf
 
-from ..utilities import filter_primary_module_weights, filter_single_dimensional_weights
+from ..utilities import (
+    filter_primary_module_weights,
+    filter_single_dimensional_weights,
+    make_parameter,
+)
 from .elasticchannelhelper import SequenceDiscovery
 from torch.nn.modules.batchnorm import _BatchNorm
 from ...factory import qat
@@ -137,15 +141,3 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
 
     def assemble_basic_module(self) -> nn.BatchNorm1d:
         return copy.deepcopy(self).get_basic_batchnorm1d()
-
-
-def make_parameter(t: torch.Tensor) -> nn.Parameter:
-    if t is None:
-        return t
-    if isinstance(t, nn.Parameter):
-        return t
-    elif isinstance(t, torch.Tensor):
-        return nn.parameter.Parameter(t)
-    else:
-        logging.error(f"Could not create parameter from input of type '{type(t)}'.")
-        return None

@@ -173,3 +173,15 @@ def filter_single_dimensional_weights(weights, channel_filter):
             else:
                 new_weights = torch.cat((new_weights, weights[i : i + 1]), dim=0)
     return new_weights
+
+
+def make_parameter(t: torch.Tensor) -> nn.Parameter:
+    if t is None:
+        return t
+    if isinstance(t, nn.Parameter):
+        return t
+    elif isinstance(t, torch.Tensor):
+        return nn.parameter.Parameter(t)
+    else:
+        logging.error(f"Could not create parameter from input of type '{type(t)}'.")
+        return None

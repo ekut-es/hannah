@@ -5,7 +5,11 @@ import torch.nn as nn
 import torch.nn.functional as nnf
 
 from .elasticBase import _Elastic
-from ..utilities import filter_primary_module_weights, filter_single_dimensional_weights
+from ..utilities import (
+    filter_primary_module_weights,
+    filter_single_dimensional_weights,
+    make_parameter,
+)
 from .elasticchannelhelper import SequenceDiscovery
 from ...factory import qat
 
