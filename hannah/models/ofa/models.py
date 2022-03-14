@@ -18,9 +18,15 @@ from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDisco
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .submodules.elasticwidthmodules import (
     ElasticWidthLinear,
+    ElasticQuantWidthLinear,
 )
 
-from .type_utils import elastic_conv_type, elastic_all_type, elasic_conv_classes
+from .type_utils import (
+    elastic_conv_type,
+    elastic_all_type,
+    elasic_conv_classes,
+    elastic_Linear_type,
+)
 
 # from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
@@ -130,6 +136,7 @@ def create(
         skew_sampling_distribution=skew_sampling_distribution,
         dropout=dropout,
         validate_on_extracted=validate_on_extracted,
+        qconfig=default_qconfig,
     )
 
     # store the name onto the model
@@ -139,13 +146,16 @@ def create(
     ofa_steps_depth = len(model.linears)
     ofa_steps_kernel = 1
     ofa_steps_width = 1
+    ofa_steps_dilation = 1
     for major_block in conv:
         for block in major_block.blocks:
             if block.target == "elastic_conv1d":
                 this_block_kernel_steps = len(block.kernel_sizes)
+                this_block_dilation_steps = len(block.dilation_sizes)
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
                 ofa_steps_kernel = max(ofa_steps_kernel, this_block_kernel_steps)
+                ofa_steps_dilation = max(ofa_steps_dilation, this_block_dilation_steps)
             elif block.target == "elastic_channel_helper":
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
@@ -155,6 +165,7 @@ def create(
     model.ofa_steps_kernel = ofa_steps_kernel
     model.ofa_steps_depth = ofa_steps_depth
     model.ofa_steps_width = ofa_steps_width
+    model.ofa_steps_dilation = ofa_steps_dilation
 
     model.perform_sequence_discovery()
 
@@ -222,6 +233,10 @@ def create_minor_block(
         if not isinstance(kernel_sizes, ListConfig):
             kernel_sizes = [kernel_sizes]
 
+        dilation_sizes = block_config.dilation_sizes
+        if not isinstance(dilation_sizes, ListConfig):
+            dilation_sizes = [dilation_sizes]
+
         minor_block_internal_sequence = nn.ModuleList([])
         key = ""
         parameter = {
@@ -229,6 +244,7 @@ def create_minor_block(
             "in_channels": in_channels,
             "out_channels": out_channels_full,
             "stride": stride,
+            "dilation_sizes": dilation_sizes,
         }
 
         if block_config.get("norm", False):
@@ -333,6 +349,7 @@ class OFAModel(nn.Module):
         skew_sampling_distribution=False,
         dropout=0.5,
         validate_on_extracted=False,
+        qconfig=None,
     ):
         super().__init__()
         self.validate_on_extracted = validate_on_extracted
@@ -352,17 +369,20 @@ class OFAModel(nn.Module):
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
         self.sampling_max_width_step = 0
+        self.sampling_max_dilation_step = 0
         self.eval_mode = False
         self.last_input = None
         self.skew_sampling_distribution = skew_sampling_distribution
         self.validation_model = None
-        self.elastic_kernels = True
-        self.elastic_depth = True
-        self.elastic_width = True
+        self.elastic_kernels_allowed = True
+        self.elastic_depth_allowed = True
+        self.elastic_width_allowed = True
+        self.elastic_dilation_allowed = True
 
         self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
         self.flatten = nn.Flatten(flatten_dims)
+        self.qconfig = qconfig
 
         # one linear exit layer for each possible depth level
         self.linears = nn.ModuleList([])
@@ -371,7 +391,12 @@ class OFAModel(nn.Module):
             self.active_depth = i
             self.update_output_channel_count()
             # create the linear output layer for this depth
-            new_output_linear = ElasticWidthLinear(self.out_channels, self.labels)
+            if self.qconfig is None:
+                new_output_linear = ElasticWidthLinear(self.out_channels, self.labels)
+            else:
+                new_output_linear = ElasticQuantWidthLinear(
+                    self.out_channels, self.labels, qconfig=self.qconfig
+                )
             self.linears.append(new_output_linear)
 
         # should now be redundant, as the loop will exit with the active depth being max_depth
@@ -380,6 +405,7 @@ class OFAModel(nn.Module):
         self.ofa_steps_kernel = 1
         self.ofa_steps_depth = 1
         self.ofa_steps_width = 1
+        self.ofa_steps_dilation = 1
 
         # create a list of every elastic kernel conv, for sampling
         all_elastic_kernel_convs = get_instances_from_deep_nested(
@@ -454,14 +480,19 @@ class OFAModel(nn.Module):
 
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
-        state = {"depth_step": 0, "kernel_steps": [], "width_steps": []}
-        if self.elastic_depth:
+        state = {
+            "depth_step": 0,
+            "kernel_steps": [],
+            "dilation_steps": [],
+            "width_steps": [],
+        }
+        if self.elastic_depth_allowed:
             # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
             new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
             self.active_depth = self.max_depth - new_depth_step
             state["depth_step"] = new_depth_step
 
-        if self.elastic_kernels:
+        if self.elastic_kernels_allowed:
             for conv in self.elastic_kernel_convs:
                 # pick an available kernel index for every elastic kernel conv, independently.
                 max_available_sampling_step = min(
@@ -471,7 +502,18 @@ class OFAModel(nn.Module):
                 conv.pick_kernel_index(new_kernel_step)
                 state["kernel_steps"].append(new_kernel_step)
 
-        if self.elastic_width:
+        if self.elastic_dilation_allowed:
+            for conv in self.elastic_kernel_convs:
+                # pick an available kernel index for every elastic kernel conv, independently.
+                max_available_sampling_step = min(
+                    self.sampling_max_dilation_step + 1,
+                    conv.get_available_dilation_steps(),
+                )
+                new_dilation_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_dilation_index(new_dilation_step)
+                state["dilation_steps"].append(new_dilation_step)
+
+        if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
                 # pick an available width step for every elastic channel helper, independently.
                 max_available_sampling_step = min(
@@ -605,7 +647,7 @@ class OFAModel(nn.Module):
         extracted_module_list.append(self.flatten)
         extracted_module_list.append(self.dropout)
         output_linear = self.get_output_linear_layer(target_depth)
-        if isinstance(output_linear, ElasticWidthLinear):
+        if isinstance(output_linear, elastic_Linear_type):
             output_linear = output_linear.assemble_basic_module()
         extracted_module_list.append(output_linear)
         # extracted_module_list = flatten_module_list(extracted_module_list)
@@ -685,6 +727,22 @@ class OFAModel(nn.Module):
             type_selection=elastic_conv_type,
         )
 
+    # reset all kernel sizes to their max value
+    def reset_all_dilation_sizes(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="reset_dilation_size",
+            type_selection=elastic_conv_type,
+        )
+
+    # step all elastic kernels within the model down by one, if possible
+    def step_down_all_dilations(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="step_down_dilation_size",
+            type_selection=elastic_conv_type,
+        )
+
     # go to a specific kernel step
     def go_to_kernel_step(self, step: int):
         self.current_kernel_step = step
@@ -717,6 +775,14 @@ class OFAModel(nn.Module):
         self.sampling_max_kernel_step += 1
         if self.sampling_max_kernel_step >= self.ofa_steps_kernel:
             self.sampling_max_kernel_step -= 1
+            logging.warn(
+                f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
+            )
+
+    def progressive_shrinking_add_dilation(self):
+        self.sampling_max_dilation_step += 1
+        if self.sampling_max_dilation_step >= self.ofa_steps_dilation:
+            self.sampling_max_dilation_step -= 1
             logging.warn(
                 f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
             )

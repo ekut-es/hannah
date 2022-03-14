@@ -267,11 +267,14 @@ class OFANasTrainer(NASTrainerBase):
         epochs_kernel_step=10,
         epochs_depth_step=10,
         epochs_width_step=10,
-        elastic_kernels=False,
-        elastic_depth=False,
-        elastic_width=False,
+        epochs_dilation_step=10,
+        elastic_kernels_allowed=False,
+        elastic_depth_allowed=False,
+        elastic_width_allowed=False,
+        elastic_dilation_allowed=False,
         evaluate=True,
         random_evaluate=True,
+        random_eval_number=100,
         # epochs_warmup_after_width=5,
         # epochs_kernel_after_width=5,
         # epochs_depth_after_width=5,
@@ -284,11 +287,14 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_kernel_step = epochs_kernel_step
         self.epochs_depth_step = epochs_depth_step
         self.epochs_width_step = epochs_width_step
-        self.elastic_kernels = elastic_kernels
-        self.elastic_depth = elastic_depth
-        self.elastic_width = elastic_width
+        self.epochs_dilation_step = epochs_dilation_step
+        self.elastic_kernels_allowed = elastic_kernels_allowed
+        self.elastic_depth_allowed = elastic_depth_allowed
+        self.elastic_width_allowed = elastic_width_allowed
+        self.elastic_dilation_allowed = elastic_dilation_allowed
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
+        self.random_eval_number = random_eval_number
 
     def run(self):
         os.makedirs("ofa_nas_dir", exist_ok=True)
@@ -328,9 +334,11 @@ class OFANasTrainer(NASTrainerBase):
         self.kernel_step_count = ofa_model.ofa_steps_kernel
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
-        ofa_model.elastic_kernels = self.elastic_kernels
-        ofa_model.elastic_depth = self.elastic_depth
-        ofa_model.elastic_width = self.elastic_width
+        self.dilation_step_count = ofa_model.ofa_steps_dilation
+        ofa_model.elastic_kernels_allowed = self.elastic_kernels_allowed
+        ofa_model.elastic_depth_allowed = self.elastic_depth_allowed
+        ofa_model.elastic_width_allowed = self.elastic_width_allowed
+        ofa_model.elastic_dilation_allowed = self.elastic_dilation_allowed
 
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
@@ -339,19 +347,28 @@ class OFANasTrainer(NASTrainerBase):
         self.submodel_metrics_csv = ""
         self.random_metrics_csv = ""
 
-        if self.elastic_width:
+        if self.elastic_width_allowed:
             self.submodel_metrics_csv += "width, "
             self.random_metrics_csv += "width_steps, "
 
-        if self.elastic_kernels:
+        if self.elastic_kernels_allowed:
             self.submodel_metrics_csv += "kernel, "
             self.random_metrics_csv += "kernel_steps, "
 
-        if self.elastic_depth:
+        if self.elastic_dilation_allowed:
+            self.submodel_metrics_csv += "dilation, "
+            self.random_metrics_csv += "dilation_steps, "
+
+        if self.elastic_depth_allowed:
             self.submodel_metrics_csv += "depth, "
             self.random_metrics_csv += "depth, "
 
-        if self.elastic_width | self.elastic_kernels | self.elastic_depth:
+        if (
+            self.elastic_width_allowed
+            | self.elastic_kernels_allowed
+            | self.elastic_dilation_allowed
+            | self.elastic_depth_allowed
+        ):
             self.submodel_metrics_csv += (
                 "acc, total_macs, total_weights, torch_params\n"
             )
@@ -364,6 +381,7 @@ class OFANasTrainer(NASTrainerBase):
         self.warmup(model, ofa_model)
 
         self.train_elastic_kernel(model, ofa_model)
+        self.train_elastic_dilation(model, ofa_model)
         self.train_elastic_depth(model, ofa_model)
         self.train_elastic_width(model, ofa_model)
 
@@ -391,7 +409,7 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("OFA completed warm-up.")
 
     def train_elastic_width(self, model, ofa_model):
-        if self.elastic_width:
+        if self.elastic_width_allowed:
             # train elastic width
             # first, run channel priority computation
             ofa_model.progressive_shrinking_compute_channel_priorities()
@@ -412,7 +430,7 @@ class OFANasTrainer(NASTrainerBase):
             logging.info("OFA completed width steps.")
 
     def train_elastic_depth(self, model, ofa_model):
-        if self.elastic_depth:
+        if self.elastic_depth_allowed:
             # train elastic depth
             for current_depth_step in range(self.depth_step_count):
                 if current_depth_step == 0:
@@ -427,7 +445,7 @@ class OFANasTrainer(NASTrainerBase):
             logging.info("OFA completed depth steps.")
 
     def train_elastic_kernel(self, model, ofa_model):
-        if self.elastic_kernels == True:
+        if self.elastic_kernels_allowed == True:
             # train elastic kernels
             for current_kernel_step in range(self.kernel_step_count):
                 if current_kernel_step == 0:
@@ -440,6 +458,21 @@ class OFANasTrainer(NASTrainerBase):
                 )
                 self.trainer.fit(model)
             logging.info("OFA completed kernel matrices.")
+
+    def train_elastic_dilation(self, model, ofa_model):
+        if self.elastic_dilation_allowed == True:
+            # train elastic kernels
+            for current_dilation_step in range(self.dilation_step_count):
+                if current_dilation_step == 0:
+                    # step 0 is the full model, and was processed during warm-up
+                    continue
+                # add a kernel step
+                ofa_model.progressive_shrinking_add_dilation()
+                self.rebuild_trainer(
+                    f"kernel_{current_dilation_step}", self.epochs_dilation_step
+                )
+                self.trainer.fit(model)
+            logging.info("OFA completed dilation matrices.")
 
     def eval_elastic_width(
         self,
@@ -477,7 +510,7 @@ class OFANasTrainer(NASTrainerBase):
 
         return metrics_csv
 
-    def eval_elastic_kernels(
+    def eval_elastic_kernel(
         self,
         method_stack,
         method_index,
@@ -499,6 +532,42 @@ class OFANasTrainer(NASTrainerBase):
             trainer_path_tmp = trainer_path + f"K {current_kernel_step}, "
             loginfo_output_tmp = loginfo_output + f"Kernel {current_kernel_step}, "
             metrics_output_tmp = metrics_output + f"{current_kernel_step}, "
+
+            metrics_csv = method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+                metrics_csv,
+            )
+
+        return metrics_csv
+
+    def eval_elastic_dilation(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+        metrics_csv,
+    ):
+        model.reset_all_dilation_sizes()
+        method = method_stack[method_index]
+
+        for current_dilation_step in range(self.dilation_step_count):
+            if current_dilation_step > 0:
+                # iteration 0 is the full model with no stepping
+                model.step_down_all_dilations()
+
+            trainer_path_tmp = trainer_path + f"K {current_dilation_step}, "
+            loginfo_output_tmp = loginfo_output + f"Dilation {current_dilation_step}, "
+            metrics_output_tmp = metrics_output + f"{current_dilation_step}, "
 
             metrics_csv = method(
                 method_stack,
@@ -584,13 +653,16 @@ class OFANasTrainer(NASTrainerBase):
 
         eval_methods = list()
 
-        if self.elastic_width:
+        if self.elastic_width_allowed:
             eval_methods.append(self.eval_elastic_width)
 
-        if self.elastic_kernels:
-            eval_methods.append(self.eval_elastic_kernels)
+        if self.elastic_kernels_allowed:
+            eval_methods.append(self.eval_elastic_kernel)
 
-        if self.elastic_depth:
+        if self.elastic_dilation_allowed:
+            eval_methods.append(self.eval_elastic_dilation)
+
+        if self.elastic_depth_allowed:
             eval_methods.append(self.eval_elatic_depth)
 
         if len(eval_methods) > 0:
@@ -614,23 +686,44 @@ class OFANasTrainer(NASTrainerBase):
     def eval_random_combination(self, lightning_model, model):
         # sample a few random combinations
         model.reset_validaton_model()
+        random_eval_number = self.random_eval_number
         prev_max_kernel = model.sampling_max_kernel_step
         prev_max_depth = model.sampling_max_depth_step
         prev_max_width = model.sampling_max_width_step
+        prev_max_dilation = model.sampling_max_dilation_step
         model.sampling_max_kernel_step = model.ofa_steps_kernel - 1
+        model.sampling_max_dilation_step = model.ofa_steps_dilation - 1
         model.sampling_max_depth_step = model.ofa_steps_depth - 1
         model.sampling_max_width_step = model.ofa_steps_width - 1
-        for i in range(100):
+        for i in range(random_eval_number):
             random_state = model.sample_subnetwork()
-            selected_depth = random_state["depth_step"]
-            selected_kernels = random_state["kernel_steps"]
-            selected_widths = random_state["width_steps"]
-            selected_kernels_string = str(selected_kernels).replace(",", ";")
-            selected_widths_string = str(selected_widths).replace(",", ";")
 
-            trainer_path = f"Eval random sample: D {selected_depth}, Ks {selected_kernels}, Ws {selected_widths}"
             loginfo_output = f"OFA validating random sample:\n{random_state}"
-            metrics_output = f"{selected_widths_string}, {selected_kernels_string}, {selected_depth}, "
+            trainer_path = f"Eval random sample: "
+            metrics_output = ""
+
+            if self.elastic_width_allowed:
+                selected_widths = random_state["width_steps"]
+                selected_widths_string = str(selected_widths).replace(",", ";")
+                metrics_output += f"{selected_widths_string}, "
+                trainer_path += f"Ws {selected_widths}, "
+
+            if self.elastic_kernels_allowed:
+                selected_kernels = random_state["kernel_steps"]
+                selected_kernels_string = str(selected_kernels).replace(",", ";")
+                metrics_output += f" {selected_kernels_string}, "
+                trainer_path += f"Ks {selected_kernels}, "
+
+            if self.elastic_dilation_allowed:
+                selected_dilations = random_state["dilation_steps"]
+                selected_dilations_string = str(selected_dilations).replace(",", ";")
+                metrics_output += f" {selected_dilations_string}, "
+                trainer_path += f"Dils {selected_dilations}, "
+
+            if self.elastic_depth_allowed:
+                selected_depth = random_state["depth_step"]
+                trainer_path += f"D {selected_depth}, "
+                metrics_output += f"{selected_depth}, "
 
             self.random_metrics_csv = self.eval_single_model(
                 None,
@@ -645,6 +738,7 @@ class OFANasTrainer(NASTrainerBase):
 
         # revert to normal operation after eval.
         model.sampling_max_kernel_step = prev_max_kernel
+        model.sampling_max_dilation_step = prev_max_dilation
         model.sampling_max_depth_step = prev_max_depth
         model.sampling_max_width_step = prev_max_width
 

@@ -197,7 +197,8 @@ def main(config: DictConfig):
         else:
             return train(config)
     except Exception as e:
-        logging.exception("Exception Message:")
+        logging.exception("Exception Message: %s", str(e))
+        raise e
 
 
 if __name__ == "__main__":

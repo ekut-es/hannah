@@ -10,8 +10,12 @@ from tabulate import tabulate
 from ..models.factory import qat
 from ..models.ofa import OFAModel
 from ..models.ofa.submodules.elastickernelconv import ConvBn1d, ConvBnReLu1d, ConvRelu1d
-from ..models.ofa.submodules.elasticwidthmodules import ElasticWidthLinear
-from ..models.ofa.type_utils import elastic_conv_type
+from ..models.ofa.submodules.elasticwidthmodules import (
+    ElasticWidthLinear,
+    ElasticQuantWidthLinear,
+)
+
+from ..models.ofa.type_utils import elastic_conv_type, elastic_Linear_type
 from ..models.sinc import SincNet
 from ..torch_extensions.nn import SNNLayers, SNNActivationLayer
 
@@ -74,7 +78,7 @@ def walk_model(model, dummy_input):
     def get_extra(module, volume_ofm, output):
         classes = {
             elastic_conv_type: get_elastic_conv,
-            ElasticWidthLinear: get_elastic_linear,
+            elastic_Linear_type: get_elastic_linear,
             ConvBn1d: get_conv,
             ConvRelu1d: get_conv,
             ConvBnReLu1d: get_conv,
