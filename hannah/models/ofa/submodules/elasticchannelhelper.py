@@ -58,7 +58,7 @@ class ElasticChannelHelper(nn.Module):
             weights = target.weight.data
             norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=0)
             channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
-        # the channel priorities for lienars need to also be computable:
+        # the channel priorities for linears need to also be computable:
         # especially for the exit connections, a linear may follow after an elastic width
         elif isinstance(target, nn.Linear):
             weights = target.weight.data
@@ -74,15 +74,14 @@ class ElasticChannelHelper(nn.Module):
         # norm to channel with largest norm
         # the least important channel index is at the beginning of the list,
         # the most important channel index is at the end
-        self.input_channels_by_priority = np.argsort(channel_norms)
+        self.channels_by_priority = np.argsort(channel_norms)
 
     # set the channel filter list based on the channel priorities and the current channel count
     def set_channel_filter(self):
         # get the amount of channels to be removed from the max and current channel counts
         channel_reduction_amount: int = self.max_channels - self.current_channels
         # start with an empty filter, where every channel passes through, then remove channels by priority
-        for i in range(len(self.channel_pass_filter)):
-            self.channel_pass_filter[i] = True
+        self.channel_pass_filter = [True] * len(self.channel_pass_filter)
 
         # filter the least important n channels, specified by the reduction amount
         for i in range(channel_reduction_amount):
@@ -108,26 +107,9 @@ class ElasticChannelHelper(nn.Module):
     # if is_target is set to true, the module is a target module (filter its input).
     # false -> source module -> filter its output
     def apply_filter_to_module(self, module, is_target: bool):
-        if isinstance(module, ElasticWidthLinear):
-            if is_target:
-                # target module -> set module input filter
-                if len(module.in_channel_filter) != len(self.channel_pass_filter):
-                    logging.error(
-                        f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.in_channel_filter)} of {type(module)}! "
-                    )
-                    return
-                module.in_channel_filter = self.channel_pass_filter
-            else:
-                # source module -> set module output filter
-                if len(module.out_channel_filter) != len(self.channel_pass_filter):
-                    logging.error(
-                        f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.out_channel_filter)} of {type(module)}! "
-                    )
-                    return
-                module.out_channel_filter = self.channel_pass_filter
-        elif isinstance(
+        if isinstance(
             module,
-            elastic_conv_type,
+            elastic_forward_type,
         ):
             if is_target:
                 # target module -> set module input filter
@@ -136,7 +118,7 @@ class ElasticChannelHelper(nn.Module):
                         f"Elastic channel helper filter length {len(self.channel_pass_filter)} does not match filter length {len(module.in_channel_filter)} of {type(module)}! "
                     )
                     return
-                module.in_channel_filter = self.channel_pass_filter
+                module.set_in_channel_filter(self.channel_pass_filter)
             else:
                 # source module -> set module output filter
                 if len(module.out_channel_filter) != len(self.channel_pass_filter):
@@ -450,6 +432,6 @@ class SequenceDiscovery:
 
 
 # imports are located at the bottom to circumvent circular dependency import issues
-from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticWidthLinear
+from .elasticBatchnorm import ElasticWidthBatchnorm1d
 
-from ..type_utils import elastic_conv_type, elastic_forward_type
+from ..type_utils import elastic_forward_type

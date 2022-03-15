@@ -16,7 +16,7 @@ from hydra.utils import instantiate
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
 
 from .submodules.resblock import ResBlock1d, ResBlockBase
-from .submodules.elasticwidthmodules import (
+from .submodules.elasticLinear import (
     ElasticWidthLinear,
     ElasticQuantWidthLinear,
 )
@@ -32,11 +32,8 @@ from .type_utils import (
 from .utilities import (
     flatten_module_list,
     get_instances_from_deep_nested,
-    # set_basic_weight_grad,
     module_list_to_module,
-    # conv1d_get_padding,
     call_function_from_deep_nested,
-    # set_weight_maybe_bias_grad,
 )
 
 
@@ -608,7 +605,7 @@ class OFAModel(nn.Module):
     def build_validation_model(self):
         self.validation_model = self.extract_elastic_depth_sequence(self.active_depth)
 
-    def reset_validaton_model(self):
+    def reset_validation_model(self):
         self.validation_model = None
 
     def get_validation_model_weight_count(self):
@@ -623,7 +620,7 @@ class OFAModel(nn.Module):
             )
             # sum up the values of each dict item, yielding the total element count across params
         if val_not_exist:
-            self.reset_validaton_model()
+            self.reset_validation_model()
         return sum(parameter_pointers_dict.values())
 
     # return an extracted module sequence for a given depth

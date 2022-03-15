@@ -375,7 +375,7 @@ class OFANasTrainer(NASTrainerBase):
         ckpt_path = "best"
         self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
         ofa_model.on_warmup_end()
-        ofa_model.reset_validaton_model()
+        ofa_model.reset_validation_model()
         logging.info("OFA completed warm-up.")
 
     def train_elastic_width(self, model, ofa_model):
@@ -601,11 +601,11 @@ class OFANasTrainer(NASTrainerBase):
     ):
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
-        model.reset_validaton_model()
+        model.reset_validation_model()
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
-        model.reset_validaton_model()
+        model.reset_validation_model()
 
         metrics_csv += metrics_output
         results = validation_results[0]
@@ -655,7 +655,7 @@ class OFANasTrainer(NASTrainerBase):
 
     def eval_random_combination(self, lightning_model, model):
         # sample a few random combinations
-        model.reset_validaton_model()
+        model.reset_validation_model()
         random_eval_number = self.random_eval_number
         prev_max_kernel = model.sampling_max_kernel_step
         prev_max_depth = model.sampling_max_depth_step
