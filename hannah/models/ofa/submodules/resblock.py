@@ -1,5 +1,5 @@
 import torch.nn as nn
-from .elasticwidthmodules import ElasticWidthBatchnorm1d
+from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elastickernelconv import (
     ElasticConv1d,
     ElasticConvBn1d,

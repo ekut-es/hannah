@@ -7,14 +7,12 @@ import math
 import torch
 from ..utilities import (
     conv1d_get_padding,
-    filter_primary_module_weights,
     filter_single_dimensional_weights,
-    # set_weight_maybe_bias_grad,
-    sub_filter_start_end,
 )
 from .elasticchannelhelper import SequenceDiscovery
-from .elasticwidthmodules import ElasticWidthBatchnorm1d, ElasticPermissiveReLU
-from .elastickernelconv import ElasticBase1d
+from .elasticBatchnorm import ElasticWidthBatchnorm1d
+from .elasticLinear import ElasticPermissiveReLU
+from .elasticBase import ElasticBase1d
 from ...factory import qat
 
 from torch.nn import init
@@ -66,7 +64,7 @@ class _ElasticConvBnNd(
         self.freeze_bn = freeze_bn if self.training else True
         self.bn = nn.ModuleList()
         self.bn.append(
-            nn.BatchNorm1d(
+            ElasticWidthBatchnorm1d(
                 out_channels,
                 eps=eps,
                 momentum=momentum,
@@ -144,7 +142,12 @@ class _ElasticConvBnNd(
         )
         scale_factor = self.bn[self.target_kernel_index].weight / running_std
 
-        return scale_factor
+        if all(self.out_channel_filter):
+            return scale_factor
+        else:
+            return filter_single_dimensional_weights(
+                scale_factor, self.out_channel_filter
+            )
 
     @property
     def scaled_weight(self):
@@ -167,6 +170,7 @@ class _ElasticConvBnNd(
 
         scale_factor = self.scale_factor
         scaled_weight = self.scaled_weight
+
         # using zero bias here since the bias for original conv
         # will be added later
         if self.bias is not None:
@@ -176,20 +180,41 @@ class _ElasticConvBnNd(
         kernelsize = self.kernel_sizes[self.target_kernel_index]
         self.dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(kernelsize, self.dilation)
+        if not all(self.out_channel_filter):
+            zero_bias = filter_single_dimensional_weights(
+                zero_bias, self.out_channel_filter
+            )
         conv = self._real_conv_forward(input, scaled_weight, zero_bias)
         if self.training:
             conv_orig = conv / scale_factor.reshape(bias_shape)
-            if self.bias is not None:
+            if self.bias is not None and all(self.out_channel_filter):
                 conv_orig = conv_orig + self.bias.reshape(bias_shape)
+            elif self.bias is not None and not all(self.out_channel_filter):
+                tmpbias = filter_single_dimensional_weights(
+                    self.bias, self.out_channel_filter
+                )
+                conv_orig = conv_orig + tmpbias.reshape(bias_shape)
             conv = self.bn[self.target_kernel_index](conv_orig)
             # conv = conv - (self.bn.bias - self.bn.running_mean).reshape(bias_shape)
         else:
             bias = zero_bias
             if self.bias is not None:
                 _, bias = self.get_kernel()
+                bias = filter_single_dimensional_weights(bias, self.out_channel_filter)
+            bn_rmean = self.bn[self.target_kernel_index].running_mean
+            bn_bias = self.bn[self.target_kernel_index].bias
+
+            if not all(self.out_channel_filter):
+
+                bn_rmean = filter_single_dimensional_weights(
+                    bn_rmean, self.out_channel_filter
+                )
+                bn_bias = filter_single_dimensional_weights(
+                    bn_bias, self.out_channel_filter
+                )
+
             bias = self.bias_fake_quant(
-                (bias - self.bn[self.target_kernel_index].running_mean) * scale_factor
-                + self.bn[self.target_kernel_index].bias
+                (bias - bn_rmean) * scale_factor + bn_bias
             ).reshape(bias_shape)
             conv = conv + bias
 
@@ -336,7 +361,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
-        dilation_sizes: list[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
         groups: int = 1,
@@ -430,7 +455,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         return y
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_conv1d(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -454,14 +479,6 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
-    # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
-        return copy.deepcopy(self.get_basic_conv1d())
-
-    def set_out_channel_filter(self, out_channel_filter):
-        if out_channel_filter is not None:
-            self.out_channel_filter = out_channel_filter
-
 
 class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
 
@@ -472,7 +489,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
-        dilation_sizes: list[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
         groups: int = 1,
@@ -568,7 +585,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         return y
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_conv1d(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -592,14 +609,6 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
-    # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
-        return copy.deepcopy(self.get_basic_conv1d())
-
-    def set_out_channel_filter(self, out_channel_filter):
-        if out_channel_filter is not None:
-            self.out_channel_filter = out_channel_filter
-
 
 class ElasticQuantConvBn1d(_ElasticConvBnNd):
     def __init__(
@@ -607,7 +616,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
-        dilation_sizes: list[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
         groups: int = 1,
@@ -630,11 +639,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         )
         self.out_quant = out_quant
 
-    def set_out_channel_filter(self, out_channel_filter):
-        if out_channel_filter is not None:
-            self.out_channel_filter = out_channel_filter
-            self.bn.channel_filter = out_channel_filter
-
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
@@ -651,14 +655,14 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_conv1d(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.ConvBn1d(
-            self.in_channels,
-            self.out_channels,
+            kernel.shape[1],
+            kernel.shape[0],
             kernel_size,
             self.stride,
             padding,
@@ -672,21 +676,16 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         )
         new_conv.weight.data = kernel
         new_conv.bias = bias
+        tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
 
-        new_conv.bn.weight = self.bn[self.target_kernel_index].weight
-        new_conv.bn.bias = self.bn[self.target_kernel_index].bias
-        new_conv.bn.running_var = self.bn[self.target_kernel_index].running_var
-        new_conv.bn.running_mean = self.bn[self.target_kernel_index].running_mean
-        new_conv.bn.num_batches_tracked = self.bn[
-            self.target_kernel_index
-        ].num_batches_tracked
+        new_conv.bn.weight = tmp_bn.weight
+        new_conv.bn.bias = tmp_bn.bias
+        new_conv.bn.running_var = tmp_bn.running_var
+        new_conv.bn.running_mean = tmp_bn.running_mean
+        new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
-
-    # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
-        return copy.deepcopy(self.get_basic_conv1d())
 
 
 class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
@@ -695,7 +694,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         in_channels: int,
         out_channels: int,
         kernel_sizes: List[int],
-        dilation_sizes: list[int],
+        dilation_sizes: List[int],
         stride: int = 1,
         padding: int = 0,
         groups: int = 1,
@@ -720,11 +719,6 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
 
         self.relu = ElasticPermissiveReLU()
 
-    def set_out_channel_filter(self, out_channel_filter):
-        if out_channel_filter is not None:
-            self.out_channel_filter = out_channel_filter
-            self.bn.channel_filter = out_channel_filter
-
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
@@ -737,14 +731,14 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         return self.activation_post_process(self.relu(y))
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_conv1d(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.ConvBnReLU1d(
-            self.in_channels,
-            self.out_channels,
+            kernel.shape[1],
+            kernel.shape[0],
             kernel_size,
             self.stride,
             padding,
@@ -758,18 +752,13 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         )
         new_conv.weight.data = kernel
         new_conv.bias = bias
+        tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
 
-        new_conv.bn.weight = self.bn[self.target_kernel_index].weight
-        new_conv.bn.bias = self.bn[self.target_kernel_index].bias
-        new_conv.bn.running_var = self.bn[self.target_kernel_index].running_var
-        new_conv.bn.running_mean = self.bn[self.target_kernel_index].running_mean
-        new_conv.bn.num_batches_tracked = self.bn[
-            self.target_kernel_index
-        ].num_batches_tracked
+        new_conv.bn.weight = tmp_bn.weight
+        new_conv.bn.bias = tmp_bn.bias
+        new_conv.bn.running_var = tmp_bn.running_var
+        new_conv.bn.running_mean = tmp_bn.running_mean
+        new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
 
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
-
-    # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
-        return copy.deepcopy(self.get_basic_conv1d())

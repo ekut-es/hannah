@@ -7,7 +7,7 @@ epochs_dilation_step: 35
 elastic_kernels_allowed: True
 elastic_depth_allowed: True
 elastic_dilation_allowed: True
-elastic_width_allowed: False
+elastic_width_allowed: True
 evaluate: True
 random_evaluate: True
 random_eval_number: 100
