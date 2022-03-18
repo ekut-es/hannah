@@ -847,8 +847,7 @@ class NetworkFactory:
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:
-        # FIXME: correctly handle dilation
-        padding = kernel_size // 2
+        padding = (((kernel_size-1)*_dilation)+1) // 2
         return padding
 
 
