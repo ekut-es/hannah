@@ -1,6 +1,8 @@
 import importlib
 import pathlib
 import shutil
+
+from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 from pytorch_lightning.utilities.distributed import rank_zero_only
 import torch
 import torch.nn as nn
