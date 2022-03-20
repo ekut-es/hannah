@@ -170,33 +170,38 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         else:
             estimator = MacSummaryCallback()
 
-        model = instantiate(
-            config.module,
-            dataset=config.dataset,
-            model=config.model,
-            optimizer=config.optimizer,
-            features=config.features,
-            scheduler=config.get("scheduler", None),
-            normalizer=config.get("normalizer", None),
-            _recursive_=False,
-        )
-        model.setup("train")
-        estimated_metrics = estimator.estimate(model)
-
-        satisfied_bounds = []
-        for k, v in estimated_metrics.items():
-            if k in self.bounds:
-                distance = v / self.bounds[k]
-                msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
-                satisfied_bounds.append(distance <= 1.2)
-
-        worklist_item = WorklistItem(parameters, estimated_metrics)
-
-        if self.presample:
-            if all(satisfied_bounds):
-                self.worklist.append(worklist_item)
+        try:
+            model = instantiate(
+                config.module,
+                dataset=config.dataset,
+                model=config.model,
+                optimizer=config.optimizer,
+                features=config.features,
+                scheduler=config.get("scheduler", None),
+                normalizer=config.get("normalizer", None),
+                _recursive_=False,
+            )
+            model.setup("train")
+        except AssertionError as e:
+            msglogger.critical("Instantion failed. Probably #input/output channels are not divisable by #groups!")
+            msglogger.critical(str(e))
         else:
-            self.worklist.append(worklist_item)
+            estimated_metrics = estimator.estimate(model)
+
+            satisfied_bounds = []
+            for k, v in estimated_metrics.items():
+                if k in self.bounds:
+                    distance = v / self.bounds[k]
+                    msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
+                    satisfied_bounds.append(distance <= 1.2)
+
+            worklist_item = WorklistItem(parameters, estimated_metrics)
+
+            if self.presample:
+                if all(satisfied_bounds):
+                    self.worklist.append(worklist_item)
+            else:
+                self.worklist.append(worklist_item)
 
     def run(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
