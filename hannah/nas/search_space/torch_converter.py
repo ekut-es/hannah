@@ -83,7 +83,6 @@ class TorchConverter:
                                          kwargs=node.kwargs)
 
                 symops[node.name] = symop
-                print(symop)
             if node.name in symops:
                 space.add_node(symops[node.name])
                 inputs = node.all_input_nodes
