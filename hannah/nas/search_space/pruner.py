@@ -29,8 +29,9 @@ class Pruner:
         self.invalid_paths = np.zeros((1, len(self.flatten_config_dims.keys())))
         self.valid = 0
         self.invalid = 0
+        self.valid_configs = []
 
-    def prune(self, x):
+    def prune(self, x, exclude_keys=[]):
         self.outputs = {'input': x}
         self.ctx = Context(config=self.current_config)
 
@@ -39,6 +40,8 @@ class Pruner:
             print(' {} - {}'.format(self.valid, self.invalid), list(flatten_config(self.current_config).values()), end='\r', flush=True)
             if node.name in self.config_dims:
                 for key, values in self.config_dims[node.name].items():
+                    if key in exclude_keys:
+                        continue
                     for val in values:
                         self.current_config[node.name][key] = val
                         self.ctx.set_cfg(cfg=self.current_config)
@@ -48,6 +51,7 @@ class Pruner:
                             _prune(self.node_queue[self.node_order_full[node.name] + 1])
                         elif passed and self.node_order_full[node.name] == len(self.node_queue) - 1:
                             self.valid += 1
+                            self.valid_configs.append(self.current_config)
                         else:
                             self.invalid += 1
             else:
@@ -56,6 +60,7 @@ class Pruner:
                     _prune(self.node_queue[self.node_order_full[node.name] + 1])
                 elif passed and self.node_order_full[node.name] == len(self.node_queue) - 1:
                     self.valid += 1
+                    self.valid_configs.append(self.current_config)
                 else:
                     self.invalid += 1
 
@@ -148,7 +153,7 @@ def main(config: DictConfig):
 
     space = TCResNetSpace(config, parameterization=True)
     pruner = Pruner(space)
-    cfg = get_random_cfg(space.get_config_dims())
+    # cfg = get_random_cfg(space.get_config_dims())
     x = torch.ones([1, 40, 101])
     pruner.prune(x)
 
