@@ -38,6 +38,19 @@ class SymbolicOperator:
     def update_name(self, new_name):
         self.name = new_name
 
+    def update_parameters(self, **kwargs):
+        for k, v in kwargs.items():
+            if not isinstance(v, Parameter):
+                v = Constant(str(k), v)
+            self.params[k] = v
+
+    # def fan_out(self):
+    #     for k, v in self.params.items():
+    #         try:
+    #             dims = v.get_config_dims()
+    #         except Exception:
+    #             pass
+
     def __repr__(self):
         return 'SymOp {}'.format(self.name)
 
@@ -102,6 +115,9 @@ class Variable(Parameter):
     def infer(self, mod, ctx):
         return self.func(self, mod, ctx)
 
+    def __repr__(self) -> str:
+        return "Variable: {}".format(self.func)
+
 
 class Constant(Parameter):
     def __init__(self, name, value) -> None:
@@ -110,6 +126,9 @@ class Constant(Parameter):
 
     def get(self, mod, ctx):
         return self.value
+
+    def __repr__(self) -> str:
+        return "Constant: {}".format(self.value)
 
 
 class FloatRange(Parameter):
