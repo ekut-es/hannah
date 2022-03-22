@@ -5,7 +5,7 @@ import hydra
 from omegaconf import DictConfig
 from hannah.nas.search_space.symbolic_operator import Context
 import torch.nn as nn
-from hannah.nas.search_space.utils import get_random_cfg
+from hannah.nas.search_space.utils import get_random_cfg, flatten_config
 
 
 class SymbolicConstrainer:
@@ -13,10 +13,9 @@ class SymbolicConstrainer:
         self.space = space
         self.solution = None
 
-    def constrain_output_channels(self, cfg):
+    def constrain_output_channels(self, cfg, set_to_values={}):
         constraints = []
         sym_map = {}
-
         for node in self.space.nodes:
             name = '{}_{}'.format(node.name, 'out_channels')
             sym_map[name] = symbols(name, integer=True)
@@ -33,6 +32,9 @@ class SymbolicConstrainer:
                 constraints.append(sym_map[name] - sym_map[channel_names[0]])  # outputchannels are unchanged
             elif node.target_cls == nn.Conv1d:
                 pass
+
+        for key, value in set_to_values.items():
+            constraints.append(sym_map[key] - value)
 
         cfg_dims = self.space.get_config_dims()
         sol = solve(constraints)
@@ -59,8 +61,21 @@ def main(config: DictConfig):
     constrainer = SymbolicConstrainer(space)
     cfg = get_random_cfg(space.get_config_dims())
     cfg = constrainer.constrain_output_channels(cfg)
+    values = list(flatten_config(cfg).values())
+    print(values)
     ctx = Context(cfg)
     x = torch.ones([1, 40, 101])
+    instance, out = space.infer_parameters(x, ctx, verbose=True)
+    print(out.shape)
+
+    # cfg['layers_1_downsample_0']['out_channels'] = 98
+    # values = list(flatten_config(ctx.config).values())
+    # print(values)
+    # cfg = constrainer.constrain_output_channels(cfg, set_to_values={'layers_1_downsample_0_out_channels': 122})
+    cfg = constrainer.constrain_output_channels(cfg, set_to_values={'layers_1_convs_3_out_channels': 67})
+    ctx = Context(cfg)
+    values = list(flatten_config(ctx.config).values())
+    print(values)
     instance, out = space.infer_parameters(x, ctx, verbose=True)
     print(out.shape)
 
