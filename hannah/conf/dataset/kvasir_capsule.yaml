@@ -34,10 +34,9 @@ augmentations:
             Equalize : 0.5
     mixup_args:
         mixup_alpha: 0.0    # interval(0.0,1.0)
-        cutmix_alpha: 1.0   # interval(0.0,1.0)
+        cutmix_alpha: 0.0   # interval(0.0,1.0)
         cutmix_minmax:      # cutmix min/max ratio, overrides alpha and enables cutmix if set (default is None)
-        prob: 1.0           # Probability of performing mixup or cutmix when either/both is enabled
+        prob: 0.0           # Probability of performing mixup or cutmix when either/both is enabled
         switch_prob: 0.0    # Probability of switching to cutmix when both mixup and cutmix enabled
-        mode: pair         # batch, pair or elem - wise
+        mode: pair          # batch, pair or elem - wise
         label_smoothing : 0
-        num_classes: 11
