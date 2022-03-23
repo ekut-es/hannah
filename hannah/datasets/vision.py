@@ -17,7 +17,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 from .base import AbstractDataset
 
 from .utils import csv_dataset
-
+from hannah.modules.augmentation import rand_augment
 
 logger = logging.getLogger(__name__)
 
@@ -163,11 +163,13 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         self.class_to_idx = class_to_idx
 
     def __getitem__(self, index):
-        image, target = self.dataset[index]
-        # image = csv_dataset.pil_loader(image)
+        data, target = self.dataset[index]
+        # data = np.array(data)
+        # if self.transform:
+        #     data = self.transform(image=data)["image"]
         if self.transform:
-            image = self.transform(image)
-        return image, target
+            data = self.transform(data)
+        return data, target
 
     def __len__(self):
         return len(self.dataset)
@@ -262,12 +264,30 @@ class KvasirCapsuleDataset(VisionDatasetBase):
                 transforms.Resize(256),
                 transforms.CenterCrop(256),
                 transforms.Resize(224),
-                # transforms.RandAugment(config.augmentations.rand_augment.N, config.augmentations.rand_augment.M),
-                # transforms.TrivialAugmentWide(config.augmentations.trivial_augment_wide.M),
+                # transforms.RandomHorizontalFlip(),
+                # transforms.RandomVerticalFlip(),
+                # transforms.RandomRotation(90),
+                rand_augment.RandAugment(
+                    config.augmentations.rand_augment.N,
+                    config.augmentations.rand_augment.M,
+                    config=config,
+                ),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
             ]
         )
+
+        # train_transform = A.Compose([
+        #         A.Resize(256,256) ,
+        #         A.CenterCrop(256,256),
+        #         A.Resize(224,224),
+        #         A.HorizontalFlip(),
+        #         A.VerticalFlip(),
+        #         A.RandomRotate90(),
+        #         A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
+        #         ToTensorV2(),
+        #     ]
+        # )
 
         val_transofrm = transforms.Compose(
             [
@@ -279,6 +299,15 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             ]
         )
 
+        # val_transofrm = A.Compose([
+        #         A.Resize(256,256) ,
+        #         A.CenterCrop(256,256) ,
+        #         A.Resize(224,224),
+        #         A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
+        #         ToTensorV2(),
+        # ]
+        # )
+
         test_transofrm = transforms.Compose(
             [
                 transforms.Resize(256),
@@ -289,31 +318,56 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             ]
         )
 
+        # test_transofrm = A.Compose([
+        #         A.Resize(256,256) ,
+        #         A.CenterCrop(256,256) ,
+        #         A.Resize(224,224),
+        #         A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
+        #         ToTensorV2(),
+        #         ]
+        # )
+
         train_val_set = csv_dataset.DatasetCSV(
             config.train_val_split, data_root, transform=None
         )
         test_set = csv_dataset.DatasetCSV(config.test_split, data_root, transform=None)
-        train_val_len = len(train_val_set)
+
+        # train_val_len = len(train_val_set)
+        # split_sizes = [
+        #     int(train_val_len * config.train_percent),
+        #     int(train_val_len * config.val_percent),
+        # ]
+        # # split_1 has odd number
+        # if train_val_len != split_sizes[0] + split_sizes[1]:
+        #     split_sizes[0] = split_sizes[0] + 1
+
+        # # train_set, val_set = data.random_split(train_val_set, split_sizes)
+        # train_val_splits, train_indices, val_indices = csv_dataset.random_split(
+        #     train_val_set, split_sizes
+        # )
+        # train_set = train_val_splits[0]
+        # val_set = train_val_splits[1]
+        # test_indices = [i for i in range(len(test_set.imgs))]
+
+        test_val_len = len(test_set)
         split_sizes = [
-            int(train_val_len * config.train_percent),
-            int(train_val_len * config.val_percent),
+            int(test_val_len * config.test_percent),
+            int(test_val_len * config.val_percent),
         ]
-
-        # split_1 has odd number
-        if train_val_len != split_sizes[0] + split_sizes[1]:
+        # # split_1 has odd number
+        if test_val_len != split_sizes[0] + split_sizes[1]:
             split_sizes[0] = split_sizes[0] + 1
-
-        # train_set, val_set = data.random_split(train_val_set, split_sizes)
-        train_val_splits, train_indices, val_indices = csv_dataset.random_split(
-            train_val_set, split_sizes
+        test_val_splits, test_indices, val_indices = csv_dataset.random_split(
+            test_set, split_sizes
         )
-        train_set = train_val_splits[0]
-        val_set = train_val_splits[1]
-        test_indices = [i for i in range(len(test_set.imgs))]
+        test_set = test_val_splits[0]
+        val_set = test_val_splits[1]
+        train_indices = [i for i in range(len(train_val_set.imgs))]
+
         return (
             cls(
                 config,
-                train_set,
+                train_val_set,
                 train_indices,
                 config.train_val_split,
                 transform=train_transform,
@@ -322,14 +376,14 @@ class KvasirCapsuleDataset(VisionDatasetBase):
                 config,
                 val_set,
                 val_indices,
-                config.train_val_split,
+                config.test_val_split,
                 transform=val_transofrm,
             ),
             cls(
                 config,
                 test_set,
                 test_indices,
-                config.test_split,
+                config.test_val_split,
                 transform=test_transofrm,
             ),
         )
@@ -351,6 +405,10 @@ class KvasirCapsuleDataset(VisionDatasetBase):
                 classes_tupels.append((i, None))
         counts = dict(sorted(classes_tupels))
         return counts
+
+    @property
+    def num_classes(self):
+        return len(self.class_counts)
 
     # retuns a list of class index for every sample
     @property
