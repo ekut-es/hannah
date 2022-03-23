@@ -82,7 +82,7 @@ class ImageClassifierModule(ClassifierModule):
         x, y = batch
 
         mixup_args = self.hparams.dataset.augmentations.mixup_args
-        mixup_fn = Mixup(**mixup_args)
+        mixup_fn = Mixup(**mixup_args, num_classes=self.num_classes)
         x, y = mixup_fn(x, y)
 
         if batch_idx == 0:
