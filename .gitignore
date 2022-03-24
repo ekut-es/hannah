@@ -64,3 +64,5 @@ nas_results/
 
 #exclude datasets as file for symlinks
 datasets
+
+tmp/
