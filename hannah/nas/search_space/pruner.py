@@ -81,9 +81,6 @@ class Pruner:
                     if key in exclude_keys:
                         continue
                     for val in values:
-                        self.current_config[node.name][key] = val
-                        self.ctx.set_cfg(cfg=self.current_config)
-
                         passed = self.process_node(node)
                         if passed and self.node_order_full[node.name] < len(self.node_queue) - 1:
                             _search(self.node_queue[self.node_order_full[node.name] + 1])
@@ -92,6 +89,9 @@ class Pruner:
                             raise Exception("Catch this exception to end search")
                         else:
                             self.invalid += 1
+
+                        self.current_config[node.name][key] = val
+                        self.ctx.set_cfg(cfg=self.current_config)
 
             else:
                 passed = self.process_node(node)
