@@ -62,7 +62,7 @@ test_tvm:
     - ./scripts/build_full.sh
     - popd
     - poetry install -E tvm-backend
-    - python3 -m pytest  -v --cov=hannah test
+    - python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
     - pydoc-markdown --build --site-dir _build
   tags:
     - docker
