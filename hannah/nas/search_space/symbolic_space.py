@@ -1,6 +1,6 @@
 import networkx as nx
 import torch.nn as nn
-import traceback
+# import traceback
 
 
 class Space(nx.DiGraph):
@@ -8,11 +8,11 @@ class Space(nx.DiGraph):
         super().__init__(incoming_graph_data, **attr)
         self.cfg_options = {}
 
-    def infer_parameters(self, x, ctx):
+    def infer_parameters(self, x, ctx, verbose=False):
         names = {}
 
         def _traverse(node, input):
-            # print(" Traverse node", node)
+            # print("Traverse node", node)
             in_edges = self.in_edges(node)
             # print(len(in_edges))
             if len(in_edges) > 0:
@@ -27,18 +27,21 @@ class Space(nx.DiGraph):
                     args = args[0]
                 try:
                     ctx.set_input(args)
+                    # print("     Instantiate {}".format(node))
                     mod = node.instantiate(ctx)
                     names[node.name] = mod
                     ctx.relabel_dict[node] = mod
                     out = mod(args)
                     ctx.outputs[node] = out
                 except Exception as e:
-                    print(node)
-                    print(len(args))
-                    print(str(e))
-                    print(traceback.format_exc())
+                    if verbose:
+                        print(node)
+                        # print(len(args))
+                        print(str(e))
+                        # print(traceback.format_exc())
             else:
                 ctx.set_input(input)
+                # print("     Instantiate {}".format(node))
                 mod = node.instantiate(ctx)
                 names[node.name] = mod
                 ctx.relabel_dict[node] = mod
