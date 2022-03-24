@@ -1,0 +1,25 @@
+_target_: hannah.models.factory.factory.create_cnn
+name: test_net_1layer
+norm:
+  target: bn
+act:
+  target: relu
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 8
+    bw_w: 6
+    bw_f: 8
+    power_of_2: false  # Use power of two quantization for weights
+    noise_prob: 0.7   # Probability of quantizing a value during training
+conv:
+  - target: forward
+    stride: 1
+    blocks:
+      - target: conv1d
+        kernel_size: 3
+        padding: false
+        act: false
+        norm: true
+        bias: false
+        out_channels: 16
