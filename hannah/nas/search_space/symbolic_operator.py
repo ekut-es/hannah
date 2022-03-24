@@ -1,6 +1,7 @@
 from copy import deepcopy
 from abc import ABC
 import torch
+from hannah.nas.search_space.utils import get_same_padding
 
 
 class SymbolicOperator:
@@ -206,10 +207,11 @@ def keep_channels(parameter, op, ctx):
 
 def infer_padding(parameter, op, ctx):
     stride = op.params['stride'].get(op, ctx)
+    kernel_size = op.params['kernel_size'].get(op, ctx)
     if stride == 1:
         padding = 'same'
     elif stride == 2:
-        padding = 0
+        padding = get_same_padding(kernel_size)
     return padding
 
 
