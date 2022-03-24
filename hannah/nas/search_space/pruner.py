@@ -6,7 +6,7 @@ import networkx as nx
 import numpy as np
 
 from hannah.nas.search_space.tcresnet.tcresnet_space import TCResNetSpace
-from hannah.nas.search_space.utils import flatten_config, get_first_cfg, get_random_cfg
+from hannah.nas.search_space.utils import flatten_config, get_first_cfg
 
 
 class Pruner:
@@ -31,8 +31,10 @@ class Pruner:
         self.invalid = 0
         self.valid_configs = []
 
-    def prune(self, x, exclude_keys=[]):
+    def prune(self, x, cfg=None, exclude_keys=[]):
         self.outputs = {'input': x}
+        if cfg:
+            self.current_config = cfg
         self.ctx = Context(config=self.current_config)
 
         def _prune(node):
@@ -67,7 +69,7 @@ class Pruner:
         _prune(self.node_queue[0])
         # print('{} - {}'.format(valid, invalid), end='\r', flush=True)
 
-    def find_next_valid_config(self, x, config):
+    def find_next_valid_config(self, x, config, exclude_keys=[]):
         self.outputs = {'input': x}
         self.current_config = config
         self.ctx = Context(config=self.current_config)
@@ -76,6 +78,8 @@ class Pruner:
             print(' {} - {}'.format(self.valid, self.invalid), end='\r', flush=True)
             if node.name in self.config_dims:
                 for key, values in self.config_dims[node.name].items():
+                    if key in exclude_keys:
+                        continue
                     for val in values:
                         self.current_config[node.name][key] = val
                         self.ctx.set_cfg(cfg=self.current_config)
