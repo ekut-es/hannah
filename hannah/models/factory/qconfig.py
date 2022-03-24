@@ -128,7 +128,7 @@ class PowerOf2Quantization:
         # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0)
         # is occupied by the weight value 0. But seems to have no negative
         # effect on the contrary this raises the accuracy.
-        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
+        log_x = torch.clamp(log_x, -(2 ** (self.bits - 1)) + 1, -1.0)
         return log_x * sign_x * mask_x
 
         return log_x
@@ -192,8 +192,11 @@ class STEQuantize(FakeQuantizeBase):
 
         self.quantization_loss = torch.zeros(1)
 
-    def forward(self, x):
+    @property
+    def scale(self):
+        return self.quantization_function.scale
 
+    def forward(self, x):
         quantized_x = STE.apply(x, self.quantization_function)
         if self.noise_prob < 1.0 and self.training:
             mask = torch.bernoulli(
@@ -214,7 +217,7 @@ class STEQuantize(FakeQuantizeBase):
         )
 
     def extra_repr(self):
-        return f"(bits={self.bits} noise_prob={self.noise_prob}, )"
+        return f"(dtype={self.dtype} bits={self.bits} noise_prob={self.noise_prob}, rounding_mode={self.rounding_mode})"
 
 
 def get_trax_qat_qconfig(config):
