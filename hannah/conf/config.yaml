@@ -15,6 +15,7 @@ defaults:
     - pruning: null
     - optional dataset/features: ${dataset}_${features}
     - override hydra/job_logging: silent
+    - _self_
 
 experiment_id: test
 output_dir: trained_models

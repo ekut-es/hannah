@@ -90,6 +90,7 @@ class MajorBlockConfig:
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
     stride: Optional[int] = None  # Union[None, int, Tuple[int], Tuple[int, int]]
+    last: bool = False  # Indicates wether this block is the last reduction block
 
 
 @dataclass
@@ -543,7 +544,9 @@ class NetworkFactory:
 
         return result_chain
 
-    def _build_reduction(self, reduction, input_shape, *input_chains):
+    def _build_reduction(
+        self, reduction, input_shape, *input_chains, reduction_quant=True
+    ):
         output_shapes = []
         for chain in input_chains:
             output_shapes.append(chain[-1][0] if len(chain) > 0 else input_shape)
@@ -603,8 +606,11 @@ class NetworkFactory:
         inputs = [nn.Sequential(*[x[1] for x in chain]) for chain in input_chains]
         if reduction == "add":
             reduction = ReductionBlockAdd(*inputs)
-            reduction_quant = self.identity()
-            return target_output_shape, nn.Sequential(reduction, reduction_quant)
+            if reduction_quant:
+                reduction_quant = self.identity()
+                return target_output_shape, nn.Sequential(reduction, reduction_quant)
+            else:
+                return target_output_shape, nn.Sequential(reduction)
         elif reduction == "concat":
             output_channels = sum((x[1] for x in output_shapes))
 
@@ -627,6 +633,8 @@ class NetworkFactory:
 
         for block_config in config.blocks:
             main_configs.append(block_config)
+
+        main_configs[-1].out_quant = False
 
         main_chain = self._build_chain(input_shape, main_configs, config.stride)
         output_shape = main_chain[-1][0]
@@ -685,7 +693,11 @@ class NetworkFactory:
         residual_chain = self._build_chain(input_shape, residual_configs, config.stride)
 
         output_shape, major_block = self._build_reduction(
-            config.reduction, input_shape, main_chain, residual_chain
+            config.reduction,
+            input_shape,
+            main_chain,
+            residual_chain,
+            reduction_quant=False if config.last else True,
         )
 
         return output_shape, major_block
@@ -789,6 +801,7 @@ class NetworkFactory:
         )
 
         conv_layers = []
+        network_config.conv[-1].last = True
         for block in network_config.conv:
             input_shape, block_model = self.major(input_shape, block)
             conv_layers.append(block_model)

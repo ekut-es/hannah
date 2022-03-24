@@ -65,4 +65,7 @@ nas_results/
 #exclude datasets as file for symlinks
 datasets
 
+# Delete tmp
 tmp/
+.python_history
+.bash_history
