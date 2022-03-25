@@ -2,6 +2,7 @@ from copy import deepcopy
 from abc import ABC
 import torch
 from hannah.nas.search_space.utils import get_same_padding
+from sympy import solve, symbols, floor, ceiling
 
 
 class SymbolicOperator:
@@ -213,6 +214,19 @@ def infer_padding(parameter, op, ctx):
     elif stride == 2:
         padding = get_same_padding(kernel_size)
     return padding
+
+
+def infer_padding_symbolic(parameter, op, ctx):
+    out, stride, kernel_size, pad, dil, inp = symbols('out stride kernel_size pad dil inp', integer=True)
+
+    constraints = [out - floor(((inp + 2 * pad - dil * (kernel_size - 1) - 1) / stride) + 1),   # general output size formula
+                   out - ceiling(inp / stride),                                                 # output must be same or half size of input
+                   stride - op.params['stride'].get(op, ctx),
+                   kernel_size - op.params['kernel_size'].get(op, ctx),
+                   inp - ctx.input.shape[2],                                                    # note the dimension, non-square 2d inputs not supported
+                   dil - op.params['dilation'].get(op, ctx)]
+    sol = solve(constraints, dict=True)
+    return sol[0][pad]
 
 
 def multiply_by_stem(parameter, op, ctx):
