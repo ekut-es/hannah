@@ -1,7 +1,7 @@
 defaults:
     - dataset: kws
     - features: mfcc
-    - model: conv-net-trax
+    - model: ofa
     - scheduler: 1cycle
     - optimizer: sgd
     - normalizer: fixedpoint
@@ -13,15 +13,15 @@ defaults:
     - early_stopping: null
     - profiler: null
     - pruning: null
-    - optional dataset/features: ${dataset}_${features}
-    - override hydra/job_logging: silent
+    - nas: ofa_nas
+    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
+      optional: true
 
-experiment_id: test
+experiment_id: nas_ofa
 output_dir: trained_models
 auto_lr: false
 print_metrics: false
 data_monitor: false
-resume: false
 
 seed: [1234]
 

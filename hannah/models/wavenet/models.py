@@ -26,7 +26,6 @@
 import torch
 import torch.nn as nn
 import math
-from ...utils import SerializableModule
 
 
 class Conv(nn.Module):
@@ -70,7 +69,7 @@ class Conv(nn.Module):
         return self.conv(signal)
 
 
-class WaveNet(SerializableModule):
+class WaveNet(nn.Module):
     def __init__(self, config):
         super(WaveNet, self).__init__()
         self.non_causal_layers_per_layer = config["non_causal_layers_per_layer"]

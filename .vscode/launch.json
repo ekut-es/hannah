@@ -18,6 +18,19 @@
             ]
         },
         {
+            "name": "ofa",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "module.num_workers=8",
+                "model=ofa_quant"
+            ]
+        },
+        {
             "name": "multi_gpu",
             "type": "python",
             "request": "launch",

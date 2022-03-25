@@ -189,7 +189,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
 
     @classmethod
     def prepare(cls, config):
-        download_folder = os.path.join(config.data_folder, "download")
+        download_folder = os.path.join(config.data_folder, "downloads")
         extract_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
