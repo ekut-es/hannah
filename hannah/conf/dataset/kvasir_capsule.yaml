@@ -33,7 +33,7 @@ augmentations:
             AutoContrast : 0.5
             Equalize : 0.5
     mixup_args:
-        mixup_alpha: 0.0    # interval(0.0,1.0)
+        mixup_alpha: 0.1    # interval(0.0,1.0)
         cutmix_alpha: 0.0   # interval(0.0,1.0)
         cutmix_minmax:      # cutmix min/max ratio, overrides alpha and enables cutmix if set (default is None)
         prob: 0.0           # Probability of performing mixup or cutmix when either/both is enabled
