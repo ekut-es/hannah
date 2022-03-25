@@ -27,7 +27,7 @@ def main(config: DictConfig):
     print("After channel constrainer")
     print(values)
     x = torch.ones([1, 40, 101])
-    pruner.find_next_valid_config(x, cfg, exclude_keys=['out_channels', 'kernel_size'])
+    cfg = pruner.find_next_valid_config(x, cfg, exclude_keys=['out_channels', 'kernel_size', 'dilation'])
     values = list(flatten_config(cfg).values())
     print("After pruner")
     print(values)
