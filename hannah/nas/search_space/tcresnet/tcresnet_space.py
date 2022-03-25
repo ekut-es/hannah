@@ -1,5 +1,5 @@
 from hannah.nas.search_space.symbolic_space import Space
-from hannah.nas.search_space.symbolic_operator import Context, Choice, Variable, infer_in_channel, infer_padding
+from hannah.nas.search_space.symbolic_operator import Context, Choice, Variable, infer_in_channel, infer_padding_symbolic
 import hydra
 from omegaconf import DictConfig
 from hydra.utils import instantiate
@@ -26,13 +26,15 @@ class TCResNetSpace(Space):
                 if 'kernel_size' in symop.params:
                     attrs['kernel_size'] = Choice('kernel_size', 1, 3, 5)
                 if 'padding' in symop.params:
-                    attrs['padding'] = Variable('padding', func=infer_padding)
+                    attrs['padding'] = Variable('padding', func=infer_padding_symbolic)
                 if 'stride' in symop.params:
-                    attrs['stride'] = Choice('stride', 1)
+                    attrs['stride'] = Choice('stride', 1, 2)
+                if 'dilation' in symop.params:
+                    attrs['dilation'] = Choice('dilation', 1, 3, 9)
                 if 'in_channels' in symop.params:
                     attrs['in_channels'] = Variable('in_channels', func=infer_in_channel)
                 if 'out_channels' in symop.params:
-                    attrs['out_channels'] = Choice('out_channels', *range(8, 128, 8))
+                    attrs['out_channels'] = Choice('out_channels', *range(4, 512, 4))
                 if 'num_features' in symop.params:  # and "BatchNorm" in str(symop.target_cls):
                     attrs['num_features'] = Variable('num_features', func=infer_in_channel)
                 if 'in_features' in symop.params:  # and "BatchNorm" in str(symop.target_cls):
