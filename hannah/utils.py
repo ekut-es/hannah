@@ -1,43 +1,43 @@
 import importlib
-import pathlib
-import shutil
-from pytorch_lightning.utilities.distributed import rank_zero_only
-import torch
-import torch.nn as nn
-import numpy as np
 import logging
 import os
-import sys
+import pathlib
 import platform
-import nvsmi
-import time
 import random
+import shutil
+import sys
+import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable
 
-from git import Repo, InvalidGitRepositoryError
-
-import hydra
+import numpy as np
+import nvsmi
+import pytorch_lightning
+import torch
+import torch.nn as nn
+from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-
+from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+from pytorch_lightning.callbacks import (
+    DeviceStatsMonitor,
+    GPUStatsMonitor,
+    LearningRateMonitor,
+)
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.utilities.distributed import rank_zero_only
 from torchvision.datasets.utils import (
-    list_files,
-    list_dir,
     download_and_extract_archive,
     extract_archive,
+    list_dir,
+    list_files,
 )
 
-from contextlib import contextmanager
+import hydra
 
-import pytorch_lightning
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.callbacks import DeviceStatsMonitor, GPUStatsMonitor
-
-
-from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
+from .callbacks.summaries import MacSummaryCallback
 
 try:
     import lsb_release  # pytype: disable=import-error

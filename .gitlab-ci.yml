@@ -3,7 +3,7 @@ stages:
   - test
   - deploy
   - deploy_test
-  - deploy_run
+  - run
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -209,7 +209,7 @@ deploy_test:
     - docker_container
 
 run_ml_cloud:
-  stage: test
+  stage: run
   image: ubuntu:latest
   before_script:
     - apt update
@@ -232,7 +232,7 @@ run_ml_cloud:
 
 
 run_ml_cloud_lidar:
-  stage: test
+  stage: run
   image: ubuntu:latest
   before_script:
     - apt update

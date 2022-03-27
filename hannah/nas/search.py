@@ -1,30 +1,26 @@
 import logging
-
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
 import os
 import shutil
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict
-import omegaconf
 
+import numpy as np
+import omegaconf
 import torch
 import yaml
-
-from pathlib import Path
-
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
-
 from omegaconf import OmegaConf
-import numpy as np
 from pytorch_lightning import LightningModule
-
-from .aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
-from pytorch_lightning.utilities.seed import seed_everything, reset_seed
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.summaries import MacSummaryCallback
-from ..utils import common_callbacks, clear_outputs, fullname
+from ..utils import clear_outputs, common_callbacks, fullname
+from .aging_evolution import AgingEvolution
 
 msglogger = logging.getLogger("nas")
 
@@ -185,23 +181,41 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         parameters = self.optimizer.next_parameters()
         config = OmegaConf.merge(self.config, parameters.flatten())
 
-        if self.predictor:
-            predicted_metrics = self.predictor.predict(config)
+        try:
+            model = instantiate(
+                config.module,
+                dataset=config.dataset,
+                model=config.model,
+                optimizer=config.optimizer,
+                features=config.features,
+                scheduler=config.get("scheduler", None),
+                normalizer=config.get("normalizer", None),
+                _recursive_=False,
+            )
+            model.setup("train")
+
+        except AssertionError as e:
+            msglogger.critical(
+                "Instantiation failed. Probably #input/output channels are not divisable by #groups!"
+            )
+            msglogger.critical(str(e))
+        else:
+            estimated_metrics = self.predictor.predict(model)
 
             satisfied_bounds = []
-            for k, v in predicted_metrics.items():
+            for k, v in estimated_metrics.items():
                 if k in self.bounds:
                     distance = v / self.bounds[k]
                     msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
                     satisfied_bounds.append(distance <= 1.2)
 
-            worklist_item = WorklistItem(parameters, predicted_metrics)
+            worklist_item = WorklistItem(parameters, estimated_metrics)
 
-            if all(satisfied_bounds):
+            if self.presample:
+                if all(satisfied_bounds):
+                    self.worklist.append(worklist_item)
+            else:
                 self.worklist.append(worklist_item)
-        else:
-            worklist_item = WorklistItem(parameters, {})
-            self.worklist.append(worklist_item)
 
     def run(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
