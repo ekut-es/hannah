@@ -69,6 +69,10 @@ def main():
 if __name__ == '__main__':
     main()
 ```
+
+For a slightly extended visualization script have a look at `scripts/optuna_visualize_results.py` or use [`optuna-dashboard`](https://github.com/optuna/optuna-dashboard) for a web based visualization.
+
+## Resuming Trials
 An additional benefit of exporting the study state to database is that trials can be somewhat resumed at a later time by just restarting the trial with the same parameters.
 Although this has a view problems:
 - The hydra sweeper will start it's job numbering from scratch
