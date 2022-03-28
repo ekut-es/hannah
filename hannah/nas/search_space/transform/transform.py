@@ -32,7 +32,7 @@ class Transformer:
 
     def check_rules(self, node, rules):
         marker = True
-        for rule in rules:
+        for rule in rules[node.target_cls]:
             marker = rule(node)
             if not marker:
                 return marker
@@ -48,7 +48,8 @@ def main(config: DictConfig):
         return True if 'function' in node.params and node.params['function'] == 'add' else False
 
     node_map = {FunctionWrapper: Add}
-    rules = [is_add]
+    rules = {}
+    rules[FunctionWrapper] = [is_add]
 
     transformer.transform_nodes(node_map, rules)
 
