@@ -52,7 +52,7 @@ hannah-train experiment_id="test_optuna_resume" hydra/sweeper=optuna hydra.sweep
 The tuning results can then be visualized using the tools from [`optuna.visualize`](https://optuna.readthedocs.io/en/stable/search.html?q=visualize&check_keywords=yes&area=default#):
 A simple example would be:
 
-``python
+```python
 import optuna
 
 storage = "sqlite:///test_optuna_resume.sqlite"
