@@ -6,13 +6,12 @@ defaults:
     - optimizer: sgd
     - normalizer: fixedpoint
     - module: stream_classifier
-    - compress: null
     - trainer: default
     - checkpoint: default
     - backend: null
     - early_stopping: null
     - profiler: null
-    - pruning: null
+    - compression: null
     - optional dataset/features: ${dataset}_${features}
     - override hydra/job_logging: silent
 
@@ -24,6 +23,7 @@ data_monitor: false
 resume: false
 
 seed: [1234]
+validate_output: False
 
 hydra:
     run:

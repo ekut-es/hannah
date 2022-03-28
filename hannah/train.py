@@ -4,26 +4,27 @@ from pathlib import Path
 import numpy as np
 import shutil
 from collections import defaultdict
-import hydra
-from omegaconf import DictConfig, OmegaConf
+from pathlib import Path
+
+import numpy as np
 import torch
-
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
-from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
-
 from hydra.utils import instantiate
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
+import hydra
 
 from . import conf  # noqa
-from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
+from .callbacks.summaries import MacSummaryCallback
 from .utils import (
-    log_execution_env_state,
     auto_select_gpus,
-    common_callbacks,
     clear_outputs,
+    common_callbacks,
+    log_execution_env_state,
 )
 
 
@@ -47,6 +48,9 @@ def train(config: DictConfig):
     results = []
     if isinstance(config.seed, int):
         config.seed = [config.seed]
+    validate_output = False
+    if hasattr(config, "validate_output") and isinstance(config.validate_output, bool):
+        validate_output = config.validate_output
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
@@ -142,15 +146,24 @@ def train(config: DictConfig):
                     str(expected_ckpt_path),
                 )
         lit_trainer.fit(lit_module, ckpt_path=ckpt_path)
-        ckpt_path = "best"
+
+        if config.get("compression", None) and (
+            config.get("compression").get("clustering", None)
+            or config.get("compression").get("decomposition", None)
+        ):
+            # FIXME: this is a bad workaround
+            lit_trainer.save_checkpoint("last")
+            ckpt_path = "last"
+        else:
+            ckpt_path = "best"
 
         if not lit_trainer.fast_dev_run:
             reset_seed()
-            lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
+            lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
 
             # PL TEST
             reset_seed()
-            lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+            lit_trainer.test(ckpt_path=ckpt_path, verbose=validate_output)
 
             lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
