@@ -6,28 +6,24 @@ defaults:
     - optimizer: sgd
     - normalizer: fixedpoint
     - module: stream_classifier
-    - compress: null
     - trainer: default
     - checkpoint: default
     - backend: null
     - early_stopping: null
     - profiler: null
-    - pruning: null
+    - compression: null
     - optional dataset/features: ${dataset}_${features}
-
 
 experiment_id: test
 output_dir: trained_models
 auto_lr: false
 print_metrics: false
 data_monitor: false
-svd: false
-svd_rank_compression: 4
-clustering: true
-cluster_amount: 10
+resume: false
 
 
 seed: [1234]
+validate_output: False
 
 hydra:
     run:

@@ -6,11 +6,8 @@ parameter_names: null
 use_global_unstructured: true
 apply_pruning: true
 make_pruning_permanent: true
-use_lottery_ticket_hypothesis: false #true
+use_lottery_ticket_hypothesis: false
 resample_parameters: false
 pruning_dim: null
 pruning_norm: null
 prune_on_train_epoch_end: true
-
-# TODO:
-# parameters_to_prune: _PARAM_LIST = (),

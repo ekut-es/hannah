@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: ubuntu:focal
+From: nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
 
 %files
    requirements.txt
@@ -10,13 +10,26 @@ From: ubuntu:focal
    mount
    ls $HOME
    apt update -y
-   apt install -y python3 python3-distutils python3-apt python3-dev curl libblas-dev liblapack-dev  libsox-dev git-lfs build-essential python3-pip vim libglx-dev libgl1
-   apt install -y libglib2.0-0 libglx0 libx11-6 libpcre3 libxdmcp6 libglvnd0 libxcb1 libxau6 libbsd0
-   ln -s /usr/bin/python3 /usr/bin/python
-   python3 -m pip install setuptools==59.5.0
-   python3 -m pip install numpy==1.19.5
-   python3 -m pip install -r /requirements.txt
+   apt install -y  software-properties-common
+   add-apt-repository -y ppa:deadsnakes/ppa
+   apt update -y
+   apt install -y python3.9 python3.9-dev python3.9-venv curl libblas-dev liblapack-dev  libsox-dev git-lfs build-essential vim libgl1
+   apt install -y libglib2.0-0 libx11-6 libpcre3 libxdmcp6 libglvnd0 libxcb1 libxau6 libbsd0
+   rm -f /usr/bin/python3
+   rm -f /usr/bin/python
+
+   ln -s /usr/bin/python3.9 /usr/bin/python3
+   ln -s /usr/bin/python3.9 /usr/bin/python
+
+   curl -sSL https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+   python3.9 get-pip.py
+
+   export TORCH_CUDA_ARCH_LIST="5.0;5.2;5.3;6.0;6.1;6.2;7.0"
    python3 -m pip install --force-reinstall setuptools==59.5.0
+   python3 -m pip install -r /requirements.txt
+   python3 -m pip install numpy==1.20
+   python3 -m pip install SharedArray llvmlite numba spconv-cu102
+   python3 -m pip install git+https://github.com/open-mmlab/OpenPCDet.git
 
    rm -rf ~/.cache
    apt-get clean -y

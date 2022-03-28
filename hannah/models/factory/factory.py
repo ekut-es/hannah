@@ -468,6 +468,9 @@ class NetworkFactory:
         return output_shape, layers
 
     def minor(self, input_shape, config: MinorBlockConfig, major_stride=None):
+        assert config.out_channels % config.groups == 0
+        assert input_shape[1] % config.groups == 0
+
         if major_stride is not None:
             config.stride = major_stride
 
@@ -878,8 +881,7 @@ class NetworkFactory:
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:
-        # FIXME: correctly handle dilation
-        padding = kernel_size // 2
+        padding = (((kernel_size-1)*_dilation)+1) // 2
         return padding
 
 

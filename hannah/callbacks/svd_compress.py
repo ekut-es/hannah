@@ -6,8 +6,8 @@ from pytorch_lightning.callbacks import Callback
 
 class SVD(Callback):
 
-    def __init__(self, rank_svd, compress_after):
-        self.rank = rank_svd
+    def __init__(self, rank_compression, compress_after):
+        self.rank_compression = rank_compression
         self.compress_after = compress_after
         super().__init__()
 
@@ -22,16 +22,16 @@ class SVD(Callback):
                         U, S, Vh = torch.linalg.svd(module.weight.detach(), full_matrices=True)  # apply SVD
 
                         # Slicing of matrices for rank r and reassembly
-                        U = U[:, :self.rank]
+                        U = U[:, :self.rank_compression]
                         SVh = torch.matmul(torch.diag(S), Vh[:S.size()[0], :])
-                        SVh = SVh[:self.rank, :]
+                        SVh = SVh[:self.rank_compression, :]
 
                         '''Replace linear layer by sequential layer with two linear layers,
                         one containing SVh and the other U, approximating the original fully connected layer'''
                         original_fc = pl_module.model.linear[0][0]
                         new_fc = nn.Sequential(
-                                nn.Linear(original_fc.in_features, self.rank, bias=original_fc.bias),
-                                nn.Linear(self.rank, original_fc.out_features, bias=original_fc.bias)
+                                nn.Linear(original_fc.in_features, self.rank_compression, bias=original_fc.bias),
+                                nn.Linear(self.rank_compression, original_fc.out_features, bias=original_fc.bias)
                             )
                         pl_module.model.linear[0][0] = new_fc
                         pl_module.model.linear[0][0][0].weight = torch.nn.Parameter(SVh, requires_grad=True)
@@ -40,13 +40,13 @@ class SVD(Callback):
                     # Second case: tc-res8 model
                     elif type(module) in [nn.Linear] and name != "model.linear.0.0.0" and name != "model.linear.0.0.1" and not isinstance(pl_module.model.fc, nn.Sequential):
                         U, S, Vh = torch.linalg.svd(module.weight.detach(), full_matrices=True)
-                        U = U[:, :self.rank]
+                        U = U[:, :self.rank_compression]
                         SVh = torch.matmul(torch.diag(S), Vh[:S.size()[0], :])
-                        SVh = SVh[:self.rank, :]
+                        SVh = SVh[:self.rank_compression, :]
                         original_fc = pl_module.model.fc
                         new_fc = nn.Sequential(
-                                    nn.Linear(original_fc.in_features, self.rank, bias=original_fc.bias),
-                                    nn.Linear(self.rank, original_fc.out_features, bias=original_fc.bias)
+                                    nn.Linear(original_fc.in_features, self.rank_compression, bias=original_fc.bias),
+                                    nn.Linear(self.rank_compression, original_fc.out_features, bias=original_fc.bias)
                                 )
                         pl_module.model.fc = new_fc
                         pl_module.model.fc[0].weight = torch.nn.Parameter(SVh, requires_grad=True)

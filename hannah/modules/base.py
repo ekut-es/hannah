@@ -129,6 +129,35 @@ class ClassifierModule(LightningModule, ABC):
 
         for name, module in self.named_modules():
             loggers = self._logger_iterator()
+
+            if hasattr(module, "running_var") and module.running_var is not None:
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_histogram"):
+                        try:
+                            logger.experiment.add_histogram(
+                                f"{name}.running_var",
+                                module.running_var,
+                                self.current_epoch,
+                            )
+                        except ValueError:
+                            logging.critical(
+                                "Could not add histogram for param %s", name
+                            )
+
+            if hasattr(module, "scale_factor"):
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_histogram"):
+                        try:
+                            logger.experiment.add_histogram(
+                                f"{name}.scale_factor",
+                                module.scale_factor,
+                                self.current_epoch,
+                            )
+                        except ValueError:
+                            logging.critical(
+                                "Could not add histogram for param %s", name
+                            )
+
             if hasattr(module, "scaled_weight"):
                 for logger in loggers:
                     if hasattr(logger.experiment, "add_histogram"):

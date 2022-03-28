@@ -1,6 +1,5 @@
 {
     "python.linting.pylintEnabled": false,
-    "python.defaultInterpreterPath": "/home/wernerju/.cache/pypoetry/virtualenvs/hannah-Wne_DMqI-py3.9/bin/python",
     "python.linting.enabled": true,
     "git.ignoreLimitWarning": true,
     "python.linting.flake8Enabled": true,
@@ -17,6 +16,5 @@
     },
     "files.associations": {
         "*.inc": "cpp"
-    },
-    "python.pythonPath": "/home/wernerju/.cache/pypoetry/virtualenvs/hannah-Wne_DMqI-py3.9/bin/python"
+    }
 }

@@ -16,9 +16,7 @@
                 "trainer.max_epochs=2",
                 "model=conv-net-trax",
                 "normalizer=fixedpoint",
-                "svd_rank_compression=4",
-                "clustering=true",
-                "pruning=l1_unstructured"
+                "compression=pruning_only"
             ]
         },
         {
@@ -69,6 +67,19 @@
                 "trainer.limit_train_batches=0.1",
                 "trainer.max_epochs=20",
                 "model=conv-net-trax"
+            ]
+        },
+        {
+            "name": "ofa",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "module.num_workers=8",
+                "model=ofa_quant"
             ]
         },
         {
