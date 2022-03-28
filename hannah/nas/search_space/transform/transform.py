@@ -16,14 +16,14 @@ class Transformer:
     def __init__(self, space) -> None:
         self.space = space
 
-    def transform_nodes(self, node_map, rules=[], attr_map={}, **kwargs):
+    def transform_nodes(self, node_map, rules={}, attr_map={}, **kwargs):
         for node in self.space.nodes:
             if node.target_cls in node_map and self.check_rules(node, rules):
                 node.target_cls = node_map[node.target_cls]
                 new_params = {}
                 for key, value in node.params.items():
-                    if key in attr_map:
-                        new_params[attr_map[key]] = node.params[key]
+                    if key in attr_map[node.target_cls]:
+                        new_params[attr_map[node.target_cls][key]] = node.params[key]
                 for key, value in kwargs.items():
                     new_params[key] = value
                 node.params = new_params
