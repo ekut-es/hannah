@@ -13,6 +13,7 @@ defaults:
     - profiler: null
     - compression: null
     - optional dataset/features: ${dataset}_${features}
+    - override hydra/job_logging: silent
 
 experiment_id: test
 output_dir: trained_models
@@ -20,7 +21,6 @@ auto_lr: false
 print_metrics: false
 data_monitor: false
 resume: false
-
 
 seed: [1234]
 validate_output: False
