@@ -19,8 +19,7 @@ def clustering(params, inertia, cluster):
 
 
 class kMeans(Callback):
-    def __init__(self, compress_after, cluster):
-        self.compress_after = compress_after
+    def __init__(self, cluster):
         self.cluster = cluster
 
     def on_fit_end(self, trainer, pl_module):
@@ -83,7 +82,7 @@ class kMeans(Callback):
 
                 # Returns center that is closest to given value x
                 def replace_values_by_centers(x):
-                    if x == 0.0: # required if pruning is used
+                    if x == 0.0:  # required if pruning is used
                         return x
                     else:
                         i = (np.abs(centers - x)).argmin()
@@ -94,20 +93,19 @@ class kMeans(Callback):
 
     def on_epoch_end(self, trainer, pl_module):
         inertia = 0
-        if trainer.current_epoch % 2 == 0 and trainer.current_epoch < self.compress_after-1 and trainer.callback_metrics['val_accuracy'].item() > 0.9:
-            logger.info('Training validation accuracy: %s', trainer.callback_metrics['val_accuracy'].item())
-            device = pl_module.device
-            for module in pl_module.modules():
-                if hasattr(module, "weight") and module.weight is not None:
-                    w = module.weight.data.cpu().numpy().flatten()
-                    centers, inertia = clustering(w, inertia, self.cluster)
+        device = pl_module.device
+        for module in pl_module.modules():
+            if hasattr(module, "weight") and module.weight is not None:
+                w = module.weight.data.cpu().numpy().flatten()
+                centers, inertia = clustering(w, inertia, self.cluster)
 
-                    def replace_values_by_centers(x):
-                        if x == 0.0:
-                            return x
-                        else:
-                            i = (np.abs(centers - x)).argmin()
-                            return centers[i]
-                    module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers)
-                    module.to(device=device)
-            logger.info('Clustering error: %s', inertia)
+                def replace_values_by_centers(x):
+                    if x == 0.0:
+                        return x
+                    else:
+                        i = (np.abs(centers - x)).argmin()
+                        return centers[i]
+                clustered_data = module.weight.data.cpu().apply_(replace_values_by_centers).to(device=device)
+                module.weight.data = clustered_data
+                module.to(device=device)
+        logger.info('Clustering error: %s', inertia)  # summed over all layers

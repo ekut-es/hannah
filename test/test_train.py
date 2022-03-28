@@ -48,6 +48,21 @@ def test_models(model, features):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.parametrize(
+    "model,epochs,random_evaluate,random_evaluate_number",
+    [
+        ("ofa_quant", "1", "True", "5"),
+        ("ofa", "1", "True", "5"),
+        ("ofa_quant", "1", "False", "5"),
+        ("ofa", "1", "False", "5"),
+    ],
+)
+def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
+    epochs = 1
+    command_line = f"python -m hannah.train --config-name nas_ofa trainer.overfit_batches=5 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_dilation_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model} nas.random_evaluate={random_evaluate} nas.random_eval_number={random_evaluate_number}"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
 @pytest.mark.skipif(
     platform.processor() == "ppc64le",
     reason="currently needs cpu based fft wich is not available on ppc",
@@ -84,13 +99,9 @@ def test_datasets(model, dataset, split):
 
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
+
 @pytest.mark.parametrize(
-    "model",
-    [
-        "conv-net-2d",
-        "timm_resnet50",
-        "timm_efficientnet_lite1"
-    ]
+    "model", ["conv-net-2d", "timm_resnet50", "timm_efficientnet_lite1"]
 )
 def test_2d(model):
     command_line = f"hannah-train module=image_classifier dataset=cifar10 features=identity trainer.gpus=[1] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5"

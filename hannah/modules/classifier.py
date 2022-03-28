@@ -1,41 +1,35 @@
 import logging
 import platform
-
 from abc import abstractmethod
+from typing import Dict, Optional, Union
 
-import torchvision
-from torchmetrics import (
-    Accuracy,
-    Recall,
-    F1,
-    ROC,
-    ConfusionMatrix,
-    Precision,
-    MetricCollection,
-)
-
-from pytorch_lightning import LightningModule
-from .config_utils import get_loss_function, get_model
-from ..utils import set_deterministic
-from typing import Dict, Union, Optional
-
-
-from hannah.datasets.base import ctc_collate_fn
-
+import numpy as np
 import tabulate
 import torch
 import torch.utils.data as data
-from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
-from hydra.utils import instantiate, get_class
-import numpy as np
+import torchvision
+from hydra.utils import get_class, instantiate
+from omegaconf import DictConfig
+from pytorch_lightning import LightningModule
+from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
+from torchmetrics import (
+    F1Score,
+    ROC,
+    Accuracy,
+    ConfusionMatrix,
+    MetricCollection,
+    Precision,
+    Recall,
+)
+
+from hannah.datasets.base import ctc_collate_fn
 
 from ..datasets import SpeechDataset
-from .metrics import Error
-from .base import ClassifierModule
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
-
-from omegaconf import DictConfig
-
+from ..utils import set_deterministic
+from .base import ClassifierModule
+from .config_utils import get_loss_function, get_model
+from .metrics import Error
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +47,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         # TODO stage variable is not used!
         logger.info("Setting up model")
         if self.logger:
+            self.msglogger.info("Model setup already completed skipping setup")
             self.logger.log_hyperparams(self.hparams)
 
         if self.initialized:
@@ -118,7 +113,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_error": Error(),
                 "val_recall": Recall(num_classes=self.num_classes),
                 "val_precision": Precision(num_classes=self.num_classes),
-                "val_f1": F1(num_classes=self.num_classes),
+                "val_f1": F1Score(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
@@ -127,7 +122,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_error": Error(),
                 "test_recall": Recall(num_classes=self.num_classes),
                 "test_precision": Precision(num_classes=self.num_classes),
-                "test_f1": F1(num_classes=self.num_classes),
+                "test_f1": F1Score(num_classes=self.num_classes),
             }
         )
 
@@ -239,8 +234,8 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_val_dataloader_by_set(self, dev_set):
         dev_loader = data.DataLoader(
             dev_set,
-            batch_size=min(len(dev_set), 16),
-            shuffle=False,
+            batch_size=min(len(dev_set), self.hparams["batch_size"]),
+            shuffle=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
@@ -279,8 +274,8 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_test_dataloader_by_set(self, test_set):
         test_loader = data.DataLoader(
             test_set,
-            batch_size=min(len(test_set), 16),
-            shuffle=False,
+            batch_size=min(len(test_set), self.hparams["batch_size"]),
+            shuffle=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,

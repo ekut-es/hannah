@@ -21,3 +21,4 @@ loggers:
     level: WARNING
   numba:
     level: WARNING
+disable_existing_loggers: false

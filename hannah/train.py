@@ -2,8 +2,8 @@ import logging
 import os
 import shutil
 from collections import defaultdict
+from pathlib import Path
 
-import hydra
 import numpy as np
 import torch
 from hydra.utils import instantiate
@@ -12,16 +12,12 @@ from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
-from . import conf  # noqa
+import hydra
 
-from .callbacks.summaries import MacSummaryCallback
-from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
-from .callbacks.clustering import kMeans
+from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 from .callbacks.summaries import MacSummaryCallback
-from .callbacks.svd_compress import SVD
 from .utils import (
     auto_select_gpus,
     clear_outputs,
@@ -50,6 +46,9 @@ def train(config: DictConfig):
     results = []
     if isinstance(config.seed, int):
         config.seed = [config.seed]
+    validate_output = False
+    if hasattr(config, "validate_output") and isinstance(config.validate_output, bool):
+        validate_output = config.validate_output
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
@@ -59,7 +58,7 @@ def train(config: DictConfig):
         if isinstance(config.trainer.gpus, int):
             config.trainer.gpus = auto_select_gpus(config.trainer.gpus)
 
-        if not config.trainer.fast_dev_run:
+        if not config.trainer.fast_dev_run and not config.get("resume", False):
             clear_outputs()
 
         logging.info("Configuration: ")
@@ -96,20 +95,6 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        compress_after = config.trainer.max_epochs
-        if config.clustering:
-            callbacks.append(kMeans(compress_after, config.cluster_amount))
-        if (
-            compress_after % 2 == 1
-        ):  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
-            compress_after -= 1
-        if config.svd:
-            callbacks.append(
-                SVD(
-                    rank_svd=config.get("svd_rank_compression"),
-                    compress_after=compress_after,
-                )
-            )
         callbacks.extend(list(common_callbacks(config)))
 
         opt_monitor = config.get("monitor", ["val_error"])
@@ -144,22 +129,39 @@ def train(config: DictConfig):
 
         logging.info("Starting training")
         # PL TRAIN
-        lit_trainer.fit(lit_module)
+        ckpt_path = None
+        if config.get("resume", False):
+            expected_ckpt_path = Path(".") / "checkpoints" / "last.ckpt"
+            # breakpoint()
+            if expected_ckpt_path.exists():
+                logging.info(
+                    "Resuming training from checkpoint: %s", str(expected_ckpt_path)
+                )
+                ckpt_path = str(expected_ckpt_path)
+            else:
+                logging.info(
+                    "Checkpoint '%s' not found restarting training from scratch",
+                    str(expected_ckpt_path),
+                )
+        lit_trainer.fit(lit_module, ckpt_path=ckpt_path)
 
-        # For KMeans-clustering last checkpoint needed
-        if config.clustering or config.svd:
-            lit_trainer.save_checkpoint("last.ckpt")
-            ckpt_path = "last.ckpt"
+        if config.get("compression", None) and (
+            config.get("compression").get("clustering", None)
+            or config.get("compression").get("decomposition", None)
+        ):
+            # FIXME: this is a bad workaround
+            lit_trainer.save_checkpoint("last")
+            ckpt_path = "last"
         else:
             ckpt_path = "best"
 
         if not lit_trainer.fast_dev_run:
             reset_seed()
-            lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
+            lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
 
             # PL TEST
             reset_seed()
-            lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+            lit_trainer.test(ckpt_path=ckpt_path, verbose=validate_output)
 
             lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
@@ -196,13 +198,18 @@ def nas(config: DictConfig):
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config: DictConfig):
-    log_execution_env_state()
-    if config.get("dataset_creation", None) is not None:
-        handleDataset(config)
-    if config.get("nas", None) is not None:
-        return nas(config)
-    else:
-        return train(config)
+    logging.captureWarnings(True)
+    try:
+        log_execution_env_state()
+        if config.get("dataset_creation", None) is not None:
+            handleDataset(config)
+        if config.get("nas", None) is not None:
+            return nas(config)
+        else:
+            return train(config)
+    except Exception as e:
+        logging.exception("Exception Message: %s", str(e))
+        raise e
 
 
 if __name__ == "__main__":

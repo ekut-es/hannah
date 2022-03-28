@@ -1,6 +1,8 @@
 import importlib
 import pathlib
 import shutil
+
+from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 from pytorch_lightning.utilities.distributed import rank_zero_only
 import torch
 import torch.nn as nn
@@ -32,12 +34,15 @@ from contextlib import contextmanager
 import pytorch_lightning
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.callbacks import GPUStatsMonitor
+from pytorch_lightning.callbacks import DeviceStatsMonitor, GPUStatsMonitor
 
 
+from .callbacks.clustering import kMeans
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
+from .callbacks.svd_compress import SVD
+
 
 try:
     import lsb_release  # pytype: disable=import-error
@@ -45,33 +50,6 @@ try:
     HAVE_LSB = True
 except ImportError:
     HAVE_LSB = False
-
-
-class SerializableModule(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def on_val(self):
-        pass
-
-    def on_val_end(self):
-        pass
-
-    def on_test(self):
-        pass
-
-    def on_test_end(self):
-        pass
-
-    def save(self, filename):
-        torch.save(self.state_dict(), filename)
-
-    def load(self, filename):
-        """Do not use model.load"""
-        self.load_state_dict(
-            torch.load(filename, map_location=lambda storage, loc: storage),
-            strict=False,
-        )
 
 
 def config_pylogger(log_cfg_file, experiment_name, output_dir="logs"):
@@ -253,6 +231,10 @@ def common_callbacks(config: DictConfig):
         gpu_stats = GPUStatsMonitor()
         callbacks.append(gpu_stats)
 
+    if config.get("device_stats", None):
+        device_stats = DeviceStatsMonitor()
+        callbacks.append(device_stats)
+
     if config.get("data_monitor", False):
         data_monitor = ModuleDataMonitor(submodules=True)
         callbacks.append(data_monitor)
@@ -268,16 +250,35 @@ def common_callbacks(config: DictConfig):
         stop_callback = hydra.utils.instantiate(config.early_stopping)
         callbacks.append(stop_callback)
 
-    if config.get("pruning", None):
-        pruning_scheduler = PruningAmountScheduler(
-            config.pruning.amount, config.trainer.max_epochs
-        )
-        pruning_config = dict(config.pruning)
-        del pruning_config["amount"]
-        pruning_callback = hydra.utils.instantiate(
-            pruning_config, amount=pruning_scheduler
-        )
-        callbacks.append(pruning_callback)
+    if config.get("compression", None):
+        config_compression = config.get("compression")
+        if config_compression.get("pruning", None):
+            pruning_scheduler = PruningAmountScheduler(
+                config.compression.pruning.amount, config.trainer.max_epochs
+            )
+            pruning_config = dict(config.compression.pruning)
+            del pruning_config["amount"]
+            pruning_callback = hydra.utils.instantiate(
+                pruning_config, amount=pruning_scheduler
+            )
+            callbacks.append(pruning_callback)
+    
+        if config_compression.get("decomposition", None):
+            compress_after_epoch = config.trainer.max_epochs
+            if (compress_after_epoch % 2 == 1):  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
+                compress_after_epoch -= 1
+            svd = SVD(
+                rank_compression=config.compression.decomposition.rank_compression,
+                compress_after=compress_after_epoch,
+            )
+            callbacks.append(svd)
+
+        if config_compression.get("clustering", None):
+            kmeans = kMeans(
+                cluster=config.compression.clustering.amount,
+            )
+            callbacks.append(kmeans)
+
     return callbacks
 
 
