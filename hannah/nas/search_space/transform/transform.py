@@ -28,6 +28,8 @@ class Transformer:
                     new_params[key] = value
                 node.params = new_params
 
+    # def merge_nodes(self, source_sequence, target_sequence)
+
     def check_rules(self, node, rules):
         marker = True
         for rule in rules:
@@ -43,10 +45,7 @@ def main(config: DictConfig):
     transformer = Transformer(space)
 
     def is_add(node):
-        if 'add' in node.name:
-            return True
-        else:
-            return False
+        return True if 'function' in node.params and node.params['function'] == 'add' else False
 
     node_map = {FunctionWrapper: Add}
     rules = [is_add]
