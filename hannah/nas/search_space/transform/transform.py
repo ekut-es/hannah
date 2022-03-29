@@ -3,7 +3,7 @@ from omegaconf import DictConfig
 import torch
 import torch.nn as nn
 from hannah.models.factory import qat as qat
-from hannah.nas.search_space.symbolic_operator import Context
+from hannah.nas.search_space.symbolic_operator import Context, SymbolicOperator
 from hannah.nas.search_space.torch_converter import FunctionWrapper
 from hannah.nas.search_space.modules.primitive_operators import Add
 
@@ -12,6 +12,8 @@ from hannah.nas.search_space.pruner import Pruner
 from hannah.nas.search_space.symbolic_constraint_solver import SymbolicConstrainer
 from hannah.nas.search_space.utils import get_random_cfg
 import networkx as nx
+# from hannah.models.factory.qconfig import get_trax_qat_qconfig
+from torch.quantization import default_qconfig
 
 
 class Transformer:
@@ -45,15 +47,39 @@ class Transformer:
             return False
 
     def transform_node_sequence(self, source, target, rules={}, attr_map={}, additional_attrs={}):
+        new_edges = []
+        to_delete = []
+        ct = 0
         for node in nx.topological_sort(self.space):
             found_sequence = False
             if node.target_cls == source[0] and self.check_rules(node, rules):
                 sequence = []
                 found_sequence = self.check_path(node, source, rules, sequence)
             if found_sequence:
+                attrs = {}
+                for target_class, mapping in attr_map.items():
+                    for target_key, source_value in mapping.items():
+                        attrs[target_key] = sequence[source_value[0]].params[source_value[1]]
+
+                for target_class, mapping in additional_attrs.items():
+                    for key, value in mapping.items():
+                        attrs[key] = value
+
+                new_node = SymbolicOperator(name=str(target[0]).split('.')[-1].split('\'')[0] + '_{}'.format(ct),
+                                            target_cls=target[0],
+                                            **attrs)
+                ct += 1
+
+                new_edges.append((list(self.space.in_edges(node))[0][0], new_node))
+                new_edges.append((new_node, list(self.space.out_edges(sequence[-1]))[0][1]))
+                to_delete.extend(sequence)
                 print("{} Sequence found: {}".format(node.name, [n.name for n in sequence]))
             else:
                 print("Sequence not found")
+
+        self.space.remove_nodes_from(to_delete)
+        self.space.add_edges_from(new_edges)
+        print("Transform complete")
 
     def check_rules(self, node, rules):
         marker = True
@@ -103,7 +129,33 @@ def main(config: DictConfig):
     source_sequence = [nn.Conv1d, nn.BatchNorm1d, nn.ReLU]
     target_sequence = [qat.ConvBnReLU1d]
 
-    transformer.transform_node_sequence(source_sequence, target_sequence)
+    attr_map = {target_sequence[0]: {'in_channels':  (0, 'in_channels'),
+                                     'out_channels': (0, 'out_channels'),
+                                     'kernel_size':  (0, 'kernel_size'),
+                                     'stride':       (0, 'stride'),
+                                     'padding':      (0, 'padding'),
+                                     'dilation':     (0, 'dilation'),
+                                     'eps':          (1, 'eps'),
+                                     'momentum':     (1, 'momentum')}
+                }
+    additional_attrs = {target_sequence[0]: {'qconfig': default_qconfig,
+                                             'out_quant': False}
+                        }
+
+    transformer.transform_node_sequence(source_sequence,
+                                        target_sequence,
+                                        attr_map=attr_map,
+                                        additional_attrs=additional_attrs)
+
+    pruner = Pruner(space)
+    channel_constrainer = SymbolicConstrainer(space)
+    cfg = get_random_cfg(space.get_config_dims())
+    cfg = channel_constrainer.constrain_output_channels(cfg)
+    x = torch.ones([1, 40, 101])
+    cfg = pruner.find_next_valid_config(x, cfg, exclude_keys=['out_channels', 'kernel_size', 'dilation'])
+    ctx = Context(cfg)
+    instance, out = space.infer_parameters(x, ctx, verbose=True)
+    print(out.shape)
     print("Passed all tests")
 
 
