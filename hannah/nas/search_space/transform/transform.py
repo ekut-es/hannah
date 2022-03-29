@@ -57,17 +57,18 @@ class Transformer:
                 found_sequence = self.check_path(node, source, rules, sequence)
             if found_sequence:
                 attrs = {}
-                for target_class, mapping in attr_map.items():
+                for target_index, mapping in attr_map.items():
+                    attrs[target_index] = {}
                     for target_key, source_value in mapping.items():
-                        attrs[target_key] = sequence[source_value[0]].params[source_value[1]]
+                        attrs[target_index][target_key] = sequence[source_value[0]].params[source_value[1]]
 
-                for target_class, mapping in additional_attrs.items():
+                for target_index, mapping in additional_attrs.items():
                     for key, value in mapping.items():
-                        attrs[key] = value
+                        attrs[target_index][key] = value
 
                 new_node = SymbolicOperator(name=str(target[0]).split('.')[-1].split('\'')[0] + '_{}'.format(ct),
                                             target_cls=target[0],
-                                            **attrs)
+                                            **attrs[target_index])
                 ct += 1
 
                 new_edges.append((list(self.space.in_edges(node))[0][0], new_node))
@@ -129,17 +130,19 @@ def main(config: DictConfig):
     source_sequence = [nn.Conv1d, nn.BatchNorm1d, nn.ReLU]
     target_sequence = [qat.ConvBnReLU1d]
 
-    attr_map = {target_sequence[0]: {'in_channels':  (0, 'in_channels'),
-                                     'out_channels': (0, 'out_channels'),
-                                     'kernel_size':  (0, 'kernel_size'),
-                                     'stride':       (0, 'stride'),
-                                     'padding':      (0, 'padding'),
-                                     'dilation':     (0, 'dilation'),
-                                     'eps':          (1, 'eps'),
-                                     'momentum':     (1, 'momentum')}
+    # Format:
+    # {index of node in target_sequence: {key in target node: (index of node in source_sequence, key in source_sequence)}}
+    attr_map = {0: {'in_channels':  (0, 'in_channels'),
+                    'out_channels': (0, 'out_channels'),
+                    'kernel_size':  (0, 'kernel_size'),
+                    'stride':       (0, 'stride'),
+                    'padding':      (0, 'padding'),
+                    'dilation':     (0, 'dilation'),
+                    'eps':          (1, 'eps'),
+                    'momentum':     (1, 'momentum')}
                 }
-    additional_attrs = {target_sequence[0]: {'qconfig': default_qconfig,
-                                             'out_quant': False}
+    additional_attrs = {0: {'qconfig': default_qconfig,
+                            'out_quant': False}
                         }
 
     transformer.transform_node_sequence(source_sequence,
