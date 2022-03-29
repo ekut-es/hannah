@@ -129,12 +129,12 @@ class ImageClassifierModule(ClassifierModule):
         self.log("val_loss", loss)
         self.log("val_error", 1 - acc, sync_dist=True)
         self.log("val_accuracy", acc, sync_dist=True)
-        self.log("test_precision_micro", precision_micro, sync_dist=True)
-        self.log("test_recall_micro", recall_micro, sync_dist=True)
-        self.log("test_f1_micro", f1_micro, sync_dist=True)
-        self.log("test_precision_macro", precision_macro, sync_dist=True)
-        self.log("test_recall_macro", recall_macro, sync_dist=True)
-        self.log("test_f1_macro", f1_macro, sync_dist=True)
+        self.log("val_precision_micro", precision_micro, sync_dist=True)
+        self.log("val_recall_micro", recall_micro, sync_dist=True)
+        self.log("val_f1_micro", f1_micro, sync_dist=True)
+        self.log("val_precision_macro", precision_macro, sync_dist=True)
+        self.log("val_recall_macro", recall_macro, sync_dist=True)
+        self.log("val_f1_macro", f1_macro, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         x, y = batch

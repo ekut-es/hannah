@@ -21,6 +21,9 @@ output_dir: trained_models
 auto_lr: false
 print_metrics: false
 data_monitor: false
+monitor:
+  metric: val_f1_micro
+  direction: maximize
 
 seed: [1234]
 
