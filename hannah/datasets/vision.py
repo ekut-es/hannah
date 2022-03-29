@@ -1,34 +1,32 @@
 import bisect
-from logging import config
 import collections
-import os
-import logging
-import pathlib
-from posixpath import split
-import tarfile
-import cv2
-import requests
 import json
+import logging
+import os
+import pathlib
+import tarfile
 import urllib.request
-import gdown
-
+from logging import config
+from posixpath import split
 from typing import List
 
-from tqdm import tqdm
-from hydra.utils import get_original_cwd
+import cv2
+import gdown
 import numpy as np
-import torchvision
-from torchvision import transforms
-import torchvision.datasets as datasets
+import requests
 import torch.utils.data as data
-import albumentations as A
+import torchvision
+import torchvision.datasets as datasets
 from albumentations.pytorch.transforms import ToTensorV2
+from hydra.utils import get_original_cwd
 from PIL import Image
+from torchvision import transforms
+from tqdm import tqdm
+
+import albumentations as A
 
 from .base import AbstractDataset
-
 from .utils import csv_dataset, generate_file_md5
-
 
 logger = logging.getLogger(__name__)
 
@@ -360,14 +358,16 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
 
         video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
 
-        print("=============")
-        print(video_index, start_frame, video_index, frame_index)
+        logger.debug("=============")
+        logger.debug(video_index, start_frame, video_index, frame_index)
 
         ret, frame = video_capture.read()
-        # cv2.imshow("Video", frame)
-        # cv2.waitKey()
+
+        # cv2.imshow("frame", frame)
+        # cv2.waitKey(0)
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
         frame = Image.fromarray(frame)
 
         return frame, video_metadata
@@ -380,6 +380,9 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         if self.transform:
             data = self.transform(data)
         else:
+            data = transforms.Resize(256)(data)
+            data = transforms.CenterCrop(256)(data)
+            data = transforms.Resize(224)(data)
             data = torchvision.transforms.ToTensor()(data)
             data = transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(data)
 

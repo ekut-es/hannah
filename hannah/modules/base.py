@@ -1,9 +1,9 @@
 import copy
 import io
 import logging
-from multiprocessing import dummy
 import os
 from abc import ABC, abstractmethod
+from multiprocessing import dummy
 from typing import Optional
 
 import torch
@@ -119,7 +119,7 @@ class ClassifierModule(LightningModule, ABC):
                         logger.experiment.add_histogram(
                             name, params, self.current_epoch
                         )
-                    except ValueError:
+                    except (ValueError, NotImplementedError):
                         logging.critical("Could not add histogram for param %s", name)
 
         for name, module in self.named_modules():
@@ -134,7 +134,7 @@ class ClassifierModule(LightningModule, ABC):
                                 module.running_var,
                                 self.current_epoch,
                             )
-                        except ValueError:
+                        except (ValueError, NotImplementedError):
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )
@@ -148,7 +148,7 @@ class ClassifierModule(LightningModule, ABC):
                                 module.scale_factor,
                                 self.current_epoch,
                             )
-                        except ValueError:
+                        except (ValueError, NotImplementedError):
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )
@@ -162,7 +162,7 @@ class ClassifierModule(LightningModule, ABC):
                                 module.scaled_weight,
                                 self.current_epoch,
                             )
-                        except ValueError:
+                        except (ValueError, NotImplementedError):
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )

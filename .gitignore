@@ -7,7 +7,7 @@
 *.tar.gz
 *.err
 *.out
-datasets/
+^datasets/
 datasets/speech_commands_v0.02/
 datasets/speech_files/
 datasets/noise_files/
@@ -61,6 +61,3 @@ srf-poetry/tests/
 #doc
 doc/_build/
 nas_results/
-
-#exclude datasets as file for symlinks
-datasets
