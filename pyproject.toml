@@ -51,6 +51,7 @@ pycocotools = "^2.0.2"
 fairscale = "^0.4.5"
 numpy = "^1.22.2"
 onnx-tf = {version = "^1.9.0", optional = true}
+gdown = "^4.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.0"
