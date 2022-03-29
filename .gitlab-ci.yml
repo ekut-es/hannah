@@ -2,11 +2,14 @@ stages:
   - build
   - test
   - deploy
+  - deploy_test
+  - run
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   GIT_SUBMODULE_STRATEGY: recursive
+  DEBIAN_FRONTEND: "noninteractive"
 
 before_script:
   - cat /etc/os-release
@@ -29,6 +32,7 @@ before_script:
   - poetry config experimental.new-installer false
 
   # install and manage dependencies with poetry
+  - poetry run python -m pip install setuptools==59.5.0
   - poetry install
 
   # Show limits
@@ -40,14 +44,12 @@ test_python_38:
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=hannah test
-    - pydoc-markdown --build --site-dir _build
   tags:
     - docker
     - nfs
   interruptible: true
-  except:
-    - branches
-
+  only:
+    - master
 
 test_python_39:
   stage: test
@@ -82,6 +84,9 @@ build_docs:
     - native
   only:
     - master
+
+  # Empty dependencies to disable artifacts passing
+  dependencies: []
 
 build_image:
   stage: build
@@ -156,3 +161,72 @@ deploy_image:
   only:
     - master
     - docker_container
+
+
+deploy_test:
+  stage: deploy_test
+  before_script:
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+  script:
+    - cd ml_cloud
+    - ssh cgerum05@134.2.168.52 ls
+  dependencies:
+    - deploy_image
+  only:
+    - master
+    - docker_container
+
+run_ml_cloud:
+  stage: run
+  image: ubuntu:latest
+  before_script:
+    - apt update
+    - apt -y install openssh-client
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  tags:
+    - docker
+  script:
+    - set -e
+    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
+    - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_kws.sh"
+  when: manual
+
+
+run_ml_cloud_lidar:
+  stage: run
+  image: ubuntu:latest
+  before_script:
+    - apt update
+    - apt -y install openssh-client
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  tags:
+    - docker
+  script:
+    - set -e
+    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
+    - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_lidar.sh"
+  when: manual

@@ -2,28 +2,22 @@ import copy
 import io
 import logging
 import os
-
-
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from typing import Optional
-from pytorch_lightning.utilities.distributed import rank_zero_only
 
 import torch
 import torch.utils.data as data
 import torchvision
-
-from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
-from omegaconf import DictConfig
-from pytorch_lightning import LightningModule
-from pytorch_lightning.loggers import LoggerCollection
 from hydra.utils import instantiate
-
+from omegaconf import DictConfig
 from PIL import Image
+from pytorch_lightning import LightningModule
+from pytorch_lightning.loggers import LoggerCollection, TensorBoardLogger
+from pytorch_lightning.utilities.distributed import rank_zero_only
 
-
-from .metrics import plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import fullname
+from .metrics import plot_confusion_matrix
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +123,35 @@ class ClassifierModule(LightningModule, ABC):
 
         for name, module in self.named_modules():
             loggers = self._logger_iterator()
+
+            if hasattr(module, "running_var") and module.running_var is not None:
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_histogram"):
+                        try:
+                            logger.experiment.add_histogram(
+                                f"{name}.running_var",
+                                module.running_var,
+                                self.current_epoch,
+                            )
+                        except ValueError:
+                            logging.critical(
+                                "Could not add histogram for param %s", name
+                            )
+
+            if hasattr(module, "scale_factor"):
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_histogram"):
+                        try:
+                            logger.experiment.add_histogram(
+                                f"{name}.scale_factor",
+                                module.scale_factor,
+                                self.current_epoch,
+                            )
+                        except ValueError:
+                            logging.critical(
+                                "Could not add histogram for param %s", name
+                            )
+
             if hasattr(module, "scaled_weight"):
                 for logger in loggers:
                     if hasattr(logger.experiment, "add_histogram"):

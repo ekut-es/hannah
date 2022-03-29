@@ -34,8 +34,8 @@ renderer:
         source: doc/compression/knowledge_distillation.md
     - title: Optimization
       children:
-        - title: Hyperparamter Optimization
-          name: optimization/hyperparamter
+        - title: Hyperparameter Optimization
+          name: optimization/hyperparameter
           source: doc/optimization/hyperparameters.md
         - title: Neural Architecture Search
           name: optimization/nas
