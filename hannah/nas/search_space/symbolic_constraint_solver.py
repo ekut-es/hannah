@@ -6,6 +6,7 @@ from omegaconf import DictConfig
 from hannah.nas.search_space.symbolic_operator import Context
 import torch.nn as nn
 from hannah.nas.search_space.utils import get_random_cfg, flatten_config
+import networkx as nx
 
 
 class SymbolicConstrainer:
@@ -16,7 +17,7 @@ class SymbolicConstrainer:
     def constrain_output_channels(self, cfg, set_to_values={}):
         constraints = []
         sym_map = {}
-        for node in self.space.nodes:
+        for node in nx.topological_sort(self.space):
             name = '{}_{}'.format(node.name, 'out_channels')
             sym_map[name] = symbols(name, integer=True)
             in_edges = self.space.in_edges(node)
