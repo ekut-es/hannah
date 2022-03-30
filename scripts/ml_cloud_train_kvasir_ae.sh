@@ -47,8 +47,8 @@ cp -r hannah $SCRATCH
 
 echo "Copy training data to $SCRATCH"
 date
-mkdir -p $SCRATCH/datasets
-cp -r $WORK/datasets/kvasir_capsule $SCRATCH/datasets
+#mkdir -p $SCRATCH/datasets
+#cp -r $WORK/datasets/kvasir_capsule $SCRATCH/datasets
 
 echo "Running training with config $1"
 date
@@ -56,7 +56,7 @@ export HANNAH_CACHE_DIR=$SCRATCH/cache
 cd $SCRATCH
 singularity run --nv --no-home  -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train -cn config_vision \
     dataset=kvasir_capsule \
-    dataset.data_folder=$SCRATCH/datasets \
+    dataset.data_folder=$WORK/datasets \
     module.num_workers=8 \
     trainer.max_epochs=50 \
     module.batch_size=64 \
