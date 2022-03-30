@@ -113,8 +113,12 @@ class Cifar10Dataset(VisionDatasetBase):
             ]
         )
 
-        test_set = datasets.CIFAR10(root_folder, train=False, download=False)
-        train_val_set = datasets.CIFAR10(root_folder, train=True, download=False)
+        test_set = torchvision.datasets.CIFAR10(
+            root_folder, train=False, download=False
+        )
+        train_val_set = torchvision.datasets.CIFAR10(
+            root_folder, train=True, download=False
+        )
         train_val_len = len(train_val_set)
 
         split_sizes = [
@@ -205,7 +209,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
 
         # download and extract dataset
         if not os.path.isdir(extract_root):
-            datasets.utils.download_and_extract_archive(
+            torchvision.datasets.utils.download_and_extract_archive(
                 cls.DOWNLOAD_URL,
                 download_folder,
                 extract_root=extract_root,
@@ -273,9 +277,6 @@ class KvasirCapsuleDataset(VisionDatasetBase):
                 transforms.Resize(256),
                 transforms.CenterCrop(256),
                 transforms.Resize(224),
-                # transforms.RandomHorizontalFlip(),
-                # transforms.RandomVerticalFlip(),
-                # transforms.RandomRotation(90),
                 rand_augment.RandAugment(
                     config.augmentations.rand_augment.N,
                     config.augmentations.rand_augment.M,
