@@ -45,7 +45,8 @@ date
 cp /home/bringmann/cgerum05/ml_cloud.sif $SCRATCH
 cp -r hannah $SCRATCH
 
-cho "Copy training data to $SCRATCH"
+echo "Copy training data to $SCRATCH"
+date
 mkdir -p $SCRATCH/datasets
 cp -r $WORK/datasets/kvasir_capsule $SCRATCH/datasets
 
@@ -53,7 +54,13 @@ echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/cache
 cd $SCRATCH
-singularity run --nv --no-home  -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train -cn config_vision dataset=kvasir_capsule dataset.data_folder=$SCRATCH/datasets module.num_workers=8 trainer.max_epochs=50 module.batch_size=64
+singularity run --nv --no-home  -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train -cn config_vision \
+    dataset=kvasir_capsule \
+    dataset.data_folder=$SCRATCH/datasets \
+    module.num_workers=8 \
+    trainer.max_epochs=50 \
+    module.batch_size=64 \
+    experiment_id=kvasir_ae \
 date
 echo "Copying data folders back to work"
 cp -r trained_models $WORK
