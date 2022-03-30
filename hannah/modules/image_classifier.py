@@ -119,11 +119,13 @@ class ImageClassifierModule(ClassifierModule):
 
         x = batch["data"]
         labels = batch.get("labels", None)
-
-        # FIXME: make properly configurable
-        mixup_args = self.hparams.dataset.augmentations.mixup_args
-        mixup_fn = Mixup(**mixup_args, num_classes=self.num_classes)
-        x, y = mixup_fn(x, labels)
+        mixup_labels = labels
+        if step_name == "train":
+            if self.num_classes is not None:
+                # FIXME: make properly configurable
+                mixup_args = self.hparams.dataset.augmentations.mixup_args
+                mixup_fn = Mixup(**mixup_args, num_classes=self.num_classes)
+                x, mixup_labels = mixup_fn(x, labels)
 
         if batch_idx == 0:
             loggers = self._logger_iterator()
@@ -144,7 +146,7 @@ class ImageClassifierModule(ClassifierModule):
             if step_name == None:
                 pass
             classifier_loss = F.cross_entropy(
-                logits, labels.squeeze(), weight=loss_weights
+                logits, mixup_labels.squeeze(), weight=loss_weights
             )
 
             self.log(f"{step_name}_classifier_loss", classifier_loss)
