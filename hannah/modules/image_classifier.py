@@ -145,6 +145,8 @@ class ImageClassifierModule(ClassifierModule):
     def training_step(self, batch, batch_idx):
         loss, _, _ = self.common_step("train", batch, batch_idx)
 
+        return loss
+
     def validation_step(self, batch, batch_idx):
         self.common_step("val", batch, batch_idx)
 
