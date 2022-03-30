@@ -3,7 +3,6 @@ import io
 import logging
 import os
 from abc import ABC, abstractmethod
-from multiprocessing import dummy
 from typing import Optional
 
 import torch
@@ -201,13 +200,10 @@ class ClassifierModule(LightningModule, ABC):
 
     @staticmethod
     def get_balancing_sampler(dataset):
-        distribution = dataset.class_counts
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
-        )
-
-        sampler_weights = weights[dataset.get_label_list()]
-
+        num_sampels = list(dataset.class_counts.values())
+        weights = [0 if i is None else 1 / i for i in num_sampels]
+        target_list = dataset.get_label_list
+        sampler_weights = [weights[i] for i in target_list]
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
 

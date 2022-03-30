@@ -57,12 +57,12 @@ cd $SCRATCH
 singularity run --nv --no-home  -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train -cn config_vision \
     dataset=kvasir_capsule \
     dataset.data_folder=$WORK/datasets \
-    module.num_workers=8 \
+    module.num_workers=4 \
     trainer.max_epochs=50 \
     module.batch_size=64 \
     experiment_id=kvasir_ae \
     output_dir=$WORK/trained_models \
-    scheduler.max_lr=0.01 \
+    scheduler.max_lr=0.01
 date
 
 echo DONE!

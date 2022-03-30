@@ -78,9 +78,13 @@ class ImageClassifierModule(ClassifierModule):
         x = batch["data"]
         labels = batch.get("labels", None)
 
+        # FIXME: make properly configurable
+        mixup_args = self.hparams.dataset.augmentations.mixup_args
+        mixup_fn = Mixup(**mixup_args, num_classes=self.num_classes)
+        x, y = mixup_fn(x, labels)
+
         if batch_idx == 0:
             loggers = self._logger_iterator()
-
             for logger in loggers:
                 if hasattr(logger.experiment, "add_image"):
                     import torchvision.utils
@@ -93,7 +97,14 @@ class ImageClassifierModule(ClassifierModule):
         loss = torch.tensor([0.0], device=self.device)
         if labels is not None and "logits" in prediction_result:
             logits = prediction_result["logits"]
-            classifier_loss = F.cross_entropy(logits, labels.squeeze())
+
+            loss_weights = None
+            if step_name == None:
+                pass
+            classifier_loss = F.cross_entropy(
+                logits, labels.squeeze(), weight=loss_weights
+            )
+
             self.log(f"{step_name}_classifier_loss", classifier_loss)
             loss += classifier_loss
 
@@ -132,11 +143,6 @@ class ImageClassifierModule(ClassifierModule):
 
     def training_step(self, batch, batch_idx):
         loss, _, _ = self.common_step("train", batch, batch_idx)
-
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        self.common_step("val", batch, batch_idx)
 
     def test_step(self, batch, batch_idx):
         _, step_results, batch = self.common_step("test", batch, batch_idx)

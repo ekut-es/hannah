@@ -1,10 +1,12 @@
 import os
 from logging import root
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
 from PIL import Image
+from torch import default_generator, randperm
+from torch._utils import _accumulate
 from torchvision import transforms
 from torchvision.datasets.vision import VisionDataset
 
@@ -41,8 +43,9 @@ class DatasetCSV(VisionDataset):
         transform: Optional[Callable] = None,
     ):
         super().__init__(root, transform=transform)
+        self.root = root
+        self.csv_file = csv_file
         self.imgs = pd.read_csv(csv_file)
-        self.imgs.drop(["filename", "label"], axis=1)
         classes, class_to_idx = self.find_classes(self.root)
         self.classes = classes
         self.class_to_idx = class_to_idx
@@ -60,3 +63,74 @@ class DatasetCSV(VisionDataset):
             image = self.transform(image)
 
         return image, target_index
+
+
+class Subset(DatasetCSV):
+    r"""
+    Subset of a dataset at specified indices.
+
+    Args:
+        dataset (Dataset): The whole Dataset
+        indices (sequence): Indices in the whole set selected for subset
+        csv_file (str) : Path to dataset csv file
+        root (str) : Path to image folder
+        tramsform : Transforms to be applied on images
+    """
+    dataset: DatasetCSV
+    indices: Sequence[int]
+
+    def __init__(
+        self,
+        dataset: DatasetCSV,
+        indices: Sequence[int],
+        csv_file: str,
+        root: str,
+        transform: Optional[Callable] = None,
+    ) -> None:
+        super().__init__(csv_file, root, transform=transform)
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx):
+        if isinstance(idx, list):
+            return self.dataset[[self.indices[i] for i in idx]]
+        return self.dataset[self.indices[idx]]
+
+    def __len__(self):
+        return len(self.indices)
+
+
+def random_split(
+    dataset: DatasetCSV, lengths: Sequence[int], generator=default_generator
+):
+    r"""
+    Randomly split a dataset into non-overlapping new datasets of given lengths.
+    Optionally fix the generator for reproducible results, e.g.:
+
+    Args:
+        dataset (Dataset): Dataset to be split
+        lengths (sequence): lengths of splits to be produced
+        generator (Generator): Generator used for the random permutation.
+    """
+    # Cannot verify that dataset is Sized
+    if sum(lengths) != len(dataset):
+        raise ValueError(
+            "Sum of input lengths does not equal the length of the input dataset!"
+        )
+
+    indices = randperm(sum(lengths), generator=generator).tolist()
+    train_set_indices = [indices[i] for i in range(len(indices) - lengths[1])]
+    val_set_indices = [indices[i] for i in range(len(indices) - lengths[0])]
+    return (
+        [
+            Subset(
+                dataset,
+                indices[offset - length : offset],
+                csv_file=dataset.csv_file,
+                root=dataset.root,
+            )
+            for offset, length in zip(_accumulate(lengths), lengths)
+        ],
+        train_set_indices,
+        val_set_indices,
+    )
