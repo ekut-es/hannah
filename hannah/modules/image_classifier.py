@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 import torch.utils.data as data
 from hydra.utils import get_class, instantiate
+from timm.data.mixup import Mixup
 from torchmetrics import ConfusionMatrix
 from torchmetrics.functional import accuracy, f1_score, precision, recall
 
