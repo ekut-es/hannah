@@ -3,7 +3,7 @@ import os
 from joblib import Memory
 
 
-def cachify(fucnction):
+def cachify(func):
     CACHE_DIR = os.getenv("HANNAH_CACHE_DIR", None)
 
     if CACHE_DIR:
