@@ -4,7 +4,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=ml_cloud_train
+#SBATCH --job-name=train_ae
 
 #resources:
 
@@ -53,7 +53,7 @@ echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/cache
 cd $SCRATCH
-singularity run --nv --no-home  -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train dataset.data_folder=$SCRATCH/datasets module.num_workers=8 trainer.max_epochs=30
+singularity run --nv --no-home  -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train -cn config_vision dataset=kvasir_capsule dataset.data_folder=$SCRATCH/datasets module.num_workers=8 trainer.max_epochs=50
 date
 echo "Copying data folders back to work"
 cp -r trained_models $WORK

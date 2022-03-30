@@ -70,6 +70,7 @@ class DefaultDecoderHead(nn.Module):
             nn.Conv2d(channels, input_channels, 3, padding=(1, 1)),
             nn.BatchNorm2d(input_channels),
             nn.Upsample(size=(input_x, input_y)),
+            nn.Tanh(),
         )
         upscale.append(stage)
 
@@ -112,26 +113,28 @@ class TimmModel(nn.Module):
         self.classifier = None
         if labels > 0:
             if classifier is True:
-                classifier = DefaultClassifierHead(
+                self.classifier = DefaultClassifierHead(
                     latent_shape=dummy_latent.shape, num_classes=labels
                 )
             elif classifier:
-                classifier = hydra.utils.instantiate(
+                self.classifier = hydra.utils.instantiate(
                     latent_shape=dummy_latent.shape, num_classes=labels
                 )
         self.input_shape = input_shape
 
-    def forward(self, x: torch.Tensor) -> Mapping[str, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor, decode=True, classify=True
+    ) -> Mapping[str, torch.Tensor]:
         result = {}
 
         latent = self.encoder(x)
         result["latent"] = latent
 
-        if self.decoder is not None:
+        if self.decoder is not None and decode is True:
             decoded = self.decoder(latent)
             result["decoded"] = decoded
 
-        if self.classifier is not None:
+        if self.classifier is not None and classify is True:
             pred = self.classifier(latent)
             result["logits"] = pred
 

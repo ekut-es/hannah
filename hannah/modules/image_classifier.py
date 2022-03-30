@@ -93,25 +93,25 @@ class ImageClassifierModule(ClassifierModule):
         loss = torch.tensor([0.0], device=self.device)
         if labels is not None and "logits" in prediction_result:
             logits = prediction_result["logits"]
-            classifier_loss = F.cross_entropy(
-                logits, labels.squeeze()
-            )  # , weight=torch.tensor([0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809], device=self.device))
+            classifier_loss = F.cross_entropy(logits, labels.squeeze())
             self.log(f"{step_name}_classifier_loss", classifier_loss)
             loss += classifier_loss
 
             preds = torch.argmax(logits, dim=1)
-            acc = accuracy(preds, y.squeeze())
+            acc = accuracy(preds, labels)
 
-            precision_micro = precision(preds, y)
-            recall_micro = recall(preds, y)
-            f1_micro = f1_score(preds, y)
+            precision_micro = precision(preds, labels)
+            recall_micro = recall(preds, labels)
+            f1_micro = f1_score(preds, labels)
             precision_macro = precision(
-                preds, y, num_classes=self.num_classes, average="macro"
+                preds, labels, num_classes=self.num_classes, average="macro"
             )
             recall_macro = recall(
-                preds, y, num_classes=self.num_classes, average="macro"
+                preds, labels, num_classes=self.num_classes, average="macro"
             )
-            f1_macro = f1_score(preds, y, num_classes=self.num_classes, average="macro")
+            f1_macro = f1_score(
+                preds, labels, num_classes=self.num_classes, average="macro"
+            )
             self.log(f"{step_name}_error", 1 - acc, sync_dist=True)
             self.log(f"{step_name}_accuracy", acc, sync_dist=True)
             self.log(f"{step_name}_precision_micro", precision_micro, sync_dist=True)
@@ -124,10 +124,10 @@ class ImageClassifierModule(ClassifierModule):
         if "decoded" in prediction_result:
             decoded = prediction_result["decoded"]
             decoder_loss = F.mse_loss(decoded, x)
-            self.log("train_decoder_loss", decoder_loss)
+            self.log(f"{step_name}_decoder_loss", decoder_loss)
             loss += decoder_loss
 
-        self.log("train_loss", loss)
+        self.log(f"{step_name}_loss", loss)
         return loss, prediction_result, batch
 
     def training_step(self, batch, batch_idx):
