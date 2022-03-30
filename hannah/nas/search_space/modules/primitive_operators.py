@@ -265,8 +265,43 @@ class LayerChoice(nn.Module):
         return out
 
 
+class MergedModule(nn.Module):
+    def __init__(self, module_classes: dict, **kwargs) -> None:
+        super().__init__()
+        self.module_classes = module_classes
+        self.modules = {}
+        self.name = ''
+        self.params = self.restructure_kwargs(kwargs)
+        for mod_name, mod_cls in self.module_classes.items():
+            cls_str = str(mod_cls).split('.')[-1].split('\'')[0]
+            self.name += cls_str
+            self.modules[mod_name] = mod_cls(**self.params[mod_name])
+
+    def restructure_kwargs(self, kwargs):
+        args = {}
+        for k, v in kwargs.items():
+            mod_name, param_name = k.split('.')
+            if mod_name in args:
+                args[mod_name][param_name] = v
+            else:
+                args[mod_name] = {param_name: v}
+        return args
+
+    def forward(self, x):
+        for name, mod in self.modules.items():
+            out = mod(x)
+        return out
+
+    def __repr__(self):
+        name_str = super().__repr__() + '(\n'
+        for key, mod in self.modules.items():
+            name_str += '\t({}): {}\n'.format(key, mod)
+        name_str += ')'
+        return name_str
+
+
 if __name__ == '__main__':
-    mixed = MixedOp(ops=[Conv2d(100, 100, 5), Conv2d(100, 32, 1), Conv2d(100, 50, 3)], choice=0, mask=[1, 1 , 1])
+    mixed = MixedOp(ops=[Conv2d(100, 100, 5), Conv2d(100, 32, 1), Conv2d(100, 50, 3)], choice=0, mask=[1, 1, 1])
     num_param = sum(p.numel() for p in mixed.parameters())
     print([k for k, v in mixed.state_dict().items()])
 
