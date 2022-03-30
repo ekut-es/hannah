@@ -11,7 +11,6 @@ from posixpath import split
 from typing import List
 
 import cv2
-import gdown
 import numpy as np
 import requests
 import torch.utils.data as data
@@ -27,6 +26,11 @@ import albumentations as A
 
 from .base import AbstractDataset
 from .utils import cachify, csv_dataset, generate_file_md5
+
+try:
+    import gdown
+except ModuleNotFoundError:
+    gdown = None
 
 logger = logging.getLogger(__name__)
 
@@ -472,6 +476,12 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
                 needs_download = True
 
             if needs_download:
+                if gdown is None:
+                    logger.critical(
+                        "Could not download %s due to missing package", target_filename
+                    )
+                    continue
+
                 logger.info("downloading %s", target_filename)
                 gdown.download(
                     url=download_url, output=str(target_filename), resume=True
