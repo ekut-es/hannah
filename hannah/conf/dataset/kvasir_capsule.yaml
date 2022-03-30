@@ -6,8 +6,8 @@ train_percent: 0.9
 
 samplingrate: 1000 
 
-train_val_split : ${data_folder}/kvasir_capsule/official_splits/split_0.csv
-test_split : ${data_folder}/kvasir_capsule/official_splits/split_1.csv
+train_val_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_0.csv
+test_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_1.csv
 
 augmentations:
     rand_augment:
