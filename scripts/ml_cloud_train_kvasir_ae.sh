@@ -61,8 +61,7 @@ singularity run --nv --no-home  -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.
     trainer.max_epochs=50 \
     module.batch_size=64 \
     experiment_id=kvasir_ae \
+    output_dir=$WORK/trained_models
 date
-echo "Copying data folders back to work"
-cp -r trained_models $WORK
 
 echo DONE!
