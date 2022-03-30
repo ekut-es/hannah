@@ -45,8 +45,8 @@ date
 cp /home/bringmann/cgerum05/ml_cloud.sif $SCRATCH
 cp -r hannah $SCRATCH
 
-echo "Copy training data to $SCRATCH"
-date
+#echo "Copy training data to $SCRATCH"
+#date
 #mkdir -p $SCRATCH/datasets
 #cp -r $WORK/datasets/kvasir_capsule $SCRATCH/datasets
 
