@@ -5,7 +5,7 @@ import torch.nn as nn
 from hannah.models.factory import qat as qat
 from hannah.nas.search_space.symbolic_operator import Context, SymbolicOperator
 from hannah.nas.search_space.torch_converter import FunctionWrapper
-from hannah.nas.search_space.modules.primitive_operators import Add
+from hannah.nas.search_space.modules.primitive_operators import Add, MergedModule
 
 from hannah.nas.search_space.tcresnet.tcresnet_space import TCResNetSpace
 from hannah.nas.search_space.pruner import Pruner
@@ -32,7 +32,7 @@ class Transformer:
                     new_params[key] = value
                 node.params = new_params
 
-    def transform_node_sequence(self, source, target, rules={}, attr_map={}, additional_attrs={}):
+    def transform_node_sequence(self, source, target, target_names={}, rules={}, attr_map={}, additional_attrs={}):
         new_edges = []
         to_delete = []
         ct = 0
@@ -52,7 +52,12 @@ class Transformer:
                     for key, value in mapping.items():
                         attrs[target_index][key] = value
 
-                new_node = SymbolicOperator(name=str(target[0]).split('.')[-1].split('\'')[0] + '_{}'.format(ct),
+                if target[0] not in target_names:
+                    name = str(target[0]).split('.')[-1].split('\'')[0] + '_{}'.format(ct)
+                else:
+                    name = target_names[target[0]]
+
+                new_node = SymbolicOperator(name=name,
                                             target_cls=target[0],
                                             **attrs[target_index])
                 ct += 1
