@@ -218,13 +218,28 @@ def infer_padding(parameter, op, ctx):
 
 def infer_padding_symbolic(parameter, op, ctx):
     out, stride, kernel_size, pad, dil, inp = symbols('out stride kernel_size pad dil inp', integer=True)
+    stride_param = [value.get(op, ctx) for key, value in op.params.items() if 'stride' in key]
+    if len(stride_param) > 1:
+        raise Exception('More than one stride in module currently not supported')
+    else:
+        stride_param = stride_param[0]
+    kernel_param = [value.get(op, ctx) for key, value in op.params.items() if 'kernel_size' in key]
+    if len(kernel_param) > 1:
+        raise Exception('More than one kernel_size in module currently not supported')
+    else:
+        kernel_param = kernel_param[0]
+    dilation_param = [value.get(op, ctx) for key, value in op.params.items() if 'dilation' in key]
+    if len(dilation_param) > 1:
+        raise Exception('More than one dilation in module currently not supported')
+    else:
+        dilation_param = dilation_param[0]
 
     constraints = [out - floor(((inp + 2 * pad - dil * (kernel_size - 1) - 1) / stride) + 1),   # general output size formula
                    out - ceiling(inp / stride),                                                 # output must be same or half size of input
-                   stride - op.params['stride'].get(op, ctx),
-                   kernel_size - op.params['kernel_size'].get(op, ctx),
+                   stride - stride_param,
+                   kernel_size - kernel_param,
                    inp - ctx.input.shape[2],                                                    # note the dimension, non-square 2d inputs not supported
-                   dil - op.params['dilation'].get(op, ctx)]
+                   dil - dilation_param]
     sol = solve(constraints, dict=True)
     return sol[0][pad]
 
