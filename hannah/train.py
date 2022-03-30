@@ -1,7 +1,5 @@
 import logging
 import os
-from pathlib import Path
-import numpy as np
 import shutil
 from collections import defaultdict
 from pathlib import Path
@@ -184,7 +182,6 @@ def train(config: DictConfig):
 
     for k, v in test_sum.items():
         rank_zero_info(k + " : " + str(v / len(test_output)))
-    rank_zero_info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]

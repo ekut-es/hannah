@@ -66,6 +66,30 @@ class ClassifierModule(LightningModule, ABC):
     def get_class_names(self):
         pass
 
+    def _get_dataloader(self, dataset, shuffle=False):
+        batch_size = self.hparams["batch_size"]
+        dataset_conf = self.hparams.dataset
+        sampler = None
+        if shuffle:
+            sampler_type = dataset_conf.get("sampler", "random")
+            if sampler_type == "weighted":
+                sampler = self.get_balancing_sampler(dataset)
+            else:
+                sampler = data.RandomSampler(dataset)
+
+        train_loader = data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            drop_last=True,
+            num_workers=self.hparams["num_workers"],
+            sampler=sampler,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+
+        self.batches_per_epoch = len(train_loader)
+
+        return train_loader
+
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
 

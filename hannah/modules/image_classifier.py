@@ -36,7 +36,7 @@ class ImageClassifierModule(ClassifierModule):
         self.example_input_array = example_data.clone().detach().unsqueeze(0)
         self.example_feature_array = example_data.clone().detach().unsqueeze(0)
 
-        self.num_classes = None
+        self.num_classes = 0
         if self.train_set.class_names:
             self.num_classes = len(self.train_set.class_names)
 
@@ -45,9 +45,11 @@ class ImageClassifierModule(ClassifierModule):
         self.model = instantiate(
             self.hparams.model,
             input_shape=self.example_input_array.shape,
+            labels=self.num_classes,
+            _recursive_=False,
         )
 
-        if self.num_classes is not None:
+        if self.num_classes > 0:
             self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
 
     def _decode_batch(self, batch):
@@ -70,34 +72,8 @@ class ImageClassifierModule(ClassifierModule):
     def forward(self, x):
         return self.model(x)
 
-    def _get_dataloader(self, dataset, shuffle=False):
-        batch_size = self.hparams["batch_size"]
-        dataset_conf = self.hparams.dataset
-        sampler = None
-        if shuffle:
-            sampler_type = dataset_conf.get("sampler", "random")
-            if sampler_type == "weighted":
-                sampler = self.get_balancing_sampler(dataset)
-            else:
-                sampler = data.RandomSampler(dataset)
-
-        train_loader = data.DataLoader(
-            dataset,
-            batch_size=batch_size,
-            drop_last=True,
-            num_workers=self.hparams["num_workers"],
-            sampler=sampler,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-
-        self.batches_per_epoch = len(train_loader)
-
-        return train_loader
-
-    def training_step(self, batch, batch_idx):
+    def common_step(self, step_name, batch, batch_idx):
         batch = self._decode_batch(batch)
-
-        print(batch)
 
         x = batch["data"]
         labels = batch.get("labels", None)
@@ -120,8 +96,31 @@ class ImageClassifierModule(ClassifierModule):
             classifier_loss = F.cross_entropy(
                 logits, labels.squeeze()
             )  # , weight=torch.tensor([0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809], device=self.device))
-            self.log("train_classifier_loss", classifier_loss)
+            self.log(f"{step_name}_classifier_loss", classifier_loss)
             loss += classifier_loss
+
+            preds = torch.argmax(logits, dim=1)
+            acc = accuracy(preds, y.squeeze())
+
+            precision_micro = precision(preds, y)
+            recall_micro = recall(preds, y)
+            f1_micro = f1_score(preds, y)
+            precision_macro = precision(
+                preds, y, num_classes=self.num_classes, average="macro"
+            )
+            recall_macro = recall(
+                preds, y, num_classes=self.num_classes, average="macro"
+            )
+            f1_macro = f1_score(preds, y, num_classes=self.num_classes, average="macro")
+            self.log(f"{step_name}_error", 1 - acc, sync_dist=True)
+            self.log(f"{step_name}_accuracy", acc, sync_dist=True)
+            self.log(f"{step_name}_precision_micro", precision_micro, sync_dist=True)
+            self.log(f"{step_name}_recall_micro", recall_micro, sync_dist=True)
+            self.log(f"{step_name}_f1_micro", f1_micro, sync_dist=True)
+            self.log(f"{step_name}_precision_macro", precision_macro, sync_dist=True)
+            self.log(f"{step_name}_recall_macro", recall_macro, sync_dist=True)
+            self.log(f"{step_name}_f1_macro", f1_macro, sync_dist=True)
+
         if "decoded" in prediction_result:
             decoded = prediction_result["decoded"]
             decoder_loss = F.mse_loss(decoded, x)
@@ -129,77 +128,24 @@ class ImageClassifierModule(ClassifierModule):
             loss += decoder_loss
 
         self.log("train_loss", loss)
+        return loss, prediction_result, batch
+
+    def training_step(self, batch, batch_idx):
+        loss, _, _ = self.common_step("train", batch, batch_idx)
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        batch = self._decode_batch(batch)
-        x = batch["data"]
-        y = batch.get("labels", None)
-        logits = self(x)
-
-        loss = 0.0
-        if y is not None:
-            loss = F.cross_entropy(logits, y.squeeze())
-            preds = torch.argmax(logits, dim=1)
-            acc = accuracy(preds, y.squeeze())
-
-            precision_micro = precision(preds, y)
-            recall_micro = recall(preds, y)
-            f1_micro = f1_score(preds, y)
-            precision_macro = precision(
-                preds, y, num_classes=self.num_classes, average="macro"
-            )
-            recall_macro = recall(
-                preds, y, num_classes=self.num_classes, average="macro"
-            )
-            f1_macro = f1_score(preds, y, num_classes=self.num_classes, average="macro")
-
-            self.log("val_loss", loss)
-            self.log("val_error", 1 - acc, sync_dist=True)
-            self.log("val_accuracy", acc, sync_dist=True)
-            self.log("val_precision_micro", precision_micro, sync_dist=True)
-            self.log("val_recall_micro", recall_micro, sync_dist=True)
-            self.log("val_f1_micro", f1_micro, sync_dist=True)
-            self.log("val_precision_macro", precision_macro, sync_dist=True)
-            self.log("val_recall_macro", recall_macro, sync_dist=True)
-            self.log("val_f1_macro", f1_macro, sync_dist=True)
+        self.common_step("val", batch, batch_idx)
 
     def test_step(self, batch, batch_idx):
-        batch = self._decode_batch(batch)
-        x = batch["data"]
+        _, step_results, batch = self.common_step("test", batch, batch_idx)
+
         y = batch.get("labels", None)
-        logits = self(x)
-
-        if y is not None:
-            loss = F.cross_entropy(logits, y.squeeze())
-            preds = torch.argmax(logits, dim=1)
-            softmax = F.softmax(logits)
-            acc = accuracy(preds, y.squeeze())
-
-            precision_micro = precision(preds, y)
-            recall_micro = recall(preds, y)
-            f1_micro = f1_score(preds, y)
-            precision_macro = precision(
-                preds, y, num_classes=self.num_classes, average="macro"
-            )
-            recall_macro = recall(
-                preds, y, num_classes=self.num_classes, average="macro"
-            )
-            f1_macro = f1_score(preds, y, num_classes=self.num_classes, average="macro")
-
+        preds = step_results.get("preds", None)
+        if y is not None and preds is not None:
             with set_deterministic(False):
                 self.test_confusion(preds, y)
-
-            self.log("test_loss", loss)
-            self.log("test_error", 1 - acc, sync_dist=True)
-            self.log("test_accuracy", acc, sync_dist=True)
-            self.log("test_precision_micro", precision_micro, sync_dist=True)
-            self.log("test_recall_micro", recall_micro, sync_dist=True)
-            self.log("test_f1_micro", f1_micro, sync_dist=True)
-            self.log("test_precision_macro", precision_macro, sync_dist=True)
-            self.log("test_recall_macro", recall_macro, sync_dist=True)
-            self.log("test_f1_macro", f1_macro, sync_dist=True)
 
     def train_dataloader(self):
         return self._get_dataloader(self.train_set, shuffle=True)

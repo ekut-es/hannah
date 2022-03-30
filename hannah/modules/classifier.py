@@ -13,10 +13,10 @@ from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 from torchmetrics import (
-    F1Score,
     ROC,
     Accuracy,
     ConfusionMatrix,
+    F1Score,
     MetricCollection,
     Precision,
     Recall,
@@ -184,29 +184,6 @@ class BaseStreamClassifierModule(ClassifierModule):
     def train_dataloader(self):
         pass
 
-    def get_train_dataloader_by_set(self, train_set):
-        train_batch_size = self.hparams["batch_size"]
-        dataset_conf = self.hparams.dataset
-        sampler_type = dataset_conf.get("sampler", "random")
-        if sampler_type == "weighted":
-            sampler = self.get_balancing_sampler(train_set)
-        else:
-            sampler = data.RandomSampler(train_set)
-
-        train_loader = data.DataLoader(
-            train_set,
-            batch_size=train_batch_size,
-            drop_last=True,
-            num_workers=self.hparams["num_workers"],
-            collate_fn=ctc_collate_fn,
-            sampler=sampler,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-
-        self.batches_per_epoch = len(train_loader)
-
-        return train_loader
-
     def on_train_epoch_end(self):
         self.eval()
         self._log_weight_distribution()
@@ -230,18 +207,6 @@ class BaseStreamClassifierModule(ClassifierModule):
     @abstractmethod
     def val_dataloader(self):
         pass
-
-    def get_val_dataloader_by_set(self, dev_set):
-        dev_loader = data.DataLoader(
-            dev_set,
-            batch_size=min(len(dev_set), self.hparams["batch_size"]),
-            shuffle=True,
-            num_workers=self.hparams["num_workers"],
-            collate_fn=ctc_collate_fn,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-
-        return dev_loader
 
     # TEST CODE
     def test_step(self, batch, batch_idx):
@@ -270,18 +235,6 @@ class BaseStreamClassifierModule(ClassifierModule):
     @abstractmethod
     def test_dataloader(self):
         pass
-
-    def get_test_dataloader_by_set(self, test_set):
-        test_loader = data.DataLoader(
-            test_set,
-            batch_size=min(len(test_set), self.hparams["batch_size"]),
-            shuffle=True,
-            num_workers=self.hparams["num_workers"],
-            collate_fn=ctc_collate_fn,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-
-        return test_loader
 
     def _extract_features(self, x):
         x = self.features(x)
@@ -335,13 +288,13 @@ class StreamClassifierModule(BaseStreamClassifierModule):
         return torch.zeros(1, *self.train_set.size())
 
     def train_dataloader(self):
-        return self.get_train_dataloader_by_set(self.train_set)
+        return self._get_dataloader(self.train_set, shuffle=True)
 
     def val_dataloader(self):
-        return self.get_val_dataloader_by_set(self.dev_set)
+        return self._get_dataloader(self.dev_set)
 
     def test_dataloader(self):
-        return self.get_test_dataloader_by_set(self.test_set)
+        return self._get_dataloader(self.test_set)
 
 
 class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
@@ -404,15 +357,15 @@ class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
 
     def train_dataloader(self):
         for train_set in self.train_set:
-            yield self.get_train_dataloader_by_set(train_set)
+            yield self._get_dataloader(train_set, shuffle=True)
 
     def val_dataloader(self):
         for dev_set in self.dev_set:
-            yield self.get_val_dataloader_by_set(dev_set)
+            yield self._get_dataloader(dev_set)
 
     def test_dataloader(self):
         for test_set in self.test_set:
-            yield self.get_test_dataloader_by_set(test_set)
+            yield self._get_dataloader(test_set)
 
     def register_test_end_callback_function(self, function):
         self.test_end_callback_function = function
