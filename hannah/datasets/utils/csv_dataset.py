@@ -1,11 +1,14 @@
+import os
 from logging import root
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
+import pandas as pd
+from PIL import Image
 from torchvision import transforms
 from torchvision.datasets.vision import VisionDataset
-from typing import Callable, Optional, Dict, List, Tuple, Any
-import pandas as pd
-import os
-from PIL import Image
+
+from .cache import cachify
 
 
 def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
@@ -17,11 +20,14 @@ def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
     return classes, class_to_idx
 
 
-def pil_loader(path: str) -> Image.Image:
+def _pil_loader(path: str) -> Image.Image:
     # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
     with open(path, "rb") as f:
         img = Image.open(f)
         return img.convert("RGB")
+
+
+pil_loader = cachify(_pil_loader)
 
 
 class DatasetCSV(VisionDataset):

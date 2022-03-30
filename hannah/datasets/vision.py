@@ -26,7 +26,7 @@ from tqdm import tqdm
 import albumentations as A
 
 from .base import AbstractDataset
-from .utils import csv_dataset, generate_file_md5
+from .utils import cachify, csv_dataset, generate_file_md5
 
 logger = logging.getLogger(__name__)
 
