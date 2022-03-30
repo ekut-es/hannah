@@ -1,9 +1,8 @@
 data_folder: ${hydra:runtime.cwd}/datasets/
-data_root: ${hydra:runtime.cwd}/datasets/kvasir_capsule/labelled_images
+data_root: ${dataset.data_folder}/kvasir_capsule/labelled_images
 cls: hannah.datasets.vision.KvasirCapsuleDataset
 dataset: kvasir_capsule
 val_percent: 0.1
-train_percent: 0.9
 test_percent: 0.9
 sampler: weighted
 weighted_loss: false
