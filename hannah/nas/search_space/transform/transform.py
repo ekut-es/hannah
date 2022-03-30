@@ -69,6 +69,43 @@ class Transformer:
         self.space.remove_nodes_from(to_delete)
         self.space.add_edges_from(new_edges)
 
+    def merge_nodes(self, sequence_to_merge, rules={}):
+        name = ''
+        args = {}
+        for mod in sequence_to_merge:
+            cls_str = str(mod).split('.')[-1].split('\'')[0]
+            name += cls_str
+        target = MergedModule
+
+        new_edges = []
+        to_delete = []
+        ct = 0
+        for node in nx.topological_sort(self.space):
+            found_sequence = False
+            if node.target_cls == sequence_to_merge[0] and self.check_rules(node, rules):
+                sequence = []
+                found_sequence = self.check_path(node, sequence_to_merge, rules, sequence)
+            if found_sequence:
+                args = {}
+                module_classes = {}
+                for symop, mod in zip(sequence, sequence_to_merge):
+                    for k, v in symop.params.items():
+                        args[symop.name + '.' + k] = v
+                    module_classes[symop.name] = mod
+
+                merged_node = SymbolicOperator(name=name + '_{}'.format(ct),
+                                               target_cls=target,
+                                               module_classes=module_classes,
+                                               **args)
+                ct += 1
+
+                new_edges.append((list(self.space.in_edges(node))[0][0], merged_node))
+                new_edges.append((merged_node, list(self.space.out_edges(sequence[-1]))[0][1]))
+                to_delete.extend(sequence)
+
+        self.space.remove_nodes_from(to_delete)
+        self.space.add_edges_from(new_edges)
+
     def check_rules(self, node, rules):
         marker = True
         if node.target_cls not in rules:
@@ -126,7 +163,7 @@ def main(config: DictConfig):
     out_2 = instance_2(x)
 
     torch.testing.assert_allclose(out_2, out_1)
-    print(out_2.shape)
+    print("Testing transform_nodes() successfull")
 
     source_sequence = [nn.Conv1d, nn.BatchNorm1d, nn.ReLU]
     target_sequence = [qat.ConvBnReLU1d]
@@ -155,11 +192,24 @@ def main(config: DictConfig):
     channel_constrainer = SymbolicConstrainer(space)
     cfg = get_random_cfg(space.get_config_dims())
     cfg = channel_constrainer.constrain_output_channels(cfg)
-    x = torch.ones([1, 40, 101])
     cfg = pruner.find_next_valid_config(x, cfg, exclude_keys=['out_channels', 'kernel_size', 'dilation'])
     ctx = Context(cfg)
     instance, out = space.infer_parameters(x, ctx, verbose=True)
     print(out.shape)
+    print("Testing transform_node_sequence() successfull")
+
+    sequence_to_merge = [nn.Conv1d, nn.BatchNorm1d, nn.Hardtanh]
+    transformer.merge_nodes(sequence_to_merge=sequence_to_merge)
+    pruner = Pruner(space)
+    channel_constrainer = SymbolicConstrainer(space)
+    cfg = get_random_cfg(space.get_config_dims())
+    cfg = channel_constrainer.constrain_output_channels(cfg)
+    cfg = pruner.find_next_valid_config(x, cfg, exclude_keys=['out_channels', 'kernel_size', 'dilation'])
+    ctx = Context(cfg)
+    instance, out = space.infer_parameters(x, ctx, verbose=True)
+    print(out.shape)
+    print("Testing merge_nodes() successfull")
+
     print("Passed all tests")
 
 
