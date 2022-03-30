@@ -32,20 +32,6 @@ class Transformer:
                     new_params[key] = value
                 node.params = new_params
 
-    def check_path(self, start_node, path, rules, sequence):
-        if len(path) > 1 and start_node.target_cls == path[0] and self.check_rules(start_node, rules):
-            out_edges = list(self.space.out_edges(start_node))
-            if len(out_edges) > 1:
-                return False  # matching with path forking not supported
-            v = out_edges[0][1]
-            sequence.append(start_node)
-            return self.check_path(v, path[1:], rules, sequence)
-        elif len(path) == 1 and start_node.target_cls == path[0] and self.check_rules(start_node, rules):
-            sequence.append(start_node)
-            return True
-        else:
-            return False
-
     def transform_node_sequence(self, source, target, rules={}, attr_map={}, additional_attrs={}):
         new_edges = []
         to_delete = []
@@ -74,13 +60,9 @@ class Transformer:
                 new_edges.append((list(self.space.in_edges(node))[0][0], new_node))
                 new_edges.append((new_node, list(self.space.out_edges(sequence[-1]))[0][1]))
                 to_delete.extend(sequence)
-                print("{} Sequence found: {}".format(node.name, [n.name for n in sequence]))
-            else:
-                print("Sequence not found")
 
         self.space.remove_nodes_from(to_delete)
         self.space.add_edges_from(new_edges)
-        print("Transform complete")
 
     def check_rules(self, node, rules):
         marker = True
@@ -91,6 +73,20 @@ class Transformer:
             if not marker:
                 return marker
         return marker
+
+    def check_path(self, start_node, path, rules, sequence):
+        if len(path) > 1 and start_node.target_cls == path[0] and self.check_rules(start_node, rules):
+            out_edges = list(self.space.out_edges(start_node))
+            if len(out_edges) > 1:
+                return False  # matching with path forking not supported
+            v = out_edges[0][1]
+            sequence.append(start_node)
+            return self.check_path(v, path[1:], rules, sequence)
+        elif len(path) == 1 and start_node.target_cls == path[0] and self.check_rules(start_node, rules):
+            sequence.append(start_node)
+            return True
+        else:
+            return False
 
 
 @hydra.main(config_name="config", config_path="../../../conf")
