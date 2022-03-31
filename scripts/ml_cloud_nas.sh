@@ -14,7 +14,7 @@
 # requests that the cores are all on one node
 
 #SBATCH --cpus-per-task=16
-# requests 8 cpus in total
+# requests 16 cpus in total
 
 #SBATCH --gres=gpu:rtx2080ti:2
 #the job can use and see 2 GPUs (8 GPUs are available in total on one node)
