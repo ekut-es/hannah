@@ -18,9 +18,33 @@ from torch.quantization import default_qconfig
 
 class Transformer:
     def __init__(self, space) -> None:
+        """Tranformer class
+        Performs transformation passes on the given space.
+        The transform passes are performed in_place.
+
+        Parameters
+        ----------
+        space : hannah.nas.search_space.symbolic_space.Space
+            space that is to be transformed
+        """
         self.space = space
 
     def transform_nodes(self, node_map, rules={}, attr_map={}, **kwargs):
+        """Search for all occurences of a node in the space and
+        replace it with another type of node. Occurences
+        are defined over the target_cls of the SymOp node.
+
+        Parameters
+        ----------
+        node_map : dict
+            map from source class to target class -> {source_cls: target_cls}
+        rules : dict, optional
+            additional rules to further specify source nodes, e.g.
+            search for a specific function in a wrapper class, by default {}
+        attr_map : dict, optional
+            maps the attributes (possibly NAS searchable) from source
+            to target class, e.g. , by default {}
+        """
         for node in self.space.nodes:
             if node.target_cls in node_map and self.check_rules(node, rules):
                 node.target_cls = node_map[node.target_cls]
@@ -33,6 +57,30 @@ class Transformer:
                 node.params = new_params
 
     def transform_node_sequence(self, source, target, target_names={}, rules={}, attr_map={}, additional_attrs={}):
+        """Transform occurences of a source node sequence to a target
+        sequence
+
+        Parameters
+        ----------
+        source : list
+            source node sequence
+        target : list
+            target node sequence
+        target_names : dict, optional
+            mapping of {target_cls: alternative_name}
+            in case one does not want to use the str(class_name), by default {}
+        rules : dict, optional
+            additional rules to further specify source nodes, e.g.
+            search for a specific function in a wrapper class, by default {}, by default {}
+        attr_map : dict, optional
+            maps the attributes (possibly NAS searchable) from source
+            to target class, Format:
+            {target_cls : {key in target_cls: (source_cls, key in source_cls)}} e.g.,
+            {qat.ConvBnReLU1d: {'in_channels':  (nn.Conv1d, 'in_channels')}}, by default {}
+        additional_attrs : dict, optional
+            additional attributes to the target classes. Format:
+            {target_cls : {key in target_cls: value}}, by default {}
+        """
         new_edges = []
         to_delete = []
         ct = 0
@@ -173,7 +221,7 @@ def main(config: DictConfig):
     target_sequence = [qat.ConvBnReLU1d]
 
     # Format:
-    # {index of node in target_sequence: {key in target node: (index of node in source_sequence, key in source_sequence)}}
+    # {target_cls : {key in target node: (source_cls, key in source_sequence)}}
     attr_map = {qat.ConvBnReLU1d: {'in_channels':  (nn.Conv1d, 'in_channels'),
                                    'out_channels': (nn.Conv1d, 'out_channels'),
                                    'kernel_size':  (nn.Conv1d, 'kernel_size'),
