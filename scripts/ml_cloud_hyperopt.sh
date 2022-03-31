@@ -45,7 +45,7 @@ HANNAH_N_TRIALS=300
 HANNAH_DATASET=speech_commands
 
 ## Mode Name
-HANNAH_MODEL=conv-net-trax
+HANNAH_MODEL=nas2_kws_5uw_lp_top2
 
 
 
@@ -59,11 +59,6 @@ date
 cp /home/bringmann/cgerum05/ml_cloud.sif $SCRATCH
 cp -r hannah $SCRATCH
 
-echo "Copy dataset to $SCRATCH"
-mkdir -p $SCRATCH/datasets
-cp -r $WORK/datasets/speech_commands_v0.02 $SCRATCH/datasets/speech_commands_v0.02
-
-
 echo "Running training with config $1"
 date
 
@@ -73,11 +68,11 @@ cd $SCRATCH
 mkdir -p $WORK/optuna_logs
 
 singularity run --nv -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train \
-	dataset.data_folder=$SCRATCH/datasets \
+	dataset.data_folder=$WORK/datasets \
 	module.num_workers=4 \
 	trainer.max_epochs=30 \
 	output_dir=$WORK/trained_models \
-	experiment_id=${SLURM_JOB_NAME}_${HANNAH_DATASET} \
+	experiment_id=${SLURM_JOB_NAME}_${HANNAH_DATASET}_${HANNAH_MODEL} \
     hydra/sweeper=optuna \
 	hydra.sweeper.study_name='${experiment_id}'_${HANNAH_MODEL} \
 	hydra.sweeper.storage=sqlite:///$WORK/optuna_logs/'${experiment_id}.sqlite' \
@@ -91,7 +86,6 @@ singularity run --nv -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python 
 	optimizer.weight_decay='tag(log,interval(1.0e-07, 1.0e-04))' \
 	module.time_masking='int(interval(0,100))' \
 	module.frequency_masking='int(interval(0,20))' \
-	model=nas2_kws_5uw_lp_top2 \
 	-m
 date
 
