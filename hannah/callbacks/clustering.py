@@ -78,7 +78,11 @@ class kMeans(Callback):
         for name, module in pl_module.named_modules():
             if hasattr(module, "weight") and module.weight is not None:
                 params = module.weight.data.cpu().numpy().flatten()
-                centers, inertia = clustering(params, inertia, self.cluster)
+                distinct_weights = np.unique(params).size
+                if self.cluster < distinct_weights:
+                    centers, inertia = clustering(params, inertia, self.cluster)
+                else:
+                    continue
 
                 # Returns center that is closest to given value x
                 def replace_values_by_centers(x):
@@ -97,8 +101,12 @@ class kMeans(Callback):
         for module in pl_module.modules():
             if hasattr(module, "weight") and module.weight is not None:
                 w = module.weight.data.cpu().numpy().flatten()
-                centers, inertia = clustering(w, inertia, self.cluster)
-
+                distinct_weights = np.unique(w).size
+                if self.cluster < distinct_weights:
+                    centers, inertia = clustering(w, inertia, self.cluster)
+                else:
+                    continue
+                
                 def replace_values_by_centers(x):
                     if x == 0.0:
                         return x
