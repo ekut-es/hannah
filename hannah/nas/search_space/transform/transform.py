@@ -122,6 +122,17 @@ class Transformer:
         self.space.add_edges_from(new_edges)
 
     def merge_nodes(self, sequence_to_merge, rules={}):
+        """Search for a sequence and replace it with a single
+        merged node
+
+        Parameters
+        ----------
+        sequence_to_merge : list
+            sequence of target classes to merge
+        rules : dict, optional
+            additional rules to further specify source nodes, e.g.
+            search for a specific function in a wrapper class, by default {}, by default {}
+        """
         name = ''
         args = {}
         for mod in sequence_to_merge:
@@ -159,6 +170,19 @@ class Transformer:
         self.space.add_edges_from(new_edges)
 
     def check_rules(self, node, rules):
+        """For a given node, check possible additional rules
+        rule[node] should be a function that receives a node and
+        returns True if the rule applies, else False
+        Parameters
+        ----------
+        node : SymbolicOperator
+        rules : dict
+            rules[node] = [rule1, rule2, ....]
+
+        Returns
+        -------
+        bool
+        """
         marker = True
         if node.target_cls not in rules:
             return marker
