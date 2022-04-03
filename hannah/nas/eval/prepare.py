@@ -1,11 +1,10 @@
 import logging
-import yaml
 import pickle
-
-import pandas as pd
-
 from pathlib import Path
 from typing import Any, Dict
+
+import pandas as pd
+import yaml
 
 logger = logging.getLogger("nas_eval.prepare")
 
@@ -60,10 +59,6 @@ def prepare_summary(
 
         parameters = [h.parameters for h in history_file]
         parameters_all[name] = parameters
-
-        from pprint import pprint
-
-        pprint(parameters)
 
         result_stack.append(metrics)
 

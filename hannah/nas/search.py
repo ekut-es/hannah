@@ -1,27 +1,26 @@
 import logging
-
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
 import os
 import shutil
+import time
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict
+
+import numpy as np
 import omegaconf
-
+import pandas as pd
 import torch
-
+from hannah_optimizer.aging_evolution import AgingEvolution
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
-
 from omegaconf import OmegaConf
-import numpy as np
 from pytorch_lightning import LightningModule
-
-from hannah_optimizer.aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
-from pytorch_lightning.utilities.seed import seed_everything, reset_seed
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.summaries import MacSummaryCallback
-from ..utils import common_callbacks, clear_outputs, fullname
+from ..utils import clear_outputs, common_callbacks, fullname
 
 msglogger = logging.getLogger("nas")
 
@@ -32,12 +31,24 @@ class WorklistItem:
     results: Dict[str, float]
 
 
-def run_training(num, config):
+@dataclass
+class ResultItem:
+    val_metrics: Dict[str, float]
+    test_metrics: Dict[str, float]
+    curves: pd.DataFrame
+    start_time: float
+    end_time: float
+    duration: float
+
+
+def run_training(num, config) -> ResultItem:
+    start_time = time.time()
     if os.path.exists(str(num)):
         shutil.rmtree(str(num))
 
     os.makedirs(str(num), exist_ok=True)
     try:
+
         os.chdir(str(num))
         config = OmegaConf.create(config)
         logger = TensorBoardLogger(".")
@@ -86,6 +97,10 @@ def run_training(num, config):
 
             reset_seed()
             trainer.validate(ckpt_path=ckpt_path, verbose=False)
+
+            reset_seed()
+            trainer.test(ckpt_path=ckpt_path, verbose=False)
+
         except Exception as e:
             msglogger.critical("Training failed with exception")
             msglogger.critical(str(e))
@@ -93,9 +108,25 @@ def run_training(num, config):
             for monitor in opt_monitor:
                 res[monitor] = float("inf")
 
-        return opt_callback.result(dict=True)
+        result_metrics = opt_callback.result(dict=True)
+        test_results = opt_callback.test_result()
+        learning_curves = opt_callback.result_curve()
+
+        end_time = time.time()
+        duration = end_time - start_time
+
+        result = ResultItem(
+            result_metrics,
+            test_results,
+            learning_curves,
+            start_time,
+            end_time,
+            duration,
+        )
+
     finally:
         os.chdir("..")
+    return result
 
 
 class NASTrainerBase(ABC):
@@ -118,18 +149,6 @@ class NASTrainerBase(ABC):
         pass
 
 
-class RandomNASTrainer(NASTrainerBase):
-    def __init__(self, budget=2000, *args, **kwargs):
-        super().__init__(*args, budget=budget, **kwargs)
-
-    def fit(self, module: LightningModule):
-        # Presample Population
-
-        # Sample Population
-
-        pass
-
-
 class AgingEvolutionNASTrainer(NASTrainerBase):
     def __init__(
         self,
@@ -140,6 +159,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         parent_config=None,
         presample=True,
         n_jobs=10,
+        seed=1234,
     ):
         super().__init__(
             budget=budget,
@@ -150,7 +170,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         )
         self.population_size = population_size
 
-        self.random_state = np.random.RandomState()
+        self.random_state = np.random.RandomState(seed=seed)
         self.optimizer = AgingEvolution(
             parametrization=parametrization,
             bounds=bounds,
@@ -183,7 +203,9 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             )
             model.setup("train")
         except AssertionError as e:
-            msglogger.critical("Instantion failed. Probably #input/output channels are not divisable by #groups!")
+            msglogger.critical(
+                "Instantion failed. Probably #input/output channels are not divisable by #groups!"
+            )
             msglogger.critical(str(e))
         else:
             estimated_metrics = estimator.estimate(model)
@@ -227,9 +249,12 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 )
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
+                    breakpoint()
                     metrics = {**item.results, **result}
                     for k, v in metrics.items():
                         metrics[k] = float(v)
+
+                    breakpoint()
 
                     self.optimizer.tell_result(parameters, metrics)
 

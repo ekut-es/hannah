@@ -1,12 +1,11 @@
-import os
-from typing import Dict, List, Any, Optional
-import pandas as pd
 import logging
-import yaml
-
-import seaborn as sns
-import pandas as pd
+import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
+import seaborn as sns
+import yaml
 
 logger = logging.getLogger("nas_eval.plot")
 
@@ -43,6 +42,8 @@ def plot_comparison(
     x, y, size, style, hue = [
         _rename_metric(metric, name_dict) for metric in [x, y, size, style, hue]
     ]
+
+    # breakpoint()
 
     plot = sns.relplot(
         x=x,
