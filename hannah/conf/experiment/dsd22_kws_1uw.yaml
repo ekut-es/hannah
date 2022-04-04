@@ -1,0 +1,14 @@
+# @package _global_
+defaults:
+    - dsd22_kws_5uw
+    - override /dataset: kws
+
+
+experiment_id: dsd22_kws_1uw
+
+seed: [1234]
+
+nas:
+  bounds:
+    acc_power: 0.000001
+    acc_area: 200000
