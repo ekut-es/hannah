@@ -39,7 +39,7 @@
 HANNAH_N_JOBS=2
 
 ## Number of total trials for hyperparameter optimization
-HANNAH_N_TRIALS=300
+HANNAH_N_TRIALS=100
 
 ## Dataset Name
 HANNAH_DATASET=speech_commands
@@ -74,18 +74,22 @@ singularity run --nv -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python 
 	output_dir=$WORK/trained_models \
 	experiment_id=${SLURM_JOB_NAME}_${HANNAH_DATASET}_${HANNAH_MODEL} \
     hydra/sweeper=optuna \
-	hydra.sweeper.study_name='${experiment_id}'_${HANNAH_MODEL} \
+	hydra.sweeper.study_name='${experiment_id}'\
 	hydra.sweeper.storage=sqlite:///$WORK/optuna_logs/'${experiment_id}.sqlite' \
 	hydra.sweeper.n_jobs=$HANNAH_N_JOBS \
 	hydra.sweeper.n_trials=$HANNAH_N_TRIALS \
 	hydra.sweeper.sampler.multivariate=true \
 	hydra/launcher=joblib \
 	hydra.launcher.n_jobs=$HANNAH_N_JOBS \
-	scheduler.max_lr='tag(log,interval(1.0e-05, 0.1))' \
+	scheduler.max_lr='0.01' \
 	optimizer=adamw \
 	optimizer.weight_decay='tag(log,interval(1.0e-07, 1.0e-04))' \
 	module.time_masking='int(interval(0,100))' \
 	module.frequency_masking='int(interval(0,20))' \
+	+experiment=spec_mix \
+	module.mixup.spec_mix_prob=0.0 \
+	module.mixup.prob='interval(0.0, 1.0)' \
+	module.mixup.alpha='interval(0.0, 1.0)' \
 	-m
 date
 
