@@ -54,7 +54,7 @@ class MixupAudio(nn.Module):
                 dtype=torch.int64,
             )
 
-            x[batch] = x_permuted[batch]
+            x[batch][channel_choices] = x_permuted[batch][channel_choices]
 
         y = (1 - lam) * y + lam * y_permuted
 

@@ -28,12 +28,12 @@ msglogger = logging.getLogger("nas")
 @dataclass
 class WorklistItem:
     parameters: Any
-    results: Dict[str, float]
+    results: Dict[str, float]  # Partial results predicted by fast model
 
 
 @dataclass
 class ResultItem:
-    val_metrics: Dict[str, float]
+    metrics: Dict[str, float]
     test_metrics: Dict[str, float]
     curves: pd.DataFrame
     start_time: float
@@ -249,14 +249,11 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 )
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
-                    breakpoint()
-                    metrics = {**item.results, **result}
-                    for k, v in metrics.items():
-                        metrics[k] = float(v)
+                    fast_results = item.results
 
-                    breakpoint()
+                    result.val_results.update(**fast_results)
 
-                    self.optimizer.tell_result(parameters, metrics)
+                    self.optimizer.tell_result(parameters, result)
 
 
 class OFANasTrainer(NASTrainerBase):
