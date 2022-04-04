@@ -43,7 +43,10 @@ def plot_comparison(
         _rename_metric(metric, name_dict) for metric in [x, y, size, style, hue]
     ]
 
-    # breakpoint()
+    # Filter:
+    data = data[data["Accuracy [%]"] > 85.0]
+
+    breakpoint()
 
     plot = sns.relplot(
         x=x,

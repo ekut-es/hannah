@@ -251,7 +251,8 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                     parameters = item.parameters
                     fast_results = item.results
 
-                    result.metrics.update(**fast_results)
+                    for k, v in fast_results.items():
+                        result.metrics[k] = float(v)
 
                     self.optimizer.tell_result(parameters, result)
 
