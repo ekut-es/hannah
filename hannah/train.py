@@ -1,7 +1,5 @@
 import logging
 import os
-from pathlib import Path
-import numpy as np
 import shutil
 from collections import defaultdict
 from pathlib import Path
@@ -175,16 +173,16 @@ def train(config: DictConfig):
     test_sum = defaultdict(int)
     for output in test_output:
         for k, v in output.items():
-            if v.numel() == 1:
+            if isinstance(v, torch.Tensor) and v.numel() == 1:
                 test_sum[k] += v.item()
             else:
                 test_sum[k] += v
 
-    rank_zero_info("Averaged Test Metrics:")
+    logging.info("Averaged Test Metrics:")
 
     for k, v in test_sum.items():
-        rank_zero_info(k + " : " + str(v / len(test_output)))
-    rank_zero_info("validation_error : " + str(np.sum(results) / len(results)))
+        logging.info(k + " : " + str(v / len(test_output)))
+    logging.info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]

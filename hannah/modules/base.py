@@ -1,30 +1,24 @@
 import copy
 import io
 import logging
-from multiprocessing import dummy
 import os
-
-
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
+from multiprocessing import dummy
 from typing import Optional
-from pytorch_lightning.utilities.distributed import rank_zero_only
 
 import torch
 import torch.utils.data as data
 import torchvision
-
-from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
-from omegaconf import DictConfig
-from pytorch_lightning import LightningModule
-from pytorch_lightning.loggers import LoggerCollection
 from hydra.utils import instantiate
-
+from omegaconf import DictConfig
 from PIL import Image
+from pytorch_lightning import LightningModule
+from pytorch_lightning.loggers import LoggerCollection, TensorBoardLogger
+from pytorch_lightning.utilities.distributed import rank_zero_only
 
-
-from .metrics import plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import fullname
+from .metrics import plot_confusion_matrix
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +38,7 @@ class ClassifierModule(LightningModule, ABC):
         normalizer: Optional[DictConfig] = None,
         export_onnx: bool = True,
         gpus=None,
+        **kwargs,
     ):
         super().__init__()
 

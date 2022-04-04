@@ -137,14 +137,13 @@ class BaseStreamClassifierModule(ClassifierModule):
         if self.hparams.frequency_masking > 0:
             augmentation_passes.append(TimeMasking(self.hparams.frequency_masking))
 
+        self.augmentation = None
         if augmentation_passes:
             self.augmentation = torch.nn.Sequential(*augmentation_passes)
-        else:
-            self.augmentation = torch.nn.Identity()
 
         self.mixup = None
         if "mixup" in self.hparams and self.hparams.mixup:
-            self.mixup = MixupAudio(**self.hparams.mixup)
+            self.mixup = MixupAudio(self.num_classes, **self.hparams.mixup)
 
     @abstractmethod
     def get_example_input_array(self):
@@ -159,6 +158,9 @@ class BaseStreamClassifierModule(ClassifierModule):
         pass
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
+        if y.dtype not in [torch.int8, torch.int16, torch.int32, torch.int64]:
+            y = y.round().long()
+
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
@@ -169,18 +171,23 @@ class BaseStreamClassifierModule(ClassifierModule):
                 output = torch.nn.functional.softmax(output, dim=1)
                 metrics(output, y)
                 self.log_dict(metrics)
-            except ValueError:
-                logging.critical("Could not calculate batch metrics: {outputs}")
+            except ValueError as e:
+                logging.critical(f"Could not calculate batch metrics: {outputs}")
+
         self.log(f"{prefix}_loss", loss)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
 
-        if self.mixup is not None:
-            x, y = self.mixup(x, y)
+        x = self._extract_features(x)
 
-        output = self(x)
+        x, y = self._augment(x, y)
+
+        x = self.normalizer(x)
+
+        output = self.model(x)
+
         if y.dim() == 2 and y.size(1) == 1:
             y = y.view(-1)
         loss = self.criterion(output, y)
@@ -189,6 +196,13 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
         return loss
+
+    def _augment(self, x, y):
+        if self.augmentation is not None:
+            x = self.augmentation(x)
+        if self.mixup is not None:
+            x, y = self.mixup(x, y)
+        return x, y
 
     @abstractmethod
     def train_dataloader(self):
