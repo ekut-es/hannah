@@ -29,7 +29,6 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
         pareto_points = is_pareto(selected_metrics.to_numpy())
 
         task_metrics["is_pareto"] = pareto_points
-        print(task_metrics)
 
         candidates = task_metrics[task_metrics["is_pareto"]]
 
@@ -57,6 +56,12 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
                 for metric_name in task_config.bounds.keys():
                     metric_val = point_metrics[metric_name].item()
                     f.write(f"#   {metric_name}: {metric_val}\n")
+                f.write("\n")
+
+                f.write("# Test Metrics:\n")
+                for column in point_metrics:
+                    if column.startswith("test"):
+                        f.write(f"#   {column}: {point_metrics[column].item()}")
                 f.write("\n")
 
                 if backend_parameters:
