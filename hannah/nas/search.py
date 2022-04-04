@@ -204,7 +204,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             model.setup("train")
         except AssertionError as e:
             msglogger.critical(
-                "Instantion failed. Probably #input/output channels are not divisable by #groups!"
+                "Instantiation failed. Probably #input/output channels are not divisable by #groups!"
             )
             msglogger.critical(str(e))
         else:

@@ -61,7 +61,7 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
                 f.write("# Test Metrics:\n")
                 for column in point_metrics:
                     if column.startswith("test"):
-                        f.write(f"#   {column}: {point_metrics[column].item()}")
+                        f.write(f"#   {column}: {point_metrics[column].item()}\n")
                 f.write("\n")
 
                 if backend_parameters:
