@@ -208,22 +208,25 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             )
             msglogger.critical(str(e))
         else:
-            estimated_metrics = estimator.estimate(model)
+            try:
+                estimated_metrics = estimator.estimate(model)
 
-            satisfied_bounds = []
-            for k, v in estimated_metrics.items():
-                if k in self.bounds:
-                    distance = v / self.bounds[k]
-                    msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
-                    satisfied_bounds.append(distance <= 1.2)
+                satisfied_bounds = []
+                for k, v in estimated_metrics.items():
+                    if k in self.bounds:
+                        distance = v / self.bounds[k]
+                        msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
+                        satisfied_bounds.append(distance <= 1.2)
 
-            worklist_item = WorklistItem(parameters, estimated_metrics)
+                worklist_item = WorklistItem(parameters, estimated_metrics)
 
-            if self.presample:
-                if all(satisfied_bounds):
+                if self.presample:
+                    if all(satisfied_bounds):
+                        self.worklist.append(worklist_item)
+                else:
                     self.worklist.append(worklist_item)
-            else:
-                self.worklist.append(worklist_item)
+            except Exception as e:
+                msglogger.critical("Could not estimate metrics (Reason: %s)", str(e))
 
     def run(self):
         with Parallel(n_jobs=self.n_jobs) as executor:

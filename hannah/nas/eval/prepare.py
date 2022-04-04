@@ -59,6 +59,7 @@ def prepare_summary(
             raise Exception("Could not load history file: %s", str(history_path))
 
         results = (h.result for h in history_file)
+        breakpoint()
 
         metrics = pd.DataFrame(results)
         metrics["Task"] = name

@@ -1,11 +1,9 @@
-from genericpath import exists
 import logging
-import yaml
-
-import pandas as pd
-
 from pathlib import Path
 
+import pandas as pd
+import yaml
+from genericpath import exists
 from hannah_optimizer.utils import is_pareto
 
 logger = logging.getLogger("nas_eval.extract")
@@ -22,17 +20,19 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
         task_parameters = parameters[task_name]
         task_metrics = metrics[metrics["Task"] == task_name]
 
+        for metric, bound in task_config.bounds.items():
+            task_metrics = task_metrics[task_metrics[metric] < bound]
+
         selected_metric_names = [m for m in task_config.bounds.keys()]
         selected_metrics = task_metrics[selected_metric_names]
 
         pareto_points = is_pareto(selected_metrics.to_numpy())
 
         task_metrics["is_pareto"] = pareto_points
+        print(task_metrics)
 
         candidates = task_metrics[task_metrics["is_pareto"]]
 
-        for metric, bound in task_config.bounds.items():
-            candidates = candidates[candidates[metric] < bound]
         logger.info("Network candidates:\n %s", str(candidates))
 
         for metric in task_config.bounds.keys():

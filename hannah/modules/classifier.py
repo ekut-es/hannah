@@ -259,7 +259,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         dev_loader = data.DataLoader(
             dev_set,
             batch_size=min(len(dev_set), self.hparams["batch_size"]),
-            shuffle=True,
+            shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
@@ -299,7 +299,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         test_loader = data.DataLoader(
             test_set,
             batch_size=min(len(test_set), self.hparams["batch_size"]),
-            shuffle=True,
+            shuffle=False,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
