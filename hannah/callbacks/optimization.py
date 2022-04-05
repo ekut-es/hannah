@@ -66,6 +66,9 @@ class HydraOptCallback(Callback):
                     pass
 
     def on_validation_end(self, trainer, pl_module):
+        if trainer and trainer.sanity_checking:
+            return
+
         callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
