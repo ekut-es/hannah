@@ -55,7 +55,7 @@ export PYTHONPATH=$PWD/plugins/hannah-optimizer/
 mkdir -p $WORK/trained_models/gpu_logs
 nvidia-smi dmon -i 0,1 -s mu -d 60 -o TD -f $WORK/trained_models/gpu_logs/${SLURM_JOB_NAME}_${SLURM_JOB_ID}.log &
 
-singularity run --nv -B /mnt/qb/datasets/ -B $SCRATCH -B $WORK -B $PWD -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train -cn $1 dataset.data_folder=/mnt/qb/datasets/STAGING/bringmann/datasets/ module.num_workers=4 output_dir=$WORK/trained_models
+singularity run --nv -B /mnt/qb/datasets/ -B $SCRATCH -B $WORK -B $PWD -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train +experiment=$1 dataset.data_folder=/mnt/qb/datasets/STAGING/bringmann/datasets/ module.num_workers=4 output_dir=$WORK/trained_models
 date
 
 echo DONE!
