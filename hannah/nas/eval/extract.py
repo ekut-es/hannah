@@ -1,3 +1,4 @@
+import copy
 import logging
 from pathlib import Path
 
@@ -17,8 +18,10 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
             f"Extracting design points for {task_name} to {output_folder.absolute()}"
         )
 
-        task_parameters = parameters[task_name]
-        task_metrics = metrics[metrics["Task"] == task_name]
+        task_parameters = copy.deepcopy(parameters)
+        task_parameters = task_parameters[task_name]
+        task_metrics = copy.deepcopy(metrics)
+        task_metrics = task_metrics[task_metrics["Task"] == task_name]
 
         for metric, bound in task_config.bounds.items():
             task_metrics = task_metrics[task_metrics[metric] < bound]
@@ -40,11 +43,11 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
             index = point_metrics["Step"]
             num = 0
 
-            parameters = task_parameters[int(index)].flatten()
-            model_parameters = parameters["model"]
+            extracted_parameters = task_parameters[int(index)].flatten()
+            model_parameters = extracted_parameters["model"]
             backend_parameters = {}
-            if "backend" in parameters:
-                backend_parameters = parameters["backend"]
+            if "backend" in extracted_parameters:
+                backend_parameters = extracted_parameters["backend"]
 
             file_name = f"{task_name.lower()}_{metric}_top{num}.yaml"
             file_path = output_folder / file_name
@@ -60,7 +63,7 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
 
                 f.write("# Test Metrics:\n")
                 for column in point_metrics:
-                    if column.startswith("test"):
+                    if hasattr(column, "startswith") and column.startswith("test"):
                         f.write(f"#   {column}: {point_metrics[column].item()}\n")
                 f.write("\n")
 
@@ -70,9 +73,7 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
                         f.write(f"#   backend.{k}={v}\n")
                     f.write("\n")
                 f.write("\n")
-                f.write(
-                    "_target_: speech_recognition.models.factory.factory.create_cnn\n"
-                )
+                f.write("_target_: hannah.models.factory.factory.create_cnn\n")
                 f.write(f"name: {task_name.lower()}_{metric}_top{num}\n")
                 f.write("norm:\n")
                 f.write("  target: bn\n")
@@ -81,7 +82,7 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
 
                 model_parameters["qconfig"][
                     "_target_"
-                ] = "speech_recognition.models.factory.qconfig.get_trax_qat_qconfig"
+                ] = "hannah.models.factory.qconfig.get_trax_qat_qconfig"
                 model_parameters["qconfig"]["config"]["power_of_2"] = False
                 model_parameters["qconfig"]["config"]["noise_prob"] = 0.7
 

@@ -104,13 +104,16 @@ def run_training(num, config) -> ResultItem:
         except Exception as e:
             msglogger.critical("Training failed with exception")
             msglogger.critical(str(e))
-            res = {}
-            for monitor in opt_monitor:
-                res[monitor] = float("inf")
+
+            return None
 
         result_metrics = opt_callback.result(dict=True)
         test_results = opt_callback.test_result()
         learning_curves = opt_callback.result_curve()
+
+        msglogger.info("Result Metrics:")
+        for k, v in result_metrics.items():
+            msglogger.info("  %s: %s", str(k), str(v))
 
         end_time = time.time()
         duration = end_time - start_time
@@ -251,13 +254,14 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                     ]
                 )
                 for result, item in zip(results, self.worklist):
-                    parameters = item.parameters
-                    fast_results = item.results
+                    if item is not None:
+                        parameters = item.parameters
+                        fast_results = item.results
 
-                    for k, v in fast_results.items():
-                        result.metrics[k] = float(v)
+                        for k, v in fast_results.items():
+                            result.metrics[k] = float(v)
 
-                    self.optimizer.tell_result(parameters, result)
+                        self.optimizer.tell_result(parameters, result)
 
 
 class OFANasTrainer(NASTrainerBase):

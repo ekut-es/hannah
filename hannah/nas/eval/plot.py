@@ -44,7 +44,7 @@ def plot_comparison(
     ]
 
     # Filter:
-    data = data[data["Accuracy [%]"] > 75.0]
+    # data = data[data["Accuracy [%]"] > 75.0]
 
     plot = sns.relplot(
         x=x,
