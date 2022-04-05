@@ -30,9 +30,6 @@ def plot_comparison(
     style = metrics[3] if len(metrics) >= 4 else "Task"
     hue = "Task"
 
-    # Filter:
-    # result[result['Accuracy [$\%$]'] > 85.0]
-
     name_dict = {}
     for index, config in metric_config.items():
         if "name" in config:
@@ -44,7 +41,7 @@ def plot_comparison(
     ]
 
     # Filter:
-    # data = data[data["Accuracy [%]"] > 75.0]
+    data = data[data[y] > 75.0]
 
     plot = sns.relplot(
         x=x,

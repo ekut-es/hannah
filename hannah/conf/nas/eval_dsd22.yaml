@@ -1,5 +1,7 @@
 data:
   KWS_10uw: /local/trained_models/dsd22_kws_10uw/conv_net_trax
+  KWS_5uw: /local/trained_models/dsd22_kws_5uw/conv_net_trax
+  KWS_1uw: /local/trained_models/dsd22_kws_1uw/conv_net_trax
   #KWS_10uw_of: trained_models/dsd22_kws_10uw/conv_net_trax/
   #KWS_10uw_old: /local/trained_models/nas_kws2/conv_net_trax
   #KWS_5uw:  /local/trained_models/nas_kws_5uw/conv_net_trax
@@ -13,6 +15,7 @@ metrics:
     derived: (1.0 - data["val_error"]).astype(float) * 100.0
   test_accuracy:
     name:  Test Accuracy [%]
+    derived: data["test_accuracy"].astype(float) * 100.0
   power_uw:
     name: Power [$uW$]
     derived: data["acc_power"].astype(float) * 1000000
@@ -60,7 +63,7 @@ plots:
 extract:
   KWS_10uw:
     bounds:
-        val_error: 0.02
+        val_error: 0.1
         power_uw: 10.0
         acc_latency: 0.1
 

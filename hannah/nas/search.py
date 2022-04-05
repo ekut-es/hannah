@@ -85,6 +85,7 @@ def run_training(num, config) -> ResultItem:
                 features=config.features,
                 scheduler=config.get("scheduler", None),
                 normalizer=config.get("normalizer", None),
+                num_sanity_val_steps=0,
                 _recursive_=False,
             )
             trainer.fit(model)
