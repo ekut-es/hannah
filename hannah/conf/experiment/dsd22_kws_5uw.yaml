@@ -11,7 +11,7 @@ defaults:
     - override /backend: trax_ut
     - override /early_stopping: null
 
-experiment_id: dsd22_kws_10uw
+experiment_id: dsd22_kws_5uw
 
 seed: [1234]
 
