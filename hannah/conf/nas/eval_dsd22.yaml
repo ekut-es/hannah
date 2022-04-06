@@ -1,12 +1,12 @@
 data:
   KWS_10uw: /local/trained_models/dsd22_kws_10uw/conv_net_trax
   KWS_5uw: /local/trained_models/dsd22_kws_5uw/conv_net_trax
-  KWS_1uw: /local/trained_models/dsd22_kws_1uw/conv_net_trax
+  #KWS_1uw: /local/trained_models/dsd22_kws_1uw/conv_net_trax
   #KWS_10uw_of: trained_models/dsd22_kws_10uw/conv_net_trax/
   #KWS_10uw_old: /local/trained_models/nas_kws2/conv_net_trax
   #KWS_5uw:  /local/trained_models/nas_kws_5uw/conv_net_trax
-  #WWD_5uw:  /local/trained_models/nas2_snips_5uw/conv_net_trax
-  #WWD_1uw:  /local/trained_models/nas2_snips_1uw/conv_net_trax
+  WWD_5uw:  /local/trained_models/nas2_snips_5uw/conv_net_trax
+  WWD_1uw:  /local/trained_models/nas2_snips_1uw/conv_net_trax
 
 
 metrics:
@@ -63,15 +63,15 @@ plots:
 extract:
   KWS_10uw:
     bounds:
-        val_error: 0.1
-        power_uw: 10.0
+        test_error: 0.06
+        power_uw: 9.0
         acc_latency: 0.1
 
-  #WWD_5uw:
-  #  bounds:
-  #      val_error: 0.035
-  #      power_uw: 5.0
-  #      acc_latency: 0.1
+  KWS_5uw:
+    bounds:
+        test_error: 0.07
+        power_uw: 5.05
+        acc_latency: 0.1
 
   #WWD_1uw:
   #  bounds:
