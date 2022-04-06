@@ -1,14 +1,14 @@
 from typing import Optional, Tuple
 
-from .compression_type import CompressionType
-from .memory_type import MemoryType
+from hannah.nas.hardware_description.compression_type import CompressionType
+from hannah.nas.hardware_description.memory_type import MemoryType
 
-from .quantization_type import QuantizationType
-from .op_type import OpType
-from .data_type import DataType, FloatType, IntType
-from .tensor_type import TensorType
-from .axis_type import AxisType
-from .optional_op import OptionalOp
+from hannah.nas.hardware_description.quantization_type import QuantizationType
+from hannah.nas.hardware_description.op_type import OpType
+from hannah.nas.hardware_description.data_type import DataType, FloatType, IntType
+from hannah.nas.hardware_description.tensor_type import TensorType
+from hannah.nas.hardware_description.axis_type import AxisType
+from hannah.nas.hardware_description.optional_op import OptionalOp
 
 
 def int_t(signed: bool = True, bits: int = 8):
@@ -113,6 +113,5 @@ if __name__ == "__main__":
     relu = optional(op("relu", residual_add, out_dtype=accumulator_type))
     requantize = op("requantize", relu, out_type=feature_tensor)
 
-    from devtools import debug
+    print("")
 
-    debug(requantize)
