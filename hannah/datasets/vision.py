@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import requests
+import torchvision
 from hydra.utils import get_original_cwd
 from PIL import Image
 from torchvision import transforms
@@ -388,7 +389,10 @@ class KvasirCapsuleDataset(VisionDatasetBase):
 class KvasirCapsuleUnlabeled(AbstractDataset):
     """Dataset representing unalbelled videos"""
 
-    BASE_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/unlabelled_videos/"
+    BASE_URL_UNLABELED = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/unlabelled_videos/"
+    BASE_URL_LABELED = (
+        "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_videos/"
+    )
 
     def __init__(self, config, metadata, transform=None):
         self.config = config
@@ -447,9 +451,6 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         logger.debug(video_index, start_frame, video_index, frame_index)
 
         ret, frame = video_capture.read()
-
-        # cv2.imshow("frame", frame)
-        # cv2.waitKey(0)
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -512,7 +513,15 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
 
     @classmethod
     def prepare(cls, config):
+        cls._prepare_unlabled(config)
+        cls._prepare_labeled(config)
 
+    @classmethod
+    def _prepare_labeled(cls, config):
+        pass
+
+    @classmethod
+    def _prepare_unlabled(cls, config):
         data_root = (
             pathlib.Path(config.data_folder) / "kvasir_capsule" / "unlabelled_videos"
         )
@@ -523,7 +532,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         # download and extract dataset
         if not files_json.exists():
             logger.info("Getting file list from %s", cls.BASE_URL)
-            with urllib.request.urlopen(cls.BASE_URL) as url:
+            with urllib.request.urlopen(cls.BASE_URL_UNLABELLED) as url:
                 data = url.read()
                 with files_json.open("w") as f:
                     f.write(data.decode())
