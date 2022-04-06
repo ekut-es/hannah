@@ -8,7 +8,7 @@ from .op_type import OpType
 from .data_type import DataType, FloatType, IntType
 from .tensor_type import TensorType
 from .axis_type import AxisType
-from .optional import Optional
+from .optional_op import OptionalOp
 
 
 def int(signed: bool = True, bits: int = 8):
@@ -49,4 +49,4 @@ def op(name, *operands, **attributes):
 
 
 def optional(op: OpType):
-    return Optional(op)
+    return OptionalOp(op)
