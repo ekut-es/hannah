@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Tuple, Union
 from numbers import Number
 
 
 class DataType(ABC):
-
     @abstractmethod
     def bits(self) -> int:
         ...
@@ -15,7 +14,7 @@ class DataType(ABC):
 
 
 class IntType(DataType):
-    def __init__(self, signed : bool = True, bits : int = 8):
+    def __init__(self, signed: bool = True, bits: int = 8):
         self.signed = signed
         self.bits = bits
 
@@ -27,11 +26,11 @@ class IntType(DataType):
 
     def range(self) -> Tuple[int, int]:
         if self.signed:
-            min_val = -2**(self.bits-1)
-            max_val = 2**(self.bits-1) - 1
+            min_val = -2 ** (self.bits - 1)
+            max_val = 2 ** (self.bits - 1) - 1
         else:
             min_val = 0
-            max_val = 2**(self.bits)-1
+            max_val = 2 ** (self.bits) - 1
 
         return (min_val, max_val)
 
@@ -55,13 +54,15 @@ class FloatType(DataType):
     def range(self) -> float:
         # FIXME: calculate correct range
         reserved_bits = 2
-        exponent_bias = ((2**self.exponent_bits - reserved_bits) / 2)
-        max_val = (2 - 2**(-self.significand_bits)) * 2**(self.exponent_bits - exponent_bias)
+        exponent_bias = (2 ** self.exponent_bits - reserved_bits) / 2
+        max_val = (2 - 2 ** (-self.significand_bits)) * 2 ** (
+            self.exponent_bits - exponent_bias
+        )
         min_val = -1 * max_val
         return (min_val, max_val)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     fl = FloatType()
     rn = fl.range()
     print(rn)
