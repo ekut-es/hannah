@@ -1,3 +1,4 @@
+from functools import reduce
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,6 +6,7 @@ from torch.nn.common_types import _size_2_t, _size_any_opt_t
 from typing import Union
 from torch import Tensor
 from hannah.nas.search_space.utils import get_same_padding
+from .operator_registry import register_op
 
 
 class Add(nn.Module):
@@ -30,16 +32,28 @@ class Input(nn.Module):
 
         if self.in_channels != self.out_channels and stride == 1:
             self.relu = nn.ReLU(inplace=False)
-            self.conv = nn.Conv2d(self.in_channels, self.out_channels, 1, stride=1, padding=0, bias=False)
+            self.conv = nn.Conv2d(
+                self.in_channels, self.out_channels, 1, stride=1, padding=0, bias=False
+            )
             self.bn = nn.BatchNorm2d(self.out_channels, affine=True)
         elif stride == 2:
             assert self.out_channels % 2 == 0
             self.relu = nn.ReLU(inplace=False)
             self.conv_1 = nn.Conv2d(
-                self.in_channels, self.out_channels // 2, 1, stride=stride, padding=0, bias=False
+                self.in_channels,
+                self.out_channels // 2,
+                1,
+                stride=stride,
+                padding=0,
+                bias=False,
             )
             self.conv_2 = nn.Conv2d(
-                self.in_channels, self.out_channels // 2, 1, stride=stride, padding=0, bias=False
+                self.in_channels,
+                self.out_channels // 2,
+                1,
+                stride=stride,
+                padding=0,
+                bias=False,
             )
             self.bn = nn.BatchNorm2d(self.out_channels, affine=True)
 
@@ -47,7 +61,7 @@ class Input(nn.Module):
         if self.stride == 2:
             x = self.relu(seq[0])
             if x.shape[2] % 2 == 1 or x.shape[3] % 2 == 1:
-                x = F.pad(x, (0, x.shape[3] % 2, 0, x.shape[2] % 2), 'constant', 0)
+                x = F.pad(x, (0, x.shape[3] % 2, 0, x.shape[2] % 2), "constant", 0)
             out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
             # print('Outshape', out.shape)
             out = self.bn(out)
@@ -73,36 +87,64 @@ class Concat(nn.Module):
 
 
 class Conv2d(nn.Conv2d):
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: _size_2_t,
-                 stride: _size_2_t = 1,
-                 padding: Union[str, _size_2_t] = 0,
-                 dilation: _size_2_t = 1,
-                 groups: int = 1,
-                 bias: bool = True,
-                 padding_mode: str = 'zeros',
-                 device=None,
-                 dtype=None) -> None:
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode, device, dtype)
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_2_t,
+        stride: _size_2_t = 1,
+        padding: Union[str, _size_2_t] = 0,
+        dilation: _size_2_t = 1,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = "zeros",
+        device=None,
+        dtype=None,
+    ) -> None:
+        super().__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            groups,
+            bias,
+            padding_mode,
+            device,
+            dtype,
+        )
 
 
 class Conv2dAct(Conv2d):
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: _size_2_t,
-                 stride: _size_2_t = 1,
-                 padding: Union[str, _size_2_t] = 0,
-                 dilation: _size_2_t = 1,
-                 groups: int = 1,
-                 bias: bool = True,
-                 padding_mode: str = 'zeros',
-                 device=None,
-                 dtype=None,
-                 act_func=None) -> None:
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode, device, dtype)
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_2_t,
+        stride: _size_2_t = 1,
+        padding: Union[str, _size_2_t] = 0,
+        dilation: _size_2_t = 1,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = "zeros",
+        device=None,
+        dtype=None,
+        act_func=None,
+    ) -> None:
+        super().__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            groups,
+            bias,
+            padding_mode,
+            device,
+            dtype,
+        )
         if act_func:
             self.act_fun = act_func
         else:
@@ -114,7 +156,9 @@ class Conv2dAct(Conv2d):
 
 
 class DepthwiseSeparableConvolution(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, mid_channels=None):
+    def __init__(
+        self, in_channels, out_channels, kernel_size, stride=1, mid_channels=None
+    ):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -126,7 +170,14 @@ class DepthwiseSeparableConvolution(nn.Module):
         else:
             self.mid_channels = in_channels
 
-        self.depthwise = nn.Conv2d(self.in_channels, self.mid_channels, kernel_size=self.kernel_size, padding=self.pad, stride=self.stride, groups=self.in_channels)
+        self.depthwise = nn.Conv2d(
+            self.in_channels,
+            self.mid_channels,
+            kernel_size=self.kernel_size,
+            padding=self.pad,
+            stride=self.stride,
+            groups=self.in_channels,
+        )
         self.pointwise = nn.Conv2d(self.in_channels, self.out_channels, kernel_size=1)
 
     def forward(self, x):
@@ -135,26 +186,33 @@ class DepthwiseSeparableConvolution(nn.Module):
         return out
 
 
+@register_op(op_name="linear")
 class Linear(nn.Linear):
-    def __init__(self,
-                 in_features: int,
-                 out_features: int,
-                 bias: bool = True,
-                 device=None,
-                 dtype=None) -> None:
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        bias: bool = True,
+        device=None,
+        dtype=None,
+    ) -> None:
         super().__init__(in_features, out_features, bias, device, dtype)
 
 
 class BatchNorm2d(nn.BatchNorm2d):
-    def __init__(self,
-                 num_features,
-                 eps=0.00001,
-                 momentum=0.1,
-                 affine=True,
-                 track_running_stats=True,
-                 device=None,
-                 dtype=None):
-        super().__init__(num_features, eps, momentum, affine, track_running_stats, device, dtype)
+    def __init__(
+        self,
+        num_features,
+        eps=0.00001,
+        momentum=0.1,
+        affine=True,
+        track_running_stats=True,
+        device=None,
+        dtype=None,
+    ):
+        super().__init__(
+            num_features, eps, momentum, affine, track_running_stats, device, dtype
+        )
 
 
 class ReLU6(nn.ReLU6):
@@ -176,7 +234,7 @@ class Zero(nn.Module):
         n, c, h, w = x.size()
         h //= self.stride
         w //= self.stride
-        device = x.get_device() if x.is_cuda else torch.device('cpu')
+        device = x.get_device() if x.is_cuda else torch.device("cpu")
         # noinspection PyUnresolvedReferences
         padding = torch.zeros(n, c, h, w, device=device, requires_grad=False)
         return padding
@@ -248,13 +306,14 @@ class FactorizedReduce(nn.Module):
         else:
             x = self.relu(x)
             if x.shape[2] % 2 == 1 or x.shape[3] % 2 == 1:
-                x = F.pad(x, (0, x.shape[3] % 2, 0, x.shape[2] % 2), 'constant', 0)
+                x = F.pad(x, (0, x.shape[3] % 2, 0, x.shape[2] % 2), "constant", 0)
             out = torch.cat([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])], dim=1)
             # print('Outshape', out.shape)
             out = self.bn(out)
             return out
 
 
+@register_op(op_name="choice")
 class LayerChoice(nn.Module):
     def __init__(self, layer) -> None:
         super().__init__()
@@ -265,22 +324,35 @@ class LayerChoice(nn.Module):
         return out
 
 
+@register_op(op_name="choice")
+class DartsLayerChoice(nn.Module):
+    def __init__(self, layers):
+        self.layers = layers
+        self.alphas = nn.Parameter(torch.tensor([1] * len(layers)))
+
+    def forward(self, x):
+        return reduce(
+            torch.add,
+            (alpha * layer(x) for alpha, layer in zip(self.alphas, self.layers)),
+        )
+
+
 class MergedModule(nn.Module):
     def __init__(self, module_classes: dict, **kwargs) -> None:
         super().__init__()
         self.module_classes = module_classes
         self.modules = {}
-        self.name = ''
+        self.name = ""
         self.params = self.restructure_kwargs(kwargs)
         for mod_name, mod_cls in self.module_classes.items():
-            cls_str = str(mod_cls).split('.')[-1].split('\'')[0]
+            cls_str = str(mod_cls).split(".")[-1].split("'")[0]
             self.name += cls_str
             self.modules[mod_name] = mod_cls(**self.params[mod_name])
 
     def restructure_kwargs(self, kwargs):
         args = {}
         for k, v in kwargs.items():
-            mod_name, param_name = k.split('.')
+            mod_name, param_name = k.split(".")
             if mod_name in args:
                 args[mod_name][param_name] = v
             else:
@@ -293,15 +365,19 @@ class MergedModule(nn.Module):
         return out
 
     def __repr__(self):
-        name_str = super().__repr__() + '(\n'
+        name_str = super().__repr__() + "(\n"
         for key, mod in self.modules.items():
-            name_str += '\t({}): {}\n'.format(key, mod)
-        name_str += ')'
+            name_str += "\t({}): {}\n".format(key, mod)
+        name_str += ")"
         return name_str
 
 
-if __name__ == '__main__':
-    mixed = MixedOp(ops=[Conv2d(100, 100, 5), Conv2d(100, 32, 1), Conv2d(100, 50, 3)], choice=0, mask=[1, 1, 1])
+if __name__ == "__main__":
+    mixed = MixedOp(
+        ops=[Conv2d(100, 100, 5), Conv2d(100, 32, 1), Conv2d(100, 50, 3)],
+        choice=0,
+        mask=[1, 1, 1],
+    )
     num_param = sum(p.numel() for p in mixed.parameters())
     print([k for k, v in mixed.state_dict().items()])
 
