@@ -59,6 +59,23 @@ def optional(op: OpType):
 if __name__ == "__main__":
     # UltraTrail Description
 
+    space.choice(weight_bits=IntScalarChoice(min=1, max=8))
+    bias_bits = IntScalarChoice(min=1, max=8)
+    activation_bits = IntScalarChoice(min=1, max=8)
+    accumulator_bits = IntScalarChoice(min=1, max=32)
+
+    max_weight_bits = IntScalarChoice(min=4, max=8)
+    weight_bits = IntScalarChoice(min=1, max=8)
+
+    # Conditions
+    # conditions:
+    # comparisons: != == < <= > >=
+    # logical operations: and or
+    # arithmetic operations: * / - + mod
+    space.cond(accumulator_bits >= bias_bits)
+    space.cond(accumulator_bits >= activation_bits * weight_bits)
+    space.cond(weight_bits <= max_weight_bits and max_weight_bits / 2 == weight_bits)
+
     ## DataTypes
     weight_type = int_t(bits=6)
     bias_type = int_t(bits=8)
@@ -104,9 +121,12 @@ if __name__ == "__main__":
     )
 
     conv = op("conv", feature_tensor, weight_tensor, out_type=accumulator_tensor)
-    # linear = op("linear", feature_tensor, linear_weight_tensor, out_type=accumulator_tensor)
-    # bias_add = optional(op("add", choice(conv, linear), bias_tensor, out_type=accumulator_tensor))
-    bias_add = optional(op("add", conv, bias_tensor, out_type=accumulator_tensor))
+    linear = op(
+        "linear", feature_tensor, linear_weight_tensor, out_type=accumulator_tensor
+    )
+    bias_add = optional(
+        op("add", choice(conv, linear), bias_tensor, out_type=accumulator_tensor)
+    )
     residual_add = optional(
         op("add", bias_add, accumulator_tensor, out_dtype=accumulator_type)
     )
@@ -114,4 +134,3 @@ if __name__ == "__main__":
     requantize = op("requantize", relu, out_type=feature_tensor)
 
     print("")
-
