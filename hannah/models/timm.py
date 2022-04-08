@@ -12,6 +12,21 @@ import hydra
 logger = logging.getLogger(__name__)
 
 
+class DefaultAnomalyDetector(nn.Module):
+    def __init__(self, latent_shape):
+        self.pooling = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+        self.linear = nn.LazyLinear(1)
+
+    def forward(self, x):
+        x = self.pooling(x)
+        x = self.flatten(x)
+        x = self.linear(x)
+        x = nn.functional.sigmoid(x)
+
+        return x
+
+
 class DefaultClassifierHead(nn.Module):
     def __init__(self, latent_shape, num_classes):
         super().__init__()
@@ -29,6 +44,12 @@ class DefaultClassifierHead(nn.Module):
 
 class DefaultDecoderHead(nn.Module):
     def __init__(self, latent_shape, input_shape):
+        """Default Decoder Head for autoencoders tousing Conv2D and Upsample
+
+        Args:
+            latent_shape (Tuple): Shape (CxHxW) of the latent representation of the autoencoder
+            input_shape (Tuple): Shape (CxHxW) of the reconstructed image
+        """
         super().__init__()
 
         input_x = input_shape[-2]
@@ -88,6 +109,7 @@ class TimmModel(nn.Module):
         pretrained: bool = True,
         decoder: Union[Mapping[str, Any], bool] = True,
         classifier: Union[Mapping[str, Any], bool] = True,
+        anomaly_detector: Union[Mapping[str, Any], bool] = True,
         labels: int = 0,
         **kwargs
     ):
@@ -120,10 +142,19 @@ class TimmModel(nn.Module):
                 self.classifier = hydra.utils.instantiate(
                     latent_shape=dummy_latent.shape, num_classes=labels
                 )
+
+        self.anomaly_detector = None
+        if self.anomaly_detector is True:
+            self.anomaly_detector = DefaultAnomalyDetector(dummy_latent.shape)
+        elif self.anomaly_detector:
+            self.anomaly_detector = hydra.utils.instantiate(
+                anomaly_detector, latent_shape=dummy_latent.shape
+            )
+
         self.input_shape = input_shape
 
     def forward(
-        self, x: torch.Tensor, decode=True, classify=True
+        self, x: torch.Tensor, decode=True, classify=True, anomaly=True
     ) -> Mapping[str, torch.Tensor]:
         result = {}
 
@@ -137,5 +168,9 @@ class TimmModel(nn.Module):
         if self.classifier is not None and classify is True:
             pred = self.classifier(latent)
             result["logits"] = pred
+
+        if self.anomaly_predictor is not None and anomaly is True:
+            anomaly_score = self.anomaly(latent)
+            result["anomaly_score"] = anomaly_score
 
         return result
