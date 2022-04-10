@@ -154,7 +154,7 @@ deploy_image:
     - privileged
   script:
     - cd ml_cloud
-    - scp ml_cloud.sif cgerum05@134.2.168.52:/home/bringmann/cgerum05
+    - scp ml_cloud.sif cgerum05@134.2.168.52:/mnt/qb/work/bringmann/cgerum05
   dependencies:
     - build_image
     - test_image

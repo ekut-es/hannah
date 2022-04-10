@@ -270,6 +270,7 @@ class TRaxUltraTrailBackend(Callback):
             )
 
         # execute backend
+        enable_file_generation = True if self.rtl_simulation or self.postsyn_simulation else False
         backend = UltraTrailBackend(
             teda=self.teda_dir,
             bw_w=self.bw_w,
@@ -281,6 +282,7 @@ class TRaxUltraTrailBackend(Callback):
             mac_mode=mac_mode,
             macro_type=self.macro_type,
             classes=classes,
+            enable_file_generation=enable_file_generation,
         )
 
         backend.set_model(

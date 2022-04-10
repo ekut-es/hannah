@@ -1,6 +1,5 @@
 import logging
-from collections.abc import Iterable, Mapping
-from typing import Union
+from typing import Iterable, Mapping, Union
 
 from pytorch_lightning.callbacks import Callback
 from torch import Tensor
