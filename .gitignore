@@ -42,3 +42,8 @@ srf-poetry/tests/
 #doc
 doc/_build/
 nas_results/
+
+#
+.python_history
+.bash_history
+.cache
