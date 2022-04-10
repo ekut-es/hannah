@@ -59,28 +59,43 @@ def optional(op: OpType):
 if __name__ == "__main__":
     # UltraTrail Description
 
-    space.choice(weight_bits=IntScalarChoice(min=1, max=8))
-    bias_bits = IntScalarChoice(min=1, max=8)
+    # system = System(
+    #    "T-Rax"
+    #    compute=(ri5cy, ultratrail),
+    # )
+
+    ultratrail = ComputeCluster("ultratrail")
+
+    bias_bits = ultratrail.int_scalar_parameter("bias_bits", min=1, max=8)
     activation_bits = IntScalarChoice(min=1, max=8)
     accumulator_bits = IntScalarChoice(min=1, max=32)
 
     max_weight_bits = IntScalarChoice(min=4, max=8)
-    weight_bits = IntScalarChoice(min=1, max=8)
+
+    # ultratrail.choice(
+    #    weight_bits=weight_bits,
+    #    bias_bits = bias_bits,
+    #    activation_bits = activation_bits,
+    #    accumulator_bits = accumulator_bits,
+    #    max_weight_bits = max_weight_bits,
+    # )
 
     # Conditions
     # conditions:
     # comparisons: != == < <= > >=
     # logical operations: and or
     # arithmetic operations: * / - + mod
-    space.cond(accumulator_bits >= bias_bits)
-    space.cond(accumulator_bits >= activation_bits * weight_bits)
-    space.cond(weight_bits <= max_weight_bits and max_weight_bits / 2 == weight_bits)
+    ultratrail.cond(accumulator_bits >= bias_bits)
+    ultratrail.cond(accumulator_bits >= activation_bits * weight_bits)
+    ultratrail.cond(
+        weight_bits <= max_weight_bits and max_weight_bits / 2 == weight_bits
+    )
 
     ## DataTypes
-    weight_type = int_t(bits=6)
-    bias_type = int_t(bits=8)
-    activation_type = int_t(bits=8)
-    accumulator_type = int_t(bits=20)
+    weight_type = int_t(bits=weight_bits)
+    bias_type = int_t(bits=bias_bits)
+    activation_type = int_t(bits=activation_bits)
+    accumulator_type = int_t(bits=accumulator_bits)
 
     ## Memories
     fmem1 = memory(size=2 ** 16)
@@ -102,11 +117,16 @@ if __name__ == "__main__":
         quantization=quantization(None, scale=1 / 2 ** 5, zero_point=0.0),
     )
 
+    weight_bits = weight_tensor.int_scalar_parameter("weight_bits", min=1, max=8)
+    weight_tensor.cond(weight_bits < max_weight_bits)
+
     linear_weight_tensor = tensor(
         (axis("O"), axis("I"), axis("o", 8), axis("i", 8)),
         dtype=weight_type,
         quantization=quantization(None, scale=1 / 2 ** 7, zero_point=0.0),
     )
+
+    # ultratrail.register_parameter(linear_weight_tensor.dtype.bits)
 
     bias_tensor = tensor(
         (axis("N", 1), axis("C"), axis("c", 8)),
@@ -120,7 +140,14 @@ if __name__ == "__main__":
         quantization=quantization(None, scale=1 / 2 ** 14, zero_point=0.0),
     )
 
-    conv = op("conv", feature_tensor, weight_tensor, out_type=accumulator_tensor)
+    weight_tensor_1 = ...
+    weight_tensor_2 = ...
+    conv = op(
+        "conv",
+        feature_tensor,
+        weight_tensor_1 or weight_tensor_2,
+        out_type=accumulator_tensor,
+    )
     linear = op(
         "linear", feature_tensor, linear_weight_tensor, out_type=accumulator_tensor
     )
@@ -133,4 +160,31 @@ if __name__ == "__main__":
     relu = optional(op("relu", residual_add, out_dtype=accumulator_type))
     requantize = op("requantize", relu, out_type=feature_tensor)
 
-    print("")
+    ultratrail.parameter_names()
+    # -> Variabler Bitbreite
+    "ultratrail.max_weight_bits"
+    "ultratrail.weight_tensor.weight_bits"
+    # -> Einheitliche Bitbreite
+    "ultratrail.weight_bits"
+
+    ultratrail_hardware_template = HardwareTemplate("ultratrail")
+    ultratrail_instance = ultratrail__hardware_template.instance()
+
+    ultratrail_hardware_template.int_parameter("max_weight_bits", min=1, max=8)
+    ultratrail_instance.int_parameter("weight_bits", min=1, max=8)
+
+    # Scopes
+    # Hardware
+    ## Scope - System
+    #### Scope - ComputeDevice
+    #    - Max Weight Bits
+    #    - Supported Clock Frequencies
+    #    - weight bits
+    #    - clock_frequency
+    ##### TensorTypes
+    #    - weight bits (eher hier)
+    ###### DataType
+    ###### Axis
+
+    #### Ops
+    ####
