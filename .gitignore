@@ -7,7 +7,7 @@
 *.tar.gz
 *.err
 *.out
-^datasets/
+/datasets/*
 .vscode/.ropeproject
 trained_models
 \#*
