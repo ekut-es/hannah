@@ -61,11 +61,11 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
                     f.write(f"#   {metric_name}: {metric_val}\n")
                 f.write("\n")
 
-                f.write("# Test Metrics:\n")
-                for column in point_metrics:
-                    if hasattr(column, "startswith") and column.startswith("test"):
-                        f.write(f"#   {column}: {point_metrics[column].item()}\n")
-                f.write("\n")
+                # f.write("# Test Metrics:\n")
+                # for column in point_metrics:
+                #    if hasattr(column, "startswith") and column.startswith("test"):
+                #        f.write(f"#   {column}: {point_metrics[column].item()}\n")
+                # f.write("\n")
 
                 if backend_parameters:
                     f.write("# Backend parameters:\n")
