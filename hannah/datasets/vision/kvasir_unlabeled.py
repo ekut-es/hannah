@@ -2,11 +2,13 @@ import bisect
 import json
 import logging
 import pathlib
+import time
 import urllib
 from typing import List
 
 import cv2
 import torchvision
+from albumentations.pytorch.transforms import ToTensorV2
 from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
@@ -14,7 +16,7 @@ from tqdm import tqdm
 import albumentations as A
 
 from ..base import AbstractDataset
-from ..utils import generate_file_md5
+from ..utils import cachify, generate_file_md5
 
 try:
     import gdown
@@ -23,6 +25,22 @@ except ModuleNotFoundError:
 
 
 logger = logging.getLogger(__name__)
+
+
+def _read_frame(video_file, frame_index):
+    video_capture = cv2.VideoCapture(str(video_file))
+    video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+    ret, frame = video_capture.read()
+    if not ret:
+        print("ERROR: ", ret)
+        print("Video File:", video_file)
+        print("frame_index:", frame_index)
+
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    return frame
+
+
+read_frame = cachify(_read_frame, compress=True)
 
 
 class KvasirCapsuleUnlabeled(AbstractDataset):
@@ -47,7 +65,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         self.end_frames = []
         for video_data in metadata:
             self.total_frames += int(video_data["total_frames"])
-            self.end_frames.append(self.total_frames)
+            self.end_frames.append(self.total_frames - 1)
 
         self._video_captures = {}
 
@@ -72,44 +90,29 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         video_file = self.data_root / video_metadata["video_file"]
         assert video_file.exists()
 
-        if video_file in self._video_captures:
-            video_capture = self._video_captures[video_file]
-        else:
-            video_capture = cv2.VideoCapture(str(video_file))
-            self._video_captures[video_file] = video_capture
-
         start_frame = 0
         if video_index > 0:
-            start_frame = self.end_frames[video_index - 1]
+            start_frame = self.end_frames[video_index - 1] + 1
 
-        frame_index = index - start_frame
+        frame_index = min(
+            max(index - start_frame, 0), video_metadata["total_frames"] - 1
+        )
 
-        video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-
-        logger.debug("=============")
-        logger.debug(video_index, start_frame, video_index, frame_index)
-
-        ret, frame = video_capture.read()
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        frame = Image.fromarray(frame)
+        frame = read_frame(video_file, frame_index)
 
         return frame, video_metadata
 
     def __getitem__(self, index):
         res = {}
 
+        # start_time = time.time()
         data, metadata = self._decode_frame(index)
+        # end_time = time.time()
 
-        if self.transform:
-            data = self.transform(data)
-        else:
-            data = transforms.Resize(256)(data)
-            data = transforms.CenterCrop(256)(data)
-            data = transforms.Resize(224)(data)
-            data = torchvision.transforms.ToTensor()(data)
-            data = transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(data)
+        # print("Decode  time", end_time - start_time)
+
+        augmented = self.transform(image=data)
+        data = augmented["image"]
 
         res["data"] = data
         res["metadata"] = metadata
@@ -140,9 +143,35 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         val_split = [metadata[-2]]
         test_split = [metadata[-1]]
 
-        train_set = cls(config, train_split)
-        test_set = cls(config, test_split)
-        val_set = cls(config, val_split)
+        mean = tuple(config.mean)
+        std = tuple(config.mean)
+        resolution = tuple(config.resolution)
+
+        train_transforms = A.Compose(
+            [
+                # A.RandomResizedCrop(height=config.resolution[0], width=config.resolution[1], scale=(0.5,1.0)),
+                A.Resize(height=resolution[0], width=resolution[1]),
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.Rotate(limit=180, p=1.0),
+                A.Normalize(mean=mean, std=std),
+                ToTensorV2(),
+            ],
+            p=1.0,
+        )
+
+        test_transforms = A.Compose(
+            [
+                A.Resize(height=resolution[0], width=resolution[1]),
+                A.Normalize(mean=mean, std=std),
+                ToTensorV2(),
+            ],
+            p=1.0,
+        )
+
+        train_set = cls(config, train_split, transform=train_transforms)
+        test_set = cls(config, test_split, transform=test_transforms)
+        val_set = cls(config, val_split, transform=test_transforms)
 
         logger.debug("Train Data: %f Frames", train_set.total_frames)
         logger.debug("Val Data: %f Frames", val_set.total_frames)
@@ -246,3 +275,12 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
             json.dump(json_data, f)
 
         return None
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["_video_captures"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._video_captures = {}

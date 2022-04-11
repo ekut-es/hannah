@@ -15,4 +15,4 @@ stochastic_weight_avg: false
 auto_scale_batch_size: null
 accumulate_grad_batches: 1
 plugins: null
-reload_dataloaders_every_n_epochs: 0
+reload_dataloaders_every_n_epochs: 50

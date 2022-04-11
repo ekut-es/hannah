@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from omegaconf import MISSING
 from typing import Any, List
 
 from hydra.core.config_store import ConfigStore
-
+from omegaconf import MISSING
 
 cs = ConfigStore.instance()
 
@@ -97,7 +96,7 @@ class CosineAnnealingWarmRestartsConf:
     last_epoch: Any = -1
 
 
-cs.store(group="scheduler", name="cosine_warm", node="CosineAnnealingWarmRestartsConf")
+cs.store(group="scheduler", name="cosine_warm", node=CosineAnnealingWarmRestartsConf())
 
 
 @dataclass

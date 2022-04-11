@@ -47,6 +47,11 @@ class ClassifierModule(LightningModule, ABC):
         self.train_set = None
         self.test_set = None
         self.dev_set = None
+
+        self.train_set_unlabeled = None
+        self.test_set_unlabeled = None
+        self.dev_set_unlabeled = None
+
         self.logged_samples = 0
         self.export_onnx = export_onnx
         self.gpus = gpus
@@ -64,6 +69,15 @@ class ClassifierModule(LightningModule, ABC):
     @abstractmethod
     def get_class_names(self):
         pass
+
+    def train_dataloader(self):
+        return self._get_dataloader(self.train_set, shuffle=True)
+
+    def test_dataloader(self):
+        return self._get_dataloader(self.test_set)
+
+    def val_dataloader(self):
+        return self._get_dataloader(self.dev_set)
 
     def _get_dataloader(self, dataset, shuffle=False):
         batch_size = self.hparams["batch_size"]
@@ -84,7 +98,6 @@ class ClassifierModule(LightningModule, ABC):
             sampler=sampler,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
         self.batches_per_epoch = len(train_loader)
 
         return train_loader
@@ -198,8 +211,7 @@ class ClassifierModule(LightningModule, ABC):
 
         return loggers
 
-    @staticmethod
-    def get_balancing_sampler(dataset):
+    def get_balancing_sampler(self, dataset):
         num_sampels = list(dataset.class_counts.values())
         weights = [0 if i is None else 1 / i for i in num_sampels]
         target_list = dataset.get_label_list

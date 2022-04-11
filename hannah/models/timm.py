@@ -75,10 +75,17 @@ class DefaultDecoderHead(nn.Module):
         for stage_num in range(stages):
             out_channels = channels // 2
             stage = nn.Sequential(
-                nn.Conv2d(channels, out_channels, 3, padding=(1, 1)),
+                nn.ConvTranspose2d(
+                    channels,
+                    out_channels,
+                    3,
+                    stride=2,
+                    padding=(1, 1),
+                    output_padding=1,
+                ),
                 nn.BatchNorm2d(out_channels),
                 nn.LeakyReLU(2.0),
-                nn.Upsample(scale_factor=2.0),
+                # nn.Upsample(scale_factor=2.0),
             )
 
             dim_x *= 2.0
@@ -169,8 +176,8 @@ class TimmModel(nn.Module):
             pred = self.classifier(latent)
             result["logits"] = pred
 
-        if self.anomaly_predictor is not None and anomaly is True:
-            anomaly_score = self.anomaly(latent)
+        if self.anomaly_detector is not None and anomaly is True:
+            anomaly_score = self.anomaly_detector(latent)
             result["anomaly_score"] = anomaly_score
 
         return result

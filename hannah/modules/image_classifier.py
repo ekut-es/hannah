@@ -36,6 +36,12 @@ class ImageClassifierModule(ClassifierModule):
             self.hparams.dataset
         )
 
+        self.train_set_unlabeled, self.dev_set_unlabeled, self.test_set_unlabeled = (
+            None,
+            None,
+            None,
+        )
+
         example_data = self._decode_batch(self.test_set[0])["data"]
 
         if not isinstance(example_data, torch.Tensor):
@@ -115,13 +121,14 @@ class ImageClassifierModule(ClassifierModule):
         return self.model(x)
 
     def common_step(self, step_name, batch, batch_idx):
+        # print("step_name", step_name)
         batch = self._decode_batch(batch)
 
         x = batch["data"]
         labels = batch.get("labels", None)
         mixup_labels = labels
         if step_name == "train":
-            if self.num_classes is not None:
+            if self.num_classes > 0:
                 # FIXME: make properly configurable
                 mixup_args = self.hparams.dataset.augmentations.mixup_args
                 mixup_fn = Mixup(**mixup_args, num_classes=self.num_classes)
@@ -161,8 +168,18 @@ class ImageClassifierModule(ClassifierModule):
         if "decoded" in prediction_result:
             decoded = prediction_result["decoded"]
             decoder_loss = F.mse_loss(decoded, x)
+            # print(f"{step_name}_decoder_loss", decoder_loss)
             self.log(f"{step_name}_decoder_loss", decoder_loss)
             loss += decoder_loss
+
+            if batch_idx == 0:
+                loggers = self._logger_iterator()
+                for logger in loggers:
+                    if hasattr(logger.experiment, "add_image"):
+                        import torchvision.utils
+
+                        images = torchvision.utils.make_grid(decoded, normalize=True)
+                        logger.experiment.add_image(f"decoded{batch_idx}", images)
 
         self.log(f"{step_name}_loss", loss)
         return loss, prediction_result, batch
@@ -183,15 +200,6 @@ class ImageClassifierModule(ClassifierModule):
         if y is not None and preds is not None:
             with set_deterministic(False):
                 self.test_confusion(preds, y)
-
-    def train_dataloader(self):
-        return self._get_dataloader(self.train_set, shuffle=True)
-
-    def test_dataloader(self):
-        return self._get_dataloader(self.test_set)
-
-    def val_dataloader(self):
-        return self._get_dataloader(self.dev_set)
 
     def on_train_epoch_end(self):
         self.eval()
