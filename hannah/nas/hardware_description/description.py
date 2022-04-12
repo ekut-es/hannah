@@ -9,6 +9,7 @@ from hannah.nas.hardware_description.data_type import DataType, FloatType, IntTy
 from hannah.nas.hardware_description.tensor_type import TensorType
 from hannah.nas.hardware_description.axis_type import AxisType
 from hannah.nas.hardware_description.optional_op import OptionalOp
+from hannah.nas.parameters import IntScalarParameter
 
 
 def int_t(signed: bool = True, bits: int = 8):
@@ -67,10 +68,10 @@ if __name__ == "__main__":
     ultratrail = ComputeCluster("ultratrail")
 
     bias_bits = ultratrail.int_scalar_parameter("bias_bits", min=1, max=8)
-    activation_bits = IntScalarChoice(min=1, max=8)
-    accumulator_bits = IntScalarChoice(min=1, max=32)
+    activation_bits = IntScalarParameter(min=1, max=8)
+    accumulator_bits = IntScalarParameter(min=1, max=32)
 
-    max_weight_bits = IntScalarChoice(min=4, max=8)
+    max_weight_bits = IntScalarParameter(min=4, max=8)
 
     # ultratrail.choice(
     #    weight_bits=weight_bits,
