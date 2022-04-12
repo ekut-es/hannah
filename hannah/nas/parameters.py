@@ -189,12 +189,14 @@ def _create_parametrize_wrapper(parameters, cls):
 
     parameter_list = list(parameters.values())
 
+    old_init_fn = cls.__init__
+
     def init_fn(self, *args, **kwargs):
         self._PARAMETERS = {}
 
         for num, arg in enumerate(args):
             if isinstance(arg, Parameter):
-                breakpoint()
+                # breakpoint()
                 name = parameter_list[num + 1].name
                 self._PARAMETERS[name] = arg
         for name, arg in kwargs.items():
@@ -216,7 +218,7 @@ def parametrize(cls=None):
         #    param_default = param.default
         #    print(_key, param)
 
-        new_init_fn = _create_init(init_sig.parameters, init_fn)
+        new_init_fn = _create_parametrize_wrapper(init_sig.parameters, cls)
         cls.__init__ = new_init_fn
 
         return cls
