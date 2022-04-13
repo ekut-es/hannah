@@ -1,5 +1,3 @@
-
-
 _target_: pytorch_lightning.callbacks.ModelCheckpoint
 dirpath: "checkpoints"
 save_top_k: 5

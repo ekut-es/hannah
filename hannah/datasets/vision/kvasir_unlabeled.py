@@ -27,22 +27,6 @@ except ModuleNotFoundError:
 logger = logging.getLogger(__name__)
 
 
-def _read_frame(video_file, frame_index):
-    video_capture = cv2.VideoCapture(str(video_file))
-    video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-    ret, frame = video_capture.read()
-    if not ret:
-        print("ERROR: ", ret)
-        print("Video File:", video_file)
-        print("frame_index:", frame_index)
-
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    return frame
-
-
-read_frame = cachify(_read_frame, compress=True)
-
-
 class KvasirCapsuleUnlabeled(AbstractDataset):
     """Dataset representing unalbelled videos"""
 
@@ -98,8 +82,19 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
             max(index - start_frame, 0), video_metadata["total_frames"] - 1
         )
 
-        frame = read_frame(video_file, frame_index)
+        if video_file in self._video_captures:
+            video_capture = self._video_captures[video_file]
+        else:
+            video_capture = cv2.VideoCapture(str(video_file))
+            self._video_captures[video_file] = video_capture
 
+        ret, frame = video_capture.read()
+        if not ret:
+            video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = video_capture.read()
+            assert ret == True
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return frame, video_metadata
 
     def __getitem__(self, index):

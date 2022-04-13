@@ -9,6 +9,7 @@ import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.utilities.cloud_io import load as pl_load
 from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
@@ -25,6 +26,8 @@ from .utils import (
     log_execution_env_state,
 )
 
+msglogger = logging.getLogger(__name__)
+
 
 @rank_zero_only
 def handleDataset(config=DictConfig):
@@ -33,7 +36,7 @@ def handleDataset(config=DictConfig):
         dataset=config.dataset,
         model=config.model,
         optimizer=config.optimizer,
-        features=config.features,
+        features=config.features if "features" in config else None,
         scheduler=config.get("scheduler", None),
         normalizer=config.get("normalizer", None),
         _recursive_=False,
@@ -69,7 +72,8 @@ def train(config: DictConfig):
             dataset=config.dataset,
             model=config.model,
             optimizer=config.optimizer,
-            features=config.features,
+            features=config.get("features", None),
+            augmentation=config.get("augmentation", None),
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
             gpus=config.trainer.get("gpus", None),
@@ -113,6 +117,12 @@ def train(config: DictConfig):
             _convert_="partial",
         )
 
+        if config.get("input_file", None):
+            msglogger.info("Loading initial weights from model %s", config.input_file)
+            lit_module.setup("train")
+            input_ckpt = pl_load(config.input_file)
+            lit_module.load_state_dict(input_ckpt["state_dict"], strict=False)
+
         if config["auto_lr"]:
             # run lr finder (counts as one epoch)
             lr_finder = lit_trainer.lr_find(lit_module)
@@ -132,7 +142,6 @@ def train(config: DictConfig):
         ckpt_path = None
         if config.get("resume", False):
             expected_ckpt_path = Path(".") / "checkpoints" / "last.ckpt"
-            # breakpoint()
             if expected_ckpt_path.exists():
                 logging.info(
                     "Resuming training from checkpoint: %s", str(expected_ckpt_path)

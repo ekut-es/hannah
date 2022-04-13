@@ -42,9 +42,30 @@ class DefaultClassifierHead(nn.Module):
         return x
 
 
+class DefaultProjectionHead(nn.Module):
+    def __init__(self, latent_shape, hidden_dim, output_dim):
+        super().__init__()
+
+        self.pooling = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+        self.linear1 = nn.LazyLinear(hidden_dim)
+        self.bn = nn.BatchNorm1d(hidden_dim)
+        self.relu = nn.LeakyReLU()
+        self.linear2 = nn.LazyLinear(output_dim)
+
+    def forward(self, x):
+        x = self.pooling(x)
+        x = self.flatten(x)
+        x = self.linear1(x)
+        x = self.bn(x)
+        x = self.relu(x)
+        x = self.linear2(x)
+        return x
+
+
 class DefaultDecoderHead(nn.Module):
     def __init__(self, latent_shape, input_shape):
-        """Default Decoder Head for autoencoders tousing Conv2D and Upsample
+        """Default Decoder Head for autoencoders using TransposedConv2D
 
         Args:
             latent_shape (Tuple): Shape (CxHxW) of the latent representation of the autoencoder
@@ -117,6 +138,7 @@ class TimmModel(nn.Module):
         decoder: Union[Mapping[str, Any], bool] = True,
         classifier: Union[Mapping[str, Any], bool] = True,
         anomaly_detector: Union[Mapping[str, Any], bool] = True,
+        projector: Union[Mapping[str, Any], bool] = False,
         labels: int = 0,
         **kwargs
     ):
@@ -158,14 +180,32 @@ class TimmModel(nn.Module):
                 anomaly_detector, latent_shape=dummy_latent.shape
             )
 
+        self.projector = None
+        if projector is True:
+            self.projector = DefaultProjectionHead(dummy_latent.shape, 1024, 256)
+        elif projector:
+            self.projector = hydra.utils.instantiate(
+                projector, latent_shape=dummy_latent.shape
+            )
+
         self.input_shape = input_shape
 
     def forward(
-        self, x: torch.Tensor, decode=True, classify=True, anomaly=True
+        self,
+        x: torch.Tensor,
+        decode=True,
+        classify=True,
+        anomaly=False,
+        projection=False,
+        finetuning=False,
     ) -> Mapping[str, torch.Tensor]:
         result = {}
 
-        latent = self.encoder(x)
+        if finetuning:
+            with torch.no_grad():
+                latent = self.encoder(x)
+        else:
+            latent = self.encoder(x)
         result["latent"] = latent
 
         if self.decoder is not None and decode is True:
@@ -179,5 +219,9 @@ class TimmModel(nn.Module):
         if self.anomaly_detector is not None and anomaly is True:
             anomaly_score = self.anomaly_detector(latent)
             result["anomaly_score"] = anomaly_score
+
+        if self.projector is not None and projection is True:
+            projection = self.projector(latent)
+            result["projection"] = projection
 
         return result

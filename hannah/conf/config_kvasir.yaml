@@ -1,0 +1,59 @@
+defaults:
+    - dataset: kvasir_capsule             # Dataset configuartion name
+    - features: identity                  # Feature extractor configuration name (use identity for vision datasets)
+    - model: timm_mobilenetv3_small_075   # Neural network name (for now timm_resnet50 or timm_efficientnet_lite1)
+    - scheduler: 1cycle                   # learning rate scheduler config name
+    - optimizer: adamw                    # Optimizer config name
+    - normalizer: null                    # Feature normalizer (used for quantized neural networks)
+    - module: image_classifier            # Lightning module config for the training loop (image classifier for image classification tasks)
+    - trainer: default                    # Lightning trainer config
+    - compress: null
+    - checkpoint: default
+    - backend: null
+    - early_stopping: null
+    - profiler: null
+    - pruning: null
+    - optional dataset/features: ${dataset}_${features}
+    - override hydra/job_logging: silent
+
+experiment_id: kvasir_vanilla
+output_dir: trained_models
+auto_lr: false
+print_metrics: false
+data_monitor: false
+monitor:
+  metric: val_f1_micro
+  direction: maximize
+
+seed: [1234]
+
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+
+
+model:
+  decoder: False
+  classifier: True
+  anomaly_detector: False
+  projector: False
+
+trainer:
+  max_epochs: 30
+
+scheduler:
+  max_lr: 0.01
+
+checkpoint:
+  monitor: val_f1_macro
+  mode: max
+
+dataset:
+  sampler: weighted
+
+
+#TODO:
+dump_test: false
+input_file: ''
