@@ -1,0 +1,39 @@
+data_folder: ${hydra:runtime.cwd}/datasets/
+data_root: ${dataset.data_folder}/kvasir_capsule/labelled_images
+cls: hannah.datasets.vision.KvasirCapsuleAnomalyDataset
+dataset: kvasir_capsule
+val_percent: 0.1
+sampler: random
+weighted_loss: false
+
+train_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_0.csv
+test_val_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_1.csv
+
+augmentations:
+    rand_augment:
+        N: 1
+        M: 1
+        probs:
+            Identity : 0.5
+            ShearX: 0.5
+            ShearY: 0.5
+            TranslateX: 0.5
+            TranslateY : 0.5
+            Rotate : 0.5
+            Brightness : 0.0
+            Color : 0.5
+            Contrast : 0.0
+            Sharpness : 0.5
+            Posterize : 0.0
+            Solarize : 0.0
+            AutoContrast : 0.0
+            Equalize : 0.1
+
+    # FIXME: consider moving to classifier module
+    mixup_args:
+        mixup_alpha: 0.1       # mixup alpha value, mixup is active if > 0.
+        cutmix_alpha: 0.1      # cutmix alpha value, cutmix is active if > 0.
+        prob: 1.0              # Probability of performing mixup or cutmix when either/both is enabled
+        switch_prob: 0.0       # Probability of switching to cutmix when both mixup and cutmix enabled
+        mode: pair             # batch, pair or elem - wise
+        label_smoothing : 0.0  # Apply label smoothing
