@@ -1,0 +1,9 @@
+batch_augment:
+  transforms:
+    RandomRotation:
+      degrees: 180
+      p: 1.0
+    RandomVerticalFlip:
+      p: 0.5
+    RandomHorizontalFlip:
+      p: 0.5

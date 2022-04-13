@@ -1,0 +1,15 @@
+batch_augment:
+  transforms:
+    RandomGaussianNoise:
+      p: 0.5
+    RandomPosterize:
+      p: 0.3
+    RandomSharpness:
+      p: 0.3
+    RandomRotation:
+      degrees: 180
+      p: 1.0
+    RandomVerticalFlip:
+      p: 0.5
+    RandomHorizontalFlip:
+      p: 0.5
