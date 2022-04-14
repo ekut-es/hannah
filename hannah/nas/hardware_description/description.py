@@ -169,7 +169,7 @@ if __name__ == "__main__":
     "ultratrail.weight_bits"
 
     ultratrail_hardware_template = HardwareTemplate("ultratrail")
-    ultratrail_instance = ultratrail__hardware_template.instance()
+    ultratrail_instance = ultratrail_hardware_template.instance()
 
     ultratrail_hardware_template.int_parameter("max_weight_bits", min=1, max=8)
     ultratrail_instance.int_parameter("weight_bits", min=1, max=8)

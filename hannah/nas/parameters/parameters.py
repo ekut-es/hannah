@@ -1,7 +1,7 @@
 from typing import Optional, Union
 import numpy as np
 from abc import ABC, abstractmethod
-from ..conditions import (
+from ..expressions.conditions import (
     LTCondition,
     LECondition,
     GTCondition,
@@ -9,7 +9,7 @@ from ..conditions import (
     EQCondition,
     NECondition,
 )
-from ..abstract_arithmetic import (
+from ..expressions.arithmetic import (
     AbstractAdd,
     AbstractSub,
     AbstractMul,
@@ -19,6 +19,7 @@ from ..abstract_arithmetic import (
     AbstractAnd,
     AbstractOr,
 )
+from .protocol import is_parametrized
 import inspect
 
 
@@ -39,7 +40,7 @@ class Parameter(ABC):
         ...
 
     @abstractmethod
-    def current(self):
+    def instantiate(self):
         ...
 
     @abstractmethod
@@ -121,7 +122,7 @@ class IntScalarParameter(Parameter):
         self.current_value = self.rng.randint(self.min, self.max)
         return self.current_value
 
-    def current(self):
+    def instantiate(self):
         return self.current_value
 
     def check(self, value):
@@ -151,7 +152,7 @@ class FloatScalarParameter(Parameter):
         self.current_value = self.rng.uniform(self.min, self.max)
         return self.current_value
 
-    def current(self):
+    def instantiate(self):
         return self.current_value
 
     def check(self, value):
@@ -188,7 +189,7 @@ class CategoricalParameter(Parameter):
             self.current_value = self.current_value.sample()
         return self.current_value
 
-    def current(self):
+    def instantiate(self):
         return self.current_value
 
     def check(self, value):
@@ -221,10 +222,6 @@ class SubsetParameter(Parameter):
         self.current_value = None
         self.sample()
 
-    x = [1, 2, 3, 4]
-    size = 3
-    result = [2, 2, 3]
-
     def sample(self):
         size = self.rng.randint(min, max)
         chosen_set = self.rng.choice(self.choices, size=size)
@@ -237,7 +234,7 @@ class SubsetParameter(Parameter):
         self.current_value = result
         return result
 
-    def current(self):
+    def instantiate(self):
         return self.current_value
 
     def check(self, value):
@@ -327,12 +324,3 @@ def set_params(self, **kwargs):
 
 def instantiate(self):
     self._parametrized = False
-
-
-def is_parametrized(obj):
-    if isinstance(obj, Parameter):
-        return True
-    elif hasattr(obj, "_parametrized") and obj._parametrized:
-        return True
-    else:
-        return False

@@ -2,7 +2,7 @@ import textwrap
 from abc import ABC, abstractmethod
 from typing import Any
 
-import hannah.nas.parameters.parameters as p
+from hannah.nas.parameters.protocol import is_parametrized
 
 
 class AbstractOp(ABC):
@@ -31,28 +31,34 @@ class AbstractBinaryOp(AbstractArithmeticOp):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
-        self._symbol = self.__name__
+        self._symbol = type(self).__name__
 
     def format(self, indent=2, length=80):
         ret = "(" + self._symbol + "\n"
-        ret += textwrap.indent(self._get_formatted(self.lhs), " " * indent) + "\n"
-        ret += textwrap.indent(self._get_formatted(self.rhs), " " * indent) + "\n"
+        ret += (
+            textwrap.indent(self._get_formatted(self.lhs, indent, length), " " * indent)
+            + "\n"
+        )
+        ret += (
+            textwrap.indent(self._get_formatted(self.rhs, indent, length), " " * indent)
+            + "\n"
+        )
         ret += ")"
         return ret
 
     def __repr__(self):
-        return self.__name__ + "(" + repr(lhs) + "," + repr(rhs) + ")"
+        return type(self).__name__ + "(" + repr(self.lhs) + "," + repr(self.rhs) + ")"
 
     def evaluate(self):
         current_lhs = self.lhs
         current_rhs = self.rhs
 
-        if isinstance(current_lhs, p.Parameter):
+        if is_parametrized(current_lhs):
             current_lhs = current_lhs.current_value
         elif isinstance(current_lhs, AbstractArithmeticOp):
             current_lhs = current_lhs.evaluate()
 
-        if isinstance(current_rhs, p.Parameter):
+        if is_parametrized(current_rhs):
             current_rhs = current_rhs.current_value
         elif isinstance(current_rhs, AbstractArithmeticOp):
             current_rhs = current_rhs.evaluate()
