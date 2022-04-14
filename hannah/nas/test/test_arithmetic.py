@@ -1,21 +1,21 @@
-from hannah.nas.expressions.arithmetic import AbstractAdd
+from hannah.nas.expressions.arithmetic import Add
 from hannah.nas.parameters.parameters import IntScalarParameter
 
 
 def test_print():
-    add = AbstractAdd(5, 5)
+    add = Add(5, 5)
     print(str(add))
 
-    add_param = AbstractAdd(IntScalarParameter(0, 10), 10)
+    add_param = Add(IntScalarParameter(0, 10), 10)
     print(add_param)
 
 
 def test_evaluate():
-    add = AbstractAdd(5, 5)
+    add = Add(5, 5)
     res = add.evaluate()
     assert res == 10
 
-    add_param = AbstractAdd(IntScalarParameter(0, 10), 10)
+    add_param = Add(IntScalarParameter(0, 10), 10)
     res = add_param.evaluate()
     assert res in [10, 20]
 

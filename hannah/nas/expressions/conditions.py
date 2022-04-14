@@ -1,7 +1,7 @@
 from .op import BinaryOp
 
 
-class Condition(BinaryOP):
+class Condition(BinaryOp):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
