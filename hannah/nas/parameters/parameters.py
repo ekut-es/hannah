@@ -119,7 +119,7 @@ class IntScalarParameter(Parameter):
         self.current_value = min
 
     def sample(self):
-        self.current_value = self.rng.randint(self.min, self.max)
+        self.current_value = self.rng.integers(self.min, self.max)
         return self.current_value
 
     def instantiate(self):
@@ -277,18 +277,18 @@ def _create_parametrize_wrapper(parameters, cls):
         self._PARAMETERS = {}
 
         for num, arg in enumerate(args):
-            if isinstance(arg, Parameter):
+            if is_parametrized(arg):
                 # breakpoint()
                 name = parameter_list[num + 1].name
                 self._PARAMETERS[name] = arg
         for name, arg in kwargs.items():
-            if isinstance(arg, Parameter):
+            if is_parametrized(arg):
                 self._PARAMETERS[name] = arg
 
         # TODO:
-        # self.sample = sample
-        self.set_params = set_params
-        # self.instantiate = instantiate
+        cls.sample = sample
+        cls.set_params = set_params
+        # cls.instantiate = instantiate
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
