@@ -9,16 +9,8 @@ from ..expressions.conditions import (
     EQCondition,
     NECondition,
 )
-from ..expressions.arithmetic import (
-    AbstractAdd,
-    AbstractSub,
-    AbstractMul,
-    AbstractTruediv,
-    AbstractFloordiv,
-    AbstractMod,
-    AbstractAnd,
-    AbstractOr,
-)
+from ..expressions.arithmetic import Add, Sub, Mul, Truediv, Floordiv, Mod
+from ..expressions.logic import And, Or
 from .protocol import is_parametrized
 import inspect
 
@@ -70,22 +62,22 @@ class Parameter(ABC):
         return NECondition(self, other)
 
     def __add__(self, other):
-        return AbstractAdd(self, other)
+        return Add(self, other)
 
     def __sub__(self, other):
-        return AbstractSub(self, other)
+        return Sub(self, other)
 
     def __mul__(self, other):
-        return AbstractMul(self, other)
+        return Mul(self, other)
 
     def __truediv__(self, other):
-        return AbstractTruediv(self, other)
+        return Truediv(self, other)
 
     def __floordiv__(self, other):
-        return AbstractFloordiv(self, other)
+        return Floordiv(self, other)
 
     def __mod__(self, other):
-        return AbstractMod(self, other)
+        return Mod(self, other)
 
     def __divmod__(self, other):
         raise NotImplementedError()
@@ -100,13 +92,21 @@ class Parameter(ABC):
         raise NotImplementedError()
 
     def __and__(self, other):
-        return AbstractAnd(self, other)
+        return And(self, other)
 
     def __xor__(self, other):
         raise NotImplementedError()
 
     def __or__(self, other):
-        return AbstractOr(self, other)
+        return Or(self, other)
+
+    def __repr__(self):
+        return (
+            type(self).__name__
+            + "("
+            + ", ".join((f"{k} = {v}" for k, v in self.__dict__.items()))
+            + ")"
+        )
 
 
 class IntScalarParameter(Parameter):
