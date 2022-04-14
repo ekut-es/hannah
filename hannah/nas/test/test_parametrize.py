@@ -1,5 +1,6 @@
 from typing import Optional
-from hannah.nas.parameters.parameters import parametrize, IntScalarParameter
+from hannah.nas.parameters.parameters import parametrize, IntScalarParameter, FloatScalarParameter
+from numpy.random import default_rng
 
 
 @parametrize
@@ -10,13 +11,18 @@ class Test:
         self.c = c
 
 
+@parametrize
+class NestedTest:
+    def __init__(self, t: Test = None):
+        self.t = t
+
+
 # conv = conv2d(wildcard(), wildcard(), out_channels=IntScalarParameter(32, 64))
 # relu(conv)
 
 # conv = op('conv', out_channels=IntScalarParameter(32, 64))
 # relu = op('relu', conv)
 def test_parametrization():
-    print("test parametrize")
     parametrized_test = Test(a=IntScalarParameter(min=10, max=20))
     assert isinstance(parametrized_test.a, IntScalarParameter)
     assert parametrized_test.b is None
@@ -30,7 +36,27 @@ def test_parametrization():
 
 
 def test_sample():
-    pass
+    rng = default_rng(seed=321)
+    parametrized_test = Test(a=IntScalarParameter(min=10, max=20, rng=rng))
+    parametrized_test.sample()
+    assert parametrized_test.a.current_value == 13
+    assert parametrized_test.a.instantiate() == 13
+
+
+def test_sample_float():
+    rng = default_rng(seed=321)
+    parametrized_test = Test(a=FloatScalarParameter(min=0.1, max=3, rng=rng))
+    parametrized_test.sample()
+    assert parametrized_test.a.current_value == 2.010423416621207
+    assert parametrized_test.a.instantiate() == 2.010423416621207
+
+
+def test_sample_nested():
+    rng = default_rng(seed=321)
+    parametrized_test = NestedTest(t=Test(a=IntScalarParameter(min=10, max=20, rng=rng)))
+    parametrized_test.sample()
+
+    assert parametrized_test.t.a.current_value == 13
 
 
 def test_set_params():
@@ -43,7 +69,9 @@ def test_instantiate():
 
 if __name__ == "__main__":
     test_parametrization()
-    # test_sample()
+    test_sample()
+    test_sample_float()
+    test_sample_nested()
     # test_set_params()
     # test_instantiate()
 
