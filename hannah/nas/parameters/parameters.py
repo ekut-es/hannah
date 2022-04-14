@@ -108,6 +108,14 @@ class Parameter(ABC):
     def __or__(self, other):
         return AbstractOr(self, other)
 
+    def __repr__(self):
+        return (
+            type(self).__name__
+            + "("
+            + ", ".join((f"{k} = {v}" for k, v in self.__dict__.items()))
+            + ")"
+        )
+
 
 class IntScalarParameter(Parameter):
     def __init__(
