@@ -61,3 +61,14 @@ srf-poetry/tests/
 #doc
 doc/_build/
 nas_results/
+
+tmp/
+out/
+
+.python_history
+.cache/
+
+*.sqlite
+*.pkl
+
+build/
