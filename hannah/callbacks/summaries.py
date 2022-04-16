@@ -3,19 +3,18 @@ from collections import OrderedDict
 
 import pandas as pd
 import torch
-
-import hannah.torch_extensions.nn.SNNActivationLayer
-from ..torch_extensions.nn import SNNLayers
-from ..models.sinc import SincNet
-from ..models.factory import qat
-
-import torchvision
-
 from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.utilities.distributed import rank_zero_only
 from tabulate import tabulate
 
+from ..models.factory import qat
+from ..models.ofa import OFAModel
+from ..models.ofa.submodules.elastickernelconv import ConvBn1d, ConvBnReLu1d, ConvRelu1d
+from ..models.ofa.type_utils import elastic_conv_type, elastic_Linear_type
+from ..models.sinc import SincNet
+from ..torch_extensions.nn import SNNActivationLayer, SNNLayers
 
-msglogger = logging.getLogger("mac_summary")
+msglogger = logging.getLogger(__name__)
 
 
 def walk_model(model, dummy_input):
@@ -68,10 +67,16 @@ def walk_model(model, dummy_input):
             data["Weights volume"] += [int(weights)]
             data["MACs"] += [int(macs)]
         except Exception as e:
-            pass
+            msglogger.error("Could not get summary from %s", str(module))
+            msglogger.error(str(e))
 
     def get_extra(module, volume_ofm, output):
         classes = {
+            elastic_conv_type: get_elastic_conv,
+            elastic_Linear_type: get_elastic_linear,
+            ConvBn1d: get_conv,
+            ConvRelu1d: get_conv,
+            ConvBnReLu1d: get_conv,
             torch.nn.Conv1d: get_conv,
             torch.nn.Conv2d: get_conv,
             qat.Conv1d: get_conv,
@@ -82,17 +87,16 @@ def walk_model(model, dummy_input):
             qat.ConvBnReLU2d: get_conv,
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
-            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
-            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
-            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
-            hannah.torch_extensions.nn.SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
+            qat.Linear: get_fc,
+            SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
+            SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
+            SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
+            SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
         }
-
-        for _class, method in classes.items():
-            if isinstance(module, _class):
-                return method(module, volume_ofm, output)
-
-        return get_generic(module)
+        if type(module) in classes.keys():
+            return classes[type(module)](module, volume_ofm, output)
+        else:
+            return get_generic(module)
 
     def get_conv_macs(module, volume_ofm):
         return volume_ofm * (
@@ -132,6 +136,14 @@ def walk_model(model, dummy_input):
         macs = get_1DSpiking_macs(module, output)
         attrs = get_spike_attrs(module)
         return weights, macs, attrs
+
+    def get_elastic_conv(module, volume_ofm, output):
+        tmp = module.assemble_basic_module()
+        return get_conv(tmp, volume_ofm, output)
+
+    def get_elastic_linear(module, volume_ofm, output):
+        tmp = module.assemble_basic_module()
+        return get_fc(tmp, volume_ofm, output)
 
     def get_conv(module, volume_ofm, output):
         weights = (
@@ -186,9 +198,17 @@ class MacSummaryCallback(Callback):
         total_acts = 0.0
         total_weights = 0.0
         estimated_acts = 0.0
+        model = pl_module.model
+        ofamodel = isinstance(model, OFAModel)
+        if ofamodel:
+            if model.validation_model == None:
+                model.build_validation_model()
+            model = model.validation_model
 
         try:
-            df = walk_model(pl_module.model, dummy_input)
+            df = walk_model(model, dummy_input)
+            if ofamodel:
+                pl_module.model.reset_validation_model()
             t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
             total_macs = df["MACs"].sum()
             total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
@@ -203,6 +223,8 @@ class MacSummaryCallback(Callback):
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
         except RuntimeError as e:
+            if ofamodel:
+                pl_module.model.reset_validation_model()
             msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
@@ -221,6 +243,7 @@ class MacSummaryCallback(Callback):
 
         return res
 
+    @rank_zero_only
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
         try:
@@ -230,10 +253,12 @@ class MacSummaryCallback(Callback):
             msglogger.critical(str(e))
         pl_module.train()
 
+    @rank_zero_only
     def on_test_end(self, trainer, pl_module):
         pl_module.eval()
         self._do_summary(pl_module)
 
+    @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
         res = {}
         try:
@@ -243,4 +268,16 @@ class MacSummaryCallback(Callback):
             msglogger.critical(str(e))
 
         for k, v in res.items():
-            pl_module.log(k, v)
+            pl_module.log(k, float(v), rank_zero_only=True)
+
+    def estimate(self, pl_module):
+        pl_module.eval()
+        res = {}
+        try:
+            res = self._do_summary(pl_module, print_log=False)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
+
+        pl_module.train()
+        return res

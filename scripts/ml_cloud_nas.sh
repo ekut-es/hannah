@@ -8,7 +8,7 @@
 
 #resources:
 
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=40
 
 #SBATCH --partition=gpu-2080ti-preemptable
 # the slurm partition the job is queued to.
@@ -57,7 +57,7 @@ echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
 cp /home/bringmann/cgerum05/ml_cloud.simg $SCRATCH
 
 echo "Running training with config $1"
-date
+date=
 export HANNAH_CACHE_DIR=$SCRATCH/cache
 singularity run --nv  --bind $PWD:/opt/hannah,$SCRATCH:/mnt $SCRATCH/ml_cloud.simg --config-name=$1 module.num_workers=4 hydra/launcher=joblib trainer.max_epochs=30  -m
 date

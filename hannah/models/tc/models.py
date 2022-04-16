@@ -5,13 +5,13 @@ from torch.autograd import Variable
 
 import logging
 
-msglogger = logging.getLogger()
+msglogger = logging.getLogger(__name__)
 
 import pwlf
 import numpy as np
 
 
-from ..utils import ConfigType, SerializableModule, next_power_of2
+from ..utils import next_power_of2
 
 
 def create_act(act, clipping_value):
@@ -179,7 +179,7 @@ class TCResidualBlock(nn.Module):
         return res
 
 
-class TCResNetModel(SerializableModule):
+class TCResNetModel(nn.Module):
     def __init__(self, config):
         super().__init__()
 
@@ -210,10 +210,16 @@ class TCResNetModel(SerializableModule):
             output_channels_name = "conv{}_output_channels".format(count)
             size_name = "conv{}_size".format(count)
             stride_name = "conv{}_stride".format(count)
+            dropout_name = "conv{}_dropout".format(count)
+            bn_name = "conv{}_bn".format(count)
+            allowActivation_name = "conv{}_activation".format(count)
 
             output_channels = int(config[output_channels_name] * width_multiplier)
             size = config[size_name]
             stride = config[stride_name]
+            dropout = config.get(dropout_name, False)
+            bn = config.get(bn_name, False)
+            allowact = config.get(allowActivation_name, False)
 
             # Change first convolution to bottleneck layer.
             if bottleneck[0] == 1:
@@ -245,16 +251,38 @@ class TCResNetModel(SerializableModule):
                     1,
                     bias=False,
                 )
-                self.layers.append(conv1)
-                self.layers.append(conv2)
-                self.layers.append(conv3)
-                input_channels = output_channels
+
+                if dropout:
+                    drop_layer = nn.Dropout(dropout_prob)
+                    self.layers.append(conv1)
+                    self.layers.append(drop_layer)
+                    self.layers.append(conv2)
+                    self.layers.append(drop_layer)
+                    self.layers.append(conv3)
+                    self.layers.append(drop_layer)
+                else:
+                    self.layers.append(conv1)
+                    self.layers.append(conv2)
+                    self.layers.append(conv3)
+
             elif use_inputlayer:
                 conv = nn.Conv1d(
                     input_channels, output_channels, size, stride, bias=False
                 )
-                self.layers.append(conv)
                 input_channels = output_channels
+                self.layers.append(conv)
+
+                if bn:
+                    bn = nn.BatchNorm1d(output_channels)
+                    self.layers.append(bn)
+                if allowact:
+                    tmpact = nn.ReLU()
+                    self.layers.append(tmpact)
+
+                if dropout:
+                    drop_layer = nn.Dropout(dropout_prob)
+                    self.layers.append(drop_layer)
+
                 # self.layers.append(distiller.quantization.SymmetricClippedLinearQuantization(num_bits=8, clip_val=0.9921875))
             count += 1
 
@@ -268,7 +296,6 @@ class TCResNetModel(SerializableModule):
             size = config[size_name]
             stride = config[stride_name]
 
-            # Use same bottleneck, channel_division factor and separable configuration for all blocks
             block = TCResidualBlock(
                 input_channels,
                 output_channels,
@@ -367,7 +394,7 @@ class BranchyTCResNetModel(TCResNetModel):
         self.f_bits = config.get("exit_f_bits", 14)
 
         self.exit_max = 2 ** (self.n_bits - self.f_bits - 1) - 1 / (2 ** self.f_bits)
-        self.exit_min = -2 ** (self.n_bits - self.f_bits - 1)
+        self.exit_min = -(2 ** (self.n_bits - self.f_bits - 1))
         self.exit_divider = 2 ** (self.f_bits)
 
         self.earlyexit_thresholds = config["earlyexit_thresholds"]
@@ -570,8 +597,10 @@ class BranchyTCResNetModel(TCResNetModel):
                 estimated_losses_taylor = self._estimate_losses_taylor(
                     thresholded_result, estimated_labels
                 )
-                estimated_losses_taylor_approximate = self._estimate_losses_taylor_approximate(
-                    thresholded_result, estimated_labels
+                estimated_losses_taylor_approximate = (
+                    self._estimate_losses_taylor_approximate(
+                        thresholded_result, estimated_labels
+                    )
                 )
                 estimated_losses_sum = self._estimate_losses_sum(
                     thresholded_result, estimated_labels
@@ -628,424 +657,3 @@ class BranchyTCResNetModel(TCResNetModel):
                 return criterion(scores, labels)
 
         return loss_function
-
-
-configs = {
-    ConfigType.TC_RES_2.value: dict(
-        features="mel",
-        fully_convolutional=False,
-        dropout_prob=0.5,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(2, 4),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-    ),
-    ConfigType.TC_RES_4.value: dict(
-        features="mel",
-        fully_convolutional=False,
-        dropout_prob=0.5,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(2, 4),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-    ),
-    ConfigType.TC_RES_6.value: dict(
-        features="mel",
-        fully_convolutional=False,
-        dropout_prob=0.5,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(2, 4),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=2,
-        block2_output_channels=32,
-    ),
-    ConfigType.TC_RES_8.value: dict(
-        features="mel",
-        fully_convolutional=False,
-        dropout_prob=0.5,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(2, 4),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=2,
-        block2_output_channels=32,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=48,
-    ),
-    ConfigType.TC_RES_10.value: dict(
-        features="mel",
-        fully_convolutional=False,
-        dropout_prob=0.5,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(2, 4),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=2,
-        block2_output_channels=32,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=48,
-        block4_conv_size=9,
-        block4_stride=2,
-        block4_output_channels=64,
-    ),
-    ConfigType.TC_RES_12.value: dict(
-        features="mel",
-        dropout_prob=0.5,
-        fully_convolutional=False,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(4, 2),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=1,
-        block2_output_channels=24,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=32,
-        block4_conv_size=9,
-        block4_stride=1,
-        block4_output_channels=32,
-        block5_conv_size=9,
-        block5_stride=2,
-        block5_output_channels=48,
-    ),
-    ConfigType.TC_RES_14.value: dict(
-        features="mel",
-        dropout_prob=0.5,
-        fully_convolutional=False,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(4, 2),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=1,
-        block2_output_channels=24,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=32,
-        block4_conv_size=9,
-        block4_stride=1,
-        block4_output_channels=32,
-        block5_conv_size=9,
-        block5_stride=2,
-        block5_output_channels=48,
-        block6_conv_size=9,
-        block6_stride=1,
-        block6_output_channels=48,
-    ),
-    ConfigType.TC_RES_16.value: dict(
-        features="mel",
-        dropout_prob=0.5,
-        fully_convolutional=False,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(4, 2),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=1,
-        block2_output_channels=24,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=32,
-        block4_conv_size=9,
-        block4_stride=1,
-        block4_output_channels=32,
-        block5_conv_size=9,
-        block5_stride=2,
-        block5_output_channels=48,
-        block6_conv_size=9,
-        block6_stride=1,
-        block6_output_channels=48,
-        block7_conv_size=9,
-        block7_stride=2,
-        block7_output_channels=64,
-    ),
-    ConfigType.TC_RES_18.value: dict(
-        features="mel",
-        dropout_prob=0.5,
-        fully_convolutional=False,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(4, 2),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=1,
-        block2_output_channels=24,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=32,
-        block4_conv_size=9,
-        block4_stride=1,
-        block4_output_channels=32,
-        block5_conv_size=9,
-        block5_stride=2,
-        block5_output_channels=48,
-        block6_conv_size=9,
-        block6_stride=1,
-        block6_output_channels=48,
-        block7_conv_size=9,
-        block7_stride=2,
-        block7_output_channels=64,
-        block8_conv_size=9,
-        block8_stride=1,
-        block8_output_channels=64,
-    ),
-    ConfigType.TC_RES_20.value: dict(
-        features="mel",
-        dropout_prob=0.5,
-        fully_convolutional=False,
-        width_multiplier=1.0,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(4, 2),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=1,
-        block2_output_channels=24,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=32,
-        block4_conv_size=9,
-        block4_stride=1,
-        block4_output_channels=32,
-        block5_conv_size=9,
-        block5_stride=2,
-        block5_output_channels=48,
-        block6_conv_size=9,
-        block6_stride=1,
-        block6_output_channels=48,
-        block7_conv_size=9,
-        block7_stride=2,
-        block7_output_channels=64,
-        block8_conv_size=9,
-        block8_stride=1,
-        block8_output_channels=64,
-        block9_conv_size=9,
-        block9_stride=2,
-        block9_output_channels=80,
-    ),
-    ConfigType.TC_RES_8_15.value: dict(
-        features="mel",
-        dropout_prob=0.5,
-        fully_convolutional=False,
-        width_multiplier=1.5,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(4, 2),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=2,
-        block2_output_channels=32,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=48,
-    ),
-    ConfigType.TC_RES_14_15.value: dict(
-        features="mel",
-        dropout_prob=0.5,
-        fully_convolutional=False,
-        width_multiplier=1.5,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(4, 2),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=1,
-        block2_output_channels=24,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=32,
-        block4_conv_size=9,
-        block4_stride=1,
-        block4_output_channels=32,
-        block5_conv_size=9,
-        block5_stride=2,
-        block5_output_channels=48,
-        block6_conv_size=9,
-        block6_stride=1,
-        block6_output_channels=48,
-    ),
-    ConfigType.TC_RES_8_S_S.value: dict(
-        features="mel",
-        small=True,
-        inputlayer=False,
-        fully_convolutional=False,
-        dropout_prob=0.5,
-        width_multiplier=1.0,
-        dilation=9,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(2, 4),
-        separable=(0, 0),
-        block1_conv_size=3,
-        block1_stride=12,
-        block1_output_channels=4,
-    ),
-    ConfigType.TC_RES_8_B_S.value: dict(
-        features="mel",
-        small=True,
-        inputlayer=False,
-        fully_convolutional=False,
-        dropout_prob=0.5,
-        width_multiplier=1.0,
-        dilation=3,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(2, 4),
-        separable=(0, 0),
-        block1_conv_size=3,
-        block1_stride=4,
-        block1_output_channels=12,
-        block2_conv_size=5,
-        block2_stride=2,
-        block2_output_channels=18,
-    ),
-    ConfigType.BRANCHY_TC_RES_8.value: dict(
-        features="mel",
-        dropout_prob=0.5,
-        # earlyexit_thresholds = [0.7, 0.7],
-        earlyexit_thresholds=[-81.0, -81.0],
-        earlyexit_lossweights=[0.3, 0.3],
-        fully_convolutional=False,
-        width_multiplier=1,
-        dilation=1,
-        small=False,
-        inputlayer=True,
-        clipping_value=100000,
-        bottleneck=(0, 0),
-        channel_division=(4, 2),
-        separable=(0, 0),
-        conv1_size=3,
-        conv1_stride=1,
-        conv1_output_channels=16,
-        block1_conv_size=9,
-        block1_stride=2,
-        block1_output_channels=24,
-        block2_conv_size=9,
-        block2_stride=2,
-        block2_output_channels=32,
-        block3_conv_size=9,
-        block3_stride=2,
-        block3_output_channels=48,
-    ),
-}

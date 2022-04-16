@@ -1,7 +1,15 @@
 from .parameters import (
-    IntScalarParameter,
-    FloatScalarParameter,
     CategoricalParameter,
+    FloatScalarParameter,
+    IntScalarParameter,
     SubsetParameter,
 )
 from .parametrize import parametrize
+
+__all__ = [
+    "IntScalarParameter",
+    "FloatScalarParameter",
+    "CategoricalParameter",
+    "SubsetParameter",
+    "parametrize",
+]

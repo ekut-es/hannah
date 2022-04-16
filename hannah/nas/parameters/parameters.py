@@ -1,18 +1,19 @@
-from typing import Optional, Union
-import numpy as np
 from abc import ABC, abstractmethod
+from typing import Optional, Union
+
+import numpy as np
+
+from ..core.parametrized import is_parametrized
+from ..expressions.arithmetic import Add, Floordiv, Mod, Mul, Sub, Truediv
 from ..expressions.conditions import (
-    LTCondition,
-    LECondition,
-    GTCondition,
-    GECondition,
     EQCondition,
+    GECondition,
+    GTCondition,
+    LECondition,
+    LTCondition,
     NECondition,
 )
-from ..expressions.arithmetic import Add, Sub, Mul, Truediv, Floordiv, Mod
 from ..expressions.logic import And, Or
-from ..core.parametrized import is_parametrized
-import inspect
 
 
 class Parameter(ABC):

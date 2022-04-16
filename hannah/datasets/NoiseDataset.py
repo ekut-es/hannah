@@ -196,7 +196,7 @@ class NoiseDataset:
 
                     for i in range(1, 10):
                         filename = (
-                            "TUT-acoustic-scenes-2017-development.audio."
+                            "TUT-acoustic-scenes-2017-development-audio-"
                             + str(i)
                             + ".zip"
                         )

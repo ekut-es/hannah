@@ -5,14 +5,12 @@ allows to explore implementation alternatives using a common neural network cons
 interface.
 """
 
-import collections.abc
 import logging
 import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
-import torch.quantization as tqant
 from hydra.utils import instantiate
 from omegaconf import MISSING, OmegaConf
 
@@ -22,7 +20,7 @@ from . import qat
 from .act import DummyActivation
 from .network import ConvNet
 from .reduction import ReductionBlockAdd, ReductionBlockConcat
-
+import torch.nn as nn
 
 @dataclass
 class NormConfig:
@@ -58,6 +56,7 @@ class HardtanhConfig(ActConfig):
 
 @dataclass
 class MinorBlockConfig:
+    #breakpoint()
     target: str = "conv1d"
     "target Operation"
     parallel: bool = False
@@ -84,6 +83,7 @@ class MinorBlockConfig:
     "use bias for this operation"
     out_quant: bool = True
     "use output quantization for this operation"
+    kernel_per_layer: int = 1
 
 
 @dataclass
@@ -465,10 +465,12 @@ class NetworkFactory:
                     qconfig=qconfig,
                     out_quant=out_quant,
                 )
-
         return output_shape, layers
 
     def minor(self, input_shape, config: MinorBlockConfig, major_stride=None):
+        assert config.out_channels % config.groups == 0
+        assert input_shape[1] % config.groups == 0
+
         if major_stride is not None:
             config.stride = major_stride
 
@@ -486,6 +488,7 @@ class NetworkFactory:
                 bias=config.bias,
                 out_quant=config.out_quant,
             )
+
         elif config.target == "mbconv1d":
             return self.mbconv1d(
                 input_shape,
@@ -531,6 +534,38 @@ class NetworkFactory:
             )
         else:
             raise Exception(f"Unknown minor block config {config}")
+        ''' Depthwise separable convolution can be splitted into dephtwise convolution first
+        followed by pointwise convolution.
+        if config.target == "conv1d":
+            #breakpoint()
+            depthwise_conv = self.conv1d(
+                input_shape,
+                out_channels=input_shape[1],#*config.kernel_per_layer, # adjust number of output channels 
+                kernel_size=config.kernel_size,
+                stride=config.stride,
+                padding=config.padding,
+                dilation=config.dilation,
+                groups=input_shape[1], # number of input channels
+                act=config.act,
+                norm=config.norm,
+                bias=config.bias,
+                out_quant=config.out_quant,
+            )
+            #print(input_shape[1]*config.kernel_per_layer)
+            pointwise_conv = self.conv1d(
+                input_shape, #input_shape[1]*config.kernel_per_layer# number of output channels of depthwise convolution
+                config.out_channels, # out_channels as for normal convolution
+                kernel_size=1, # must be 1, since convolution through every point
+                stride=config.stride,
+                padding=config.padding,
+                dilation=config.dilation,
+                groups=config.groups,
+                act=config.act,
+                norm=config.norm,
+                bias=config.bias,
+                out_quant=config.out_quant,
+            )
+            return nn.Sequential(depthwise_conv, pointwise_conv) '''
 
     def _build_chain(self, input_shape, block_configs, major_stride):
         block_input_shape = input_shape
@@ -846,8 +881,7 @@ class NetworkFactory:
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:
-        # FIXME: correctly handle dilation
-        padding = kernel_size // 2
+        padding = (((kernel_size-1)*_dilation)+1) // 2
         return padding
 
 

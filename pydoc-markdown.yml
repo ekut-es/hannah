@@ -1,5 +1,6 @@
 loaders:
   - type: python
+    search_path: ["."]
 processors:
   - type: filter
   - type: smart
@@ -16,6 +17,10 @@ renderer:
         - title: Overview
           name: configuration/overview
           source: doc/configuration/configuration.md
+        - title: Multi-GPU support
+          name: configuration/multi_gpu
+          source: doc/configuration/multi_gpu.md
+
     - title: Compression
       children:
       - title: Quantization
@@ -29,8 +34,8 @@ renderer:
         source: doc/compression/knowledge_distillation.md
     - title: Optimization
       children:
-        - title: Hyperparamter Optimization
-          name: optimization/hyperparamter
+        - title: Hyperparameter Optimization
+          name: optimization/hyperparameter
           source: doc/optimization/hyperparameters.md
         - title: Neural Architecture Search
           name: optimization/nas
@@ -62,9 +67,10 @@ renderer:
         - title: Profiling
           name: devel/profiling
           source: doc/devel/profiling.md
-        - title: API Documentation
-          contents:
-            - 'speech_recognition.*'
+        #- title: API Documentation
+        #  name: devel/api
+        #  contents:
+        #    - 'hannah.*'
 
   mkdocs_config:
     site_name: HANNAH

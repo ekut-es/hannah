@@ -7,6 +7,7 @@ from .speech import (
     SpeechHotwordDataset,
     VadDataset,
 )
+from .emergency import EmergencySirenDataset
 
 from .Kitti import Kitti
 from .Kitti import KittiCOCO

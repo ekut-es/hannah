@@ -1,0 +1,5 @@
+
+
+_target_: hannah.normalizer.AdaptiveFixedPointNormalizer
+normalize_bits: 8
+num_features: 40
