@@ -238,7 +238,7 @@ run_ml_cloud_lidar:
 
 
 run_sca:
-  stage: compile
+  stage: build
   image: python:3.9
   script:
     - set -e
