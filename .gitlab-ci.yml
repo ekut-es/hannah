@@ -243,7 +243,7 @@ run_sca:
   script:
     - set -e
     - poetry run pre-commit install
-    - poetry run pre-commit -a
+    - poetry run pre-commit run -a
   tags:
     - docker
     - nfs
