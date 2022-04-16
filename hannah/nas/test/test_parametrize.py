@@ -1,5 +1,5 @@
 from typing import Optional
-from hannah.nas.parameters.parameters import parametrize, IntScalarParameter, FloatScalarParameter
+from hannah.nas.parameters import parametrize, IntScalarParameter, FloatScalarParameter
 from numpy.random import default_rng
 
 
@@ -17,11 +17,6 @@ class NestedTest:
         self.t = t
 
 
-# conv = conv2d(wildcard(), wildcard(), out_channels=IntScalarParameter(32, 64))
-# relu(conv)
-
-# conv = op('conv', out_channels=IntScalarParameter(32, 64))
-# relu = op('relu', conv)
 def test_parametrization():
     parametrized_test = Test(a=IntScalarParameter(min=10, max=20))
     assert isinstance(parametrized_test.a, IntScalarParameter)
@@ -53,7 +48,9 @@ def test_sample_float():
 
 def test_sample_nested():
     rng = default_rng(seed=321)
-    parametrized_test = NestedTest(t=Test(a=IntScalarParameter(min=10, max=20, rng=rng)))
+    parametrized_test = NestedTest(
+        t=Test(a=IntScalarParameter(min=10, max=20, rng=rng))
+    )
     parametrized_test.sample()
 
     assert parametrized_test.t.a.current_value == 13
