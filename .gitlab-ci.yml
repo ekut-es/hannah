@@ -56,11 +56,16 @@ test_python_39:
   image: python:3.9
   script:
     - set -e
-    - poetry run python3 -m pytest -v --cov=hannah test
+    - poetry run coverage run --source hannah -m pytest test
+    - poetry run coverage report
+    - poetry run coverage xml
   tags:
     - docker
     - nfs
   interruptible: true
+  artifacts:
+    reports:
+      cobertura: coverage.xml
 
 build_docs:
   stage: deploy
