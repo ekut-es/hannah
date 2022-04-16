@@ -50,6 +50,7 @@ test_python_38:
   interruptible: true
   only:
     - master
+  dependencies: []
 
 test_python_39:
   stage: test
@@ -66,6 +67,7 @@ test_python_39:
   artifacts:
     reports:
       cobertura: coverage.xml
+  dependencies: []
 
 build_docs:
   stage: deploy
@@ -212,7 +214,7 @@ run_ml_cloud:
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_kws.sh"
   when: manual
-
+  dependencies: []
 
 run_ml_cloud_lidar:
   stage: run
@@ -235,6 +237,7 @@ run_ml_cloud_lidar:
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_lidar.sh"
   when: manual
+  dependencies: []
 
 
 run_sca:
