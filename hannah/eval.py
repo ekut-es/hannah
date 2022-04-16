@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 import torch
 from hydra.utils import instantiate, to_absolute_path
@@ -7,7 +6,6 @@ from omegaconf import DictConfig
 from pytorch_lightning import Trainer
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
-import hannah.modules.classifier
 import hydra
 
 

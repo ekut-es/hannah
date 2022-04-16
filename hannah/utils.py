@@ -1,21 +1,15 @@
-import importlib
 import logging
 import os
 import pathlib
 import platform
-import random
 import shutil
 import sys
-import time
 from contextlib import contextmanager
-from pathlib import Path
-from typing import Any, Callable
 
 import numpy as np
 import nvsmi
 import pytorch_lightning
 import torch
-import torch.nn as nn
 from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
 from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
@@ -24,7 +18,6 @@ from pytorch_lightning.callbacks import (
     GPUStatsMonitor,
     LearningRateMonitor,
 )
-from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.distributed import rank_zero_only
 from torchvision.datasets.utils import (
     download_and_extract_archive,
@@ -36,7 +29,6 @@ from torchvision.datasets.utils import (
 import hydra
 
 from .callbacks.clustering import kMeans
-from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.svd_compress import SVD
@@ -47,32 +39,6 @@ try:
     HAVE_LSB = True
 except ImportError:
     HAVE_LSB = False
-
-
-def config_pylogger(log_cfg_file, experiment_name, output_dir="logs"):
-    """Configure the Python logger.
-    For each execution of the application, we'd like to create a unique log directory.
-    By default this directory is named using the date and time of day, so that directories
-    can be sorted by recency.  You can also name your experiments and prefix the log
-    directory with this name.  This can be useful when accessing experiment data from
-    TensorBoard, for example.
-    """
-    exp_full_name = "logfile" if experiment_name is None else str(experiment_name)
-    logdir = output_dir
-
-    if not os.path.exists(logdir):
-        os.makedirs(logdir)
-
-    log_filename = os.path.join(logdir, exp_full_name + ".log")
-    if os.path.isfile(log_cfg_file):
-        logging.config.fileConfig(log_cfg_file, defaults={"logfilename": log_filename})
-
-    msglogger = logging.getLogger()
-    msglogger.logdir = logdir
-    msglogger.log_filename = log_filename
-    msglogger.info("Log file for this run: " + os.path.realpath(log_filename))
-
-    return msglogger
 
 
 def log_execution_env_state():
@@ -121,7 +87,7 @@ def log_execution_env_state():
     if HAVE_LSB:
         try:
             logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
-        except:
+        except:  # noqa
             pass
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
@@ -163,7 +129,7 @@ def extract_from_download_cache(
     clear_download=False,
     no_exist_check=False,
 ):
-    """extracts given file from cache or donwloads first from url
+    """extracts given file from cache or downloads first from url
 
     Args:
         filename (str): name of the file to download or extract

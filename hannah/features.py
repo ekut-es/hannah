@@ -1,14 +1,12 @@
 import math
+from typing import Callable, Optional
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules.utils import _single
-
-from typing import Callable, Optional
-
 from torch import Tensor
+from torch.nn.modules.utils import _single
 from torchaudio import functional as Ftorchaudio
 
 
@@ -115,7 +113,12 @@ class SincConv(nn.Module):
 
         band = torch.cat([bpl, bpc, bpr], dim=1)
         band = band / (2 * f_band[:, None])
-        band = band * self.window_[None,]
+        band = (
+            band
+            * self.window_[
+                None,
+            ]
+        )
 
         self.filters = band.view(self.out_channels, 1, self.kernel_size[0])
 

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 
 class DSConv2d(nn.Module):
@@ -45,7 +45,7 @@ class DSCNNSpeechModel(nn.Module):
         n_labels = config["n_labels"]
         n_maps = config["n_feature_maps"]
 
-        dropout_prob = config["dropout_prob"]
+        self.dropout_prob = config["dropout_prob"]
 
         x = Variable(torch.zeros(1, 1, height, width))
 
@@ -53,8 +53,6 @@ class DSCNNSpeechModel(nn.Module):
         self.ds_convs = nn.ModuleList()
 
         current_shape = x.shape
-
-        print("x:", x.shape)
 
         count = 1
         while "conv{}_size".format(count) in config:
@@ -86,7 +84,7 @@ class DSCNNSpeechModel(nn.Module):
             batch_norm = nn.BatchNorm2d(n_maps)
             self.convs.append(batch_norm)
 
-            dropout = nn.Dropout(config["dropout_prob"])
+            dropout = nn.Dropout(self.dropout_prob)
             self.convs.append(dropout)
 
             count += 1

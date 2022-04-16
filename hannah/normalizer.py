@@ -23,14 +23,14 @@ class FixedPointNormalizer(nn.Module):
         if self.divide and self.normalize_bits % 2 == 0:
 
             self.bits = int((self.normalize_bits / 2) - 1)
-            self.low_border = (2 ** self.bits) - 1
+            self.low_border = (2**self.bits) - 1
             self.high_border = self.low_border << self.bits
 
             if not override_max:
                 self.normalize_max = self.high_border
 
     def forward(self, x):
-        normalize_factor = 2.0 ** self.bits
+        normalize_factor = 2.0**self.bits
         x = x * normalize_factor / self.normalize_max
         x = x.round()
 
@@ -84,7 +84,7 @@ class HistogramNormalizer(nn.Module):
 
         self.bits = bits
         if bins is None:
-            bins = min(2 ** bits, 2048)
+            bins = min(2**bits, 2048)
         self.bins = bins
 
         self.register_buffer("histogram", torch.zeros(self.bins))
@@ -106,6 +106,8 @@ class HistogramNormalizer(nn.Module):
         histogram = torch.histc(
             x, min=int(self.min_val), max=int(self.max_val), bins=self.bins
         )
+
+        _ = histogram  # FIXME: implement histogram equalization
 
         print(self.min_val)
         print(self.max_val)

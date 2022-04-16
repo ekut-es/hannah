@@ -8,7 +8,7 @@ interface.
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
 from hydra.utils import instantiate
@@ -20,7 +20,7 @@ from . import qat
 from .act import DummyActivation
 from .network import ConvNet
 from .reduction import ReductionBlockAdd, ReductionBlockConcat
-import torch.nn as nn
+
 
 @dataclass
 class NormConfig:
@@ -56,7 +56,6 @@ class HardtanhConfig(ActConfig):
 
 @dataclass
 class MinorBlockConfig:
-    #breakpoint()
     target: str = "conv1d"
     "target Operation"
     parallel: bool = False
@@ -116,7 +115,9 @@ class NetworkConfig:
 
 
 class NetworkFactory:
-    def __init__(self,) -> None:
+    def __init__(
+        self,
+    ) -> None:
         self.default_norm = None
         self.default_act = None
         self.default_qconfig = None
@@ -534,13 +535,13 @@ class NetworkFactory:
             )
         else:
             raise Exception(f"Unknown minor block config {config}")
-        ''' Depthwise separable convolution can be splitted into dephtwise convolution first
+        """ Depthwise separable convolution can be splitted into depthwise convolution first
         followed by pointwise convolution.
         if config.target == "conv1d":
             #breakpoint()
             depthwise_conv = self.conv1d(
                 input_shape,
-                out_channels=input_shape[1],#*config.kernel_per_layer, # adjust number of output channels 
+                out_channels=input_shape[1],#*config.kernel_per_layer, # adjust number of output channels
                 kernel_size=config.kernel_size,
                 stride=config.stride,
                 padding=config.padding,
@@ -565,7 +566,7 @@ class NetworkFactory:
                 bias=config.bias,
                 out_quant=config.out_quant,
             )
-            return nn.Sequential(depthwise_conv, pointwise_conv) '''
+            return nn.Sequential(depthwise_conv, pointwise_conv) """
 
     def _build_chain(self, input_shape, block_configs, major_stride):
         block_input_shape = input_shape
@@ -602,9 +603,7 @@ class NetworkFactory:
 
                 if reduction == "add":
                     output_channels = target_output_shape[1]
-                    groups = (
-                        1
-                    )  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
+                    groups = 1  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
 
                 stride = tuple(
                     (
@@ -685,7 +684,7 @@ class NetworkFactory:
         Input: ------->|                                                +--->
                        |---> parallel: False --->  parallel: False ---> |
 
-        If the major block does change the ouptut dimensions compared to the input
+        If the major block does change the output dimensions compared to the input
         and one of the branches does not contain any layers, we infer
         1x1 conv of maximum group size (gcd (input_channels, output_channels)) to do the
         downsampling.
@@ -747,6 +746,7 @@ class NetworkFactory:
         """
 
         out_channels = config.out_channels
+        block = None
         return out_channels, block
 
     def full(self, in_channels: int, config: MajorBlockConfig):
@@ -762,6 +762,7 @@ class NetworkFactory:
         If there are no parallel blocks the block is a standard feed forward network.
         """
         out_channels = config.out_channels
+        block = None
         return out_channels, block
 
     def major(self, input_shape, config: MajorBlockConfig):
@@ -881,7 +882,7 @@ class NetworkFactory:
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:
-        padding = (((kernel_size-1)*_dilation)+1) // 2
+        padding = (((kernel_size - 1) * _dilation) + 1) // 2
         return padding
 
 
@@ -889,13 +890,17 @@ def create_cnn(
     input_shape: Sequence[int],
     labels: int,
     name: str,
-    conv: List[MajorBlockConfig] = [],
-    linear: List[LinearConfig] = [],
-    norm: Optional[NormConfig] = BNConfig(),
-    act: Optional[ActConfig] = ActConfig(),
+    conv: Optional[List[MajorBlockConfig]] = None,
+    linear: Optional[List[LinearConfig]] = None,
+    norm: Optional[NormConfig] = None,
+    act: Optional[ActConfig] = None,
     qconfig: Any = None,
     dropout: float = 0.5,
 ):
+    if conv is None:
+        conv = []
+    if linear is None:
+        linear = []
     factory = NetworkFactory()
     schema = OmegaConf.structured(NetworkConfig)
 

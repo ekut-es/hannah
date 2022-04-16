@@ -1,22 +1,15 @@
 import logging
-import sys
-import yaml
-import hydra
-
-import numpy as np
-
 from pathlib import Path
 
+import numpy as np
+import yaml
 from hydra.utils import instantiate
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import DictConfig, OmegaConf
 
-
+import hannah.conf  # noqa
+import hydra
 from hannah.nas.graph_conversion import model_to_graph
-from hannah.nas.performance_prediction.simple import to_dgl_graph
 from hannah.nas.parametrization import SearchSpace
-from hannah.nas.graph_conversion import model_to_graph
-
-import hannah.conf
 
 
 @hydra.main(config_name="characterize", config_path="conf")
@@ -55,6 +48,8 @@ def main(config: DictConfig):
 
         network_graph = model_to_graph(model.model, model.example_feature_array)
         results = backend.characterize(model)
+
+        print(network_graph)
 
         for result in results:
             board = result["board"]
