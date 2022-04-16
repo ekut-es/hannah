@@ -1,16 +1,12 @@
-from typing import Dict, Any
+import logging
+from typing import Any, Dict
+
+import numpy as np
+import pwlf
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-import logging
-
-msglogger = logging.getLogger()
-
-import pwlf
-import numpy as np
-
-from ..utils import next_power_of2
 from ...torch_extensions.nn.LayerFactory import (
     build1DConvolution,
     buildLinearLayer,
@@ -18,8 +14,12 @@ from ...torch_extensions.nn.LayerFactory import (
     create_spike_fn,
     get1DNeuronLayer,
 )
+from ..utils import next_power_of2
 
+msglogger = logging.getLogger()
 
+# FIXME: fix qa errors or remove Spiking Models
+# flake8: noqa
 def create_act(act, clipping_value):
     if act == "relu":
         return nn.ReLU()
@@ -596,7 +596,7 @@ class TCResNetModel(nn.Module):
                 output_channels,
                 size,
                 stride,
-                dilation ** count,
+                dilation**count,
                 clipping_value,
                 bottleneck[1],
                 channel_division[1],
@@ -745,7 +745,7 @@ class BranchyTCResNetModel(TCResNetModel):
         self.n_bits = config.get("exit_bits", 20)
         self.f_bits = config.get("exit_f_bits", 14)
 
-        self.exit_max = 2 ** (self.n_bits - self.f_bits - 1) - 1 / (2 ** self.f_bits)
+        self.exit_max = 2 ** (self.n_bits - self.f_bits - 1) - 1 / (2**self.f_bits)
         self.exit_min = -(2 ** (self.n_bits - self.f_bits - 1))
         self.exit_divider = 2 ** (self.f_bits)
 

@@ -1,16 +1,7 @@
-import torch
 import torch.nn as nn
-from torch.nn.modules.utils import _single
-from torch.autograd import Variable
-import torch.nn.functional as F
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-from ..utils import next_power_of2
 
 
-############################# DS Conv Block ###################################
+# ############################ DS Conv Block ###################################
 class GDSConv(nn.Module):
     def __init__(
         self,
@@ -85,7 +76,7 @@ class GDSConvBlock(nn.Module):
         return x
 
 
-############################ Combined Final Block *****************************
+# ########################### Combined Final Block *****************************
 
 
 class SincNet(nn.Module):

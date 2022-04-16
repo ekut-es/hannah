@@ -1,15 +1,12 @@
+import io
 import logging
 import os
-import io
-from unittest import result
 
 import hydra
 
-from omegaconf import OmegaConf
-
 from .extract import extract_models
-from .prepare import prepare_summary, calculate_derived_metrics
 from .plot import plot_comparison
+from .prepare import calculate_derived_metrics, prepare_summary
 
 logger = logging.getLogger("nas_eval")
 

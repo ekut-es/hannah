@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 import torch.nn.functional as F
-
-import numpy as np
+from torch.autograd import Variable
 
 
 def truncated_normal(tensor, std_dev=0.01):
