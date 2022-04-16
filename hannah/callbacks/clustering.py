@@ -5,13 +5,13 @@ import numpy as np
 
 from pytorch_lightning.callbacks import Callback
 from ..models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from scipy.sparse import csr_matrix
 
 
 def clustering(params, inertia, cluster):
     sparse_matrix = csr_matrix(params)
-    kmeans = KMeans(n_clusters=cluster, n_init=1, init='k-means++', algorithm="full", random_state=1234)
+    kmeans = MiniBatchKMeans(n_clusters=cluster, init='k-means++', random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1, 1))
     centers = kmeans.cluster_centers_.reshape(-1)
     inertia += kmeans.inertia_
