@@ -1,6 +1,6 @@
 from typing import Any
 from abc import ABC, abstractmethod
-from ..parameters.protocol import is_parametrized
+from ..core.parametrized import is_parametrized
 import textwrap
 
 

@@ -11,7 +11,7 @@ from ..expressions.conditions import (
 )
 from ..expressions.arithmetic import Add, Sub, Mul, Truediv, Floordiv, Mod
 from ..expressions.logic import And, Or
-from .protocol import is_parametrized
+from ..core.parametrized import is_parametrized
 import inspect
 
 
