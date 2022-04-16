@@ -230,3 +230,17 @@ run_ml_cloud_lidar:
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_lidar.sh"
   when: manual
+
+
+run_sca:
+  stage: compile
+  image: python:3.9
+  script:
+    - set -e
+    - poetry run pre-commit install
+    - poetry run pre-commit -a
+  tags:
+    - docker
+    - nfs
+  interruptible: true
+  allow_failure: true
