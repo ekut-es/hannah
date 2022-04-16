@@ -60,6 +60,10 @@ pymdown-extensions = "^9.1"
 #tf-backend = ["onnx-tf"]
 #onnxrt-backend = ["onnxruntime"]
 #tvm-backend = ["hannah-tvm"]
+scikit-learn = "^1.0.2"
+pycocotools = "^2.0.4"
+albumentations = "^1.1.0"
+timm = "^0.5.4"
 
 [tool.poetry.scripts]
 hannah-train = 'hannah.train:main'

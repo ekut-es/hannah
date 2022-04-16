@@ -65,7 +65,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Create example input
         device = self.device
-        if self.example_input_array is not None:
+        if self.example_input_array is None:
             self.example_input_array = self.get_example_input_array()
         dummy_input = self.example_input_array
 
@@ -86,9 +86,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.example_feature_array = self.normalizer(self.example_feature_array)
 
         # Instantiate Model
-        if isinstance(self.model, torch.nn.Module):
-            self.model = self.model
-        elif hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,

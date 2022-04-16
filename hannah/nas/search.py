@@ -1,27 +1,24 @@
 import logging
-
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
 import os
 import shutil
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict
+
+import numpy as np
 import omegaconf
-
 import torch
-
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
-
 from omegaconf import OmegaConf
-import numpy as np
 from pytorch_lightning import LightningModule
-
-from hannah_optimizer.aging_evolution import AgingEvolution
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
-from pytorch_lightning.utilities.seed import seed_everything, reset_seed
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.summaries import MacSummaryCallback
-from ..utils import common_callbacks, clear_outputs, fullname
+from ..utils import clear_outputs, common_callbacks, fullname
+from .aging_evolution import AgingEvolution
 
 msglogger = logging.getLogger("nas")
 
@@ -183,7 +180,9 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             )
             model.setup("train")
         except AssertionError as e:
-            msglogger.critical("Instantion failed. Probably #input/output channels are not divisable by #groups!")
+            msglogger.critical(
+                "Instantion failed. Probably #input/output channels are not divisable by #groups!"
+            )
             msglogger.critical(str(e))
         else:
             estimated_metrics = estimator.estimate(model)
