@@ -225,10 +225,11 @@ class ClassifierModule(LightningModule, ABC):
     def on_validation_epoch_end(self):
         for logger in self._logger_iterator():
             if isinstance(logger, TensorBoardLogger) and hasattr(self, "val_metrics"):
-                logger.log_hyperparams(
-                    self.hparams,
-                    {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
-                )
+                val_metrics = {}
+                for name, metric in self.val_metrics.items():
+                    print(name, metric)
+                    val_metrics[name] = metric.compute().item()
+                logger.log_hyperparams(self.hparams, val_metrics)
 
     def on_test_end(self):
 
