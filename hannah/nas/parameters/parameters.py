@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Optional, Union
 import numpy as np
 from abc import ABC, abstractmethod
@@ -126,17 +127,14 @@ class IntScalarParameter(Parameter):
         return self.current_value
 
     def check(self, value):
-        if isinstance(value, int):
-            return True
-        else:
-            print(
-                "Value {} must be of type int but is type {}".format(value, type(value))
-            )
-            return False
+        if not isinstance(value, int):
+            raise ValueError("Value {} must be of type int but is type {}".format(value, type(value)))
+        elif value > self.max or value < self.min:
+            raise ValueError("Value {} must be in range [{}, {}], ".format(value, self.min, self.max))
 
     def set_current(self, value):
-        if self.check(value):
-            self.current_value = value
+        self.check(value)
+        self.current_value = value
 
 
 class FloatScalarParameter(Parameter):
@@ -157,23 +155,13 @@ class FloatScalarParameter(Parameter):
 
     def check(self, value):
         if not isinstance(value, float):
-            print(
-                "Value {} must be of type float but is of type {}".format(
-                    value, type(value)
-                )
-            )
-            return False
-        elif value > self.max and value < self.min:
-            print(
-                "Value {} must be in range [{}, {}], ".format(value, self.min, self.max)
-            )
-            return False
-        else:
-            return True
+            ValueError("Value {} must be of type float but is of type {}".format(value, type(value)))
+        elif value > self.max or value < self.min:
+            raise ValueError("Value {} must be in range [{}, {}], ".format(value, self.min, self.max))
 
     def set_current(self, value):
-        if self.check(value):
-            self.current_value = value
+        self.check(value)
+        self.current_value = value
 
 
 class CategoricalParameter(Parameter):
@@ -194,20 +182,17 @@ class CategoricalParameter(Parameter):
 
     def check(self, value):
         if is_parametrized(value):
-            if value in self.choices:
-                return True
-            else:
-                print("Desired value {} not a valid choice".format(value))
+            if value not in self.choices:
+                raise ValueError("Desired value {} not a valid choice".format(value))
         else:
             for choice in self.choices:
                 if choice.check(value):
-                    return True
-        print("Desired value {} not realizable with the given choices".format(value))
-        return False
+                    return
+        raise ValueError("Desired value {} not realizable with the given choices".format(value))
 
     def set_current(self, value):
-        if self.check(value):
-            self.current_value = value
+        self.check(value)
+        self.current_value = value
 
 
 class SubsetParameter(Parameter):
@@ -239,33 +224,21 @@ class SubsetParameter(Parameter):
 
     def check(self, value):
         if not isinstance(value, list):
-            print("Value for SubsetParameter must be list")
-            return False
+            raise ValueError("Value for SubsetParameter must be list")
         elif len(value) > self.max or len(value) < self.min:
-            print(
-                "Size of subset ({}) not in supported range of [{},{}]".format(
-                    len(value), self.min, self.max
-                )
-            )
-            return False
+            raise ValueError(
+                "Size of subset ({}) not in supported range of [{},{}]".format(len(value), self.min, self.max))
         else:
             for v in value:
                 if is_parametrized(v):
-                    if v in self.choices:
-                        return True
-                    else:
-                        print("Value {} not in choices".format(v))
-                        return False
+                    if v not in self.choices:
+                        raise ValueError("Value {} not in choices".format(v))
                 else:
                     for choice in self.choices:
-                        if choice.check(value):
-                            return True
-        return False
+                        choice.check(value)
 
     def set_current(self, value):
-        assert value in self.choices, "Desired value {} not a valid choice".format(
-            value
-        )
+        self.check(value)
         self.current_value = value
 
 
@@ -275,20 +248,24 @@ def _create_parametrize_wrapper(parameters, cls):
 
     def init_fn(self, *args, **kwargs):
         self._PARAMETERS = {}
+        self._annotations = {}
 
         for num, arg in enumerate(args):
             if is_parametrized(arg):
-                # breakpoint()
                 name = parameter_list[num + 1].name
                 self._PARAMETERS[name] = arg
+                self._annotations[name] = parameter_list[num + 1]._annotation
         for name, arg in kwargs.items():
             if is_parametrized(arg):
                 self._PARAMETERS[name] = arg
+                self._annotations[name] = parameters[name]._annotation
 
         # TODO:
         cls.sample = sample
+        cls.set_current = set_current
+        cls.instantiate = instantiate
+        cls.check = check
         cls.set_params = set_params
-        # cls.instantiate = instantiate
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
@@ -316,11 +293,35 @@ def sample(self):
         param.sample()
 
 
+def set_current(self, value):
+    self.set_params(**value)
+
+
 def set_params(self, **kwargs):
     for key, value in kwargs.items():
         assert key in self._PARAMETERS, "{} has no parameter {}".format(self, key)
-        self._PARAMETERS[key].set_current(value)
+
+        if not isinstance(value, dict) and key in self._annotations and not isinstance(value, self._annotations[key]):
+            raise TypeError('Value must be of type {} but is {}'.format(self._annotations[key], type(value)))
+        if is_parametrized(value):
+            self._PARAMETERS[key] = value
+            setattr(self, key, value)  # TODO: Do we want this to work?
+        else:
+            self._PARAMETERS[key].set_current(value)
+
+
+# required for Protocol
+def check(self, value):
+    # TODO:
+    pass
 
 
 def instantiate(self):
-    self._parametrized = False
+    instance = deepcopy(self)
+    instance._parametrized = False
+
+    for key, param in instance._PARAMETERS.items():
+        instantiated_value = param.instantiate()
+        instance._PARAMETERS[key] = instantiated_value
+        setattr(instance, key, instantiated_value)
+    return instance
