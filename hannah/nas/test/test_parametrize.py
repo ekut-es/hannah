@@ -59,12 +59,72 @@ def test_sample_nested():
     assert parametrized_test.t.a.current_value == 13
 
 
-def test_set_params():
+def test_set_current():
     pass
+
+
+def test_set_params():
+    rng = default_rng(seed=321)
+    parametrized_test = Test(a=IntScalarParameter(min=10, max=20, rng=rng))
+    parametrized_test.set_params(a=16)
+
+    assert parametrized_test.a.current_value == 16
+
+
+def test_set_params_nested():
+    rng = default_rng(seed=321)
+    parametrized_test = NestedTest(t=Test(a=IntScalarParameter(min=10, max=20, rng=rng)))
+    other_test_object = Test(a=IntScalarParameter(min=0, max=3, rng=rng))
+
+    parametrized_test.set_params(t=other_test_object)
+    assert parametrized_test.t == other_test_object
+
+    marker = False
+    try:
+        parametrized_test.set_params(t=6)
+    except Exception:
+        marker = True
+    assert marker
+
+    parametrized_test.set_params(t={'a': 2})
+    assert parametrized_test.t.a.current_value == 2
+
+    marker = False
+    try:
+        parametrized_test.set_params(t={'a': 5})
+    except Exception:
+        marker = True
+    assert marker
 
 
 def test_instantiate():
-    pass
+    rng = default_rng(seed=321)
+    parametrized_test = Test(a=IntScalarParameter(min=10, max=20, rng=rng))
+    parametrized_test.sample()
+    instance = parametrized_test.instantiate()
+    assert instance.a == 13
+
+    parametrized_test.set_params(a=16)
+    instance = parametrized_test.instantiate()
+
+    assert isinstance(instance, Test)
+    assert instance._parametrized is False
+    assert instance.a == 16
+
+    rng = default_rng(seed=321)
+    parametrized_test = NestedTest(t=Test(a=IntScalarParameter(min=10, max=20, rng=rng)))
+    other_test_object = Test(a=IntScalarParameter(min=0, max=3, rng=rng))
+
+    parametrized_test.set_params(t=other_test_object)
+    parametrized_test.set_params(t={'a': 2})
+
+    instance = parametrized_test.instantiate()
+
+    assert isinstance(instance, NestedTest)
+    assert isinstance(instance.t, Test)
+    assert instance._parametrized is False
+    assert instance.t._parametrized is False
+    assert instance.t.a == 2
 
 
 if __name__ == "__main__":
@@ -72,25 +132,7 @@ if __name__ == "__main__":
     test_sample()
     test_sample_float()
     test_sample_nested()
-    # test_set_params()
-    # test_instantiate()
-
-
-# parametrized_test = Test(a=IntScalarParameter(min=10, max=20))
-# parametrized_test.set_params(a=5, b=7)
-
-# test = parametrized_test.instantiate()
-
-# assert test.a == 7
-# assert isinstance(test.a, int) ## ????
-# # test.sample()
-
-# test2_parametrized = Test2(a2=IntScalarParameter(2, 6))
-# parametrized_test_hierarchical = Test(a=IntScalarParameter(32, 54), test2=test2)
-
-
-# parametrized_test.cond(parametrized_test.a <= parametrized_test2.a2)
-
-
-# parametrized_test_hierarchical.set_params(a=5)
-# test2_parametrized.set_params(a2=6)
+    test_set_current()
+    test_set_params()
+    test_set_params_nested()
+    test_instantiate()
