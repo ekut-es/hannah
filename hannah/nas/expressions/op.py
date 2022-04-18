@@ -33,10 +33,10 @@ class BinaryOp(Op):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
-        self._symbol = type(self).__name__
+        self.symbol = type(self).__name__
 
     def format(self, indent=2, length=80):
-        ret = "(" + self._symbol + "\n"
+        ret = "(" + self.symbol + "\n"
         ret += (
             textwrap.indent(
                 self._format_operand(self.lhs, indent, length), " " * indent
