@@ -2,11 +2,14 @@ stages:
   - build
   - test
   - deploy
+  - deploy_test
+  - run
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   GIT_SUBMODULE_STRATEGY: recursive
+  DEBIAN_FRONTEND: "noninteractive"
 
 before_script:
   - cat /etc/os-release
@@ -29,22 +32,11 @@ before_script:
   - poetry config experimental.new-installer false
 
   # install and manage dependencies with poetry
+  - poetry run python -m pip install setuptools==59.5.0
   - poetry install
 
   # Show limits
   - ulimit -a
-
-
-test_python_37:
-  image: python:3.7
-  stage: test
-  script:
-    - set -e
-    - poetry run python3 -m pytest  -v --cov=hannah test hannah
-  tags:
-    - docker
-    - nfs
-  interruptible: true
 
 test_python_38:
   stage: test
@@ -56,20 +48,26 @@ test_python_38:
     - docker
     - nfs
   interruptible: true
-  except:
-    - branches
-
+  only:
+    - master
+  dependencies: []
 
 test_python_39:
   stage: test
   image: python:3.9
   script:
     - set -e
-    - poetry run python3 -m pytest -v --cov=hannah test hannah
+    - poetry run coverage run --source hannah -m pytest test
+    - poetry run coverage report
+    - poetry run coverage xml
   tags:
     - docker
     - nfs
   interruptible: true
+  artifacts:
+    reports:
+      cobertura: coverage.xml
+  dependencies: []
 
 build_docs:
   stage: deploy
@@ -83,9 +81,7 @@ build_docs:
   before_script:
     - python3 -m virtualenv venv
     - source venv/bin/activate
-    - pip install --upgrade pydoc-markdown
-    - pip install --upgrade mkdocs
-    - pip install --upgrade pymdown-extensions
+    - pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
 
   allow_failure: true
   script:
@@ -96,9 +92,17 @@ build_docs:
   only:
     - master
 
+  # Empty dependencies to disable artifacts passing
+  dependencies: []
+
 build_image:
   stage: build
-  before_script:  [""]
+  before_script:
+    # Install poetry using recommended method
+    - apk add python3
+    - apk add curl
+    - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
+    - export PATH=${POETRY_HOME}/bin:${PATH}
   image:
     name: quay.io/singularity/singularity:v3.7.3
     entrypoint: [""]
@@ -112,10 +116,32 @@ build_image:
     - ./build_image.sh
   artifacts:
     paths:
-      - ml_cloud/ml_cloud.simg
+      - ml_cloud/ml_cloud.sif
     expire_in: 1 day
   only:
     - master
+    - docker_container
+
+
+
+test_image:
+  stage: test
+  before_script: [""]
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+    - privileged
+  script:
+    - singularity run --no-home --bind $PWD ml_cloud/ml_cloud.sif  python -m hannah.train trainer.fast_dev_run=True
+  dependencies:
+    - build_image
+  only:
+    - master
+    - docker_container
+
 
 
 deploy_image:
@@ -135,8 +161,94 @@ deploy_image:
     - privileged
   script:
     - cd ml_cloud
-    - scp ml_cloud.simg cgerum05@134.2.168.52:/home/bringmann/cgerum05
+    - scp ml_cloud.sif cgerum05@134.2.168.52:/mnt/qb/work/bringmann/cgerum05
   dependencies:
     - build_image
+    - test_image
   only:
     - master
+    - docker_container
+
+
+deploy_test:
+  stage: deploy_test
+  before_script:
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  image:
+    name: quay.io/singularity/singularity:v3.7.3
+    entrypoint: [""]
+
+  tags:
+    - docker
+  script:
+    - cd ml_cloud
+    - ssh cgerum05@134.2.168.52 ls
+  dependencies:
+    - deploy_image
+  only:
+    - master
+    - docker_container
+
+run_ml_cloud:
+  stage: run
+  image: ubuntu:latest
+  before_script:
+    - apt update
+    - apt -y install openssh-client
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  tags:
+    - docker
+  script:
+    - set -e
+    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
+    - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_kws.sh"
+  when: manual
+  dependencies: []
+
+run_ml_cloud_lidar:
+  stage: run
+  image: ubuntu:latest
+  before_script:
+    - apt update
+    - apt -y install openssh-client
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  tags:
+    - docker
+  script:
+    - set -e
+    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
+    - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_lidar.sh"
+  when: manual
+  dependencies: []
+
+
+run_sca:
+  stage: build
+  image: python:3.9
+  script:
+    - set -e
+    - poetry run pre-commit install
+    - poetry run pre-commit run -a
+  tags:
+    - docker
+    - nfs
+  interruptible: true
+  allow_failure: true

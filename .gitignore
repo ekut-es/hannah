@@ -1,11 +1,13 @@
 .python-version
 *.simg
+*.sif
 *~
 *.pyc
 .DS_Store
 *.tar.gz
 *.err
 *.out
+datasets/
 datasets/speech_commands_v0.02/
 datasets/speech_files/
 datasets/noise_files/
@@ -20,6 +22,8 @@ datasets/downsampled/
 datasets/hey_snips_research_6k_en_train_eval_clean_ter/
 datasets/atrial_fibrillation
 datasets/atrial_fibrillation_prepared
+datasets/cinc_2017
+datasets/cinc_2017_prepared
 datasets/pamap
 datasets/*.lock
 datasets/*.csv
@@ -56,3 +60,15 @@ srf-poetry/tests/
 
 #doc
 doc/_build/
+nas_results/
+
+tmp/
+out/
+
+.python_history
+.cache/
+
+*.sqlite
+*.pkl
+
+build/

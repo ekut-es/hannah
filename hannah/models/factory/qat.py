@@ -6,6 +6,7 @@
 """
 
 import math
+import traceback
 from typing import Any, Callable, Dict
 
 import torch
@@ -15,8 +16,6 @@ import torch.nn.intrinsic as nni
 from torch.nn import init
 from torch.nn.modules.utils import _pair, _single
 from torch.nn.parameter import Parameter
-
-import traceback
 
 from . import quantized as q
 

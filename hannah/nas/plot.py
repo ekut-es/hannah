@@ -1,10 +1,8 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import pandas as pd
-import tikzplotlib
-
 import mpl_toolkits.axisartist as AA
+import pandas as pd
 from mpl_toolkits.axes_grid1 import host_subplot
 
 from .utils import is_pareto

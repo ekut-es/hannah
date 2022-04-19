@@ -3,12 +3,8 @@ from collections import namedtuple
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
-from torch.quantization.fake_quantize import FakeQuantize, FakeQuantizeBase
-from torch.quantization.observer import (
-    MovingAverageMinMaxObserver,
-    ObserverBase,
-    _with_args,
-)
+from torch.quantization.fake_quantize import FakeQuantizeBase
+from torch.quantization.observer import ObserverBase
 
 from .rounding import RoundingMode
 
@@ -120,7 +116,7 @@ class PowerOf2Quantization:
     def quantize(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
-        mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
+        mask_x = torch.ge(abs_x, 1 / 2 ** ((2**self.bits - 1))).float()
 
         log_x = torch.ceil(torch.log2(abs_x))
 
@@ -128,7 +124,7 @@ class PowerOf2Quantization:
         # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0)
         # is occupied by the weight value 0. But seems to have no negative
         # effect on the contrary this raises the accuracy.
-        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
+        log_x = torch.clamp(log_x, -(2 ** (self.bits - 1)) + 1, -1.0)
         return log_x * sign_x * mask_x
 
         return log_x
@@ -136,7 +132,7 @@ class PowerOf2Quantization:
     def __call__(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
-        mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
+        mask_x = torch.ge(abs_x, 1 / 2 ** ((2**self.bits - 1))).float()
 
         log_x = torch.ceil(torch.log2(abs_x))
 
@@ -146,12 +142,12 @@ class PowerOf2Quantization:
         # effect on the contrary this raises the accuracy.
         log_x = torch.clamp(log_x, -(2 ** (self.bits - 1)) + 1, -1.0)
 
-        # This value should match the maxium internal representation of UltraTrail.
+        # This value should match the maximum internal representation of UltraTrail.
         # This is the number of digits after the radix point of WIDE_BW.
         # Currently this is set to 2*(BASE_BW-1) = 14. This can be changed
         # by bw_wide_i in the UltraTrail backend. Therefore the maximum shift is -7.
-        # Which achieves quiete good results for TC-Res8
-        # -7 is equal to use 4 bits for quantization using sign and magnitude represenation.
+        # Which achieves quiet good results for TC-Res8
+        # -7 is equal to use 4 bits for quantization using sign and magnitude representation.
         # FIXME: Should only be active when UltraTrail is used with correct WIDE_BW
         # log_x = torch.clamp(log_x, -7.0, -1.0)
 
@@ -210,7 +206,7 @@ class STEQuantize(FakeQuantizeBase):
 
     def calculate_qparams(self):
         raise NotImplementedError(
-            "Trainable quantizer has no calulate qparams implementation"
+            "Trainable quantizer has no calculate qparams implementation"
         )
 
     def extra_repr(self):

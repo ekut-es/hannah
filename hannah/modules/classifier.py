@@ -1,218 +1,37 @@
 import logging
-import os
-import copy
 import platform
-
 from abc import abstractmethod
+from typing import Dict, Optional, Union
 
-from pytorch_lightning.core.lightning import LightningModule
-from torchmetrics import (
-    Accuracy,
-    Recall,
-    F1,
-    ROC,
-    ConfusionMatrix,
-    Precision,
-    MetricCollection,
-)
-from pytorch_lightning.loggers import TensorBoardLogger, LoggerCollection
-from torch._C import Value
-from .config_utils import get_loss_function, get_model
-from typing import Optional, Dict, Union
-
-from hannah.datasets.base import ctc_collate_fn
-
+import numpy as np
 import tabulate
 import torch
 import torch.utils.data as data
-from torchaudio.transforms import TimeStretch, TimeMasking, FrequencyMasking
-from hydra.utils import instantiate, get_class
-import numpy as np
+import torchvision
+from hydra.utils import get_class, instantiate
+from omegaconf import DictConfig
+from pytorch_lightning import LightningModule
+from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
+from torchmetrics import (
+    ROC,
+    Accuracy,
+    ConfusionMatrix,
+    F1Score,
+    MetricCollection,
+    Precision,
+    Recall,
+)
+
+from hannah.datasets.base import ctc_collate_fn
 
 from ..datasets import SpeechDataset
-from .metrics import Error, plot_confusion_matrix
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
-from ..utils import fullname
+from ..utils import set_deterministic
+from .base import ClassifierModule
+from .config_utils import get_loss_function, get_model
+from .metrics import Error
 
-from omegaconf import DictConfig
-
-
-class ClassifierModule(LightningModule):
-    def __init__(
-        self,
-        model: DictConfig,
-        optimizer: DictConfig,
-        features: DictConfig,
-        dataset: DictConfig = None,
-        num_workers: int = 0,
-        batch_size: int = 128,
-        time_masking: int = 0,
-        frequency_masking: int = 0,
-        scheduler: Optional[DictConfig] = None,
-        normalizer: Optional[DictConfig] = None,
-        export_onnx: bool = False,
-        export_relay: bool = False,
-        example_input_array: Optional[torch.Tensor] = None,
-        num_classes: Optional[int] = None,
-    ):
-        super().__init__()
-
-        self.save_hyperparameters(ignore=["model"])
-        self.model = model
-        self.msglogger = logging.getLogger()
-        self.initialized = False
-        self.train_set = None
-        self.test_set = None
-        self.dev_set = None
-        self.logged_samples = 0
-        self.export_onnx = export_onnx
-        self.export_relay = export_relay
-        self.num_classes = num_classes
-        self.example_input_array = example_input_array
-
-    @abstractmethod
-    def prepare_data(self):
-        # get all the necessary data stuff
-        pass
-
-    @abstractmethod
-    def setup(self, stage):
-        pass
-
-    def configure_optimizers(self):
-        optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
-        retval = {}
-        retval["optimizer"] = optimizer
-
-        if self.hparams.scheduler is not None:
-            if self.hparams.scheduler._target_ == "torch.optim.lr_scheduler.OneCycleLR":
-                scheduler = instantiate(
-                    self.hparams.scheduler,
-                    optimizer=optimizer,
-                    total_steps=self.total_training_steps,
-                )
-                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
-            else:
-                scheduler = instantiate(self.hparams.scheduler, optimizer=optimizer)
-
-                retval["lr_scheduler"] = dict(scheduler=scheduler, interval="epoch")
-
-        return retval
-
-    @property
-    def total_training_steps(self) -> int:
-        """Total training steps inferred from datamodule and devices."""
-
-        if self.trainer.max_steps > 0:
-            return self.trainer.max_steps
-
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
-
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
-
-    def _log_weight_distribution(self):
-        for name, params in self.named_parameters():
-            loggers = self._logger_iterator()
-
-            for logger in loggers:
-                if hasattr(logger.experiment, "add_histogram"):
-                    try:
-                        logger.experiment.add_histogram(
-                            name, params, self.current_epoch
-                        )
-                    except ValueError:
-                        logging.critical("Could not add histogram for param %s", name)
-
-        for name, module in self.named_modules():
-            loggers = self._logger_iterator()
-            if hasattr(module, "scaled_weight"):
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.scaled_weight",
-                                module.scaled_weight,
-                                self.current_epoch,
-                            )
-                        except ValueError:
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
-    def _logger_iterator(self):
-        if isinstance(self.logger, LoggerCollection):
-            loggers = self.logger
-        else:
-            loggers = [self.logger]
-
-        return loggers
-
-    @staticmethod
-    def get_balancing_sampler(dataset):
-        distribution = dataset.class_counts
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
-        )
-
-        sampler_weights = weights[dataset.get_label_list()]
-
-        sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
-        return sampler
-
-    def save(self):
-        output_dir = "."
-        dummy_input = self.example_feature_array.cpu()
-
-        if self.export_onnx:
-            quantized_model = copy.deepcopy(self.model)
-            quantized_model.cpu()
-            if hasattr(self.model, "qconfig") and self.model.qconfig:
-                quantized_model = torch.quantization.convert(
-                    quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
-                )
-            logging.info("saving onnx...")
-            try:
-
-                torch.onnx.export(
-                    quantized_model,
-                    dummy_input,
-                    os.path.join(output_dir, "model.onnx"),
-                    verbose=False,
-                    opset_version=11,
-                )
-            except Exception as e:
-                logging.error("Could not export onnx model ...\n {}".format(str(e)))
-
-        if self.export_relay:
-            logging.info("saving relay")
-            try:
-                from hannah_tvm.backend import export_relay
-
-                export_relay(self.model, dummy_input)
-            except Exception as e:
-                logging.error("Could not export relay model ...\n {}".format(str(e)))
-
-    def on_load_checkpoint(self, checkpoint):
-        for k, v in self.state_dict().items():
-            if k not in checkpoint["state_dict"]:
-                self.msglogger.warning(
-                    "%s not in state dict using pre initialized values", k
-                )
-                checkpoint["state_dict"][k] = v
-
-    def on_save_checkpoint(self, checkpoint):
-        checkpoint["hyper_parameters"]["_target_"] = fullname(self)
+logger = logging.getLogger(__name__)
 
 
 class BaseStreamClassifierModule(ClassifierModule):
@@ -227,8 +46,9 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     def setup(self, stage):
         # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
+        logger.info("Setting up model")
         if self.logger:
+            self.msglogger.info("Model setup already completed skipping setup")
             self.logger.log_hyperparams(self.hparams)
 
         if self.initialized:
@@ -245,7 +65,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Create example input
         device = self.device
-        if self.example_input_array is not None:
+        if self.example_input_array is None:
             self.example_input_array = self.get_example_input_array()
         dummy_input = self.example_input_array
 
@@ -263,10 +83,10 @@ class BaseStreamClassifierModule(ClassifierModule):
         else:
             self.normalizer = torch.nn.Identity()
 
+        self.example_feature_array = self.normalizer(self.example_feature_array)
+
         # Instantiate Model
-        if isinstance(self.model, torch.nn.Module):
-            self.model = self.model
-        elif hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
             print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,
@@ -289,22 +109,18 @@ class BaseStreamClassifierModule(ClassifierModule):
             {
                 "val_accuracy": Accuracy(),
                 "val_error": Error(),
-                "val_recall": Recall(num_classes=self.num_classes, average="weighted"),
-                "val_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
-                ),
-                "val_f1": F1(num_classes=self.num_classes, average="weighted"),
+                "val_recall": Recall(num_classes=self.num_classes),
+                "val_precision": Precision(num_classes=self.num_classes),
+                "val_f1": F1Score(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
             {
                 "test_accuracy": Accuracy(),
                 "test_error": Error(),
-                "test_recall": Recall(num_classes=self.num_classes, average="weighted"),
-                "test_precision": Precision(
-                    num_classes=self.num_classes, average="weighted"
-                ),
-                "test_f1": F1(num_classes=self.num_classes, average="weighted"),
+                "test_recall": Recall(num_classes=self.num_classes),
+                "test_precision": Precision(num_classes=self.num_classes),
+                "test_f1": F1Score(num_classes=self.num_classes),
             }
         )
 
@@ -416,8 +232,8 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_val_dataloader_by_set(self, dev_set):
         dev_loader = data.DataLoader(
             dev_set,
-            batch_size=min(len(dev_set), 16),
-            shuffle=False,
+            batch_size=min(len(dev_set), self.hparams["batch_size"]),
+            shuffle=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
@@ -439,7 +255,9 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.calculate_batch_metrics(output, y, loss, self.test_metrics, "test")
 
         logits = torch.nn.functional.softmax(output, dim=1)
-        self.test_confusion(logits, y)
+        with set_deterministic(False):
+            self.test_confusion(logits, y)
+
         self.test_roc(logits, y)
 
         if isinstance(self.test_set, SpeechDataset):
@@ -454,28 +272,14 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_test_dataloader_by_set(self, test_set):
         test_loader = data.DataLoader(
             test_set,
-            batch_size=min(len(test_set), 16),
-            shuffle=False,
+            batch_size=min(len(test_set), self.hparams["batch_size"]),
+            shuffle=True,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
 
         return test_loader
-
-    def on_test_end(self) -> None:
-        if self.trainer and self.trainer.fast_dev_run:
-            return
-
-        self.test_end_callback(self.test_metrics)
-
-    @abstractmethod
-    def test_end_callback(self, test_metrics):
-        pass
-
-    @abstractmethod
-    def get_class_names(self):
-        pass
 
     def _extract_features(self, x):
         x = self.features(x)
@@ -514,14 +318,6 @@ class BaseStreamClassifierModule(ClassifierModule):
                         )
                 self.logged_samples += 1
 
-    def on_validation_epoch_end(self):
-        for logger in self._logger_iterator():
-            if isinstance(logger, TensorBoardLogger):
-                logger.log_hyperparams(
-                    self.hparams,
-                    {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
-                )
-
 
 class StreamClassifierModule(BaseStreamClassifierModule):
     def get_class_names(self):
@@ -547,26 +343,6 @@ class StreamClassifierModule(BaseStreamClassifierModule):
 
     def test_dataloader(self):
         return self.get_test_dataloader_by_set(self.test_set)
-
-    def test_end_callback(self, test_metrics):
-        metric_table = []
-        for name, metric in test_metrics.items():
-            metric_table.append((name, metric.compute().item()))
-
-        logging.info("\nTest Metrics:\n%s", tabulate.tabulate(metric_table))
-
-        confusion_matrix = self.test_confusion.compute()
-        self.test_confusion.reset()
-
-        confusion_plot = plot_confusion_matrix(
-            confusion_matrix.cpu().numpy(), self.get_class_names()
-        )
-
-        confusion_plot.savefig("test_confusion.png")
-        confusion_plot.savefig("test_confusion.pdf")
-
-        # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
-        self.test_roc.reset()
 
 
 class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):

@@ -1,13 +1,11 @@
-#!/bin/bash -e
+#!/bin/bash
 
-#export SINGULARITY_TMPDIR=/local/data/tmp/singularity_tmp
-#export SINGULARITY_CACHEDIR=/local/data/tmp/singularity_cache
+fakeroot=""
+if [ -f /.dockerenv ]; then
+   fakeroot=""
+elif [[ $EUID -ne 0 ]]; then
+   fakeroot="--fakeroot"
+fi
 
-#mkdir -p $SINGULARITY_TMPDIR
-#mkdir -p $SINGULARITY_CACHEDIR
-
-rm -rf ml_cloud.simg
-sudo -E /usr/local/bin/singularity build --sandbox ml_cloud ml_cloud.recipe
-sudo singularity exec -w  --bind $PWD/..:/opt/speech_recognition ml_cloud /bin/bash -c "cd /opt/speech_recognition && poetry config virtualenvs.path /opt/poetry_env && poetry install"
-sudo singularity build ml_cloud.simg ml_cloud/
-sudo rm -rf ml_cloud/
+poetry export --without-hashes | grep -v hannah-optimizer > requirements.txt
+singularity build  $fakeroot  ml_cloud.sif  ml_cloud.recipe

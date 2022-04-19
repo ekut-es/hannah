@@ -1,33 +1,30 @@
 import logging
 import os
-import numpy as np
 import shutil
 from collections import defaultdict
-import hydra
-from omegaconf import DictConfig, OmegaConf
+from pathlib import Path
+
+import numpy as np
 import torch
-
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
-
-from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
-from pytorch_lightning.utilities.distributed import rank_zero_only
-
 from hydra.utils import instantiate
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
+import hydra
 
 from . import conf  # noqa
-from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
 from .utils import (
-    log_execution_env_state,
     auto_select_gpus,
-    common_callbacks,
     clear_outputs,
+    common_callbacks,
+    log_execution_env_state,
 )
 
 
+@rank_zero_only
 def handleDataset(config=DictConfig):
     lit_module = instantiate(
         config.module,
@@ -47,6 +44,9 @@ def train(config: DictConfig):
     results = []
     if isinstance(config.seed, int):
         config.seed = [config.seed]
+    validate_output = False
+    if hasattr(config, "validate_output") and isinstance(config.validate_output, bool):
+        validate_output = config.validate_output
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
@@ -56,10 +56,8 @@ def train(config: DictConfig):
         if isinstance(config.trainer.gpus, int):
             config.trainer.gpus = auto_select_gpus(config.trainer.gpus)
 
-        if not config.trainer.fast_dev_run:
+        if not config.trainer.fast_dev_run and not config.get("resume", False):
             clear_outputs()
-
-        log_execution_env_state()
 
         logging.info("Configuration: ")
         logging.info(OmegaConf.to_yaml(config))
@@ -95,7 +93,7 @@ def train(config: DictConfig):
             backend = instantiate(config.backend)
             callbacks.append(backend)
 
-        callbacks.extend(common_callbacks(config))
+        callbacks.extend(list(common_callbacks(config)))
 
         opt_monitor = config.get("monitor", ["val_error"])
         opt_callback = HydraOptCallback(monitor=opt_monitor)
@@ -110,7 +108,7 @@ def train(config: DictConfig):
             profiler=profiler,
             callbacks=callbacks,
             logger=logger,
-            reload_dataloaders_every_epoch=True,
+            _convert_="partial",
         )
 
         if config["auto_lr"]:
@@ -129,23 +127,40 @@ def train(config: DictConfig):
 
         logging.info("Starting training")
         # PL TRAIN
-        lit_trainer.fit(lit_module)
-        ckpt_path = "best"
+        ckpt_path = None
+        if config.get("resume", False):
+            expected_ckpt_path = Path(".") / "checkpoints" / "last.ckpt"
+            # breakpoint()
+            if expected_ckpt_path.exists():
+                logging.info(
+                    "Resuming training from checkpoint: %s", str(expected_ckpt_path)
+                )
+                ckpt_path = str(expected_ckpt_path)
+            else:
+                logging.info(
+                    "Checkpoint '%s' not found restarting training from scratch",
+                    str(expected_ckpt_path),
+                )
+        lit_trainer.fit(lit_module, ckpt_path=ckpt_path)
 
-        if lit_trainer.fast_dev_run:
-            logging.warning(
-                "Trainer is in fast dev run mode, switching off loading of best model for test"
-            )
-            ckpt_path = None
-
-        reset_seed()
-        lit_trainer.validate(ckpt_path=ckpt_path, verbose=False)
-
-        # PL TEST
-        reset_seed()
-        lit_trainer.test(ckpt_path=ckpt_path, verbose=False)
+        if config.get("compression", None) and (
+            config.get("compression").get("clustering", None)
+            or config.get("compression").get("decomposition", None)
+        ):
+            # FIXME: this is a bad workaround
+            lit_trainer.save_checkpoint("last")
+            ckpt_path = "last"
+        else:
+            ckpt_path = "best"
 
         if not lit_trainer.fast_dev_run:
+            reset_seed()
+            lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
+
+            # PL TEST
+            reset_seed()
+            lit_trainer.test(ckpt_path=ckpt_path, verbose=validate_output)
+
             lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
                 shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
@@ -161,11 +176,11 @@ def train(config: DictConfig):
             else:
                 test_sum[k] += v
 
-    logging.info("Averaged Test Metrics:")
+    rank_zero_info("Averaged Test Metrics:")
 
     for k, v in test_sum.items():
-        logging.info(k + " : " + str(v / len(test_output)))
-    logging.info("validation_error : " + str(np.sum(results) / len(results)))
+        rank_zero_info(k + " : " + str(v / len(test_output)))
+    rank_zero_info("validation_error : " + str(np.sum(results) / len(results)))
 
     if len(results) == 1:
         return results[0]
@@ -173,14 +188,26 @@ def train(config: DictConfig):
         return results
 
 
+def nas(config: DictConfig):
+    print(OmegaConf.to_yaml(config))
+    nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
+    nas_trainer.run()
+
+
 @hydra.main(config_name="config", config_path="conf")
 def main(config: DictConfig):
-    if config.get("dataset_creation", None) is not None:
-        handleDataset(config)
-    if config.get("nas", None) is not None:
-        return nas(config)
-    else:
-        return train(config)
+    logging.captureWarnings(True)
+    try:
+        log_execution_env_state()
+        if config.get("dataset_creation", None) is not None:
+            handleDataset(config)
+        if config.get("nas", None) is not None:
+            return nas(config)
+        else:
+            return train(config)
+    except Exception as e:
+        logging.exception("Exception Message: %s", str(e))
+        raise e
 
 
 if __name__ == "__main__":

@@ -1,29 +1,26 @@
+import csv
+import hashlib
+import json
+import logging
 import os
 import random
 import re
-import json
-import logging
-import hashlib
-import os
-import csv
 import time
-import torchaudio
+from collections import defaultdict
+
 import numpy as np
 import scipy.signal as signal
 import torch
-
-from collections import defaultdict
-
+import torchaudio
 from chainmap import ChainMap
+from joblib import Memory
 from torchvision.datasets.utils import list_files
 
+from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
-from ..utils import list_all_files, extract_from_download_cache
-
-from .NoiseDataset import NoiseDataset
 from .DatasetSplit import DatasetSplit
 from .Downsample import Downsample
-from joblib import Memory
+from .NoiseDataset import NoiseDataset
 
 msglogger = logging.getLogger()
 
@@ -66,7 +63,7 @@ else:
 
 
 class SpeechDataset(AbstractDataset):
-    """ Base Class for speech datasets """
+    """Base Class for speech datasets"""
 
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
@@ -112,7 +109,7 @@ class SpeechDataset(AbstractDataset):
 
     @classmethod
     def prepare(cls, config):
-        cls.download(config)
+        cls.prepare_data(config)
 
     def _timeshift_audio(self, data):
         """Shifts data by a random amount of ms given by parameter timeshift_ms"""
@@ -164,7 +161,7 @@ class SpeechDataset(AbstractDataset):
         return (window_start, window_start + in_len)
 
     def preprocess(self, example, silence=False, label=0):
-        """ Run preprocessing and feature extraction """
+        """Run preprocessing and feature extraction"""
 
         if silence:
             example = "__silence__"
@@ -343,7 +340,7 @@ class SpeechCommandsDataset(SpeechDataset):
                         hashname = re.sub(r"_nohash_.*$", "", filename)
                     else:
                         hashname = filename
-                    max_no_wavs = 2 ** 27 - 1
+                    max_no_wavs = 2**27 - 1
                     bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
                     bucket = (bucket % (max_no_wavs + 1)) * (100.0 / max_no_wavs)
                     if bucket < dev_pct:
@@ -372,6 +369,10 @@ class SpeechCommandsDataset(SpeechDataset):
             cls(sets[2], DatasetType.TEST, test_cfg),
         )
         return datasets
+
+    @classmethod
+    def prepare_data(cls, config):
+        cls.download(config)
 
     @classmethod
     def download(cls, config):
@@ -487,6 +488,10 @@ class SpeechHotwordDataset(SpeechDataset):
         return res_datasets
 
     @classmethod
+    def prepare_data(cls, config):
+        cls.download(config)
+
+    @classmethod
     def download(cls, config):
         data_folder = config["data_folder"]
         clear_download = config["clear_download"]
@@ -511,7 +516,7 @@ class SpeechHotwordDataset(SpeechDataset):
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
 
-        snips_filename = "hey_snips_kws_4.0.tar.gz"
+        snips_filename = "hey_snips_kws_4_0.tar.gz"
         url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1"
 
         extract_from_download_cache(
@@ -532,7 +537,7 @@ class VadDataset(SpeechDataset):
         self.label_names = {0: "noise", 1: "speech"}
 
     @classmethod
-    def prepare(cls, config):
+    def prepare_data(cls, config):
         override = config.get("override", False)
         wait = False
         if override:
@@ -670,9 +675,14 @@ class VadDataset(SpeechDataset):
             speech_files = list()
             bg_noise_files = list()
             for key in sdataset.keys():
-                filename, original, downsampled, sr_orig, sr_down, allocation = sdataset[
-                    key
-                ].values()
+                (
+                    filename,
+                    original,
+                    downsampled,
+                    sr_orig,
+                    sr_down,
+                    allocation,
+                ) = sdataset[key].values()
 
                 if desc not in allocation:
                     continue
@@ -908,7 +918,7 @@ class KeyWordDataset(SpeechDataset):
                         hashname = re.sub(r"_nohash_.*$", "", filename)
                     else:
                         hashname = filename
-                    max_no_wavs = 2 ** 27 - 1
+                    max_no_wavs = 2**27 - 1
                     bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
                     bucket = (bucket % (max_no_wavs + 1)) * (100.0 / max_no_wavs)
                     if bucket < dev_pct:
@@ -935,6 +945,10 @@ class KeyWordDataset(SpeechDataset):
             cls(sets[2], DatasetType.TEST, config),
         )
         return datasets
+
+    @classmethod
+    def prepare_data(cls, config):
+        cls.download(config)
 
     @classmethod
     def download(cls, config):

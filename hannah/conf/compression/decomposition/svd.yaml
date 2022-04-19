@@ -1,0 +1,3 @@
+_target_: hannah.callbacks.svd_compress.SVD
+method: svd
+rank_compression: 4

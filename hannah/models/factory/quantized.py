@@ -1,6 +1,5 @@
 import copy
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as f
 from torch.nn.utils import fuse_conv_bn_weights

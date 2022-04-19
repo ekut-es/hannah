@@ -1,4 +1,4 @@
-# HANNAH - Hardware Acccelerator and Neural network searcH
+# HANNAH - Hardware Accelerator and Neural network searcH
 
 # Getting Started
 
@@ -6,26 +6,54 @@
 
 Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
 
-- python (>=3.7.1 <3.10) and development headers
+- python (>=3.8 <3.10) and development headers
 - libsndfile and development headers
 - libsox and development headers
 - a blas implementation and development headers
 - git-lfs for management of checkpoints
 
-### Ubuntu 18.04+
+### Ubuntu 20.04+
+
+Install dependencies:
 
     sudo apt update
     sudo apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev git-lfs
 
 ### Centos / RHEL / Scientific Linux: 7+
 
-    sudo yum install python36 python36-devel -y
+Install dependencies:
+
     sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
 
+Install a python 3.8 or python 3.9 version using [pyenv](https://github.com/pyenv/pyenv).
+
 ### Mac OS
-Python 3.9 should be installed. Possible way are Homebrew
+Possible Ways to install all the needed Packages for Mac are with Homebrew
+Python 3.9 should be installed
 
     brew install python@3.9
+
+#### Mac with x86_64 processor
+
+poetry environment should be created with
+
+    poetry install
+
+#### Mac with m1 processor
+
+Install hdf5 should be installed
+
+    brew install hdf5
+
+Install the h5py python Package manually
+
+    poetry run pip3 install h5py==3.6.0
+
+poetry environment should be created with
+
+    poetry install
+
+Environment installed successfully
 
 ### Install poetry
 
@@ -83,7 +111,7 @@ And install pytorch manually in your poetry env.
     poetry shell
     pip install torch==1.8.1 torchvision torchaudio
 
-And you might need to deactivate your conda environement:
+And you might need to deactivate your conda environment:
 
     conda deactivate
 
@@ -92,6 +120,10 @@ And you might need to deactivate your conda environement:
 ## Installing the datasets
 
 Datasets are downloaded automatically to the datasets data folder by default this is a subfolder of the dataset's data folder.
+
+For the VAD Dataset the following Flag is needed to Download/Override the Dataset
+
+    dataset.override=True
 
 ## Training - Keyword Spotting
 
@@ -145,19 +177,28 @@ Training of PAMAP2 human activity detection dataset is invoked by:
 
     hannah-train -cn config_activity
 
+## Training - Emergency Siren Dataset
+
+Training of emergency siren detection dataset is invoked by:
+
+    hannah-train -cn config_siren_detection
+
+
 # Parallel Launchers
 
-To launch multiple optimizations in parallel you can use a hydra launcher
+To launch multiple optimizations in parallel you can use a hydra launcher. The optuna Package must be installed first
 
-Submitit launcher is installed by default:
+    poetry run pip install hydra-optuna-sweeper==1.1.1
 
-   hannah-train --multirun hydra/sweeper=nevergrad hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
+Joblib launcher is installed by default:
 
-Launches optimizer hyerparameter optimization with 5 parallel jobs.
+   hannah-train --multirun hydra/sweeper=optuna hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5
+
+Launches optimizer hyperparameter optimization with 5 parallel jobs.
 
 # Early stopping
 
-To stop training early when a validation metric does not improve, you can use lighning's early stopping callback:
+To stop training early when a validation metric does not improve, you can use lightning's early stopping callback:
 
     hannah-train early_stopping=default
 
@@ -177,7 +218,7 @@ To enable precommit hooks run the following command in a `poetry shell`.
 
      pre-commit install
 
-Try to follow (pep8)[https://pep8.org/#naming-conventions] and the rest of pep8 to the
+Try to follow [pep8](https://pep8.org/#naming-conventions) and the rest of pep8 to the
 best of your abilities.
 
 ## Resolving merge conflicts in `poetry.lock`

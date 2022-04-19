@@ -1,4 +1,12 @@
-from .distilling_classifier import SpeechKDClassifierModule  # noqa
-from .classifier import StreamClassifierModule  # noqa
-from .classifier import CrossValidationStreamClassifierModule  # noqa
-from .object_detection import ObjectDetectionModule  # noqa
+from .classifier import CrossValidationStreamClassifierModule, StreamClassifierModule
+from .distilling_classifier import SpeechKDClassifierModule
+from .image_classifier import ImageClassifierModule
+from .object_detection import ObjectDetectionModule
+
+__all__ = [
+    "CrossValidationStreamClassifierModule",
+    "StreamClassifierModule",
+    "SpeechKDClassifierModule",
+    "ImageClassifierModule",
+    "ObjectDetectionModule",
+]
