@@ -1,48 +1,46 @@
 import importlib
-import pathlib
-import shutil
-
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
-from pytorch_lightning.utilities.distributed import rank_zero_only
-import torch
-import torch.nn as nn
-import numpy as np
 import logging
 import os
-import sys
+import pathlib
 import platform
-import nvsmi
-import time
 import random
+import shutil
+import sys
+import time
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, List
 
-from git import Repo, InvalidGitRepositoryError
-
-import hydra
+import numpy as np
+import nvsmi
+import pytorch_lightning
+import torch
+import torch.nn as nn
+from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-
+from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+from pytorch_lightning.callbacks import (
+    Callback,
+    DeviceStatsMonitor,
+    GPUStatsMonitor,
+    LearningRateMonitor,
+)
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.utilities.distributed import rank_zero_only
 from torchvision.datasets.utils import (
-    list_files,
-    list_dir,
     download_and_extract_archive,
     extract_archive,
+    list_dir,
+    list_files,
 )
 
-from contextlib import contextmanager
-
-import pytorch_lightning
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.callbacks import DeviceStatsMonitor, GPUStatsMonitor
-
+import hydra
 
 from .callbacks.clustering import kMeans
-from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
+from .callbacks.summaries import MacSummaryCallback
 from .callbacks.svd_compress import SVD
-
 
 try:
     import lsb_release  # pytype: disable=import-error
@@ -222,7 +220,7 @@ def auto_select_gpus(gpus=1):
 
 
 def common_callbacks(config: DictConfig):
-    callbacks = []
+    callbacks: List[Callback] = []
 
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
@@ -262,10 +260,12 @@ def common_callbacks(config: DictConfig):
                 pruning_config, amount=pruning_scheduler
             )
             callbacks.append(pruning_callback)
-    
+
         if config_compression.get("decomposition", None):
             compress_after_epoch = config.trainer.max_epochs
-            if (compress_after_epoch % 2 == 1):  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
+            if (
+                compress_after_epoch % 2 == 1
+            ):  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
                 compress_after_epoch -= 1
             svd = SVD(
                 rank_compression=config.compression.decomposition.rank_compression,
