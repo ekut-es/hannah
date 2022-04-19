@@ -1,8 +1,7 @@
-import os
 import json
+import os
 
 import torch.nn as nn
-
 from pytorch_lightning import Callback
 
 

@@ -57,6 +57,9 @@ test_python_39:
   image: python:3.9
   script:
     - set -e
+    #- echo "import coverage; coverage.process_startup()" > sitecustomize.py
+    #- export PYTHONPATH=$PWD
+    #- export COVERAGE_PROCESS_START=$PWD/.coveragerc
     - poetry run coverage run --source hannah -m pytest test
     - poetry run coverage report
     - poetry run coverage xml

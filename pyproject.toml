@@ -67,6 +67,7 @@ pydoc-markdown = "^4.6.0"
 mkdocs = "^1.2.3"
 pymdown-extensions = "^9.1"
 coverage = "^6.3.2"
+isort = "^5.10.1"
 
 [tool.poetry.extras]
 tf-backend = ["onnx-tf"]
