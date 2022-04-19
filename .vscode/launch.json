@@ -5,11 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "hannah.nas",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.nas",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "module.batch_size=8",
+                "trainer.max_epochs=2",
+                "nas.budget=5",
+                "module.num_workers=8"
+            ]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "justMyCode": false
         },
         {
             "name": "standard",
