@@ -61,17 +61,13 @@ class ClassifierModule(LightningModule, ABC):
         self.export_onnx = export_onnx
         self.gpus = gpus
 
+        self.train_set = None
+        self.test_set = None
+        self.val_set = None
+
         self.val_metrics: MetricCollection = MetricCollection({})
         self.test_metrics: MetricCollection = MetricCollection({})
         self.train_metrics: MetricCollection = MetricCollection({})
-
-    @property
-    def test_metrics(self) -> MetricCollection:
-        return self._test_metrics
-
-    @test_metrics.setter
-    def test_metrics(self, val: MetricCollection) -> None:
-        self._test_metrics = val
 
     @abstractmethod
     def prepare_data(self):
@@ -292,6 +288,9 @@ class ClassifierModule(LightningModule, ABC):
         for name, metric in self.val_metrics.items():
             val_metrics[name] = metric.compute().item()
 
+        if not val_metrics:
+            return
+
         tabulated_metrics = tabulate.tabulate(
             val_metrics.items(), headers=["Metric", "Value"], tablefmt="github"
         )
@@ -350,3 +349,11 @@ class ClassifierModule(LightningModule, ABC):
                         im,
                         global_step=self.current_epoch,
                     )
+
+    def _log_batch_images(self, name, batch_idx, augmented_data):
+        loggers = self._logger_iterator()
+        for logger in loggers:
+            if hasattr(logger.experiment, "add_image"):
+                for aug_num, aug_img in enumerate(augmented_data):
+                    images = torchvision.utils.make_grid(aug_img, normalize=True)
+                    logger.experiment.add_image(f"{name}_{batch_idx}_{aug_num}", images)

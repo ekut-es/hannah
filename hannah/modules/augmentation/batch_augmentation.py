@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class BatchAugmentationPipeline(nn.Module):
-    def __init__(self, replica=0, transforms={}):
+    def __init__(self, transforms={}):
         """Augmentation pipeline especially for self supervised learning
 
         Args:
@@ -18,8 +18,6 @@ class BatchAugmentationPipeline(nn.Module):
             transforms (dict): configuration of transforms
         """
         super().__init__()
-
-        self.replica = replica
 
         logger.info("Available transforms:")
         for transform in registry.transforms.keys():
@@ -35,9 +33,9 @@ class BatchAugmentationPipeline(nn.Module):
         print(self.transforms)
 
     @torch.no_grad()
-    def forward(self, x) -> List[Any]:
+    def forward(self, x) -> torch.Tensor:
         """
-        Perform Augmentations for Barlow Twins on a batch of input data
+        Perform Augmentations
 
         Args:
             x (torch.Tensor): a torch.Tensor representing the augementation pipeline
@@ -46,8 +44,6 @@ class BatchAugmentationPipeline(nn.Module):
             Tuple[torch.Tensor, torch.Tensor]; Batch augmented with `replica` different random augmentations
         """
 
-        result: List[torch.Tensor] = []
-        for _ in range(self.replica):
-            result.append(self.transforms(x))
+        result = self.transforms(x)
 
         return result

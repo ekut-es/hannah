@@ -1,11 +1,9 @@
 import logging
-
-from abc import ABC, abstractmethod, abstractclassmethod, abstractproperty
-
+from abc import ABC, abstractclassmethod, abstractmethod, abstractproperty
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
-import torch
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import torch
 from torch.utils.data import Dataset
 
 logger = logging.getLogger(__name__)
@@ -96,6 +94,28 @@ class AbstractDataset(Dataset, ABC):
         """Returns dimension of output output without batch dimension"""
 
         return [self.channels, self.input_length]
+
+    @property
+    def std(self) -> Optional[Tuple[int, ...]]:
+        """Returns channel-wise standard deviation for dataset if applicable"""
+        return None
+
+    @property
+    def mean(self) -> Optional[Tuple[int, ...]]:
+        """Returns channel-wise means for dataset if applicable"""
+        return None
+
+    def get_mixup_fn() -> Optional[
+        Callable[[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]
+    ]:
+        """Returns an optional dataset specific mixup function"""
+        return None
+
+    def get_batch_augment_fn() -> Optional[
+        Callable[[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]
+    ]:
+        """Returns an optional dataset specific batch augment function"""
+        return None
 
 
 def ctc_collate_fn(data):

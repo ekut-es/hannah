@@ -75,8 +75,7 @@ tf-backend = ["onnx-tf"]
 onnxrt-backend = ["onnxruntime"]
 
 [tool.poetry.scripts]
-hannah-train = 'hannah.train:main'
-hannah-nas = 'hannah.train:nas'
+hannah-train = 'hannah.tools.train:main'
 hannah-eval = 'hannah.eval:main'
 hannah-objectdetection-eval = 'hannah.objectdetection_eval:main'
 hannah-nas-eval = "hannah.nas.eval.__main__:main"

@@ -214,7 +214,7 @@ class TimmModel(nn.Module):
             projection = self.projector(latent)
 
         result = ModelResult(
-            laten=latent, decoded=decoded, projection=projection, logits=logits
+            latent=latent, decoded=decoded, projection=projection, logits=logits
         )
 
         return result

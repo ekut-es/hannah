@@ -1,4 +1,5 @@
 import logging
+from typing import Sequence
 
 import torch
 import torch.nn.functional as F
@@ -78,17 +79,8 @@ class ImageClassifierModule(ClassifierModule):
         else:
             self.loss_weights = None
 
-        # Instantiate batch augmentation
-        batch_transforms = {}
-        augmentation_config = self.hparams.get("augmentation", None)
-        if augmentation_config:
-            batch_augment = augmentation_config.get("batch_augment", None)
-
-            if batch_augment is not None:
-                batch_transforms = batch_augment.transforms
-        self.batch_augment = BatchAugmentationPipeline(
-            replica=1, transforms=batch_transforms
-        )
+        self.mixup_fn = self.train_set.get_mixup_fn()
+        self.batch_augment_fn = self.train_set.get_batch_augment_fn()
 
         # Setup Metrics
         metrics = {}
@@ -122,13 +114,10 @@ class ImageClassifierModule(ClassifierModule):
                 )
                 metrics[f"{step_name}_metrics"] = step_metrics
 
-        try:
-            self.metrics = torch.nn.ModuleDict(metrics)
-        except:
-            breakpoint()
+        self.metrics = torch.nn.ModuleDict(metrics)
 
     def _decode_batch(self, batch):
-        if isinstance(batch, list) or isinstance(batch, tuple):
+        if isinstance(batch, Sequence):
             assert len(batch) == 2
             ret = {"data": batch[0], "labels": batch[1]}
         else:
@@ -151,76 +140,55 @@ class ImageClassifierModule(ClassifierModule):
         # print("step_name", step_name)
         batch = self._decode_batch(batch)
 
+        breakpoint()
+
         x = batch["data"]
         labels = batch.get("labels", None)
+        boxes = batch.get("bbox", None)
 
         if batch_idx == 0:
-            loggers = self._logger_iterator()
-            for logger in loggers:
-                if hasattr(logger.experiment, "add_image"):
-                    images = torchvision.utils.make_grid(x, normalize=True)
-                    logger.experiment.add_image(f"input{batch_idx}", images)
+            self._log_batch_images("input", batch_idx, x)
 
         mixup_labels = labels
+        augmented_data = x
         if step_name == "train":
             if labels is not None:
-                # FIXME: make properly configurable
-                mixup_args = self.hparams.dataset.augmentations.mixup_args
-                mixup_fn = Mixup(**mixup_args, num_classes=self.num_classes)
-                x, mixup_labels = mixup_fn(x, labels)
+                if self.mixup_fn is not None:
+                    x, mixup_labels = self.mixup_fn(x, labels)
 
-        augmented_data = self.batch_augment(x)
+            if self.batch_augment_fn is not None:
+                augmented_data = self.batch_augment_fn(data=x)
 
         if batch_idx == 0:
-            loggers = self._logger_iterator()
-            for logger in loggers:
-                if hasattr(logger.experiment, "add_image"):
-                    for aug_num, aug_img in enumerate(augmented_data):
-                        images = torchvision.utils.make_grid(aug_img, normalize=True)
-                        logger.experiment.add_image(
-                            f"augmented{batch_idx}_{aug_num}", images
-                        )
+            self._log_batch_images("augmented", batch_idx, augmented_data)
 
-        prediction_results = []
-        for augemented_img in augmented_data:
-            prediction_result = self.forward(augemented_img)
-            prediction_results.append(prediction_result)
+        prediction_result = self.forward(augmented_data)
 
         loss = torch.tensor([0.0], device=self.device)
-        for augmented_image, prediction_result in zip(
-            augmented_data, prediction_results
-        ):
-            if labels is not None and "logits" in prediction_result:
-                logits = prediction_result["logits"]
+        if labels is not None and prediction_result.logits is not None:
+            logits = prediction_result.logits
 
-                classifier_loss = F.cross_entropy(
-                    logits, mixup_labels.squeeze(), weight=self.loss_weights
-                )
+            classifier_loss = F.cross_entropy(
+                logits, mixup_labels.squeeze(), weight=self.loss_weights
+            )
 
-                self.log(f"{step_name}_classifier_loss", classifier_loss)
-                loss += classifier_loss
+            self.log(f"{step_name}_classifier_loss", classifier_loss)
+            loss += classifier_loss
 
-                preds = torch.argmax(logits, dim=1)
-                prediction_result["preds"] = preds
-                self.metrics[f"{step_name}_metrics"](preds, labels)
+            preds = torch.argmax(logits, dim=1)
+            self.metrics[f"{step_name}_metrics"](preds, labels)
 
-                self.log_dict(self.metrics[f"{step_name}_metrics"])
+            self.log_dict(self.metrics[f"{step_name}_metrics"])
 
-            if "decoded" in prediction_result:
-                decoded = prediction_result["decoded"]
-                decoder_loss = F.mse_loss(decoded, augmented_image)
-                # print(f"{step_name}_decoder_loss", decoder_loss)
-                self.log(f"{step_name}_decoder_loss", decoder_loss)
-                loss += decoder_loss
+        if prediction_result.decoded is not None:
+            decoded = prediction_result.decoded
+            decoder_loss = F.mse_loss(decoded, x)
+            # print(f"{step_name}_decoder_loss", decoder_loss)
+            self.log(f"{step_name}_decoder_loss", decoder_loss)
+            loss += decoder_loss
 
-                if batch_idx == 0:
-                    loggers = self._logger_iterator()
-                    for logger in loggers:
-                        if hasattr(logger.experiment, "add_image"):
-                            images = torchvision.utils.make_grid(
-                                decoded, normalize=True
-                            )
-                            logger.experiment.add_image(f"decoded{batch_idx}", images)
+            if batch_idx == 0:
+                self._log_batch_images("decoded", batch_idx, decoded)
 
         self.log(f"{step_name}_loss", loss)
         return loss, prediction_result, batch

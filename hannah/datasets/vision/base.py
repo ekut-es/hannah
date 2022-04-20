@@ -1,10 +1,41 @@
 import logging
 
 import numpy as np
+from timm.data.mixup import Mixup
+
+from hannah.modules.augmentation.batch_augmentation import BatchAugmentationPipeline
 
 from ..base import AbstractDataset
 
 logger = logging.getLogger(__name__)
+
+
+class AugmentationMixin:
+    def get_mixup_fn(self):
+        mixup = None
+
+        augmentation_config = self.config.get("augmentation", None)
+        if augmentation_config is not None:
+            mixup_config = augmentation_config.get("mixup", None)
+            if mixup_config is not None:
+                mixup_config = Mixup(**mixup_config)
+
+        return mixup
+
+    def get_batch_augment_fn(self):
+
+        batch_augment = None
+
+        augmentation_config = self.config.get("augmentation", None)
+        if augmentation_config is not None:
+            batch_augment_config = self.config.get("batch_augment", None)
+            if batch_augment_config is not None:
+
+                batch_augment = BatchAugmentationPipeline(
+                    transforms=batch_augment_config.get("batch_transforms", [])
+                )
+
+        return batch_augment
 
 
 class TorchvisionDatasetBase(AbstractDataset):

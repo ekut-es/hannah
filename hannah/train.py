@@ -13,22 +13,15 @@ from pytorch_lightning.utilities.cloud_io import load as pl_load
 from pytorch_lightning.utilities.distributed import rank_zero_only
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
-import hydra
-
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
-from .utils import (
-    auto_select_gpus,
-    clear_outputs,
-    common_callbacks,
-    log_execution_env_state,
-)
+from .utils import auto_select_gpus, clear_outputs, common_callbacks
 
 msglogger = logging.getLogger(__name__)
 
 
 @rank_zero_only
-def handleDataset(config=DictConfig):
+def handle_dataset(config=DictConfig):
     lit_module = instantiate(
         config.module,
         dataset=config.dataset,
@@ -213,23 +206,3 @@ def nas(config: DictConfig):
     print(OmegaConf.to_yaml(config))
     nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
     nas_trainer.run()
-
-
-@hydra.main(config_name="config", config_path="conf")
-def main(config: DictConfig):
-    logging.captureWarnings(True)
-    try:
-        log_execution_env_state()
-        if config.get("dataset_creation", None) is not None:
-            handleDataset(config)
-        if config.get("nas", None) is not None:
-            return nas(config)
-        else:
-            return train(config)
-    except Exception as e:
-        logging.exception("Exception Message: %s", str(e))
-        raise e
-
-
-if __name__ == "__main__":
-    main()

@@ -1,0 +1,33 @@
+# @package _global_
+defaults:
+    - override /dataset: kvasir_unlabeled
+    - override /model: timm_mobilenetv3_small_075   # Neural network name (for now timm_resnet50 or timm_efficientnet_lite1)
+    - override /module: image_classifier            #
+    - override /scheduler: 1cycle                   # learning rate scheduler config name
+    - override /optimizer: adamw                    # Optimizer config name
+    - override /features: null                      # Feature extractor, can be set to null if using raw input data
+    - override /normalizer: null                    # Feature normalizer (used for quantized neural networks)
+    - override /module: image_classifier            # Lightning module config for the training loop (image classifier for image classification tasks)
+
+experiment_id: kvasir_ae
+output_dir: trained_models
+auto_lr: false
+print_metrics: false
+data_monitor: false
+monitor: val_loss
+seed: [1234]
+
+checkpoint:
+  monitor: val_loss
+
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+
+
+
+#TODO:
+dump_test: false
+input_file: ''
