@@ -8,12 +8,12 @@ from torchvision import datasets
 
 import albumentations as A
 
-from .base import VisionDatasetBase
+from .base import TorchvisionDatasetBase
 
 logger = logging.getLogger(__name__)
 
 
-class Cifar10Dataset(VisionDatasetBase):
+class Cifar10Dataset(TorchvisionDatasetBase):
     @classmethod
     def prepare(cls, config):
         data_folder = config.data_folder

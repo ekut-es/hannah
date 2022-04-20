@@ -1,5 +1,6 @@
 import logging
 import math
+from collections import namedtuple
 from typing import Any, Mapping, Tuple, Union
 
 import timm
@@ -129,6 +130,9 @@ class DefaultDecoderHead(nn.Module):
         return self.layers(x)
 
 
+ModelResult = namedtuple("ModelResult", ["latent", "decoded", "projection", "logits"])
+
+
 class TimmModel(nn.Module):
     def __init__(
         self,
@@ -137,7 +141,6 @@ class TimmModel(nn.Module):
         pretrained: bool = True,
         decoder: Union[Mapping[str, Any], bool] = True,
         classifier: Union[Mapping[str, Any], bool] = True,
-        anomaly_detector: Union[Mapping[str, Any], bool] = True,
         projector: Union[Mapping[str, Any], bool] = False,
         labels: int = 0,
         **kwargs
@@ -172,14 +175,6 @@ class TimmModel(nn.Module):
                     latent_shape=dummy_latent.shape, num_classes=labels
                 )
 
-        self.anomaly_detector = None
-        if self.anomaly_detector is True:
-            self.anomaly_detector = DefaultAnomalyDetector(dummy_latent.shape)
-        elif self.anomaly_detector:
-            self.anomaly_detector = hydra.utils.instantiate(
-                anomaly_detector, latent_shape=dummy_latent.shape
-            )
-
         self.projector = None
         if projector is True:
             self.projector = DefaultProjectionHead(dummy_latent.shape, 1024, 256)
@@ -195,33 +190,31 @@ class TimmModel(nn.Module):
         x: torch.Tensor,
         decode=True,
         classify=True,
-        anomaly=False,
         projection=False,
         finetuning=False,
     ) -> Mapping[str, torch.Tensor]:
-        result = {}
 
+        latent = None
         if finetuning:
             with torch.no_grad():
                 latent = self.encoder(x)
         else:
             latent = self.encoder(x)
-        result["latent"] = latent
 
+        decoded = None
         if self.decoder is not None and decode is True:
             decoded = self.decoder(latent)
-            result["decoded"] = decoded
 
+        logits = None
         if self.classifier is not None and classify is True:
-            pred = self.classifier(latent)
-            result["logits"] = pred
+            logits = self.classifier(latent)
 
-        if self.anomaly_detector is not None and anomaly is True:
-            anomaly_score = self.anomaly_detector(latent)
-            result["anomaly_score"] = anomaly_score
-
+        projection = None
         if self.projector is not None and projection is True:
             projection = self.projector(latent)
-            result["projection"] = projection
+
+        result = ModelResult(
+            laten=latent, decoded=decoded, projection=projection, logits=logits
+        )
 
         return result

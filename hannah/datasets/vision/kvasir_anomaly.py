@@ -1,29 +1,15 @@
-import bisect
-import json
 import logging
 import os
-import pathlib
-import tarfile
-import urllib
-from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List
 
-import cv2
-import gdown
-import pandas as pd
-import requests
-import torchvision
 from PIL import Image
 from sklearn.model_selection import train_test_split
 from torchvision import transforms
-from tqdm import tqdm
 
 from hannah.modules.augmentation import rand_augment
 
 from ..base import AbstractDataset
-from ..utils import csv_dataset, generate_file_md5
-from .base import VisionDatasetBase
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +21,7 @@ def pil_loader(path: str) -> Image.Image:
         return img.convert("RGB")
 
 
-class KvasirCapsuleAnomalyDataset(VisionDatasetBase):
+class KvasirCapsuleAnomalyDataset(AbstractDataset):
     DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_images/?zip="
 
     def __init__(self, config, data, targets, transform=None):

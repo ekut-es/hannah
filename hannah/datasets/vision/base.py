@@ -7,7 +7,7 @@ from ..base import AbstractDataset
 logger = logging.getLogger(__name__)
 
 
-class TorchVisionDatasetBase(AbstractDataset):
+class TorchvisionDatasetBase(AbstractDataset):
     """Wrapper around torchvision classification datasets"""
 
     def __init__(self, config, dataset, transform=None):

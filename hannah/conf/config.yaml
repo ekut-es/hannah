@@ -13,7 +13,9 @@ defaults:
     - profiler: null
     - compression: null
     - optional dataset/features: ${dataset}_${features}
+    - experiment: null
     - override hydra/job_logging: silent
+    - _self_
 
 experiment_id: test
 output_dir: trained_models
@@ -25,14 +27,12 @@ resume: false
 seed: [1234]
 validate_output: False
 
-hydra:
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-
-
-
-#TODO:
-dump_test: false
 input_file: ''
+
+hydra:
+  searchpath:
+    - file://${oc.env:PWD}/configs
+  run:
+    dir: ${output_dir}/${experiment_id}/${model.name}/
+  sweep:
+    dir: ${output_dir}/${experiment_id}/${model.name}/

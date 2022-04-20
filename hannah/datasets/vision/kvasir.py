@@ -20,13 +20,12 @@ from tqdm import tqdm
 from hannah.modules.augmentation import rand_augment
 
 from ..base import AbstractDataset
-from ..utils import csv_dataset, generate_file_md5
-from .base import VisionDatasetBase
+from ..utils import generate_file_md5
 
 logger = logging.getLogger(__name__)
 
 
-class KvasirCapsuleDataset(VisionDatasetBase):
+class KvasirCapsuleDataset(AbstractDataset):
     def __init__(self, config, dataset, indices=None, csv_file=None, transform=None):
         super().__init__(config, dataset, transform)
         self.indices = indices
@@ -63,9 +62,10 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         extract_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
+        force = config.get("force")
 
         # download and extract dataset
-        if not os.path.isdir(extract_root):
+        if not os.path.isdir(extract_root) or force == True:
             torchvision.datasets.utils.download_and_extract_archive(
                 cls.DOWNLOAD_URL,
                 download_folder,
@@ -75,13 +75,6 @@ class KvasirCapsuleDataset(VisionDatasetBase):
 
             for tar_file in pathlib.Path(extract_root).glob("*.tar.gz"):
                 # ampulla , hematin and polyp removed from official_splits due to small findings
-                if str(tar_file) in [
-                    extract_root + "/ampulla_of_vater.tar.gz",
-                    extract_root + "/blood_hematin.tar.gz",
-                    extract_root + "/polyp.tar.gz",
-                ]:
-                    tar_file.unlink()
-                    continue
                 logger.info("Extracting: %s", str(tar_file))
                 with tarfile.open(tar_file) as archive:
                     archive.extractall(path=extract_root)

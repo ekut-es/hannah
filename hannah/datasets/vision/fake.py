@@ -2,12 +2,12 @@ import logging
 
 import torchvision
 
-from .base import VisionDatasetBase
+from .base import TorchvisionDatasetBase
 
 logger = logging.getLogger(__name__)
 
 
-class FakeDataset(VisionDatasetBase):
+class FakeDataset(TorchvisionDatasetBase):
     @classmethod
     def prepare(cls, config):
         pass

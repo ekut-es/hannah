@@ -2,21 +2,17 @@ import bisect
 import json
 import logging
 import pathlib
-import time
 import urllib
 from typing import List
 
 import cv2
-import torchvision
 from albumentations.pytorch.transforms import ToTensorV2
-from PIL import Image
-from torchvision import transforms
 from tqdm import tqdm
 
 import albumentations as A
 
 from ..base import AbstractDataset
-from ..utils import cachify, generate_file_md5
+from ..utils import generate_file_md5
 
 try:
     import gdown
@@ -28,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class KvasirCapsuleUnlabeled(AbstractDataset):
-    """Dataset representing unalbelled videos"""
+    """Dataset representing unlabelled videos"""
 
     BASE_URL_UNLABELED = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/unlabelled_videos/"
     BASE_URL_LABELED = (
