@@ -5,12 +5,15 @@ from omegaconf import DictConfig
 import hydra
 
 from .. import conf  # noqa
-from ..train import handle_dataset, nas, train
-from ..utils import log_execution_env_state
 
 
 @hydra.main(config_name="config", config_path="../conf")
 def main(config: DictConfig):
+
+    # Lazily Imported to get quicker tab completion
+    from ..train import handle_dataset, nas, train
+    from ..utils import log_execution_env_state
+
     logging.captureWarnings(True)
     try:
         log_execution_env_state()
