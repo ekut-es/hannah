@@ -870,6 +870,23 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "kornia"
+version = "0.6.4"
+description = "Open Source Differentiable Computer Vision Library for PyTorch"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+packaging = "*"
+torch = ">=1.8.1"
+
+[package.extras]
+all = ["accelerate (==0.5.1)", "pytest (==6.2.5)", "pytest-flake8 (==1.0.7)", "flake8 (==3.9.2)", "pytest-cov (==3.0.0)", "pytest-mypy (==0.9.1)", "pytest-xdist (==2.5.0)", "autopep8", "pydocstyle", "pre-commit (>=2.0)", "yapf", "isort", "numpy", "scipy", "dataclasses"]
+dev = ["pytest (==6.2.5)", "pytest-flake8 (==1.0.7)", "flake8 (==3.9.2)", "pytest-cov (==3.0.0)", "pytest-mypy (==0.9.1)", "pytest-xdist (==2.5.0)", "autopep8", "pydocstyle", "pre-commit (>=2.0)", "yapf", "isort", "numpy", "scipy"]
+x = ["accelerate (==0.5.1)", "dataclasses"]
+
+[[package]]
 name = "libsvm"
 version = "3.23.0.4"
 description = "Pre-built LibSVM packages for Python."
@@ -2280,7 +2297,7 @@ tf-backend = ["onnx-tf"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "8b15a693cd338eac8f183cec1de97f05cf7eaf1a5c82e4db2ac2a56acdf5ef7b"
+content-hash = "8acc733a2d028cf7318c88d8aa2731549f6977bd5e38827accd387a7cc45e3ae"
 
 [metadata.files]
 absl-py = [
@@ -2942,6 +2959,10 @@ kiwisolver = [
     {file = "kiwisolver-1.4.2-pp37-pypy37_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0e8afdf533b613122e4bbaf3c1e42c2a5e9e2d1dd3a0a017749a7658757cb377"},
     {file = "kiwisolver-1.4.2-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:42f6ef9b640deb6f7d438e0a371aedd8bef6ddfde30683491b2e6f568b4e884e"},
     {file = "kiwisolver-1.4.2.tar.gz", hash = "sha256:7f606d91b8a8816be476513a77fd30abe66227039bd6f8b406c348cb0247dcc9"},
+]
+kornia = [
+    {file = "kornia-0.6.4-py2.py3-none-any.whl", hash = "sha256:642c0e8567ac305874fa05889523d906d761599d86e88b01558add744eb74dd4"},
+    {file = "kornia-0.6.4.tar.gz", hash = "sha256:ff60307a7244b315db43bfc4d4d6769094cf7d7494cf367c1d71a56343e2c50f"},
 ]
 libsvm = [
     {file = "libsvm-3.23.0.4.tar.gz", hash = "sha256:ea61c748b7baa75d7de8d8d3278614a0f66f32830e6828dd307fc69d20210463"},
