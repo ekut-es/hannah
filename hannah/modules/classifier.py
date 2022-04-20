@@ -31,7 +31,7 @@ from .base import ClassifierModule
 from .config_utils import get_loss_function, get_model
 from .metrics import Error
 
-logger = logging.getLogger(__name__)
+msglogger = logging.getLogger(__name__)
 
 
 class BaseStreamClassifierModule(ClassifierModule):
@@ -45,9 +45,9 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     def setup(self, stage):
         # TODO stage variable is not used!
-        logger.info("Setting up model")
+        msglogger.info("Setting up model")
         if self.logger:
-            self.msglogger.info("Model setup already completed skipping setup")
+            msglogger.info("Model setup already completed skipping setup")
             self.logger.log_hyperparams(self.hparams)
 
         if self.initialized:

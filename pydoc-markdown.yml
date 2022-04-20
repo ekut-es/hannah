@@ -67,10 +67,10 @@ renderer:
         - title: Profiling
           name: devel/profiling
           source: doc/devel/profiling.md
-        #- title: API Documentation
-        #  name: devel/api
-        #  contents:
-        #    - 'hannah.*'
+        - title: API Documentation
+          name: devel/api
+          contents:
+            - 'hannah.*'
 
   mkdocs_config:
     site_name: HANNAH

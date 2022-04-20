@@ -20,7 +20,7 @@ from .augmentation.batch_augmentation import BatchAugmentationPipeline
 from .base import ClassifierModule
 from .metrics import Error
 
-logger = logging.getLogger(__name__)
+msglogger = logging.getLogger(__name__)
 
 
 class ImageClassifierModule(ClassifierModule):
@@ -56,8 +56,7 @@ class ImageClassifierModule(ClassifierModule):
         if self.train_set.class_names:
             self.num_classes = len(self.train_set.class_names)
 
-        logger.info("Setting up model %s", self.hparams.model.name)
-
+        msglogger.info("Setting up model %s", self.hparams.model.name)
         self.model = instantiate(
             self.hparams.model,
             input_shape=self.example_input_array.shape,
@@ -69,11 +68,11 @@ class ImageClassifierModule(ClassifierModule):
             loss_weights = torch.tensor(self.train_set.weights)
             loss_weights *= len(self.train_set) / self.num_classes
 
-            logger.info("Using weighted loss with weights:")
+            msglogger.info("Using weighted loss with weights:")
             for num, (weight, name) in enumerate(
                 zip(loss_weights, self.train_set.class_names)
             ):
-                logger.info("- %s [%d]: %f", name, num, weight.item())
+                msglogger.info("- %s [%d]: %f", name, num, weight.item())
 
             self.register_buffer("loss_weights", loss_weights)
         else:

@@ -1,0 +1,6 @@
+# @package _global_
+defaults:
+  - override /dataset: vad
+  - override /checkpoint: null
+
+experiment_id: mytest_vadx

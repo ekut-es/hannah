@@ -31,17 +31,15 @@ class ObjectDetectionModule(ClassifierModule):
         super().__init__(*args, **kwargs)
 
         if COCOeval is None:
-            self.msglogger.error("Could not find cocotools")
-            self.msglogger.error(
-                "please install with poetry install -E object-detection"
-            )
+            msglogger.error("Could not find cocotools")
+            msglogger.error("please install with poetry install -E object-detection")
 
     def prepare_data(self):
         pass
 
     def setup(self, stage):
         # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
+        msglogger.info("Setting up model")
         if self.logger:
             self.logger.log_hyperparams(self.hparams)
 

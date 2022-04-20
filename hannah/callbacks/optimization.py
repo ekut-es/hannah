@@ -1,12 +1,12 @@
 import logging
-from typing import Iterable, Mapping, Union
+from typing import Any, Iterable, Mapping, Union
 
 from pytorch_lightning.callbacks import Callback
 from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
-monitor_type = Union[Iterable[Mapping[str, any]], Mapping[str, any], Iterable[str], str]
+monitor_type = Union[Iterable[Mapping[str, Any]], Mapping[str, Any], Iterable[str], str]
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,8 @@ class HydraOptCallback(Callback):
         self.values = {}
         self.val_values = {}
         self.test_values = {}
-        self.monitor = []
-        self.directions = []
+        self.monitor: List[str] = []
+        self.directions: List[int] = []
 
         self._extract_monitor(monitor)
 
@@ -60,7 +60,14 @@ class HydraOptCallback(Callback):
 
         for k, v in callback_metrics.items():
             if k.startswith("test"):
-                self.test_values[k] = v
+                value = v
+                if isinstance(v, Tensor):
+                    if v.numel() == 1:
+                        value = v.item()
+                    else:
+                        continue
+                value = float(value)
+                self.test_values[k] = value
 
         for monitor, direction in zip(self.monitor, self.directions):
             if monitor in callback_metrics:

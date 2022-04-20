@@ -1,24 +1,22 @@
 import logging
 import os
 import shutil
-from collections import defaultdict
 from pathlib import Path
 
-import numpy as np
+import pandas as pd
+import tabulate
 import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.cloud_io import load as pl_load
-from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
+from pytorch_lightning.utilities.distributed import rank_zero_only
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 import hydra
 
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
-from .callbacks.summaries import MacSummaryCallback
 from .utils import (
     auto_select_gpus,
     clear_outputs,
@@ -36,7 +34,7 @@ def handleDataset(config=DictConfig):
         dataset=config.dataset,
         model=config.model,
         optimizer=config.optimizer,
-        features=config.features if "features" in config else None,
+        features=config.get("features", None),
         scheduler=config.get("scheduler", None),
         normalizer=config.get("normalizer", None),
         _recursive_=False,
@@ -85,7 +83,9 @@ def train(config: DictConfig):
             profiler = instantiate(config.profiler)
 
         logger = [
-            TensorBoardLogger(".", version=None, name="", default_hp_metric=False)
+            TensorBoardLogger(
+                ".", version=None, name="", default_hp_metric=False, log_graph=True
+            )
         ]
         if config.trainer.get("stochastic_weight_avg", False):
             logging.critical(
@@ -179,18 +179,29 @@ def train(config: DictConfig):
         test_output.append(opt_callback.test_result())
         results.append(opt_callback.result())
 
-    test_sum = defaultdict(int)
-    for output in test_output:
-        for k, v in output.items():
-            if v.numel() == 1:
-                test_sum[k] += v.item()
-            else:
-                test_sum[k] += v
+    @rank_zero_only
+    def summarize_test(test_output) -> None:
+        if not test_output:
+            return
+        result_frame = pd.DataFrame.from_dict(test_output)
+        if result_frame.empty:
+            return
+        result_frame.to_json("test_results.json")
+        result_frame.to_pickle("test_results.pkl")
 
-    rank_zero_info("Averaged Test Metrics:")
+        description = result_frame.describe()
+        description = description.fillna(0.0)
 
-    for k, v in test_sum.items():
-        rank_zero_info(k + " : " + str(v / len(test_output)))
+        res = description.loc[["mean", "std", "count"]]
+
+        desc_table = tabulate.tabulate(
+            res.transpose(),
+            headers=["Metric", "Mean", "Std", "Count"],
+            tablefmt="github",
+        )
+        msglogger.info("Averaged Result Metrics:\n%s", desc_table)
+
+    summarize_test(test_output)
 
     if len(results) == 1:
         return results[0]
