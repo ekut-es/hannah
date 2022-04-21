@@ -46,7 +46,6 @@ test_python_38:
     - poetry run python3 -m pytest  -v --cov=hannah test
   tags:
     - docker
-    - nfs
   interruptible: true
   only:
     - master
@@ -65,7 +64,6 @@ test_python_39:
     - poetry run coverage xml
   tags:
     - docker
-    - nfs
   interruptible: true
   artifacts:
     reports:
