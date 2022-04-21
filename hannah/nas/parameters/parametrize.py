@@ -1,3 +1,4 @@
+from copy import deepcopy
 import inspect
 from ..core.parametrized import is_parametrized
 
@@ -8,20 +9,24 @@ def _create_parametrize_wrapper(parameters, cls):
 
     def init_fn(self, *args, **kwargs):
         self._PARAMETERS = {}
+        self._annotations = {}
 
         for num, arg in enumerate(args):
             if is_parametrized(arg):
-                # breakpoint()
                 name = parameter_list[num + 1].name
                 self._PARAMETERS[name] = arg
+                self._annotations[name] = parameter_list[num + 1]._annotation
         for name, arg in kwargs.items():
             if is_parametrized(arg):
                 self._PARAMETERS[name] = arg
+                self._annotations[name] = parameters[name]._annotation
 
         # TODO:
         cls.sample = sample
+        cls.set_current = set_current
+        cls.instantiate = instantiate
+        cls.check = check
         cls.set_params = set_params
-        # cls.instantiate = instantiate
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
@@ -49,11 +54,35 @@ def sample(self):
         param.sample()
 
 
+def set_current(self, value):
+    self.set_params(**value)
+
+
 def set_params(self, **kwargs):
     for key, value in kwargs.items():
         assert key in self._PARAMETERS, "{} has no parameter {}".format(self, key)
-        self._PARAMETERS[key].set_current(value)
+
+        if not isinstance(value, dict) and key in self._annotations and not isinstance(value, self._annotations[key]):
+            raise TypeError('Value must be of type {} but is {}'.format(self._annotations[key], type(value)))
+        if is_parametrized(value):
+            self._PARAMETERS[key] = value
+            setattr(self, key, value)  # TODO: Do we want this to work?
+        else:
+            self._PARAMETERS[key].set_current(value)
+
+
+# required for Protocol
+def check(self, value):
+    # TODO:
+    pass
 
 
 def instantiate(self):
-    self._parametrized = False
+    instance = deepcopy(self)
+    instance._parametrized = False
+
+    for key, param in instance._PARAMETERS.items():
+        instantiated_value = param.instantiate()
+        instance._PARAMETERS[key] = instantiated_value
+        setattr(instance, key, instantiated_value)
+    return instance
