@@ -250,6 +250,5 @@ run_sca:
     - poetry run pre-commit run -a
   tags:
     - docker
-    - nfs
   interruptible: true
   allow_failure: true
