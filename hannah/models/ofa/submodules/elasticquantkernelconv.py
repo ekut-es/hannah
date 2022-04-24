@@ -1,22 +1,22 @@
 import copy
-from typing import List
-import torch.nn as nn
-import torch.nn.functional as nnf
 import logging
 import math
-import torch
-from ..utilities import (
-    conv1d_get_padding,
-    filter_single_dimensional_weights,
-)
-from .elasticchannelhelper import SequenceDiscovery
-from .elasticBatchnorm import ElasticWidthBatchnorm1d
-from .elasticLinear import ElasticPermissiveReLU
-from .elasticBase import ElasticBase1d
-from ...factory import qat
+from typing import List
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as nnf
 from torch.nn import init
 
+from ...factory import qat
+from ..utilities import conv1d_get_padding, filter_single_dimensional_weights
+from .elasticBase import ElasticBase1d
+from .elasticBatchnorm import ElasticWidthBatchnorm1d
+from .elasticchannelhelper import SequenceDiscovery
+from .elasticLinear import ElasticPermissiveReLU
+
+
+# Adapted base Class used for the Quantization
 # pytype: enable=attribute-error
 class _ElasticConvBnNd(
     ElasticBase1d, qat._ConvForwardMixin
