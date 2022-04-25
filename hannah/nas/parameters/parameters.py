@@ -19,7 +19,7 @@ from ..expressions.logic import And, Or
 
 
 class Parameter(ABC):
-    def __init__(self, scope="", rng: Optional[Union[np.random.Generator, int]] = None) -> None:
+    def __init__(self, scope: Optional[str] = None, rng: Optional[Union[np.random.Generator, int]] = None) -> None:
         super().__init__()
         if rng is None:
             self.rng = np.random.default_rng(seed=None)
@@ -118,7 +118,7 @@ class IntScalarParameter(Parameter):
         self,
         min: Union[int, IntScalarParameter],
         max: Union[int, IntScalarParameter],
-        scope: str = "",
+        scope: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
         super().__init__(scope, rng)
@@ -158,7 +158,7 @@ class IntScalarParameter(Parameter):
 
 class FloatScalarParameter(Parameter):
     def __init__(
-        self, min, max, scope: str = "", rng: Optional[Union[np.random.Generator, int]] = None
+        self, min, max, scope: Optional[str] = None, rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
         super().__init__(scope, rng)
         self.min = min
@@ -185,7 +185,7 @@ class FloatScalarParameter(Parameter):
 
 class CategoricalParameter(Parameter):
     def __init__(
-        self, choices, scope: str = "", rng: Optional[Union[np.random.Generator, int]] = None
+        self, choices, scope: Optional[str] = None, rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
         super().__init__(scope, rng)
         self.choices = choices
@@ -217,7 +217,7 @@ class CategoricalParameter(Parameter):
 
 class SubsetParameter(Parameter):
     def __init__(
-        self, choices, min, max, scope: str = "", rng: Optional[Union[np.random.Generator, int]] = None
+        self, choices, min, max, scope: Optional[str] = None, rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
         super().__init__(scope, rng)
         self.choices = choices
