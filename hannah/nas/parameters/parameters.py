@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from ast import Param
 from typing import Optional, Type, Union, get_type_hints, get_args
 
 import numpy as np
@@ -18,7 +19,7 @@ from ..expressions.logic import And, Or
 
 
 class Parameter(ABC):
-    def __init__(self, rng: Optional[Union[np.random.Generator, int]] = None) -> None:
+    def __init__(self, scope="", rng: Optional[Union[np.random.Generator, int]] = None) -> None:
         super().__init__()
         if rng is None:
             self.rng = np.random.default_rng(seed=None)
@@ -28,6 +29,7 @@ class Parameter(ABC):
             self.rng = rng
         else:
             raise Exception("rng should be either np.random.Generator or int (or None)")
+        self.scope = scope
 
     @abstractmethod
     def sample(self):
@@ -116,9 +118,10 @@ class IntScalarParameter(Parameter):
         self,
         min: Union[int, IntScalarParameter],
         max: Union[int, IntScalarParameter],
+        scope: str = "",
         rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
-        super().__init__(rng)
+        super().__init__(scope, rng)
         self.min = min
         self.max = max
         self.current_value = self.evaluate_field('min')
@@ -155,9 +158,9 @@ class IntScalarParameter(Parameter):
 
 class FloatScalarParameter(Parameter):
     def __init__(
-        self, min, max, rng: Optional[Union[np.random.Generator, int]] = None
+        self, min, max, scope: str = "", rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
-        super().__init__(rng)
+        super().__init__(scope, rng)
         self.min = min
         self.max = max
         self.current_value = min
@@ -182,10 +185,11 @@ class FloatScalarParameter(Parameter):
 
 class CategoricalParameter(Parameter):
     def __init__(
-        self, choices, rng: Optional[Union[np.random.Generator, int]] = None
+        self, choices, scope: str = "", rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
-        super().__init__(rng)
+        super().__init__(scope, rng)
         self.choices = choices
+        self.sample()
 
     def sample(self):
         self.current_value = self.rng.choice(self.choices)
@@ -213,9 +217,9 @@ class CategoricalParameter(Parameter):
 
 class SubsetParameter(Parameter):
     def __init__(
-        self, choices, min, max, rng: Optional[Union[np.random.Generator, int]] = None
+        self, choices, min, max, scope: str = "", rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
-        super().__init__(rng)
+        super().__init__(scope, rng)
         self.choices = choices
         self.min = min
         self.max = max
