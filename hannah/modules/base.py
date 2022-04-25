@@ -4,8 +4,9 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from multiprocessing import dummy
-from typing import Optional
+from typing import Iterable, Optional
 
+import tabulate
 import torch
 import torch.utils.data as data
 import torchvision
@@ -13,14 +14,19 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from PIL import Image
 from pytorch_lightning import LightningModule
-from pytorch_lightning.loggers import LoggerCollection, TensorBoardLogger
+from pytorch_lightning.loggers import (
+    LightningLoggerBase,
+    LoggerCollection,
+    TensorBoardLogger,
+)
 from pytorch_lightning.utilities.distributed import rank_zero_only
+from torchmetrics import MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import fullname
 from .metrics import plot_confusion_matrix
 
-logger = logging.getLogger(__name__)
+msglogger = logging.getLogger(__name__)
 
 
 class ClassifierModule(LightningModule, ABC):
@@ -43,7 +49,6 @@ class ClassifierModule(LightningModule, ABC):
         super().__init__()
 
         self.save_hyperparameters()
-        self.msglogger = logging.getLogger()
         self.initialized = False
         self.train_set = None
         self.test_set = None
@@ -51,7 +56,18 @@ class ClassifierModule(LightningModule, ABC):
         self.logged_samples = 0
         self.export_onnx = export_onnx
         self.gpus = gpus
-        print(dataset.data_folder)
+
+        self.val_metrics: MetricCollection = MetricCollection({})
+        self.test_metrics: MetricCollection = MetricCollection({})
+        self.train_metrics: MetricCollection = MetricCollection({})
+
+    @property
+    def test_metrics(self) -> MetricCollection:
+        return self._test_metrics
+
+    @test_metrics.setter
+    def test_metrics(self, val: MetricCollection) -> None:
+        self._test_metrics = val
 
     @abstractmethod
     def prepare_data(self):
@@ -65,6 +81,15 @@ class ClassifierModule(LightningModule, ABC):
     @abstractmethod
     def get_class_names(self):
         pass
+
+    def on_train_start(self) -> None:
+        super().on_train_start()
+
+        input_array = self.example_input_array.clone().to(self.device)
+
+        for logger in self._logger_iterator():
+            if hasattr(logger, "log_graph"):
+                logger.log_graph(self, input_array)
 
     def configure_optimizers(self):
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
@@ -90,6 +115,8 @@ class ClassifierModule(LightningModule, ABC):
     @property
     def total_training_steps(self) -> int:
         """Total training steps inferred from datamodule and devices."""
+        if self.trainer is None:
+            return -1
         if self.trainer.max_steps > 0:
             return self.trainer.max_steps
 
@@ -167,7 +194,7 @@ class ClassifierModule(LightningModule, ABC):
                                 "Could not add histogram for param %s", name
                             )
 
-    def _logger_iterator(self):
+    def _logger_iterator(self) -> Iterable[LightningLoggerBase]:
         if isinstance(self.logger, LoggerCollection):
             loggers = self.logger
         else:
@@ -214,7 +241,7 @@ class ClassifierModule(LightningModule, ABC):
     def on_load_checkpoint(self, checkpoint):
         for k, v in self.state_dict().items():
             if k not in checkpoint["state_dict"]:
-                self.msglogger.warning(
+                msglogger.warning(
                     "%s not in state dict using pre initialized values", k
                 )
                 checkpoint["state_dict"][k] = v
@@ -223,12 +250,23 @@ class ClassifierModule(LightningModule, ABC):
         checkpoint["hyper_parameters"]["_target_"] = fullname(self)
 
     def on_validation_epoch_end(self):
+        if self.trainer:
+            if self.trainer.fast_dev_run:
+                return
+            if self.trainer.global_rank > 0:
+                return
+        val_metrics = {}
+        for name, metric in self.val_metrics.items():
+            val_metrics[name] = metric.compute().item()
+
+        tabulated_metrics = tabulate.tabulate(
+            val_metrics.items(), headers=["Metric", "Value"], tablefmt="github"
+        )
+        msglogger.info("\nValidation Metrics:\n%s", tabulated_metrics)
+
         for logger in self._logger_iterator():
             if isinstance(logger, TensorBoardLogger) and hasattr(self, "val_metrics"):
-                logger.log_hyperparams(
-                    self.hparams,
-                    {"val_accuracy": self.val_metrics["val_accuracy"].compute().item()},
-                )
+                logger.log_hyperparams(self.hparams, val_metrics)
 
     def on_test_end(self):
 

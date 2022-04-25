@@ -16,5 +16,14 @@
     },
     "files.associations": {
         "*.inc": "cpp"
-    }
+    },
+    "cSpell.words": [
+        "accum",
+        "hparams",
+        "hyperparams",
+        "onnx",
+        "opset",
+        "qconfig",
+        "tablefmt"
+    ]
 }

@@ -208,7 +208,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             model.setup("train")
         except AssertionError as e:
             msglogger.critical(
-                "Instantiation failed. Probably #input/output channels are not divisable by #groups!"
+                "Instantiation failed. Probably #input/output channels are not divisible by #groups!"
             )
             msglogger.critical(str(e))
         else:
@@ -405,6 +405,14 @@ class OFANasTrainer(NASTrainerBase):
                 f.write(self.submodel_metrics_csv)
 
     def warmup(self, model, ofa_model):
+        """
+        > The function rebuilds the trainer with the warmup epochs, fits the model,
+        validates the model, and then calls the on_warmup_end() function to
+        change some internal variables
+
+        :param model: the model to be trained
+        :param ofa_model: the model that we want to train
+        """
         # warm-up.
         self.rebuild_trainer("warmup", self.epochs_warmup)
         self.trainer.fit(model)
@@ -415,6 +423,14 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("OFA completed warm-up.")
 
     def train_elastic_width(self, model, ofa_model):
+        """
+        > The function trains the model for a number of epochs, then adds a width
+        step, then trains the model for a number of epochs, then adds a width step,
+        and so on
+
+        :param model: the model to train
+        :param ofa_model: the model that will be trained
+        """
         if self.elastic_width_allowed:
             # train elastic width
             # first, run channel priority computation
@@ -436,6 +452,14 @@ class OFANasTrainer(NASTrainerBase):
             logging.info("OFA completed width steps.")
 
     def train_elastic_depth(self, model, ofa_model):
+        """
+        > The function trains the model for a number of epochs, then progressively
+        shrinks the depth of the model, and trains the model for a number of epochs
+        again
+
+        :param model: the model to train
+        :param ofa_model: the model to be trained
+        """
         if self.elastic_depth_allowed:
             # train elastic depth
             for current_depth_step in range(self.depth_step_count):
@@ -451,6 +475,14 @@ class OFANasTrainer(NASTrainerBase):
             logging.info("OFA completed depth steps.")
 
     def train_elastic_kernel(self, model, ofa_model):
+        """
+        > The function trains the elastic kernels by progressively shrinking the
+        model and training the model for a number of epochs and repeats this process
+        until the number of kernel steps is reached
+
+        :param model: the model to train
+        :param ofa_model: the model that will be trained
+        """
         if self.elastic_kernels_allowed == True:
             # train elastic kernels
             for current_kernel_step in range(self.kernel_step_count):
@@ -466,6 +498,14 @@ class OFANasTrainer(NASTrainerBase):
             logging.info("OFA completed kernel matrices.")
 
     def train_elastic_dilation(self, model, ofa_model):
+        """
+        > The function trains the model for a number of epochs, then adds a dilation
+        step, and trains the model for a number of epochs, and repeats this process
+        until the number of dilation steps is reached
+
+        :param model: the model to be trained
+        :param ofa_model: the model that will be trained
+        """
         if self.elastic_dilation_allowed == True:
             # train elastic kernels
             for current_dilation_step in range(self.dilation_step_count):
@@ -491,6 +531,21 @@ class OFANasTrainer(NASTrainerBase):
         metrics_output,
         metrics_csv,
     ):
+        """
+        > This function steps down the width of the model, and then calls the next
+        method in the stack
+
+        :param method_stack: a list of methods that will be called in order
+        :param method_index: The index of the current method in the method stack
+        :param lightning_model: the lightning model to be trained
+        :param model: the model to be trained
+        :param trainer_path: The path to the trainer
+        :param loginfo_output: This is the string that will be printed to the
+        console
+        :param metrics_output: a string that will be written to the metrics csv file
+        :param metrics_csv: a string that contains the metrics for the current model
+        :return: The metrics_csv is being returned.
+        """
         model.reset_all_widths()
         method = method_stack[method_index]
 
@@ -527,6 +582,22 @@ class OFANasTrainer(NASTrainerBase):
         metrics_output,
         metrics_csv,
     ):
+        """
+        > This function steps down the kernel size of the model, and then calls the
+        next method in the stack
+
+        :param method_stack: The list of methods to be called
+        :param method_index: The index of the current method in the method stack
+        :param lightning_model: the lightning model to be trained
+        :param model: the model to be trained
+        :param trainer_path: The path to the trainer
+        :param loginfo_output: This is the string that will be printed to the
+        console
+        :param metrics_output: This is the string that will be printed to the
+        console
+        :param metrics_csv: a string that contains the metrics for the current model
+        :return: The metrics_csv is being returned.
+        """
         model.reset_all_kernel_sizes()
         method = method_stack[method_index]
 
@@ -563,6 +634,21 @@ class OFANasTrainer(NASTrainerBase):
         metrics_output,
         metrics_csv,
     ):
+        """
+        > This function evaluates the model with a different dilation size for each
+        layer
+
+        :param method_stack: The list of methods to be called
+        :param method_index: The index of the method in the method stack
+        :param lightning_model: the lightning model to be trained
+        :param model: the model to be evaluated
+        :param trainer_path: The path to the trainer
+        :param loginfo_output: This is the string that will be printed to the
+        console
+        :param metrics_output: a string that will be written to the metrics csv file
+        :param metrics_csv: a string that contains the csv data for the metrics
+        :return: The metrics_csv is being returned.
+        """
         model.reset_all_dilation_sizes()
         method = method_stack[method_index]
 
@@ -599,6 +685,23 @@ class OFANasTrainer(NASTrainerBase):
         metrics_output,
         metrics_csv,
     ):
+        """
+        > This function will run the next method in the stack for each depth step,
+        and then return the metrics_csv
+
+        :param method_stack: The list of methods to be called
+        :param method_index: The index of the current method in the method stack
+        :param lightning_model: the lightning model to be trained
+        :param model: The model to be trained
+        :param trainer_path: The path to the trainer, which is used to save the
+        model
+        :param loginfo_output: This is the string that will be printed to the
+        console
+        :param metrics_output: This is the string that will be printed to the
+        console
+        :param metrics_csv: This is the CSV file that we're writing to
+        :return: The metrics_csv is being returned.
+        """
         model.reset_active_depth()
         method = method_stack[method_index]
 
@@ -635,6 +738,24 @@ class OFANasTrainer(NASTrainerBase):
         metrics_output,
         metrics_csv,
     ):
+        """
+        > This function takes in a model, a trainer, and a bunch of other stuff,
+        evaluates the model and tracks the results in der in the given strings and
+        returns a string of metrics
+
+        :param method_stack: The list of methods that we're evaluating
+        :param method_index: The index of the method in the method stack
+        :param lightning_model: the lightning model that we want to evaluate
+        :param model: The model to be evaluated
+        :param trainer_path: the path to the trainer object
+        :param loginfo_output: This is the string that will be printed to the
+        console when the model is being evaluated
+        :param metrics_output: This is the string that will be written to the
+        metrics file. It contains the method name, the method index, and the method
+        stack
+        :param metrics_csv: a string that will be written to a csv file
+        :return: The metrics_csv is being returned.
+        """
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
         model.reset_validation_model()
@@ -650,8 +771,13 @@ class OFANasTrainer(NASTrainerBase):
         metrics_csv += "\n"
         return metrics_csv
 
-    # cycle through submodels, test them, store results (under a given width step)
     def eval_model(self, lightning_model, model):
+        """
+        First the method stack for the evaluation ist build and then it is accoding to this evaluated
+
+        :param lightning_model: the lightning model
+        :param model: the model to be evaluated
+        """
         # disable sampling in forward during evaluation.
         model.eval_mode = True
         # reset_seed()  # run_training does this (?)

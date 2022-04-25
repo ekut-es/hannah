@@ -1,8 +1,10 @@
 import copy
-from typing import List
-import torch.nn as nn
 import logging
+from typing import List
+
 import torch
+import torch.nn as nn
+
 from ..utilities import (
     conv1d_get_padding,
     filter_primary_module_weights,
@@ -11,6 +13,8 @@ from ..utilities import (
 )
 
 
+# It's a wrapper for a convolutional layer that allows for the number of input and
+# output channels to be changed
 class _Elastic:
     def __init__(self, in_channel_filter, out_channel_filter):
         self.in_channel_filter: int = in_channel_filter
@@ -38,6 +42,7 @@ class _Elastic:
             self.in_channel_filter = in_channel_filter
 
 
+# It's a 1D convolutional layer that can change its kernel size and dilation size
 class ElasticBase1d(nn.Conv1d, _Elastic):
     def __init__(
         self,
@@ -121,6 +126,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.set_kernel_size(self.max_kernel_size)
 
     def set_kernel_size(self, new_kernel_size):
+        """
+        If the requested kernel size is outside of the min/max range, clamp it to
+        the min/max range. If the requested kernel size is not an available kernel
+        size, default to the max kernel size
+
+        :param new_kernel_size: the size of the kernel you want to use
+        """
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
         if (
             new_kernel_size < self.min_kernel_size
@@ -177,6 +189,11 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         return len(self.kernel_sizes)
 
     def get_full_width_kernel(self):
+        """
+        It applies the kernel transformations to the kernel until the target kernel
+        index is reached
+        :return: The found target kernel.
+        """
         current_kernel_index = 0
         current_kernel = self.weight
 
@@ -206,6 +223,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         return current_kernel
 
     def get_kernel(self):
+        """
+        If the input and output channels are not filtered, the full kernel is
+        returned. Otherwise, the kernel is filtered using the input and output
+        channel filters. If the module has a bias parameter, it is also filtered
+        using the output channel filter
+        :return: The new kernel and bias.
+        """
         full_kernel = self.get_full_width_kernel()
         new_kernel = None
         if all(self.in_channel_filter) and all(self.out_channel_filter):

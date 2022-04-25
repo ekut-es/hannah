@@ -19,8 +19,8 @@
 
 #SBATCH --gres-flags=enforce-binding
 
-#SBATCH --time=300
-# the maximum time the scripts needs to run (300 minutes = 5 hours)
+#SBATCH --time=720
+# the maximum time the scripts needs to run (720 minutes = 12 hours)
 
 #SBATCH --error=jobs/job_%j.err
 # write the error output to job.*jobID*.err
