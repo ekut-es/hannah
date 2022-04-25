@@ -1,5 +1,6 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Type, Union, get_type_hints, get_args
 
 import numpy as np
 
@@ -112,15 +113,30 @@ class Parameter(ABC):
 
 class IntScalarParameter(Parameter):
     def __init__(
-        self, min, max, rng: Optional[Union[np.random.Generator, int]] = None
+        self,
+        min: Union[int, IntScalarParameter],
+        max: Union[int, IntScalarParameter],
+        rng: Optional[Union[np.random.Generator, int]] = None
     ) -> None:
         super().__init__(rng)
         self.min = min
         self.max = max
-        self.current_value = min
+        self.current_value = self.evaluate_field('min')
+
+    def evaluate_field(self, field_str):
+        field = getattr(self, field_str)
+        if isinstance(field, Parameter):
+            return self.min.instantiate()
+        elif isinstance(field, int):
+            return field
+        else:
+            raise TypeError("{} has an unsupported type for evaluation({})".format(field_str, type(field)))
+
+    def get_bounds(self):
+        return (self.evaluate_field('min'), self.evaluate_field('max'))
 
     def sample(self):
-        self.current_value = self.rng.integers(self.min, self.max)
+        self.current_value = self.rng.integers(*self.get_bounds())
         return self.current_value
 
     def instantiate(self):
