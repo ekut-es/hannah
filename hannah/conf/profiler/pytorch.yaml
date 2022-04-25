@@ -1,5 +1,3 @@
-
-
 _target_: pytorch_lightning.profiler.PyTorchProfiler
 dirpath: profile
 filename: profile

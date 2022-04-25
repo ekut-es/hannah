@@ -1,0 +1,18 @@
+rand_augment:
+    N: 1
+    M: 1
+    probs:
+        Identity : 0.5
+        ShearX: 0.5
+        ShearY: 0.5
+        TranslateX: 0.5
+        TranslateY : 0.5
+        Rotate : 0.5
+        Brightness : 0.0
+        Color : 0.5
+        Contrast : 0.0
+        Sharpness : 0.5
+        Posterize : 0.0
+        Solarize : 0.0
+        AutoContrast : 0.0
+        Equalize : 0.1

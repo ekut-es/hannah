@@ -38,11 +38,16 @@ class AugmentationMixin:
         return batch_augment
 
 
-class TorchvisionDatasetBase(AbstractDataset):
+class VisionDatasetBase(AbstractDataset, AugmentationMixin):
+    def __init__(self, config):
+        self.config = config
+
+
+class TorchvisionDatasetBase(VisionDatasetBase):
     """Wrapper around torchvision classification datasets"""
 
     def __init__(self, config, dataset, transform=None):
-        self.config = config
+        super().__init__(config)
         self.dataset = dataset
         self.transform = transform
 
