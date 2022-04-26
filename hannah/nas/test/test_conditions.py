@@ -17,7 +17,9 @@ def test_condition():
     a_param = IntScalarParameter(0, 10)
     b_param = IntScalarParameter(0, 10)
 
-    accelerator = Accelerator(a_param, b_param).cond(a_param + b_param < 10)
+    accelerator = (
+        Accelerator(a_param, b_param).cond(a_param + b_param < 10).cond(a_param < 5)
+    )
 
     print(accelerator.instantiate())
     accelerator.set_current(a=5)
