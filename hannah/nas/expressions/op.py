@@ -1,10 +1,12 @@
-from typing import Any
-from abc import ABC, abstractmethod
-from ..core.parametrized import is_parametrized
 import textwrap
+from abc import ABC, abstractmethod
+from typing import Any
+
+from ..core.expression import Expression
+from ..core.parametrized import is_parametrized
 
 
-class Op(ABC):
+class Op(Expression):
     @abstractmethod
     def evaluate(self):
         ...
@@ -24,9 +26,6 @@ class Op(ABC):
         if isinstance(other, Op):
             return other.format(indent, length)
         return str(other)
-
-    def __str__(self) -> str:
-        return self.format()
 
 
 class BinaryOp(Op):

@@ -1,25 +1,20 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from ast import Param
-from typing import Optional, Type, Union, get_type_hints, get_args
+
+from abc import abstractmethod
+from typing import Optional, Union
 
 import numpy as np
 
+from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
-from ..expressions.arithmetic import Add, Floordiv, Mod, Mul, Sub, Truediv
-from ..expressions.conditions import (
-    EQCondition,
-    GECondition,
-    GTCondition,
-    LECondition,
-    LTCondition,
-    NECondition,
-)
-from ..expressions.logic import And, Or
 
 
-class Parameter(ABC):
-    def __init__(self, scope: Optional[str] = None, rng: Optional[Union[np.random.Generator, int]] = None) -> None:
+class Parameter(Expression):
+    def __init__(
+        self,
+        scope: Optional[str] = None,
+        rng: Optional[Union[np.random.Generator, int]] = None,
+    ) -> None:
         super().__init__()
         if rng is None:
             self.rng = np.random.default_rng(seed=None)
@@ -47,62 +42,12 @@ class Parameter(ABC):
     def check(self, value):
         ...
 
-    def __lt__(self, other):
-        return LTCondition(self, other)
+    # FIXME: evaluate and instantiate?
+    def evaluate(self):
+        return self.instantiate()
 
-    def __le__(self, other):
-        return LECondition(self, other)
-
-    def __gt__(self, other):
-        return GTCondition(self, other)
-
-    def __ge__(self, other):
-        return GECondition(self, other)
-
-    def __eq__(self, other):
-        return EQCondition(self, other)
-
-    def __ne__(self, other):
-        return NECondition(self, other)
-
-    def __add__(self, other):
-        return Add(self, other)
-
-    def __sub__(self, other):
-        return Sub(self, other)
-
-    def __mul__(self, other):
-        return Mul(self, other)
-
-    def __truediv__(self, other):
-        return Truediv(self, other)
-
-    def __floordiv__(self, other):
-        return Floordiv(self, other)
-
-    def __mod__(self, other):
-        return Mod(self, other)
-
-    def __divmod__(self, other):
-        raise NotImplementedError()
-
-    def __pow__(self, other):
-        raise NotImplementedError()
-
-    def __lshift__(self, other):
-        raise NotImplementedError()
-
-    def __rshift__(self, other):
-        raise NotImplementedError()
-
-    def __and__(self, other):
-        return And(self, other)
-
-    def __xor__(self, other):
-        raise NotImplementedError()
-
-    def __or__(self, other):
-        return Or(self, other)
+    def format(self, indent=2, length=80) -> str:
+        return repr(self)
 
     def __repr__(self):
         return (
@@ -119,12 +64,12 @@ class IntScalarParameter(Parameter):
         min: Union[int, IntScalarParameter],
         max: Union[int, IntScalarParameter],
         scope: Optional[str] = None,
-        rng: Optional[Union[np.random.Generator, int]] = None
+        rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(scope, rng)
         self.min = min
         self.max = max
-        self.current_value = self.evaluate_field('min')
+        self.current_value = self.evaluate_field("min")
 
     def evaluate_field(self, field_str):
         field = getattr(self, field_str)
@@ -133,10 +78,14 @@ class IntScalarParameter(Parameter):
         elif isinstance(field, int):
             return field
         else:
-            raise TypeError("{} has an unsupported type for evaluation({})".format(field_str, type(field)))
+            raise TypeError(
+                "{} has an unsupported type for evaluation({})".format(
+                    field_str, type(field)
+                )
+            )
 
     def get_bounds(self):
-        return (self.evaluate_field('min'), self.evaluate_field('max'))
+        return (self.evaluate_field("min"), self.evaluate_field("max"))
 
     def sample(self):
         self.current_value = self.rng.integers(*self.get_bounds())
@@ -147,19 +96,26 @@ class IntScalarParameter(Parameter):
 
     def check(self, value):
         if not isinstance(value, int):
-            raise ValueError("Value {} must be of type int but is type {}".format(value, type(value)))
+            raise ValueError(
+                "Value {} must be of type int but is type {}".format(value, type(value))
+            )
         elif value > self.max or value < self.min:
-            raise ValueError("Value {} must be in range [{}, {}], ".format(value, self.min, self.max))
+            raise ValueError(
+                "Value {} must be in range [{}, {}], ".format(value, self.min, self.max)
+            )
 
     def set_current(self, value):
         self.check(value)
         self.current_value = value
 
 
-
 class FloatScalarParameter(Parameter):
     def __init__(
-        self, min, max, scope: Optional[str] = None, rng: Optional[Union[np.random.Generator, int]] = None
+        self,
+        min,
+        max,
+        scope: Optional[str] = None,
+        rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(scope, rng)
         self.min = min
@@ -175,9 +131,15 @@ class FloatScalarParameter(Parameter):
 
     def check(self, value):
         if not isinstance(value, float):
-            ValueError("Value {} must be of type float but is of type {}".format(value, type(value)))
+            ValueError(
+                "Value {} must be of type float but is of type {}".format(
+                    value, type(value)
+                )
+            )
         elif value > self.max or value < self.min:
-            raise ValueError("Value {} must be in range [{}, {}], ".format(value, self.min, self.max))
+            raise ValueError(
+                "Value {} must be in range [{}, {}], ".format(value, self.min, self.max)
+            )
 
     def set_current(self, value):
         self.check(value)
@@ -186,7 +148,10 @@ class FloatScalarParameter(Parameter):
 
 class CategoricalParameter(Parameter):
     def __init__(
-        self, choices, scope: Optional[str] = None, rng: Optional[Union[np.random.Generator, int]] = None
+        self,
+        choices,
+        scope: Optional[str] = None,
+        rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(scope, rng)
         self.choices = choices
@@ -209,7 +174,9 @@ class CategoricalParameter(Parameter):
             for choice in self.choices:
                 if choice.check(value):
                     return
-        raise ValueError("Desired value {} not realizable with the given choices".format(value))
+        raise ValueError(
+            "Desired value {} not realizable with the given choices".format(value)
+        )
 
     def set_current(self, value):
         self.check(value)
@@ -218,7 +185,12 @@ class CategoricalParameter(Parameter):
 
 class SubsetParameter(Parameter):
     def __init__(
-        self, choices, min, max, scope: Optional[str] = None, rng: Optional[Union[np.random.Generator, int]] = None
+        self,
+        choices,
+        min,
+        max,
+        scope: Optional[str] = None,
+        rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(scope, rng)
         self.choices = choices
@@ -248,7 +220,10 @@ class SubsetParameter(Parameter):
             raise ValueError("Value for SubsetParameter must be list")
         elif len(value) > self.max or len(value) < self.min:
             raise ValueError(
-                "Size of subset ({}) not in supported range of [{},{}]".format(len(value), self.min, self.max))
+                "Size of subset ({}) not in supported range of [{},{}]".format(
+                    len(value), self.min, self.max
+                )
+            )
         else:
             for v in value:
                 if is_parametrized(v):

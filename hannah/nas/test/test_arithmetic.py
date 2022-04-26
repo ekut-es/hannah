@@ -29,5 +29,13 @@ def test_expressions():
     assert res in [0, 20]
 
 
+def test_complex_expressions():
+    expr = IntScalarParameter(0, 10) + IntScalarParameter(0, 10) * (
+        IntScalarParameter(0, 1) + 5
+    )
+    res = expr.evaluate()
+    assert res in [0, 100]
+
+
 if __name__ == "__main__":
     test_print()
