@@ -155,6 +155,16 @@ class IntScalarParameter(Parameter):
         self.check(value)
         self.current_value = value
 
+    def add(self, other):
+        if isinstance(other, int):
+            self.min += other
+            self.max += other
+            self.current_value += other
+        else:
+            self.min += other.min
+            self.max += other.max
+            self.current_value += other.current_value
+
 
 class FloatScalarParameter(Parameter):
     def __init__(
