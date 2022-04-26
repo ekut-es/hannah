@@ -1,10 +1,11 @@
 from copy import deepcopy
 import inspect
+from typing import Optional
 from ..core.parametrized import is_parametrized
 
 
-def _create_parametrize_wrapper(parameters, cls):
-    parameter_list = list(parameters.values())
+def _create_parametrize_wrapper(params, cls):
+    parameter_list = list(params.values())
     old_init_fn = cls.__init__
 
     def init_fn(self, *args, **kwargs):
@@ -19,7 +20,7 @@ def _create_parametrize_wrapper(parameters, cls):
         for name, arg in kwargs.items():
             if is_parametrized(arg):
                 self._PARAMETERS[name] = arg
-                self._annotations[name] = parameters[name]._annotation
+                self._annotations[name] = params[name]._annotation
 
         # TODO:
         cls.sample = sample
@@ -27,6 +28,7 @@ def _create_parametrize_wrapper(parameters, cls):
         cls.instantiate = instantiate
         cls.check = check
         cls.set_params = set_params
+        cls.parameters = parameters
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
@@ -86,3 +88,10 @@ def instantiate(self):
         instance._PARAMETERS[key] = instantiated_value
         setattr(instance, key, instantiated_value)
     return instance
+
+
+def parameters(self, scope: Optional[str] = None):
+    if scope is None:
+        return self._PARAMETERS
+    else:
+        return {name: param for name, param in self._PARAMETERS.items() if param.scope == scope}
