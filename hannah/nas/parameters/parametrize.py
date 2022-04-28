@@ -11,6 +11,7 @@ def _create_parametrize_wrapper(params, cls):
     def init_fn(self, *args, **kwargs):
         self._PARAMETERS = {}
         self._annotations = {}
+        self._conditions = []
 
         for num, arg in enumerate(args):
             if is_parametrized(arg):
@@ -29,6 +30,7 @@ def _create_parametrize_wrapper(params, cls):
         cls.check = check
         cls.set_params = set_params
         cls.parameters = parameters
+        cls.cond = cond
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
@@ -58,6 +60,7 @@ def sample(self):
 
 def set_current(self, value):
     self.set_params(**value)
+    self.check(None)  # argument "value" not needed currently
 
 
 def set_params(self, **kwargs):
@@ -73,15 +76,20 @@ def set_params(self, **kwargs):
             self._PARAMETERS[key].set_current(value)
 
 
-# required for Protocol
 def check(self, value):
-    # TODO:
-    pass
+    for con in self._conditions:
+        if not con.evaluate():
+            raise Exception("Condition not satisfied: {}".format(con))
+
+
+def cond(self, condition):
+    self._conditions.append(condition)
 
 
 def instantiate(self):
     instance = deepcopy(self)
     instance._parametrized = False
+    self.check(None)
 
     for key, param in instance._PARAMETERS.items():
         instantiated_value = param.instantiate()

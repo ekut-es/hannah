@@ -1,4 +1,3 @@
-from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.parameters import parametrize
 from hannah.nas.parameters.parameters import IntScalarParameter
 
@@ -17,13 +16,22 @@ def test_condition():
     a_param = IntScalarParameter(0, 10)
     b_param = IntScalarParameter(0, 10)
 
-    accelerator = (
-        Accelerator(a_param, b_param).cond(a_param + b_param < 10).cond(a_param < 5)
-    )
+    accelerator = Accelerator(a_param, b_param)
+    accelerator.cond(a_param + b_param < 10)
+    accelerator.cond(a_param > 5)
+    try:
+        accelerator_instance = accelerator.instantiate()
+    except Exception:
+        pass
+    accelerator.set_current({'a': 6})
+    accelerator_instance = accelerator.instantiate()
+    try:
+        accelerator.set_current({'a': 6, 'b': 6})
+    except Exception:
+        pass
 
-    print(accelerator.instantiate())
-    accelerator.set_current(a=5)
-    accelerator.set_current(a=12, b=10)
+    assert accelerator_instance.a == 6
+    assert accelerator_instance.b == 0
 
 
 if __name__ == "__main__":
