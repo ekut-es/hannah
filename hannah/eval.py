@@ -1,20 +1,18 @@
 import logging
-
 from pathlib import Path
+from typing import Any, Optional, Type
 
-import hydra
 import torch
-
-
-from hydra.utils import to_absolute_path, instantiate
+from hydra.utils import instantiate, to_absolute_path
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 import hannah.modules.classifier
+import hydra
 
 
-def eval_checkpoint(config: DictConfig, checkpoint):
+def eval_checkpoint(config: DictConfig, checkpoint) -> None:
     seed_everything(1234, workers=True)
     checkpoint_path = to_absolute_path(checkpoint)
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
@@ -37,7 +35,7 @@ def eval_checkpoint(config: DictConfig, checkpoint):
     trainer.test(model=module, ckpt_path=None)
 
 
-def eval(config: DictConfig):
+def eval(config: DictConfig) -> Optional[bool]:
     checkpoints = config.checkpoints
     if isinstance(checkpoints, str):
         checkpoints = [checkpoints]
