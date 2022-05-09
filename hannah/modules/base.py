@@ -3,7 +3,7 @@ import io
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Annotated, Any, Callable, Dict, Iterable, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar
 
 import tabulate
 import torch
