@@ -1957,17 +1957,6 @@ tensorflow-cpu = ["tensorflow-cpu (>=2.6.0,<2.9.0)"]
 tensorflow-gpu = ["tensorflow-gpu (>=2.6.0,<2.9.0)"]
 
 [[package]]
-name = "thop"
-version = "0.0.31-2005241907"
-description = "A tool to count the FLOPs of PyTorch model."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-torch = ">=1.0.0"
-
-[[package]]
 name = "threadpoolctl"
 version = "3.1.0"
 description = "threadpoolctl"
@@ -2280,7 +2269,7 @@ tf-backend = ["onnx-tf"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "8b15a693cd338eac8f183cec1de97f05cf7eaf1a5c82e4db2ac2a56acdf5ef7b"
+content-hash = "f5310ed9e46d140400014c3c02cad3c2cce55d2b472a799906631201a7de7d07"
 
 [metadata.files]
 absl-py = [
@@ -3766,9 +3755,6 @@ tensorflow-addons = [
     {file = "tensorflow_addons-0.16.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:0cf05e2e82b371ae67f636156fbae0be1ef2be43eb41b261977e55bfe8fd4d7b"},
     {file = "tensorflow_addons-0.16.1-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:23c822eaaed2d0024c6e9d8e487c472d947553d410cfbcdfb6fadcab2151d3e6"},
     {file = "tensorflow_addons-0.16.1-cp39-cp39-win_amd64.whl", hash = "sha256:4af94b46814769162f306deec70aaacfa73336639f1a31ee681147c0be29396a"},
-]
-thop = [
-    {file = "thop-0.0.31.post2005241907-py3-none-any.whl", hash = "sha256:86d67af12311b34905949eb91c8c38f92a707de72140c29a94110cc623e21ceb"},
 ]
 threadpoolctl = [
     {file = "threadpoolctl-3.1.0-py3-none-any.whl", hash = "sha256:8b99adda265feb6773280df41eece7b2e6561b772d21ffd52e372f999024907b"},
