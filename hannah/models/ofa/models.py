@@ -138,25 +138,30 @@ def create(
     ofa_steps_kernel = 1
     ofa_steps_width = 1
     ofa_steps_dilation = 1
+    ofa_steps_grouping = 1
     for major_block in conv:
         for block in major_block.blocks:
+            # TODO MR 1389 check block.config
             if block.target == "elastic_conv1d":
                 this_block_kernel_steps = len(block.kernel_sizes)
                 this_block_dilation_steps = len(block.dilation_sizes)
+                this_block_grouping_steps = len(block.grouping_sizes)
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
                 ofa_steps_kernel = max(ofa_steps_kernel, this_block_kernel_steps)
                 ofa_steps_dilation = max(ofa_steps_dilation, this_block_dilation_steps)
+                ofa_steps_grouping = max(ofa_steps_grouping, this_block_grouping_steps)
             elif block.target == "elastic_channel_helper":
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
     logging.info(
-        f"OFA steps are {ofa_steps_kernel} kernel sizes, {ofa_steps_depth} depths, {ofa_steps_width} widths."
+        f"OFA steps are {ofa_steps_kernel} kernel sizes, {ofa_steps_depth} depths, {ofa_steps_width} widths, {ofa_steps_grouping} groups."
     )
     model.ofa_steps_kernel = ofa_steps_kernel
     model.ofa_steps_depth = ofa_steps_depth
     model.ofa_steps_width = ofa_steps_width
     model.ofa_steps_dilation = ofa_steps_dilation
+    model.ofa_steps_grouping = ofa_steps_grouping
 
     model.perform_sequence_discovery()
 
@@ -164,6 +169,7 @@ def create(
 
 
 # build a sequence from a list of minor block configurations
+## here exclude quant for now
 def create_minor_block_sequence(
     blocks,
     in_channels,
@@ -199,6 +205,8 @@ def create_minor_block_sequence(
 
 
 # build a single minor block from its config. return the number of output channels with the block
+# TODO test it
+# MR2390 extending grouping here
 def create_minor_block(
     block_config,
     in_channels: int,
@@ -236,15 +244,18 @@ def create_minor_block(
             "out_channels": out_channels_full,
             "stride": stride,
             "dilation_sizes": dilation_sizes,
+            # new entry  edit to group_sizes
+            "groups": grouping_sizes,
         }
 
         if block_config.get("norm", False):
             key += "norm"
         if block_config.get("act", False):
             key += "act"
-        if block_config.get("quant", False):
-            key += "quant"
-            parameter["qconfig"] = qconfig
+        #if block_config.get("quant", False):
+            # TODO reset this
+            # key += "quant"
+            # parameter["qconfig"] = qconfig
         if key == "":
             key = "none"
 
@@ -357,10 +368,12 @@ class OFAModel(nn.Module):
         self.current_kernel_step = 0
         self.current_channel_step = 0
         self.current_width_step = 0
+        self.current_group_step = 0
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
         self.sampling_max_width_step = 0
         self.sampling_max_dilation_step = 0
+        self.sampling_max_grouping_step = 0
         self.eval_mode = False
         self.last_input = None
         self.skew_sampling_distribution = skew_sampling_distribution
@@ -369,6 +382,7 @@ class OFAModel(nn.Module):
         self.elastic_depth_allowed = True
         self.elastic_width_allowed = True
         self.elastic_dilation_allowed = True
+        self.elastic_grouping_allowed = True
 
         self.dropout = nn.Dropout(dropout)
         self.pool = nn.AdaptiveAvgPool1d(1)
@@ -397,6 +411,7 @@ class OFAModel(nn.Module):
         self.ofa_steps_depth = 1
         self.ofa_steps_width = 1
         self.ofa_steps_dilation = 1
+        self.ofa_steps_grouping = 1
 
         # create a list of every elastic kernel conv, for sampling
         all_elastic_kernel_convs = get_instances_from_deep_nested(
@@ -435,6 +450,7 @@ class OFAModel(nn.Module):
             self.sampling_max_depth_step > 0
             or self.sampling_max_kernel_step > 0
             or self.sampling_max_width_step > 0
+            or self.sampling_max_grouping_step > 0
         ) and not self.eval_mode:
             self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
@@ -470,12 +486,14 @@ class OFAModel(nn.Module):
             # the resulting output sequence discovery is dropped. no module trails the output linear.
 
     # pick a random subnetwork, return the settings used
+    # TODO MR127 extend grouping
     def sample_subnetwork(self):
         state = {
             "depth_step": 0,
             "kernel_steps": [],
             "dilation_steps": [],
             "width_steps": [],
+            "grouping_steps": [],
         }
         if self.elastic_depth_allowed:
             # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
@@ -503,6 +521,17 @@ class OFAModel(nn.Module):
                 new_dilation_step = self.get_random_step(max_available_sampling_step)
                 conv.pick_dilation_index(new_dilation_step)
                 state["dilation_steps"].append(new_dilation_step)
+
+        if self.elastic_grouping_allowed:
+            for conv in self.elastic_kernel_convs:
+                # pick an available kernel index for every elastic kernel conv, independently.
+                max_available_sampling_step = min(
+                    self.sampling_max_grouping_step + 1,
+                    conv.get_available_grouping_steps(),
+                )
+                new_grouping_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_group_index(new_grouping_step)
+                state["grouping_steps"].append(new_grouping_step)
 
         if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
@@ -555,6 +584,7 @@ class OFAModel(nn.Module):
 
     # accept a state dict like the one returned in get_max_submodel_steps, return extracted submodel.
     # also sets main model state to this submodel.
+    # TODO MR 328773427 evtl anschauen
     def get_submodel(self, state: dict):
         if not self.set_submodel(state):
             return None
@@ -725,6 +755,13 @@ class OFAModel(nn.Module):
             function="reset_dilation_size",
             type_selection=elastic_conv_type,
         )
+    # reset all group sizes to their max value
+    def reset_all_group_sizes(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="reset_group_size",
+            type_selection=elastic_conv_type,
+        )
 
     # step all elastic kernels within the model down by one, if possible
     def step_down_all_dilations(self):
@@ -733,6 +770,16 @@ class OFAModel(nn.Module):
             function="step_down_dilation_size",
             type_selection=elastic_conv_type,
         )
+
+    ## TODO MR03
+    # step all elastic groups within the model down by one, if possible
+    def step_down_all_groups(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="step_down_group_size",
+            type_selection=elastic_conv_type,
+        )
+
 
     # go to a specific kernel step
     def go_to_kernel_step(self, step: int):
@@ -786,6 +833,15 @@ class OFAModel(nn.Module):
                 f"excessive OFA depth stepping! Attempting to add a depth step when max ({self.ofa_steps_depth}) already reached"
             )
 
+    # TODO kill sampling call errors
+    def progressive_shrinking_add_group(self):
+        self.sampling_max_grouping_step += 1
+        if self.sampling_max_grouping_step >= self.ofa_steps_grouping:
+            self.sampling_max_grouping_step -= 1
+            logging.warn(
+                f"excessive OFA group stepping! Attempting to add a grouping step when max ({self.ofa_steps_grouping}) already reached"
+            )
+
     def progressive_shrinking_compute_channel_priorities(self):
         call_function_from_deep_nested(
             input=self.conv_layers,
@@ -805,6 +861,7 @@ class OFAModel(nn.Module):
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
         self.sampling_max_width_step = 0
+        self.sampling_max_grouping_step = 0
 
 
 def rebuild_extracted_blocks(blocks):

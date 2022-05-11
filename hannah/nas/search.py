@@ -264,7 +264,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
 
                         self.optimizer.tell_result(parameters, result)
 
-
+# TODO MR 82348392 check Calls of that!
 class OFANasTrainer(NASTrainerBase):
     def __init__(
         self,
@@ -274,10 +274,12 @@ class OFANasTrainer(NASTrainerBase):
         epochs_depth_step=10,
         epochs_width_step=10,
         epochs_dilation_step=10,
+        epochs_grouping_step=10,
         elastic_kernels_allowed=False,
         elastic_depth_allowed=False,
         elastic_width_allowed=False,
         elastic_dilation_allowed=False,
+        elastic_grouping_allowed=False,
         evaluate=True,
         random_evaluate=True,
         random_eval_number=100,
@@ -294,10 +296,12 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_depth_step = epochs_depth_step
         self.epochs_width_step = epochs_width_step
         self.epochs_dilation_step = epochs_dilation_step
+        self.epochs_grouping_step = epochs_grouping_step
         self.elastic_kernels_allowed = elastic_kernels_allowed
         self.elastic_depth_allowed = elastic_depth_allowed
         self.elastic_width_allowed = elastic_width_allowed
         self.elastic_dilation_allowed = elastic_dilation_allowed
+        self.elastic_grouping_allowed = elastic_grouping_allowed
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
         self.random_eval_number = random_eval_number
@@ -323,6 +327,8 @@ class OFANasTrainer(NASTrainerBase):
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
         self.config = config
+        # TODO what is config exactly ?
+        # adding group_step_count
         # trainer will be initialized by rebuild_trainer
         self.trainer = None
         model = instantiate(
@@ -336,15 +342,21 @@ class OFANasTrainer(NASTrainerBase):
             _recursive_=False,
         )
         model.setup("fit")
+        # HIER CHECKEN TODO ofa_model.ofa_steps_groups value !!!
         ofa_model = model.model
+
         self.kernel_step_count = ofa_model.ofa_steps_kernel
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
         self.dilation_step_count = ofa_model.ofa_steps_dilation
+        ## TODO MR04
+        self.grouping_step_count = ofa_model.ofa_steps_group
+
         ofa_model.elastic_kernels_allowed = self.elastic_kernels_allowed
         ofa_model.elastic_depth_allowed = self.elastic_depth_allowed
         ofa_model.elastic_width_allowed = self.elastic_width_allowed
         ofa_model.elastic_dilation_allowed = self.elastic_dilation_allowed
+        ofa_model.elastic_grouping_allowed = self.elastic_grouping_allowed
 
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
@@ -369,11 +381,16 @@ class OFANasTrainer(NASTrainerBase):
             self.submodel_metrics_csv += "depth, "
             self.random_metrics_csv += "depth, "
 
+        if self.elastic_grouping_allowed:
+            self.submodel_metrics_csv += "grouping, "
+            self.random_metrics_csv += "group_steps, "
+
         if (
             self.elastic_width_allowed
             | self.elastic_kernels_allowed
             | self.elastic_dilation_allowed
             | self.elastic_depth_allowed
+            | self.elastic_grouping_allowed
         ):
             self.submodel_metrics_csv += (
                 "acc, total_macs, total_weights, torch_params\n"
@@ -390,6 +407,7 @@ class OFANasTrainer(NASTrainerBase):
         self.train_elastic_dilation(model, ofa_model)
         self.train_elastic_depth(model, ofa_model)
         self.train_elastic_width(model, ofa_model)
+        #self.train_elastic_grouping(model, ofa_model)
 
         if self.evaluate:
             self.eval_model(model, ofa_model)
@@ -516,6 +534,33 @@ class OFANasTrainer(NASTrainerBase):
                 ofa_model.progressive_shrinking_add_dilation()
                 self.rebuild_trainer(
                     f"kernel_{current_dilation_step}", self.epochs_dilation_step
+                )
+                self.trainer.fit(model)
+            logging.info("OFA completed dilation matrices.")
+
+    # TODO MR2984029 check if that works
+    def train_elastic_grouping(self, model, ofa_model):
+        """
+        > The function trains the model for a number of epochs, then adds a group
+        step, and trains the model for a number of epochs, and repeats this process
+        until the number of group steps is reached
+
+        :param model: the model to be trained
+        :param ofa_model: the model that will be trained
+        """
+        # MR0789
+        # TODO: set self.elastic_group_allowed
+        if self.elastic_grouping_allowed == True:
+            # train elastic groups
+            for current_grouping_step in range(self.grouping_step_count):
+                if current_grouping_step == 0:
+                    # step 0 is the full model, and was processed during warm-up
+                    continue
+                # add a group step
+                # TODO Callee progressive_shrinking_add_group()
+                ofa_model.progressive_shrinking_add_dilation()
+                self.rebuild_trainer(
+                    f"kernel_{current_grouping_step}", self.epochs_grouping_step
                 )
                 self.trainer.fit(model)
             logging.info("OFA completed dilation matrices.")
@@ -727,6 +772,59 @@ class OFANasTrainer(NASTrainerBase):
 
         return metrics_csv
 
+    ## TODO: check all calls
+    ## MR04 Fertig bis auf self.group_step_count
+    def eval_elastic_grouping(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+        metrics_csv,
+    ):
+        """
+        > This function evaluates the model with a different group size for each
+        layer
+
+        :param method_stack: The list of methods to be called
+        :param method_index: The index of the method in the method stack
+        :param lightning_model: the lightning model to be trained
+        :param model: the model to be evaluated
+        :param trainer_path: The path to the trainer
+        :param loginfo_output: This is the string that will be printed to the
+        console
+        :param metrics_output: a string that will be written to the metrics csv file
+        :param metrics_csv: a string that contains the csv data for the metrics
+        :return: The metrics_csv is being returned.
+        """
+        model.reset_all_group_sizes()
+        method = method_stack[method_index]
+        #TODO group step count oben anpassen
+        for current_group_step in range(self.group_step_count):
+            if current_group_step > 0:
+                # iteration 0 is the full model with no stepping
+                model.step_down_all_groups()
+
+            trainer_path_tmp = trainer_path + f"K {current_group_step}, "
+            loginfo_output_tmp = loginfo_output + f"Group {current_group_step}, "
+            metrics_output_tmp = metrics_output + f"{current_group_step}, "
+
+            metrics_csv = method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+                metrics_csv,
+            )
+
+        return metrics_csv
+
     def eval_single_model(
         self,
         method_stack,
@@ -797,6 +895,9 @@ class OFANasTrainer(NASTrainerBase):
         if self.elastic_depth_allowed:
             eval_methods.append(self.eval_elatic_depth)
 
+        if self.elastic_depth_allowed:
+            eval_methods.append(self.eval_elastic_grouping)
+
         if len(eval_methods) > 0:
             eval_methods.append(self.eval_single_model)
             self.submodel_metrics_csv = eval_methods[0](
@@ -815,6 +916,7 @@ class OFANasTrainer(NASTrainerBase):
 
         model.eval_mode = False
 
+    # TODO MR127 extend grouping
     def eval_random_combination(self, lightning_model, model):
         # sample a few random combinations
         model.reset_validation_model()
