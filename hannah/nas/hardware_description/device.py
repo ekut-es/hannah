@@ -6,6 +6,12 @@ from abc import ABC, abstractmethod
 
 
 class Device(ABC):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.ops = []
+        self.memories = []
+
     def ops(self) -> List[DataFlowGraph]:
         ...
 
