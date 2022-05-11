@@ -33,6 +33,16 @@ def test_condition():
     assert accelerator_instance.a == 6
     assert accelerator_instance.b == 0
 
+    other_a_param = IntScalarParameter(0, 10)
+    other_b_param = IntScalarParameter(0, 10)
+    other_accelerator = Accelerator(other_a_param, other_b_param)
+
+    other_accelerator.cond(other_a_param == accelerator.a)
+
+    other_accelerator.set_current({'a': 6})
+
+    print()
+
 
 if __name__ == "__main__":
     test_condition()
