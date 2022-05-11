@@ -1,13 +1,13 @@
 from typing import Optional, Tuple
 
-from hannah.nas.hardware_description.compression_type import CompressionType
+from hannah.nas.dataflow.compression_type import CompressionType
 from hannah.nas.hardware_description.memory_type import MemoryType
 
-from hannah.nas.hardware_description.quantization_type import QuantizationType
-from hannah.nas.hardware_description.op_type import OpType
-from hannah.nas.hardware_description.data_type import DataType, FloatType, IntType
-from hannah.nas.hardware_description.tensor_type import TensorType
-from hannah.nas.hardware_description.axis_type import AxisType
+from hannah.nas.dataflow.quantization_type import QuantizationType
+from hannah.nas.dataflow.op_type import OpType
+from hannah.nas.dataflow.data_type import DataType, FloatType, IntType
+from hannah.nas.dataflow.tensor_type import TensorType
+from hannah.nas.dataflow.axis_type import AxisType
 from hannah.nas.hardware_description.optional_op import OptionalOp
 from hannah.nas.parameters import IntScalarParameter
 
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     #    compute=(ri5cy, ultratrail),
     # )
 
-    ultratrail = ComputeCluster("ultratrail")
+    ultratrail = Device("ultratrail")
 
     bias_bits = ultratrail.int_scalar_parameter("bias_bits", min=1, max=8)
     activation_bits = IntScalarParameter(min=1, max=8)
