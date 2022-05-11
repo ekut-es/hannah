@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Generic, TypeVar
 
+T = TypeVar('T')
 
-class Expression(ABC):
+class Expression(ABC, Generic[T]):
     @abstractmethod
     def evaluate(self):
         ...
