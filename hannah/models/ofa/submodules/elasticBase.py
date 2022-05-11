@@ -80,6 +80,20 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         # initially, the target size is the smallest dilation (1)
         self.target_dilation_index: int = 0
 
+        ###  MR01
+        ## TODO: what if input/ output is not dividible by groups ?
+        # sort available dilation sizes from largest to smallest (descending order)
+        groups.sort(reverse=False)
+        # make sure 0 is not set as dilation size. Must be at least 1
+        if 0 in groups:
+            groups.remove(0)
+        self.group_sizes: List[int] = groups
+        # after sorting dilation sizes, the maximum and minimum size available are the first and last element
+        self.max_group_size: int = groups[-1]
+        self.min_group_size: int = groups[0]
+        ###
+        self.target_group_index: int = 0
+
         self.in_channels: int = in_channels
         self.out_channels: int = out_channels
 
@@ -309,6 +323,65 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
     def get_dilation_size(self):
         return self.dilation_sizes[self.target_dilation_index]
+
+    # todo integrate callee
+    def pick_group_index(self, target_group_index: int):
+        if (target_group_index < 0) or (
+            target_group_index >= len(self.group_sizes)
+        ):
+            logging.warn(
+                f"selected group index {target_group_index} is out of range: 0 .. {len(self.group_sizes)}. Setting to last index."
+            )
+            target_group_index = len(self.group_sizes) - 1
+        self.set_group_size(self.group_sizes[target_group_index])
+
+    # the initial group size is the first element of the list of available sizes
+    # resets the group size back to its initial size
+    # todo check calls
+    def reset_group_size(self):
+        self.group_sizes(self.group_sizes[0])
+
+    def get_group_size(self):
+        return self.group_sizes[self.target_group_index]
+
+    # todo check calls
+    def set_group_size(self, new_group_size):
+        if (
+            new_group_size < self.min_group_size
+            or new_group_size > self.max_group_size
+        ):
+            logging.warn(
+                f"requested elastic group size ({new_group_size}) outside of min/max range: ({self.max_group_size}, {self.min_group_size}). clamping."
+            )
+            if new_group_size < self.min_group_size:
+                new_group_size = self.min_group_size
+            else:
+                new_group_size = self.max_group_size
+
+        self.target_group_index = 0
+        try:
+            index = self.group_sizes.index(new_group_size)
+            self.target_group_index = index
+            self.group_sizes = self.group_sizes[self.target_group_index]
+        except ValueError:
+            logging.warn(
+                f"requested elastic group size {new_group_size} is not an available group size. Defaulting to full size ({self.max_group_size})"
+            )
+
+    # step current kernel size down by one index, if possible.
+    # return True if the size limit was not reached
+    # todo check calls
+    def step_down_group_size(self):
+        next_group_index = self.target_group_index + 1
+        if next_group_index < len(self.group_sizes):
+            self.set_group_size(self.group_sizes[next_group_index])
+             #print(f"stepped down group size of a module! Index is now {self.target_group_index}")
+            return True
+        else:
+            logging.debug(
+                f"unable to step down group size, no available index after current: {self.target_group_index} with size: {self.group_sizes[self.target_group_index]}"
+            )
+            return False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         pass
