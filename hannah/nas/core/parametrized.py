@@ -1,7 +1,11 @@
-from typing import Protocol, TypeVar, runtime_checkable
+from typing import Protocol, TypeVar, runtime_checkable, Union, TYPE_CHECKING, Dict
+
+if TYPE_CHECKING:
+    from ..parameters.parameters import Parameter
 
 T = TypeVar("T")
 
+ParameterTree =  Union['Parameter', Dict[str, 'ParameterTree']]
 
 @runtime_checkable
 class Parametrized(Protocol[T]):
@@ -15,6 +19,9 @@ class Parametrized(Protocol[T]):
         ...
 
     def check(self, value) -> bool:
+        ...
+
+    def parameters(self) -> ParameterTree:
         ...
 
 
