@@ -46,6 +46,9 @@ class Parameter(Expression):
     def evaluate(self):
         return self.instantiate()
 
+    def parameters(self):
+        return self
+
     def format(self, indent=2, length=80) -> str:
         return repr(self)
 
@@ -167,9 +170,11 @@ class CategoricalParameter(Parameter):
         return self.current_value
 
     def check(self, value):
-        if is_parametrized(value):
+        if not is_parametrized(value):
             if value not in self.choices:
                 raise ValueError("Desired value {} not a valid choice".format(value))
+            else:
+                return
         else:
             for choice in self.choices:
                 if choice.check(value):
@@ -236,3 +241,27 @@ class SubsetParameter(Parameter):
     def set_current(self, value):
         self.check(value)
         self.current_value = value
+
+
+# TODO:
+class UndefinedInt(Parameter):
+    def __init__(self,
+                 scope: Optional[str] = None,
+                 rng: Optional[Union[np.random.Generator, int]] = None) -> None:
+        super().__init__(scope, rng)
+
+
+# TODO:
+class UndefinedFloat(Parameter):
+    def __init__(self,
+                 scope: Optional[str] = None,
+                 rng: Optional[Union[np.random.Generator, int]] = None) -> None:
+        super().__init__(scope, rng)
+
+
+# TODO:
+class DefaultParameter(Parameter):
+    def __init__(self,
+                 scope: Optional[str] = None,
+                 rng: Optional[Union[np.random.Generator, int]] = None) -> None:
+        super().__init__(scope, rng)
