@@ -11,6 +11,8 @@ from hannah.nas.dataflow.axis_type import AxisType
 from hannah.nas.hardware_description.optional_op import OptionalOp
 from hannah.nas.parameters import IntScalarParameter
 
+from hannah.nas.hardware_description.device import Ultratrail
+
 
 def int_t(signed: bool = True, bits: int = 8):
     return IntType(signed=signed, bits=bits)
@@ -65,31 +67,21 @@ if __name__ == "__main__":
     #    compute=(ri5cy, ultratrail),
     # )
 
-    ultratrail = Device("ultratrail")
-
-    bias_bits = ultratrail.int_scalar_parameter("bias_bits", min=1, max=8)
-    activation_bits = IntScalarParameter(min=1, max=8)
-    accumulator_bits = IntScalarParameter(min=1, max=32)
-
-    max_weight_bits = IntScalarParameter(min=4, max=8)
-
-    # ultratrail.choice(
-    #    weight_bits=weight_bits,
-    #    bias_bits = bias_bits,
-    #    activation_bits = activation_bits,
-    #    accumulator_bits = accumulator_bits,
-    #    max_weight_bits = max_weight_bits,
-    # )
+    ultratrail = Ultratrail(weight_bits=IntScalarParameter(min=1, max=8),
+                            bias_bits=IntScalarParameter(min=1, max=8),
+                            activation_bits=IntScalarParameter(min=1, max=8),
+                            accumulator_bits=IntScalarParameter(min=1, max=32),
+                            max_weight_bits=IntScalarParameter(min=4, max=8))
 
     # Conditions
     # conditions:
     # comparisons: != == < <= > >=
     # logical operations: and or
     # arithmetic operations: * / - + mod
-    ultratrail.cond(accumulator_bits >= bias_bits)
-    ultratrail.cond(accumulator_bits >= activation_bits * weight_bits)
+    ultratrail.cond(ultratrail.accumulator_bits >= ultratrail.bias_bits)
+    ultratrail.cond(ultratrail.accumulator_bits >= ultratrail.activation_bits * ultratrail.weight_bits)
     ultratrail.cond(
-        weight_bits <= max_weight_bits and max_weight_bits / 2 == weight_bits
+        ultratrail.weight_bits <= ultratrail.max_weight_bits and ultratrail.max_weight_bits / 2 == ultratrail.weight_bits
     )
 
     ## DataTypes
