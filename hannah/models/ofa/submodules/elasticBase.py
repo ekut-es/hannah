@@ -291,7 +291,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             )
 
     # the initial dilation size is the first element of the list of available sizes
-    # set the dilation back to its initial size
+    # sete the dilation back to its initial size
     def reset_dilation_size(self):
         self.set_dilation_size(self.dilation_sizes[0])
 
@@ -312,8 +312,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         if (target_dilation_index < 0) or (
             target_dilation_index >= len(self.dilation_sizes)
         ):
+            ## MR-Optional
             logging.warn(
-                f"selected kernel index {target_dilation_index} is out of range: 0 .. {len(self.dilation_sizes)}. Setting to last index."
+                f"selected dilation index {target_dilation_index} is out of range: 0 .. {len(self.dilation_sizes)}. Setting to last index."
             )
             target_dilation_index = len(self.dilation_sizes) - 1
         self.set_dilation_size(self.dilation_sizes[target_dilation_index])
