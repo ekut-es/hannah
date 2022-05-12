@@ -241,27 +241,3 @@ class SubsetParameter(Parameter):
     def set_current(self, value):
         self.check(value)
         self.current_value = value
-
-
-# TODO:
-class UndefinedInt(Parameter):
-    def __init__(self,
-                 scope: Optional[str] = None,
-                 rng: Optional[Union[np.random.Generator, int]] = None) -> None:
-        super().__init__(scope, rng)
-
-
-# TODO:
-class UndefinedFloat(Parameter):
-    def __init__(self,
-                 scope: Optional[str] = None,
-                 rng: Optional[Union[np.random.Generator, int]] = None) -> None:
-        super().__init__(scope, rng)
-
-
-# TODO:
-class DefaultParameter(Parameter):
-    def __init__(self,
-                 scope: Optional[str] = None,
-                 rng: Optional[Union[np.random.Generator, int]] = None) -> None:
-        super().__init__(scope, rng)
