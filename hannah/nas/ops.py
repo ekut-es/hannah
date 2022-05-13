@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 from .dataflow.axis_type import AxisType
 from .dataflow.compression_type import CompressionType
@@ -92,7 +92,7 @@ def leaky_relu(input: TensorType, negative_slope: float = 0.0001):
 
 @dataflow
 def relu(input: TensorType):
-    return OpType("relu")
+    return OpType("relu", input)
 
 
 @dataflow
@@ -101,7 +101,7 @@ def broadcast(input: TensorType, axis: int = 1):
 
 
 @dataflow
-def optional(op: TensorType, default: TensorType):
+def optional(op: Union[OpType, TensorType], default: Union[OpType, TensorType]):
     return OptionalOp(op, default)
 
 
