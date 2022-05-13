@@ -45,6 +45,11 @@ class Device(ABC):
 
 
 @dataflow
+def conv(input, weight, stride):
+    return OpType("conv1d", input, weight, stride=stride)
+
+
+@dataflow
 def ut_op(
     weight_bits: int = 8,
     bias_bits: int = 8,
@@ -93,12 +98,12 @@ def ut_op(
         quantization=input_quantization,
     )
 
-    conv = OpType("conv1d", input, weight, stride=stride_range)
+    conv_out = conv(input, weight, stride=stride_range)
 
     accumulator_data_type = int_t(signed=True, bits=accumulator_bits)
     accumulator_quantization = quantization(scale=UndefinedFloat(), zero_point=0)
     quant_conv = requantize(
-        conv, dtype=accumulator_data_type, quantization=accumulator_quantization
+        conv_out, dtype=accumulator_data_type, quantization=accumulator_quantization
     )
 
     bias_data_type = int_t(signed=True, bits=bias_bits)
