@@ -50,9 +50,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         out_channels: int,
         kernel_sizes: List[int],
         dilation_sizes: List[int],
+        groups: List[int],
         stride: int = 1,
         padding: int = 0,
-        groups: int = 1,
         bias: bool = False,
         padding_mode: str = "zeros",
     ):
@@ -110,7 +110,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             stride=stride,
             padding=self.padding,
             dilation=self.dilation_sizes[self.target_dilation_index],
-            groups=groups,
+            groups=self.group_sizes[self.target_group_index],
             bias=bias,
         )
 
@@ -322,6 +322,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
     def get_available_dilation_steps(self):
         return len(self.dilation_sizes)
 
+    def get_available_grouping_steps(self):
+        return len(self.group_sizes)
+
     def get_dilation_size(self):
         return self.dilation_sizes[self.target_dilation_index]
 
@@ -363,7 +366,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         try:
             index = self.group_sizes.index(new_group_size)
             self.target_group_index = index
-            self.group_sizes = self.group_sizes[self.target_group_index]
+            # self.group_sizes = self.group_sizes[self.target_group_index]
         except ValueError:
             logging.warn(
                 f"requested elastic group size {new_group_size} is not an available group size. Defaulting to full size ({self.max_group_size})"

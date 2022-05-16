@@ -220,6 +220,13 @@ def create_minor_block(
     # use it as the default value if available, otherwise it must be set by the specific code handling the target type
     new_block_out_channels = getattr(block_config, "out_channels", 1)
 
+    #  TODO MR 122
+    #  this blocks needs to be deleted after testing
+
+    block_config.grouping_sizes : List[int] = [2]
+    # hardcoded
+
+
     if "conv1d" in block_config.target:
         out_channels = block_config.out_channels
         if not isinstance(out_channels, ListConfig):
@@ -235,6 +242,11 @@ def create_minor_block(
         dilation_sizes = block_config.dilation_sizes
         if not isinstance(dilation_sizes, ListConfig):
             dilation_sizes = [dilation_sizes]
+
+        #  MR 213871392
+        grouping_sizes = block_config.grouping_sizes
+        if not isinstance(grouping_sizes, ListConfig):
+            grouping_sizes = [grouping_sizes]
 
         minor_block_internal_sequence = nn.ModuleList([])
         key = ""
@@ -253,9 +265,9 @@ def create_minor_block(
         if block_config.get("act", False):
             key += "act"
         #if block_config.get("quant", False):
-            # TODO reset this
-            # key += "quant"
-            # parameter["qconfig"] = qconfig
+        # TODO reset this
+        # key += "quant"
+        # parameter["qconfig"] = qconfig
         if key == "":
             key = "none"
 

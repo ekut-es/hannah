@@ -302,6 +302,8 @@ class OFANasTrainer(NASTrainerBase):
         self.elastic_width_allowed = elastic_width_allowed
         self.elastic_dilation_allowed = elastic_dilation_allowed
         self.elastic_grouping_allowed = elastic_grouping_allowed
+        # TODO MR 4920 delete this line
+        self.elastic_grouping_allowed = True
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
         self.random_eval_number = random_eval_number
@@ -350,7 +352,7 @@ class OFANasTrainer(NASTrainerBase):
         self.width_step_count = ofa_model.ofa_steps_width
         self.dilation_step_count = ofa_model.ofa_steps_dilation
         ## TODO MR04
-        self.grouping_step_count = ofa_model.ofa_steps_group
+        self.grouping_step_count = ofa_model.ofa_steps_grouping
 
         ofa_model.elastic_kernels_allowed = self.elastic_kernels_allowed
         ofa_model.elastic_depth_allowed = self.elastic_depth_allowed
@@ -558,7 +560,7 @@ class OFANasTrainer(NASTrainerBase):
                     continue
                 # add a group step
                 # TODO Callee progressive_shrinking_add_group()
-                ofa_model.progressive_shrinking_add_dilation()
+                ofa_model.progressive_shrinking_add_group()
                 self.rebuild_trainer(
                     f"kernel_{current_grouping_step}", self.epochs_grouping_step
                 )

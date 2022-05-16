@@ -22,9 +22,9 @@ class ElasticConv1d(ElasticBase1d):
         out_channels: int,
         kernel_sizes: List[int],
         dilation_sizes: List[int],
+        groups: List[int],
         stride: int = 1,
         padding: int = 0,
-        groups: int = 1,
         bias: bool = False,
     ):
         ElasticBase1d.__init__(
@@ -52,14 +52,19 @@ class ElasticConv1d(ElasticBase1d):
         padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
-
-        return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation)
+        grouping = self.get_group_size()
+        # MR 23123
+        # !!! TODO forwards anpassen !!!
+        return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
+        ##
+        grouping = self.get_group_size()
+        ##
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = nn.Conv1d(
             in_channels=self.in_channels,
@@ -69,6 +74,7 @@ class ElasticConv1d(ElasticBase1d):
             padding=padding,
             dilation=dilation,
             bias=False,
+            groups=grouping
         )
         new_conv.weight.data = kernel
         if bias is not None:
@@ -85,9 +91,9 @@ class ElasticConvReLu1d(ElasticBase1d):
         out_channels: int,
         kernel_sizes: List[int],
         dilation_sizes: List[int],
+        groups: List[int],
         stride: int = 1,
         padding: int = 0,
-        groups: int = 1,
         bias: bool = False,
     ):
         ElasticBase1d.__init__(
@@ -115,8 +121,12 @@ class ElasticConvReLu1d(ElasticBase1d):
         padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
+
+        grouping = self.get_group_size()
+        # MR 23123
+        # !!! TODO forwards anpassen !!!
         return self.relu(
-            nnf.conv1d(input, kernel, bias, self.stride, padding, dilation)
+            nnf.conv1d(input, kernel, bias, self.stride, padding, dilation,  grouping)
         )
 
     # return a normal conv1d equivalent to this module in the current state
@@ -124,6 +134,7 @@ class ElasticConvReLu1d(ElasticBase1d):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
+        grouping = self.get_group_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvRelu1d(
             in_channels=self.in_channels,
@@ -133,6 +144,7 @@ class ElasticConvReLu1d(ElasticBase1d):
             padding=padding,
             dilation=dilation,
             bias=False,
+            groups=grouping
         )
         new_conv.weight.data = kernel
         if bias is not None:
@@ -149,9 +161,9 @@ class ElasticConvBn1d(ElasticConv1d):
         out_channels: int,
         kernel_sizes: List[int],
         dilation_sizes: List[int],
+        groups: List[int],
         stride: int = 1,
         padding: int = 0,
-        groups: int = 1,
         bias: bool = False,
         track_running_stats=False,
     ):
@@ -178,6 +190,10 @@ class ElasticConvBn1d(ElasticConv1d):
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
+        # evtl hier eingreifen
+        #grouping = self.get_group_size()
+        # MR 23123
+        # !!! TODO forwards anpassen !!!
 
         return self.bn(super(ElasticConvBn1d, self).forward(input))
 
@@ -186,6 +202,7 @@ class ElasticConvBn1d(ElasticConv1d):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
+        grouping = self.get_group_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBn1d(
             in_channels=self.in_channels,
@@ -195,6 +212,7 @@ class ElasticConvBn1d(ElasticConv1d):
             padding=padding,
             dilation=dilation,
             bias=False,
+            groups=grouping
         )
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
@@ -219,9 +237,9 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         out_channels: int,
         kernel_sizes: List[int],
         dilation_sizes: List[int],
+        groups: List[int],
         stride: int = 1,
         padding: int = 0,
-        groups: int = 1,
         bias: bool = False,
         track_running_stats=False,
     ):
@@ -250,6 +268,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
+        grouping = self.get_group_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBnReLu1d(
             in_channels=self.in_channels,
@@ -259,6 +278,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             padding=padding,
             dilation=dilation,
             bias=False,
+            groups=grouping
         )
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
@@ -275,6 +295,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
+# TODO MR 492 notwendig hier auch zu intervenieren ?
 
 class ConvRelu1d(nn.Conv1d):
     def __init__(
@@ -307,6 +328,7 @@ class ConvRelu1d(nn.Conv1d):
 
         return self.relu(super(ConvRelu1d, self).forward(input))
 
+# TODO MR 492 notwendig hier auch zu intervenieren ?
 
 class ConvBn1d(nn.Conv1d):
     def __init__(
@@ -339,6 +361,7 @@ class ConvBn1d(nn.Conv1d):
 
         return self.bn(super(ConvBn1d, self).forward(input))
 
+# TODO MR 492 notwendig hier auch zu intervenieren ?
 
 class ConvBnReLu1d(ConvBn1d):
     def __init__(

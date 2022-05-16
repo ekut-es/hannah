@@ -97,6 +97,7 @@ class ResBlock1d(ResBlockBase):
                     out_channels,
                     kernel_sizes=[1],
                     dilation_sizes=[1],
+                    groups=[1],
                     stride=stride,
                     bias=False,
                 ),
@@ -109,6 +110,7 @@ class ResBlock1d(ResBlockBase):
                     kernel_sizes=[1],
                     dilation_sizes=[1],
                     stride=stride,
+                    # groups=[1]
                     bias=False,
                     qconfig=qconfig,
                 ),
