@@ -26,17 +26,27 @@ class DataFlowGraph:
 
 def dataflow(func):
     def wrapper_func(*args, **kwargs):
+        args = expose_dataflow_outputs(args)
         outputs = func(*args, **kwargs)
         name = func.__name__
-        print(name)
         if isinstance(outputs, Iterable):
             outputs = tuple(outputs)
         else:
             outputs = (outputs,)
-
+        outputs = expose_dataflow_outputs(outputs)
         return DataFlowGraph(outputs=outputs, name=name)
 
     return wrapper_func
+
+
+def expose_dataflow_outputs(args: tuple):
+    exposed_args = []
+    for arg in args:
+        if isinstance(arg, DataFlowGraph):
+            exposed_args.extend(arg.outputs)
+        else:
+            exposed_args.append(arg)
+    return tuple(exposed_args)
 
 
 def collect_leaf_nodes(g):
