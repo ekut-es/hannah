@@ -1,0 +1,40 @@
+defaults:
+    - dataset: directional_generative
+    - model: tc-res8
+    - scheduler: 1cycle
+    - optimizer: adamw
+    - features: raw
+    - normalizer: null
+    - module: sin_cos_classifier
+    - compress: null
+    - trainer: default
+    - checkpoint: default
+    - backend: null
+    - early_stopping: null
+    - profiler: null
+
+type: train
+experiment_id: dd_sin_cos
+output_dir: trained_models
+auto_lr: false
+seed: [1234]
+
+module:
+  num_workers: 4
+  batch_size: 64
+
+trainer:
+  max_epochs: 100
+
+model:
+  n_labels: 2
+
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+
+#TODO:
+dump_test: false
+input_file: ''
