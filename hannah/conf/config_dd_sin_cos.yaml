@@ -1,5 +1,5 @@
 defaults:
-    - dataset: directional_generative
+    - dataset: directional
     - model: tc-res8
     - scheduler: 1cycle
     - optimizer: adamw

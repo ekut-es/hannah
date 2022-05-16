@@ -547,7 +547,7 @@ class DirectAngleClassifierModule(AngleClassifierModule):
         return x
 
     @staticmethod
-    def get_angle_diff(scores, labels):
+    def get_angle_diff(scores, labels, e=1e-7):
         assert scores.shape[0] == labels.shape[0]
         assert scores.shape[1] == 1
         assert labels.shape[1] == 2
@@ -557,10 +557,10 @@ class DirectAngleClassifierModule(AngleClassifierModule):
         x_hat = labels_norm[:, 0]
         y_hat = labels_norm[:, 1]
 
-        x = torch.sin(scores)
-        y = torch.cos(scores)
+        x = torch.sin(scores.squeeze())
+        y = torch.cos(scores.squeeze())
 
-        result = torch.acos(x_hat*x + y_hat*y)
+        result = torch.acos(torch.clamp(x_hat*x + y_hat*y, -1.0 + e, 1.0 - e))
 
         return result
 
@@ -599,11 +599,11 @@ class SINCOSClassifierModule(AngleClassifierModule):
         return x
 
     @staticmethod
-    def get_loss(self, scores, labels):
+    def get_loss(scores, labels):
         return SINCOSClassifierModule.get_angle_diff(scores, labels)
 
     @staticmethod
-    def get_angle_diff(scores, labels):
+    def get_angle_diff(scores, labels, e=1e-7):
         assert scores.shape[0] == labels.shape[0]
         assert scores.shape[1] == 2
         assert labels.shape[1] == 2
@@ -618,12 +618,12 @@ class SINCOSClassifierModule(AngleClassifierModule):
         x = scores_norm[:, 0]
         y = scores_norm[:, 1]
 
-        result = torch.acos(x_hat*x + y_hat*y)
+        result = torch.acos(torch.clamp(x_hat*x + y_hat*y, -1.0 + e, 1.0 - e))
 
         return result
 
     def loss_function(self, scores, labels):
-        return torch.mean(self.get_loss(scores, labels))
+        return torch.mean(SINCOSClassifierModule.get_loss(scores, labels))
 
     def get_error_metric(self):
         return self.AngleError()
@@ -646,7 +646,7 @@ class SINCOSClassifierModule(AngleClassifierModule):
 
     class AngleAccuracy(AngleError):
         def compute(self):
-            return 1.0 - super().compute() / 360.0
+            return 1.0 - super().compute() / 180.0
 
 
 class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
