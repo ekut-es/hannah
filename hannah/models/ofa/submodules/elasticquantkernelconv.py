@@ -221,9 +221,7 @@ class _ElasticConvBnNd(
         return conv
 
     def extra_repr(self):
-        # TODO(jerryzh): extend
         return None
-        # return super(_ElasticConvBnNd, self).extra_repr()
 
     def forward(self, input):
         y = self._forward(input)
