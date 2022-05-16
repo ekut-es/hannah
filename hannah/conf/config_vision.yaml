@@ -15,6 +15,7 @@ defaults:
     - profiler: null
     - pruning: null
     - optional dataset/features: ${dataset}_${features}
+    - _self_
 
 
 experiment_id: test

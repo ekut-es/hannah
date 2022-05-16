@@ -3,6 +3,7 @@ import os
 import shutil
 from collections import defaultdict
 from pathlib import Path
+from typing import Any, Dict, List, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -27,7 +28,7 @@ from .utils import (
     log_execution_env_state,
 )
 
-msglogger = logging.getLogger(__name__)
+msglogger: logging.Logger = logging.getLogger(__name__)
 
 
 @rank_zero_only
@@ -45,7 +46,9 @@ def handleDataset(config=DictConfig):
     lit_module.prepare_data()
 
 
-def train(config: DictConfig):
+def train(
+    config: DictConfig,
+) -> Union[float, Dict[Any, float], List[Union[float, Dict[Any, float]]]]:
     test_output = []
     results = []
     if isinstance(config.seed, int):
@@ -206,7 +209,7 @@ def train(config: DictConfig):
         return results
 
 
-def nas(config: DictConfig):
+def nas(config: DictConfig) -> None:
     print(OmegaConf.to_yaml(config))
     nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
     nas_trainer.run()

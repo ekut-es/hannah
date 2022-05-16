@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Any, Optional, Type
 
 import tabulate
 import torch
@@ -12,7 +13,7 @@ import hannah.modules.classifier
 import hydra
 
 
-def eval_checkpoint(config: DictConfig, checkpoint):
+def eval_checkpoint(config: DictConfig, checkpoint) -> None:
     seed_everything(1234, workers=True)
     checkpoint_path = to_absolute_path(checkpoint)
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
@@ -51,7 +52,7 @@ def eval_checkpoint(config: DictConfig, checkpoint):
     print(tabulate.tabulate(snr_values, headers=["SNR", "Accuracy"]))
 
 
-def eval(config: DictConfig):
+def eval(config: DictConfig) -> Optional[bool]:
     checkpoints = config.checkpoints
     if isinstance(checkpoints, str):
         checkpoints = [checkpoints]
