@@ -1,5 +1,3 @@
-
-
 data_folder: ${hydra:runtime.cwd}/datasets/
 cls: hannah.datasets.speech.VadDataset
 dataset: timit

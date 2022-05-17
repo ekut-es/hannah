@@ -1,12 +1,11 @@
-import os
-from typing import Dict, List, Any, Optional
-import pandas as pd
 import logging
-import yaml
-
-import seaborn as sns
-import pandas as pd
+import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
+import seaborn as sns
+import yaml
 
 logger = logging.getLogger("nas_eval.plot")
 
@@ -31,9 +30,6 @@ def plot_comparison(
     style = metrics[3] if len(metrics) >= 4 else "Task"
     hue = "Task"
 
-    # Filter:
-    # result[result['Accuracy [$\%$]'] > 85.0]
-
     name_dict = {}
     for index, config in metric_config.items():
         if "name" in config:
@@ -43,6 +39,9 @@ def plot_comparison(
     x, y, size, style, hue = [
         _rename_metric(metric, name_dict) for metric in [x, y, size, style, hue]
     ]
+
+    # Filter:
+    data = data[data[y] > 75.0]
 
     plot = sns.relplot(
         x=x,

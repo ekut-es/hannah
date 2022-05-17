@@ -1,0 +1,57 @@
+# @package _group_
+
+# Nas results:
+#   val_error: 0.02827918529510498
+#   power_uw: 0.43431644396858776
+#   acc_latency: 0.000412
+
+# Backend parameters:
+#   backend.cols=4
+#   backend.rows=None
+
+
+_target_: hannah.models.factory.factory.create_cnn
+name: dsd22_vad_lp
+norm:
+  target: bn
+act:
+  target: relu
+conv:
+- blocks:
+  - act: false
+    kernel_size: 1
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 16
+  target: forward
+- blocks:
+  - act: true
+    kernel_size: 7
+    norm: true
+    out_channels: 8
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 4
+  target: forward
+- blocks:
+  - act: false
+    kernel_size: 5
+    norm: true
+    out_channels: 4
+    parallel: false
+    stride: 1
+    target: conv1d
+  stride: 1
+  target: residual
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 0
+    bw_f: 4
+    bw_w: 2
+    noise_prob: 0.7
+    power_of_2: false

@@ -43,10 +43,12 @@ class ClassifierModule(LightningModule, ABC):
         normalizer: Optional[DictConfig] = None,
         export_onnx: bool = True,
         gpus=None,
+        **kwargs,
     ) -> None:
         super().__init__()
 
         self.save_hyperparameters()
+
         self.initialized = False
         self.train_set = None
         self.test_set = None
