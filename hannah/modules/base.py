@@ -45,7 +45,7 @@ class ClassifierModule(LightningModule, ABC):
         gpus=None,
         **kwargs,
     ) -> None:
-
+        super().__init__()
         self.initialized = False
         self.train_set = None
         self.test_set = None
