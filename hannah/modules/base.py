@@ -46,6 +46,9 @@ class ClassifierModule(LightningModule, ABC):
         **kwargs,
     ) -> None:
         super().__init__()
+
+        self.save_hyperparameters()
+
         self.initialized = False
         self.train_set = None
         self.test_set = None
