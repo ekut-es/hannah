@@ -50,8 +50,18 @@ def tensor(
     dtype: DataType,
     quantization: Optional[QuantizationType] = None,
     memory: Optional[MemoryType] = None,
+    name: str = "",
 ):
-    return TensorType(axis=axis, dtype=dtype, quantization=quantization, memory=memory)
+    return TensorType(axis=axis, dtype=dtype, quantization=quantization, memory=memory, name=name)
+
+
+def batched_image_tensor(dtype=float_t(), name=""):
+    return tensor((axis('n'),
+                   axis('c'),
+                   axis('h'),
+                   axis('w')),
+                  dtype=dtype,
+                  name=name)
 
 
 @dataflow
@@ -64,7 +74,11 @@ def broadcast(input):
 def conv(input):
     kernel_size = UndefinedInt()
     stride = DefaultInt(1)
-    weight = tensor(UndefinedInt(), input.axis["c"].size, kernel_size, kernel_size)
+    weight = tensor(
+        (axis('o', UndefinedInt()),
+         axis('i', UndefinedInt()),
+         axis('kh', kernel_size),
+         axis('kw', kernel_size)), dtype=IntType())
     return OpType("conv", input, weight, stride=stride)
 
 
@@ -105,22 +119,22 @@ def optional(op: Union[OpType, TensorType], default: Union[OpType, TensorType]):
     return OptionalOp(op, default)
 
 
-@dataflow
-def conv_block(input: TensorType, kernel_size: int = 4):
-    out = add(
-        conv(out, kernel_size=kernel_size, stride=CategoricalParameter(1, 2)),
-        conv(out, kernel_size=DefaultInt(4), name="residual"),
-    )
-    out = leaky_relu(out)
-    return out
+# @dataflow
+# def conv_block(input: TensorType, kernel_size: int = 4):
+#     out = add(
+#         conv(out, kernel_size=kernel_size, stride=CategoricalParameter(1, 2)),
+#         conv(out, kernel_size=DefaultInt(4), name="residual"),
+#     )
+#     out = leaky_relu(out)
+#     return out
 
 
-@dataflow
-def network(input: TensorType, blocks: Optional[int] = None):
-    out = inp
-    with Repeat(blocks):
-        with Parametrize(
-            {"leaky_relu.negative_slope": FloatScalarParameter(0.000001, 0.1)}
-        ):
-            out = conv_block(out, kernel_size=4)
-    return out
+# @dataflow
+# def network(input: TensorType, blocks: Optional[int] = None):
+#     out = inp
+#     with Repeat(blocks):
+#         with Parametrize(
+#             {"leaky_relu.negative_slope": FloatScalarParameter(0.000001, 0.1)}
+#         ):
+#             out = conv_block(out, kernel_size=4)
+#     return out
