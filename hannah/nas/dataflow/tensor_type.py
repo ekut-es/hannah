@@ -12,6 +12,7 @@ class TensorType:
         dtype: DataType,
         quantization: Optional[QuantizationType] = None,
         memory: Optional[MemoryType] = None,
+        name: str = "",
     ):
         self.axis = {}
         for ax in axis:
@@ -19,12 +20,17 @@ class TensorType:
         self.dtype = dtype
         self.quantization = quantization
         self.memory = memory
+        self.name = name
+        self.id = name
 
     def dim(self) -> int:
         return len(self.axis)
+
+    def output_tensor(self):
+        return self
 
     def shape(self) -> Tuple[int, ...]:
         return tuple((ax.size for ax in self.axis.values))
 
     def __repr__(self) -> str:
-        return 'Tensor(' + ' '.join(['{}, '.format(a) for a in self.axis.keys()]) + ')'
+        return 'Tensor(name=' + self.name + ", axis=(" + ' '.join(['{}, '.format(a) for a in self.axis.keys()]) + '))'

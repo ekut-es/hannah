@@ -5,20 +5,26 @@ from typing import Any
 class OpType:
     def __init__(self, name, *operands, **attributes):
         self.name = name
+        self.id = name
         self.operands = list(operands)
         self.attributes = attributes
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        for i, arg in enumerate(args):
-            self.operands[i] = arg
-        for key, value in kwds.items():
-            self.attributes[key] = value
+    def output_tensor(self):
+        # TODO: what happens with multiple operands?
+        # => here one has to define how the op
+        # changes the tensor
+        return self.operands[0].output_tensor()
 
-        return self
-
-
-    # TODO:
     def __repr__(self) -> str:
-        return self.name + '(\n' +  \
-                ' '.join(['{}, '.format(o) for o in self.operands]) +\
-                ' '.join(['{}: {}'.format(key, val) for key, val in self.attributes.items()]) + ')\n'
+        ret = ""
+        ret += "%{} = " + \
+               "{}(".format(self.name) + \
+               "".join(["%{}, " for _ in range(len(self.operands))]) + \
+               "".join(["{}={}".format(key, str(attr)) for key, attr in self.attributes.items()]) + \
+               ")"
+        for operand in reversed(self.operands):
+            ret = repr(operand) + '\n' + ret
+        return ret
+
+
+
