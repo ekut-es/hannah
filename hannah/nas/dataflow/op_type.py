@@ -17,13 +17,10 @@ class OpType:
 
     def __repr__(self) -> str:
         ret = ""
-        ret += "%{} = " + \
-               "{}(".format(self.name) + \
-               "".join(["%{}, " for _ in range(len(self.operands))]) + \
-               "".join(["{}={}".format(key, str(attr)) for key, attr in self.attributes.items()]) + \
+        ret += "{}(".format(self.name) + \
+               "".join(["\t{}, \n".format(o) for o in self.operands]) + \
+               "".join(["\t{}={}".format(key, str(attr)) for key, attr in self.attributes.items()]) + \
                ")"
-        for operand in reversed(self.operands):
-            ret = repr(operand) + '\n' + ret
         return ret
 
 
