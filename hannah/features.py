@@ -247,6 +247,30 @@ class SincConvFFT(nn.Module):
         return sinc_test_features
 
 
+class PhaseSpectrogram(torch.nn.Module):
+
+    def __init__(self, n_fft, win_length, hop_length):
+        super().__init__()
+
+        self.n_fft = n_fft
+
+        self.win_length = win_length
+        self.hop_length = hop_length
+
+    def forward(self, samples):
+
+        channels = list()
+
+        for channel_nr in range(samples.shape[1]):
+            stft = torch.stft(samples[:, channel_nr, :], center=False, n_fft=self.n_fft, win_length=self.win_length, hop_length=self.hop_length, return_complex=True)
+            channel_angle = torch.angle(stft)
+            channels += [channel_angle]
+
+        data = torch.stack(channels, dim=1)
+
+        return data
+
+
 class LogSpectrogram(torch.nn.Module):
     r"""Create a spectrogram from a audio signal.
 

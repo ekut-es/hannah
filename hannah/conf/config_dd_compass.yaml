@@ -14,7 +14,7 @@ defaults:
     - profiler: null
 
 type: train
-experiment_id: dd_compass
+experiment_id: dd_compass.raw
 output_dir: trained_models
 auto_lr: false
 seed: [1234]

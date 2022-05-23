@@ -14,7 +14,7 @@ defaults:
     - profiler: null
 
 type: train
-experiment_id: dd_direct_angle
+experiment_id: dd_direct_angle.raw
 output_dir: trained_models
 auto_lr: false
 seed: [1234]

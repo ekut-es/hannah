@@ -1,11 +1,11 @@
 defaults:
-    - dataset: directional
+    - dataset: directional_compass
     - model: tc-res8
     - scheduler: 1cycle
     - optimizer: adamw
-    - features: raw
+    - features: phase
     - normalizer: null
-    - module: cartesian_classifier
+    - module: stream_classifier
     - compress: null
     - trainer: default
     - checkpoint: default
@@ -14,7 +14,7 @@ defaults:
     - profiler: null
 
 type: train
-experiment_id: dd_cartesian.raw
+experiment_id: dd_compass.phase
 output_dir: trained_models
 auto_lr: false
 seed: [1234]
@@ -25,9 +25,6 @@ module:
 
 trainer:
   max_epochs: 100
-
-model:
-  n_labels: 2
 
 hydra:
     run:
