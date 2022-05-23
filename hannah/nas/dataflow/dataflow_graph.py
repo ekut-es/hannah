@@ -1,9 +1,9 @@
 from typing import Iterable
-from copy import copy
 import re
 from hannah.nas.dataflow.op_type import OpType
 from hannah.nas.dataflow.optional_op import OptionalOp
 from hannah.nas.dataflow.tensor_type import TensorType
+from hannah.nas.dataflow.dataflow_utils import register_scope, reset_nested_counters, scope_nester
 
 
 class DataFlowGraph:
@@ -12,7 +12,7 @@ class DataFlowGraph:
         self.output = output
         self.name = name
         self.id = name
-        insert_scope_to_id(self, {}, {}, [], {}, {})
+        self.insert_scope_to_id({}, {}, [], {}, {})
         names = []
         get_names(self, names)
         name_map = get_correct_hierarchy_map(names)
@@ -60,6 +60,23 @@ class DataFlowGraph:
                 lines.append('\t'*indent + '%{{{}}} = {}('.format(input_names[key], key) +
                              ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) +
                              ')')
+
+    def insert_scope_to_id(self, inputs, scopes, current_scope, scope_counters, nested_scopes):
+        if self in inputs:
+            for i in inputs[self]:
+                current_scope.remove(scopes[i])
+                reset_nested_counters(scopes[i], nested_scopes, scope_counters)
+        scopes[self] = register_scope(self.name, scope_counters)
+        self.id = ".".join(current_scope) + ".{}".format(scopes[self]) if current_scope else scopes[self]
+        inp = self.inputs[0]
+        if inp in inputs:
+            inputs[inp].append(self)
+        else:
+            inputs[inp] = [self]
+        nested_scopes = scope_nester(scopes[self], current_scope, nested_scopes)
+        current_scope += [scopes[self]]
+        # TODO: Handle multiple outputs
+        self.output[0].insert_scope_to_id(inputs, scopes, current_scope, scope_counters, nested_scopes)
 
     def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
         if self in inputs:
@@ -143,62 +160,6 @@ def collect_leaf_nodes(g):
 
     leafs = _propagate(g, [])
     return leafs
-
-
-def register_scope(scope, scope_counters):
-    if scope not in scope_counters:
-        scope_counters[scope] = 0
-    else:
-        scope_counters[scope] += 1
-    return scope + ".{{{}}}".format(scope_counters[scope])
-
-
-def scope_nester(scope, current_scope, nesting):
-    nesting[".".join(current_scope)] = scope
-    return nesting
-
-
-def reset_nested_counters(ended_scope, nesting, scope_counter):
-    if ended_scope in nesting:
-        base_scope_str = nesting[ended_scope].split(".")[0]
-        scope_counter.pop(base_scope_str)
-
-
-def insert_scope_to_id(x, inputs, scopes, current_scope, scope_counters, nested_scopes):
-    if isinstance(x, DataFlowGraph):
-        if x in inputs:
-            for i in inputs[x]:
-                current_scope.remove(scopes[i])
-                reset_nested_counters(scopes[i], nested_scopes, scope_counters)
-        scopes[x] = register_scope(x.name, scope_counters)
-        x.id = ".".join(current_scope) + ".{}".format(scopes[x]) if current_scope else scopes[x]
-        inp = x.inputs[0]
-        if inp in inputs:
-            inputs[inp].append(x)
-        else:
-            inputs[inp] = [x]
-        nested_scopes = scope_nester(scopes[x], current_scope, nested_scopes)
-        current_scope += [scopes[x]]
-        # TODO: Handle multiple outputs
-        insert_scope_to_id(x.output[0], inputs, scopes, current_scope, scope_counters, nested_scopes)
-    elif isinstance(x, OpType):
-        x.id = ".".join(current_scope) + ".{}".format(x.name)
-
-        for o in x.operands:
-            cs = copy(current_scope)
-            insert_scope_to_id(o, inputs, scopes, cs, scope_counters, nested_scopes)
-
-        if x in inputs:
-            for i in inputs[x]:
-                current_scope.remove(scopes[i])
-                reset_nested_counters(scopes[i], nested_scopes, scope_counters)
-
-    elif isinstance(x, TensorType):
-        x.id = ".".join(current_scope) + ".{}".format(x.name)
-        if x in inputs:
-            for i in inputs[x]:
-                current_scope.remove(scopes[i])
-                reset_nested_counters(scopes[i], nested_scopes, scope_counters)
 
 
 def get_names(x, ls):

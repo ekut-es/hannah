@@ -3,6 +3,7 @@ from .quantization_type import QuantizationType
 from .data_type import DataType
 from .axis_type import AxisType
 from typing import Optional, Tuple
+from hannah.nas.dataflow.dataflow_utils import reset_nested_counters
 
 
 class TensorType:
@@ -33,6 +34,13 @@ class TensorType:
         if self in inputs:
             for i in inputs[self]:
                 current_scope.remove(scopes[i])
+
+    def insert_scope_to_id(self, inputs, scopes, current_scope, scope_counters, nested_scopes):
+        self.id = ".".join(current_scope) + ".{}".format(self.name)
+        if self in inputs:
+            for i in inputs[self]:
+                current_scope.remove(scopes[i])
+                reset_nested_counters(scopes[i], nested_scopes, scope_counters)
 
     def shape(self) -> Tuple[int, ...]:
         return tuple((ax.size for ax in self.axis.values))

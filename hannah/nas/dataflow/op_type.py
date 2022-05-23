@@ -1,7 +1,6 @@
 from copy import copy
 from hannah.nas.dataflow.tensor_type import TensorType
-from hannah.nas.parameters.parametrize import parametrize
-from typing import Any
+from hannah.nas.dataflow.dataflow_utils import reset_nested_counters
 
 
 class OpType:
@@ -40,6 +39,18 @@ class OpType:
             cs = copy(current_scope)
             o.get_hierarchical_dict(hierarchy_dict, cs, inputs, scopes, input_names, nested_scopes, scope_counters, tensors)
 
+    def insert_scope_to_id(self, inputs, scopes, current_scope, scope_counters, nested_scopes):
+        self.id = ".".join(current_scope) + ".{}".format(self.name)
+
+        for o in self.operands:
+            cs = copy(current_scope)
+            o.insert_scope_to_id(inputs, scopes, cs, scope_counters, nested_scopes)
+
+        if self in inputs:
+            for i in inputs[self]:
+                current_scope.remove(scopes[i])
+                reset_nested_counters(scopes[i], nested_scopes, scope_counters)
+
     def __repr__(self) -> str:
         ret = ""
         ret += "{}(".format(self.name) + \
@@ -47,6 +58,3 @@ class OpType:
                "".join(["\t{}={}".format(key, str(attr)) for key, attr in self.attributes.items()]) + \
                ")"
         return ret
-
-
-
