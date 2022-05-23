@@ -24,6 +24,9 @@ class DataFlowGraph:
         # TODO: what happens with multiple outputs?
         return self.output[0].output_tensor()
 
+    def dfg_line_representation(self, key, indent):
+        return '\t'*indent + key + ':'
+
     def get_string(self):
         lines = []
         hierarchy_dict = {}
@@ -42,10 +45,20 @@ class DataFlowGraph:
         for key, val in reversed(tensors.items()):
             lines.append('%{{{}}} = {}'.format(val, key))
 
-        get_str_lines_from_dict(hierarchy_dict, lines, 0, input_names)
+        self.get_str_lines_from_dict(hierarchy_dict, lines, 0, input_names)
         mapping = get_correct_hierarchy_map(lines)
         lines = mapping.values()
         return "\n".join(lines)
+
+    def get_str_lines_from_dict(self, container, lines, indent, input_names):
+        for key, val in reversed(container.items()):
+            if isinstance(val, dict):
+                lines.append(self.dfg_line_representation(key, indent))
+                self.get_str_lines_from_dict(val, lines, indent+1, input_names)
+            elif isinstance(val, list):
+                lines.append('\t'*indent + '%{{{}}} = {}('.format(input_names[key], key) +
+                             ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) +
+                             ')')
 
     def __str__(self):
         return self.get_string()
@@ -56,7 +69,6 @@ class DataFlowGraph:
 
 def dataflow(func):
     def wrapper_func(*args, **kwargs):
-        # args = expose_dataflow_outputs(args)
         name = func.__name__
         inputs = args
         output = func(*args, **kwargs)
@@ -65,7 +77,6 @@ def dataflow(func):
             output = tuple(output)
         else:
             output = (output,)
-        # outputs = expose_dataflow_outputs(outputs)
         dfg = DataFlowGraph(inputs=inputs, output=output, name=name)
         return dfg
 
@@ -202,17 +213,6 @@ def fix_hierarchy(dfg, name_map):
     elif isinstance(dfg, TensorType):
         if dfg.id in name_map:
             dfg.id = name_map[dfg.id]
-
-
-def get_str_lines_from_dict(container, lines, indent, input_names):
-    for key, val in reversed(container.items()):
-        if isinstance(val, dict):
-            lines.append('\t'*indent + key + ':')
-            get_str_lines_from_dict(val, lines, indent+1, input_names)
-        elif isinstance(val, list):
-            lines.append('\t'*indent + '%{{{}}} = {}('.format(input_names[key], key) +
-                         ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) +
-                         ')')
 
 
 def get_hierarchical_dict(x, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
