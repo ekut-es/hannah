@@ -1,3 +1,5 @@
+from copy import copy
+from hannah.nas.dataflow.tensor_type import TensorType
 from hannah.nas.parameters.parametrize import parametrize
 from typing import Any
 
@@ -14,6 +16,29 @@ class OpType:
         # => here one has to define how the op
         # changes the tensor
         return self.operands[0].output_tensor()
+
+    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
+        current_dict_level = hierarchy_dict
+        for scope in current_scope:
+            if scope in current_dict_level:
+                current_dict_level = current_dict_level[scope]
+
+        current_dict_level[self.id] = []
+
+        if self.id not in input_names:
+            current_max = max(list(input_names.values()) + [-1])
+            input_names[self.id] = current_max
+
+        for o in self.operands:
+            current_dict_level[self.id].append(o.id)
+            if o.id not in input_names:
+                current_max = max(list(input_names.values()) + [-1])
+                input_names[o.id] = current_max + 1
+                if isinstance(o, TensorType):
+                    tensors[o.id] = current_max + 1
+
+            cs = copy(current_scope)
+            o.get_hierarchical_dict(hierarchy_dict, cs, inputs, scopes, input_names, nested_scopes, scope_counters, tensors)
 
     def __repr__(self) -> str:
         ret = ""

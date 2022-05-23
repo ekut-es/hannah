@@ -17,8 +17,10 @@ class DataFlowGraph:
         get_names(self, names)
         name_map = get_correct_hierarchy_map(names)
         fix_hierarchy(self, name_map)
-
         # self.leaf_nodes = collect_leaf_nodes(self.output)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
 
     def output_tensor(self):
         # TODO: what happens with multiple outputs?
@@ -32,15 +34,14 @@ class DataFlowGraph:
         hierarchy_dict = {}
         input_names = {}
         tensors = {}
-        get_hierarchical_dict(self,
-                              hierarchy_dict=hierarchy_dict,
-                              current_scope=[],
-                              inputs={},
-                              scopes={},
-                              input_names=input_names,
-                              nested_scopes={},
-                              scope_counters={},
-                              tensors=tensors)
+        self.get_hierarchical_dict(hierarchy_dict=hierarchy_dict,
+                                   current_scope=[],
+                                   inputs={},
+                                   scopes={},
+                                   input_names=input_names,
+                                   nested_scopes={},
+                                   scope_counters={},
+                                   tensors=tensors)
 
         for key, val in reversed(tensors.items()):
             lines.append('%{{{}}} = {}'.format(val, key))
@@ -59,6 +60,34 @@ class DataFlowGraph:
                 lines.append('\t'*indent + '%{{{}}} = {}('.format(input_names[key], key) +
                              ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) +
                              ')')
+
+    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
+        if self in inputs:
+            for i in inputs[self]:
+                current_scope.remove(scopes[i])
+
+        scopes[self] = self.id
+        inp = self.inputs[0]
+
+        if inp in inputs:
+            inputs[inp].append(self)
+        else:
+            inputs[inp] = [self]
+
+        current_scope += [scopes[self]]
+        cur_scope_str = current_scope[-1]
+        if cur_scope_str not in input_names:
+            current_max = max(list(input_names.values()) + [0])
+            input_names[cur_scope_str] = current_max
+
+        current_dict_level = hierarchy_dict
+        for scope in current_scope:
+            if scope in current_dict_level:
+                current_dict_level = current_dict_level[scope]
+            else:
+                current_dict_level[scope] = {}
+
+        self.output[0].get_hierarchical_dict(hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors)
 
     def __str__(self):
         return self.get_string()
@@ -213,65 +242,3 @@ def fix_hierarchy(dfg, name_map):
     elif isinstance(dfg, TensorType):
         if dfg.id in name_map:
             dfg.id = name_map[dfg.id]
-
-
-def get_hierarchical_dict(x, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
-    if isinstance(x, DataFlowGraph):
-        if x in inputs:
-            for i in inputs[x]:
-                current_scope.remove(scopes[i])
-
-        scopes[x] = x.id
-        inp = x.inputs[0]
-
-        if inp in inputs:
-            inputs[inp].append(x)
-        else:
-            inputs[inp] = [x]
-
-        current_scope += [scopes[x]]
-        cur_scope_str = current_scope[-1]
-        if cur_scope_str not in input_names:
-            current_max = max(list(input_names.values()) + [0])
-            input_names[cur_scope_str] = current_max
-
-        current_dict_level = hierarchy_dict
-        for scope in current_scope:
-            if scope in current_dict_level:
-                current_dict_level = current_dict_level[scope]
-            else:
-                current_dict_level[scope] = {}
-
-        get_hierarchical_dict(x.output[0], hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors)
-
-    elif isinstance(x, OpType):
-        current_dict_level = hierarchy_dict
-        for scope in current_scope:
-            if scope in current_dict_level:
-                current_dict_level = current_dict_level[scope]
-
-        current_dict_level[x.id] = []
-
-        if x.id not in input_names:
-            current_max = max(list(input_names.values()) + [-1])
-            input_names[x.id] = current_max
-
-        for o in x.operands:
-            current_dict_level[x.id].append(o.id)
-            if o.id not in input_names:
-                current_max = max(list(input_names.values()) + [-1])
-                input_names[o.id] = current_max + 1
-                if isinstance(o, TensorType):
-                    tensors[o.id] = current_max + 1
-
-            cs = copy(current_scope)
-            get_hierarchical_dict(o, hierarchy_dict, cs, inputs, scopes, input_names, nested_scopes, scope_counters, tensors)
-
-        if x in inputs:
-            for i in inputs[x]:
-                current_scope.remove(scopes[i])
-
-    elif isinstance(x, TensorType):
-        if x in inputs:
-            for i in inputs[x]:
-                current_scope.remove(scopes[i])

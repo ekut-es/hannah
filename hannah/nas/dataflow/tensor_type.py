@@ -29,6 +29,11 @@ class TensorType:
     def output_tensor(self):
         return self
 
+    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
+        if self in inputs:
+            for i in inputs[self]:
+                current_scope.remove(scopes[i])
+
     def shape(self) -> Tuple[int, ...]:
         return tuple((ax.size for ax in self.axis.values))
 
