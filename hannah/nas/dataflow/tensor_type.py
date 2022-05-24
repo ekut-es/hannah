@@ -30,7 +30,7 @@ class TensorType:
     def output_tensor(self):
         return self
 
-    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
+    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
         if self in inputs:
             for i in inputs[self]:
                 current_scope.remove(scopes[i])

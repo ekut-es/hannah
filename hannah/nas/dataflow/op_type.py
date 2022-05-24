@@ -16,7 +16,7 @@ class OpType:
         # changes the tensor
         return self.operands[0].output_tensor()
 
-    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
+    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
         current_dict_level = hierarchy_dict
         for scope in current_scope:
             if scope in current_dict_level:
@@ -37,7 +37,7 @@ class OpType:
                     tensors[o.id] = current_max + 1
 
             cs = copy(current_scope)
-            o.get_hierarchical_dict(hierarchy_dict, cs, inputs, scopes, input_names, nested_scopes, scope_counters, tensors)
+            o.get_hierarchical_dict(hierarchy_dict, cs, inputs, scopes, input_names, tensors)
 
     def insert_scope_to_id(self, inputs, scopes, current_scope, scope_counters, nested_scopes):
         self.id = ".".join(current_scope) + ".{}".format(self.name)
