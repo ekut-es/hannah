@@ -18,8 +18,10 @@ class OpType:
 
     def dfg_line_representation(self, indent, input_names):
         result_and_name = '\t'*indent + '%{{{}}} = {}('.format(input_names[self], self.id)
-        operands = ', '.join(['%{{{}}}' for _ in range(len(self.operands))]).format(*[input_names[x] for x in self.operands]) + ' '
+        operands = ', '.join(['%{{{}}}' for _ in range(len(self.operands))]).format(*[input_names[x] for x in self.operands])
         attributes = ', '.join(['{}={}'.format(k, v) for k, v in self.attributes.items()])
+        if attributes != '':
+            attributes = ', ' + attributes
         suffix = ')'
         return result_and_name + operands + attributes + suffix
 
