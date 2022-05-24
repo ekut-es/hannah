@@ -31,6 +31,10 @@ class TensorType:
         return self
 
     def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
+        """TensorTypes version of the recursive extraction of a hierarchical scope dict.
+        Most parameters are just there to keep the function signature consistent. See the respective
+        functions in DataFlowGraph and OpType for more information.
+        """
         if self in inputs:
             for i in inputs[self]:
                 current_scope.remove(i)

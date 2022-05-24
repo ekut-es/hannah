@@ -22,20 +22,49 @@ class OpType:
                ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) + ')'
 
     def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
+        """Recursively extract a dict that describes the
+        scope hierarchy
+
+        Parameters
+        ----------
+        hierarchy_dict : dict
+            describes the scope hierarchy
+            e.g. {'block.0': {'block.0.conv.0': ..., 'block.0.conv.1': ...}, 'block.1': ...}
+        current_scope : list
+            list of current scopes in descending order
+            e.g. [block.0, block.0.conv.0, ... ]
+        inputs : dict
+            mapping of node -> list of nodes that this node is an input of
+            e.g. if out = block1(block0) => {DataFlowGraph(name=block0): [DataFlowGraph(name=block1)]}
+        scopes : dict
+            mapping of node -> scope name/id
+        input_names : dict
+            mapping of node -> int counter for input
+            different scopes can have the same int-input representation because
+            the inputs "trickle down": e.g.
+            {block.1: 0, block.1.conv_relu.1: 0, block.1.conv_relu.1.relu: 0}
+            -> 'block.1' encapsulates 'block.1.conv_relu.1' and that encapsulates
+               'block.1.conv_relu.1.relu', and so the input tensor is passed down the scope
+        tensors : list
+            list of input tensors collected during traversal for more convenient
+            listing later on
+        """
+
+        # expand the hierarchy dict and navigate to current level
         current_dict_level = hierarchy_dict
         for scope in current_scope:
             if scope in current_dict_level:
                 current_dict_level = current_dict_level[scope]
-
         current_dict_level[self] = []
 
-        if self.id not in input_names:
+        # extract input/output int representation for dataflow printing
+        if self not in input_names:
             current_max = max(list(input_names.values()) + [-1])
             input_names[self] = current_max
 
         for o in self.operands:
             current_dict_level[self].append(o)
-            if o.id not in input_names:
+            if o not in input_names:
                 current_max = max(list(input_names.values()) + [-1])
                 input_names[o] = current_max + 1
                 if isinstance(o, TensorType):

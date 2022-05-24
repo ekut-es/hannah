@@ -112,18 +112,18 @@ class DataFlowGraph:
         # TODO: Support multiple inputs
         inp = self.inputs[0]
 
-        # TODO: move to extra class
-        if inp in inputs:
-            inputs[inp].append(self)
-        else:
-            inputs[inp] = [self]
+        # add current node to the list of receiver nodes for inp
+        inputs.setdefault(inp, []).append(self)
 
         current_scope += [self]
-        last_scope = current_scope[-1]
-        if last_scope not in input_names:
-            current_max = max(list(input_names.values()) + [0])
-            input_names[last_scope] = current_max
 
+        # extract input/output int representation for dataflow printing
+        deepest_scope = current_scope[-1]
+        if deepest_scope not in input_names:
+            current_max = max(list(input_names.values()) + [0])
+            input_names[deepest_scope] = current_max
+
+        # expand hierarchy dict
         current_dict_level = hierarchy_dict
         for scope in current_scope:
             if scope in current_dict_level:
