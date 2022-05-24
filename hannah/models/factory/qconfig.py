@@ -77,8 +77,9 @@ class FixedpointObserver(ObserverBase):
         return scales, zero_points
 
 
-class SymmetricQuantization:
+class SymmetricQuantization(torch.nn.Module):
     def __init__(self, bits, scale=None, rounding_mode="EVEN", debug=False):
+        super().__init__()
         self.bits = bits
         self.max = 2.0 ** (bits - 1) - 1
         self.min = -(2.0 ** (bits - 1))
@@ -102,7 +103,7 @@ class SymmetricQuantization:
 
         return x
 
-    def __call__(self, x):
+    def forward(self, x):
         x = self.quantize(x)
         x = x * self.scale
 
@@ -112,15 +113,16 @@ class SymmetricQuantization:
         return x
 
 
-class PowerOf2Quantization:
+class PowerOf2Quantization(torch.nn.Module):
     def __init__(self, bits, debug=False):
+        super().__init__()
         self.bits = bits
         self.debug = debug
 
     def quantize(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
-        mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
+        mask_x = torch.ge(abs_x, 1 / 2 ** ((2**self.bits - 1))).float()
 
         log_x = torch.ceil(torch.log2(abs_x))
 
@@ -133,10 +135,10 @@ class PowerOf2Quantization:
 
         return log_x
 
-    def __call__(self, x):
+    def forward(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
-        mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
+        mask_x = torch.ge(abs_x, 1 / 2 ** ((2**self.bits - 1))).float()
 
         log_x = torch.ceil(torch.log2(abs_x))
 
