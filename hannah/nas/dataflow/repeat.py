@@ -1,7 +1,5 @@
 from typing import Any
-from hannah.nas.parameters.parameters import Parameter
 from hannah.nas.dataflow.dataflow_graph import DataFlowGraph
-from types import MethodType
 
 
 class Repeater:
