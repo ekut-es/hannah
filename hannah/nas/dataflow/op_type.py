@@ -17,9 +17,11 @@ class OpType:
         return self.operands[0].output_tensor()
 
     def dfg_line_representation(self, indent, input_names):
-        val = self.operands
-        return '\t'*indent + '%{{{}}} = {}('.format(input_names[self], self.id) + \
-               ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) + ')'
+        result_and_name = '\t'*indent + '%{{{}}} = {}('.format(input_names[self], self.id)
+        operands = ', '.join(['%{{{}}}' for _ in range(len(self.operands))]).format(*[input_names[x] for x in self.operands]) + ' '
+        attributes = ', '.join(['{}={}'.format(k, v) for k, v in self.attributes.items()])
+        suffix = ')'
+        return result_and_name + operands + attributes + suffix
 
     def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
         """Recursively extract a dict that describes the
