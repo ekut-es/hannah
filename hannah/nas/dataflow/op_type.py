@@ -16,6 +16,11 @@ class OpType:
         # changes the tensor
         return self.operands[0].output_tensor()
 
+    def dfg_line_representation(self, indent, input_names):
+        val = self.operands
+        return '\t'*indent + '%{{{}}} = {}('.format(input_names[self], self.id) + \
+               ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) + ')'
+
     def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
         current_dict_level = hierarchy_dict
         for scope in current_scope:

@@ -26,8 +26,8 @@ class DataFlowGraph:
         # TODO: what happens with multiple outputs?
         return self.output[0].output_tensor()
 
-    def dfg_line_representation(self, key, indent):
-        return '\t'*indent + key.id + ':'
+    def dfg_line_representation(self, indent, input_names):
+        return '\t'*indent + self.id + ':'
 
     def get_string(self):
         lines = []
@@ -51,13 +51,11 @@ class DataFlowGraph:
 
     def get_str_lines_from_dict(self, container, lines, indent, input_names):
         for key, val in reversed(container.items()):
-            if isinstance(val, dict):
-                lines.append(self.dfg_line_representation(key, indent))
+            if isinstance(key, DataFlowGraph):
+                lines.append(key.dfg_line_representation(indent, input_names))
                 self.get_str_lines_from_dict(val, lines, indent+1, input_names)
-            elif isinstance(val, list):
-                lines.append('\t'*indent + '%{{{}}} = {}('.format(input_names[key], key.id) +
-                             ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) +
-                             ')')
+            elif isinstance(key, OpType):
+                lines.append(key.dfg_line_representation(indent, input_names))
 
     def insert_scope_to_id(self, inputs, scopes, current_scope, scope_counters, nested_scopes):
         if self in inputs:
