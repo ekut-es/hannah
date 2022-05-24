@@ -38,8 +38,7 @@ def block(input: TensorType,
 
 def test_repeat():
     input = batched_image_tensor(name='input')
-    # out = repeat(block, num_repeats=4)(input)
-    out = block(input)
+    out = repeat(block, num_repeats=4)(input)
     out = block(out)
     print(out)
     print()

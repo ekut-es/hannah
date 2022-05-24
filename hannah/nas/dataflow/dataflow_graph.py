@@ -17,7 +17,15 @@ class DataFlowGraph:
         get_names(self, names)
         name_map = get_correct_hierarchy_map(names)
         fix_hierarchy(self, name_map)
-        # self.leaf_nodes = collect_leaf_nodes(self.output)
+        self.hierarchy_dict = {}
+        self.input_names = {}
+        self.tensors = {}
+        self.get_hierarchical_dict(hierarchy_dict=self.hierarchy_dict,
+                                   current_scope=[],
+                                   inputs={},
+                                   scopes={},
+                                   input_names=self.input_names,
+                                   tensors=self.tensors)
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -31,20 +39,10 @@ class DataFlowGraph:
 
     def get_string(self):
         lines = []
-        hierarchy_dict = {}
-        input_names = {}
-        tensors = {}
-        self.get_hierarchical_dict(hierarchy_dict=hierarchy_dict,
-                                   current_scope=[],
-                                   inputs={},
-                                   scopes={},
-                                   input_names=input_names,
-                                   tensors=tensors)
-
-        for key, val in reversed(tensors.items()):
+        for key, val in reversed(self.tensors.items()):
             lines.append('%{{{}}} = {}'.format(val, key.id))
 
-        self.get_str_lines_from_dict(hierarchy_dict, lines, 0, input_names)
+        self.get_str_lines_from_dict(self.hierarchy_dict, lines, 0, self.input_names)
         mapping = get_correct_hierarchy_map(lines)
         lines = mapping.values()
         return "\n".join(lines)
