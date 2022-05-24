@@ -26,8 +26,8 @@ class Repeat(DataFlowGraph):
         super().__init__(inputs, output, name)
         self.num_repeats = num_repeats
 
-    def dfg_line_representation(self, key, indent):
-        return '\t'*indent + key + " (repeats: {})".format(self.num_repeats) + ':'
+    def dfg_line_representation(self, indent, input_names):
+        return '\t'*indent + self.id + " (repeats: {})".format(self.num_repeats) + ':'
 
 
 def repeat(block, num_repeats=1):
