@@ -1,9 +1,14 @@
-from typing import Iterable
 import re
+from typing import Iterable
+
+from hannah.nas.dataflow.dataflow_utils import (
+    register_scope,
+    reset_nested_counters,
+    scope_nester,
+)
 from hannah.nas.dataflow.op_type import OpType
 from hannah.nas.dataflow.optional_op import OptionalOp
 from hannah.nas.dataflow.tensor_type import TensorType
-from hannah.nas.dataflow.dataflow_utils import register_scope, reset_nested_counters, scope_nester
 
 
 class DataFlowGraph:
@@ -20,12 +25,18 @@ class DataFlowGraph:
         self.hierarchy_dict = {}
         self.input_names = {}
         self.tensors = {}
-        self.get_hierarchical_dict(hierarchy_dict=self.hierarchy_dict,
-                                   current_scope=[],
-                                   inputs={},
-                                   scopes={},
-                                   input_names=self.input_names,
-                                   tensors=self.tensors)
+        self.get_hierarchical_dict(
+            hierarchy_dict=self.hierarchy_dict,
+            current_scope=[],
+            inputs={},
+            scopes={},
+            input_names=self.input_names,
+            tensors=self.tensors,
+        )
+
+    def hierarchy(self):
+        for key, value in self.hierarchy_dict.items():
+            yield (key, value)
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -35,12 +46,12 @@ class DataFlowGraph:
         return self.output[0].output_tensor()
 
     def dfg_line_representation(self, indent, input_names):
-        return '\t'*indent + self.id + ':'
+        return "\t" * indent + self.id + ":"
 
     def get_string(self):
         lines = []
         for key, val in reversed(self.tensors.items()):
-            lines.append('%{{{}}} = {}'.format(val, key.id))
+            lines.append("%{{{}}} = {}".format(val, key.id))
 
         self.get_str_lines_from_dict(self.hierarchy_dict, lines, 0, self.input_names)
         mapping = get_correct_hierarchy_map(lines)
@@ -51,17 +62,23 @@ class DataFlowGraph:
         for key, val in reversed(container.items()):
             if isinstance(key, DataFlowGraph):
                 lines.append(key.dfg_line_representation(indent, input_names))
-                self.get_str_lines_from_dict(val, lines, indent+1, input_names)
+                self.get_str_lines_from_dict(val, lines, indent + 1, input_names)
             elif isinstance(key, OpType):
                 lines.append(key.dfg_line_representation(indent, input_names))
 
-    def insert_scope_to_id(self, inputs, scopes, current_scope, scope_counters, nested_scopes):
+    def insert_scope_to_id(
+        self, inputs, scopes, current_scope, scope_counters, nested_scopes
+    ):
         if self in inputs:
             for i in inputs[self]:
                 current_scope.remove(scopes[i])
                 reset_nested_counters(scopes[i], nested_scopes, scope_counters)
         scopes[self] = register_scope(self.name, scope_counters)
-        self.id = ".".join(current_scope) + ".{}".format(scopes[self]) if current_scope else scopes[self]
+        self.id = (
+            ".".join(current_scope) + ".{}".format(scopes[self])
+            if current_scope
+            else scopes[self]
+        )
         inp = self.inputs[0]
         if inp in inputs:
             inputs[inp].append(self)
@@ -71,9 +88,13 @@ class DataFlowGraph:
         nested_scopes = scope_nester(scopes[self], current_scope, nested_scopes)
         current_scope += [scopes[self]]
         # TODO: Handle multiple outputs
-        self.output[0].insert_scope_to_id(inputs, scopes, current_scope, scope_counters, nested_scopes)
+        self.output[0].insert_scope_to_id(
+            inputs, scopes, current_scope, scope_counters, nested_scopes
+        )
 
-    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
+    def get_hierarchical_dict(
+        self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors
+    ):
         """Recursively extract a dict that describes the
         scope hierarchy
 
@@ -129,7 +150,9 @@ class DataFlowGraph:
             else:
                 current_dict_level[scope] = {}
 
-        self.output[0].get_hierarchical_dict(hierarchy_dict, current_scope, inputs, scopes, input_names, tensors)
+        self.output[0].get_hierarchical_dict(
+            hierarchy_dict, current_scope, inputs, scopes, input_names, tensors
+        )
 
     def __str__(self) -> str:
         return self.get_string()
