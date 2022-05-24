@@ -21,9 +21,9 @@ def int_t(signed: bool = True, bits: int = 8):
     return IntType(signed=signed, bits=bits)
 
 
-def float_t(signed=True, significant_bits=23, exponent_bits=8):
+def float_t(signed=True, significand_bits=23, exponent_bits=8):
     return FloatType(
-        signed=signed, significant_bits=significant_bits, exponent_bits=exponent_bits
+        signed=signed, significand_bits=significand_bits, exponent_bits=exponent_bits
     )
 
 

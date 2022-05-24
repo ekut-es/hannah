@@ -36,13 +36,13 @@ class IntType(DataType):
 
 
 class FloatType(DataType):
-    def __init__(self, signed=True, significant_bits=23, exponent_bits=8):
+    def __init__(self, signed=True, significand_bits=23, exponent_bits=8):
         self.signed = signed
-        self.significant_bits = significant_bits
+        self.significand_bits = significand_bits
         self.exponent_bits = exponent_bits
 
     def bits(self) -> int:
-        bits = self.significant + self.exponent_bits
+        bits = self.significand + self.exponent_bits
         if self.signed:
             bits += 1
 
@@ -55,7 +55,7 @@ class FloatType(DataType):
         # FIXME: calculate correct range
         reserved_bits = 2
         exponent_bias = (2**self.exponent_bits - reserved_bits) / 2
-        max_val = (2 - 2 ** (-self.significant_bits)) * 2 ** (
+        max_val = (2 - 2 ** (-self.significand_bits)) * 2 ** (
             self.exponent_bits - exponent_bias
         )
         min_val = -1 * max_val
