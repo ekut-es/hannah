@@ -27,7 +27,7 @@ class DataFlowGraph:
         return self.output[0].output_tensor()
 
     def dfg_line_representation(self, key, indent):
-        return '\t'*indent + key + ':'
+        return '\t'*indent + key.id + ':'
 
     def get_string(self):
         lines = []
@@ -42,7 +42,7 @@ class DataFlowGraph:
                                    tensors=tensors)
 
         for key, val in reversed(tensors.items()):
-            lines.append('%{{{}}} = {}'.format(val, key))
+            lines.append('%{{{}}} = {}'.format(val, key.id))
 
         self.get_str_lines_from_dict(hierarchy_dict, lines, 0, input_names)
         mapping = get_correct_hierarchy_map(lines)
@@ -55,7 +55,7 @@ class DataFlowGraph:
                 lines.append(self.dfg_line_representation(key, indent))
                 self.get_str_lines_from_dict(val, lines, indent+1, input_names)
             elif isinstance(val, list):
-                lines.append('\t'*indent + '%{{{}}} = {}('.format(input_names[key], key) +
+                lines.append('\t'*indent + '%{{{}}} = {}('.format(input_names[key], key.id) +
                              ', '.join(['%{{{}}}' for _ in range(len(val))]).format(*[input_names[x] for x in val]) +
                              ')')
 
@@ -71,6 +71,7 @@ class DataFlowGraph:
             inputs[inp].append(self)
         else:
             inputs[inp] = [self]
+
         nested_scopes = scope_nester(scopes[self], current_scope, nested_scopes)
         current_scope += [scopes[self]]
         # TODO: Handle multiple outputs
@@ -87,17 +88,17 @@ class DataFlowGraph:
             e.g. {'block.0': {'block.0.conv.0': ..., 'block.0.conv.1': ...}, 'block.1': ...}
         current_scope : list
             list of current scopes in descending order
-            e.g. ['block.0', 'block.0.conv.0', ... ]
+            e.g. [block.0, block.0.conv.0, ... ]
         inputs : dict
             mapping of node -> list of nodes that this node is an input of
             e.g. if out = block1(block0) => {DataFlowGraph(name=block0): [DataFlowGraph(name=block1)]}
         scopes : dict
             mapping of node -> scope name/id
         input_names : dict
-            mapping of node_id -> int counter for input
+            mapping of node -> int counter for input
             different scopes can have the same int-input representation because
             the inputs "trickle down": e.g.
-            {'block.1': 0, 'block.1.conv_relu.1': 0, 'block.1.conv_relu.1.relu': 0}
+            {block.1: 0, block.1.conv_relu.1: 0, block.1.conv_relu.1.relu: 0}
             -> 'block.1' encapsulates 'block.1.conv_relu.1' and that encapsulates
                'block.1.conv_relu.1.relu', and so the input tensor is passed down the scope
         tensors : list
@@ -107,7 +108,7 @@ class DataFlowGraph:
         # e.g. if out = block2(block_1), we know that the scope of block2 must end when we reach block1
         if self in inputs:
             for i in inputs[self]:
-                current_scope.remove(scopes[i])
+                current_scope.remove(i)
 
         scopes[self] = self.id
         # TODO: Support multiple inputs
@@ -119,11 +120,11 @@ class DataFlowGraph:
         else:
             inputs[inp] = [self]
 
-        current_scope += [scopes[self]]
-        cur_scope_str = current_scope[-1]
-        if cur_scope_str not in input_names:
+        current_scope += [self]
+        last_scope = current_scope[-1]
+        if last_scope not in input_names:
             current_max = max(list(input_names.values()) + [0])
-            input_names[cur_scope_str] = current_max
+            input_names[last_scope] = current_max
 
         current_dict_level = hierarchy_dict
         for scope in current_scope:

@@ -33,7 +33,7 @@ class TensorType:
     def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
         if self in inputs:
             for i in inputs[self]:
-                current_scope.remove(scopes[i])
+                current_scope.remove(i)
 
     def insert_scope_to_id(self, inputs, scopes, current_scope, scope_counters, nested_scopes):
         self.id = ".".join(current_scope) + ".{}".format(self.name)

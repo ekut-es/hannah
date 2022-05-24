@@ -22,19 +22,19 @@ class OpType:
             if scope in current_dict_level:
                 current_dict_level = current_dict_level[scope]
 
-        current_dict_level[self.id] = []
+        current_dict_level[self] = []
 
         if self.id not in input_names:
             current_max = max(list(input_names.values()) + [-1])
-            input_names[self.id] = current_max
+            input_names[self] = current_max
 
         for o in self.operands:
-            current_dict_level[self.id].append(o.id)
+            current_dict_level[self].append(o)
             if o.id not in input_names:
                 current_max = max(list(input_names.values()) + [-1])
-                input_names[o.id] = current_max + 1
+                input_names[o] = current_max + 1
                 if isinstance(o, TensorType):
-                    tensors[o.id] = current_max + 1
+                    tensors[o] = current_max + 1
 
             cs = copy(current_scope)
             o.get_hierarchical_dict(hierarchy_dict, cs, inputs, scopes, input_names, tensors)
