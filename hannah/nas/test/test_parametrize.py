@@ -53,7 +53,7 @@ def test_sample_float():
 def test_sample_nested():
     rng = default_rng(seed=321)
     parametrized_test = NestedParametrizedTest(
-        t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng))
+        t=ParametrizedTest(a=IntScalarParameter(min=10, max=11, rng=rng))
     )
     parametrized_test.sample()
 
@@ -76,7 +76,9 @@ def test_set_params():
 
 def test_set_params_nested():
     rng = default_rng(seed=321)
-    parametrized_test = NestedParametrizedTest(t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng)))
+    parametrized_test = NestedParametrizedTest(
+        t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng))
+    )
     other_test_object = ParametrizedTest(a=IntScalarParameter(min=0, max=3, rng=rng))
 
     parametrized_test.set_params(t=other_test_object)
@@ -89,12 +91,12 @@ def test_set_params_nested():
         marker = True
     assert marker
 
-    parametrized_test.set_params(t={'a': 2})
+    parametrized_test.set_params(t={"a": 2})
     assert parametrized_test.t.a.current_value == 2
 
     marker = False
     try:
-        parametrized_test.set_params(t={'a': 5})
+        parametrized_test.set_params(t={"a": 5})
     except Exception:
         marker = True
     assert marker
@@ -115,11 +117,13 @@ def test_instantiate():
     assert instance.a == 16
 
     rng = default_rng(seed=321)
-    parametrized_test = NestedParametrizedTest(t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng)))
+    parametrized_test = NestedParametrizedTest(
+        t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng))
+    )
     other_test_object = ParametrizedTest(a=IntScalarParameter(min=0, max=3, rng=rng))
 
     parametrized_test.set_params(t=other_test_object)
-    parametrized_test.set_params(t={'a': 2})
+    parametrized_test.set_params(t={"a": 2})
 
     instance = parametrized_test.instantiate()
 

@@ -21,9 +21,9 @@ def int_t(signed: bool = True, bits: int = 8):
     return IntType(signed=signed, bits=bits)
 
 
-def float_t(signed=True, significand_bits=23, exponent_bits=8):
+def float_t(signed=True, significant_bits=23, exponent_bits=8):
     return FloatType(
-        signed=signed, significand_bits=significand_bits, exponent_bits=exponent_bits
+        signed=signed, significant_bits=significant_bits, exponent_bits=exponent_bits
     )
 
 
@@ -52,22 +52,13 @@ def tensor(
     memory: Optional[MemoryType] = None,
     name: str = "",
 ):
-    return TensorType(axis=axis, dtype=dtype, quantization=quantization, memory=memory, name=name)
+    return TensorType(
+        axis=axis, dtype=dtype, quantization=quantization, memory=memory, name=name
+    )
 
 
 def batched_image_tensor(dtype=float_t(), name=""):
-    return tensor((axis('n'),
-                   axis('c'),
-                   axis('h'),
-                   axis('w')),
-                  dtype=dtype,
-                  name=name)
-
-
-@dataflow
-def broadcast(input):
-    axis = DefaultInt(0)
-    return OpType("broadcast", input, axis=axis)
+    return tensor((axis("n"), axis("c"), axis("h"), axis("w")), dtype=dtype, name=name)
 
 
 @dataflow
@@ -75,10 +66,14 @@ def conv(input):
     kernel_size = UndefinedInt()
     stride = DefaultInt(1)
     weight = tensor(
-        (axis('o', UndefinedInt()),
-         axis('i', UndefinedInt()),
-         axis('kh', kernel_size),
-         axis('kw', kernel_size)), dtype=IntType())
+        (
+            axis("o", UndefinedInt()),
+            axis("i", UndefinedInt()),
+            axis("kh", kernel_size),
+            axis("kw", kernel_size),
+        ),
+        dtype=IntType(),
+    )
     return OpType("conv", input, weight, stride=stride)
 
 
