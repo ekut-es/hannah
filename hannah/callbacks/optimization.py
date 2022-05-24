@@ -1,6 +1,8 @@
 import logging
+from collections import defaultdict
 from typing import Any, Iterable, Mapping, Union
 
+import pandas as pd
 from pytorch_lightning.callbacks import Callback
 from torch import Tensor
 
@@ -16,6 +18,8 @@ class HydraOptCallback(Callback):
         self.test_values = {}
         self.monitor: List[str] = []
         self.directions: List[int] = []
+
+        self._curves = defaultdict(list)
 
         self._extract_monitor(monitor)
 
@@ -70,6 +74,9 @@ class HydraOptCallback(Callback):
                 self.values[monitor] = callback_metrics[monitor] * direction
 
     def on_validation_end(self, trainer, pl_module):
+        if trainer and trainer.sanity_checking:
+            return
+
         callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
@@ -78,7 +85,17 @@ class HydraOptCallback(Callback):
 
         for monitor, direction in zip(self.monitor, self.directions):
             if monitor in callback_metrics:
-                self.values[monitor] = callback_metrics[monitor] * direction
+                try:
+                    monitor_val = float(callback_metrics[monitor])
+                    directed_monitor_val = monitor_val * direction
+                    if (
+                        monitor not in self.values
+                        or directed_monitor_val < self.values[monitor]
+                    ):
+                        self.values[monitor] = directed_monitor_val
+                    self._curves[monitor].append(monitor_val)
+                except:
+                    pass
 
     def test_result(self):
         return self.test_values
@@ -87,7 +104,6 @@ class HydraOptCallback(Callback):
         return self.val_values
 
     def result(self, dict=False):
-
         return_values = {}
         for key, value in self.values.items():
             if isinstance(value, Tensor):
@@ -101,3 +117,6 @@ class HydraOptCallback(Callback):
             return list(return_values.values())[0]
 
         return return_values
+
+    def result_curve(self) -> pd.DataFrame:
+        return pd.DataFrame.from_dict(self._curves)

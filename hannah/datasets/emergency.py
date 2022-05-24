@@ -83,6 +83,7 @@ class EmergencySirenDataset(AbstractDataset):
         data = load_audio(path, sr=self.samplingrate)
 
         data = torch.from_numpy(data)
+        data = data[:,:self.input_length]
 
         return data, data.shape[0], label, label.shape[0]
 

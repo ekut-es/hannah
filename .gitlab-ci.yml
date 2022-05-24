@@ -240,6 +240,29 @@ run_ml_cloud:
   when: manual
   dependencies: []
 
+run_ml_cloud_progressive_shrinking:
+  stage: run
+  image: ubuntu:latest
+  before_script:
+    - apt update
+    - apt -y install openssh-client
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ML_CLOUD_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  tags:
+    - docker
+  script:
+    - set -e
+    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
+    - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
+    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_progressive_shrinking.sh"
+  when: manual
+  dependencies: []
+
 run_ml_cloud_lidar:
   stage: run
   image: ubuntu:latest
