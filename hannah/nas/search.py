@@ -145,8 +145,6 @@ def run_training(num, config) -> ResultItem:
         os.chdir("..")
     return result
 
-    return opt_callback.result(dict=True)
-
 
 class NASTrainerBase(ABC):
     def __init__(
