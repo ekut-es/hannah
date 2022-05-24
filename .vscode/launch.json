@@ -12,9 +12,74 @@
             "request": "launch",
             "module": "hannah.train",
             "args": [
+                "trainer.limit_train_batches=1.0",
+                "trainer.max_epochs=2",
+                "model=conv-net-trax",
+                "normalizer=fixedpoint",
+                "compression=pruning_only"
+            ]
+        },
+        {
+            "name": "svd",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.svd_train",
+            "args": [
+                "trainer.limit_train_batches=1.0",
+                "trainer.max_epochs=10",
+                "model=conv-net-trax",
+                "svd_rank_compression=4",
+                "output_dir=trained_models/svd_rank4"
+            ]
+        },
+        {
+            "name": "backend",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "trainer.max_epochs=1",
+                "model=conv-net-trax",
+                "clustering=true",
+                "normalizer=fixedpoint",
+                "backend=trax_ut", 
+                "backend.cols=8",
+                "backend.standalone=True",
+                "backend.rtl_simulation=False",
+                "backend.synthesis=False",
+                "backend.postsyn_simulation=False",
+                "backend.power_estimation=False",
+                "backend.num_inferences=1",
+                "backend.period=1000",
+                "backend.macro_type=RTL",
+                "backend.backend_dir=/local/wernerju/tc-resnet8-accelerator",
+                "backend.teda_dir=/local/wernerju/teda"
+            ]
+        }
+            ]
+        },
+        {
+            "name": "quantized",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
                 "trainer.limit_train_batches=0.1",
-                "trainer.max_epochs=3",
-                "model=tc-res8"
+                "trainer.max_epochs=20",
+                "model=conv-net-trax"
+            ]
+        },
+        {
+            "name": "ofa",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "module.num_workers=8",
+                "model=ofa_quant"
             ]
         },
         {

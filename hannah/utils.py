@@ -9,8 +9,9 @@ import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, List
 
+import hydra
 import numpy as np
 import nvsmi
 import pytorch_lightning
@@ -20,6 +21,7 @@ from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
 from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 from pytorch_lightning.callbacks import (
+    Callback,
     DeviceStatsMonitor,
     GPUStatsMonitor,
     LearningRateMonitor,
@@ -33,11 +35,11 @@ from torchvision.datasets.utils import (
     list_files,
 )
 
-import hydra
-
+from .callbacks.clustering import kMeans
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 from .callbacks.summaries import MacSummaryCallback
+from .callbacks.svd_compress import SVD
 
 try:
     import lsb_release  # pytype: disable=import-error
@@ -217,7 +219,7 @@ def auto_select_gpus(gpus=1):
 
 
 def common_callbacks(config: DictConfig):
-    callbacks = []
+    callbacks: List[Callback] = []
 
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
@@ -245,16 +247,36 @@ def common_callbacks(config: DictConfig):
         stop_callback = hydra.utils.instantiate(config.early_stopping)
         callbacks.append(stop_callback)
 
-    if config.get("pruning", None):
-        pruning_scheduler = PruningAmountScheduler(
-            config.pruning.amount, config.trainer.max_epochs
-        )
-        pruning_config = dict(config.pruning)
-        del pruning_config["amount"]
-        pruning_callback = hydra.utils.instantiate(
-            pruning_config, amount=pruning_scheduler
-        )
-        callbacks.append(pruning_callback)
+    if config.get("compression", None):
+        config_compression = config.get("compression")
+        if config_compression.get("pruning", None):
+            pruning_scheduler = PruningAmountScheduler(
+                config.compression.pruning.amount, config.trainer.max_epochs
+            )
+            pruning_config = dict(config.compression.pruning)
+            del pruning_config["amount"]
+            pruning_callback = hydra.utils.instantiate(
+                pruning_config, amount=pruning_scheduler
+            )
+            callbacks.append(pruning_callback)
+
+        if config_compression.get("decomposition", None):
+            compress_after_epoch = config.trainer.max_epochs
+            if (
+                compress_after_epoch % 2 == 1
+            ):  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
+                compress_after_epoch -= 1
+            svd = SVD(
+                rank_compression=config.compression.decomposition.rank_compression,
+                compress_after=compress_after_epoch,
+            )
+            callbacks.append(svd)
+
+        if config_compression.get("clustering", None):
+            kmeans = kMeans(
+                cluster=config.compression.clustering.amount,
+            )
+            callbacks.append(kmeans)
 
     return callbacks
 

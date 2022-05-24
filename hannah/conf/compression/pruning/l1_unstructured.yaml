@@ -1,0 +1,13 @@
+_target_: hannah.callbacks.pruning.FilteredPruning
+pruning_fn: l1_unstructured
+amount: 0.1
+verbose: true
+parameter_names: null
+use_global_unstructured: true
+apply_pruning: true
+make_pruning_permanent: true
+use_lottery_ticket_hypothesis: false
+resample_parameters: false
+pruning_dim: null
+pruning_norm: null
+prune_on_train_epoch_end: true

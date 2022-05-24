@@ -3,15 +3,14 @@ import logging
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
-
-from torchmetrics.functional import accuracy
-from hydra.utils import instantiate, get_class
+from hydra.utils import get_class, instantiate
 from torchmetrics import ConfusionMatrix
-from ..utils import set_deterministic
+from torchmetrics.functional import accuracy, f1_score, precision, recall
 
+from ..utils import set_deterministic
 from .base import ClassifierModule
 
-logger = logging.getLogger(__name__)
+msglogger = logging.getLogger(__name__)
 
 
 class ImageClassifierModule(ClassifierModule):
@@ -33,7 +32,7 @@ class ImageClassifierModule(ClassifierModule):
 
         self.num_classes = len(self.train_set.class_names)
 
-        logger.info("Setting up model %s", self.hparams.model.name)
+        msglogger.info("Setting up model %s", self.hparams.model.name)
         self.model = instantiate(
             self.hparams.model,
             labels=self.num_classes,
@@ -106,9 +105,24 @@ class ImageClassifierModule(ClassifierModule):
         preds = torch.argmax(logits, dim=1)
         acc = accuracy(preds, y.squeeze())
 
+        precision_micro = precision(preds, y)
+        recall_micro = recall(preds, y)
+        f1_micro = f1_score(preds, y)
+        precision_macro = precision(
+            preds, y, num_classes=self.num_classes, average="macro"
+        )
+        recall_macro = recall(preds, y, num_classes=self.num_classes, average="macro")
+        f1_macro = f1_score(preds, y, num_classes=self.num_classes, average="macro")
+
         self.log("val_loss", loss)
-        self.log("val_error", 1 - acc)
-        self.log("val_accuracy", acc)
+        self.log("val_error", 1 - acc, sync_dist=True)
+        self.log("val_accuracy", acc, sync_dist=True)
+        self.log("val_precision_micro", precision_micro, sync_dist=True)
+        self.log("val_recall_micro", recall_micro, sync_dist=True)
+        self.log("val_f1_micro", f1_micro, sync_dist=True)
+        self.log("val_precision_macro", precision_macro, sync_dist=True)
+        self.log("val_recall_macro", recall_macro, sync_dist=True)
+        self.log("val_f1_macro", f1_macro, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -118,12 +132,27 @@ class ImageClassifierModule(ClassifierModule):
         softmax = F.softmax(logits)
         acc = accuracy(preds, y.squeeze())
 
+        precision_micro = precision(preds, y)
+        recall_micro = recall(preds, y)
+        f1_micro = f1_score(preds, y)
+        precision_macro = precision(
+            preds, y, num_classes=self.num_classes, average="macro"
+        )
+        recall_macro = recall(preds, y, num_classes=self.num_classes, average="macro")
+        f1_macro = f1_score(preds, y, num_classes=self.num_classes, average="macro")
+
         with set_deterministic(False):
             self.test_confusion(preds, y)
 
         self.log("test_loss", loss)
-        self.log("test_error", 1 - acc)
-        self.log("test_accuracy", acc)
+        self.log("test_error", 1 - acc, sync_dist=True)
+        self.log("test_accuracy", acc, sync_dist=True)
+        self.log("test_precision_micro", precision_micro, sync_dist=True)
+        self.log("test_recall_micro", recall_micro, sync_dist=True)
+        self.log("test_f1_micro", f1_micro, sync_dist=True)
+        self.log("test_precision_macro", precision_macro, sync_dist=True)
+        self.log("test_recall_macro", recall_macro, sync_dist=True)
+        self.log("test_f1_macro", f1_macro, sync_dist=True)
 
     def train_dataloader(self):
         return self._get_dataloader(self.train_set, shuffle=True)

@@ -47,10 +47,10 @@ test_python_38:
     - poetry run pydoc-markdown --build --site-dir _build
   tags:
     - docker
-    - nfs
   interruptible: true
   only:
     - master
+  dependencies: []
 
 test_tvm:
   stage: test
@@ -77,12 +77,21 @@ test_python_39:
   image: python:3.9
   script:
     - set -e
-    - poetry run python3 -m pytest -v --cov=hannah test
-    - poetry run pydoc-markdown --build --site-dir _build
+    - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
+    - export PYTHONPATH=$PWD
+    - export COVERAGE_PROCESS_START=$PWD/.coveragerc
+    - poetry run coverage run --source hannah -m pytest test
+    - unset PYTHONPATH
+    - unset COVERAGE_PROCESS_START
+    - poetry run coverage report
+    - poetry run coverage xml
   tags:
     - docker
-    - nfs
   interruptible: true
+  artifacts:
+    reports:
+      cobertura: coverage.xml
+  dependencies: []
 
 build_docs:
   stage: deploy
@@ -176,7 +185,7 @@ deploy_image:
     - privileged
   script:
     - cd ml_cloud
-    - scp ml_cloud.sif cgerum05@134.2.168.52:/home/bringmann/cgerum05
+    - scp ml_cloud.sif cgerum05@134.2.168.52:/mnt/qb/work/bringmann/cgerum05
   dependencies:
     - build_image
     - test_image
@@ -229,7 +238,7 @@ run_ml_cloud:
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_kws.sh"
   when: manual
-
+  dependencies: []
 
 run_ml_cloud_lidar:
   stage: run
@@ -252,3 +261,17 @@ run_ml_cloud_lidar:
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_lidar.sh"
   when: manual
+  dependencies: []
+
+
+run_sca:
+  stage: build
+  image: python:3.9
+  script:
+    - set -e
+    - poetry run pre-commit install
+    - poetry run pre-commit run -a
+  tags:
+    - docker
+  interruptible: true
+  allow_failure: true

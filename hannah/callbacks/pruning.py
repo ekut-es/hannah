@@ -1,12 +1,10 @@
 import logging
-
 from typing import Optional
 
 import tabulate
-
 import torch
-from torch.nn import BatchNorm1d
 from pytorch_lightning.callbacks import ModelPruning
+from torch.nn import BatchNorm1d
 
 
 class PruningAmountScheduler:
@@ -28,6 +26,28 @@ class FilteredPruning(ModelPruning):
         # FIXME: calling setup here breaks assumptions about call order and will lead to setup being called twice
         pl_module.setup("fit")
         super().on_before_accelerator_backend_setup(trainer, pl_module)
+
+    def _run_pruning(self, current_epoch):
+        prune = (
+            self._apply_pruning(current_epoch)
+            if callable(self._apply_pruning)
+            else self._apply_pruning
+        )
+        amount = self.amount(current_epoch) if callable(self.amount) else self.amount
+        if not prune or not amount:
+            return
+
+        from hannah.utils import set_deterministic
+
+        with set_deterministic(False):
+            self.apply_pruning(amount)
+
+        if (
+            self._use_lottery_ticket_hypothesis(current_epoch)
+            if callable(self._use_lottery_ticket_hypothesis)
+            else self._use_lottery_ticket_hypothesis
+        ):
+            self.apply_lottery_ticket_hypothesis()
 
     def filter_parameters_to_prune(self, parameters_to_prune=None):
         """

@@ -22,4 +22,13 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "cSpell.words": [
+        "accum",
+        "hparams",
+        "hyperparams",
+        "onnx",
+        "opset",
+        "qconfig",
+        "tablefmt"
+    ]
 }

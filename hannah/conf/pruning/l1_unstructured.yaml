@@ -1,6 +1,0 @@
-
-
-_target_: hannah.callbacks.pruning.FilteredPruning
-pruning_fn: l1_unstructured
-amount: 0.1
-verbose: true

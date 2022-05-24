@@ -1,0 +1,4 @@
+defaults:
+  - pruning: l1_unstructured
+  - decomposition: null
+  - clustering: null
