@@ -39,8 +39,6 @@ class DataFlowGraph:
                                    inputs={},
                                    scopes={},
                                    input_names=input_names,
-                                   nested_scopes={},
-                                   scope_counters={},
                                    tensors=tensors)
 
         for key, val in reversed(tensors.items()):
@@ -78,14 +76,44 @@ class DataFlowGraph:
         # TODO: Handle multiple outputs
         self.output[0].insert_scope_to_id(inputs, scopes, current_scope, scope_counters, nested_scopes)
 
-    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors):
+    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
+        """Recursively extract a dict that describes the
+        scope hierarchy
+
+        Parameters
+        ----------
+        hierarchy_dict : dict
+            describes the scope hierarchy
+            e.g. {'block.0': {'block.0.conv.0': ..., 'block.0.conv.1': ...}, 'block.1': ...}
+        current_scope : list
+            list of current scopes in descending order
+            e.g. ['block.0', 'block.0.conv.0', ... ]
+        inputs : dict
+            mapping of node -> list of nodes that this node is an input of
+            e.g. if out = block1(block0) => {DataFlowGraph(name=block0): [DataFlowGraph(name=block1)]}
+        scopes : dict
+            mapping of node -> scope name/id
+        input_names : dict
+            mapping of node_id -> int counter for input
+            different scopes can have the same int-input representation because
+            the inputs "trickle down": e.g.
+            {'block.1': 0, 'block.1.conv_relu.1': 0, 'block.1.conv_relu.1.relu': 0}
+            -> 'block.1' encapsulates 'block.1.conv_relu.1' and that encapsulates
+               'block.1.conv_relu.1.relu', and so the input tensor is passed down the scope
+        tensors : list
+            list of input tensors collected during traversal for more convenient
+            listing later on
+        """
+        # e.g. if out = block2(block_1), we know that the scope of block2 must end when we reach block1
         if self in inputs:
             for i in inputs[self]:
                 current_scope.remove(scopes[i])
 
         scopes[self] = self.id
+        # TODO: Support multiple inputs
         inp = self.inputs[0]
 
+        # TODO: move to extra class
         if inp in inputs:
             inputs[inp].append(self)
         else:
@@ -104,13 +132,13 @@ class DataFlowGraph:
             else:
                 current_dict_level[scope] = {}
 
-        self.output[0].get_hierarchical_dict(hierarchy_dict, current_scope, inputs, scopes, input_names, nested_scopes, scope_counters, tensors)
+        self.output[0].get_hierarchical_dict(hierarchy_dict, current_scope, inputs, scopes, input_names, tensors)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.get_string()
 
     def __repr__(self) -> str:
-        return str(self)
+        return "DataFlowGraph(id={})".format(self.id)
 
 
 def dataflow(func):
