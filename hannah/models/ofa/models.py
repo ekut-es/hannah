@@ -464,6 +464,7 @@ class OFAModel(nn.Module):
             self.sampling_max_depth_step > 0
             or self.sampling_max_kernel_step > 0
             or self.sampling_max_width_step > 0
+            or self.sampling_max_grouping_step > 0
         ) and not self.eval_mode:
             self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
@@ -549,6 +550,17 @@ class OFAModel(nn.Module):
                 choice = conv.pick_random_group_index()
                 # conv.pick_group_index(new_grouping_step)
                 state["grouping_steps"].append(choice)
+
+        if self.elastic_grouping_allowed:
+            for conv in self.elastic_kernel_convs:
+                # pick an available kernel index for every elastic kernel conv, independently.
+                max_available_sampling_step = min(
+                    self.sampling_max_grouping_step + 1,
+                    conv.get_available_grouping_steps(),
+                )
+                new_grouping_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_group_index(new_grouping_step)
+                state["grouping_steps"].append(new_grouping_step)
 
         if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
@@ -770,6 +782,13 @@ class OFAModel(nn.Module):
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_dilation_size",
+            type_selection=elastic_conv_type,
+        )
+    # reset all group sizes to their max value
+    def reset_all_group_sizes(self):
+        return call_function_from_deep_nested(
+            input=self.conv_layers,
+            function="reset_group_size",
             type_selection=elastic_conv_type,
         )
 

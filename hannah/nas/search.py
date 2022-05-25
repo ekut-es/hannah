@@ -264,7 +264,6 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
 
                         self.optimizer.tell_result(parameters, result)
 
-
 # TODO MR 82348392 check Calls of that!
 class OFANasTrainer(NASTrainerBase):
     def __init__(
@@ -346,6 +345,7 @@ class OFANasTrainer(NASTrainerBase):
             _recursive_=False,
         )
         model.setup("fit")
+        # HIER CHECKEN TODO ofa_model.ofa_steps_groups value !!!
         ofa_model = model.model
 
         self.kernel_step_count = ofa_model.ofa_steps_kernel

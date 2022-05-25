@@ -82,6 +82,20 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         # initially, the target size is the smallest dilation (1)
         self.target_dilation_index: int = 0
 
+        ###  MR01
+        ## TODO: what if input/ output is not dividible by groups ?
+        # sort available dilation sizes from largest to smallest (descending order)
+        groups.sort(reverse=False)
+        # make sure 0 is not set as dilation size. Must be at least 1
+        if 0 in groups:
+            groups.remove(0)
+        self.group_sizes: List[int] = groups
+        # after sorting dilation sizes, the maximum and minimum size available are the first and last element
+        self.max_group_size: int = groups[-1]
+        self.min_group_size: int = groups[0]
+        ###
+        self.target_group_index: int = 0
+
         self.in_channels: int = in_channels
         self.out_channels: int = out_channels
 
