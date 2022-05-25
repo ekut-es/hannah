@@ -1,19 +1,18 @@
-from hannah.models.factory.act import DummyActivation
-from hannah.models.factory.factory import (
-    MajorBlockConfig,
-    NetworkFactory,
-    ActConfig,
-    ELUConfig,
-    HardtanhConfig,
-    MinorBlockConfig,
-    BNConfig,
-)
-
-from hannah.models.factory.qat import ConvBnReLU2d
-
+import torch
 import torch.nn as nn
 import torch.quantization as quantization
-import torch
+
+from hannah.models.factory.act import DummyActivation
+from hannah.models.factory.factory import (
+    ActConfig,
+    BNConfig,
+    ELUConfig,
+    HardtanhConfig,
+    MajorBlockConfig,
+    MinorBlockConfig,
+    NetworkFactory,
+)
+from hannah.models.factory.qat import ConvBnReLU2d
 
 
 def test_act():

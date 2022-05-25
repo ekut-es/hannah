@@ -1,8 +1,8 @@
 # Decomposition
 
 ## Singular value decomposition (SVD)
-In a CNN, the SVD can be applied to a fully connected layer, corresponding to a matrix $A$, resulting in the composition of two fully connected layers of lower dimension associated to the matrices $U'$ and $\Sigma' V^{T'}$. If $\Sigma$ is truncated to a rank $r=k$, dimensions change to $U'\in \mathbb{R}^{m \times k}$, $\Sigma' \in \mathbb{R}^{k \times k}$ and $V^{T'}\in \mathbb{R}^{k \times n}$. 
-Therefore, the SVD is applied to all weights of the linear layers, resulting in the decomposition of matrices. Subsequently, the weight matrices of the fully connected layers are compressed with a fixed rank $r$. Afterwards, the model is restructured, resulting in two smaller fully connected layers instead of one larger fully connected layer. 
+In a CNN, the SVD can be applied to a fully connected layer, corresponding to a matrix $A$, resulting in the composition of two fully connected layers of lower dimension associated to the matrices $U'$ and $\Sigma' V^{T'}$. If $\Sigma$ is truncated to a rank $r=k$, dimensions change to $U'\in \mathbb{R}^{m \times k}$, $\Sigma' \in \mathbb{R}^{k \times k}$ and $V^{T'}\in \mathbb{R}^{k \times n}$.
+Therefore, the SVD is applied to all weights of the linear layers, resulting in the decomposition of matrices. Subsequently, the weight matrices of the fully connected layers are compressed with a fixed rank $r$. Afterwards, the model is restructured, resulting in two smaller fully connected layers instead of one larger fully connected layer.
 
 SVD-based compression (in combination with pruning and clustering) can be invoked by:
 

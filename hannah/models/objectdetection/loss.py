@@ -1,9 +1,9 @@
 # Loss functions
 
+import math
+
 import torch
 import torch.nn as nn
-
-import math
 
 
 def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7):
@@ -37,7 +37,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
         )  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
         if CIoU or DIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
-            c2 = cw ** 2 + ch ** 2 + eps  # convex diagonal squared
+            c2 = cw**2 + ch**2 + eps  # convex diagonal squared
             rho2 = (
                 (b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2
                 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2
@@ -47,7 +47,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
             elif (
                 CIoU
             ):  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
-                v = (4 / math.pi ** 2) * torch.pow(
+                v = (4 / math.pi**2) * torch.pow(
                     torch.atan(w2 / h2) - torch.atan(w1 / h1), 2
                 )
                 with torch.no_grad():

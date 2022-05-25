@@ -1,8 +1,10 @@
-from typing import List
-import torch.nn as nn
-import numpy as np
 import logging
+from typing import List
+
+import numpy as np
 import torch
+import torch.nn as nn
+
 from ..utilities import flatten_module_list
 
 
@@ -431,7 +433,7 @@ class SequenceDiscovery:
         return new_discovery
 
 
+from ..type_utils import elastic_forward_type
+
 # imports are located at the bottom to circumvent circular dependency import issues
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
-
-from ..type_utils import elastic_forward_type

@@ -1,8 +1,8 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+import numpy as np
 import scipy.io.wavfile as wav
 import torch
+from matplotlib.gridspec import GridSpec
 
 # Taken from Paper Low-activity supervised convolutional spiking neural networks applied to speech commands recognition Arxiv:2011.06846
 

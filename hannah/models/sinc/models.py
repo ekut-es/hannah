@@ -1,11 +1,10 @@
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn.modules.utils import _single
-from torch.autograd import Variable
 import torch.nn.functional as F
-
-import numpy as np
-import matplotlib.pyplot as plt
+from torch.autograd import Variable
+from torch.nn.modules.utils import _single
 
 from ..utils import next_power_of2
 

@@ -1,21 +1,20 @@
+import logging
 import os
-import sys
 import random
 import subprocess
+import sys
 import threading
-import logging
+import xml.etree.ElementTree as ET
+
 import numpy as np
+import scipy.stats as stats
+from imagecorruptions import corrupt
+from PIL import Image
 
 import albumentations as A
-
-from imagecorruptions import corrupt
-import xml.etree.ElementTree as ET
-from PIL import Image
 from hannah.datasets.base import DatasetType
-from hannah.modules.augmentation.bordersearch import Parameter, ParameterRange
-import scipy.stats as stats
-
 from hannah.datasets.Kitti import Kitti
+from hannah.modules.augmentation.bordersearch import Parameter, ParameterRange
 
 
 class XmlAugmentationParser:

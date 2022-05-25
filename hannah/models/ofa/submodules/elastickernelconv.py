@@ -1,17 +1,16 @@
 import copy
-from typing import List
-import torch.nn as nn
-import torch.nn.functional as nnf
 import logging
 import math
-import torch
+from typing import List
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as nnf
+
+from ..utilities import conv1d_get_padding
 from .elasticBase import ElasticBase1d
-from ..utilities import (
-    conv1d_get_padding,
-)
-from .elasticchannelhelper import SequenceDiscovery
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
+from .elasticchannelhelper import SequenceDiscovery
 from .elasticLinear import ElasticPermissiveReLU
 
 

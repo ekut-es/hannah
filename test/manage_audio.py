@@ -1,18 +1,17 @@
 from __future__ import print_function
+
 import argparse
+import math
 import os
 import random
 import sys
 import wave
-import math
 
 import librosa
 import numpy as np
-
 import pyaudio
 
-
-from .process_audio import preprocess_audio, calculate_feature_shape
+from .process_audio import calculate_feature_shape, preprocess_audio
 
 
 def set_speech_format(f):

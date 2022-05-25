@@ -23,9 +23,10 @@
 #  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # *****************************************************************************
+import math
+
 import torch
 import torch.nn as nn
-import math
 
 
 class Conv(nn.Module):
@@ -122,8 +123,8 @@ class WaveNet(nn.Module):
             self.dilate_layers.append(in_layer)
             for j in range(self.non_causal_layers_per_layer):
                 non_causal_layer = nn.Conv1d(
-                    (2 * self.n_residual_channels // (2 ** j)),
-                    (self.n_residual_channels // (2 ** j)),
+                    (2 * self.n_residual_channels // (2**j)),
+                    (self.n_residual_channels // (2**j)),
                     kernel_size=2,
                 )
 

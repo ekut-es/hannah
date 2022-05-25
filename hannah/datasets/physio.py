@@ -1,21 +1,20 @@
-import os
-import hashlib
-import sys
 import csv
+import hashlib
+import os
 import pickle
-import wfdb
+import sys
+from collections import defaultdict
+from enum import Enum
 
-import torchaudio
 import numpy as np
 import scipy.signal as signal
 import torch
 import torch.utils.data as data
+import torchaudio
+import wfdb
 
-from enum import Enum
-from collections import defaultdict
-
+from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
-from ..utils import list_all_files, extract_from_download_cache
 
 
 class PhysioDataset(AbstractDataset):
@@ -219,7 +218,7 @@ class PhysioCincDataset(PhysioDataset):
             subpath = os.path.join(folder, subfolder)
             for filename in os.listdir(subpath):
                 path = os.path.join(folder, subfolder, filename)
-                max_no_files = 2 ** 27 - 1
+                max_no_files = 2**27 - 1
                 bucket = int(hashlib.sha1(path.encode()).hexdigest(), 16)
                 bucket = (bucket % (max_no_files + 1)) * (100.0 / max_no_files)
                 if bucket < dev_pct:
@@ -414,7 +413,7 @@ class AtrialFibrillationDataset(PhysioDataset):
             subpath = os.path.join(folder, subfolder)
             for filename in os.listdir(subpath):
                 path = os.path.join(folder, subfolder, filename)
-                max_no_files = 2 ** 27 - 1
+                max_no_files = 2**27 - 1
                 bucket = int(hashlib.sha1(path.encode()).hexdigest(), 16)
                 bucket = (bucket % (max_no_files + 1)) * (100.0 / max_no_files)
                 if bucket < dev_pct:

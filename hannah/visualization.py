@@ -1,6 +1,6 @@
-import torch
-import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
+import torch
 
 
 class LogActDistributionHook:
