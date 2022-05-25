@@ -29,7 +29,7 @@ validate_output: False
 
 hydra:
     searchpath:
-      - file://${oc.env:PWD}/configs
+      - file://${oc.env:PWD,.}/configs
     run:
       dir: ${output_dir}/${experiment_id}/${model.name}/
     sweep:
