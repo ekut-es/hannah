@@ -169,7 +169,8 @@ def create(
 
 
 # build a sequence from a list of minor block configurations
-## here exclude quant for now
+# here exclude quant for now
+
 def create_minor_block_sequence(
     blocks,
     in_channels,
@@ -221,11 +222,12 @@ def create_minor_block(
     new_block_out_channels = getattr(block_config, "out_channels", 1)
 
     #  TODO MR 122
-    #  this blocks needs to be deleted after testing
+    #  TODO this blocks needs to be deleted after testing
+    #  TODO check if the values match with input and output values
 
-    block_config.grouping_sizes : List[int] = [2]
+    #block_config.grouping_sizes : List[int] = [2]
+    # logging.info("Grouping Sizes: {block_config.grouping_sizes}")
     # hardcoded
-
 
     if "conv1d" in block_config.target:
         out_channels = block_config.out_channels
@@ -264,7 +266,7 @@ def create_minor_block(
             key += "norm"
         if block_config.get("act", False):
             key += "act"
-        #if block_config.get("quant", False):
+        # if block_config.get("quant", False):
         # TODO reset this
         # key += "quant"
         # parameter["qconfig"] = qconfig
@@ -462,7 +464,6 @@ class OFAModel(nn.Module):
             self.sampling_max_depth_step > 0
             or self.sampling_max_kernel_step > 0
             or self.sampling_max_width_step > 0
-            or self.sampling_max_grouping_step > 0
         ) and not self.eval_mode:
             self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
@@ -533,17 +534,21 @@ class OFAModel(nn.Module):
                 new_dilation_step = self.get_random_step(max_available_sampling_step)
                 conv.pick_dilation_index(new_dilation_step)
                 state["dilation_steps"].append(new_dilation_step)
-
+        # TODO hier reingrätschen 19052022 - ist das richtig implementiert ?
         if self.elastic_grouping_allowed:
             for conv in self.elastic_kernel_convs:
-                # pick an available kernel index for every elastic kernel conv, independently.
-                max_available_sampling_step = min(
-                    self.sampling_max_grouping_step + 1,
-                    conv.get_available_grouping_steps(),
-                )
-                new_grouping_step = self.get_random_step(max_available_sampling_step)
-                conv.pick_group_index(new_grouping_step)
-                state["grouping_steps"].append(new_grouping_step)
+                # pick an available grouping index for every elastic kernel conv, independently.
+                # TODO turn it to max
+                # max_available_sampling_step = min(
+                #     self.sampling_max_grouping_step + 1,
+                #     conv.get_available_grouping_steps(),
+                # )
+                # new_grouping_step = self.get_random_step(max_available_sampling_step)
+                # fix für warmup, auf alles
+                #
+                choice = conv.pick_random_group_index()
+                # conv.pick_group_index(new_grouping_step)
+                state["grouping_steps"].append(choice)
 
         if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
@@ -635,7 +640,7 @@ class OFAModel(nn.Module):
             self.elastic_kernel_convs[i].pick_kernel_index(kernel_steps[i])
         for i in range(len(width_steps)):
             self.elastic_channel_helpers[i].set_channel_step(width_steps[i])
-
+        # TODO MR 389732 Hier anfügen?
         return True
 
     def build_validation_model(self):
@@ -767,6 +772,7 @@ class OFAModel(nn.Module):
             function="reset_dilation_size",
             type_selection=elastic_conv_type,
         )
+
     # reset all group sizes to their max value
     def reset_all_group_sizes(self):
         return call_function_from_deep_nested(
@@ -783,7 +789,7 @@ class OFAModel(nn.Module):
             type_selection=elastic_conv_type,
         )
 
-    ## TODO MR03
+    # TODO MR03
     # step all elastic groups within the model down by one, if possible
     def step_down_all_groups(self):
         return call_function_from_deep_nested(
@@ -791,7 +797,6 @@ class OFAModel(nn.Module):
             function="step_down_group_size",
             type_selection=elastic_conv_type,
         )
-
 
     # go to a specific kernel step
     def go_to_kernel_step(self, step: int):

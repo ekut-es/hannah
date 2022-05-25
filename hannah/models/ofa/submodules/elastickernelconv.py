@@ -55,6 +55,9 @@ class ElasticConv1d(ElasticBase1d):
         grouping = self.get_group_size()
         # MR 23123
         # !!! TODO forwards anpassen !!!
+        # TODO aufpassen, und mit create vergleichen
+        # adjust the kernel if grouping is done
+        # kernel_a = self.adjust_weights_for_grouping(kernel, grouping)
         return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
 
     # return a normal conv1d equivalent to this module in the current state
@@ -142,7 +145,7 @@ class ElasticConvReLu1d(ElasticBase1d):
             kernel_size=kernel_size,
             stride=self.stride,
             padding=padding,
-            dilation=dilation,
+            dilation_sizes=dilation,
             bias=False,
             groups=grouping
         )
@@ -316,7 +319,7 @@ class ConvRelu1d(nn.Conv1d):
             kernel_size=kernel_size,
             stride=stride,
             padding=padding,
-            dilation_sizes=dilation_sizes,
+            dilation=dilation_sizes,
             groups=groups,
             bias=bias,
         )
@@ -362,6 +365,8 @@ class ConvBn1d(nn.Conv1d):
         return self.bn(super(ConvBn1d, self).forward(input))
 
 # TODO MR 492 notwendig hier auch zu intervenieren ?
+
+##  TODO RELU anpassen, Gewichte, grouping ?
 
 class ConvBnReLu1d(ConvBn1d):
     def __init__(

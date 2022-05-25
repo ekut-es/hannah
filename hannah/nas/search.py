@@ -264,6 +264,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
 
                         self.optimizer.tell_result(parameters, result)
 
+
 # TODO MR 82348392 check Calls of that!
 class OFANasTrainer(NASTrainerBase):
     def __init__(
@@ -304,6 +305,8 @@ class OFANasTrainer(NASTrainerBase):
         self.elastic_grouping_allowed = elastic_grouping_allowed
         # TODO MR 4920 delete this line
         self.elastic_grouping_allowed = True
+        self.epochs_grouping_step = 10
+
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
         self.random_eval_number = random_eval_number
@@ -329,7 +332,6 @@ class OFANasTrainer(NASTrainerBase):
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
         self.config = config
-        # TODO what is config exactly ?
         # adding group_step_count
         # trainer will be initialized by rebuild_trainer
         self.trainer = None
@@ -344,14 +346,12 @@ class OFANasTrainer(NASTrainerBase):
             _recursive_=False,
         )
         model.setup("fit")
-        # HIER CHECKEN TODO ofa_model.ofa_steps_groups value !!!
         ofa_model = model.model
 
         self.kernel_step_count = ofa_model.ofa_steps_kernel
         self.depth_step_count = ofa_model.ofa_steps_depth
         self.width_step_count = ofa_model.ofa_steps_width
         self.dilation_step_count = ofa_model.ofa_steps_dilation
-        ## TODO MR04
         self.grouping_step_count = ofa_model.ofa_steps_grouping
 
         ofa_model.elastic_kernels_allowed = self.elastic_kernels_allowed
@@ -363,6 +363,7 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
         logging.info("Width Steps: %d", self.width_step_count)
+        logging.info("Grouping Steps: %d", self.grouping_step_count)
 
         self.submodel_metrics_csv = ""
         self.random_metrics_csv = ""
@@ -409,7 +410,8 @@ class OFANasTrainer(NASTrainerBase):
         self.train_elastic_dilation(model, ofa_model)
         self.train_elastic_depth(model, ofa_model)
         self.train_elastic_width(model, ofa_model)
-        #self.train_elastic_grouping(model, ofa_model)
+        # MR 218912
+        self.train_elastic_grouping(model, ofa_model)
 
         if self.evaluate:
             self.eval_model(model, ofa_model)
@@ -540,7 +542,6 @@ class OFANasTrainer(NASTrainerBase):
                 self.trainer.fit(model)
             logging.info("OFA completed dilation matrices.")
 
-    # TODO MR2984029 check if that works
     def train_elastic_grouping(self, model, ofa_model):
         """
         > The function trains the model for a number of epochs, then adds a group
@@ -550,8 +551,6 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        # MR0789
-        # TODO: set self.elastic_group_allowed
         if self.elastic_grouping_allowed == True:
             # train elastic groups
             for current_grouping_step in range(self.grouping_step_count):
@@ -559,13 +558,12 @@ class OFANasTrainer(NASTrainerBase):
                     # step 0 is the full model, and was processed during warm-up
                     continue
                 # add a group step
-                # TODO Callee progressive_shrinking_add_group()
                 ofa_model.progressive_shrinking_add_group()
                 self.rebuild_trainer(
-                    f"kernel_{current_grouping_step}", self.epochs_grouping_step
+                    f"group_{current_grouping_step}", self.epochs_grouping_step
                 )
                 self.trainer.fit(model)
-            logging.info("OFA completed dilation matrices.")
+            logging.info("OFA completed grouping matrices.")
 
     def eval_elastic_width(
         self,
@@ -805,12 +803,12 @@ class OFANasTrainer(NASTrainerBase):
         model.reset_all_group_sizes()
         method = method_stack[method_index]
         #TODO group step count oben anpassen
-        for current_group_step in range(self.group_step_count):
+        for current_group_step in range(self.grouping_step_count):
             if current_group_step > 0:
                 # iteration 0 is the full model with no stepping
                 model.step_down_all_groups()
 
-            trainer_path_tmp = trainer_path + f"K {current_group_step}, "
+            trainer_path_tmp = trainer_path + f"G {current_group_step}, "
             loginfo_output_tmp = loginfo_output + f"Group {current_group_step}, "
             metrics_output_tmp = metrics_output + f"{current_group_step}, "
 
@@ -897,7 +895,7 @@ class OFANasTrainer(NASTrainerBase):
         if self.elastic_depth_allowed:
             eval_methods.append(self.eval_elatic_depth)
 
-        if self.elastic_depth_allowed:
+        if self.elastic_grouping_allowed:
             eval_methods.append(self.eval_elastic_grouping)
 
         if len(eval_methods) > 0:
@@ -955,6 +953,13 @@ class OFANasTrainer(NASTrainerBase):
                 selected_dilations_string = str(selected_dilations).replace(",", ";")
                 metrics_output += f" {selected_dilations_string}, "
                 trainer_path += f"Dils {selected_dilations}, "
+
+            # TODO MR 3892 grouping testing; rienschauen wieso 0,0,0,0
+            if self.elastic_grouping_allowed:
+                selected_groups = random_state["grouping_steps"]
+                selected_groups_string = str(selected_groups).replace(",", ";")
+                metrics_output += f" {selected_groups_string}, "
+                trainer_path += f"Gs {selected_groups_string}, "
 
             if self.elastic_depth_allowed:
                 selected_depth = random_state["depth_step"]

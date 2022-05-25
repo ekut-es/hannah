@@ -140,6 +140,7 @@ def get_instances_from_deep_nested(input, type_selection: type = None):
 
 
 def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter):
+    # HIER KNALLTS
     # out_channel count will be length in dim 0
     out_channel_count = len(weights)
     # in_channel count will be length in second dim
@@ -185,3 +186,14 @@ def make_parameter(t: torch.Tensor) -> nn.Parameter:
     else:
         logging.error(f"Could not create parameter from input of type '{type(t)}'.")
         return None
+
+
+def getGroups(max_group, with_max_group_member : bool = True, addOneForNoGrouping : bool = True, divide_by : int = 2):
+    tmp = [x for x in range(max_group) if x % divide_by == 0 and x != 0]
+    if with_max_group_member:
+        tmp.append(max_group)
+    if addOneForNoGrouping and not (1 in tmp):
+        tmp.append(1)
+        tmp.sort(reverse=False)
+
+    return tmp
