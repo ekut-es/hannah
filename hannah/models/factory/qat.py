@@ -174,7 +174,6 @@ class _ConvBnNd(
         scaled_weight = self.weight_fake_quant(
             self.weight * scale_factor.reshape(weight_shape)
         )
-        
 
         return scaled_weight
 

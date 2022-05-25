@@ -117,7 +117,7 @@ class PowerOf2Quantization:
     def quantize(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
-        mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
+        mask_x = torch.ge(abs_x, 1 / 2 ** ((2**self.bits - 1))).float()
 
         log_x = torch.ceil(torch.log2(abs_x))
 
@@ -125,7 +125,7 @@ class PowerOf2Quantization:
         # Right now exponent of 0.0 which is the weight 1.0 (2^0.0 = 1.0)
         # is occupied by the weight value 0. But seems to have no negative
         # effect on the contrary this raises the accuracy.
-        log_x = torch.clamp(log_x, -2 ** (self.bits - 1) + 1, -1.0)
+        log_x = torch.clamp(log_x, -(2 ** (self.bits - 1)) + 1, -1.0)
         return log_x * sign_x * mask_x
 
         return log_x
@@ -133,7 +133,7 @@ class PowerOf2Quantization:
     def __call__(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
-        mask_x = torch.ge(abs_x, 1 / 2 ** ((2 ** self.bits - 1))).float()
+        mask_x = torch.ge(abs_x, 1 / 2 ** ((2**self.bits - 1))).float()
 
         log_x = torch.ceil(torch.log2(abs_x))
 

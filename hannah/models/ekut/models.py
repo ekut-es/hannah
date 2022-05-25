@@ -1,10 +1,10 @@
-from enum import Enum
 import math
+from enum import Enum
 
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 
 def conv_bn(inp, oup, stride):

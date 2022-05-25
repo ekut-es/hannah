@@ -1,21 +1,23 @@
 from typing import Any
+
 import pytest
-from torch.quantization.qconfig import get_default_qconfig
-from hannah.models.factory.qat import (
-    ConvBnReLU1d,
-    ConvBnReLU2d,
-    ConvBn1d,
-    ConvBn2d,
-    ConvReLU1d,
-    ConvReLU2d,
-    Conv1d,
-    Conv2d,
-    QAT_MODULE_MAPPINGS,
-)
-from hannah.models.factory.qconfig import PowerOf2Quantization, get_trax_qat_qconfig
-from torch.quantization import default_qconfig, convert
 import torch
 import torch.nn as nn
+from torch.quantization import convert, default_qconfig
+from torch.quantization.qconfig import get_default_qconfig
+
+from hannah.models.factory.qat import (
+    QAT_MODULE_MAPPINGS,
+    Conv1d,
+    Conv2d,
+    ConvBn1d,
+    ConvBn2d,
+    ConvBnReLU1d,
+    ConvBnReLU2d,
+    ConvReLU1d,
+    ConvReLU2d,
+)
+from hannah.models.factory.qconfig import PowerOf2Quantization, get_trax_qat_qconfig
 
 
 @pytest.mark.parametrize(

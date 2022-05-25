@@ -1,13 +1,11 @@
 from .activity import PAMAP2_Dataset
-from .physio import PhysioDataset, AtrialFibrillationDataset
+from .emergency import EmergencySirenDataset
+from .Kitti import Kitti, KittiCOCO
+from .physio import AtrialFibrillationDataset, PhysioDataset
 from .speech import (
-    SpeechDataset,
     KeyWordDataset,
     SpeechCommandsDataset,
+    SpeechDataset,
     SpeechHotwordDataset,
     VadDataset,
 )
-from .emergency import EmergencySirenDataset
-
-from .Kitti import Kitti
-from .Kitti import KittiCOCO

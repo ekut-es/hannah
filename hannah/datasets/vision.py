@@ -1,27 +1,25 @@
-from logging import config
 import collections
-import os
 import logging
+import os
 import pathlib
-from posixpath import split
 import tarfile
-import requests
-
+from logging import config
+from posixpath import split
 from typing import List
 
-from hydra.utils import get_original_cwd
 import numpy as np
-import torchvision
-from torchvision import transforms
-import torchvision.datasets as datasets
+import requests
 import torch.utils.data as data
-import albumentations as A
+import torchvision
+import torchvision.datasets as datasets
 from albumentations.pytorch.transforms import ToTensorV2
+from hydra.utils import get_original_cwd
+from torchvision import transforms
+
+import albumentations as A
 
 from .base import AbstractDataset
-
 from .utils import csv_dataset
-
 
 logger = logging.getLogger(__name__)
 

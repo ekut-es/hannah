@@ -1,9 +1,9 @@
 import logging
 from copy import deepcopy
-from typing import Any, Optional, Union, List, Dict
+from typing import Any, Dict, List, Optional, Union
 
 import tabulate
-from pytorch_lightning import LightningModule, LightningDataModule
+from pytorch_lightning import LightningDataModule, LightningModule
 from pytorch_lightning.callbacks import ModelCheckpoint, ProgressBar
 from pytorch_lightning.callbacks.progress import tqdm
 from pytorch_lightning.loggers import LoggerCollection

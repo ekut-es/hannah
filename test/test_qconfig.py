@@ -1,8 +1,10 @@
-import copyreg, copy, pickle
+import copy
+import copyreg
+import pickle
 
 from omegaconf import DictConfig
-from hannah.models.factory.qconfig import get_trax_qat_qconfig
 
+from hannah.models.factory.qconfig import get_trax_qat_qconfig
 
 config = DictConfig(content={"bw_w": 6, "bw_f": 8, "bw_b": 8})
 

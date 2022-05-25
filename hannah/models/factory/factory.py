@@ -20,7 +20,7 @@ from . import qat
 from .act import DummyActivation
 from .network import ConvNet
 from .reduction import ReductionBlockAdd, ReductionBlockConcat
-import torch.nn as nn
+
 
 @dataclass
 class NormConfig:
@@ -56,7 +56,7 @@ class HardtanhConfig(ActConfig):
 
 @dataclass
 class MinorBlockConfig:
-    #breakpoint()
+    # breakpoint()
     target: str = "conv1d"
     "target Operation"
     parallel: bool = False
@@ -116,7 +116,9 @@ class NetworkConfig:
 
 
 class NetworkFactory:
-    def __init__(self,) -> None:
+    def __init__(
+        self,
+    ) -> None:
         self.default_norm = None
         self.default_act = None
         self.default_qconfig = None
@@ -534,13 +536,13 @@ class NetworkFactory:
             )
         else:
             raise Exception(f"Unknown minor block config {config}")
-        ''' Depthwise separable convolution can be splitted into dephtwise convolution first
+        """ Depthwise separable convolution can be splitted into dephtwise convolution first
         followed by pointwise convolution.
         if config.target == "conv1d":
             #breakpoint()
             depthwise_conv = self.conv1d(
                 input_shape,
-                out_channels=input_shape[1],#*config.kernel_per_layer, # adjust number of output channels 
+                out_channels=input_shape[1],#*config.kernel_per_layer, # adjust number of output channels
                 kernel_size=config.kernel_size,
                 stride=config.stride,
                 padding=config.padding,
@@ -565,7 +567,7 @@ class NetworkFactory:
                 bias=config.bias,
                 out_quant=config.out_quant,
             )
-            return nn.Sequential(depthwise_conv, pointwise_conv) '''
+            return nn.Sequential(depthwise_conv, pointwise_conv) """
 
     def _build_chain(self, input_shape, block_configs, major_stride):
         block_input_shape = input_shape
@@ -602,9 +604,7 @@ class NetworkFactory:
 
                 if reduction == "add":
                     output_channels = target_output_shape[1]
-                    groups = (
-                        1
-                    )  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
+                    groups = 1  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
 
                 stride = tuple(
                     (
@@ -881,7 +881,7 @@ class NetworkFactory:
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:
-        padding = (((kernel_size-1)*_dilation)+1) // 2
+        padding = (((kernel_size - 1) * _dilation) + 1) // 2
         return padding
 
 

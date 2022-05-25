@@ -1,7 +1,7 @@
 # Clustering
 
 ## k-means
-$k$-means clustering can be applied to the weights of all layers at the end of a training epoch. Each time, for a defined number of $k$ clusters per layer the centroids are identified per layer. Next, each weight is replaced with the value of the closest cluster center. The zero is not clustered to preserve the amount of zeros induced by pruning. This results in a total of $k+1$ distinct values. Additionally, at the end of the fitting process, clustering is applied. Afterwards, the weights are not further altered. After completing the training process, every value of each layer of the trained neural network should be equal to one cluster center or zero. 
+$k$-means clustering can be applied to the weights of all layers at the end of a training epoch. Each time, for a defined number of $k$ clusters per layer the centroids are identified per layer. Next, each weight is replaced with the value of the closest cluster center. The zero is not clustered to preserve the amount of zeros induced by pruning. This results in a total of $k+1$ distinct values. Additionally, at the end of the fitting process, clustering is applied. Afterwards, the weights are not further altered. After completing the training process, every value of each layer of the trained neural network should be equal to one cluster center or zero.
 
 Clustering (in combination with pruning and SVD-based compression) can be invoked by:
 
