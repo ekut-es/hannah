@@ -600,7 +600,19 @@ class SINCOSClassifierModule(AngleClassifierModule):
 
     @staticmethod
     def get_loss(scores, labels):
-        return SINCOSClassifierModule.get_angle_diff(scores, labels)
+        assert scores.shape[0] == labels.shape[0]
+        assert scores.shape[1] == 2
+        assert labels.shape[1] == 2
+
+        labels_norm = torch.nn.functional.normalize(labels)
+
+        sin_hat = labels_norm[:, 0]
+        cos_hat = labels_norm[:, 1]
+
+        sin = scores[:, 0]
+        cos = scores[:, 1]
+
+        return torch.mean(torch.abs(sin_hat-sin) + torch.abs(cos_hat-cos))
 
     @staticmethod
     def get_angle_diff(scores, labels, e=1e-7):
