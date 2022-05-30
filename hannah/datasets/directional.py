@@ -1,4 +1,3 @@
-from itertools import combinations
 import os
 from .base import DatasetType, AbstractDataset
 from .speech import load_audio
@@ -8,6 +7,7 @@ import math
 import yaml
 import random
 from collections import defaultdict
+from ..utils import list_all_files, extract_from_download_cache
 
 random.seed(2022)
 
@@ -44,7 +44,32 @@ class DirectionalDataset(AbstractDataset):
 
     @classmethod
     def prepare(cls, config):
-        pass
+        cls.download(config)
+
+    @classmethod
+    def download(cls, config):
+        data_folder = config["data_folder"]
+        clear_download = config["clear_download"]
+        downloadfolder_tmp = config["download_folder"]
+        target_folder = os.path.join(data_folder, "directional")
+
+        if os.path.isdir(target_folder):
+            return
+
+        if not os.path.isdir(downloadfolder_tmp):
+            os.makedirs(downloadfolder_tmp)
+            cached_files = list()
+        else:
+            cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
+
+        extract_from_download_cache(
+                "directional.tar.gz",
+                "https://atreus.informatik.uni-tuebingen.de/seafile/f/0bb98014608541ef9fee/?dl=1",
+                cached_files,
+                os.path.join(downloadfolder_tmp, "directional"),
+                target_folder,
+                clear_download=clear_download,
+            )
 
     def get_data_with_label(self, index):
         label = self.audio_labels[index]
