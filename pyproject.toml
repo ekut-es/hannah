@@ -52,6 +52,7 @@ numpy = "^1.22.2"
 onnx-tf = {version = "^1.9.0", optional = true}
 gdown = "^4.4.0"
 setuptools = "<59.6.0"
+hydra-submitit-launcher = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.0"
