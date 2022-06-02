@@ -393,14 +393,29 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             old_index = self.target_group_index
             resize_weights = False if index == old_index else resize_weights
             self.target_group_index = index
+            # self.buildLayer()
             # self.group_sizes = self.group_sizes[self.target_group_index]
+            new_weights = self.adjust_weights_for_grouping(self.weight, self.get_group_size(), multiply_if_smaller=True)
+            self.weight = nn.Parameter(new_weights)
+
         except ValueError:
             logging.warn(
                 f"requested elastic group size {new_group_size} is not an available group size. Defaulting to full size ({self.max_group_size})"
             )
-        if(resize_weights):
-            new_weights = self.adjust_weights_for_grouping(self.weight, self.get_group_size(), multiply_if_smaller=True)
-            self.weight = nn.Parameter(new_weights)
+
+    # # TODO if this helps
+    # def buildLayer(self):
+    #     nn.Conv1d.__init__(
+    #         self,
+    #         in_channels=self.in_channels,
+    #         out_channels=self.out_channels,
+    #         kernel_size=self.kernel_sizes[self.target_kernel_index],
+    #         stride=self.stride,
+    #         padding=self.padding,
+    #         dilation=self.dilation_sizes[self.target_dilation_index],
+    #         groups=self.group_sizes[self.target_group_index],
+    #         bias=self.bias,
+    #     )
 
     # step current kernel size down by one index, if possible.
     # return True if the size limit was not reached
@@ -416,8 +431,6 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 f"unable to step down group size, no available index after current: {self.target_group_index} with size: {self.group_sizes[self.target_group_index]}"
             )
             return False
-
-
 
     def getGrouping(self):
         """"
@@ -467,14 +480,12 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             current_result_weight = current_weight[:, input_start:input_end, :]
             result_weights.append(current_result_weight)
 
-        # Wenn du initial von einer group size von 1 ausgehst. Müsstest du also für eine group size von k,
-        # für die group n bei den gewichten immer die channels [nk; (n+1)k] auswählen.
-
         full_kernel = torch.concat(result_weights)
-        # torch.reshape(weights, [weights.shape[0], input_shape, weights.shape[2]])
-        # logging.info(f"Weights shape is {full_kernel.shape}")
 
-        # filter_primary_module_weights(weights, weights_input_shape, weights_output_shape)
+        if(not self.training):
+            logging.info(f"Validation Step, Weight Shape is {weights.shape}")
+            logging.info(f"New Weight Shape is {full_kernel.shape}")
+
         return full_kernel
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:

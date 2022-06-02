@@ -536,31 +536,32 @@ class OFAModel(nn.Module):
                 conv.pick_dilation_index(new_dilation_step)
                 state["dilation_steps"].append(new_dilation_step)
         # TODO hier reingrätschen 19052022 - ist das richtig implementiert ?
-        if self.elastic_grouping_allowed:
-            for conv in self.elastic_kernel_convs:
-                # pick an available grouping index for every elastic kernel conv, independently.
-                # TODO turn it to max
-                # max_available_sampling_step = min(
-                #     self.sampling_max_grouping_step + 1,
-                #     conv.get_available_grouping_steps(),
-                # )
-                # new_grouping_step = self.get_random_step(max_available_sampling_step)
-                # fix für warmup, auf alles
-                #
-                choice = conv.pick_random_group_index()
-                # conv.pick_group_index(new_grouping_step)
-                state["grouping_steps"].append(choice)
+        # TODO hier reingrätschen für randomized entry
+        # if self.elastic_grouping_allowed:
+        #     for conv in self.elastic_kernel_convs:
+        #         # pick an available grouping index for every elastic kernel conv, independently.
+        #         # TODO turn it to max
+        #         # max_available_sampling_step = min(
+        #         #     self.sampling_max_grouping_step + 1,
+        #         #     conv.get_available_grouping_steps(),
+        #         # )
+        #         # new_grouping_step = self.get_random_step(max_available_sampling_step)
+        #         # fix für warmup, auf alles
+        #         #
+        #         choice = conv.pick_random_group_index()
+        #         # conv.pick_group_index(new_grouping_step)
+        #         state["grouping_steps"].append(choice)
 
         if self.elastic_grouping_allowed:
             for conv in self.elastic_kernel_convs:
                 # pick an available kernel index for every elastic kernel conv, independently.
-                max_available_sampling_step = min(
+                sampling_step = min(
                     self.sampling_max_grouping_step + 1,
                     conv.get_available_grouping_steps(),
                 )
-                new_grouping_step = self.get_random_step(max_available_sampling_step)
-                conv.pick_group_index(new_grouping_step)
-                state["grouping_steps"].append(new_grouping_step)
+                # new_grouping_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_group_index(sampling_step)
+                state["grouping_steps"].append(sampling_step)
 
         if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
