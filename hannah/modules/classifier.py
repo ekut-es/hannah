@@ -47,11 +47,12 @@ class BaseStreamClassifierModule(ClassifierModule):
     def setup(self, stage):
         # TODO stage variable is not used!
         msglogger.info("Setting up model")
-        if self.logger:
-            msglogger.info("Model setup already completed skipping setup")
-            self.logger.log_hyperparams(self.hparams)
+        if self.trainer:
+            for logger in self.trainer.loggers:
+                logger.log_hyperparams(self.hparams)
 
         if self.initialized:
+            msglogger.info("Model setup already completed skipping setup")
             return
 
         self.initialized = True

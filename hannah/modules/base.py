@@ -1,6 +1,7 @@
 import copy
 import io
 import logging
+import math
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar
@@ -61,14 +62,6 @@ class ClassifierModule(LightningModule, ABC):
         self.test_metrics: MetricCollection = MetricCollection({})
         self.train_metrics: MetricCollection = MetricCollection({})
 
-    @property
-    def test_metrics(self) -> MetricCollection:
-        return self._test_metrics
-
-    @test_metrics.setter
-    def test_metrics(self, val: MetricCollection) -> None:
-        self._test_metrics = val
-
     @abstractmethod
     def prepare_data(self) -> Any:
         # get all the necessary data stuff
@@ -102,7 +95,7 @@ class ClassifierModule(LightningModule, ABC):
                 scheduler = instantiate(
                     self.hparams.scheduler,
                     optimizer=optimizer,
-                    total_steps=self.total_training_steps,
+                    total_steps=self.total_training_steps(),
                 )
                 retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
             else:
@@ -112,28 +105,13 @@ class ClassifierModule(LightningModule, ABC):
 
         return retval
 
-    @property
     def total_training_steps(self) -> int:
         """Total training steps inferred from datamodule and devices."""
-        if self.trainer is None:
-            return -1
-        if self.trainer.max_steps > 0:
-            return self.trainer.max_steps
+        estimated_batches = self.trainer.estimated_stepping_batches
 
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
+        msglogger.debug("Estimated number of training steps: %d", estimated_batches)
 
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
+        return estimated_batches
 
     @rank_zero_only
     def _log_weight_distribution(self):
@@ -195,10 +173,9 @@ class ClassifierModule(LightningModule, ABC):
                             )
 
     def _logger_iterator(self) -> Iterable[LightningLoggerBase]:
-        if isinstance(self.logger, LoggerCollection):
-            loggers = self.logger
-        else:
-            loggers = [self.logger]
+        loggers = []
+        if self.trainer:
+            loggers = self.trainer.loggers
 
         return loggers
 
