@@ -15,13 +15,13 @@ class Repeater:
         out = self.block(input)
 
         # create Repeat (i.e. child) instance from DataFlowGraph instance
-        out = Repeat(out.inputs, out.output, self.num_repeats, out.name)
+        out = Repeat(*out.operands, output=out.output, num_repeats=self.num_repeats, name=out.name)
         return out
 
 
 class Repeat(DataFlowGraph):
-    def __init__(self, inputs, output, num_repeats, name: str = "dataflow") -> None:
-        super().__init__(inputs, output, name)
+    def __init__(self, *operands, output, num_repeats, name: str = "dataflow") -> None:
+        super().__init__(*operands, output=output, name=name)
         self.num_repeats = num_repeats
 
     def dfg_line_representation(self, indent, input_names):

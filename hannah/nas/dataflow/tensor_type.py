@@ -2,8 +2,7 @@ from ..hardware_description.memory_type import MemoryType
 from .quantization_type import QuantizationType
 from .data_type import DataType
 from .axis_type import AxisType
-from typing import Optional, Tuple
-from hannah.nas.dataflow.dataflow_utils import reset_nested_counters
+from typing import List, Optional, Tuple, Union
 
 
 class TensorType:
@@ -27,27 +26,18 @@ class TensorType:
     def dim(self) -> int:
         return len(self.axis)
 
-    def output_tensor(self):
-        return self
-
-    def get_hierarchical_dict(self, hierarchy_dict, current_scope, inputs, scopes, input_names, tensors):
-        """TensorTypes version of the recursive extraction of a hierarchical scope dict.
-        Most parameters are just there to keep the function signature consistent. See the respective
-        functions in DataFlowGraph and OpType for more information.
-        """
-        if self in inputs:
-            for i in inputs[self]:
-                current_scope.remove(i)
-
-    def insert_scope_to_id(self, inputs, scopes, current_scope, scope_counters, nested_scopes):
-        self.id = ".".join(current_scope) + ".{}".format(self.name)
-        if self in inputs:
-            for i in inputs[self]:
-                current_scope.remove(scopes[i])
-                reset_nested_counters(scopes[i], nested_scopes, scope_counters)
-
     def shape(self) -> Tuple[int, ...]:
         return tuple((ax.size for ax in self.axis.values))
 
     def __repr__(self) -> str:
-        return 'Tensor(name=' + self.name + ", axis=(" + ' '.join(['{}, '.format(a) for a in self.axis.keys()]) + '))'
+        # return 'Tensor(name=' + self.name + ", axis=(" + ' '.join(['{}, '.format(a) for a in self.axis.keys()]) + '))'
+        return "Tensor({})".format(self.name)
+
+
+class TensorTuple:
+    def __init__(self, types : List[TensorType], name: str = ""):
+        self.types = types
+        self.name = name
+
+
+OutputType = Union[TensorType, TensorTuple]
