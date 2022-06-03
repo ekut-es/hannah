@@ -67,7 +67,10 @@ def update_scope(node, current_scope):
 
 
 def get_id_and_update_counters(current_scope, counters):
-    scope = '.'.join([s.id for s in current_scope])
+    if len(current_scope) > 1:
+        scope = '.'.join([current_scope[-2].id, current_scope[-1].name])
+    else:
+        scope = current_scope[-1].name
     if scope not in counters:
         counters[scope] = 0
     else:
@@ -100,6 +103,7 @@ def find_leaf_nodes(node, leafs, visited):
 
 
 def traverse_users(node, visited):
+    print(node.id)
     leafs = []
     visited.append(node)
     find_leaf_nodes(node, leafs, visited)
