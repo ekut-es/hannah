@@ -4,6 +4,9 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
+
+
         {
             "name": "standard",
             "type": "python",
@@ -26,6 +29,32 @@
                 "trainer.limit_train_batches=0.1",
                 "trainer.max_epochs=3",
                 "model=tc-res4"
+            ]
+        },
+        {
+            "name": "ofa",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa_group",
+                "model=ofa_group_test",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa limited",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa_group",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=3",
+                "model=ofa_group_test",
+                "module.num_workers=8"
             ]
         },
         {
