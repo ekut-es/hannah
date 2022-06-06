@@ -54,11 +54,14 @@ class ElasticConv1d(ElasticBase1d):
         )
         grouping = self.get_group_size()
         # MR 23123
-        # !!! TODO forwards anpassen !!!
-        # TODO aufpassen, und mit create vergleichen
         # adjust the kernel if grouping is done
-        # kernel_a = self.adjust_weights_for_grouping(kernel, grouping)
-        return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
+        if(grouping > 1):
+            # kernel_a = self.adjust_weights_for_grouping(kernel, 2)
+            kernel_a = self.adjust_weights_for_grouping(kernel, grouping)
+        else:
+            kernel_a = kernel
+
+        return nnf.conv1d(input, kernel_a, bias, self.stride, padding, dilation, grouping)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
@@ -128,8 +131,13 @@ class ElasticConvReLu1d(ElasticBase1d):
         grouping = self.get_group_size()
         # MR 23123
         # !!! TODO forwards anpassen !!!
+        if(grouping > 1):
+            kernel_a = self.adjust_weights_for_grouping(kernel, grouping)
+        else:
+            kernel_a = kernel
+
         return self.relu(
-            nnf.conv1d(input, kernel, bias, self.stride, padding, dilation,  grouping)
+            nnf.conv1d(input, kernel_a, bias, self.stride, padding, dilation,  grouping)
         )
 
     # return a normal conv1d equivalent to this module in the current state
@@ -298,8 +306,8 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
-# TODO MR 492 notwendig hier auch zu intervenieren ?
 
+# TODO MR 492 notwendig hier auch zu intervenieren ?
 class ConvRelu1d(nn.Conv1d):
     def __init__(
         self,

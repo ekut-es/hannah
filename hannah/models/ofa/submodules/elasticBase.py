@@ -390,13 +390,17 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.target_group_index = 0
         try:
             index = self.group_sizes.index(new_group_size)
-            old_index = self.target_group_index
-            resize_weights = False if index == old_index else resize_weights
+            # old_index = self.get_group_size()
             self.target_group_index = index
             # self.buildLayer()
             # self.group_sizes = self.group_sizes[self.target_group_index]
-            new_weights = self.adjust_weights_for_grouping(self.weight, self.get_group_size(), multiply_if_smaller=True)
-            self.weight = nn.Parameter(new_weights)
+
+            # if(self.get_group_size() > 1 and old_index != self.get_group_size()):
+            #   don't create this as a computation node
+            #   TODO MR 23233 nachher wieder einsetzen
+            #   with torch.no_grad():
+            #   new_weights = self.adjust_weights_for_grouping(self.weight, 2)
+            #   self.weight = nn.Parameter(new_weights)
 
         except ValueError:
             logging.warn(
@@ -450,27 +454,21 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 self.group_sizes.remove(group)
         return self.group_sizes
 
-    def adjust_weights_for_grouping(self, weights, groups, multiply_if_smaller : bool = False):
+    def adjust_weights_for_grouping(self, weights, input_divided_by=2):
         """
             Adjusts the Weights for the Forward of the Convulution
             Shape(outchannels, inchannels / group, kW)
-            weight – filters of shape (\text{out\_channels} , \frac{\text{in\_channels}}{\text{groups}} , kW)(out_channels,
-            groups
-            in_channels
-             ,kW)
+            weight – filters of shape (out_channels , in_channels / groups , kW)
+            input_divided_by
         """
 
-        # logging.info(f"Weights shape is {weights.shape}")
-        # torch.reshape(weights, [weights.shape[0], weights.shape[1] / group, weights.shape[2]])
-        # input_shape : int = np.floor(weights.shape[1] / group).astype(int)
-        # hier rausschneiden oder maskieren
+        # if(not self.training):
+        #     logging.info(f"Validation Step, Weight Shape is {weights.shape}")
+        #     logging.info(f"New Weight Shape is {full_kernel.shape}")
 
-        channels_per_group = weights.shape[1] // groups
-        if(channels_per_group == 0 and multiply_if_smaller is True):
-            # the grouping before was bigger, now we need to rescale the weights
-            channels_per_group = weights.shape[1] * groups
+        channels_per_group = weights.shape[1] // input_divided_by
 
-        splitted_weights = torch.tensor_split(weights, groups)
+        splitted_weights = torch.tensor_split(weights, input_divided_by)
         result_weights = []
 
         # for current_group in range(groups):
@@ -482,10 +480,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         full_kernel = torch.concat(result_weights)
 
-        if(not self.training):
-            logging.info(f"Validation Step, Weight Shape is {weights.shape}")
-            logging.info(f"New Weight Shape is {full_kernel.shape}")
-
+        # print(full_kernel.shape)
         return full_kernel
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:

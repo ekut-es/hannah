@@ -895,6 +895,8 @@ class OFANasTrainer(NASTrainerBase):
         if self.elastic_depth_allowed:
             eval_methods.append(self.eval_elatic_depth)
 
+        # TODO here eval anschauen was hier schief läuft
+        self.elastic_grouping_allowed = False
         if self.elastic_grouping_allowed:
             eval_methods.append(self.eval_elastic_grouping)
 
@@ -912,6 +914,7 @@ class OFANasTrainer(NASTrainerBase):
             )
 
         if self.random_evaluate:
+            # TODO 1111 !!!UNBEDINGT WIEDER REINMACHEN!!!
             self.eval_random_combination(lightning_model, model)
 
         model.eval_mode = False
