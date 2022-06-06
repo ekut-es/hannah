@@ -51,7 +51,7 @@ class MyTestCase(unittest.TestCase):
         output_channels = 8
         batch_size = 2
         dilation_sizes = [1]
-        group_sizes = [1, 2, 4]
+        group_sizes = [1, 2, 4, 8]
 
         # FRAGE: wird group size während einem step verändert
         # check calls of set_group_size

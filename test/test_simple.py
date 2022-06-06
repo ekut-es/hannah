@@ -2,44 +2,44 @@ import unittest
 import torch
 
 import torch.nn as nn
-import torch.nn.functional as F
+# import torch.nn.functional as F
 
 
 class MyTestCase(unittest.TestCase):
-    # def test_something(self):
+    def test_something(self):
 
-    #     input = torch.tensor([
-    #         [[1.],
-    #          [2.],
-    #          [3.],
-    #          [4.]]
-    #     ])
-    #     print(input.shape)
-    #     print(input)
-    #     weights = torch.tensor([
-    #         [
-    #             [10.],
-    #             [10.]
-    #         ],
-    #         [
-    #             [20.],
-    #             [20.]
-    #         ],
-    #         [
-    #             [30.],
-    #             [30.]
-    #         ],
-    #         [
-    #             [40.],
-    #             [40.]
-    #         ],
-    #     ])
-    #     print(weights.shape)
-    #     print(weights.shape[0]*weights.shape[1] * weights.shape[2])
+        input = torch.tensor([
+            [[1.],
+             [2.],
+             [3.],
+             [4.]]
+        ])
+        print(input.shape)
+        print(input)
+        weights = torch.tensor([
+            [
+                [10.],
+                [10.]
+            ],
+            [
+                [20.],
+                [20.]
+            ],
+            [
+                [30.],
+                [30.]
+            ],
+            [
+                [40.],
+                [40.]
+            ],
+        ])
+        print(weights.shape)
+        print(weights.shape[0]*weights.shape[1] * weights.shape[2])
 
-    #     res = F.conv1d(input, weights, groups=2)
-    #     print(res)
-    #     print(res.shape)
+        res = F.conv1d(input, weights, groups=2)
+        print(res)
+        print(res.shape)
 
     def test_compareGroups(self):
         m = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, groups=1)
@@ -147,8 +147,6 @@ class MyTestCase(unittest.TestCase):
         Adjusts the Weights for the Forward of the Convulution
         Shape(outchannels, inchannels / group, kW)
         weight – filters of shape (out_channels , in_channels / groups , kW)
-        in_channels
-         ,kW)
         """
 
         # logging.info(f"Weights shape is {weights.shape}")
