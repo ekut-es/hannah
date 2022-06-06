@@ -54,6 +54,50 @@ class MyTestCase(unittest.TestCase):
         # print(output)
         print("test ending")
 
+    def test_sequencedGrouping(self):
+        """
+            Name will be upgraded later
+            It is a solution to the problem, that the grouping cannot be applied
+            in random steps (so far).
+
+            If we first have groups=6 and then groups=8 we can't just reshape the 'grouped=6' weights to 'groups=8' shape (based on grouped=6 weights)
+
+            Though it is possible, that we have a sequenced grouping phase like 2,4,8,16,32 (which would be also conveniant for quantizied versions?)
+            This approach will be demonstrated in that unit case
+        """
+        kernel_size = 3
+
+        out_channels = 32
+        in_channels = 16
+        groups = [i for i in range(1, out_channels) if in_channels % i == 0]
+        groups.sort(reverse=False)
+
+        print(groups)
+
+        m = nn.Conv1d(
+            in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, groups=groups[0]
+        )  # changes
+        weight_shape = [m.out_channels, m.in_channels // m.groups, kernel_size]
+        input = torch.randn(10, 16, 100)  # batch, input, c_out
+
+        output_before = m(input)
+        print(f"Weights {m.weight.shape}")
+        print(output_before.shape)
+        assert list(m.weight.shape) == weight_shape
+        for i in groups:
+            if(i == 1):
+                continue
+            m.groups = i
+            with torch.no_grad():
+                m.weight = nn.Parameter(self.adjust_weights_for_grouping(m.weight, 2))
+                weight_shape = [m.out_channels, m.in_channels // m.groups, kernel_size]
+                assert list(m.weight.shape) == weight_shape
+            output = m(input)
+            assert list(m.weight.shape) == weight_shape
+
+        assert output_before.shape == output.shape
+        print("test ending")
+
     def test_changeGroups(self):
         kernel_size = 3
         m = nn.Conv1d(
@@ -81,6 +125,7 @@ class MyTestCase(unittest.TestCase):
         # Version eins
         m_groups_old = m.groups
         m.groups = 4
+        # Does not work with 8 - so this is not the solution
         m_diff = m.groups - m_groups_old
 
         with torch.no_grad():
@@ -101,8 +146,7 @@ class MyTestCase(unittest.TestCase):
         """
         Adjusts the Weights for the Forward of the Convulution
         Shape(outchannels, inchannels / group, kW)
-        weight – filters of shape (\text{out\_channels} , \frac{\text{in\_channels}}{\text{groups}} , kW)(out_channels,
-        groups
+        weight – filters of shape (out_channels , in_channels / groups , kW)
         in_channels
          ,kW)
         """
