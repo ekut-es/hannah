@@ -58,6 +58,7 @@ def test_scoping():
     # graph = network(input)
     traverse_by_users(input)
     print()
+    print(graph['block.0.conv_relu.0.conv2d.0.weight.0'])
 
     assert isinstance(graph, DataFlowGraph)
 

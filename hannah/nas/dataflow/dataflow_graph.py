@@ -19,8 +19,9 @@ class DataFlowGraph(TensorExpression):
 
         self.output = output
         self.link_users()
+        self._scopes = {}
         first_inp = find_first_input(self)
-        set_scope_ids(first_inp, [], [], {})
+        self.set_scope_ids(first_inp, [], [], {})
 
     def link_users(self):
         def _rewire_to_placeholder(operand, node, placeholder):
@@ -40,6 +41,23 @@ class DataFlowGraph(TensorExpression):
             last_output.users.append(self)
             self.users.append(inp)
             _rewire_to_placeholder(operand, self.output, inp)
+
+    def set_scope_ids(self, node, visited, current_scope, counters):
+        current_scope = update_scope(node, current_scope)
+        scope_id = get_id_and_update_counters(current_scope, counters)
+        node.set_id(scope_id)
+        self._scopes[scope_id] = node
+        leafs = []
+        visited.append(node)
+        find_leaf_nodes(node, leafs, visited)
+        for leaf in leafs:
+            self.set_scope_ids(leaf, visited, current_scope, counters)
+        for u in node.users:
+            if u not in visited:
+                self.set_scope_ids(u, visited, current_scope, counters)
+
+    def __getitem__(self, key):
+        return self._scopes[key]
 
     def __repr__(self) -> str:
         return "DataFlowGraph(id={})".format(self.id)
@@ -96,20 +114,6 @@ def update_scope(node, current_scope):
             break
     new_scope.append(node)
     return new_scope
-
-
-def set_scope_ids(node, visited, current_scope, counters):
-    current_scope = update_scope(node, current_scope)
-    scope_id = get_id_and_update_counters(current_scope, counters)
-    node.set_id(scope_id)
-    leafs = []
-    visited.append(node)
-    find_leaf_nodes(node, leafs, visited)
-    for leaf in leafs:
-        set_scope_ids(leaf, visited, current_scope, counters)
-    for u in node.users:
-        if u not in visited:
-            set_scope_ids(u, visited, current_scope, counters)
 
 
 def reset_scope_ids(node):
