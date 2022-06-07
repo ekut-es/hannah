@@ -1,4 +1,5 @@
 from hannah.nas.dataflow.dataflow_graph import dataflow, DataFlowGraph
+from hannah.nas.dataflow.dataflow_utils import traverse_by_users
 from hannah.nas.dataflow.op_type import OpType
 from hannah.nas.dataflow.tensor import Tensor
 from hannah.nas.dataflow.tensor_type import TensorType
@@ -26,7 +27,7 @@ def conv_relu(input: TensorType,
 
 
 @dataflow
-def block(input: TensorType,
+def block(input: Tensor,
           expansion=FloatScalarParameter(1, 6),
           output_channel=IntScalarParameter(4, 64),
           kernel_size=CategoricalParameter([1, 3, 5]),
@@ -43,88 +44,23 @@ def block(input: TensorType,
     return out
 
 
-def update_scope(node, current_scope):
-    to_remove = []
-    for scope in current_scope:
-        if isinstance(scope, Tensor):
-            to_remove.append(scope)
-        elif isinstance(scope, OpType) and node in scope.users:
-            to_remove.append(scope)
-        elif isinstance(scope, DataFlowGraph) and scope in node.operands:
-            to_remove.append(scope)
-
-    new_scope = []
-    for s in current_scope:
-        if s not in to_remove:
-            new_scope.append(s)
-        else:
-            # if a scope is removed, all lower-hierarchy scopes
-            # are removed too because we assume strictly nested scopes
-            # i.e. not overlapping
-            break
-    new_scope.append(node)
-    return new_scope
+@dataflow
+def network(input: Tensor):
+    out = block(input)
+    out = block(out)
+    return out
 
 
-def get_id_and_update_counters(current_scope, counters):
-    if len(current_scope) > 1:
-        scope = '.'.join([current_scope[-2].id, current_scope[-1].name])
-    else:
-        scope = current_scope[-1].name
-    if scope not in counters:
-        counters[scope] = 0
-    else:
-        counters[scope] += 1
-
-    return '{}.{}'.format(scope, counters[scope])
-
-
-def set_scope_ids(node, visited, current_scope, counters):
-    current_scope = update_scope(node, current_scope)
-    scope_id = get_id_and_update_counters(current_scope, counters)
-    node.set_id(scope_id)
-    leafs = []
-    visited.append(node)
-    find_leaf_nodes(node, leafs, visited)
-    for leaf in leafs:
-        set_scope_ids(leaf, visited, current_scope, counters)
-    for u in node.users:
-        if u not in visited:
-            set_scope_ids(u, visited, current_scope, counters)
-
-
-def find_leaf_nodes(node, leafs, visited):
-    for o in node.operands:
-        if o not in visited:
-            if isinstance(o, Tensor):
-                leafs.append(o)
-            else:
-                find_leaf_nodes(o, leafs, visited)
-
-
-def traverse_users(node, visited):
-    print(node.id)
-    leafs = []
-    visited.append(node)
-    find_leaf_nodes(node, leafs, visited)
-    for leaf in leafs:
-        traverse_users(leaf, visited)
-    for u in node.users:
-        if u not in visited:
-            traverse_users(u, visited)
-
-
-def test_repeat():
+def test_scoping():
     input = batched_image_tensor(name='input')
-    graph = block(input)
-    graph = block(graph)
-    set_scope_ids(input, [], [], {})
-
-    traverse_users(input, [])
+    out = block(input)
+    graph = block(out)
+    # graph = network(input)
+    traverse_by_users(input)
     print()
 
     assert isinstance(graph, DataFlowGraph)
 
 
 if __name__ == '__main__':
-    test_repeat()
+    test_scoping()
