@@ -17,7 +17,7 @@ def test_elastic_conv1d_quant():
     output = torch.zeros((batch_size, output_channels, input_length))
 
     conv = ElasticConv1d(
-        input_channels, output_channels, kernel_sizes, dilation_sizes=dilation_sizes
+        input_channels, output_channels, kernel_sizes, dilation_sizes=dilation_sizes, groups=[1]
     )
     loss_func = nn.MSELoss()
     optimizer = torch.optim.SGD(conv.parameters(), lr=0.1)
