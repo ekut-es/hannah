@@ -21,7 +21,7 @@ class OpType(TensorExpression):
         #        "".join(["\t{}={}".format(key, str(attr)) for key, attr in self.attributes.items()]) + \
         #        ")"
         # return ret
-        return "Op({})".format(self.name)
+        return "Op({})".format(self.id)
 
 
 # def register_scope(scope, scope_counters):
