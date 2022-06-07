@@ -6,7 +6,7 @@ class Tensor(TensorExpression):
         super().__init__(*operands, tensor_type=tensor_type, name=name)
 
     def __repr__(self) -> str:
-        return "Tensor({})".format(self.name)
+        return "Tensor({})".format(self.id)
 
     def __str__(self) -> str:
         return self.__repr__()
