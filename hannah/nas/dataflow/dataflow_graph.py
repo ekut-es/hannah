@@ -1,7 +1,7 @@
 from typing import Iterable
 from hannah.nas.dataflow.op_type import OpType
 from hannah.nas.dataflow.tensor_type import TensorTuple
-from hannah.nas.dataflow.dataflow_utils import find_first_op_in_dfg
+from hannah.nas.dataflow.dataflow_utils import find_first_op_in_dfg, find_leaf_nodes
 from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.dataflow.tensor import Tensor
 
@@ -19,6 +19,8 @@ class DataFlowGraph(TensorExpression):
 
         self.output = output
         self.link_users()
+        first_inp = find_first_input(self)
+        set_scope_ids(first_inp, [], [], {})
 
     def link_users(self):
         def _rewire_to_placeholder(operand, node, placeholder):
@@ -56,3 +58,69 @@ def dataflow(func):
         return dfg
 
     return wrapper_func
+
+
+# FIXME: I'd rather have these methods in a different place but
+# one has to be careful to avoid circular imports. This works for now.
+def get_id_and_update_counters(current_scope, counters):
+    if len(current_scope) > 1:
+        scope = '.'.join([current_scope[-2].id, current_scope[-1].name])
+    else:
+        scope = current_scope[-1].name
+    if scope not in counters:
+        counters[scope] = 0
+    else:
+        counters[scope] += 1
+
+    return '{}.{}'.format(scope, counters[scope])
+
+
+def update_scope(node, current_scope):
+    to_remove = []
+    for scope in current_scope:
+        if isinstance(scope, Tensor):
+            to_remove.append(scope)
+        elif isinstance(scope, OpType) and node in scope.users:
+            to_remove.append(scope)
+        elif isinstance(scope, DataFlowGraph) and scope in node.operands:
+            to_remove.append(scope)
+
+    new_scope = []
+    for s in current_scope:
+        if s not in to_remove:
+            new_scope.append(s)
+        else:
+            # if a scope is removed, all lower-hierarchy scopes
+            # are removed too because we assume strictly nested scopes
+            # i.e. not overlapping
+            break
+    new_scope.append(node)
+    return new_scope
+
+
+def set_scope_ids(node, visited, current_scope, counters):
+    current_scope = update_scope(node, current_scope)
+    scope_id = get_id_and_update_counters(current_scope, counters)
+    node.set_id(scope_id)
+    leafs = []
+    visited.append(node)
+    find_leaf_nodes(node, leafs, visited)
+    for leaf in leafs:
+        set_scope_ids(leaf, visited, current_scope, counters)
+    for u in node.users:
+        if u not in visited:
+            set_scope_ids(u, visited, current_scope, counters)
+
+
+def reset_scope_ids(node):
+    node.set_id(node.name)
+    for o in node.operands:
+        reset_scope_ids(o)
+
+
+def find_first_input(node):
+    if node.operands:
+        for o in node.operands:
+            return find_first_input(o)
+    else:
+        return node
