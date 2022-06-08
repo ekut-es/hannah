@@ -389,7 +389,6 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("Once for all Model:\n %s", str(ofa_model))
 
         self.warmup(model, ofa_model)
-
         self.train_elastic_kernel(model, ofa_model)
         self.train_elastic_dilation(model, ofa_model)
         self.train_elastic_depth(model, ofa_model)
@@ -763,6 +762,7 @@ class OFANasTrainer(NASTrainerBase):
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
         model.reset_validation_model()
+
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
