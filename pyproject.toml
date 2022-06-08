@@ -55,6 +55,7 @@ timm = {version="^0.4.12", optional = true}
 pycocotools = {version="^2.0.2", optional = true}
 gdown = {version="^4.4.0", optional = true}
 albumentations = {version = "^1.1.0", optional = true}
+opencv-python = {version="4.5.5.64", optional=true}
 opencv-python-headless = {version="4.5.5.64", optional=true}
 
 [tool.poetry.dev-dependencies]
@@ -72,7 +73,7 @@ isort = "^5.10.1"
 [tool.poetry.extras]
 tf-backend = ["onnx-tf"]
 onnxrt-backend = ["onnxruntime"]
-vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown", "opencv-python-headless"]
+vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown", "opencv-python-headless", "opencv-python"]
 
 [tool.poetry.scripts]
 hannah-train = 'hannah.train:main'
