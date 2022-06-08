@@ -125,8 +125,6 @@ build_image:
     - master
     - docker_container
 
-
-
 test_image:
   stage: test
   before_script: [""]
@@ -145,8 +143,6 @@ test_image:
   only:
     - master
     - docker_container
-
-
 
 deploy_image:
   stage: deploy
