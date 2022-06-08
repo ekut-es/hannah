@@ -11,9 +11,6 @@ class Placeholder(Expression):
     def evaluate(self):
         raise NotImplementedError()
 
-    def cond(self, condition):
-        self._conditions.append(condition)
-
     def format(self, indent=2, length=80) -> str:
         return self.__class__.__name__ + "()"
 

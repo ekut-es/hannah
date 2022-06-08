@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Union
 from numbers import Number
+from typing import Tuple, Union
 
 
 class DataType(ABC):
@@ -26,7 +26,7 @@ class IntType(DataType):
 
     def range(self) -> Tuple[int, int]:
         if self.signed:
-            min_val = -2 ** (self.bits - 1)
+            min_val = -(2 ** (self.bits - 1))
             max_val = 2 ** (self.bits - 1) - 1
         else:
             min_val = 0
@@ -54,7 +54,7 @@ class FloatType(DataType):
     def range(self) -> float:
         # FIXME: calculate correct range
         reserved_bits = 2
-        exponent_bias = (2 ** self.exponent_bits - reserved_bits) / 2
+        exponent_bias = (2**self.exponent_bits - reserved_bits) / 2
         max_val = (2 - 2 ** (-self.significand_bits)) * 2 ** (
             self.exponent_bits - exponent_bias
         )

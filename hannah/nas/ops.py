@@ -54,18 +54,7 @@ def tensor(
 
 
 def batched_image_tensor(dtype=float_t(), name=""):
-    return tensor((axis('n'),
-                   axis('c'),
-                   axis('h'),
-                   axis('w')),
-                  dtype=dtype,
-                  name=name)
-
-
-@dataflow
-def broadcast(input):
-    axis = DefaultInt(0)
-    return OpType("broadcast", input, axis=axis)
+    return tensor((axis("n"), axis("c"), axis("h"), axis("w")), dtype=dtype, name=name)
 
 
 @dataflow
@@ -73,10 +62,14 @@ def conv(input):
     kernel_size = UndefinedInt()
     stride = DefaultInt(1)
     weight = tensor(
-        (axis('o', UndefinedInt()),
-         axis('i', UndefinedInt()),
-         axis('kh', kernel_size),
-         axis('kw', kernel_size)), dtype=IntType())
+        (
+            axis("o", UndefinedInt()),
+            axis("i", UndefinedInt()),
+            axis("kh", kernel_size),
+            axis("kw", kernel_size),
+        ),
+        dtype=IntType(),
+    )
     return OpType("conv", input, weight, stride=stride)
 
 
