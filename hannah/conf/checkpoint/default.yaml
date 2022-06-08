@@ -1,6 +1,6 @@
 _target_: pytorch_lightning.callbacks.ModelCheckpoint
 dirpath: "checkpoints"
-save_top_k: 5
+save_top_k: 1
 verbose: true
 monitor: val_error
 mode: min
