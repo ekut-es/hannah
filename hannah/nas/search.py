@@ -388,11 +388,11 @@ class OFANasTrainer(NASTrainerBase):
 
         logging.info("Once for all Model:\n %s", str(ofa_model))
 
-        # self.warmup(model, ofa_model)
-        # self.train_elastic_kernel(model, ofa_model)
-        # self.train_elastic_dilation(model, ofa_model)
-        # self.train_elastic_depth(model, ofa_model)
-        # self.train_elastic_width(model, ofa_model)
+        self.warmup(model, ofa_model)
+        self.train_elastic_kernel(model, ofa_model)
+        self.train_elastic_dilation(model, ofa_model)
+        self.train_elastic_depth(model, ofa_model)
+        self.train_elastic_width(model, ofa_model)
 
         if self.evaluate:
             self.eval_model(model, ofa_model)
