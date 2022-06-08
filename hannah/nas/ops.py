@@ -1,5 +1,7 @@
 from typing import Optional, Tuple, Union
 
+from hannah.nas.dataflow.tensor import Tensor
+
 from .dataflow.axis_type import AxisType
 from .dataflow.compression_type import CompressionType
 from .dataflow.data_type import DataType, FloatType, IntType
@@ -8,13 +10,8 @@ from .dataflow.op_type import OpType
 from .dataflow.optional_op import OptionalOp
 from .dataflow.quantization_type import QuantizationType
 from .dataflow.tensor_type import TensorType
-from .expressions.placeholder import DefaultFloat, DefaultInt, UndefinedInt
+from .expressions.placeholder import DefaultInt, UndefinedInt
 from .hardware_description.memory_type import MemoryType
-from .parameters.parameters import (
-    CategoricalParameter,
-    FloatScalarParameter,
-    IntScalarParameter,
-)
 
 
 def int_t(signed: bool = True, bits: int = 8):
@@ -52,7 +49,8 @@ def tensor(
     memory: Optional[MemoryType] = None,
     name: str = "",
 ):
-    return TensorType(axis=axis, dtype=dtype, quantization=quantization, memory=memory, name=name)
+    tensor_type = TensorType(axis=axis, dtype=dtype, quantization=quantization, memory=memory, name=name)
+    return Tensor(tensor_type=tensor_type, name=name)
 
 
 def batched_image_tensor(dtype=float_t(), name=""):
