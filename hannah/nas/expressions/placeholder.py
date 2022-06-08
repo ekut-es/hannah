@@ -6,9 +6,13 @@ from ..core.expression import Expression
 class Placeholder(Expression):
     def __init__(self, name: Optional[str] = None):
         self.name = name
+        self._conditions = []
 
     def evaluate(self):
-        raise NotImplemented()
+        raise NotImplementedError()
+
+    def cond(self, condition):
+        self._conditions.append(condition)
 
     def format(self, indent=2, length=80) -> str:
         return self.__class__.__name__ + "()"
@@ -51,6 +55,6 @@ class FloatRange(Placeholder):
         self.upper = upper
 
 
-class Catagorical(Placeholder):
+class Categorical(Placeholder):
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
