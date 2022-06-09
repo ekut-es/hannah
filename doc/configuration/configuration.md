@@ -33,7 +33,7 @@ Choices are: `null` (no backend, default),  `torchmobile` (translates model to b
 
 ### checkpoint
 
-Choices are: `null` (no checkpoint), `all` (default, creates checkpoints for all training epoch) `best` (checkpoint, best 5 values , default)
+Choices are: `null` (no checkpoint), `all` (default, creates checkpoints for all training epoch) `best` (checkpoint, best 5 values, default)
 
 ### compression
 
@@ -106,7 +106,7 @@ train_snr_low
 : maximal SNR for test data
 
 noise_dataset
-: ["TUT", "FSDKaggle", "FSDnoisy"] Downlaods all the specified datasets. Use TUT + one other
+: ["TUT", "FSDKaggle", "FSDnoisy"] Downloads all the specified datasets. Use TUT + one other
 
 data_split
 : initial split after downloading the datasets(Possibilities: "vad", "vad_speech", "vad_balanced", "getrennt")
