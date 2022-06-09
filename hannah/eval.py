@@ -67,6 +67,6 @@ def eval(config: DictConfig) -> Optional[bool]:
         eval_checkpoint(config, checkpoint)
 
 
-@hydra.main(config_name="eval", config_path="conf", base_version="1.2")
+@hydra.main(config_name="eval", config_path="conf", version_base="1.2")
 def main(config: DictConfig):
     return eval(config)

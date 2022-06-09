@@ -126,7 +126,7 @@ def eval(config: DictConfig):
     return retval
 
 
-@hydra.main(config_name="objectdetection_eval", config_path="conf", base_version="1.2")
+@hydra.main(config_name="objectdetection_eval", config_path="conf", version_base="1.2")
 def main(config: DictConfig):
     return eval(config)
 

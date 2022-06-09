@@ -14,7 +14,7 @@ from .prepare import calculate_derived_metrics, prepare_summary
 logger = logging.getLogger("nas_eval")
 
 
-@hydra.main(config_path="../../conf/nas", config_name="eval", base_version="1.2")
+@hydra.main(config_path="../../conf/nas", config_name="eval", version_base="1.2")
 def main(config):
     logger.info("Current working directory %s", os.getcwd())
     result_metrics, parameters = prepare_summary(

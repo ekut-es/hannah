@@ -28,6 +28,8 @@ seed: [1234]
 validate_output: False
 
 hydra:
+    job:
+      chdir: true
     searchpath:
       - file://${oc.env:PWD,.}/configs
     run:

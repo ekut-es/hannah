@@ -215,7 +215,7 @@ def nas(config: DictConfig) -> None:
     nas_trainer.run()
 
 
-@hydra.main(config_name="config", config_path="conf", base_version="1.2")
+@hydra.main(config_name="config", config_path="conf", version_base="1.2")
 def main(config: DictConfig):
     logging.captureWarnings(True)
     try:
