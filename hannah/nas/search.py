@@ -486,7 +486,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to train
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_kernels_allowed == True:
+        if self.elastic_kernels_allowed is True:
             # train elastic kernels
             for current_kernel_step in range(self.kernel_step_count):
                 if current_kernel_step == 0:
@@ -509,7 +509,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_dilation_allowed == True:
+        if self.elastic_dilation_allowed is True:
             # train elastic kernels
             for current_dilation_step in range(self.dilation_step_count):
                 if current_dilation_step == 0:

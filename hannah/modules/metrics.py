@@ -104,11 +104,11 @@ def plot_confusion_matrix(
         stats_text = ""
 
     # SET FIGURE PARAMETERS ACCORDING TO OTHER ARGUMENTS
-    if figsize == None:
+    if figsize is None:
         # Get default figure size if not set
         figsize = plt.rcParams.get("figure.figsize")
 
-    if xyticks == False:
+    if xyticks is False:
         # Do not show categories if xyticks is False
         categories = False
 
