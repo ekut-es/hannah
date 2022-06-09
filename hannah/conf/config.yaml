@@ -14,6 +14,8 @@ defaults:
     - compression: null
     - optional dataset/features: ${dataset}_${features}
     - experiment: null
+    - nas: null
+    - experiment: null
     - override hydra/job_logging: silent
     - _self_
 
@@ -30,14 +32,10 @@ validate_output: False
 hydra:
     job:
       chdir: true
-    searchpath:
-      - file://${oc.env:PWD,.}/configs
     run:
       dir: ${output_dir}/${experiment_id}/${model.name}/
     sweep:
       dir: ${output_dir}/${experiment_id}/${model.name}/
-
-
 
 #TODO:
 dump_test: false
