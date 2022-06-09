@@ -1540,7 +1540,7 @@ name = "scikit-learn"
 version = "1.1.1"
 description = "A set of python modules for machine learning and data mining"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.8"
 
 [package.dependencies]
@@ -1784,7 +1784,7 @@ name = "threadpoolctl"
 version = "3.1.0"
 description = "threadpoolctl"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [[package]]
@@ -2057,7 +2057,7 @@ vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown", 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "dec0214a8afdbf55de4c932b394a3c4c5b308325ba7632ceb7d93f49b612b188"
+content-hash = "76c741ade5b9de27ed36a458572d8dcdb10e35f443e976451b2b090fca9cb55f"
 
 [metadata.files]
 absl-py = [
