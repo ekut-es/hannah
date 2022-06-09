@@ -9,7 +9,6 @@ from torch.nn.modules.utils import _single
 from ..utils import next_power_of2
 
 
-############################# DS Conv Block ###################################
 class GDSConv(nn.Module):
     def __init__(
         self,
@@ -82,9 +81,6 @@ class GDSConvBlock(nn.Module):
         x = self.layer(x)
 
         return x
-
-
-############################ Combined Final Block *****************************
 
 
 class SincNet(nn.Module):

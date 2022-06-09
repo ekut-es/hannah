@@ -399,7 +399,7 @@ class TCResNetModel(nn.Module):
             spike_conversion_parameter_per_channel_name, False
         )
 
-        if spike_conversion_neuron_type != None:
+        if spike_conversion_neuron_type is not None:
             spike_conversion = get1DNeuronLayer(
                 channels=input_channels,
                 spike_fn=self.spike_fn,

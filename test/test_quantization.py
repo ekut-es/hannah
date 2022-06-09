@@ -199,7 +199,7 @@ def test_fused_relu_2d():
 
 
 if __name__ == "__main__":
-    test_fused_conv1d()
+    test_fused_relu_1d()
 
     # test_fused_bn_relu_1d()
     # test_fused_bn_relu_2d()

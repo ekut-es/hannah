@@ -29,18 +29,18 @@ class NoiseDataset:
         output_test = list()
 
         train, dev, test = NoiseDataset.getFSDKaggle_divided(config)
-        if train != None:
+        if train is not None:
             output_train.extend(train)
             output_dev.extend(dev)
             output_test.extend(test)
 
         train, dev, test = NoiseDataset.getFSDnoisy_divided(config)
-        if train != None:
+        if train is not None:
             output_train.extend(train)
             output_dev.extend(dev)
             output_test.extend(test)
         train, dev, test = NoiseDataset.getFSD50K_divided(config)
-        if train != None:
+        if train is not None:
             output_train.extend(train)
             output_dev.extend(dev)
             output_test.extend(test)

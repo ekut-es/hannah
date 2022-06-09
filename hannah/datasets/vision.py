@@ -3,7 +3,6 @@ import logging
 import os
 import pathlib
 import tarfile
-from logging import config
 from posixpath import split
 from typing import List
 
