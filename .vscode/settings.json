@@ -19,11 +19,14 @@
     },
     "cSpell.words": [
         "accum",
+        "cpus",
+        "gres",
         "hparams",
         "hyperparams",
         "onnx",
         "opset",
         "qconfig",
+        "submitit",
         "tablefmt"
     ]
 }

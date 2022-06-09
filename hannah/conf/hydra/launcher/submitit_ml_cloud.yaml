@@ -1,0 +1,14 @@
+defaults:
+  - submitit_slurm
+  - _self_
+
+_target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
+submitit_folder: ${hydra.sweep.dir}/.submitit/%j
+timeout_min: 600 # 10 Hours timeout per task
+cpus_per_task: 8
+gpus_per_node: 1
+tasks_per_node: 1
+partition:  gpu-2080ti
+gres: null
+mem_per_gpu: 12G
+mem_per_cpu: null
