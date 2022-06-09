@@ -1,5 +1,5 @@
 defaults:
-    augmentation:
+    - augmentation:
         - rand_augment
         - mixup
 

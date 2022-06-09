@@ -1,7 +1,8 @@
 defaults:
-    augemtation:
+    - augmentation:
         - rand_augment
         - mixup
+    - _self_
 
 data_folder: ${hydra:runtime.cwd}/datasets/
 data_root: ${hydra:runtime.cwd}/datasets/kvasir_capsule/labelled_images
