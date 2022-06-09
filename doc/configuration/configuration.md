@@ -14,6 +14,7 @@ There are two main locations for configuration:
 
 - Framework configuration files are located under `hannah/conf` configuration files located in this directory should be useful for more than one project.
 - Project specific configuration files are located in `configs/<project_name>` these usually contain a project specific configuration file and one or more configured experiments in the subfolder `experiment`
+- make use of composition using defaults lists as much as possible
 
 # Guideline for writing configuration files
 
