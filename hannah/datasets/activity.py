@@ -1,24 +1,22 @@
-import os
-import logging
 import hashlib
+import logging
+import os
 import sys
-
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
+import h5py
 import numpy as np
 import torch
-import h5py
 
-from collections import defaultdict
-
-from ..utils import list_all_files, extract_from_download_cache
+from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
 
 msglogger = logging.getLogger()
 
 
 class Data3D:
-    """ 3D-Data """
+    """3D-Data"""
 
     last_x, last_y, last_z = 0.0, 0.0, 0.0
 
@@ -43,12 +41,12 @@ class Data3D:
 
 
 class PAMPAP2_IMUData:
-    """ A IMU set defined by temperature (°C)
-        3D-acceleration data (ms -2 ), scale: ±16g, resolution: 13-bit
-        3D-acceleration data (ms -2 ), scale: ±6g, resolution: 13-bit
-        3D-gyroscope data (rad/s)
-        3D-magnetometer data (μT)
-        orientation (invalid in this data collection) """
+    """A IMU set defined by temperature (°C)
+    3D-acceleration data (ms -2 ), scale: ±16g, resolution: 13-bit
+    3D-acceleration data (ms -2 ), scale: ±6g, resolution: 13-bit
+    3D-gyroscope data (rad/s)
+    3D-magnetometer data (μT)
+    orientation (invalid in this data collection)"""
 
     last_temperature = 25.0
 
@@ -95,7 +93,7 @@ class PAMPAP2_IMUData:
 
 
 class PAMAP2_DataPoint:
-    """ A temporal datapoint in the dataset"""
+    """A temporal datapoint in the dataset"""
 
     ACTIVITY_MAPPING = {
         1: "lying",
@@ -184,7 +182,7 @@ class PAMAP2_DataPoint:
 
 
 class PAMAP2_DataChunk:
-    """ A DataChunk is a item of the pytorch dataset """
+    """A DataChunk is a item of the pytorch dataset"""
 
     def __init__(self, source, start=None, stop=None):
         if type(source) is list:
@@ -213,8 +211,8 @@ class PAMAP2_DataChunk:
 
 
 class PAMAP2_Dataset(AbstractDataset):
-    """ Class for the PAMAP2 activity dataset
-        https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring"""
+    """Class for the PAMAP2 activity dataset
+    https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring"""
 
     def __init__(self, data_files, set_type, config):
         super().__init__()
@@ -277,7 +275,7 @@ class PAMAP2_Dataset(AbstractDataset):
                 path = os.path.join(root, file_name)
                 with h5py.File(path, "r") as f:
                     length = len(f["dataset"][()])
-                max_no_files = 2 ** 27 - 1
+                max_no_files = 2**27 - 1
                 start = 0
                 stop = length
                 step = input_length

@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
+from typing import Any, Dict, List, Type, Union
 
 import pandas as pd
 import tabulate
@@ -17,7 +18,7 @@ from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
 from .utils import auto_select_gpus, clear_outputs, common_callbacks
 
-msglogger = logging.getLogger(__name__)
+msglogger: logging.Logger = logging.getLogger(__name__)
 
 
 @rank_zero_only
@@ -35,7 +36,9 @@ def handle_dataset(config=DictConfig):
     lit_module.prepare_data()
 
 
-def train(config: DictConfig):
+def train(
+    config: DictConfig,
+) -> Union[float, Dict[Any, float], List[Union[float, Dict[Any, float]]]]:
     test_output = []
     results = []
     if isinstance(config.seed, int):
@@ -202,7 +205,7 @@ def train(config: DictConfig):
         return results
 
 
-def nas(config: DictConfig):
+def nas(config: DictConfig) -> None:
     print(OmegaConf.to_yaml(config))
     nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
     nas_trainer.run()

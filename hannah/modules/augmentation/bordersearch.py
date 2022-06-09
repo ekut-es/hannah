@@ -1,16 +1,13 @@
+import math
 from dataclasses import dataclass
+from typing import Any, Callable, List, MutableMapping, Tuple
 
+import libsvm.svmutil as svmutil
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy import random
-import libsvm.svmutil as svmutil
-
-from typing import List, Tuple, Callable
-
-import math
 
 from hannah.objectdetection_eval import eval
-
-import matplotlib.pyplot as plt
 
 
 @dataclass
@@ -43,16 +40,14 @@ class Opts:
     waterlevel: float
     samples: int
     svm_params: str
-    parameters: list()
+    parameters: List[Any]
     active: bool
-    augmentation_conf: dict()
+    augmentation_conf: MutableMapping[str, Any]
     best_path: str
-    sample_fun: Callable[[any, int], List[List[float]]]
+    sample_fun: Callable[[Any, int], List[List[float]]]
     dut_fun: Callable[[List[float]], float]
 
-    def __init__(
-        self, parameters: list, runs: int, augmentation_conf: dict, best_path: str
-    ):
+    def __init__(self, parameters, runs, augmentation_conf, best_path):
         self.parameters = parameters
         self.runs = runs
         self.augmentation_conf = augmentation_conf
@@ -83,7 +78,7 @@ class Bordersearch:
 
         return ret
 
-    def normalize(self, opts: Opts, values: List[float]) -> List[float]:
+    def normalize(self, opts: Opts, values: List[float]) -> List[List[float]]:
         result = list()
 
         for i in range(len(values)):

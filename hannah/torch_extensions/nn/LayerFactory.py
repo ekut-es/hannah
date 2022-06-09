@@ -1,25 +1,25 @@
 import torch.nn
+import torch.nn as nn
 
-from .SNNLayers import TimeTransposeLayer, Spiking1DS2NetLayer
-from .SNNReadoutLayers import (
-    ReadoutLayer,
-    ReadoutMeanLayer,
-    ReadoutSpikeTimeLayer,
-    ReadoutCountLayer,
-    ReadoutFirstSpikeLayer,
-)
-from .SNNBatchNormThroughTime import BatchNormalizationThroughTime1D
 from .SNNActivationLayer import (
-    Spiking1DIFLayer,
-    Spiking1DeLIFLayer,
-    Spiking1DLIFLayer,
-    Spiking1DeALIFLayer,
-    Spiking1DALIFLayer,
     ActivationLayer,
+    Spiking1DALIFLayer,
+    Spiking1DeALIFLayer,
+    Spiking1DeLIFLayer,
+    Spiking1DIFLayer,
+    Spiking1DLIFLayer,
     Surrogate_BP_Function,
     SurrogateHeaviside,
 )
-import torch.nn as nn
+from .SNNBatchNormThroughTime import BatchNormalizationThroughTime1D
+from .SNNLayers import Spiking1DS2NetLayer, TimeTransposeLayer
+from .SNNReadoutLayers import (
+    ReadoutCountLayer,
+    ReadoutFirstSpikeLayer,
+    ReadoutLayer,
+    ReadoutMeanLayer,
+    ReadoutSpikeTimeLayer,
+)
 
 
 def create_spike_fn(spike_fn_name="SHeaviside"):

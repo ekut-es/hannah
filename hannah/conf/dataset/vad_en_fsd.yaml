@@ -1,0 +1,27 @@
+
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.speech.VadDataset
+dataset: vad
+
+input_length: 16000
+samplingrate: 16000
+
+timeshift_ms: 100
+extract: random
+clear_download: False
+
+variants: ["en"]
+data_split: "vad_balanced"
+noise_dataset: ["FSD50K"]
+clear_split: False
+download_folder: ${dataset.data_folder}/downloads
+downsample: 0
+override: False
+
+silence_prob: 0.1
+unknown_prob: 0.1
+test_snr: 0.0
+train_snr_high: 300.0
+train_snr_low: -.0
+sampler: random

@@ -1,6 +1,5 @@
-import torch
 import numpy as np
-
+import torch
 
 # Taken from Paper Low-activity supervised convolutional spiking neural networks applied to speech commands recognition Arxiv:2011.06846
 
@@ -32,7 +31,9 @@ class SNN(torch.nn.Module):
 
 
 class EmptyLayer(torch.nn.Module):
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
 
         super(EmptyLayer, self).__init__()
 
@@ -123,7 +124,7 @@ class SpikingDenseLayer(torch.nn.Module):
         if self.lateral_connections:
             d = torch.einsum("ab, ac -> bc", self.w, self.w)
 
-        norm = (self.w ** 2).sum(0)
+        norm = (self.w**2).sum(0)
 
         for t in range(nb_steps):
 
@@ -268,7 +269,7 @@ class SpikingConv2DLayer(torch.nn.Module):
             d = torch.einsum("abcd, ebcd -> ae", self.w, self.w)
         b = self.b.unsqueeze(1).repeat((1, self.output_shape))
 
-        norm = (self.w ** 2).sum((1, 2, 3))
+        norm = (self.w**2).sum((1, 2, 3))
 
         for t in range(nb_steps):
 
@@ -427,7 +428,7 @@ class SpikingConv3DLayer(torch.nn.Module):
             d = torch.einsum("abcde, fbcde -> af", self.w, self.w)
         b = self.b.unsqueeze(1).unsqueeze(1).repeat((1, *self.output_shape))
 
-        norm = (self.w ** 2).sum((1, 2, 3, 4))
+        norm = (self.w**2).sum((1, 2, 3, 4))
 
         for t in range(nb_steps):
 
@@ -534,7 +535,7 @@ class Spiking1DS2NetLayer(torch.nn.Module):
         )
 
         b = self.b
-        norm = (self.convolution.weight ** 2).sum((1, 2))
+        norm = (self.convolution.weight**2).sum((1, 2))
 
         for t in range(nb_steps):
 

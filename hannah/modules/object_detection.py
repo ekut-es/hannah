@@ -40,8 +40,9 @@ class ObjectDetectionModule(ClassifierModule):
     def setup(self, stage):
         # TODO stage variable is not used!
         msglogger.info("Setting up model")
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
+        if self.trainer:
+            for logger in self.trainer.loggers:
+                logger.log_hyperparams(self.hparams)
 
         if self.initialized:
             return

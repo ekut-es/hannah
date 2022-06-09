@@ -21,7 +21,7 @@ override: False
 
 silence_prob: 0.1
 unknown_prob: 0.1
-test_snr: .inf
-train_snr_high: 1000.0
-train_snr_low: 0.0
+test_snr: 0.0
+train_snr_high: 100.0
+train_snr_low: -5.0
 sampler: random

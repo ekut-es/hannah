@@ -26,8 +26,9 @@ msglogger = logging.getLogger(__name__)
 
 class ImageClassifierModule(ClassifierModule):
     def setup(self, stage):
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
+        if self.trainer:
+            for logger in self.trainer.loggers:
+                logger.log_hyperparams(self.hparams)
 
         if self.initialized:
             return

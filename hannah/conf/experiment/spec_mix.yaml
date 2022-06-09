@@ -1,0 +1,25 @@
+# @package _global_
+defaults:
+    - override /dataset: kws
+    - override /features: mfcc
+    - override /model: conv-net-trax
+    - override /scheduler: 1cycle
+    - override /optimizer: adamw
+    - override /normalizer: fixedpoint
+    - override /module: stream_classifier
+    - override /early_stopping: null
+
+module:
+  mixup:
+     spec_mix_prob: 1.0
+     prob: 1.0
+     alpha: 0.3
+
+
+scheduler:
+  max_lr: 0.01
+
+trainer:
+  max_epochs: 30
+
+experiment_id: "spec_mix"

@@ -1,9 +1,10 @@
 import copy
 import io
 import logging
+import math
 import os
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar
 
 import tabulate
 import torch
@@ -12,7 +13,7 @@ import torchvision
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 from PIL import Image
-from pytorch_lightning import LightningModule
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import (
     LightningLoggerBase,
     LoggerCollection,
@@ -25,7 +26,7 @@ from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import fullname
 from .metrics import plot_confusion_matrix
 
-msglogger = logging.getLogger(__name__)
+msglogger: logging.Logger = logging.getLogger(__name__)
 
 
 class ClassifierModule(LightningModule, ABC):
@@ -44,10 +45,11 @@ class ClassifierModule(LightningModule, ABC):
         export_onnx: bool = True,
         gpus=None,
         **kwargs,
-    ):
+    ) -> None:
         super().__init__()
 
         self.save_hyperparameters()
+
         self.initialized = False
         self.train_set = None
         self.test_set = None
@@ -70,16 +72,16 @@ class ClassifierModule(LightningModule, ABC):
         self.train_metrics: MetricCollection = MetricCollection({})
 
     @abstractmethod
-    def prepare_data(self):
+    def prepare_data(self) -> Any:
         # get all the necessary data stuff
         pass
 
     @abstractmethod
-    def setup(self, stage):
+    def setup(self, stage) -> Any:
         pass
 
     @abstractmethod
-    def get_class_names(self):
+    def get_class_names(self) -> Any:
         pass
 
     def train_dataloader(self):
@@ -135,7 +137,7 @@ class ClassifierModule(LightningModule, ABC):
                 scheduler = instantiate(
                     self.hparams.scheduler,
                     optimizer=optimizer,
-                    total_steps=self.total_training_steps,
+                    total_steps=self.total_training_steps(),
                 )
                 retval["lr_scheduler"] = dict(scheduler=scheduler, interval="step")
             else:
@@ -145,28 +147,13 @@ class ClassifierModule(LightningModule, ABC):
 
         return retval
 
-    @property
     def total_training_steps(self) -> int:
         """Total training steps inferred from datamodule and devices."""
-        if self.trainer is None:
-            return -1
-        if self.trainer.max_steps > 0:
-            return self.trainer.max_steps
+        estimated_batches = self.trainer.estimated_stepping_batches
 
-        limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = (
-            min(batches, limit_batches)
-            if isinstance(limit_batches, int)
-            else int(limit_batches * batches)
-        )
+        msglogger.debug("Estimated number of training steps: %d", estimated_batches)
 
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return int((batches // effective_accum) * self.trainer.max_epochs)
+        return estimated_batches
 
     @rank_zero_only
     def _log_weight_distribution(self):
@@ -228,10 +215,9 @@ class ClassifierModule(LightningModule, ABC):
                             )
 
     def _logger_iterator(self) -> Iterable[LightningLoggerBase]:
-        if isinstance(self.logger, LoggerCollection):
-            loggers = self.logger
-        else:
-            loggers = [self.logger]
+        loggers = []
+        if self.trainer:
+            loggers = self.trainer.loggers
 
         return loggers
 
@@ -267,7 +253,7 @@ class ClassifierModule(LightningModule, ABC):
             except Exception as e:
                 logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
-    def on_load_checkpoint(self, checkpoint):
+    def on_load_checkpoint(self, checkpoint) -> None:
         for k, v in self.state_dict().items():
             if k not in checkpoint["state_dict"]:
                 msglogger.warning(
@@ -275,12 +261,14 @@ class ClassifierModule(LightningModule, ABC):
                 )
                 checkpoint["state_dict"][k] = v
 
-    def on_save_checkpoint(self, checkpoint):
+    def on_save_checkpoint(self, checkpoint) -> None:
         checkpoint["hyper_parameters"]["_target_"] = fullname(self)
 
-    def on_validation_epoch_end(self):
+    def on_validation_epoch_end(self) -> None:
         if self.trainer:
             if self.trainer.fast_dev_run:
+                return
+            if self.trainer.sanity_checking:
                 return
             if self.trainer.global_rank > 0:
                 return
@@ -300,7 +288,7 @@ class ClassifierModule(LightningModule, ABC):
             if isinstance(logger, TensorBoardLogger) and hasattr(self, "val_metrics"):
                 logger.log_hyperparams(self.hparams, val_metrics)
 
-    def on_test_end(self):
+    def on_test_end(self) -> None:
 
         if self.trainer and self.trainer.fast_dev_run:
             return
@@ -308,7 +296,7 @@ class ClassifierModule(LightningModule, ABC):
         self._plot_confusion_matrix()
         self._plot_roc()
 
-    def _plot_roc(self):
+    def _plot_roc(self) -> None:
         if hasattr(self, "test_roc"):
             # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
             self.test_roc.reset()
@@ -316,7 +304,7 @@ class ClassifierModule(LightningModule, ABC):
         if self.trainer.global_rank > 0:
             return
 
-    def _plot_confusion_matrix(self):
+    def _plot_confusion_matrix(self) -> None:
         if hasattr(self, "test_confusion"):
             confusion_matrix = self.test_confusion.compute()
             self.test_confusion.reset()

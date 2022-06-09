@@ -1,9 +1,11 @@
 import os
-import sys
-import shutil
 import random
-from ..utils import list_all_files, extract_from_download_cache
+import shutil
+import sys
+
 from torchvision.datasets.utils import extract_archive
+
+from ..utils import extract_from_download_cache, list_all_files
 
 
 class NoiseDataset:

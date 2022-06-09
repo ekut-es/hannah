@@ -26,13 +26,13 @@ resume: false
 
 seed: [1234]
 validate_output: False
-
+dump_test: false
 input_file: ''
 
 hydra:
-  searchpath:
-    - file://${oc.env:PWD}/configs
-  run:
-    dir: ${output_dir}/${experiment_id}/${model.name}/
-  sweep:
-    dir: ${output_dir}/${experiment_id}/${model.name}/
+    searchpath:
+      - file://${oc.env:PWD,.}/configs
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/

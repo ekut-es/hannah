@@ -1,14 +1,12 @@
 import math
+from typing import Any, Callable, List, Optional, TypeVar, Union
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules.utils import _single
-
-from typing import Callable, Optional
-
 from torch import Tensor
+from torch.nn.modules.utils import _single
 from torchaudio import functional as Ftorchaudio
 
 
@@ -25,11 +23,11 @@ class SincConv(nn.Module):
     """
 
     @staticmethod
-    def to_mel(hz):
+    def to_mel(hz) -> Any:
         return 2595 * np.log10(1 + hz / 700)
 
     @staticmethod
-    def to_hz(mel):
+    def to_hz(mel) -> Any:
         return 700 * (10 ** (mel / 2595) - 1)
 
     def __init__(
@@ -45,7 +43,7 @@ class SincConv(nn.Module):
         groups=1,
         min_low_hz=50,
         min_band_hz=50,
-    ):
+    ) -> None:
         super(SincConv, self).__init__()
 
         if in_channels != 1:
@@ -94,7 +92,7 @@ class SincConv(nn.Module):
         n_ = 2 * math.pi * torch.arange(-N, 0).view(1, -1) / self.sample_rate
         self.register_buffer("n_", n_, persistent=False)
 
-    def forward(self, waveforms):
+    def forward(self, waveforms) -> Any:
         f_low = torch.abs(self.low_freq_) + self.min_low_hz
         # print(f_low[0:10])
         f_high = torch.clamp(
@@ -115,7 +113,12 @@ class SincConv(nn.Module):
 
         band = torch.cat([bpl, bpc, bpr], dim=1)
         band = band / (2 * f_band[:, None])
-        band = band * self.window_[None,]
+        band = (
+            band
+            * self.window_[
+                None,
+            ]
+        )
 
         self.filters = band.view(self.out_channels, 1, self.kernel_size[0])
 
@@ -133,10 +136,10 @@ class SincConv(nn.Module):
 
 
 class Sinc_Act(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input) -> Any:
 
         return torch.log10(torch.abs(input) + 1)
 
@@ -157,7 +160,7 @@ class SincConvBlock(nn.Module):
         min_band_hz=50,
         bn_len=40,
         pool_len=20,
-    ):
+    ) -> None:
 
         super(SincConvBlock, self).__init__()
 
@@ -180,7 +183,7 @@ class SincConvBlock(nn.Module):
             nn.AvgPool1d(pool_len),
         )
 
-    def forward(self, x):
+    def forward(self, x) -> Any:
 
         out = self.layer(x)
 
@@ -188,23 +191,23 @@ class SincConvBlock(nn.Module):
 
 
 class RawFeatures(nn.Module):
-    def forward(self, x):
+    def forward(self, x) -> Any:
         x = torch.unsqueeze(x, dim=1)
         return x
 
 
 class SincConvFFT(nn.Module):
     @staticmethod
-    def to_mel(hz):
+    def to_mel(hz: float) -> float:
         return 2595 * np.log10(1 + hz / 700)
 
     @staticmethod
-    def to_hz(mel):
+    def to_hz(mel: float) -> float:
         return 700 * (10 ** (mel / 2595) - 1)
 
     def __init__(
         self, out_channels=40, sample_rate=16000, min_low_hz=50, min_band_hz=50
-    ):
+    ) -> None:
         super(SincConvFFT, self).__init__()
 
         self.out_channels = out_channels
@@ -224,7 +227,7 @@ class SincConvFFT(nn.Module):
         self.low_freq_ = nn.Parameter(torch.Tensor(hz[:-1]).view(-1, 1))
         self.band_freq_ = nn.Parameter(torch.Tensor(np.diff(hz)).view(-1, 1))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         spectrogram = torch.stft(x.squeeze(1), n_fft=160, hop_length=160)
         spectrogram = spectrogram[:, :, :, 0]
 
@@ -270,7 +273,14 @@ class LogSpectrogram(torch.nn.Module):
         onesided (bool, optional): controls whether to return half of results to
             avoid redundancy Default: ``True``
     """
-    __constants__ = ["n_fft", "win_length", "hop_length", "pad", "power", "normalized"]
+    __constants__: List[str] = [
+        "n_fft",
+        "win_length",
+        "hop_length",
+        "pad",
+        "power",
+        "normalized",
+    ]
 
     def __init__(
         self,
@@ -312,7 +322,7 @@ class LogSpectrogram(torch.nn.Module):
         self.pad_mode = pad_mode
         self.onesided = onesided
 
-    def forward(self, waveform: Tensor) -> Tensor:
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             waveform (Tensor): Tensor of audio of dimension (..., time).

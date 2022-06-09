@@ -29,7 +29,7 @@ class ReadoutLayer(torch.nn.Module):
     def forward(self, x):
         h = torch.einsum("abc,cd->abd", x, self.w)
 
-        norm = (self.w ** 2).sum(0)
+        norm = (self.w**2).sum(0)
 
         mem_rec = h
         output = torch.mean(mem_rec, 1) / (norm + 1e-8) - self.b
@@ -78,7 +78,9 @@ class ReadoutMeanLayer(torch.nn.Module):
 
 
 class ReadoutSpikeTimeLayer(torch.nn.Module):
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
 
         super(ReadoutSpikeTimeLayer, self).__init__()
 
@@ -93,7 +95,9 @@ class ReadoutSpikeTimeLayer(torch.nn.Module):
 
 
 class ReadoutCountLayer(torch.nn.Module):
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
 
         super(ReadoutCountLayer, self).__init__()
 
@@ -108,7 +112,9 @@ class ReadoutCountLayer(torch.nn.Module):
 
 
 class ReadoutFirstSpikeLayer(torch.nn.Module):
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
 
         super(ReadoutFirstSpikeLayer, self).__init__()
 
