@@ -2,15 +2,10 @@ import csv
 import hashlib
 import os
 import pickle
-import sys
 from collections import defaultdict
-from enum import Enum
 
 import numpy as np
-import scipy.signal as signal
 import torch
-import torch.utils.data as data
-import torchaudio
 import wfdb
 
 from ..utils.utils import extract_from_download_cache, list_all_files

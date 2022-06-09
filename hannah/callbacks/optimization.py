@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from typing import Any, Iterable, Mapping, Union
+from typing import Any, Iterable, List, Mapping, Union
 
 import pandas as pd
 from pytorch_lightning.callbacks import Callback
@@ -98,7 +98,7 @@ class HydraOptCallback(Callback):
                     ):
                         self.values[monitor] = directed_monitor_val
                     self._curves[monitor].append(monitor_val)
-                except:
+                except Exception:
                     pass
 
     def test_result(self):

@@ -1,27 +1,18 @@
 defaults:
-    - dataset: kws
-    - features: mfcc
-    - model: conv-net-trax
-    - scheduler: 1cycle
-    - optimizer: sgd
-    - normalizer: fixedpoint
-    - module: stream_classifier
-    - compress: null
-    - trainer: default
-    - checkpoint: default
-    - backend: trax_ut
-    - early_stopping: null
-    - profiler: null
-    - pruning: null
-    - nas: aging_evolution_nas
-    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
-      optional: true
+    - config
+    - override dataset: kws
+    - override features: mfcc
+    - override model: conv-net-trax
+    - override scheduler: 1cycle
+    - override optimizer: sgd
+    - override normalizer: fixedpoint
+    - override module: stream_classifier
+    - override checkpoint: default
+    - override backend: trax_ut
+    - override nas: aging_evolution_nas
+    - _self_
 
 experiment_id: test
-output_dir: trained_models
-auto_lr: false
-print_metrics: false
-data_monitor: false
 
 seed: [1234]
 
@@ -62,17 +53,3 @@ nas:
     acc_clock_cycles: 25000
     acc_power: 0.00002
     acc_area: 200000
-
-
-
-hydra:
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-
-
-
-#TODO:
-dump_test: false
-input_file: ''

@@ -179,8 +179,8 @@ class CrossValidationTrainer:
 
         confusion_plot = plot_confusion_matrix(overall_confusion, self.class_names)
 
-        confusion_plot.savefig(f"test_confusion.png")
-        confusion_plot.savefig(f"test_confusion.pdf")
+        confusion_plot.savefig("test_confusion.png")
+        confusion_plot.savefig("test_confusion.pdf")
 
     # Do all in fit
     def fit(self, model: LightningModule) -> None:

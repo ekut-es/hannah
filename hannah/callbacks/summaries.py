@@ -105,9 +105,9 @@ def walk_model(model, dummy_input):
 
     def get_1DSpiking_macs(module, output):
         neuron_macs = {"eLIF": 4, "LIF": 5, "eALIF": 5, "ALIF": 6}
-        if module.flatten_output == False:
+        if module.flatten_output is False:
             return module.channels * output.shape[2] * neuron_macs[module.type]
-        elif module.flatten_output == True:
+        elif module.flatten_output is True:
             return module.channels * output.shape[1] * neuron_macs[module.type]
 
     def get_conv_attrs(module):
@@ -201,7 +201,7 @@ class MacSummaryCallback(Callback):
         model = pl_module.model
         ofamodel = isinstance(model, OFAModel)
         if ofamodel:
-            if model.validation_model == None:
+            if model.validation_model is None:
                 model.build_validation_model()
             model = model.validation_model
 

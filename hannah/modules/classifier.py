@@ -173,7 +173,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 metrics(output, y)
                 self.log_dict(metrics)
             except ValueError as e:
-                logging.critical(f"Could not calculate batch metrics: {outputs}")
+                logging.critical(f"Could not calculate batch metrics: output={output}")
 
         self.log(f"{prefix}_loss", loss)
 

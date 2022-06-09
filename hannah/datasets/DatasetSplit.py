@@ -329,11 +329,11 @@ class DatasetSplit:
 
     @classmethod
     def combine_underscore_lists(cls, l1, l2, last_element, output=""):
-        for l in l1:
-            output += "_" + l
+        for item in l1:
+            output += "_" + item
 
-        for l in l2:
-            output += "_" + l
+        for item2 in l2:
+            output += "_" + item2
 
         output += "_" + last_element
 

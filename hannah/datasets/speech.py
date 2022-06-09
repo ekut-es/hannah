@@ -36,7 +36,7 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
         torchaudio.set_audio_backend("sox_io")
         try:
             data, samplingrate = torchaudio.load(file_name)
-        except:
+        except RuntimeError:
             msglogger.warning(
                 "Could not load %s with default backend trying sndfile", str(file_name)
             )
