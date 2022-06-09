@@ -26,7 +26,7 @@ from hannah.datasets.base import ctc_collate_fn
 
 from ..datasets import SpeechDataset
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
-from ..utils import set_deterministic
+from ..utils.utils import set_deterministic
 from .augmentation import MixupAudio
 from .base import ClassifierModule
 from .config_utils import get_loss_function, get_model

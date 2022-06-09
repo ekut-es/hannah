@@ -22,7 +22,7 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.summaries import MacSummaryCallback
-from ..utils import clear_outputs, common_callbacks, fullname
+from ..utils.utils import clear_outputs, common_callbacks, fullname
 
 msglogger = logging.getLogger("nas")
 

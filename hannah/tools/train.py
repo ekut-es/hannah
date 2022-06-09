@@ -12,7 +12,7 @@ def main(config: DictConfig):
 
     # Lazily Imported to get quicker tab completion
     from ..train import handle_dataset, nas, train
-    from ..utils import log_execution_env_state
+    from ..utils.utils import log_execution_env_state
 
     logging.captureWarnings(True)
     try:

@@ -16,7 +16,7 @@ from chainmap import ChainMap
 from joblib import Memory
 from torchvision.datasets.utils import list_files
 
-from ..utils import extract_from_download_cache, list_all_files
+from ..utils.utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
 from .DatasetSplit import DatasetSplit
 from .Downsample import Downsample

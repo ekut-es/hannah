@@ -37,7 +37,7 @@ class FilteredPruning(ModelPruning):
         if not prune or not amount:
             return
 
-        from hannah.utils import set_deterministic
+        from utils.utils import set_deterministic
 
         with set_deterministic(False):
             self.apply_pruning(amount)

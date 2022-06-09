@@ -23,7 +23,7 @@ from pytorch_lightning.utilities.distributed import rank_zero_only
 from torchmetrics import MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
-from ..utils import fullname
+from ..utils.utils import fullname
 from .metrics import plot_confusion_matrix
 
 msglogger: logging.Logger = logging.getLogger(__name__)

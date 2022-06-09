@@ -36,11 +36,11 @@ from torchvision.datasets.utils import (
 
 import hydra
 
-from .callbacks.clustering import kMeans
-from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
-from .callbacks.summaries import MacSummaryCallback
-from .callbacks.svd_compress import SVD
+from ..callbacks.clustering import kMeans
+from ..callbacks.optimization import HydraOptCallback
+from ..callbacks.pruning import PruningAmountScheduler
+from ..callbacks.summaries import MacSummaryCallback
+from ..callbacks.svd_compress import SVD
 
 try:
     import lsb_release  # pytype: disable=import-error

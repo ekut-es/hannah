@@ -10,7 +10,7 @@ import torchaudio
 from pandas import DataFrame
 from torchvision.datasets.utils import list_dir
 
-from ..utils import extract_from_download_cache, list_all_files
+from ..utils.utils import extract_from_download_cache, list_all_files
 from .Downsample import Downsample
 from .NoiseDataset import NoiseDataset
 

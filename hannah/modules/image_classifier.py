@@ -16,7 +16,7 @@ from torchmetrics import (
     Recall,
 )
 
-from ..utils import set_deterministic
+from ..utils.utils import set_deterministic
 from .augmentation.batch_augmentation import BatchAugmentationPipeline
 from .base import ClassifierModule
 from .metrics import Error
