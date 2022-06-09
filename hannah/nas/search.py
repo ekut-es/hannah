@@ -16,7 +16,7 @@ from hannah_optimizer.aging_evolution import AgingEvolution
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
 from omegaconf import OmegaConf
-from pytorch_lightning import LightningModule
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
@@ -784,10 +784,8 @@ class OFANasTrainer(NASTrainerBase):
         """
         # disable sampling in forward during evaluation.
         model.eval_mode = True
-        # reset_seed()  # run_training does this (?)
-        # reset target values to step through
 
-        eval_methods = list()
+        eval_methods = []
 
         if self.elastic_width_allowed:
             eval_methods.append(self.eval_elastic_width)
@@ -887,7 +885,7 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_depth_step = prev_max_depth
         model.sampling_max_width_step = prev_max_width
 
-    def rebuild_trainer(self, step_name: str, epochs: int = 1):
+    def rebuild_trainer(self, step_name: str, epochs: int = 1) -> Trainer:
         logger = TensorBoardLogger(".", version=step_name)
         callbacks = common_callbacks(self.config)
         self.trainer = instantiate(

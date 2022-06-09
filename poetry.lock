@@ -42,7 +42,7 @@ name = "albumentations"
 version = "1.1.0"
 description = "Fast image augmentation library and easy to use wrapper around other libraries"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -126,7 +126,7 @@ name = "beautifulsoup4"
 version = "4.11.1"
 description = "Screen-scraping library"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6.0"
 
 [package.dependencies]
@@ -247,6 +247,14 @@ PrettyTable = ">=0.7.2"
 pyparsing = ">=2.1.0"
 PyYAML = ">=3.12"
 stevedore = ">=2.0.1"
+
+[[package]]
+name = "cloudpickle"
+version = "2.1.0"
+description = "Extended pickling support for Python objects"
+category = "main"
+optional = false
+python-versions = ">=3.6"
 
 [[package]]
 name = "cmaes"
@@ -444,7 +452,7 @@ name = "gdown"
 version = "4.4.0"
 description = "Google Drive direct download of big files."
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [package.dependencies]
@@ -618,6 +626,18 @@ hydra-core = ">=1.1.0.dev7"
 optuna = ">=2.10.0,<3.0.0"
 
 [[package]]
+name = "hydra-submitit-launcher"
+version = "1.2.0"
+description = "Submitit Launcher for Hydra apps"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+hydra-core = ">=1.1.0.dev7"
+submitit = ">=1.3.3"
+
+[[package]]
 name = "identify"
 version = "2.5.1"
 description = "File identification library for Python"
@@ -641,7 +661,7 @@ name = "imagecorruptions"
 version = "1.1.2"
 description = "This package provides a set of image corruptions."
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [package.dependencies]
@@ -656,7 +676,7 @@ name = "imageio"
 version = "2.19.3"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 
 [package.dependencies]
@@ -754,7 +774,7 @@ name = "kornia"
 version = "0.6.5"
 description = "Open Source Differentiable Computer Vision Library for PyTorch"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -913,7 +933,7 @@ name = "networkx"
 version = "2.8.3"
 description = "Python package for creating and manipulating graphs and networks"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.8"
 
 [package.extras]
@@ -1016,10 +1036,10 @@ protobuf = "*"
 
 [[package]]
 name = "opencv-python"
-version = "4.6.0.66"
+version = "4.5.5.64"
 description = "Wrapper package for OpenCV python bindings."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -1032,10 +1052,10 @@ numpy = [
 
 [[package]]
 name = "opencv-python-headless"
-version = "4.6.0.66"
+version = "4.5.5.64"
 description = "Wrapper package for OpenCV python bindings."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -1244,7 +1264,7 @@ name = "pycocotools"
 version = "2.0.4"
 description = "Official APIs for the MS-COCO dataset"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.5"
 
 [package.dependencies]
@@ -1327,7 +1347,7 @@ name = "pysocks"
 version = "1.7.1"
 description = "A Python SOCKS client module. See https://github.com/Anorov/PySocks for more information."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
@@ -1424,7 +1444,7 @@ name = "pywavelets"
 version = "1.3.0"
 description = "PyWavelets, wavelet transform module"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 
 [package.dependencies]
@@ -1443,7 +1463,7 @@ name = "qudida"
 version = "0.0.4"
 description = "QUick and DIrty Domain Adaptation"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.5.0"
 
 [package.dependencies]
@@ -1513,7 +1533,7 @@ name = "scikit-image"
 version = "0.19.2"
 description = "Image processing in Python"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 
 [package.dependencies]
@@ -1537,7 +1557,7 @@ name = "scikit-learn"
 version = "1.1.1"
 description = "A set of python modules for machine learning and data mining"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.8"
 
 [package.dependencies]
@@ -1639,7 +1659,7 @@ name = "soupsieve"
 version = "2.3.2.post1"
 description = "A modern CSS selector implementation for Beautiful Soup."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [[package]]
@@ -1684,6 +1704,21 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 pbr = ">=2.0.0,<2.1.0 || >2.1.0"
+
+[[package]]
+name = "submitit"
+version = "1.4.2"
+description = "\"Python 3.6+ toolbox for submitting jobs to Slurm"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+cloudpickle = ">=1.2.1"
+typing_extensions = ">=3.7.4.2"
+
+[package.extras]
+dev = ["pytest (>=4.3.0)", "pytest-asyncio (>=0.15.0)", "pytest-cov (>=2.6.1)", "coverage[toml] (>=5.1)", "black (==22.3.0)", "isort (==5.5.3)", "pre-commit (>=1.15.2)", "mypy (>=0.782)", "types-pkg_resources (>=0.1.2)", "pylint (>=2.8.0)", "flit (>=3.5.1)"]
 
 [[package]]
 name = "sympy"
@@ -1766,7 +1801,7 @@ name = "threadpoolctl"
 version = "3.1.0"
 description = "threadpoolctl"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [[package]]
@@ -1774,7 +1809,7 @@ name = "tifffile"
 version = "2022.5.4"
 description = "Read and write TIFF files"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.8"
 
 [package.dependencies]
@@ -1801,7 +1836,7 @@ name = "timm"
 version = "0.4.12"
 description = "(Unofficial) PyTorch Image Models"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -2034,11 +2069,12 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [extras]
 onnxrt-backend = ["onnxruntime"]
 tf-backend = ["onnx-tf"]
+vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown", "opencv-python-headless", "opencv-python"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "bafac995a15f28063d48d4367f9f5f8838e6dec915b31a029bef59ac079f8fc1"
+content-hash = "62dc4300e7ded60b17038703110dbea29a561dd4c17452d5e60a4f2806d2131f"
 
 [metadata.files]
 absl-py = [
@@ -2263,6 +2299,10 @@ click = [
 cliff = [
     {file = "cliff-3.10.1-py3-none-any.whl", hash = "sha256:a21da482714b9f0b0e9bafaaf2f6a8b3b14161bb47f62e10e28d2fe4ff4b1626"},
     {file = "cliff-3.10.1.tar.gz", hash = "sha256:045aee3f3c64471965d7ad507ce8474a4e2f20815fbb5405a770f8596a2a00a0"},
+]
+cloudpickle = [
+    {file = "cloudpickle-2.1.0-py3-none-any.whl", hash = "sha256:b5c434f75c34624eedad3a14f2be5ac3b5384774d5b0e3caf905c21479e6c4b1"},
+    {file = "cloudpickle-2.1.0.tar.gz", hash = "sha256:bb233e876a58491d9590a676f93c7a5473a08f747d5ab9df7f9ce564b3e7938e"},
 ]
 cmaes = [
     {file = "cmaes-0.8.2-py3-none-any.whl", hash = "sha256:9c4127be8942da3ac6857a7564d18a4a655462d77aa2d551a8e88063b23e0699"},
@@ -2585,6 +2625,10 @@ hydra-joblib-launcher = [
 hydra-optuna-sweeper = [
     {file = "hydra-optuna-sweeper-1.2.0.tar.gz", hash = "sha256:f20b56dfdc4db9f84f3b502c8e60a5269967197c4df4c28653cf17f71b2136ce"},
     {file = "hydra_optuna_sweeper-1.2.0-py3-none-any.whl", hash = "sha256:b012d94c1dc86edfc33dcf3c7f10e9d2ca6b27040dccb7fdccbb8888b1cd6eef"},
+]
+hydra-submitit-launcher = [
+    {file = "hydra-submitit-launcher-1.2.0.tar.gz", hash = "sha256:e14c8eb46d020fac60ba25f82bcc368dc55851d2683dc95c88631ffcf15e4a34"},
+    {file = "hydra_submitit_launcher-1.2.0-py3-none-any.whl", hash = "sha256:51ce468fbc91211c3a46677eefde94bbb9f721c9545af0be6dd0a95658515613"},
 ]
 identify = [
     {file = "identify-2.5.1-py2.py3-none-any.whl", hash = "sha256:0dca2ea3e4381c435ef9c33ba100a78a9b40c0bab11189c7cf121f75815efeaa"},
@@ -2956,18 +3000,22 @@ onnxruntime = [
     {file = "onnxruntime-1.11.1-cp39-cp39-win_amd64.whl", hash = "sha256:b1ffefc961fc607e5929fef92f3bc8bc48bd3a074b2a6448887be23eb313f75a"},
 ]
 opencv-python = [
-    {file = "opencv_python-4.6.0.66-cp36-abi3-macosx_10_15_x86_64.whl", hash = "sha256:e6e448b62afc95c5b58f97e87ef84699e6607fe5c58730a03301c52496005cae"},
-    {file = "opencv_python-4.6.0.66-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5af8ba35a4fcb8913ffb86e92403e9a656a4bff4a645d196987468f0f8947875"},
-    {file = "opencv_python-4.6.0.66-cp36-abi3-win32.whl", hash = "sha256:f482e78de6e7b0b060ff994ffd859bddc3f7f382bb2019ef157b0ea8ca8712f5"},
-    {file = "opencv_python-4.6.0.66-cp36-abi3-win_amd64.whl", hash = "sha256:0dc82a3d8630c099d2f3ac1b1aabee164e8188db54a786abb7a4e27eba309440"},
-    {file = "opencv_python-4.6.0.66-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:6e32af22e3202748bd233ed8f538741876191863882eba44e332d1a34993165b"},
+    {file = "opencv-python-4.5.5.64.tar.gz", hash = "sha256:f65de0446a330c3b773cd04ba10345d8ce1b15dcac3f49770204e37602d0b3f7"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-macosx_10_15_x86_64.whl", hash = "sha256:a512a0c59b6fec0fac3844b2f47d6ecb1a9d18d235e6c5491ce8dbbe0663eae8"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ca6138b6903910e384067d001763d40f97656875487381aed32993b076f44375"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b293ced62f4360d9f11cf72ae7e9df95320ff7bf5b834d87546f844e838c0c35"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-win32.whl", hash = "sha256:6247e584813c00c3b9ed69a795da40d2c153dc923d0182e957e1c2f00a554ac2"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-win_amd64.whl", hash = "sha256:408d5332550287aa797fd06bef47b2dfed163c6787668cc82ef9123a9484b56a"},
+    {file = "opencv_python-4.5.5.64-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:7787bb017ae93d5f9bb1b817ac8e13e45dd193743cb648498fcab21d00cf20a3"},
 ]
 opencv-python-headless = [
-    {file = "opencv_python_headless-4.6.0.66-cp36-abi3-macosx_10_15_x86_64.whl", hash = "sha256:21e70f8b0c04098cdf466d27184fe6c3820aaef944a22548db95099959c95889"},
-    {file = "opencv_python_headless-4.6.0.66-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:eec6281054346103d6af93f173b7c6a206beb2663d3adc04aa3ddc66e85093df"},
-    {file = "opencv_python_headless-4.6.0.66-cp36-abi3-win32.whl", hash = "sha256:3bacd806cce1f1988e58f3d6f761538e0215d6621d316de94c009dc0acbd6ad3"},
-    {file = "opencv_python_headless-4.6.0.66-cp36-abi3-win_amd64.whl", hash = "sha256:e6c069bc963d7e8fcec21b3e33e594d35948badd63eccb2e80f88b0a12102c03"},
-    {file = "opencv_python_headless-4.6.0.66-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:ffbf26fcd697af996408440a93bc69c49c05a36845771f984156dfbeaa95d497"},
+    {file = "opencv-python-headless-4.5.5.64.tar.gz", hash = "sha256:c3c2dda44d601757a508b07d628537c49f31223ad4edd0f747a70d4c852a7b98"},
+    {file = "opencv_python_headless-4.5.5.64-cp36-abi3-macosx_10_15_x86_64.whl", hash = "sha256:62e31878641a8f96e773118d1eea9f34bdda87c9990a0faab04ebaafb5ae015c"},
+    {file = "opencv_python_headless-4.5.5.64-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:567a54c1919bcf5b3d20a9830e3c511e57134de8def286ce137c3544a892f98c"},
+    {file = "opencv_python_headless-4.5.5.64-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3f330468c29882dbbec5af25695c5e575572c6b855cb0f9fe53e14116fd46bfc"},
+    {file = "opencv_python_headless-4.5.5.64-cp36-abi3-win32.whl", hash = "sha256:4bdf982574bf2fefc5f82c86df7cb42e56ad627874c7c0f4d94ecf4ae8885304"},
+    {file = "opencv_python_headless-4.5.5.64-cp36-abi3-win_amd64.whl", hash = "sha256:a60e9ff48854ec37be391e19dd634883cc26c2f0f814e5325b3deca33420912c"},
+    {file = "opencv_python_headless-4.5.5.64-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:ca4f013fa958f60fb2327fe87e6127c1ac0ab536890b1d4b00847f417b7af1ba"},
 ]
 optuna = [
     {file = "optuna-2.10.0-py3-none-any.whl", hash = "sha256:457ff8b12b459dc1eeb0178389ff9e5c4da41764cc91152fe324bfd56f88d43f"},
@@ -3417,6 +3465,10 @@ sqlalchemy = [
 stevedore = [
     {file = "stevedore-3.5.0-py3-none-any.whl", hash = "sha256:a547de73308fd7e90075bb4d301405bebf705292fa90a90fc3bcf9133f58616c"},
     {file = "stevedore-3.5.0.tar.gz", hash = "sha256:f40253887d8712eaa2bb0ea3830374416736dc8ec0e22f5a65092c1174c44335"},
+]
+submitit = [
+    {file = "submitit-1.4.2-py3-none-any.whl", hash = "sha256:f03711f039583f1f1bb7381dca645e114bf7f145e6fffc23ddfa91301a37925d"},
+    {file = "submitit-1.4.2.tar.gz", hash = "sha256:c82d43a0e1b71e16abf6920eb00ad06d7fb8887187f65d0f7781c68fa45bd908"},
 ]
 sympy = [
     {file = "sympy-1.10.1-py3-none-any.whl", hash = "sha256:df75d738930f6fe9ebe7034e59d56698f29e85f443f743e51e47df0caccc2130"},

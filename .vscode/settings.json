@@ -19,12 +19,18 @@
     },
     "cSpell.words": [
         "accum",
+        "cpus",
+        "gres",
         "hparams",
         "hyperparams",
         "onnx",
         "opset",
         "qconfig",
+<<<<<<< HEAD
         "searchpath",
+=======
+        "submitit",
+>>>>>>> origin/master
         "tablefmt"
     ]
 }
