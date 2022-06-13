@@ -12,18 +12,6 @@ class OpType(TensorExpression):
         for operand in self.operands:
             last_output = find_first_op_in_dfg(operand)
             last_output.users.append(self)
-            # operand.users.append(self)
 
     def __repr__(self) -> str:
-        # ret = ""
-        # ret += "{}(".format(self.name) + \
-        #        "".join(["\t{}, \n".format(o) for o in self.operands]) + \
-        #        "".join(["\t{}={}".format(key, str(attr)) for key, attr in self.attributes.items()]) + \
-        #        ")"
-        # return ret
         return "Op({})".format(self.id)
-
-
-# def register_scope(scope, scope_counters):
-#     scope_counters[scope] = 1
-#     return scope + ".{{{}}}".format(scope_counters[scope])
