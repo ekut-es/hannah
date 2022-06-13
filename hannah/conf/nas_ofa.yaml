@@ -12,3 +12,5 @@ defaults:
     - _self_
 
 experiment_id: nas_ofa
+module:
+    shuffle_all_dataloaders: True
