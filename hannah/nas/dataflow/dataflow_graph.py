@@ -11,6 +11,10 @@ class DataFlowGraph(TensorExpression):
         super().__init__(*operands, tensor_type=None, name=name)
         self.inputs = []
         self.operand_to_input_map = {}
+        # For each operand, an input placeholder tensor is created
+        # operand_to_input_map serves as an convenient place to store the
+        # respective affiliations (used e.g. in link_users())
+        # FIXME: Do we REALLY need the placeholders?
         if self.operands:
             for i, o in enumerate(self.operands):
                 inp = Tensor(name='input')
@@ -24,7 +28,26 @@ class DataFlowGraph(TensorExpression):
         self.set_scope_ids(first_inp, [], [], {})
 
     def link_users(self):
+        """ Link the DFG to its users and the users of the DFG to
+        the DFG
+        """
         def _rewire_to_placeholder(operand, node, placeholder):
+            """ Delete the link "operand.user = node" that was formed
+            when the node was instantiated (FIXME: Empty DFGs?) and add
+            the link "placeholder.user = node". Recursively
+            traverse the current subgraph to find the correct node
+            (node that has the operand which we want to rewire)
+
+
+            Parameters
+            ----------
+            operand : TensorExpression
+                operand that we want to rewire
+            node : TensorExpression
+                node which uses the operand
+            placeholder : Tensor
+                input placeholder of the DFG
+            """
             if operand in node.operands:
                 last_output = find_first_op_in_dfg(operand)
                 last_output.users.remove(node)
@@ -36,13 +59,31 @@ class DataFlowGraph(TensorExpression):
                 for o in node.operands:
                     _rewire_to_placeholder(operand, o, placeholder)
 
-        for operand, inp in self.operand_to_input_map.items():
+        for operand, corresponding_placeholder in self.operand_to_input_map.items():
             last_output = find_first_op_in_dfg(operand)
             last_output.users.append(self)
-            self.users.append(inp)
-            _rewire_to_placeholder(operand, self.output, inp)
+            self.users.append(corresponding_placeholder)
+            _rewire_to_placeholder(operand, self.output, corresponding_placeholder)
 
     def set_scope_ids(self, node, visited, current_scope, counters):
+        """Recursively traverse the graph in a forward direction (-> users) and set the scopes
+        of the encountered nodes. To consider diverging branches, at each node
+        we look for leaf nodes. The "scope: node" relation is saved in self._scopes
+        to enable later subscriptability.
+
+        Parameters
+        ----------
+        node : TensorExpression
+            Current node
+        visited : list[TensorExpression]
+            Already visited nodes
+        current_scope : list[TensorExpression]
+            Represents the current hierarchy in descending order and
+            thus the scope of the current node
+        counters : dict
+            Tracks the scopes to distinguish similar TensorExpressions with
+            increasing counters
+        """
         current_scope = update_scope(node, current_scope)
         scope_id = get_id_and_update_counters(current_scope, counters)
         node.set_id(scope_id)
@@ -123,6 +164,21 @@ def reset_scope_ids(node):
 
 
 def find_first_input(node):
+    """Recusively traverses the graph from the given node
+    back to its first input. NOTE: The traversal is via OPERANDS
+    and not OUTPUT, meaning that e.g. weight Tensors that are
+    included in Ops in a DFG are not returned
+
+    Parameters
+    ----------
+    node : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
     if node.operands:
         for o in node.operands:
             return find_first_input(o)
