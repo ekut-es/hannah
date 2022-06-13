@@ -91,7 +91,6 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Instantiate Model
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
@@ -159,9 +158,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         pass
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
-        if prefix == "val":
-            print(prefix, torch.argmax(output, dim=1), y, metrics)
-
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
