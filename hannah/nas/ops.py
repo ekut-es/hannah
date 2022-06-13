@@ -12,6 +12,7 @@ from .dataflow.quantization_type import QuantizationType
 from .dataflow.tensor_type import TensorType
 from .expressions.placeholder import DefaultInt, UndefinedInt
 from .hardware_description.memory_type import MemoryType
+import hannah.nas.dataflow.registry as registry
 
 
 def int_t(signed: bool = True, bits: int = 8):
@@ -70,7 +71,7 @@ def conv(input):
         ),
         dtype=IntType(),
     )
-    return OpType("conv", input, weight, stride=stride)
+    return registry.op("conv", input, weight, stride=stride)
 
 
 @dataflow
