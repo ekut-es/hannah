@@ -13,6 +13,9 @@ class OpType(TensorExpression):
         for operand in operands:
             setattr(self, operand.name, operand)
 
+        for name, attribute in attributes:
+            setattr(self, name, attribute)
+
         self.attributes = attributes
         self.link_users()
 
