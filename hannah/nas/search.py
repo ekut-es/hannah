@@ -303,8 +303,8 @@ class OFANasTrainer(NASTrainerBase):
         self.elastic_dilation_allowed = elastic_dilation_allowed
         self.elastic_grouping_allowed = elastic_grouping_allowed
         # TODO MR 4920 delete this line
-        self.elastic_grouping_allowed = True
-        self.epochs_grouping_step = 10
+        # self.elastic_grouping_allowed = True
+        # self.epochs_grouping_step = 10
 
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
@@ -896,7 +896,7 @@ class OFANasTrainer(NASTrainerBase):
             eval_methods.append(self.eval_elatic_depth)
 
         # TODO here eval anschauen was hier schief läuft
-        self.elastic_grouping_allowed = False
+        # self.elastic_grouping_allowed = False
         if self.elastic_grouping_allowed:
             eval_methods.append(self.eval_elastic_grouping)
 

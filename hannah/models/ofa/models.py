@@ -557,7 +557,7 @@ class OFAModel(nn.Module):
                 # pick an available kernel index for every elastic kernel conv, independently.
                 sampling_step = min(
                     self.sampling_max_grouping_step + 1,
-                    conv.get_available_grouping_steps(),
+                    conv.get_available_grouping_steps() - 1,  # zero index array
                 )
                 # new_grouping_step = self.get_random_step(max_available_sampling_step)
                 conv.pick_group_index(sampling_step)
@@ -814,7 +814,7 @@ class OFAModel(nn.Module):
     def step_down_all_groups(self):
         return call_function_from_deep_nested(
             input=self.conv_layers,
-            function="step_down_group_size",
+            function="step_down_group_size",  # In ChannelHelper implementieren
             type_selection=elastic_conv_type,
         )
 

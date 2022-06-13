@@ -44,6 +44,8 @@ class ResBlockBase(nn.Module):
         # residual block implementation does not replace it with a skip or None
         if self.skip is not None:
             residual = self.skip(residual)
+        # TODO MR 20220613 hier knallts dennoch auch wenn groups=1 davor, bei ConvRelu1d
+
         x = self.blocks(x)
         x += residual
         # do activation and norm after applying residual (if enabled)

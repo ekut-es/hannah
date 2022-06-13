@@ -1,4 +1,4 @@
-import copy
+from tokenize import group
 from typing import List
 import torch.nn as nn
 import torch.nn.functional as nnf
@@ -9,6 +9,7 @@ import torch
 from .elasticBase import ElasticBase1d
 from ..utilities import (
     conv1d_get_padding,
+    adjust_weights_for_grouping
 )
 from .elasticchannelhelper import SequenceDiscovery
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
@@ -56,8 +57,8 @@ class ElasticConv1d(ElasticBase1d):
         # MR 23123
         # adjust the kernel if grouping is done
         if(grouping > 1):
-            # kernel_a = self.adjust_weights_for_grouping(kernel, 2)
-            kernel_a = self.adjust_weights_for_grouping(kernel, grouping)
+            # kernel_a = adjust_weights_for_grouping(kernel, 2)
+            kernel_a = adjust_weights_for_grouping(kernel, grouping)
         else:
             kernel_a = kernel
 
@@ -70,6 +71,8 @@ class ElasticConv1d(ElasticBase1d):
         dilation = self.get_dilation_size()
         ##
         grouping = self.get_group_size()
+        # if(grouping > 1):
+        #     kernel = adjust_weights_for_grouping(kernel, grouping)
         ##
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = nn.Conv1d(
@@ -80,7 +83,7 @@ class ElasticConv1d(ElasticBase1d):
             padding=padding,
             dilation=dilation,
             bias=False,
-            groups=grouping
+            groups=1
         )
         new_conv.weight.data = kernel
         if bias is not None:
@@ -132,7 +135,7 @@ class ElasticConvReLu1d(ElasticBase1d):
         # MR 23123
         # !!! TODO forwards anpassen !!!
         if(grouping > 1):
-            kernel_a = self.adjust_weights_for_grouping(kernel, grouping)
+            kernel_a = adjust_weights_for_grouping(kernel, grouping)
         else:
             kernel_a = kernel
 
@@ -146,6 +149,10 @@ class ElasticConvReLu1d(ElasticBase1d):
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         grouping = self.get_group_size()
+
+        # if(grouping > 1):
+        #     kernel = adjust_weights_for_grouping(kernel, grouping)
+
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvRelu1d(
             in_channels=self.in_channels,
@@ -155,7 +162,7 @@ class ElasticConvReLu1d(ElasticBase1d):
             padding=padding,
             dilation_sizes=dilation,
             bias=False,
-            groups=grouping
+            groups=1
         )
         new_conv.weight.data = kernel
         if bias is not None:
@@ -202,7 +209,7 @@ class ElasticConvBn1d(ElasticConv1d):
             self.kernel_sizes[self.target_kernel_index], dilation
         )
         # evtl hier eingreifen
-        #grouping = self.get_group_size()
+        # grouping = self.get_group_size()
         # MR 23123
         # !!! TODO forwards anpassen !!!
 
@@ -214,6 +221,10 @@ class ElasticConvBn1d(ElasticConv1d):
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         grouping = self.get_group_size()
+
+        # if(grouping > 1):
+        #     kernel = adjust_weights_for_grouping(kernel, grouping)
+
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBn1d(
             in_channels=self.in_channels,
@@ -223,7 +234,7 @@ class ElasticConvBn1d(ElasticConv1d):
             padding=padding,
             dilation=dilation,
             bias=False,
-            groups=grouping
+            groups=1
         )
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
@@ -280,6 +291,10 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         grouping = self.get_group_size()
+
+        # if(grouping > 1):
+        #     kernel = adjust_weights_for_grouping(kernel, grouping)
+
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBnReLu1d(
             in_channels=self.in_channels,
@@ -289,8 +304,9 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             padding=padding,
             dilation=dilation,
             bias=False,
-            groups=grouping
+            groups=1
         )
+        logging.info(f"Groups: {grouping}")
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
         new_conv.weight.data = kernel
@@ -328,7 +344,8 @@ class ConvRelu1d(nn.Conv1d):
             stride=stride,
             padding=padding,
             dilation=dilation_sizes,
-            groups=groups,
+            groups=1,
+            # groups=1
             bias=bias,
         )
         self.relu = nn.ReLU()
@@ -337,7 +354,20 @@ class ConvRelu1d(nn.Conv1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        return self.relu(super(ConvRelu1d, self).forward(input))
+        if(self.groups == 1):
+            return self.relu(super(ConvRelu1d, self).forward(input))
+
+        logging.info(f"Groups in forward: {self.groups}")
+        # MR 20220613 hier knallts
+        # was macht super(ConvRelu1d,)
+        full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
+        full_kernel.copy_(self.weight)
+        if(self.groups > 1):
+            self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
+        tensor = self.relu(super(ConvRelu1d, self).forward(input))
+        self.weight = nn.Parameter(full_kernel)
+        return tensor
+
 
 # TODO MR 492 notwendig hier auch zu intervenieren ?
 
@@ -361,7 +391,7 @@ class ConvBn1d(nn.Conv1d):
             stride=stride,
             padding=padding,
             dilation=dilation,
-            groups=groups,
+            groups=1,
             bias=bias,
         )
         self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
@@ -370,7 +400,18 @@ class ConvBn1d(nn.Conv1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        return self.bn(super(ConvBn1d, self).forward(input))
+        if(self.groups == 1):
+            return self.bn(super(ConvBn1d, self).forward(input))
+
+        logging.info(f"Groups in forward: {self.groups}")
+        full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
+        full_kernel.copy_(self.weight)
+        if(self.groups > 1):
+            self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
+        tensor = self.bn(super(ConvBn1d, self).forward(input))
+        self.weight = nn.Parameter(full_kernel)
+        return tensor
+
 
 # TODO MR 492 notwendig hier auch zu intervenieren ?
 
@@ -396,7 +437,7 @@ class ConvBnReLu1d(ConvBn1d):
             stride=stride,
             padding=padding,
             dilation=dilation,
-            groups=groups,
+            groups=1,
             bias=bias,
         )
         self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
@@ -406,4 +447,15 @@ class ConvBnReLu1d(ConvBn1d):
         if isinstance(input, SequenceDiscovery):
             return input.discover(self)
 
-        return self.relu(super(ConvBnReLu1d, self).forward(input))
+        if(self.groups == 1):
+            return self.relu(super(ConvBnReLu1d, self).forward(input))
+
+        logging.info(f"Groups in forward: {self.groups}")
+
+        full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
+        full_kernel.copy_(self.weight)
+        if(self.groups > 1):
+            self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
+        tensor = self.relu(super(ConvBnReLu1d, self).forward(input))
+        self.weight = nn.Parameter(full_kernel)
+        return tensor

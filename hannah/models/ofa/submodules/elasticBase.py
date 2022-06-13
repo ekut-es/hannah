@@ -11,7 +11,8 @@ from ..utilities import (
     filter_primary_module_weights,
     filter_single_dimensional_weights,
     sub_filter_start_end,
-    getGroups
+    getGroups,
+    adjust_weights_for_grouping
 )
 
 
@@ -455,33 +456,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         return self.group_sizes
 
     def adjust_weights_for_grouping(self, weights, input_divided_by=2):
-        """
-            Adjusts the Weights for the Forward of the Convulution
-            Shape(outchannels, inchannels / group, kW)
-            weight – filters of shape (out_channels , in_channels / groups , kW)
-            input_divided_by
-        """
-
-        # if(not self.training):
-        #     logging.info(f"Validation Step, Weight Shape is {weights.shape}")
-        #     logging.info(f"New Weight Shape is {full_kernel.shape}")
-
-        channels_per_group = weights.shape[1] // input_divided_by
-
-        splitted_weights = torch.tensor_split(weights, input_divided_by)
-        result_weights = []
-
-        # for current_group in range(groups):
-        for current_group, current_weight in enumerate(splitted_weights):
-            input_start = current_group * channels_per_group
-            input_end = input_start + channels_per_group
-            current_result_weight = current_weight[:, input_start:input_end, :]
-            result_weights.append(current_result_weight)
-
-        full_kernel = torch.concat(result_weights)
-
-        # print(full_kernel.shape)
-        return full_kernel
+        return adjust_weights_for_grouping(weights, input_divided_by)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         pass
