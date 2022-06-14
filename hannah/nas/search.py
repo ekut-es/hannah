@@ -264,7 +264,6 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
 
                         self.optimizer.tell_result(parameters, result)
 
-# TODO MR 82348392 check Calls of that!
 class OFANasTrainer(NASTrainerBase):
     def __init__(
         self,
@@ -302,9 +301,6 @@ class OFANasTrainer(NASTrainerBase):
         self.elastic_width_allowed = elastic_width_allowed
         self.elastic_dilation_allowed = elastic_dilation_allowed
         self.elastic_grouping_allowed = elastic_grouping_allowed
-        # TODO MR 4920 delete this line
-        # self.elastic_grouping_allowed = True
-        # self.epochs_grouping_step = 10
 
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
@@ -331,7 +327,6 @@ class OFANasTrainer(NASTrainerBase):
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
         self.config = config
-        # adding group_step_count
         # trainer will be initialized by rebuild_trainer
         self.trainer = None
         model = instantiate(
@@ -345,7 +340,6 @@ class OFANasTrainer(NASTrainerBase):
             _recursive_=False,
         )
         model.setup("fit")
-        # HIER CHECKEN TODO ofa_model.ofa_steps_groups value !!!
         ofa_model = model.model
 
         self.kernel_step_count = ofa_model.ofa_steps_kernel
@@ -353,7 +347,6 @@ class OFANasTrainer(NASTrainerBase):
         self.width_step_count = ofa_model.ofa_steps_width
         self.dilation_step_count = ofa_model.ofa_steps_dilation
         self.grouping_step_count = ofa_model.ofa_steps_grouping
-
         ofa_model.elastic_kernels_allowed = self.elastic_kernels_allowed
         ofa_model.elastic_depth_allowed = self.elastic_depth_allowed
         ofa_model.elastic_width_allowed = self.elastic_width_allowed
@@ -914,12 +907,10 @@ class OFANasTrainer(NASTrainerBase):
             )
 
         if self.random_evaluate:
-            # TODO 1111 !!!UNBEDINGT WIEDER REINMACHEN!!!
             self.eval_random_combination(lightning_model, model)
 
         model.eval_mode = False
 
-    # TODO MR127 extend grouping
     def eval_random_combination(self, lightning_model, model):
         # sample a few random combinations
         model.reset_validation_model()
@@ -957,7 +948,6 @@ class OFANasTrainer(NASTrainerBase):
                 metrics_output += f" {selected_dilations_string}, "
                 trainer_path += f"Dils {selected_dilations}, "
 
-            # TODO MR 3892 grouping testing; rienschauen wieso 0,0,0,0
             if self.elastic_grouping_allowed:
                 selected_groups = random_state["grouping_steps"]
                 selected_groups_string = str(selected_groups).replace(",", ";")

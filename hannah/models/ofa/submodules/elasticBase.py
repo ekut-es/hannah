@@ -83,28 +83,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         # initially, the target size is the smallest dilation (1)
         self.target_dilation_index: int = 0
 
-        ###  MR01
-        ## TODO: what if input/ output is not dividible by groups ?
-        # sort available dilation sizes from largest to smallest (descending order)
-        groups.sort(reverse=False)
-        # make sure 0 is not set as dilation size. Must be at least 1
-        if 0 in groups:
-            groups.remove(0)
-        self.group_sizes: List[int] = groups
-        # after sorting dilation sizes, the maximum and minimum size available are the first and last element
-        self.max_group_size: int = groups[-1]
-        self.min_group_size: int = groups[0]
-        ###
-        self.target_group_index: int = 0
-
         self.in_channels: int = in_channels
         self.out_channels: int = out_channels
 
         #  MR01
-        # TODO: what if input/ output is not dividible by groups ?
-        # sort available dilation sizes from largest to smallest (descending order)
+        # sort available grouping sizes from largest to smallest (descending order)
         groups.sort(reverse=False)
-        # make sure 0 is not set as dilation size. Must be at least 1
+        # make sure 0 is not set as grouping size. Must be at least 1
         if 0 in groups:
             groups.remove(0)
         # TODO 2342 MR does this make sense ?
@@ -313,7 +298,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             )
 
     # the initial dilation size is the first element of the list of available sizes
-    # sete the dilation back to its initial size
+    # set the dilation back to its initial size
     def reset_dilation_size(self):
         self.set_dilation_size(self.dilation_sizes[0])
 
@@ -367,15 +352,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
     # the initial group size is the first element of the list of available sizes
     # resets the group size back to its initial size
-    # todo check calls
     def reset_group_size(self):
         self.set_group_size(self.group_sizes[0])
 
     def get_group_size(self):
         return self.group_sizes[self.target_group_index]
 
-    # todo check calls
-    def set_group_size(self, new_group_size, resize_weights : bool = False):
+    def set_group_size(self, new_group_size):
         if (
             new_group_size < self.min_group_size
             or new_group_size > self.max_group_size
@@ -391,40 +374,16 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.target_group_index = 0
         try:
             index = self.group_sizes.index(new_group_size)
-            # old_index = self.get_group_size()
             self.target_group_index = index
-            # self.buildLayer()
-            # self.group_sizes = self.group_sizes[self.target_group_index]
-
-            # if(self.get_group_size() > 1 and old_index != self.get_group_size()):
-            #   don't create this as a computation node
-            #   TODO MR 23233 nachher wieder einsetzen
             #   with torch.no_grad():
-            #   new_weights = self.adjust_weights_for_grouping(self.weight, 2)
-            #   self.weight = nn.Parameter(new_weights)
 
         except ValueError:
             logging.warn(
                 f"requested elastic group size {new_group_size} is not an available group size. Defaulting to full size ({self.max_group_size})"
             )
 
-    # # TODO if this helps
-    # def buildLayer(self):
-    #     nn.Conv1d.__init__(
-    #         self,
-    #         in_channels=self.in_channels,
-    #         out_channels=self.out_channels,
-    #         kernel_size=self.kernel_sizes[self.target_kernel_index],
-    #         stride=self.stride,
-    #         padding=self.padding,
-    #         dilation=self.dilation_sizes[self.target_dilation_index],
-    #         groups=self.group_sizes[self.target_group_index],
-    #         bias=self.bias,
-    #     )
-
     # step current kernel size down by one index, if possible.
     # return True if the size limit was not reached
-    # todo check calls
     def step_down_group_size(self):
         next_group_index = self.target_group_index + 1
         if next_group_index < len(self.group_sizes):
@@ -437,6 +396,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             )
             return False
 
+    # MR: not in use at the moment
     def getGrouping(self):
         """"
              Returns a possible Grouping using GCD
@@ -455,6 +415,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 self.group_sizes.remove(group)
         return self.group_sizes
 
+    # Wrapper Class
     def adjust_weights_for_grouping(self, weights, input_divided_by=2):
         return adjust_weights_for_grouping(weights, input_divided_by)
 

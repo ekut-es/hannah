@@ -141,7 +141,6 @@ def create(
     ofa_steps_grouping = 1
     for major_block in conv:
         for block in major_block.blocks:
-            # TODO MR 1389 check block.config
             if block.target == "elastic_conv1d":
                 this_block_kernel_steps = len(block.kernel_sizes)
                 this_block_dilation_steps = len(block.dilation_sizes)
@@ -169,8 +168,6 @@ def create(
 
 
 # build a sequence from a list of minor block configurations
-# here exclude quant for now
-
 def create_minor_block_sequence(
     blocks,
     in_channels,
@@ -206,8 +203,6 @@ def create_minor_block_sequence(
 
 
 # build a single minor block from its config. return the number of output channels with the block
-# TODO test it
-# MR2390 extending grouping here
 def create_minor_block(
     block_config,
     in_channels: int,
@@ -221,13 +216,10 @@ def create_minor_block(
     # use it as the default value if available, otherwise it must be set by the specific code handling the target type
     new_block_out_channels = getattr(block_config, "out_channels", 1)
 
-    #  TODO MR 122
-    #  TODO this blocks needs to be deleted after testing
-    #  TODO check if the values match with input and output values
-
-    #block_config.grouping_sizes : List[int] = [2]
-    # logging.info("Grouping Sizes: {block_config.grouping_sizes}")
-    # hardcoded
+    #  TODO MR 20220614 If Config needs to be hardcoded, place it here
+    #  block_config.grouping_sizes : List[int] = [2]
+    #  logging.info("Grouping Sizes: {block_config.grouping_sizes}")
+    #  hardcoded
 
     if "conv1d" in block_config.target:
         out_channels = block_config.out_channels
@@ -245,7 +237,6 @@ def create_minor_block(
         if not isinstance(dilation_sizes, ListConfig):
             dilation_sizes = [dilation_sizes]
 
-        #  MR 213871392
         grouping_sizes = block_config.grouping_sizes
         if not isinstance(grouping_sizes, ListConfig):
             grouping_sizes = [grouping_sizes]
@@ -267,7 +258,7 @@ def create_minor_block(
         if block_config.get("act", False):
             key += "act"
         # if block_config.get("quant", False):
-        # TODO reset this
+        # MR 20220614 TODO reset this
         # key += "quant"
         # parameter["qconfig"] = qconfig
         if key == "":
@@ -500,7 +491,6 @@ class OFAModel(nn.Module):
             # the resulting output sequence discovery is dropped. no module trails the output linear.
 
     # pick a random subnetwork, return the settings used
-    # TODO MR127 extend grouping
     def sample_subnetwork(self):
         state = {
             "depth_step": 0,
@@ -554,7 +544,7 @@ class OFAModel(nn.Module):
 
         if self.elastic_grouping_allowed:
             for conv in self.elastic_kernel_convs:
-                # pick an available kernel index for every elastic kernel conv, independently.
+                # pick an available grouping index for every elastic kernel conv, independently.
                 sampling_step = min(
                     self.sampling_max_grouping_step + 1,
                     conv.get_available_grouping_steps() - 1,  # zero index array
@@ -614,7 +604,6 @@ class OFAModel(nn.Module):
 
     # accept a state dict like the one returned in get_max_submodel_steps, return extracted submodel.
     # also sets main model state to this submodel.
-    # TODO MR 328773427 evtl anschauen
     def get_submodel(self, state: dict):
         if not self.set_submodel(state):
             return None
@@ -653,7 +642,7 @@ class OFAModel(nn.Module):
             self.elastic_kernel_convs[i].pick_kernel_index(kernel_steps[i])
         for i in range(len(width_steps)):
             self.elastic_channel_helpers[i].set_channel_step(width_steps[i])
-        # TODO MR 389732 Hier anfügen?
+
         return True
 
     def build_validation_model(self):
@@ -785,13 +774,6 @@ class OFAModel(nn.Module):
             function="reset_dilation_size",
             type_selection=elastic_conv_type,
         )
-    # reset all group sizes to their max value
-    def reset_all_group_sizes(self):
-        return call_function_from_deep_nested(
-            input=self.conv_layers,
-            function="reset_group_size",
-            type_selection=elastic_conv_type,
-        )
 
     # reset all group sizes to their max value
     def reset_all_group_sizes(self):
@@ -809,7 +791,6 @@ class OFAModel(nn.Module):
             type_selection=elastic_conv_type,
         )
 
-    # TODO MR03
     # step all elastic groups within the model down by one, if possible
     def step_down_all_groups(self):
         return call_function_from_deep_nested(
@@ -870,7 +851,6 @@ class OFAModel(nn.Module):
                 f"excessive OFA depth stepping! Attempting to add a depth step when max ({self.ofa_steps_depth}) already reached"
             )
 
-    # TODO kill sampling call errors
     def progressive_shrinking_add_group(self):
         self.sampling_max_grouping_step += 1
         if self.sampling_max_grouping_step >= self.ofa_steps_grouping:

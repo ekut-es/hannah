@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from hannah.models.ofa.utilities import (adjust_weights_for_grouping)
+
 
 class MyTestCase(unittest.TestCase):
     def test_something(self):
@@ -54,6 +56,45 @@ class MyTestCase(unittest.TestCase):
         # print(output)
         print("test ending")
 
+    def test_weights(self):
+        m = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, groups=1)
+        m_size = m.weight.shape[0] * m.weight.shape[1] * m.weight.shape[2]
+        input = torch.randn(10, 16, 100)  # batch, input, c_out
+        output = m(input)
+        m.groups = 4
+        with torch.no_grad():
+            m.weight = nn.Parameter(adjust_weights_for_grouping(m.weight, m.groups))
+        print(f"Weights {m.weight.shape}")
+        m_size_2 = m.weight.shape[0] * m.weight.shape[1] * m.weight.shape[2]
+        output2 = m(input)
+
+        print(f"Weight_Sizes before:{m_size} after:{m_size_2}")
+        print(output.shape)
+        print(output2.shape)
+        # print(output)
+        print("test ending")
+
+    # def test_adjust_and_restore(self):
+    #     m = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, groups=1)
+    #     weight_shape = list(m.weight.shape)
+    #     input = torch.randn(10, 16, 100)  # batch, input, c_out
+    #     output = m(input)
+    #     m.groups = 4
+    #     with torch.no_grad():
+    #         m.weight = nn.Parameter(adjust_weights_for_grouping(m.weight, m.groups))
+    #     print(f"Weights {m.weight.shape}")
+    #     output2 = m(input)
+    #     m.groups = 1
+    #     with torch.no_grad():
+    #         new_weight = self.restore_shape_weights(m.weight, 4)
+    #         m.weight = nn.Parameter(new_weight)
+    #     print(f"Weights {m.weight.shape}")
+    #     assert weight_shape == list(m.weight.shape)
+    #     print(output.shape)
+    #     print(output2.shape)
+    #     # print(output)
+    #     print("test ending")
+
     def test_sequencedGrouping(self):
         """
             Name will be upgraded later
@@ -89,7 +130,7 @@ class MyTestCase(unittest.TestCase):
                 continue
             m.groups = i
             with torch.no_grad():
-                m.weight = nn.Parameter(self.adjust_weights_for_grouping(m.weight, 2))
+                m.weight = nn.Parameter(adjust_weights_for_grouping(m.weight, 2))
                 weight_shape = [m.out_channels, m.in_channels // m.groups, kernel_size]
                 assert list(m.weight.shape) == weight_shape
             output = m(input)
@@ -111,7 +152,7 @@ class MyTestCase(unittest.TestCase):
         assert list(m.weight.shape) == weight_shape
         m.groups = 2
         with torch.no_grad():
-            m.weight = nn.Parameter(self.adjust_weights_for_grouping(m.weight, m.groups))
+            m.weight = nn.Parameter(adjust_weights_for_grouping(m.weight, m.groups))
             weight_shape = [m.out_channels, m.in_channels // m.groups, kernel_size]
         assert list(m.weight.shape) == weight_shape
 
@@ -129,7 +170,7 @@ class MyTestCase(unittest.TestCase):
         m_diff = m.groups - m_groups_old
 
         with torch.no_grad():
-            m.weight = nn.Parameter(self.adjust_weights_for_grouping(m.weight, m_diff))
+            m.weight = nn.Parameter(adjust_weights_for_grouping(m.weight, m_diff))
             weight_shape = [m.out_channels, m.in_channels // m.groups, kernel_size]
 
         assert list(m.weight.shape) == weight_shape
@@ -141,35 +182,6 @@ class MyTestCase(unittest.TestCase):
 
         assert output.shape == output2.shape and output.shape == output3.shape
         print("test ending")
-
-    def adjust_weights_for_grouping(self, weights, groups):
-        """
-        Adjusts the Weights for the Forward of the Convulution
-        Shape(outchannels, inchannels / group, kW)
-        weight – filters of shape (out_channels , in_channels / groups , kW)
-        """
-
-        # logging.info(f"Weights shape is {weights.shape}")
-        # torch.reshape(weights, [weights.shape[0], weights.shape[1] / group, weights.shape[2]])
-        # input_shape : int = np.floor(weights.shape[1] / group).astype(int)
-        # hier rausschneiden oder maskieren
-
-        channels_per_group = weights.shape[1] // groups
-
-        splitted_weights = torch.tensor_split(weights, groups)
-        result_weights = []
-
-        # for current_group in range(groups):
-        for current_group, current_weight in enumerate(splitted_weights):
-            input_start = current_group * channels_per_group
-            input_end = input_start + channels_per_group
-            current_result_weight = current_weight[:, input_start:input_end, :]
-            result_weights.append(current_result_weight)
-
-        full_kernel = torch.concat(result_weights)
-
-        print(full_kernel.shape)
-        return full_kernel
 
 
 if __name__ == "__main__":

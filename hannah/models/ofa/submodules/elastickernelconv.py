@@ -133,7 +133,6 @@ class ElasticConvReLu1d(ElasticBase1d):
 
         grouping = self.get_group_size()
         # MR 23123
-        # !!! TODO forwards anpassen !!!
         if(grouping > 1):
             kernel_a = adjust_weights_for_grouping(kernel, grouping)
         else:
@@ -208,10 +207,6 @@ class ElasticConvBn1d(ElasticConv1d):
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
-        # evtl hier eingreifen
-        # grouping = self.get_group_size()
-        # MR 23123
-        # !!! TODO forwards anpassen !!!
 
         return self.bn(super(ElasticConvBn1d, self).forward(input))
 
@@ -323,7 +318,6 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         return new_conv
 
 
-# TODO MR 492 notwendig hier auch zu intervenieren ?
 class ConvRelu1d(nn.Conv1d):
     def __init__(
         self,
@@ -357,9 +351,8 @@ class ConvRelu1d(nn.Conv1d):
         if(self.groups == 1):
             return self.relu(super(ConvRelu1d, self).forward(input))
 
+        #  MR 20220614 TODO hier weitermachen
         logging.info(f"Groups in forward: {self.groups}")
-        # MR 20220613 hier knallts
-        # was macht super(ConvRelu1d,)
         full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
         full_kernel.copy_(self.weight)
         if(self.groups > 1):
@@ -368,8 +361,6 @@ class ConvRelu1d(nn.Conv1d):
         self.weight = nn.Parameter(full_kernel)
         return tensor
 
-
-# TODO MR 492 notwendig hier auch zu intervenieren ?
 
 class ConvBn1d(nn.Conv1d):
     def __init__(
@@ -412,10 +403,6 @@ class ConvBn1d(nn.Conv1d):
         self.weight = nn.Parameter(full_kernel)
         return tensor
 
-
-# TODO MR 492 notwendig hier auch zu intervenieren ?
-
-##  TODO RELU anpassen, Gewichte, grouping ?
 
 class ConvBnReLu1d(ConvBn1d):
     def __init__(
