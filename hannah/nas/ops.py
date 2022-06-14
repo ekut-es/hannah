@@ -58,6 +58,10 @@ def batched_image_tensor(dtype=float_t(), name=""):
     return tensor((axis("n"), axis("c"), axis("h"), axis("w")), dtype=dtype, name=name)
 
 
+def weight_tensor(dtype=float_t(), name=""):
+    return tensor((axis("o"), axis("i"), axis("kh"), axis("kw")), dtype=dtype, name=name)
+
+
 @dataflow
 def conv(input):
     kernel_size = UndefinedInt()
