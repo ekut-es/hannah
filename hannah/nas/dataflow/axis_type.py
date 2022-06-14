@@ -1,3 +1,4 @@
+from hannah.nas.expressions.placeholder import UndefinedInt
 from .compression_type import CompressionType
 from typing import Optional
 
@@ -11,5 +12,8 @@ class AxisType:
     ):
 
         self.name = name
-        self.size = size
+        if size is None:
+            self.size = UndefinedInt()
+        else:
+            self.size = size
         self.compression = compression
