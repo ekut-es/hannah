@@ -187,6 +187,10 @@ def create_minor_block_sequence(
             is_first_minor_block = False
         else:
             next_stride = 1
+
+        # Set a Default Grouping Sizes (if it is not set in the config)
+        block_config.grouping_sizes = getattr(block_config, "grouping_sizes", [1])
+
         minor_block, next_in_channels = create_minor_block(
             block_config=block_config,
             in_channels=next_in_channels,
@@ -237,6 +241,7 @@ def create_minor_block(
         if not isinstance(dilation_sizes, ListConfig):
             dilation_sizes = [dilation_sizes]
 
+        # grouping_sizes = getattr(block_config, "grouping_sizes", 1)
         grouping_sizes = block_config.grouping_sizes
         if not isinstance(grouping_sizes, ListConfig):
             grouping_sizes = [grouping_sizes]
