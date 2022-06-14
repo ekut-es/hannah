@@ -13,7 +13,7 @@ class OpType(TensorExpression):
         for operand in operands:
             setattr(self, operand.name, operand)
 
-        for name, attribute in attributes:
+        for name, attribute in attributes.items():
             setattr(self, name, attribute)
 
         self.attributes = attributes
