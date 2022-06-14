@@ -7,7 +7,7 @@ import hydra
 from .. import conf  # noqa
 
 
-@hydra.main(config_name="config", config_path="../conf")
+@hydra.main(config_name="config", config_path="../conf", version_base="1.2")
 def main(config: DictConfig):
 
     # Lazily Imported to get quicker tab completion

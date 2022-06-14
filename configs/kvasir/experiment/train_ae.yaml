@@ -19,15 +19,3 @@ seed: [1234]
 
 checkpoint:
   monitor: val_loss
-
-hydra:
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
-
-
-
-#TODO:
-dump_test: false
-input_file: ''
