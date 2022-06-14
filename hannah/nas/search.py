@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 import shutil
 import time
 from abc import ABC, abstractmethod
@@ -11,11 +12,12 @@ import numpy as np
 import omegaconf
 import pandas as pd
 import torch
+import torch.package as package
 import yaml
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
 from omegaconf import OmegaConf
-from pytorch_lightning import LightningModule
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
@@ -319,6 +321,7 @@ class OFANasTrainer(NASTrainerBase):
         evaluate=True,
         random_evaluate=True,
         random_eval_number=100,
+        package_eval_models=False,
         # epochs_warmup_after_width=5,
         # epochs_kernel_after_width=5,
         # epochs_depth_after_width=5,
@@ -339,6 +342,7 @@ class OFANasTrainer(NASTrainerBase):
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
         self.random_eval_number = random_eval_number
+        self.package_eval_models = package_eval_models
 
     def run(self):
         os.makedirs("ofa_nas_dir", exist_ok=True)
@@ -423,7 +427,6 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("Once for all Model:\n %s", str(ofa_model))
 
         self.warmup(model, ofa_model)
-
         self.train_elastic_kernel(model, ofa_model)
         self.train_elastic_dilation(model, ofa_model)
         self.train_elastic_depth(model, ofa_model)
@@ -521,7 +524,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to train
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_kernels_allowed == True:
+        if self.elastic_kernels_allowed is True:
             # train elastic kernels
             for current_kernel_step in range(self.kernel_step_count):
                 if current_kernel_step == 0:
@@ -544,7 +547,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_dilation_allowed == True:
+        if self.elastic_dilation_allowed is True:
             # train elastic kernels
             for current_dilation_step in range(self.dilation_step_count):
                 if current_dilation_step == 0:
@@ -797,6 +800,7 @@ class OFANasTrainer(NASTrainerBase):
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
         model.reset_validation_model()
+
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
@@ -818,10 +822,8 @@ class OFANasTrainer(NASTrainerBase):
         """
         # disable sampling in forward during evaluation.
         model.eval_mode = True
-        # reset_seed()  # run_training does this (?)
-        # reset target values to step through
 
-        eval_methods = list()
+        eval_methods = []
 
         if self.elastic_width_allowed:
             eval_methods.append(self.eval_elastic_width)
@@ -869,30 +871,39 @@ class OFANasTrainer(NASTrainerBase):
             random_state = model.sample_subnetwork()
 
             loginfo_output = f"OFA validating random sample:\n{random_state}"
-            trainer_path = f"Eval random sample: "
-            metrics_output = ""
+            trainer_path = f"eval_random{i}"
+            # trainer_path = f"Eval random sample: "
 
+            if self.package_eval_models:
+                model.build_validation_model()
+                validation_model = model.validation_model
+
+                export_path = pathlib.Path("exports") / f"{trainer_path}.pkl"
+                export_path.parent.mkdir(parents=True, exist_ok=True)
+                torch.save(validation_model, export_path)
+
+            metrics_output = ""
             if self.elastic_width_allowed:
                 selected_widths = random_state["width_steps"]
                 selected_widths_string = str(selected_widths).replace(",", ";")
                 metrics_output += f"{selected_widths_string}, "
-                trainer_path += f"Ws {selected_widths}, "
+                # trainer_path += f"Ws {selected_widths}, "
 
             if self.elastic_kernels_allowed:
                 selected_kernels = random_state["kernel_steps"]
                 selected_kernels_string = str(selected_kernels).replace(",", ";")
                 metrics_output += f" {selected_kernels_string}, "
-                trainer_path += f"Ks {selected_kernels}, "
+                # trainer_path += f"Ks {selected_kernels}, "
 
             if self.elastic_dilation_allowed:
                 selected_dilations = random_state["dilation_steps"]
                 selected_dilations_string = str(selected_dilations).replace(",", ";")
                 metrics_output += f" {selected_dilations_string}, "
-                trainer_path += f"Dils {selected_dilations}, "
+                # trainer_path += f"Dils {selected_dilations}, "
 
             if self.elastic_depth_allowed:
                 selected_depth = random_state["depth_step"]
-                trainer_path += f"D {selected_depth}, "
+                # trainer_path += f"D {selected_depth}, "
                 metrics_output += f"{selected_depth}, "
 
             self.random_metrics_csv = self.eval_single_model(
@@ -912,7 +923,7 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_depth_step = prev_max_depth
         model.sampling_max_width_step = prev_max_width
 
-    def rebuild_trainer(self, step_name: str, epochs: int = 1):
+    def rebuild_trainer(self, step_name: str, epochs: int = 1) -> Trainer:
         logger = TensorBoardLogger(".", version=step_name)
         callbacks = common_callbacks(self.config)
         self.trainer = instantiate(

@@ -1,16 +1,18 @@
+import csv
+import logging
 import os
 import random
 import shutil
+
 import numpy as np
-from ..utils import list_all_files, extract_from_download_cache
-from .NoiseDataset import NoiseDataset
-from torchvision.datasets.utils import list_dir
-from pandas import DataFrame
 import pandas as pd
-import logging
-import csv
 import torchaudio
+from pandas import DataFrame
+from torchvision.datasets.utils import list_dir
+
+from ..utils import extract_from_download_cache, list_all_files
 from .Downsample import Downsample
+from .NoiseDataset import NoiseDataset
 
 
 class DatasetSplit:
@@ -327,11 +329,11 @@ class DatasetSplit:
 
     @classmethod
     def combine_underscore_lists(cls, l1, l2, last_element, output=""):
-        for l in l1:
-            output += "_" + l
+        for item in l1:
+            output += "_" + item
 
-        for l in l2:
-            output += "_" + l
+        for item2 in l2:
+            output += "_" + item2
 
         output += "_" + last_element
 

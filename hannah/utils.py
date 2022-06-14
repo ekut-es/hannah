@@ -11,7 +11,6 @@ from contextlib import _GeneratorContextManager, contextmanager
 from pathlib import Path
 from typing import Any, Callable, Iterator, List, Type, TypeVar
 
-import hydra
 import numpy as np
 import nvsmi
 import pytorch_lightning
@@ -34,6 +33,8 @@ from torchvision.datasets.utils import (
     list_dir,
     list_files,
 )
+
+import hydra
 
 from .callbacks.clustering import kMeans
 from .callbacks.optimization import HydraOptCallback
@@ -95,7 +96,7 @@ def log_execution_env_state() -> None:
     if HAVE_LSB:
         try:
             logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
-        except:
+        except Exception:
             pass
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)

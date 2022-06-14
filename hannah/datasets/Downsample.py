@@ -1,8 +1,10 @@
 import os
+
 import numpy as np
 import torchaudio
+from torchvision.datasets.utils import list_dir, list_files
+
 from ..utils import list_all_files
-from torchvision.datasets.utils import list_files, list_dir
 
 
 class Downsample:

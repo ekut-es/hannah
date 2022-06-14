@@ -1,17 +1,18 @@
 import copy
 import logging
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as nnf
 
-from .elasticBase import _Elastic
+from ...factory import qat
 from ..utilities import (
     filter_primary_module_weights,
     filter_single_dimensional_weights,
     make_parameter,
 )
+from .elasticBase import _Elastic
 from .elasticchannelhelper import SequenceDiscovery
-from ...factory import qat
 
 
 class ElasticWidthLinear(nn.Linear, _Elastic):

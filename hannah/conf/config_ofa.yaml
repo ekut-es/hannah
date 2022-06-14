@@ -1,34 +1,6 @@
 defaults:
-    - dataset: kws
-    - features: mfcc
-    - model: ofa
-    - scheduler: step
-    - optimizer: adamw
-    - normalizer: null
-    - module: stream_classifier
-    - compress: null
-    - trainer: default
-    - checkpoint: default
-    - backend: null
-    - early_stopping: null
-    - profiler: null
-    - pruning: null
-    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
-      optional: true
-
-experiment_id: test_OFA
-output_dir: trained_models
-auto_lr: false
-seed: [1234]
-
-hydra:
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-
-
-
-#TODO:
-dump_test: false
-input_file: ''
+    - config
+    - override dataset: kws
+    - override features: mfcc
+    - override model: ofa
+    - _self_

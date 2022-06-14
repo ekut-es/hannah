@@ -42,7 +42,7 @@ mkdir -p $SCRATCH/datasets
 cp -r $WORK/datasets/speech_commands_v0.02 $SCRATCH/datasets
 
 echo "Moving singularity image to local scratch"
-cp /home/bringmann/cgerum05/ml_cloud.sif  $SCRATCH
+cp §WORK/ml_cloud.sif  $SCRATCH
 
 
 echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"

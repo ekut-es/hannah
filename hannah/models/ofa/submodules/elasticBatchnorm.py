@@ -1,13 +1,11 @@
 import copy
 import logging
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as nnf
 
-from ..utilities import (
-    filter_single_dimensional_weights,
-    make_parameter,
-)
+from ..utilities import filter_single_dimensional_weights, make_parameter
 from .elasticchannelhelper import SequenceDiscovery
 
 

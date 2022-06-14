@@ -5,7 +5,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Type, Union
 
-import hydra
 import numpy as np
 import pandas as pd
 import tabulate
@@ -15,6 +14,8 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
+import hydra
 
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
@@ -214,7 +215,7 @@ def nas(config: DictConfig) -> None:
     nas_trainer.run()
 
 
-@hydra.main(config_name="config", config_path="conf")
+@hydra.main(config_name="config", config_path="conf", version_base="1.2")
 def main(config: DictConfig):
     logging.captureWarnings(True)
     try:

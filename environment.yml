@@ -1,0 +1,15 @@
+name: hannah
+
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.9
+  - cudatoolkit=10.2
+  - libsndfile
+  - poetry=1.*
+  - nccl
+  - setuptools=59.5.0
+  - gxx_linux-64=7

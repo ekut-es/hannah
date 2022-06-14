@@ -1,8 +1,0 @@
-# @package _global_
-defaults:
-  - override /experiment: test/test_vision
-  - _self_
-
-experiment_id: mytest_inheritance
-module:
-  batch_size: 32

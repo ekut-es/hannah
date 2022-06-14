@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, Type
 
-import hydra
 import tabulate
 import torch
 from hydra.utils import instantiate, to_absolute_path
@@ -11,6 +10,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 import hannah.modules.classifier
+import hydra
 
 
 def eval_checkpoint(config: DictConfig, checkpoint) -> None:
@@ -66,6 +66,6 @@ def eval(config: DictConfig) -> Optional[bool]:
         eval_checkpoint(config, checkpoint)
 
 
-@hydra.main(config_name="eval", config_path="conf")
+@hydra.main(config_name="eval", config_path="conf", version_base="1.2")
 def main(config: DictConfig):
     return eval(config)

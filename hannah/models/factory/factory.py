@@ -753,6 +753,7 @@ class NetworkFactory:
         """
 
         out_channels = config.out_channels
+        block = None
         return out_channels, block
 
     def full(self, in_channels: int, config: MajorBlockConfig):
@@ -768,6 +769,7 @@ class NetworkFactory:
         If there are no parallel blocks the block is a standard feed forward network.
         """
         out_channels = config.out_channels
+        block = None
         return out_channels, block
 
     def major(self, input_shape, config: MajorBlockConfig):
