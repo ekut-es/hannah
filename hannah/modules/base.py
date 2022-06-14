@@ -44,6 +44,7 @@ class ClassifierModule(LightningModule, ABC):
         normalizer: Optional[DictConfig] = None,
         export_onnx: bool = True,
         gpus=None,
+        shuffle_all_dataloaders: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -62,6 +63,7 @@ class ClassifierModule(LightningModule, ABC):
         self.logged_samples = 0
         self.export_onnx = export_onnx
         self.gpus = gpus
+        self.shuffle_all_dataloaders = shuffle_all_dataloaders
 
         self.train_set = None
         self.test_set = None

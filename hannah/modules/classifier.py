@@ -91,7 +91,6 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Instantiate Model
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
@@ -159,9 +158,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         pass
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
-        if y.dtype not in [torch.int8, torch.int16, torch.int32, torch.int64]:
-            y = y.round().long()
-
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
@@ -233,6 +229,18 @@ class BaseStreamClassifierModule(ClassifierModule):
     def val_dataloader(self):
         pass
 
+    def get_val_dataloader_by_set(self, dev_set):
+        dev_loader = data.DataLoader(
+            dev_set,
+            batch_size=min(len(dev_set), self.hparams["batch_size"]),
+            shuffle=self.shuffle_all_dataloaders,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=ctc_collate_fn,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+
+        return dev_loader
+
     # TEST CODE
     def test_step(self, batch, batch_idx):
 
@@ -260,6 +268,18 @@ class BaseStreamClassifierModule(ClassifierModule):
     @abstractmethod
     def test_dataloader(self):
         pass
+
+    def get_test_dataloader_by_set(self, test_set):
+        test_loader = data.DataLoader(
+            test_set,
+            batch_size=min(len(test_set), self.hparams["batch_size"]),
+            shuffle=self.shuffle_all_dataloaders,
+            num_workers=self.hparams["num_workers"],
+            collate_fn=ctc_collate_fn,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+
+        return test_loader
 
     def _extract_features(self, x):
         x = self.features(x)
