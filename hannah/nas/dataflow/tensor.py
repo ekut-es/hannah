@@ -10,3 +10,6 @@ class Tensor(TensorExpression):
 
     def __str__(self) -> str:
         return self.__repr__()
+
+    def __getitem__(self, key):
+        return self.tensor_type.axis[key]
