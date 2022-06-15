@@ -9,13 +9,13 @@ defaults:
     - compress: null
     - trainer: default
     - checkpoint: default
-    - backend: tvm
+    #- backend: tvm
     - early_stopping: null
     - profiler: null
     - pruning: null
     - nas: aging_evolution_nas
-    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
-      optional: true
+    - optional dataset/features: ${dataset}_${features}
+
 
 experiment_id: nas_kws2
 output_dir: characterize
