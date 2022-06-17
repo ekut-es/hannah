@@ -46,7 +46,7 @@ def _create_op(cls, *operands, **attributes):
     missing_keys = set(cls.attributes_annotations.keys()) - set(attributes.keys())
     for name, attribute in attributes.items():
         assert name in cls.attributes_annotations, "{} has no attribute \"{}\"".format(cls.__name__, name)
-        assert isinstance(attribute, cls.attributes_annotations[name])
+        assert isinstance(attribute, cls.attributes_annotations[name]), "Attribute {} of {} must be of type {}".format(name, cls.__name__, cls.attributes_annotations[name].__name__)
 
     full_attributes = attributes
     for name in missing_keys:
@@ -57,8 +57,11 @@ def _create_op(cls, *operands, **attributes):
     return OpType(*operands, **full_attributes, name=str(cls.__name__))
 
 
-def add_shape_func(func):
-    pass
+def add_shape_func(op_name):
+    def register_func(func):
+        _SHAPE_FUNCS[op_name] = func
+        return func
+    return register_func
 
 
 def add_conversion(func):
@@ -67,3 +70,7 @@ def add_conversion(func):
 
 def op(name, *operands, **attributes):
     return _OPS[name].create_op(*operands, **attributes)
+
+
+def output_tensor(op):
+    return _SHAPE_FUNCS[op.name](op)
