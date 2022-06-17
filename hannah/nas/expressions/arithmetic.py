@@ -1,4 +1,5 @@
-from .op import BinaryOp
+from .op import BinaryOp, UnaryOp
+from math import floor
 
 
 class Add(BinaryOp):
@@ -53,3 +54,11 @@ class Mod(BinaryOp):
 
     def concrete_impl(self, lhs, rhs):
         return lhs % rhs
+
+
+class Floor(UnaryOp):
+    def __init__(self, operand) -> None:
+        super().__init__(operand)
+
+    def concrete_impl(self, operand):
+        return floor(operand)
