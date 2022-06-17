@@ -31,6 +31,12 @@ class DefaultInt(Placeholder):
         super().__init__(name)
         self.value = value
 
+    def evaluate(self):
+        return self.value
+
+    def format(self, indent=2, length=80) -> str:
+        return self.__class__.__name__ + "({})".format(self.value)
+
 
 class DefaultFloat(Placeholder):
     def __init__(self, value: float, name: Optional[str] = None) -> None:
@@ -43,6 +49,7 @@ class IntRange(Placeholder):
         super().__init__(name)
         self.upper = upper
         self.lower = lower
+        # TODO: self.value = ??
 
 
 class FloatRange(Placeholder):
