@@ -4,6 +4,7 @@ from hannah.nas.dataflow.tensor_type import TensorTuple
 from hannah.nas.dataflow.dataflow_utils import find_first_op_in_dfg, find_leaf_nodes
 from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.dataflow.tensor import Tensor
+from hannah.nas.expressions.placeholder import DefaultInt
 
 
 class DataFlowGraph(TensorExpression):
@@ -108,6 +109,9 @@ def dataflow(func):
     def wrapper_func(*args, **kwargs):
         name = func.__name__
         operands = args
+        for key, value in kwargs.items():
+            if isinstance(value, int):
+                kwargs[key] = DefaultInt(value)
         output = func(*args, **kwargs)
 
         if isinstance(output, Iterable):
