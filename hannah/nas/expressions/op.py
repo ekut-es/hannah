@@ -2,6 +2,8 @@ import textwrap
 from abc import ABC, abstractmethod
 from typing import Any
 
+from hannah.nas.expressions.placeholder import Placeholder
+
 from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
 
@@ -20,6 +22,8 @@ class Op(Expression):
             current_lhs = current_lhs.current_value
         elif isinstance(current_lhs, Op):
             current_lhs = current_lhs.evaluate()
+        elif isinstance(current_lhs, Placeholder):
+            current_lhs = current_lhs.value
         return current_lhs
 
     def _format_operand(self, other: Any, indent: int, length: int) -> str:
