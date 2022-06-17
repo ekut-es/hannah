@@ -55,11 +55,17 @@ def tensor(
 
 
 def batched_image_tensor(dtype=float_t(), name=""):
-    return tensor((axis("n"), axis("c"), axis("h"), axis("w")), dtype=dtype, name=name)
+    return tensor((axis("n", DefaultInt(1)),
+                   axis("c", DefaultInt(3)),
+                   axis("h", DefaultInt(16)),
+                   axis("w", DefaultInt(16))), dtype=dtype, name=name)
 
 
 def weight_tensor(dtype=float_t(), name=""):
-    return tensor((axis("o"), axis("i"), axis("kh"), axis("kw")), dtype=dtype, name=name)
+    return tensor((axis("o", DefaultInt(48)),
+                   axis("i", DefaultInt(16)),
+                   axis("kh", DefaultInt(1)),
+                   axis("kw", DefaultInt(1))), dtype=dtype, name=name)
 
 
 @dataflow
