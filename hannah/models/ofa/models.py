@@ -227,7 +227,6 @@ def create_minor_block(
         dilation_sizes = block_config.dilation_sizes
         if not isinstance(dilation_sizes, ListConfig):
             dilation_sizes = [dilation_sizes]
-
         minor_block_internal_sequence = nn.ModuleList([])
         key = ""
         parameter = {
@@ -236,6 +235,7 @@ def create_minor_block(
             "out_channels": out_channels_full,
             "stride": stride,
             "dilation_sizes": dilation_sizes,
+            "out_channel_sizes": out_channels,
         }
 
         if block_config.get("norm", False):
@@ -450,6 +450,15 @@ class OFAModel(nn.Module):
 
     def perform_sequence_discovery(self):
         logging.info("Performing model sequence discovery.")
+        # establisch outer channel Helper
+        for i in range(len(self.conv_layers) - 1):
+            pre_block = self.conv_layers[i]
+            post_block = self.conv_layers[i + 1]
+            pre_conv = self.get_pre_conv(pre_block)
+            post_conv = self.get_post_conv(post_block)
+
+            print("test")
+
         # start with a new, empty sequence discovery
         sequence_discovery = SequenceDiscovery(is_accumulating_sources=True)
         per_layer_output_discoveries = []
@@ -468,6 +477,26 @@ class OFAModel(nn.Module):
             sequence_discovery = per_layer_output_discoveries[i - 1]
             output_linear.forward(sequence_discovery)
             # the resulting output sequence discovery is dropped. no module trails the output linear.
+
+    def get_post_conv(self, post_block):
+        post_conv = None
+        if isinstance(post_block, ResBlock1d):
+            post_conv = post_block.get_input_layer()
+        elif isinstance(post_block, nn.Sequential):
+            post_conv = flatten_module_list(post_block)[0]
+        elif isinstance(post_block, elastic_conv_type):
+            post_conv = post_block
+        return post_conv
+
+    def get_pre_conv(self, pre_block):
+        pre_conv = None
+        if isinstance(pre_block, ResBlock1d):
+            pre_conv = pre_block.get_output_layer()
+        elif isinstance(pre_block, nn.Sequential):
+            pre_conv = flatten_module_list(pre_block)[-1]
+        elif isinstance(pre_block, elastic_conv_type):
+            pre_conv = pre_block
+        return pre_conv
 
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):

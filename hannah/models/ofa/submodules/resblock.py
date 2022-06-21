@@ -1,12 +1,13 @@
 import torch.nn as nn
 
+# base construct of a residual block
+from ..utilities import flatten_module_list
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticchannelhelper import SequenceDiscovery
 from .elastickernelconv import ElasticConv1d, ElasticConvBn1d
 from .elasticquantkernelconv import ElasticQuantConv1d, ElasticQuantConvBn1d
 
 
-# base construct of a residual block
 class ResBlockBase(nn.Module):
     def __init__(
         self,
@@ -94,6 +95,9 @@ class ResBlock1d(ResBlockBase):
                     dilation_sizes=[1],
                     stride=stride,
                     bias=False,
+                    out_channel_sizes=flatten_module_list(self.blocks)[
+                        -1
+                    ].out_channel_sizes,
                 ),
             )
         else:
@@ -106,6 +110,9 @@ class ResBlock1d(ResBlockBase):
                     stride=stride,
                     bias=False,
                     qconfig=qconfig,
+                    out_channel_sizes=flatten_module_list(self.blocks)[
+                        -1
+                    ].out_channel_sizes,
                 ),
             )  # if self.apply_skip else None
         if self.qconfig is not None:
@@ -135,3 +142,15 @@ class ResBlock1d(ResBlockBase):
             if self.qconfig is not None:
                 return self.activation_post_process(output)
             return output
+
+    def get_input_layer(self):
+        input = nn.ModuleList()
+        input.append(flatten_module_list(self.skip)[0])
+        input.append(flatten_module_list(self.blocks)[0])
+        return input
+
+    def get_output_layer(self):
+        output = nn.ModuleList()
+        output.append(flatten_module_list(self.skip)[-1])
+        output.append(flatten_module_list(self.blocks)[-1])
+        return output

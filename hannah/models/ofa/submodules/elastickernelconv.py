@@ -25,6 +25,7 @@ class ElasticConv1d(ElasticBase1d):
         padding: int = 0,
         groups: int = 1,
         bias: bool = False,
+        out_channel_sizes=None,
     ):
         ElasticBase1d.__init__(
             self,
@@ -36,6 +37,7 @@ class ElasticConv1d(ElasticBase1d):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
@@ -88,6 +90,7 @@ class ElasticConvReLu1d(ElasticBase1d):
         padding: int = 0,
         groups: int = 1,
         bias: bool = False,
+        out_channel_sizes=None,
     ):
         ElasticBase1d.__init__(
             self,
@@ -99,6 +102,7 @@ class ElasticConvReLu1d(ElasticBase1d):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
         self.relu = ElasticPermissiveReLU()
 
@@ -153,6 +157,7 @@ class ElasticConvBn1d(ElasticConv1d):
         groups: int = 1,
         bias: bool = False,
         track_running_stats=False,
+        out_channel_sizes=None,
     ):
         ElasticBase1d.__init__(
             self,
@@ -164,6 +169,7 @@ class ElasticConvBn1d(ElasticConv1d):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
         self.bn = ElasticWidthBatchnorm1d(out_channels, track_running_stats)
 
@@ -223,6 +229,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         groups: int = 1,
         bias: bool = False,
         track_running_stats=False,
+        out_channel_sizes=None,
     ):
         ElasticConvBn1d.__init__(
             self,
@@ -234,6 +241,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
 
         self.relu = ElasticPermissiveReLU()

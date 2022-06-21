@@ -46,6 +46,7 @@ class _ElasticConvBnNd(
         dim=1,
         out_quant=True,
         track_running_stats=True,
+        out_channel_sizes=None,
     ):
         ElasticBase1d.__init__(
             self,
@@ -58,6 +59,7 @@ class _ElasticConvBnNd(
             groups=groups,
             bias=bias,
             padding_mode=padding_mode,
+            out_channel_sizes=out_channel_sizes,
         )
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
@@ -367,6 +369,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         padding_mode="zeros",
         qconfig=None,
         out_quant=True,
+        out_channel_sizes=None,
     ):
 
         # sort available kernel sizes from largest to smallest (descending order)
@@ -390,6 +393,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
 
         assert qconfig, "qconfig must be provided for QAT module"
@@ -495,6 +499,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         padding_mode="zeros",
         qconfig=None,
         out_quant=True,
+        out_channel_sizes=None,
     ):
 
         # sort available kernel sizes from largest to smallest (descending order)
@@ -517,6 +522,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
 
         assert qconfig, "qconfig must be provided for QAT module"
@@ -622,6 +628,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         track_running_stats=True,
         qconfig=None,
         out_quant=True,
+        out_channel_sizes=None,
     ):
         _ElasticConvBnNd.__init__(
             self,
@@ -634,6 +641,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             groups=groups,
             bias=bias,
             qconfig=qconfig,
+            out_channel_sizes=out_channel_sizes,
         )
         self.out_quant = out_quant
 
@@ -700,6 +708,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         track_running_stats=True,
         qconfig=None,
         out_quant=True,
+        out_channel_sizes=None,
     ):
         ElasticQuantConvBn1d.__init__(
             self,
@@ -712,6 +721,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             groups=groups,
             bias=bias,
             qconfig=qconfig,
+            out_channel_sizes=out_channel_sizes,
         )
         self.out_quant = out_quant
 
