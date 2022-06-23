@@ -37,6 +37,9 @@ class DefaultInt(Placeholder):
     def format(self, indent=2, length=80) -> str:
         return self.__class__.__name__ + "({})".format(self.value)
 
+    def __repr__(self) -> str:
+        return str(self.value)
+
 
 class DefaultFloat(Placeholder):
     def __init__(self, value: float, name: Optional[str] = None) -> None:
