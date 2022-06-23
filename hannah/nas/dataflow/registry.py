@@ -53,8 +53,13 @@ def _create_op(cls, *operands, **attributes):
         assert cls.attributes_defaults[name] is not MISSING, \
             "{} requires a named attribute {}: {} because no default is specified.".format(cls.__name__, name, cls.attributes_annotations[name])
         full_attributes[name] = cls.attributes_defaults[name]
+    optype = OpType(*operands, **full_attributes, name=str(cls.__name__))
 
-    return OpType(*operands, **full_attributes, name=str(cls.__name__))
+    # retrospectively set operands as fields with keyword name
+    for operand, operand_name in zip(operands, cls.operands):
+        setattr(optype, operand_name, operand)
+
+    return optype
 
 
 def add_shape_func(op_name):
