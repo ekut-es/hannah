@@ -31,7 +31,7 @@ class TensorType:
 
     def __repr__(self) -> str:
         # return 'Tensor(name=' + self.name + ", axis=(" + ' '.join(['{}, '.format(a) for a in self.axis.keys()]) + '))'
-        return "Tensor({})".format(self.name)
+        return "TensorType({})".format(self.name)
 
 
 class TensorTuple:
