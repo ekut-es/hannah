@@ -8,10 +8,18 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import scipy.stats as stats
-from imagecorruptions import corrupt
+try:
+    from imagecorruptions import corrupt
+except ModuleNotFoundError:
+    corrupt = None 
+
 from PIL import Image
 
-import albumentations as A
+try:
+    import albumentations as A
+except:
+    A = None
+
 from hannah.datasets.base import DatasetType
 from hannah.datasets.Kitti import Kitti
 from hannah.modules.augmentation.bordersearch import Parameter, ParameterRange
