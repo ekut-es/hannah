@@ -271,7 +271,7 @@ run_sca:
   tags:
     - docker
   interruptible: true
-  allow_failure: true
+  allow_failure: false
 
 
 ml_cloud_update_env:

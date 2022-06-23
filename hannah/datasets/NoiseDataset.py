@@ -54,8 +54,6 @@ class NoiseDataset:
         kaggle_folder = os.path.join(noise_folder, "FSDKaggle")
         if os.path.isdir(kaggle_folder):
 
-            FSDParts = ["audio_test", "audio_train"]
-
             test = NoiseDataset.read_dataset_specific(
                 os.path.join(kaggle_folder, "FSDKaggle2018.audio_test")
             )
@@ -96,8 +94,6 @@ class NoiseDataset:
         noise_folder = os.path.join(data_folder, "noise_files")
         kaggle_folder = os.path.join(noise_folder, "FSDnoisy")
         if os.path.isdir(kaggle_folder):
-
-            FSDParts = ["audio_test", "audio_train"]
             test = list()
             dev = list()
             train = list()
