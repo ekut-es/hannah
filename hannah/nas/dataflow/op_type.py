@@ -6,13 +6,6 @@ class OpType(TensorExpression):
     def __init__(self, *operands, tensor_type=None, name="", **attributes):
         super().__init__(*operands, tensor_type=tensor_type, name=name)
 
-        # FIXME: Do we want this?
-        # currently used for easier (AND more deliberate) access in the shape func
-        # in ops/conv2d.py
-        # We could also think about moving this to TensorExpression
-        for operand in operands:
-            setattr(self, operand.name, operand)
-
         for name, attribute in attributes.items():
             setattr(self, name, attribute)
 
