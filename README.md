@@ -196,7 +196,7 @@ To enable precommit hooks run the following command in a `poetry shell`.
 
      pre-commit install
 
-Try to follow [pep8](https://pep8.org/#naming-conventions) and the rest of pep8 to the
+Try to follow [pep8](https://pep8.org/#naming-conventions) naming conventions and the rest of pep8 to the
 best of your abilities.
 
 ## Resolving merge conflicts in `poetry.lock`

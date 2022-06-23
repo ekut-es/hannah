@@ -15,7 +15,7 @@ from torch.functional import Tensor
 try:
     from pycocotools.coco import COCO
 except ModuleNotFoundError:
-    COCO = None
+    COCO = object
 
 from PIL import Image
 from torchvision import transforms
