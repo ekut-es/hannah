@@ -98,6 +98,9 @@ class DataFlowGraph(TensorExpression):
             if u not in visited:
                 self.set_scope_ids(u, visited, current_scope, counters)
 
+    def output_tensor(self):
+        return self.output.output_tensor()
+
     def __getitem__(self, key):
         return self._scopes[key]
 
