@@ -13,8 +13,6 @@ from torch.quantization.observer import (
     _with_args,
 )
 
-from hannah.models.factory.qconfig import SymmetricQuantization
-
 from .rounding import RoundingMode
 
 # FIXME: accumulator is not used at the moment
@@ -26,7 +24,7 @@ class STE(autograd.Function):
     def forward(
         ctx,
         values: Union[Tensor, Parameter],
-        quant_function: SymmetricQuantization,
+        quant_function,
     ) -> Tensor:
         ctx.save_for_backward(values)
         quantized_values = quant_function(values)
@@ -221,7 +219,7 @@ class STEQuantize(FakeQuantizeBase):
         return f"(bits={self.bits} noise_prob={self.noise_prob}, )"
 
 
-def get_trax_qat_qconfig(config):
+def get_trax_qat_qconfig(config) -> QConfig:
     bits_bias = config.bw_b if config.bw_b > 0 else config.bw_f
     bits_activation = config.bw_f
     bits_weight = config.bw_w
