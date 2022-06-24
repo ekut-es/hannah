@@ -5,7 +5,6 @@ import torch
 import torch.autograd as autograd
 import torch.nn as nn
 from torch import Tensor
-from torch.autograd.function import STEBackward
 from torch.nn.parameter import Parameter
 from torch.quantization.fake_quantize import FakeQuantize, FakeQuantizeBase
 from torch.quantization.observer import (
@@ -25,7 +24,7 @@ QConfig = namedtuple("QConfig", ["activation", "weight", "bias"])
 class STE(autograd.Function):
     @staticmethod
     def forward(
-        ctx: STEBackward,
+        ctx,
         values: Union[Tensor, Parameter],
         quant_function: SymmetricQuantization,
     ) -> Tensor:
