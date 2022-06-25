@@ -260,6 +260,7 @@ def create_minor_block(
         new_block = module_list_to_module(
             flatten_module_list(minor_block_internal_sequence)
         )
+        """
         # if multiple output channel widths are specified (elastic width), add an elastic width helper module
         if len(out_channels) > 1:
             # the sources of the elastic channel helper module are the previous conv, and its potential norm/act
@@ -267,6 +268,7 @@ def create_minor_block(
             # append the helper module to the sequence
             new_sequence = nn.ModuleList([new_block, helper_module])
             new_block = module_list_to_module(new_sequence)
+        """
         # the input channel count of the next minor block is the output channel count of the previous block
         # output channel count is specified by the elastic conv
         new_block_out_channels = new_minor_block.out_channels
