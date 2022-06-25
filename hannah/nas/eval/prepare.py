@@ -24,12 +24,12 @@ def prepare_summary(
 
     results_file = Path("metrics.pkl")
     parameters_file = Path("parameters.pkl")
-    base_dir = Path(base_dir)
+    base_path = Path(base_dir)
     if results_file.exists() and not force:
         changed = False
         results_mtime = results_file.stat().st_mtime
         for name, source in data.items():
-            history_path = base_dir / source / "history.pkl"
+            history_path = base_path / source / "history.pkl"
             if history_path.exists():
                 history_mtime = history_path.stat().st_mtime
                 if history_mtime >= results_mtime:
@@ -47,14 +47,14 @@ def prepare_summary(
     parameters_all = {}
     for name, source in data.items():
         logger.info("  Extracting design points for task: %s", name)
-        history_path = base_dir / source / "history.pkl"
+        history_path = base_path / source / "history.pkl"
 
         if history_path.suffix == ".yml":
-            with history_path.open("r") as f:
-                history_file = yaml.unsafe_load(f)
+            with history_path.open("r") as yaml_file:
+                history_file = yaml.unsafe_load(yaml_file)
         elif history_path.suffix == ".pkl":
-            with history_path.open("rb") as f:
-                history_file = pickle.load(f)
+            with history_path.open("rb") as pickle_file:
+                history_file = pickle.load(pickle_file)
         else:
             raise Exception("Could not load history file: %s", str(history_path))
 
