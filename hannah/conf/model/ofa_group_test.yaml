@@ -34,10 +34,6 @@ conv:
             - 9
             - 3
             - 1
-        grouping_sizes:
-            - 1
-            - 2
-            - 4
         act: true
         norm: false
         quant: false
