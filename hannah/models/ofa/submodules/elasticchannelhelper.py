@@ -271,6 +271,22 @@ class ElasticChannelHelper(nn.Module):
         else:
             self.add_source_item(self, source)
 
+    # add additional source(s) which must have their outputs adjusted if the channel width changes
+    def add_targets(self, target: nn.Module):
+        if hasattr(target, "__iter__"):
+            # if the input source is iterable, check every item
+            target_flat = flatten_module_list(target)
+
+            for item in target_flat:
+                # ascend the list of sources from the back
+                if isinstance(item, ElasticChannelHelper):
+                    logging.exception(
+                        "ElasticChannelHelper source accumulation found another ElasticChannelHelper!"
+                    )
+                self.discover_target(item)
+        else:
+            self.discover_target(target)
+
     # check a module, add it as a source if its weights would need modification when channel width changes
     def add_source_item(self, source: nn.Module):
         if self.is_valid_primary_target(source):
