@@ -13,10 +13,10 @@ class Conv2d:
     input: TensorExpression
     weight: TensorExpression
     # FIXME: DefaultInt or int??
-    kernel_size: Expression
+    kernel_size: Expression = DefaultInt(3)
     dilation: Expression = DefaultInt(1)
     stride : Expression = DefaultInt(1)
-    padding: Expression = DefaultInt(0)
+    padding: Expression = kernel_size // 2
 
 
 @add_shape_func("Conv2d")
