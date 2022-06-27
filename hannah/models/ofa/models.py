@@ -459,9 +459,24 @@ class OFAModel(nn.Module):
             pre_conv = self.get_pre_conv(pre_block)
             post_conv = self.get_post_conv(post_block)
 
-            print("test")
+            if isinstance(pre_conv, elastic_conv_type):
+                tmpconv = pre_conv
+            else:
+                tmpconv = pre_conv[0]
 
-        # start with a new, empty sequence discovery
+            if len(tmpconv.out_channel_sizes) > 1:
+                ech = ElasticChannelHelper(tmpconv.out_channel_sizes)
+                ech.add_sources(pre_conv)
+                ech.add_targets(post_conv)
+                self.elastic_channel_helpers.append(ech)
+
+            if isinstance(self.conv_layers[i], ResBlock1d):
+                chl = self.conv_layers[i].create_internal_channelhelper()
+                self.elastic_channel_helpers.append(chl)
+
+            print("test")
+        self.elastic_channel_helpers = flatten_module_list(self.elastic_channel_helpers)
+        """# start with a new, empty sequence discovery
         sequence_discovery = SequenceDiscovery(is_accumulating_sources=True)
         per_layer_output_discoveries = []
         for layer in self.conv_layers:
@@ -479,6 +494,7 @@ class OFAModel(nn.Module):
             sequence_discovery = per_layer_output_discoveries[i - 1]
             output_linear.forward(sequence_discovery)
             # the resulting output sequence discovery is dropped. no module trails the output linear.
+        """
 
     def get_post_conv(self, post_block):
         post_conv = None
@@ -884,9 +900,7 @@ def rebuild_extracted_blocks(blocks):
                     norm = norm.assemble_basic_module()
                 if isinstance(act, elastic_all_type):
                     act = act.assemble_basic_module()
-                reassembled_module.norm_before_act = module.norm_before_act
                 reassembled_module.do_act = module.do_act
-                reassembled_module.do_norm = module.do_norm
                 reassembled_module.norm = norm
                 reassembled_module.act = act
 

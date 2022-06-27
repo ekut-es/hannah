@@ -3,7 +3,7 @@ import torch.nn as nn
 # base construct of a residual block
 from ..utilities import flatten_module_list
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
-from .elasticchannelhelper import SequenceDiscovery
+from .elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
 from .elastickernelconv import ElasticConv1d, ElasticConvBn1d
 from .elasticquantkernelconv import ElasticQuantConv1d, ElasticQuantConvBn1d
 
@@ -14,15 +14,11 @@ class ResBlockBase(nn.Module):
         in_channels,
         out_channels,
         act_after_res=True,
-        norm_after_res=True,
-        norm_before_act=True,
     ):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.do_act = act_after_res
-        self.do_norm = norm_after_res
-        self.norm_before_act = norm_before_act
         # if the input channel count does not match the output channel count,
         # apply skip to residual values
         self.apply_skip = self.in_channels != self.out_channels
@@ -42,13 +38,8 @@ class ResBlockBase(nn.Module):
             residual = self.skip(residual)
         x = self.blocks(x)
         x += residual
-        # do activation and norm after applying residual (if enabled)
-        if self.do_norm and self.norm_before_act:
-            x = self.norm(x)
         if self.do_act:
             x = self.act(x)
-        if self.do_norm and not self.norm_before_act:
-            x = self.norm(x)
         return x
 
     def get_nested_modules(self):
@@ -63,7 +54,6 @@ class ResBlock1d(ResBlockBase):
         out_channels,
         minor_blocks,
         act_after_res=True,
-        norm_after_res=True,
         stride=1,
         norm_before_act=True,
         quant_skip=False,
@@ -74,8 +64,6 @@ class ResBlock1d(ResBlockBase):
             in_channels=in_channels,
             out_channels=out_channels,
             act_after_res=act_after_res,
-            norm_after_res=norm_after_res,
-            norm_before_act=norm_before_act,
         )
         # set the minor block sequence if specified in construction
         # if minor_blocks is not None:
@@ -153,4 +141,16 @@ class ResBlock1d(ResBlockBase):
         output = nn.ModuleList()
         output.append(flatten_module_list(self.skip)[-1])
         output.append(flatten_module_list(self.blocks)[-1])
+        return output
+
+    def create_internal_channelhelper(self):
+        output = nn.ModuleList()
+
+        for idx in range(len(self.blocks) - 1):
+            if len(self.blocks[idx].out_channel_sizes) > 1:
+                ech = ElasticChannelHelper(self.blocks[idx].out_channel_sizes)
+                ech.add_source_item(self.blocks[idx])
+                ech.add_targets(self.blocks[idx + 1])
+                output.append(ech)
+
         return output
