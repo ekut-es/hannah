@@ -5,7 +5,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from ..type_utils import elastic_forward_type
 from ..utilities import flatten_module_list
+
+# imports are located at the bottom to circumvent circular dependency import issues
+from .elasticBatchnorm import ElasticWidthBatchnorm1d
 
 
 # helper module, deployed in an elastic width connection
@@ -312,9 +316,3 @@ class ElasticChannelHelper(nn.Module):
 
     def get_available_width_steps(self):
         return len(self.channel_counts)
-
-
-from ..type_utils import elastic_forward_type
-
-# imports are located at the bottom to circumvent circular dependency import issues
-from .elasticBatchnorm import ElasticWidthBatchnorm1d
