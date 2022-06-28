@@ -10,7 +10,7 @@ block1_timesteps: 50
 block1_flattendoutput: False
 block1_combination_type: ADD
 block1_batchnorm: BN
-block1_conv_type: NN
+block1_conv_type: SNN
 block1_alpha: 0.75
 block1_beta: 0.65
 block1_gamma: 0.75
@@ -24,7 +24,7 @@ block2_timesteps: 50
 block2_flattendoutput: False
 block2_combination_type: ADD
 block2_batchnorm: BN
-block2_conv_type: NN
+block2_conv_type: SNN
 block2_alpha: 0.75
 block2_beta: 0.65
 block2_gamma: 0.75
@@ -38,7 +38,7 @@ block3_timesteps: 25
 block3_flattendoutput: False
 block3_combination_type: ADD
 block3_batchnorm: BN
-block3_conv_type: NN
+block3_conv_type: SNN
 block3_alpha: 0.75
 block3_beta: 0.65
 block3_gamma: 0.75
@@ -52,7 +52,7 @@ block4_timesteps: 25
 block4_flattendoutput: False
 block4_combination_type: ADD
 block4_batchnorm: BN
-block4_conv_type: NN
+block4_conv_type: SNN
 block4_alpha: 0.75
 block4_beta: 0.65
 block4_gamma: 0.75
@@ -66,7 +66,7 @@ block5_timesteps: 13
 block5_flattendoutput: False
 block5_combination_type: ADD
 block5_batchnorm: BN
-block5_conv_type: NN
+block5_conv_type: SNN
 block5_alpha: 0.75
 block5_beta: 0.65
 block5_gamma: 0.75
@@ -80,7 +80,7 @@ block6_timesteps: 13
 block6_flattendoutput: False
 block6_combination_type: ADD
 block6_batchnorm: BN
-block6_conv_type: NN
+block6_conv_type: SNN
 block6_alpha: 0.75
 block6_beta: 0.65
 block6_gamma: 0.75
@@ -94,7 +94,7 @@ block7_timesteps: 7
 block7_flattendoutput: False
 block7_combination_type: ADD
 block7_batchnorm: BN
-block7_conv_type: NN
+block7_conv_type: SNN
 block7_alpha: 0.75
 block7_beta: 0.65
 block7_gamma: 0.75
@@ -108,7 +108,7 @@ block8_timesteps: 7
 block8_flattendoutput: False
 block8_combination_type: ADD
 block8_batchnorm: BN
-block8_conv_type: NN
+block8_conv_type: SNN
 block8_alpha: 0.75
 block8_beta: 0.65
 block8_gamma: 0.75
@@ -122,7 +122,7 @@ block9_timesteps: 4
 block9_flattendoutput: False
 block9_combination_type: ADD
 block9_batchnorm: BN
-block9_conv_type: NN
+block9_conv_type: SNN
 block9_alpha: 0.75
 block9_beta: 0.65
 block9_gamma: 0.75

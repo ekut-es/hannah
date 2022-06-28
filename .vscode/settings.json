@@ -19,6 +19,8 @@
     },
     "cSpell.words": [
         "accum",
+        "AUROC",
+        "autograd",
         "cpus",
         "gres",
         "hparams",
@@ -26,6 +28,7 @@
         "onnx",
         "opset",
         "qconfig",
+        "qscheme",
         "submitit",
         "tablefmt"
     ]
