@@ -1,5 +1,7 @@
 from typing import Optional, Tuple, Union
 
+from hannah.nas.core.expression import Expression
+
 from hannah.nas.dataflow.tensor import Tensor
 
 from .dataflow.axis_type import AxisType
@@ -13,6 +15,7 @@ from .dataflow.tensor_type import TensorType
 from .expressions.placeholder import DefaultInt, UndefinedInt
 from .hardware_description.memory_type import MemoryType
 import hannah.nas.dataflow.registry as registry
+from hannah.nas.dataflow.dataflow_utils import process_int
 
 
 def int_t(signed: bool = True, bits: int = 8):
@@ -54,6 +57,15 @@ def tensor(
     return Tensor(tensor_type=tensor_type, name=name)
 
 
+def tensor_by_tuples(shape, axis_names, dtype=float_t(), name='tensor'):
+    assert len(shape) == len(axis_names)
+    ax = []
+    for dim, ax_name in zip(shape, axis_names):
+        ax.append(axis(ax_name, process_int(dim)))
+
+    return tensor(axis=ax, dtype=dtype, name=name)
+
+
 def batched_image_tensor(dtype=float_t(), name=""):
     return tensor((axis("n", DefaultInt(1)),
                    axis("c", DefaultInt(3)),
@@ -61,11 +73,15 @@ def batched_image_tensor(dtype=float_t(), name=""):
                    axis("w", DefaultInt(16))), dtype=dtype, name=name)
 
 
-def weight_tensor(dtype=float_t(), name=""):
-    return tensor((axis("o", DefaultInt(48)),
-                   axis("i", DefaultInt(16)),
-                   axis("kh", DefaultInt(1)),
-                   axis("kw", DefaultInt(1))), dtype=dtype, name=name)
+def weight_tensor(dtype: DataType = float_t(), shape: tuple = (None, None, None, None), name=""):
+    processed_shape = [None for i in range(len(shape))]
+    for i in range(len(shape)):
+        processed_shape[i] = process_int(shape[i])
+
+    return tensor((axis("o", processed_shape[0]),
+                   axis("i", processed_shape[1]),
+                   axis("kh", processed_shape[2]),
+                   axis("kw", processed_shape[3])), dtype=dtype, name=name)
 
 
 @dataflow
