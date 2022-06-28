@@ -18,6 +18,7 @@ def find_leaf_nodes(node, leafs, visited):
             if isinstance(o, Tensor):
                 leafs.append(o)
             else:
+                leafs.append(o)
                 find_leaf_nodes(o, leafs, visited)
 
 

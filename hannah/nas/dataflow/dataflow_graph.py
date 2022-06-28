@@ -25,10 +25,7 @@ class DataFlowGraph(TensorExpression):
         self.output = output
         self.link_users()
         self._scopes = {}
-        first_inp = find_first_input(self)
-        # self.set_scope_ids(first_inp, [], [], {})
         self.set_scope_ids()
-
 
     def link_users(self):
         """ Link the DFG to its users and the users of the DFG to
@@ -105,6 +102,7 @@ class DataFlowGraph(TensorExpression):
         current_scope = update_scope(node, [])
         counters = {}
         queue = [node]
+        visited.append(node)
 
         while queue:
             node = queue.pop(-1)
@@ -112,6 +110,16 @@ class DataFlowGraph(TensorExpression):
             scope_id = get_id_and_update_counters(current_scope, counters)
             node.set_id(scope_id)
             self._scopes[scope_id] = node
+
+            leafs = []
+            find_leaf_nodes(node, leafs, visited)
+
+            while leafs:
+                leaf = leafs.pop(-1)
+                current_scope = update_scope(leaf, current_scope)
+                scope_id = get_id_and_update_counters(current_scope, counters)
+                leaf.set_id(scope_id)
+                self._scopes[scope_id] = leaf
 
             for u in node.users:
                 if u not in visited:
@@ -168,7 +176,8 @@ def update_scope(node, current_scope):
             to_remove.append(scope)
         elif isinstance(scope, OpType) and node in scope.users:
             to_remove.append(scope)
-        # elif isinstance(scope, OpType) and
+        elif isinstance(scope, OpType) and scope not in collect_users(node):
+            to_remove.append(scope)
         elif isinstance(scope, DataFlowGraph) and scope in node.operands:
             to_remove.append(scope)
 
@@ -183,6 +192,28 @@ def update_scope(node, current_scope):
             break
     new_scope.append(node)
     return new_scope
+
+
+def collect_users(node):
+    collected_users = []
+    queue = [node]
+    visited = []
+
+    while queue:
+        node = queue.pop(-1)
+        for u in node.users:
+            if u not in visited:
+                queue = [u] + queue
+                visited.append(u)
+                collected_users.append(u)
+
+    return collected_users
+
+
+
+
+
+
 
 
 def reset_scope_ids(node):
