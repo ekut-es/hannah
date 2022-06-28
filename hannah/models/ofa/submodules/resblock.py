@@ -24,7 +24,6 @@ class ResBlockBase(nn.Module):
         self.apply_skip = self.in_channels != self.out_channels
         # placeholders:
         self.act = nn.Identity()
-        self.norm = nn.Identity()
         self.blocks = nn.Identity()
         self.skip = nn.Identity()
 
@@ -43,7 +42,7 @@ class ResBlockBase(nn.Module):
         return x
 
     def get_nested_modules(self):
-        return nn.ModuleList([self.blocks, self.skip, self.norm, self.act])
+        return nn.ModuleList([self.blocks, self.skip, self.act])
 
 
 # residual block with a 1d skip connection
@@ -68,7 +67,6 @@ class ResBlock1d(ResBlockBase):
         # set the minor block sequence if specified in construction
         # if minor_blocks is not None:
         self.blocks = minor_blocks
-        self.norm = ElasticWidthBatchnorm1d(out_channels)
         self.act = nn.ReLU()
         self.qconfig = qconfig
         self.quant_skip = quant_skip
