@@ -16,7 +16,7 @@ class Conv2d:
     kernel_size: Expression = DefaultInt(3)
     dilation: Expression = DefaultInt(1)
     stride : Expression = DefaultInt(1)
-    padding: Expression = kernel_size // 2
+    padding: Expression = DefaultInt(0)
 
 
 @add_shape_func("Conv2d")
