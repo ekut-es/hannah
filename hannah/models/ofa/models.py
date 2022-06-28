@@ -459,11 +459,28 @@ class OFAModel(nn.Module):
                 ech = ElasticChannelHelper(tmpconv.out_channel_sizes)
                 ech.add_sources(pre_conv)
                 ech.add_targets(post_conv)
+
+                if i in range(self.min_depth - 1, self.max_depth - 1):
+                    idx = i - (self.min_depth - 1)
+                    ech.add_targets(self.linears[idx])
                 self.elastic_channel_helpers.append(ech)
 
             if isinstance(self.conv_layers[i], ResBlock1d):
                 chl = self.conv_layers[i].create_internal_channelhelper()
                 self.elastic_channel_helpers.append(chl)
+
+        if len(self.conv_layers) > 0:
+            pre_conv = self.get_pre_conv(self.conv_layers[-1])
+
+            if hasattr(pre_conv, "__iter__"):
+                out_channels = pre_conv[0].out_channel_sizes
+            else:
+                out_channels = pre_conv.out_channel_sizes
+
+            ech = ElasticChannelHelper(out_channels)
+            ech.add_sources(pre_conv)
+            ech.add_targets(self.linears[-1])
+            self.elastic_channel_helpers.append(ech)
 
         self.elastic_channel_helpers = flatten_module_list(self.elastic_channel_helpers)
 
