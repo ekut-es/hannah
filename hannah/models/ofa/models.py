@@ -260,15 +260,6 @@ def create_minor_block(
         new_block = module_list_to_module(
             flatten_module_list(minor_block_internal_sequence)
         )
-        """
-        # if multiple output channel widths are specified (elastic width), add an elastic width helper module
-        if len(out_channels) > 1:
-            # the sources of the elastic channel helper module are the previous conv, and its potential norm/act
-            helper_module = ElasticChannelHelper(out_channels)
-            # append the helper module to the sequence
-            new_sequence = nn.ModuleList([new_block, helper_module])
-            new_block = module_list_to_module(new_sequence)
-        """
         # the input channel count of the next minor block is the output channel count of the previous block
         # output channel count is specified by the elastic conv
         new_block_out_channels = new_minor_block.out_channels
@@ -474,19 +465,10 @@ class OFAModel(nn.Module):
                 chl = self.conv_layers[i].create_internal_channelhelper()
                 self.elastic_channel_helpers.append(chl)
 
-            print("test")
         self.elastic_channel_helpers = flatten_module_list(self.elastic_channel_helpers)
-        """# start with a new, empty sequence discovery
-        sequence_discovery = SequenceDiscovery(is_accumulating_sources=True)
-        per_layer_output_discoveries = []
-        for layer in self.conv_layers:
-            resulting_discovery = layer(sequence_discovery)
-            # for each layer, store a split discovery for the output linear at that layer.
-            # THESE MUST BE APPLIED AFTER THE FULL MODULE DISCOVERY IS COMPLETED
-            # to ensure that the primary targets are set correctly.
-            per_layer_output_discoveries.append(resulting_discovery.split())
-            sequence_discovery = resulting_discovery
 
+        print("test")
+        """
         # after the layers are processed, pass the relevant SequenceDiscovery to each output linear
         for i in range(self.min_depth, self.max_depth + 1):
             # range goes from min depth to including the max depth
