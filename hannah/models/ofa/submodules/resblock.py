@@ -25,6 +25,7 @@ class ResBlockBase(nn.Module):
         # placeholders:
         self.act = nn.Identity()
         self.blocks = nn.Identity()
+        self.norm = nn.Identity()
         self.skip = nn.Identity()
 
     def forward(self, x):
