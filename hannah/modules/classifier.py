@@ -11,8 +11,11 @@ import torchvision
 from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
+from sklearn.metrics import auc
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 from torchmetrics import (
+    AUC,
+    AUROC,
     ROC,
     Accuracy,
     ConfusionMatrix,
@@ -115,6 +118,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_recall": Recall(num_classes=self.num_classes),
                 "val_precision": Precision(num_classes=self.num_classes),
                 "val_f1": F1Score(num_classes=self.num_classes),
+                "val_auroc": AUROC(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
@@ -124,6 +128,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_recall": Recall(num_classes=self.num_classes),
                 "test_precision": Precision(num_classes=self.num_classes),
                 "test_f1": F1Score(num_classes=self.num_classes),
+                "test_auroc": AUROC(num_classes=self.num_classes),
             }
         )
 
