@@ -7,9 +7,9 @@ from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarPara
 
 
 @dataflow
-def conv2d(input, channel, kernel_size=DefaultInt(1), stride=DefaultInt(1), dilation=DefaultInt(1), padding=DefaultInt(0)):
+def conv2d(input, channel, kernel_size=DefaultInt(1), stride=DefaultInt(1), dilation=DefaultInt(1)):
     weight = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
-    return op("Conv2d", input, weight, kernel_size=kernel_size, dilation=dilation, stride=stride, padding=padding)
+    return op("Conv2d", input, weight, kernel_size=kernel_size, dilation=dilation, stride=stride)
 
 
 @dataflow
@@ -26,13 +26,18 @@ def chained_convs(input, channel, kernel_size=DefaultInt(1), stride=DefaultInt(1
 def test_conv2d():
     inp = batched_image_tensor(name="input")
 
-    conv = conv2d(inp, channel=IntScalarParameter(4, 64), kernel_size=CategoricalParameter([1, 3, 5]))
+    kernel_size = CategoricalParameter([1, 3, 5])
+    stride = CategoricalParameter([1, 2])
+
+    conv = conv2d(inp, channel=IntScalarParameter(4, 64), kernel_size=kernel_size, stride=stride)
 
     conv['conv2d.0.Conv2d.0'].kernel_size.set_current(3)
+    conv['conv2d.0.Conv2d.0'].stride.set_current(2)
 
     returned_tensor = conv.output.output_tensor()
     for name, ax in returned_tensor.tensor_type.axis.items():
         print("{}: {}".format(name, ax.size.evaluate()))
+    print()
 
 
 def test_chained_conv2d():
@@ -45,6 +50,7 @@ def test_chained_conv2d():
 
     for name, ax in returned_tensor.tensor_type.axis.items():
         print("{}: {}".format(name, ax.size.evaluate()))
+    print()
 
 
 if __name__ == '__main__':
