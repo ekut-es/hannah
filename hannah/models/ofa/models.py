@@ -893,14 +893,10 @@ def rebuild_extracted_blocks(blocks):
                 )
                 reassembled_module.blocks = reassembled_subblocks
                 reassembled_module.skip = reassembled_skip
-                norm = module.norm
                 act = module.act
-                if isinstance(norm, elastic_all_type):
-                    norm = norm.assemble_basic_module()
                 if isinstance(act, elastic_all_type):
                     act = act.assemble_basic_module()
                 reassembled_module.do_act = module.do_act
-                reassembled_module.norm = norm
                 reassembled_module.act = act
 
             elif isinstance(module, ElasticChannelHelper):
