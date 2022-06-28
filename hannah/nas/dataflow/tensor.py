@@ -8,6 +8,10 @@ class Tensor(TensorExpression):
     def output_tensor(self):
         return self
 
+    @property
+    def dim(self):
+        return self.tensor_type.dim()
+
     def __repr__(self) -> str:
         return "Tensor({})".format(self.id)
 
