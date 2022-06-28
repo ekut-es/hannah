@@ -1,5 +1,8 @@
 
+from typing import Optional
+from hannah.nas.core.expression import Expression
 from hannah.nas.dataflow.tensor import Tensor
+from hannah.nas.expressions.placeholder import DefaultInt, UndefinedInt
 
 
 def find_first_op_in_dfg(node):
@@ -30,3 +33,12 @@ def traverse_by_users(node):
             if u not in visited:
                 _traverse_by_users(u, visited)
     _traverse_by_users(node, [])
+
+
+def process_int(x: Optional[int]):
+    if isinstance(x, int):
+        return DefaultInt(x)
+    elif isinstance(x, Expression):
+        return x
+    elif x is None:
+        return UndefinedInt()
