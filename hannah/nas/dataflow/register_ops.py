@@ -66,5 +66,8 @@ def add_shape_func(op_name):
     return register_func
 
 
-def add_conversion(func):
-    pass
+def add_conversion(op_name, target):
+    def wrapper(func):
+        _CONVERSIONS[op_name] = func
+        return func
+    return wrapper
