@@ -26,7 +26,9 @@ class DataFlowGraph(TensorExpression):
         self.link_users()
         self._scopes = {}
         first_inp = find_first_input(self)
-        self.set_scope_ids(first_inp, [], [], {})
+        # self.set_scope_ids(first_inp, [], [], {})
+        self.set_scope_ids()
+
 
     def link_users(self):
         """ Link the DFG to its users and the users of the DFG to
@@ -66,37 +68,55 @@ class DataFlowGraph(TensorExpression):
             self.users.append(corresponding_placeholder)
             _rewire_to_placeholder(operand, self.output, corresponding_placeholder)
 
-    def set_scope_ids(self, node, visited, current_scope, counters):
-        """Recursively traverse the graph in a forward direction (-> users) and set the scopes
-        of the encountered nodes. To consider diverging branches, at each node
-        we look for leaf nodes. The "scope: node" relation is saved in self._scopes
-        to enable later subscriptability.
+    # def set_scope_ids(self, node, visited, current_scope, counters):
+    #     """Recursively traverse the graph in a forward direction (-> users) and set the scopes
+    #     of the encountered nodes. To consider diverging branches, at each node
+    #     we look for leaf nodes. The "scope: node" relation is saved in self._scopes
+    #     to enable later subscriptability.
 
-        Parameters
-        ----------
-        node : TensorExpression
-            Current node
-        visited : list[TensorExpression]
-            Already visited nodes
-        current_scope : list[TensorExpression]
-            Represents the current hierarchy in descending order and
-            thus the scope of the current node
-        counters : dict
-            Tracks the scopes to distinguish similar TensorExpressions with
-            increasing counters
-        """
-        current_scope = update_scope(node, current_scope)
-        scope_id = get_id_and_update_counters(current_scope, counters)
-        node.set_id(scope_id)
-        self._scopes[scope_id] = node
-        leafs = []
-        visited.append(node)
-        find_leaf_nodes(node, leafs, visited)
-        for leaf in leafs:
-            self.set_scope_ids(leaf, visited, current_scope, counters)
-        for u in node.users:
-            if u not in visited:
-                self.set_scope_ids(u, visited, current_scope, counters)
+    #     Parameters
+    #     ----------
+    #     node : TensorExpression
+    #         Current node
+    #     visited : list[TensorExpression]
+    #         Already visited nodes
+    #     current_scope : list[TensorExpression]
+    #         Represents the current hierarchy in descending order and
+    #         thus the scope of the current node
+    #     counters : dict
+    #         Tracks the scopes to distinguish similar TensorExpressions with
+    #         increasing counters
+    #     """
+    #     current_scope = update_scope(node, current_scope)
+    #     scope_id = get_id_and_update_counters(current_scope, counters)
+    #     node.set_id(scope_id)
+    #     self._scopes[scope_id] = node
+    #     leafs = []
+    #     visited.append(node)
+    #     find_leaf_nodes(node, leafs, visited)
+    #     for leaf in leafs:
+    #         self.set_scope_ids(leaf, visited, current_scope, counters)
+    #     for u in node.users:
+    #         if u not in visited:
+    #             self.set_scope_ids(u, visited, current_scope, counters)
+
+    def set_scope_ids(self, visited=[]):
+        node = find_first_input(self)
+        current_scope = update_scope(node, [])
+        counters = {}
+        queue = [node]
+
+        while queue:
+            node = queue.pop(-1)
+            current_scope = update_scope(node, current_scope)
+            scope_id = get_id_and_update_counters(current_scope, counters)
+            node.set_id(scope_id)
+            self._scopes[scope_id] = node
+
+            for u in node.users:
+                if u not in visited:
+                    queue = [u] + queue
+                    visited.append(u)
 
     def output_tensor(self):
         return self.output.output_tensor()
@@ -148,6 +168,7 @@ def update_scope(node, current_scope):
             to_remove.append(scope)
         elif isinstance(scope, OpType) and node in scope.users:
             to_remove.append(scope)
+        # elif isinstance(scope, OpType) and
         elif isinstance(scope, DataFlowGraph) and scope in node.operands:
             to_remove.append(scope)
 
