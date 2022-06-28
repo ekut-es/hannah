@@ -12,7 +12,6 @@ from ...factory import qat
 from ..utilities import conv1d_get_padding, filter_single_dimensional_weights
 from .elasticBase import ElasticBase1d
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
-from .elasticchannelhelper import SequenceDiscovery
 from .elasticLinear import ElasticPermissiveReLU
 
 
@@ -436,9 +435,6 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         self.set_kernel_size(self.max_kernel_size)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
@@ -566,9 +562,6 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         self.set_kernel_size(self.max_kernel_size)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
@@ -646,9 +639,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         self.out_quant = out_quant
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
@@ -728,9 +718,6 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         self.relu = ElasticPermissiveReLU()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation

@@ -3,7 +3,7 @@ import torch.nn as nn
 # base construct of a residual block
 from ..utilities import flatten_module_list
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
-from .elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
+from .elasticchannelhelper import ElasticChannelHelper
 from .elastickernelconv import ElasticConv1d, ElasticConvBn1d
 from .elasticquantkernelconv import ElasticQuantConv1d, ElasticQuantConvBn1d
 
@@ -110,25 +110,10 @@ class ResBlock1d(ResBlockBase):
         # the skip connection is required! it will be needed if the width is modified later
 
     def forward(self, x):
-        if isinstance(x, SequenceDiscovery):
-            # DISCOVER BLOCKS FIRST, THEN SKIP.
-            # this will set primary targets correctly, without needing to specify
-            # the skip as a secondary target in discover explicitly.
-            second_discovery = x.split()
-            blocks_resulting_discovery = self.blocks.forward(x)
-            skip_resulting_discovery = self.skip.forward(second_discovery)
-            # merge the two discoveries together where the module outputs would normally be added.
-            new_discovery = blocks_resulting_discovery.merge_sequence_discovery(
-                skip_resulting_discovery
-            )
-            # pass it through the resblock internal norm - norm/act sequence is irrelevant
-            # as the activation does not affect discovery whatsoever.
-            return self.norm(new_discovery)
-        else:
-            output = super().forward(x)
-            if self.qconfig is not None:
-                return self.activation_post_process(output)
-            return output
+        output = super().forward(x)
+        if self.qconfig is not None:
+            return self.activation_post_process(output)
+        return output
 
     def get_input_layer(self):
         input = nn.ModuleList()
