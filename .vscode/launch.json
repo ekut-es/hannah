@@ -40,7 +40,7 @@
                 "--config-name",
                 "nas_ofa",
                 "model=ofa_group_test_small",
-                "nas=ofa_nas_group_test",
+                "nas= ",
                 "module.num_workers=8"
             ]
         },
@@ -53,8 +53,23 @@
                 "--config-name",
                 "nas_ofa",
                 "trainer.limit_train_batches=0.1",
-                "trainer.max_epochs=3",
+                "trainer.max_epochs=1",
                 "model=ofa_group_test",
+                "nas=ofa_nas_group_test",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa limited small",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "model=ofa_group_test_small",
                 "nas=ofa_nas_group_test",
                 "module.num_workers=8"
             ]

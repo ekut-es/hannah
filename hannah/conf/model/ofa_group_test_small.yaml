@@ -1,7 +1,7 @@
 _target_: hannah.models.ofa.models.create
 name: ofa
 skew_sampling_distribution: false
-min_depth: 3
+min_depth: 2
 norm_before_act: true
 dropout: 0.5
 # to add elastic channel count following a module which is not elastic_conv1d
@@ -54,7 +54,6 @@ conv:
         grouping_sizes:
             - 1
             - 2
-            - 4
         act: false
         norm: false
         quant: false
@@ -62,4 +61,3 @@ conv:
           - 24
           - 16
           - 8
-
