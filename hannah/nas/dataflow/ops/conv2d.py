@@ -1,3 +1,4 @@
+from torch import conv3d
 from hannah.nas.core.expression import Expression
 from hannah.nas.dataflow.axis_type import AxisType
 from hannah.nas.dataflow.op_type import OpType
@@ -6,6 +7,7 @@ from hannah.nas.dataflow.tensor_type import TensorType
 from hannah.nas.expressions.placeholder import DefaultInt
 from hannah.nas.dataflow.register_ops import add_op, add_shape_func, add_conversion
 from hannah.nas.expressions.arithmetic import Floor
+from torch.nn import Conv2d as torch_conv
 
 
 @add_op
@@ -38,6 +40,20 @@ def conv2d_shape(op: OpType):
     return TensorType((batch, out_channel, output_height, output_width), dtype=input.tensor_type.dtype)
 
 
-@add_conversion("Conv2D", target="torch")
+@add_conversion("Conv2d", target="torch")
 def conv2d_torch(op: OpType):
-    pass
+    kernel_size = op.kernel_size.evaluate()
+    dilation = op.dilation.evaluate()
+    stride = op.stride.evaluate()
+    padding = op.padding.evaluate()
+
+    input_tensor = op.input.output_tensor()
+    output_tensor = op.output_tensor()
+
+    torch_op = torch_conv(in_channels=input_tensor['c'].size.evaluate(),
+                          out_channels=output_tensor['c'].size.evaluate(),
+                          kernel_size=kernel_size,
+                          stride=stride,
+                          padding=padding,
+                          dilation=dilation)
+    return torch_op

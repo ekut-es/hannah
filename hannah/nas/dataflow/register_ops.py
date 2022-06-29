@@ -68,7 +68,10 @@ def add_shape_func(op_name):
 
 def add_conversion(op_name, target):
     def wrapper(func):
-        _CONVERSIONS[op_name] = func
+        if op_name in _CONVERSIONS:
+            _CONVERSIONS[op_name][target] = func
+        else:
+            _CONVERSIONS[op_name] = {target: func}
         return func
     return wrapper
 
