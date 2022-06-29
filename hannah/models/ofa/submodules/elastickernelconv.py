@@ -1,3 +1,4 @@
+from inspect import Parameter
 from tokenize import group
 from typing import List
 import torch.nn as nn
@@ -9,12 +10,16 @@ import torch
 from .elasticBase import ElasticBase1d
 from ..utilities import (
     conv1d_get_padding,
-    adjust_weights_for_grouping
+    adjust_weights_for_grouping,
+    is_weight_adjusting_needed
 )
 from .elasticchannelhelper import SequenceDiscovery
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
 
+
+# MR 20220622
+# TODO vereinheitlichen
 
 class ElasticConv1d(ElasticBase1d):
     def __init__(
@@ -56,13 +61,12 @@ class ElasticConv1d(ElasticBase1d):
         grouping = self.get_group_size()
         # MR 23123
         # adjust the kernel if grouping is done
-        if(grouping > 1):
+        grouping_changed = grouping != self.firstgrouping_param
+        if(grouping_changed and grouping > 1):
             # kernel_a = adjust_weights_for_grouping(kernel, 2)
-            kernel_a = adjust_weights_for_grouping(kernel, grouping)
-        else:
-            kernel_a = kernel
+            kernel = adjust_weights_for_grouping(kernel, grouping)
 
-        return nnf.conv1d(input, kernel_a, bias, self.stride, padding, dilation, grouping)
+        return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
@@ -71,9 +75,10 @@ class ElasticConv1d(ElasticBase1d):
         dilation = self.get_dilation_size()
         ##
         grouping = self.get_group_size()
+
         # if(grouping > 1):
-        #     kernel = adjust_weights_for_grouping(kernel, grouping)
-        ##
+            # kernel = adjust_weights_for_grouping(kernel, grouping)
+
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = nn.Conv1d(
             in_channels=self.in_channels,
@@ -83,14 +88,34 @@ class ElasticConv1d(ElasticBase1d):
             padding=padding,
             dilation=dilation,
             bias=False,
-            groups=1
+            groups=grouping
         )
+        new_conv.first_grouping = self.groups
+
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
 
+        # new_conv.forward = self.hook_forward
+        new_conv.register_forward_pre_hook(self.pre_hook_forward)
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
+
+    def pre_hook_forward(self, module, input: torch.Tensor) -> torch.Tensor:
+        """
+            This Hook is called before the forward will be executed.
+            TODO: maybe use that for normal conv evolution as well ?
+        """
+        grouping_changed = module.groups != module.first_grouping
+        logging.info(f"Shape:{module.weight.shape} Groups:{module.groups} Group_First: {module.first_grouping} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
+        if grouping_changed and module.groups > 1:
+            weight_adjustment_needed = is_weight_adjusting_needed(module.weight, module.in_channels, module.groups)
+            if weight_adjustment_needed:
+                module.weight = nn.Parameter(adjust_weights_for_grouping(module.weight, module.groups))
+                logging.info(f"NOW Shape:{module.weight.shape} Groups:{module.groups} Group_First: {module.first_grouping} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
+        # kernel = self.weight.data
+        # if(self.groups > 1):
+        #     kernel = adjust_weights_for_grouping(self.weight.data, self.groups)
 
 
 class ElasticConvReLu1d(ElasticBase1d):
@@ -161,7 +186,7 @@ class ElasticConvReLu1d(ElasticBase1d):
             padding=padding,
             dilation_sizes=dilation,
             bias=False,
-            groups=1
+            groups=grouping
         )
         new_conv.weight.data = kernel
         if bias is not None:
@@ -217,9 +242,6 @@ class ElasticConvBn1d(ElasticConv1d):
         dilation = self.get_dilation_size()
         grouping = self.get_group_size()
 
-        # if(grouping > 1):
-        #     kernel = adjust_weights_for_grouping(kernel, grouping)
-
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBn1d(
             in_channels=self.in_channels,
@@ -229,7 +251,7 @@ class ElasticConvBn1d(ElasticConv1d):
             padding=padding,
             dilation=dilation,
             bias=False,
-            groups=1
+            groups=grouping
         )
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
@@ -299,7 +321,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             padding=padding,
             dilation=dilation,
             bias=False,
-            groups=1
+            groups=grouping
         )
         logging.info(f"Groups: {grouping}")
         tmp_bn = self.bn.get_basic_batchnorm1d()
@@ -382,7 +404,7 @@ class ConvBn1d(nn.Conv1d):
             stride=stride,
             padding=padding,
             dilation=dilation,
-            groups=1,
+            groups=groups,
             bias=bias,
         )
         self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
@@ -424,7 +446,7 @@ class ConvBnReLu1d(ConvBn1d):
             stride=stride,
             padding=padding,
             dilation=dilation,
-            groups=1,
+            groups=groups,
             bias=bias,
         )
         self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)

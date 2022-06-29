@@ -198,6 +198,21 @@ def getGroups(max_group, with_max_group_member : bool = True, addOneForNoGroupin
     return tmp
 
 
+def is_weight_adjusting_needed(weights, input_channels, groups):
+    """
+        Checks if a weight adjustment is needed
+        Requirement: weight.shape[1] must be input_channels/groups
+        true: weight adjustment is needed
+        :param: weights - the weights that needs to be checked
+        :param: input_channels - Input Channels of the Convolution Module
+        :param: groups - Grouping Param of the Convolution Module
+    """
+
+    current_weight_dimension = weights.shape[1]
+    target_weight_dimension = input_channels // groups
+    return target_weight_dimension != current_weight_dimension
+
+
 def adjust_weights_for_grouping(weights, input_divided_by=2):
     """
         Adjusts the Weights for the Forward of the Convulution

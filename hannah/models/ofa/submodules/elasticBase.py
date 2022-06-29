@@ -102,6 +102,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         ###
         self.target_group_index: int = 0
 
+        # MR 20220622  TODO: still needed ?
+        # store first grouping param
+        self.firstgrouping_param = self.get_group_size()
+
+        # set the groups value in the model
+        self.groups = self.get_group_size()
+
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index],
             self.dilation_sizes[self.target_dilation_index],

@@ -1,6 +1,8 @@
+import logging
 import torch.nn as nn
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elastickernelconv import (
+    ElasticBase1d,
     ElasticConv1d,
     ElasticConvBn1d,
 )
@@ -10,6 +12,8 @@ from .elasticquantkernelconv import (
 )
 from .elasticchannelhelper import SequenceDiscovery
 
+# MR 20220622
+# TODO vereinheitlichen
 
 # base construct of a residual block
 class ResBlockBase(nn.Module):
@@ -44,7 +48,17 @@ class ResBlockBase(nn.Module):
         # residual block implementation does not replace it with a skip or None
         if self.skip is not None:
             residual = self.skip(residual)
-        x = self.blocks(x)
+        try:
+            x = self.blocks(x)
+        except RuntimeError as r:
+            # MR TODO still necessary ?
+            logging.warn(r)
+            for _, actualModel in self.blocks._modules.items():
+                logging.info(f"XKA Module List: {actualModel}")
+                logging.info(f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}")
+
+        # logging.debug(f"Shape input: {x.shape} , Shape residual: {residual.shape}")
+
         x += residual
         # do activation and norm after applying residual (if enabled)
         if self.do_norm and self.norm_before_act:
@@ -84,6 +98,14 @@ class ResBlock1d(ResBlockBase):
         # set the minor block sequence if specified in construction
         # if minor_blocks is not None:
         self.blocks = minor_blocks
+
+        # MR 20220622
+        # TODO vereinheitlichen - still necessary ?
+        for _, block in minor_blocks._modules.items():
+            for _, actualModel in block._modules.items():
+                logging.info(f"XKA Module List: {actualModel}")
+                if isinstance(actualModel, ElasticBase1d):
+                    logging.info(f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}")
         self.norm = ElasticWidthBatchnorm1d(out_channels)
         self.act = nn.ReLU()
         self.qconfig = qconfig
