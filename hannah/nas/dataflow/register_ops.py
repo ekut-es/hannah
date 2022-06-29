@@ -71,3 +71,10 @@ def add_conversion(op_name, target):
         _CONVERSIONS[op_name] = func
         return func
     return wrapper
+
+
+# Register default pass-through shape function
+@add_shape_func('Default')
+def default_shape(op: OpType):
+    input_tensor = op.operands[0].output_tensor()
+    return input_tensor.tensor_type
