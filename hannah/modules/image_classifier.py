@@ -10,13 +10,14 @@ from torchmetrics.functional import accuracy, f1_score, precision, recall
 from ..utils import set_deterministic
 from .base import ClassifierModule
 
-logger = logging.getLogger(__name__)
+msglogger = logging.getLogger(__name__)
 
 
 class ImageClassifierModule(ClassifierModule):
     def setup(self, stage):
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
+        if self.trainer:
+            for logger in self.trainer.loggers:
+                logger.log_hyperparams(self.hparams)
 
         if self.initialized:
             return
@@ -32,7 +33,7 @@ class ImageClassifierModule(ClassifierModule):
 
         self.num_classes = len(self.train_set.class_names)
 
-        logger.info("Setting up model %s", self.hparams.model.name)
+        msglogger.info("Setting up model %s", self.hparams.model.name)
         self.model = instantiate(
             self.hparams.model,
             labels=self.num_classes,

@@ -3,7 +3,6 @@ from typing import Any
 
 from hydra.core.config_store import ConfigStore
 
-
 cs = ConfigStore.instance()
 
 

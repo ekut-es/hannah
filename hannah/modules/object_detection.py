@@ -1,14 +1,17 @@
 import logging
 
-from .config_utils import get_loss_function, get_model
-
 from .classifier import ClassifierModule
+from .config_utils import get_loss_function, get_model
 
 try:
     from pycocotools.cocoeval import COCOeval
 except ModuleNotFoundError:
     COCOeval = None
 
+
+import torch
+import torch.utils.data as data
+from hydra.utils import get_class, instantiate
 
 from hannah.datasets.Kitti import object_collate_fn
 from hannah.modules.augmentation.augmentation import Augmentation
@@ -19,9 +22,7 @@ from hannah.modules.augmentation.bordersearch import (
     random_sample,
 )
 
-import torch
-import torch.utils.data as data
-from hydra.utils import instantiate, get_class
+msglogger = logging.getLogger(__name__)
 
 
 class ObjectDetectionModule(ClassifierModule):
@@ -32,19 +33,18 @@ class ObjectDetectionModule(ClassifierModule):
         super().__init__(*args, **kwargs)
 
         if COCOeval is None:
-            self.msglogger.error("Could not find cocotools")
-            self.msglogger.error(
-                "please install with poetry install -E object-detection"
-            )
+            msglogger.error("Could not find cocotools")
+            msglogger.error("please install with poetry install -E object-detection")
 
     def prepare_data(self):
         pass
 
     def setup(self, stage):
         # TODO stage variable is not used!
-        self.msglogger.info("Setting up model")
-        if self.logger:
-            self.logger.log_hyperparams(self.hparams)
+        msglogger.info("Setting up model")
+        if self.trainer:
+            for logger in self.trainer.loggers:
+                logger.log_hyperparams(self.hparams)
 
         if self.initialized:
             return

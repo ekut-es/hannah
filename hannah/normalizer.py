@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional, TypeVar, Union
 
 import torch
 import torch.nn as nn
@@ -13,7 +13,7 @@ class FixedPointNormalizer(nn.Module):
         normalize_max: int = 256,
         divide=False,
         override_max=False,
-    ):
+    ) -> None:
         super().__init__()
         self.normalize_bits = normalize_bits
         self.normalize_max = normalize_max
@@ -23,14 +23,14 @@ class FixedPointNormalizer(nn.Module):
         if self.divide and self.normalize_bits % 2 == 0:
 
             self.bits = int((self.normalize_bits / 2) - 1)
-            self.low_border = (2 ** self.bits) - 1
+            self.low_border = (2**self.bits) - 1
             self.high_border = self.low_border << self.bits
 
             if not override_max:
                 self.normalize_max = self.high_border
 
-    def forward(self, x):
-        normalize_factor = 2.0 ** self.bits
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        normalize_factor = 2.0**self.bits
         x = x * normalize_factor / self.normalize_max
         x = x.round()
 
@@ -64,12 +64,12 @@ class FixedPointNormalizer(nn.Module):
 class AdaptiveFixedPointNormalizer(nn.Module):
     "Simple feature normalizer for fixed point models"
 
-    def __init__(self, normalize_bits: int = 8, num_features: int = 40):
+    def __init__(self, normalize_bits: int = 8, num_features: int = 40) -> None:
         super().__init__()
         self.bn = nn.BatchNorm1d(num_features=num_features, affine=True)
         self.normalize_bits = normalize_bits
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
 
         normalize_factor = 2.0 ** (self.normalize_bits - 1)
         x = self.bn(x)
@@ -79,19 +79,19 @@ class AdaptiveFixedPointNormalizer(nn.Module):
 
 
 class HistogramNormalizer(nn.Module):
-    def __init__(self, bits: int = 8, bins: Optional[int] = None):
+    def __init__(self, bits: int = 8, bins: Optional[int] = None) -> None:
         super().__init__()
 
         self.bits = bits
         if bins is None:
-            bins = min(2 ** bits, 2048)
+            bins = min(2**bits, 2048)
         self.bins = bins
 
         self.register_buffer("histogram", torch.zeros(self.bins))
         self.register_buffer("min_val", torch.tensor(float("inf")))
         self.register_buffer("max_val", torch.tensor(float("-inf")))
 
-    def forward(self, x_orig):
+    def forward(self, x_orig: torch.Tensor) -> torch.Tensor:
         if x_orig.numel() == 0:
             return x_orig
 
@@ -107,6 +107,7 @@ class HistogramNormalizer(nn.Module):
             x, min=int(self.min_val), max=int(self.max_val), bins=self.bins
         )
 
+        self.histogram = self.histogram * 0.9 + histogram * 0.1
         print(self.min_val)
         print(self.max_val)
 

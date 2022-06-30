@@ -1,0 +1,22 @@
+# @package _global_
+defaults:
+    - override /dataset: kws
+    - override /features: mfcc
+    - override /model: nas2_kws_5uw_lp
+    - override /scheduler: 1cycle
+    - override /optimizer: adamw
+    - override /normalizer: fixedpoint
+    - override /module: stream_classifier
+    - override /early_stopping: null
+
+experiment_id: optimized_results
+
+module:
+  time_masking: 15
+  frequency_masking: 3
+
+optimizer:
+  weight_decay: 1.0825088891414693e-07
+
+scheduler:
+  max_lr: 0.009216121894533968

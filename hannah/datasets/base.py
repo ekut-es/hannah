@@ -1,11 +1,9 @@
 import logging
-
-from abc import ABC, abstractmethod, abstractclassmethod, abstractproperty
-
+from abc import ABC, abstractclassmethod, abstractmethod, abstractproperty
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
-import torch
 
+import torch
 from torch.utils.data import Dataset
 
 logger = logging.getLogger(__name__)

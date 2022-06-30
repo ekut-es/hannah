@@ -1,32 +1,30 @@
+# @package _global_
 defaults:
-    - dataset: snips
-    - features: mfcc
-    - model: conv-net-trax
-    - scheduler: 1cycle
-    - optimizer: sgd
-    - normalizer: fixedpoint
-    - module: stream_classifier
-    - compress: null
-    - trainer: default
-    - checkpoint: default
-    - backend: trax_ut
-    - early_stopping: null
-    - profiler: null
-    - pruning: null
-    - nas: aging_evolution_nas
-    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
-      optional: true
+    - /nas: aging_evolution_nas
+    - override /dataset: snips
+    - override /features: mfcc
+    - override /model: conv-net-trax
+    - override /scheduler: 1cycle
+    - override /optimizer: adamw
+    - override /normalizer: fixedpoint
+    - override /module: stream_classifier
+    - override /backend: trax_ut
+    - override /early_stopping: null
 
-experiment_id: nas2_snips_1uw
-output_dir: trained_models
-auto_lr: false
-print_metrics: false
-data_monitor: false
+experiment_id: dsd22_wwd_5uw
 
 seed: [1234]
 
 trainer:
   max_epochs: 30
+
+scheduler:
+  max_lr: 0.005
+
+module:
+  time_masking: 15
+  frequency_masking: 10
+
 
 nas:
   parametrization:
@@ -60,20 +58,6 @@ nas:
   bounds:
     val_error: 0.04
     acc_clock_cycles: 25000
-    acc_power: 0.000001
-    acc_area: 150000
-
-
-
-
-hydra:
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-
-
-
-#TODO:
-dump_test: false
-input_file: ''
+    acc_power: 0.000005
+    acc_area: 200000
+  n_jobs: 8

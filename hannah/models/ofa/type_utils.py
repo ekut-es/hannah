@@ -1,22 +1,20 @@
+from hannah.models.ofa.submodules.elasticBatchnorm import ElasticWidthBatchnorm1d
 from hannah.models.ofa.submodules.elastickernelconv import (
     ElasticConv1d,
     ElasticConvBn1d,
     ElasticConvBnReLu1d,
     ElasticConvReLu1d,
 )
-
+from hannah.models.ofa.submodules.elasticLinear import (
+    ElasticPermissiveReLU,
+    ElasticQuantWidthLinear,
+    ElasticWidthLinear,
+)
 from hannah.models.ofa.submodules.elasticquantkernelconv import (
     ElasticQuantConv1d,
     ElasticQuantConvBn1d,
     ElasticQuantConvBnReLu1d,
     ElasticQuantConvReLu1d,
-)
-from hannah.models.ofa.submodules.elasticBatchnorm import ElasticWidthBatchnorm1d
-
-from hannah.models.ofa.submodules.elasticLinear import (
-    ElasticWidthLinear,
-    ElasticPermissiveReLU,
-    ElasticQuantWidthLinear,
 )
 
 # A dictionary that maps the combination string of the convolution type to the class that

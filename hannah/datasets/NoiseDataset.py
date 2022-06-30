@@ -1,9 +1,11 @@
 import os
-import sys
-import shutil
 import random
-from ..utils import list_all_files, extract_from_download_cache
+import shutil
+import sys
+
 from torchvision.datasets.utils import extract_archive
+
+from ..utils import extract_from_download_cache, list_all_files
 
 
 class NoiseDataset:
@@ -27,18 +29,18 @@ class NoiseDataset:
         output_test = list()
 
         train, dev, test = NoiseDataset.getFSDKaggle_divided(config)
-        if train != None:
+        if train is not None:
             output_train.extend(train)
             output_dev.extend(dev)
             output_test.extend(test)
 
         train, dev, test = NoiseDataset.getFSDnoisy_divided(config)
-        if train != None:
+        if train is not None:
             output_train.extend(train)
             output_dev.extend(dev)
             output_test.extend(test)
         train, dev, test = NoiseDataset.getFSD50K_divided(config)
-        if train != None:
+        if train is not None:
             output_train.extend(train)
             output_dev.extend(dev)
             output_test.extend(test)
@@ -51,8 +53,6 @@ class NoiseDataset:
         noise_folder = os.path.join(data_folder, "noise_files")
         kaggle_folder = os.path.join(noise_folder, "FSDKaggle")
         if os.path.isdir(kaggle_folder):
-
-            FSDParts = ["audio_test", "audio_train"]
 
             test = NoiseDataset.read_dataset_specific(
                 os.path.join(kaggle_folder, "FSDKaggle2018.audio_test")
@@ -94,8 +94,6 @@ class NoiseDataset:
         noise_folder = os.path.join(data_folder, "noise_files")
         kaggle_folder = os.path.join(noise_folder, "FSDnoisy")
         if os.path.isdir(kaggle_folder):
-
-            FSDParts = ["audio_test", "audio_train"]
             test = list()
             dev = list()
             train = list()

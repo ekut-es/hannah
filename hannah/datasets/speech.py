@@ -1,29 +1,26 @@
+import csv
+import hashlib
+import json
+import logging
 import os
 import random
 import re
-import json
-import logging
-import hashlib
-import os
-import csv
 import time
-import torchaudio
+from collections import defaultdict
+
 import numpy as np
 import scipy.signal as signal
 import torch
-
-from collections import defaultdict
-
+import torchaudio
 from chainmap import ChainMap
+from joblib import Memory
 from torchvision.datasets.utils import list_files
 
+from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
-from ..utils import list_all_files, extract_from_download_cache
-
-from .NoiseDataset import NoiseDataset
 from .DatasetSplit import DatasetSplit
 from .Downsample import Downsample
-from joblib import Memory
+from .NoiseDataset import NoiseDataset
 
 msglogger = logging.getLogger()
 
@@ -40,7 +37,7 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
         torchaudio.set_audio_backend("sox_io")
         try:
             data, samplingrate = torchaudio.load(file_name)
-        except:
+        except RuntimeError:
             msglogger.warning(
                 "Could not load %s with default backend trying sndfile", str(file_name)
             )
@@ -64,7 +61,7 @@ else:
 
 
 class SpeechDataset(AbstractDataset):
-    """ Base Class for speech datasets """
+    """Base Class for speech datasets"""
 
     LABEL_SILENCE = "__silence__"
     LABEL_UNKNOWN = "__unknown__"
@@ -162,7 +159,7 @@ class SpeechDataset(AbstractDataset):
         return (window_start, window_start + in_len)
 
     def preprocess(self, example, silence=False, label=0):
-        """ Run preprocessing and feature extraction """
+        """Run preprocessing and feature extraction"""
 
         if silence:
             example = "__silence__"
@@ -341,7 +338,7 @@ class SpeechCommandsDataset(SpeechDataset):
                         hashname = re.sub(r"_nohash_.*$", "", filename)
                     else:
                         hashname = filename
-                    max_no_wavs = 2 ** 27 - 1
+                    max_no_wavs = 2**27 - 1
                     bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
                     bucket = (bucket % (max_no_wavs + 1)) * (100.0 / max_no_wavs)
                     if bucket < dev_pct:
@@ -659,10 +656,8 @@ class VadDataset(SpeechDataset):
 
     @classmethod
     def splits(cls, config):
-        """Splits the dataset in training, devlopment and test set and returns
+        """Splits the dataset in training, development and test set and returns
         the three sets as List"""
-
-        msglogger = logging.getLogger()
 
         # open the saved dataset
         sdataset, _ = VadDataset.read_config(config)
@@ -676,9 +671,14 @@ class VadDataset(SpeechDataset):
             speech_files = list()
             bg_noise_files = list()
             for key in sdataset.keys():
-                filename, original, downsampled, sr_orig, sr_down, allocation = sdataset[
-                    key
-                ].values()
+                (
+                    filename,
+                    original,
+                    downsampled,
+                    sr_orig,
+                    sr_down,
+                    allocation,
+                ) = sdataset[key].values()
 
                 if desc not in allocation:
                     continue
@@ -725,7 +725,7 @@ class VadDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            download_folder = os.path.join(data_folder, "downloads")
+            download_folder_tmp = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)
@@ -914,7 +914,7 @@ class KeyWordDataset(SpeechDataset):
                         hashname = re.sub(r"_nohash_.*$", "", filename)
                     else:
                         hashname = filename
-                    max_no_wavs = 2 ** 27 - 1
+                    max_no_wavs = 2**27 - 1
                     bucket = int(hashlib.sha1(hashname.encode()).hexdigest(), 16)
                     bucket = (bucket % (max_no_wavs + 1)) * (100.0 / max_no_wavs)
                     if bucket < dev_pct:

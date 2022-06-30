@@ -6,15 +6,18 @@
 """
 
 import math
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.intrinsic as nni
+from torch import Tensor
 from torch.nn import init
 from torch.nn.modules.utils import _pair, _single
 from torch.nn.parameter import Parameter
+
+from hannah.models.factory.qconfig import QConfig
 
 from . import quantized as q
 
@@ -23,7 +26,12 @@ _BN_CLASS_MAP = {1: nn.BatchNorm1d, 2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
 
 # pytype: disable=attribute-error
 class _ConvForwardMixin:
-    def _real_conv_forward(self, input, weight, bias):
+    def _real_conv_forward(
+        self,
+        input: Tensor,
+        weight: Union[Tensor, Parameter],
+        bias: Union[Tensor, Parameter],
+    ) -> Tensor:
         if self.dim == 1:
             return F.conv1d(
                 input,
@@ -66,25 +74,25 @@ class _ConvBnNd(
     def __init__(
         self,
         # ConvNd args
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        transposed=False,
-        output_padding=0,
-        groups=1,
-        bias=False,
-        padding_mode="zeros",
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Tuple[int, ...],
+        stride: Tuple[int, ...] = 1,
+        padding: Tuple[int, ...] = 0,
+        dilation: Tuple[int, ...] = 1,
+        transposed: bool = False,
+        output_padding: Tuple[int, ...] = 0,
+        groups: int = 1,
+        bias: Optional[bool] = False,
+        padding_mode: str = "zeros",
         # BatchNormNd args
-        eps=1e-05,
-        momentum=0.1,
-        freeze_bn=False,
-        qconfig=None,
-        dim=2,
-        out_quant=True,
-    ):
+        eps: float = 1e-05,
+        momentum: float = 0.1,
+        freeze_bn: bool = False,
+        qconfig: Union[QConfig, QConfig] = None,
+        dim: int = 2,
+        out_quant: bool = True,
+    ) -> None:
         nn.modules.conv._ConvNd.__init__(  # pytype: disable=module-attr
             self,
             in_channels,
@@ -134,7 +142,7 @@ class _ConvBnNd(
     def reset_running_stats(self):
         self.bn.reset_running_stats()
 
-    def reset_bn_parameters(self):
+    def reset_bn_parameters(self) -> None:
         self.bn.reset_running_stats()
         init.uniform_(self.bn.weight)
         init.zeros_(self.bn.bias)
@@ -144,10 +152,10 @@ class _ConvBnNd(
             bound = 1 / math.sqrt(fan_in)
             init.uniform_(self.bias, -bound, bound)
 
-    def reset_parameters(self):
+    def reset_parameters(self) -> None:
         super(_ConvBnNd, self).reset_parameters()
 
-    def update_bn_stats(self):
+    def update_bn_stats(self) -> Any:
         self.freeze_bn = False
         self.bn.training = True
         return self
@@ -158,14 +166,14 @@ class _ConvBnNd(
         return self
 
     @property
-    def scale_factor(self):
+    def scale_factor(self) -> Tensor:
         running_std = torch.sqrt(self.bn.running_var + self.bn.eps)
         scale_factor = self.bn.weight / running_std
 
         return scale_factor
 
     @property
-    def scaled_weight(self):
+    def scaled_weight(self) -> Tensor:
         scale_factor = self.scale_factor
         weight_shape = [1] * len(self.weight.shape)
         weight_shape[0] = -1
@@ -174,11 +182,10 @@ class _ConvBnNd(
         scaled_weight = self.weight_fake_quant(
             self.weight * scale_factor.reshape(weight_shape)
         )
-        
 
         return scaled_weight
 
-    def _forward(self, input):
+    def _forward(self, input: Tensor) -> Tensor:
         bias_shape = [1] * len(self.weight.shape)
         bias_shape[1] = -1
 
@@ -208,16 +215,16 @@ class _ConvBnNd(
 
         return conv
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         # TODO(jerryzh): extend
         return super(_ConvBnNd, self).extra_repr()
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         y = self._forward(input)
 
         return y
 
-    def train(self, mode=True):
+    def train(self, mode: bool = True) -> Any:
         """
         Batchnorm's training behavior is using the self.training flag. Prevent
         changing it if BN is frozen. This makes sure that calling `model.train()`
@@ -357,26 +364,26 @@ class ConvBn1d(_ConvBnNd):
     def __init__(
         self,
         # Conv1d args
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        bias=None,
-        padding_mode="zeros",
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: Optional[Any] = None,
+        padding_mode: str = "zeros",
         # BatchNorm1d args
         # num_features: out_channels
-        eps=1e-05,
-        momentum=0.1,
+        eps: float = 1e-05,
+        momentum: float = 0.1,
         # affine: True
         # track_running_stats: True
         # Args for this module
-        freeze_bn=False,
-        qconfig=None,
-        out_quant=True,
-    ):
+        freeze_bn: bool = False,
+        qconfig: Union[QConfig, QConfig] = None,
+        out_quant: bool = True,
+    ) -> None:
         kernel_size = _single(kernel_size)
         stride = _single(stride)
         padding = _single(padding)
@@ -407,7 +414,7 @@ class ConvBn1d(_ConvBnNd):
             qconfig.activation() if out_quant else nn.Identity()
         )
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         y = super(ConvBn1d, self).forward(input)
         return self.activation_post_process(y)
 
@@ -429,26 +436,26 @@ class ConvBnReLU1d(ConvBn1d):
     def __init__(
         self,
         # Conv1d args
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        bias=None,
-        padding_mode="zeros",
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: Optional[Any] = None,
+        padding_mode: str = "zeros",
         # BatchNorm1d args
         # num_features: out_channels
-        eps=1e-05,
-        momentum=0.1,
+        eps: float = 1e-05,
+        momentum: float = 0.1,
         # affine: True
         # track_running_stats: True
         # Args for this module
-        freeze_bn=False,
-        qconfig=None,
-        out_quant=True,
-    ):
+        freeze_bn: bool = False,
+        qconfig: Union[QConfig, QConfig] = None,
+        out_quant: bool = True,
+    ) -> None:
 
         super().__init__(
             in_channels,
@@ -470,7 +477,7 @@ class ConvBnReLU1d(ConvBn1d):
             qconfig.activation() if out_quant else nn.Identity()
         )
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         y = self.activation_post_process(F.relu(ConvBn1d._forward(self, input)))
 
         return y
@@ -498,26 +505,26 @@ class ConvBn2d(_ConvBnNd):
     def __init__(
         self,
         # ConvNd args
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        bias=None,
-        padding_mode="zeros",
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[Tuple[int, int], int],
+        stride: Union[Tuple[int, int], int] = 1,
+        padding: Union[Tuple[int, int], int] = 0,
+        dilation: Union[Tuple[int, int], int] = 1,
+        groups: int = 1,
+        bias: Optional[bool] = None,
+        padding_mode: str = "zeros",
         # BatchNorm2d args
         # num_features: out_channels
-        eps=1e-05,
-        momentum=0.1,
+        eps: float = 1e-05,
+        momentum: float = 0.1,
         # affine: True
         # track_running_stats: True
         # Args for this module
-        freeze_bn=False,
-        qconfig=None,
-        out_quant=True,
-    ):
+        freeze_bn: bool = False,
+        qconfig: Union[QConfig, QConfig] = None,
+        out_quant: bool = True,
+    ) -> None:
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
@@ -547,7 +554,7 @@ class ConvBn2d(_ConvBnNd):
         else:
             self.activation_post_process = nn.Identity()
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return self.activation_post_process(super(ConvBn2d, self)._forward(input))
 
 
@@ -568,26 +575,26 @@ class ConvBnReLU2d(ConvBn2d):
     def __init__(
         self,
         # Conv2d args
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        bias=None,
-        padding_mode="zeros",
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[Tuple[int, int], int],
+        stride: Union[Tuple[int, int], int] = 1,
+        padding: Union[Tuple[int, int], int] = 0,
+        dilation: Union[Tuple[int, int], int] = 1,
+        groups: int = 1,
+        bias: Optional[bool] = None,
+        padding_mode: str = "zeros",
         # BatchNorm2d args
         # num_features: out_channels
-        eps=1e-05,
-        momentum=0.1,
+        eps: float = 1e-05,
+        momentum: float = 0.1,
         # affine: True
         # track_running_stats: True
         # Args for this module
-        freeze_bn=False,
-        qconfig=None,
-        out_quant=True,
-    ):
+        freeze_bn: bool = False,
+        qconfig: Union[QConfig, QConfig] = None,
+        out_quant: bool = True,
+    ) -> None:
         super(ConvBnReLU2d, self).__init__(
             in_channels,
             out_channels,
@@ -609,7 +616,7 @@ class ConvBnReLU2d(ConvBn2d):
         else:
             self.activation_post_process = nn.Identity()
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return self.activation_post_process(
             F.relu(super(ConvBnReLU2d, self)._forward(input))
         )
@@ -632,18 +639,18 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        bias=True,
-        padding_mode="zeros",
-        qconfig=None,
-        out_quant=True,
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = "zeros",
+        qconfig: Union[QConfig, QConfig] = None,
+        out_quant: bool = True,
+    ) -> None:
         super(ConvReLU2d, self).__init__(
             in_channels,
             out_channels,
@@ -671,7 +678,7 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
         else:
             self.bias_fake_quant = self.qconfig.activation()
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return self.activation_post_process(
             F.relu(
                 self._real_conv_forward(
@@ -695,18 +702,18 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        bias=True,
-        padding_mode="zeros",
-        qconfig=None,
-        out_quant=True,
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = "zeros",
+        qconfig: Union[QConfig, QConfig] = None,
+        out_quant: bool = True,
+    ) -> None:
         super(ConvReLU1d, self).__init__(
             in_channels,
             out_channels,
@@ -730,7 +737,7 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
         else:
             self.bias_fake_quant = self.qconfig.activation()
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         output = self._real_conv_forward(
             input,
             self.weight_fake_quant(self.weight),
@@ -753,18 +760,18 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        bias=True,
-        padding_mode="zeros",
-        qconfig=None,
-        out_quant=True,
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = "zeros",
+        qconfig: QConfig = None,
+        out_quant: bool = True,
+    ) -> None:
         super(Conv1d, self).__init__(
             in_channels,
             out_channels,
@@ -788,7 +795,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
             self.bias_fake_quant = self.qconfig.activation()
         self.dim = 1
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         # print(f"Conv1D {self.stride}")
         # print(input.shape)
         y = self.activation_post_process(
@@ -818,18 +825,18 @@ class Conv2d(nn.Conv2d, _ConvForwardMixin):
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        bias=True,
-        padding_mode="zeros",
-        qconfig=None,
-        out_quant=True,
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = "zeros",
+        qconfig: QConfig = None,
+        out_quant: bool = True,
+    ) -> None:
         super(Conv2d, self).__init__(
             in_channels,
             out_channels,
@@ -854,7 +861,7 @@ class Conv2d(nn.Conv2d, _ConvForwardMixin):
             self.bias_fake_quant = self.qconfig.activation()
         self.dim = 2
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         y = self.activation_post_process(
             self._real_conv_forward(
                 input,

@@ -1,2 +1,7 @@
 [flake8]
-extend-ignore = E203, E501
+extend-ignore = E203, E501, F401, F403, E402, F841
+exclude =
+    .tox,
+    __pycache__,
+    hannah/models/tc_snn,
+    SNNLayers.py

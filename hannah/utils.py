@@ -1,84 +1,56 @@
 import importlib
-import pathlib
-import shutil
-
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
-from pytorch_lightning.utilities.distributed import rank_zero_only
-import torch
-import torch.nn as nn
-import numpy as np
 import logging
 import os
-import sys
+import pathlib
 import platform
-import nvsmi
-import time
 import random
+import shutil
+import sys
+import time
+from contextlib import _GeneratorContextManager, contextmanager
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator, List, Type, TypeVar
 
-from git import Repo, InvalidGitRepositoryError
-
-import hydra
+import numpy as np
+import nvsmi
+import pytorch_lightning
+import torch
+import torch.nn as nn
+from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-
+from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+from pytorch_lightning.callbacks import (
+    Callback,
+    DeviceStatsMonitor,
+    GPUStatsMonitor,
+    LearningRateMonitor,
+)
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.utilities.distributed import rank_zero_only
 from torchvision.datasets.utils import (
-    list_files,
-    list_dir,
     download_and_extract_archive,
     extract_archive,
+    list_dir,
+    list_files,
 )
 
-from contextlib import contextmanager
-
-import pytorch_lightning
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.callbacks import DeviceStatsMonitor, GPUStatsMonitor
-
+import hydra
 
 from .callbacks.clustering import kMeans
-from .callbacks.summaries import MacSummaryCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
+from .callbacks.summaries import MacSummaryCallback
 from .callbacks.svd_compress import SVD
-
 
 try:
     import lsb_release  # pytype: disable=import-error
 
-    HAVE_LSB = True
+    HAVE_LSB: bool = True
 except ImportError:
-    HAVE_LSB = False
+    HAVE_LSB: bool = False
 
 
-def config_pylogger(log_cfg_file, experiment_name, output_dir="logs"):
-    """Configure the Python logger.
-    For each execution of the application, we'd like to create a unique log directory.
-    By default this directory is named using the date and time of day, so that directories
-    can be sorted by recency.  You can also name your experiments and prefix the log
-    directory with this name.  This can be useful when accessing experiment data from
-    TensorBoard, for example.
-    """
-    exp_full_name = "logfile" if experiment_name is None else str(experiment_name)
-    logdir = output_dir
-
-    if not os.path.exists(logdir):
-        os.makedirs(logdir)
-
-    log_filename = os.path.join(logdir, exp_full_name + ".log")
-    if os.path.isfile(log_cfg_file):
-        logging.config.fileConfig(log_cfg_file, defaults={"logfilename": log_filename})
-
-    msglogger = logging.getLogger()
-    msglogger.logdir = logdir
-    msglogger.log_filename = log_filename
-    msglogger.info("Log file for this run: " + os.path.realpath(log_filename))
-
-    return msglogger
-
-
-def log_execution_env_state():
+def log_execution_env_state() -> None:
     """Log information about the execution environment.
     File 'config_path' will be copied to directory 'logdir'. A common use-case
     is passing the path to a (compression) schedule YAML file. Storing a copy
@@ -124,7 +96,7 @@ def log_execution_env_state():
     if HAVE_LSB:
         try:
             logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
-        except:
+        except Exception:
             pass
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
@@ -136,7 +108,9 @@ def log_execution_env_state():
     logger.info("  ")
 
 
-def list_all_files(path, file_suffix, file_prefix=False, remove_file_beginning=""):
+def list_all_files(
+    path, file_suffix, file_prefix=False, remove_file_beginning=""
+) -> Any:
     subfolder = list_dir(path, prefix=True)
     files_in_folder = list_files(path, file_suffix, prefix=file_prefix)
     for subfold in subfolder:
@@ -165,7 +139,7 @@ def extract_from_download_cache(
     target_test_folder="",
     clear_download=False,
     no_exist_check=False,
-):
+) -> None:
     """extracts given file from cache or donwloads first from url
 
     Args:
@@ -202,7 +176,7 @@ def extract_from_download_cache(
         )
 
 
-def auto_select_gpus(gpus=1):
+def auto_select_gpus(gpus=1) -> List[int]:
     num_gpus = gpus
 
     gpus = list(nvsmi.get_gpus())
@@ -221,8 +195,8 @@ def auto_select_gpus(gpus=1):
     return result
 
 
-def common_callbacks(config: DictConfig):
-    callbacks = []
+def common_callbacks(config: DictConfig) -> list:
+    callbacks: List[Callback] = []
 
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
@@ -262,10 +236,12 @@ def common_callbacks(config: DictConfig):
                 pruning_config, amount=pruning_scheduler
             )
             callbacks.append(pruning_callback)
-    
+
         if config_compression.get("decomposition", None):
             compress_after_epoch = config.trainer.max_epochs
-            if (compress_after_epoch % 2 == 1):  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
+            if (
+                compress_after_epoch % 2 == 1
+            ):  # SVD compression occurs max_epochs/2 epochs. If max_epochs is an odd number, SVD not called
                 compress_after_epoch -= 1
             svd = SVD(
                 rank_compression=config.compression.decomposition.rank_compression,
@@ -294,7 +270,7 @@ def clear_outputs():
             shutil.rmtree(component)
 
 
-def fullname(o):
+def fullname(o) -> Any:
     klass = o.__class__
     module = klass.__module__
     if module == "builtins":

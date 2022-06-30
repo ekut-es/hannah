@@ -27,34 +27,6 @@ Install dependencies:
 
 Install a python 3.8 or python 3.9 version using [pyenv](https://github.com/pyenv/pyenv).
 
-### Mac OS
-Possible Ways to install all the needed Packages for Mac are with Homebrew
-Python 3.9 should be installed
-
-    brew install python@3.9
-
-#### Mac with x86_64 processor
-
-poetry environment should be created with
-
-    poetry install
-
-#### Mac with m1 processor
-
-Install hdf5 should be installed
-
-    brew install hdf5
-
-Install the h5py python Package manually
-
-    poetry run pip3 install h5py==3.6.0
-
-poetry environment should be created with
-
-    poetry install
-
-Environment installed successfully
-
 ### Install poetry
 
     curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
@@ -83,6 +55,12 @@ This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.
 The environment can be activated using:
 
     poetry shell
+
+### Optional Dependencies
+
+Vision models require additional dependencies, these can be installed using:
+
+    poetry install -E vision
 
 ### Installation Tips
 
@@ -218,5 +196,5 @@ To enable precommit hooks run the following command in a `poetry shell`.
 
      pre-commit install
 
-Try to follow [pep8](https://pep8.org/#naming-conventions) and the rest of pep8 to the
+Try to follow [pep8](https://pep8.org/#naming-conventions) naming conventions and the rest of pep8 to the
 best of your abilities.

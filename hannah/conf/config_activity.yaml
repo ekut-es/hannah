@@ -1,37 +1,14 @@
 defaults:
-    - dataset: pamap2
-    - features: raw
-    - model: tc-res8
-    - scheduler: 1cycle
-    - optimizer: sgd
-    - normalizer: null
-    - module: cross_validation_stream_classifier
-    - compress: null
-    - trainer: cross_validation
-    - checkpoint: default
-    - backend: null
-    - early_stopping: null
-    - profiler: null
-    - pruning: null
-    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
-      optional: true
+    - config
+    - override dataset: pamap2
+    - override features: raw
+    - override model: tc-res8
+    - override scheduler: 1cycle
+    - override optimizer: sgd
+    - override normalizer: null
+    - override module: cross_validation_stream_classifier
+    - override trainer: cross_validation
+    - override checkpoint: default
+    - _self_
 
 experiment_id: test
-output_dir: trained_models
-auto_lr: false
-print_metrics: false
-data_monitor: false
-
-seed: [1234]
-
-hydra:
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-
-
-
-#TODO:
-dump_test: false
-input_file: ''

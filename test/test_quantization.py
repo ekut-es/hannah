@@ -1,21 +1,23 @@
 from typing import Any
+
 import pytest
-from torch.quantization.qconfig import get_default_qconfig
-from hannah.models.factory.qat import (
-    ConvBnReLU1d,
-    ConvBnReLU2d,
-    ConvBn1d,
-    ConvBn2d,
-    ConvReLU1d,
-    ConvReLU2d,
-    Conv1d,
-    Conv2d,
-    QAT_MODULE_MAPPINGS,
-)
-from hannah.models.factory.qconfig import PowerOf2Quantization, get_trax_qat_qconfig
-from torch.quantization import default_qconfig, convert
 import torch
 import torch.nn as nn
+from torch.quantization import convert, default_qconfig
+from torch.quantization.qconfig import get_default_qconfig
+
+from hannah.models.factory.qat import (
+    QAT_MODULE_MAPPINGS,
+    Conv1d,
+    Conv2d,
+    ConvBn1d,
+    ConvBn2d,
+    ConvBnReLU1d,
+    ConvBnReLU2d,
+    ConvReLU1d,
+    ConvReLU2d,
+)
+from hannah.models.factory.qconfig import PowerOf2Quantization, get_trax_qat_qconfig
 
 
 @pytest.mark.parametrize(
@@ -197,7 +199,7 @@ def test_fused_relu_2d():
 
 
 if __name__ == "__main__":
-    test_fused_conv1d()
+    test_fused_relu_1d()
 
     # test_fused_bn_relu_1d()
     # test_fused_bn_relu_2d()

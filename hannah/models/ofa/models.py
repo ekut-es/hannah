@@ -1,40 +1,34 @@
 import copy
+import logging
 from typing import List, Tuple
-import torch.nn as nn
 
 # import torch.nn.functional as nnf
 import numpy as np
-import logging
-
-# import torch
+import torch.nn as nn
+from hydra.utils import instantiate
 
 # from ..utils import ConfigType, SerializableModule
 from omegaconf import ListConfig
-from hydra.utils import instantiate
-
 
 from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
-
+from .submodules.elasticLinear import ElasticQuantWidthLinear, ElasticWidthLinear
 from .submodules.resblock import ResBlock1d, ResBlockBase
-from .submodules.elasticLinear import (
-    ElasticWidthLinear,
-    ElasticQuantWidthLinear,
-)
-
 from .type_utils import (
-    elastic_conv_type,
-    elastic_all_type,
     elasic_conv_classes,
+    elastic_all_type,
+    elastic_conv_type,
     elastic_Linear_type,
 )
 
 # from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
+    call_function_from_deep_nested,
     flatten_module_list,
     get_instances_from_deep_nested,
     module_list_to_module,
-    call_function_from_deep_nested,
 )
+
+# import torch
 
 
 def create(
@@ -50,7 +44,7 @@ def create(
     qconfig=None,
 ) -> nn.Module:
     """
-    The function creates a ofaModel with the given name,
+    The function creates a ofa Model with the given name,
     labels, input shape, convolutional layers, and other parameters
 
     :param name: The name of the model

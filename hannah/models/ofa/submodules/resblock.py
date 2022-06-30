@@ -1,14 +1,9 @@
 import torch.nn as nn
+
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
-from .elastickernelconv import (
-    ElasticConv1d,
-    ElasticConvBn1d,
-)
-from .elasticquantkernelconv import (
-    ElasticQuantConv1d,
-    ElasticQuantConvBn1d,
-)
 from .elasticchannelhelper import SequenceDiscovery
+from .elastickernelconv import ElasticConv1d, ElasticConvBn1d
+from .elasticquantkernelconv import ElasticQuantConv1d, ElasticQuantConvBn1d
 
 
 # base construct of a residual block

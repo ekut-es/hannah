@@ -1,17 +1,18 @@
 from asyncio.log import logger
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-
 from pytorch_lightning.callbacks import Callback
-from ..models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d
-from sklearn.cluster import KMeans
 from scipy.sparse import csr_matrix
+from sklearn.cluster import KMeans, MiniBatchKMeans
+
+from ..models.factory.qat import Conv1d, ConvBn1d, ConvBnReLU1d, ConvReLU1d
 
 
 def clustering(params, inertia, cluster):
     sparse_matrix = csr_matrix(params)
-    kmeans = KMeans(n_clusters=cluster, n_init=1, init='k-means++', algorithm="full", random_state=1234)
+    kmeans = MiniBatchKMeans(n_clusters=cluster, init="k-means++", random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1, 1))
     centers = kmeans.cluster_centers_.reshape(-1)
     inertia += kmeans.inertia_
@@ -30,8 +31,13 @@ class kMeans(Callback):
                     if not isinstance(module, nn.Linear):
                         bias_shape = [1] * len(module.weight.shape)
                         bias_shape[1] = -1
-                        bias = torch.zeros(module.out_channels, device=module.weight.device)
-                        bias = module.bias_fake_quant((bias - module.bn.running_mean) * module.scale_factor + module.bn.bias)  # .reshape(bias_shape) #.view(-1, 1, 1) #.reshape(bias_shape)
+                        bias = torch.zeros(
+                            module.out_channels, device=module.weight.device
+                        )
+                        bias = module.bias_fake_quant(
+                            (bias - module.bn.running_mean) * module.scale_factor
+                            + module.bn.bias
+                        )  # .reshape(bias_shape) #.view(-1, 1, 1) #.reshape(bias_shape)
                         module.bias = torch.nn.Parameter(bias)
 
         def replace_modules(module):
@@ -49,8 +55,8 @@ class kMeans(Callback):
                         padding_mode=child.padding_mode,
                         dilation=child.dilation,
                         bias=True,
-                        qconfig=child.qconfig
-                        )
+                        qconfig=child.qconfig,
+                    )
                     tmp.weight.data = child.weight
                     tmp.bias = child.bias
                     setattr(module, name, tmp)
@@ -66,7 +72,8 @@ class kMeans(Callback):
                         padding_mode=child.padding_mode,
                         bias=True,
                         dilation=child.dilation,
-                        qconfig=child.qconfig)
+                        qconfig=child.qconfig,
+                    )
                     tmp.weight.data = child.weight
                     tmp.bias = child.bias
                     setattr(module, name, tmp)
@@ -78,7 +85,11 @@ class kMeans(Callback):
         for name, module in pl_module.named_modules():
             if hasattr(module, "weight") and module.weight is not None:
                 params = module.weight.data.cpu().numpy().flatten()
-                centers, inertia = clustering(params, inertia, self.cluster)
+                distinct_weights = np.unique(params).size
+                if self.cluster < distinct_weights:
+                    centers, inertia = clustering(params, inertia, self.cluster)
+                else:
+                    continue
 
                 # Returns center that is closest to given value x
                 def replace_values_by_centers(x):
@@ -87,9 +98,12 @@ class kMeans(Callback):
                     else:
                         i = (np.abs(centers - x)).argmin()
                         return centers[i]
-                module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers)  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
+
+                module.weight.data = module.weight.data.cpu().apply_(
+                    replace_values_by_centers
+                )  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                 module.to(device=device)  # move from cpu to gpu
-        print('Clustering error: ', inertia)
+        print("Clustering error: ", inertia)
 
     def on_epoch_end(self, trainer, pl_module):
         inertia = 0
@@ -97,7 +111,11 @@ class kMeans(Callback):
         for module in pl_module.modules():
             if hasattr(module, "weight") and module.weight is not None:
                 w = module.weight.data.cpu().numpy().flatten()
-                centers, inertia = clustering(w, inertia, self.cluster)
+                distinct_weights = np.unique(w).size
+                if self.cluster < distinct_weights:
+                    centers, inertia = clustering(w, inertia, self.cluster)
+                else:
+                    continue
 
                 def replace_values_by_centers(x):
                     if x == 0.0:
@@ -105,7 +123,12 @@ class kMeans(Callback):
                     else:
                         i = (np.abs(centers - x)).argmin()
                         return centers[i]
-                clustered_data = module.weight.data.cpu().apply_(replace_values_by_centers).to(device=device)
+
+                clustered_data = (
+                    module.weight.data.cpu()
+                    .apply_(replace_values_by_centers)
+                    .to(device=device)
+                )
                 module.weight.data = clustered_data
                 module.to(device=device)
-        logger.info('Clustering error: %s', inertia)  # summed over all layers
+        logger.info("Clustering error: %s", inertia)  # summed over all layers

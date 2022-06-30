@@ -1,15 +1,13 @@
-import torchvision
+import numpy as np
 import torch
 import torch.nn.functional as F
-
+import torchvision
 from pycocotools.coco import COCO
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
-import numpy as np
+from hannah.datasets.Kitti import KittiCOCO
 
 from .loss import ComputeLoss
-
-from hannah.datasets.Kitti import KittiCOCO
 
 
 class FasterRCNN(torch.nn.Module):

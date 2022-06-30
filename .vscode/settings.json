@@ -16,5 +16,20 @@
     },
     "files.associations": {
         "*.inc": "cpp"
-    }
+    },
+    "cSpell.words": [
+        "accum",
+        "AUROC",
+        "autograd",
+        "cpus",
+        "gres",
+        "hparams",
+        "hyperparams",
+        "onnx",
+        "opset",
+        "qconfig",
+        "qscheme",
+        "submitit",
+        "tablefmt"
+    ]
 }

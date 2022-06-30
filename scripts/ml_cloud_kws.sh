@@ -17,8 +17,6 @@
 #SBATCH --gres=gpu:rtx2080ti:1
 #the job can use and see 5 GPUs (8 GPUs are available in total on one node)
 
-#SBATCH --gres-flags=enforce-binding
-
 #SBATCH --time=300
 # the maximum time the scripts needs to run (300 minutes = 5 hours)
 
@@ -44,7 +42,7 @@ mkdir -p $SCRATCH/datasets
 cp -r $WORK/datasets/speech_commands_v0.02 $SCRATCH/datasets
 
 echo "Moving singularity image to local scratch"
-cp /home/bringmann/cgerum05/ml_cloud.sif  $SCRATCH
+cp §WORK/ml_cloud.sif  $SCRATCH
 
 
 echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
