@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import torch.nn as nn
 from hydra.utils import instantiate
 from omegaconf import MISSING, OmegaConf
+from torch.nn.modules.container import Sequential
+from torch.nn.modules.linear import Identity
 
 from hannah.models.factory import pooling
 
@@ -569,7 +571,12 @@ class NetworkFactory:
             )
             return nn.Sequential(depthwise_conv, pointwise_conv) """
 
-    def _build_chain(self, input_shape, block_configs, major_stride):
+    def _build_chain(
+        self,
+        input_shape: Tuple[int, int, int],
+        block_configs: List[MinorBlockConfig],
+        major_stride: Optional[Any],
+    ) -> List[Tuple[Tuple[int, int, int], Sequential]]:
         block_input_shape = input_shape
         result_chain = []
         for block_config in block_configs:
@@ -582,7 +589,12 @@ class NetworkFactory:
 
         return result_chain
 
-    def _build_reduction(self, reduction, input_shape, *input_chains):
+    def _build_reduction(
+        self,
+        reduction: str,
+        input_shape: Tuple[int, int, int],
+        *input_chains: List[Tuple[Tuple[int, int, int], Sequential]],
+    ) -> Tuple[Tuple[int, int, int], Union[ReductionBlockConcat, Sequential]]:
         output_shapes = []
         for chain in input_chains:
             output_shapes.append(chain[-1][0] if len(chain) > 0 else input_shape)
@@ -812,7 +824,7 @@ class NetworkFactory:
 
         return out_shape, layers
 
-    def identity(self):
+    def identity(self) -> Identity:
         qconfig = self.default_qconfig
 
         if not qconfig:
@@ -875,7 +887,9 @@ class NetworkFactory:
 
         return output_shape, model
 
-    def _calc_spatial_dim(self, in_dim, kernel_size, stride, padding, dilation):
+    def _calc_spatial_dim(
+        self, in_dim: int, kernel_size: int, stride: int, padding: int, dilation: int
+    ) -> int:
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:

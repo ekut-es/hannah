@@ -6,7 +6,6 @@ from typing import Any, Mapping, Tuple, Union
 import timm
 import torch
 import torch.nn as nn
-from torch import nn
 
 import hydra
 
@@ -188,29 +187,20 @@ class TimmModel(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        decode=True,
-        classify=True,
-        projection=False,
-        finetuning=False,
-    ) -> Mapping[str, torch.Tensor]:
+    ) -> torch.Tensor:
 
-        latent = None
-        if finetuning:
-            with torch.no_grad():
-                latent = self.encoder(x)
-        else:
-            latent = self.encoder(x)
+        latent = self.encoder(x)
 
-        decoded = None
-        if self.decoder is not None and decode is True:
+        decoded = latent
+        if self.decoder is not None:
             decoded = self.decoder(latent)
 
-        logits = None
-        if self.classifier is not None and classify is True:
+        logits = latent
+        if self.classifier is not None:
             logits = self.classifier(latent)
 
-        projection = None
-        if self.projector is not None and projection is True:
+        projection = latent
+        if self.projector is not None:
             projection = self.projector(latent)
 
         result = ModelResult(

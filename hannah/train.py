@@ -16,7 +16,13 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
-from .utils.utils import auto_select_gpus, clear_outputs, common_callbacks
+from .logo import print_logo
+from .utils import (
+    auto_select_gpus,
+    clear_outputs,
+    common_callbacks,
+    log_execution_env_state,
+)
 
 msglogger: logging.Logger = logging.getLogger(__name__)
 

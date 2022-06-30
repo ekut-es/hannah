@@ -121,6 +121,15 @@ class AbstractDataset(Dataset, ABC):
         """Returns an optional dataset specific batch augment function"""
         return None
 
+    @property
+    def weights(self) -> Optional[List[float]]:
+        """Class weights for weighted sampling"""
+        class_counts = self.class_counts
+        if class_counts:
+            counts = list(class_counts.values())
+            weights = [1 / i for i in counts]
+            return weights
+
 
 def ctc_collate_fn(data):
     """Creates mini-batch tensors from the list of tuples (src_seq, trg_seq).

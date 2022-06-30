@@ -141,8 +141,6 @@ class ImageClassifierModule(ClassifierModule):
         # print("step_name", step_name)
         batch = self._decode_batch(batch)
 
-        breakpoint()
-
         x = batch["data"]
         labels = batch.get("labels", None)
         boxes = batch.get("bbox", None)
@@ -206,7 +204,7 @@ class ImageClassifierModule(ClassifierModule):
         _, step_results, batch = self.common_step("test", batch, batch_idx)
 
         y = batch.get("labels", None)
-        preds = step_results.get("preds", None)
+        preds = step_results.preds
         if y is not None and preds is not None:
             with set_deterministic(False):
                 self.test_confusion(preds, y)

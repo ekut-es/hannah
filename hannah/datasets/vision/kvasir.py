@@ -1,60 +1,53 @@
-import bisect
-import json
 import logging
 import os
 import pathlib
 import tarfile
-import urllib
-from collections import Counter
-from typing import Dict, List, Tuple
+from collections import Counter, namedtuple
+from typing import Dict, List
 
 import cv2
-import gdown
 import pandas as pd
 import requests
 import torchvision
-from PIL import Image
-from torchvision import transforms
-from tqdm import tqdm
+from albumentations.pytorch import ToTensorV2
 
+import albumentations as A
 from hannah.modules.augmentation import rand_augment
 
 from ..base import AbstractDataset
-from ..utils import generate_file_md5
 
 logger = logging.getLogger(__name__)
 
 
 class KvasirCapsuleDataset(AbstractDataset):
-    def __init__(self, config, dataset, indices=None, csv_file=None, transform=None):
-        super().__init__(config, dataset, transform)
-        self.indices = indices
-        self.csv_file = csv_file
-        classes, class_to_idx = self.find_classes(config.data_root)
+    DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_images/?zip="
+    METADATA_URL = (
+        "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/metadata.json"
+    )
+
+    def __init__(self, config, X, y, classes, transform=None):
+        self.data_root = (
+            pathlib.Path(config.data_folder) / "kvasir_capsule" / "labelled_images"
+        )
+
+        self.X = X
+        self.y = y
         self.classes = classes
-        self.class_to_idx = class_to_idx
+        self.transform = transform
+        self.label_to_index = {k: v for v, k in enumerate(classes)}
 
     def __getitem__(self, index):
-        data, target = self.dataset[index]
+        image = cv2.imread(str(self.X[index]))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        label = self.y[index]
         if self.transform:
-            data = self.transform(data)
-        return data, target
+            data = self.transform(image=image)["image"]
+        target = self.label_to_index[label]
+        return {"data": data, "labels": target}
 
     def __len__(self):
-        return len(self.dataset)
-
-    @staticmethod
-    def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
-        classes = sorted(
-            entry.name for entry in os.scandir(directory) if entry.is_dir()
-        )
-        if not classes:
-            raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
-
-        class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
-        return classes, class_to_idx
-
-    DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_images/?zip="
+        assert len(self.X) == len(self.y)
+        return len(self.X)
 
     @classmethod
     def prepare(cls, config):
@@ -62,10 +55,8 @@ class KvasirCapsuleDataset(AbstractDataset):
         extract_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
-        force = config.get("force")
-
         # download and extract dataset
-        if not os.path.isdir(extract_root) or force == True:
+        if not os.path.isdir(extract_root):
             torchvision.datasets.utils.download_and_extract_archive(
                 cls.DOWNLOAD_URL,
                 download_folder,
@@ -74,32 +65,12 @@ class KvasirCapsuleDataset(AbstractDataset):
             )
 
             for tar_file in pathlib.Path(extract_root).glob("*.tar.gz"):
-                # ampulla , hematin and polyp removed from official_splits due to small findings
                 logger.info("Extracting: %s", str(tar_file))
                 with tarfile.open(tar_file) as archive:
                     archive.extractall(path=extract_root)
                 tar_file.unlink()
-            # rename dataset image labels to match official splits csv
-            class_names = {
-                "Angiectasia": "Angiectasia",
-                "Erosion": "Erosion",
-                "Pylorus": "Pylorus",
-                "Blood - fresh": "Blood",
-                "Erythema": "Erythematous",
-                "Foreign body": "Foreign Bodies",
-                "Ileocecal valve": "Ileo-cecal valve",
-                "Lymphangiectasia": "Lymphangiectasia",
-                "Normal clean mucosa": "Normal",
-                "Pylorus": "Pylorus",
-                "Reduced mucosal view": "Reduced Mucosal View",
-                "Ulcer": "Ulcer",
-            }
-            for c_name in class_names:
-                new_file = os.path.join(extract_root, class_names[c_name])
-                old_file = os.path.join(extract_root, c_name)
-                os.rename(old_file, new_file)
 
-        # downlaod splits
+        # download splits
         official_splits_path = os.path.join(
             config.data_folder, "kvasir_capsule", "official_splits"
         )
@@ -116,81 +87,117 @@ class KvasirCapsuleDataset(AbstractDataset):
             with open(os.path.join(official_splits_path, "split_1.csv"), "wb") as f:
                 f.write(s1.content)
 
+        # download metadata
+        metadata_path = os.path.join(
+            config.data_folder, "kvasir_capsule", "metadata.json"
+        )
+        metadata_request = requests.get(cls.METADATA_URL)
+        with open(metadata_path, "wb") as f:
+            f.write(metadata_request.content)
+
     @classmethod
     def splits(cls, config):
         data_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
+        split_root = os.path.join(
+            config.data_folder, "kvasir_capsule", "official_splits"
+        )
 
-        train_transform = transforms.Compose(
+        # FIXME(gerum):  add back rand augment
+        train_transform = A.Compose(
             [
-                transforms.Resize(256),
-                transforms.CenterCrop(256),
-                transforms.Resize(224),
-                rand_augment.RandAugment(
-                    config.augmentations.rand_augment.N,
-                    config.augmentations.rand_augment.M,
-                    config=config,  # FIXME: make properly configurable
-                ),
-                transforms.ToTensor(),
-                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+                A.RandomResizedCrop(config.resolution[0], config.resolution[1]),
+                A.Normalize(mean=config.normalize.mean, std=config.normalize.std),
+                ToTensorV2(),
             ]
         )
 
-        test_transofrm = transforms.Compose(
+        test_transform = A.Compose(
             [
-                transforms.Resize(256),
-                transforms.CenterCrop(256),
-                transforms.Resize(224),
-                transforms.ToTensor(),
-                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+                A.Resize(config.resolution[0], config.resolution[1]),
+                A.Normalize(mean=config.normalize.mean, std=config.normalize.std),
+                ToTensorV2(),
             ]
         )
 
-        train_val_set = csv_dataset.DatasetCSV(
-            config.train_split, data_root, transform=None
-        )
-        test_set = csv_dataset.DatasetCSV(
-            config.test_val_split, data_root, transform=None
-        )
+        label_to_folder = {
+            "Angiectasia": "Angiectasia",
+            "Pylorus": "Pylorus",
+            "Blood": "Blood",
+            "Reduced Mucosal View": "Reduced Mucosal View",
+            "Ileo-cecal valve": "Ileo-cecal valve",
+            "Erythematous": "Erythematous",
+            "Foreign Bodies": "Foreign Bodies",
+            "Normal": "Normal",
+            "Ulcer": "Ulcer",
+            "Erosion": "Erosion",
+            "Lymphangiectasia": "Lymphangiectasia",
+            # Not Used in official splits dataset
+            "Ampulla of vater": "Ampulla of vater",
+            "Polyp": "Polyp",
+            "Blood - hematin": "Blood - hematin",
+        }
 
-        test_val_len = len(test_set)
-        split_sizes = [
-            int(test_val_len * (1.0 - config.val_percent)),
-            int(test_val_len * config.val_percent),
-        ]
-        # # split_1 has odd number
-        if test_val_len != split_sizes[0] + split_sizes[1]:
-            split_sizes[0] = split_sizes[0] + 1
+        if config.split == "official":
 
-        test_val_splits, test_indices, val_indices = csv_dataset.random_split(
-            test_set, split_sizes
-        )
-        test_set = test_val_splits[0]
-        val_set = test_val_splits[1]
-        train_indices = [i for i in range(len(train_val_set.imgs))]
+            def process_official_split(df: pd.DataFrame):
+
+                files = df["filename"].to_list()
+                labels = df["label"].to_list()
+
+                folders = [label_to_folder[label] for label in labels]
+
+                paths = [
+                    os.path.join(data_root, folder, file)
+                    for folder, file in zip(folders, files)
+                ]
+
+                return paths, labels
+
+            split0 = pd.read_csv(os.path.join(split_root, "split_0.csv"))
+            split1 = pd.read_csv(os.path.join(split_root, "split_1.csv"))
+
+            split0_paths, split0_labels = process_official_split(split0)
+            split1_paths, split1_labels = process_official_split(split1)
+
+            train_images = split0_paths
+            train_labels = split0_labels
+
+            val_images = split0_paths
+            val_labels = split0_labels
+
+            test_images = split1_paths
+            test_labels = split1_labels
+
+            classes = list(set(split0_labels + split1_labels))
+            classes.sort()
+        else:
+            raise Exception(
+                f"Split {config.split} is not defined for dataset kvasir_capsule"
+            )
 
         return (
             cls(
                 config,
-                train_val_set,
-                train_indices,
-                config.train_split,
+                train_images,
+                train_labels,
+                classes,
                 transform=train_transform,
             ),
             cls(
                 config,
-                val_set,
-                val_indices,
-                config.test_val_split,
-                transform=test_transofrm,
+                val_images,
+                val_labels,
+                classes,
+                transform=test_transform,
             ),
             cls(
                 config,
-                test_set,
-                test_indices,
-                config.test_val_split,
-                transform=test_transofrm,
+                test_images,
+                test_labels,
+                classes,
+                transform=test_transform,
             ),
         )
 
@@ -226,10 +233,3 @@ class KvasirCapsuleDataset(AbstractDataset):
     @property
     def class_names_abbreviated(self) -> List[str]:
         return [cn[0:3] for cn in self.class_names]
-
-    @property
-    def weights(self):
-        # FIXME: move to base classes
-        counts = list(self.class_counts.values())
-        weights = [1 / i for i in counts]
-        return weights

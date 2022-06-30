@@ -127,6 +127,7 @@ class ClassifierModule(LightningModule, ABC):
             for logger in self._logger_iterator():
                 if hasattr(logger, "log_graph"):
                     logger.log_graph(self, input_array)
+                    pass
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())

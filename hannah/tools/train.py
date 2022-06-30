@@ -5,11 +5,13 @@ from omegaconf import DictConfig
 import hydra
 
 from .. import conf  # noqa
+from ..logo import print_logo
 
 
 @hydra.main(config_name="config", config_path="../conf", version_base="1.2")
 def main(config: DictConfig):
 
+    print_logo()
     # Lazily Imported to get quicker tab completion
     from ..train import handle_dataset, nas, train
     from ..utils.utils import log_execution_env_state

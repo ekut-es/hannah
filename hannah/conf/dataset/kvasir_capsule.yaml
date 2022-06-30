@@ -3,13 +3,22 @@ defaults:
         - rand_augment
         - mixup
 
-data_folder: ${hydra:runtime.cwd}/datasets/
-data_root: ${dataset.data_folder}/kvasir_capsule/labelled_images
 cls: hannah.datasets.vision.KvasirCapsuleDataset
+data_folder: ${hydra:runtime.cwd}/datasets/
 dataset: kvasir_capsule
 val_percent: 0.1
 sampler: random
 weighted_loss: false
 
-train_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_0.csv
-test_val_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_1.csv
+split: official
+normalize:
+    mean:
+        - 0.5
+        - 0.5
+        - 0.5
+    std:
+        - 0.5
+        - 0.5
+        - 0.5
+
+resolution: [224,224]
