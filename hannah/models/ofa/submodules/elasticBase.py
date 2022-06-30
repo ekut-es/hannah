@@ -104,7 +104,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         # MR 20220622  TODO: still needed ?
         # store first grouping param
-        self.firstgrouping_param = self.get_group_size()
+        self.last_grouping_param = self.get_group_size()
 
         # set the groups value in the model
         self.groups = self.get_group_size()
@@ -383,6 +383,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             index = self.group_sizes.index(new_group_size)
             self.target_group_index = index
             #   with torch.no_grad():
+            # self.groups = self.group_sizes[index]
 
         except ValueError:
             logging.warn(

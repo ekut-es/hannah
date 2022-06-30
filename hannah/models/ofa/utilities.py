@@ -198,6 +198,47 @@ def getGroups(max_group, with_max_group_member : bool = True, addOneForNoGroupin
     return tmp
 
 
+# MR TODO fit those two together
+def pre_hook_forward(module, input):
+    """
+        This Hook is called before the forward will be executed.
+        TODO: maybe use that for normal conv evolution as well ?
+    """
+    adjust_weight_if_needed(module=module, kernel=module.weight, groups=module.groups, in_place_adjustment=True)
+
+
+def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustment: bool = False):
+    """
+    :throws: RuntimeError
+    returns (kernel, is adjusted) (adjusted if needed) otherwise throws a RuntimeError
+    """
+    if kernel is None:
+        kernel = module.weigth
+    if groups is None:
+        groups = module.groups
+
+    if not hasattr(module, 'last_grouping_param'):
+        raise RuntimeError
+
+    is_adjusted = False
+    grouping_changed = groups != module.last_grouping_param
+    logging.debug(f"Shape:{module.weight.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
+    if grouping_changed and groups > 1:
+        weight_adjustment_needed = is_weight_adjusting_needed(module.weight, module.in_channels, groups)
+        if weight_adjustment_needed:
+            is_adjusted = True
+            logging.info(f"NOW Shape:{module.weight.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
+            kernel = adjust_weights_for_grouping(kernel, groups)
+            if in_place_adjustment:
+                module.weight = nn.Parameter(kernel)
+
+    return (kernel, is_adjusted)
+    # grouping_changed = groups != last_grouping_param
+    #     if(grouping_changed and groups > 1):
+    #         # kernel_a = adjust_weights_for_grouping(kernel, 2)
+    #         weights = adjust_weights_for_grouping(weigths, groups)
+
+
 def is_weight_adjusting_needed(weights, input_channels, groups):
     """
         Checks if a weight adjustment is needed
