@@ -484,7 +484,6 @@ class OFAModel(nn.Module):
 
         self.elastic_channel_helpers = flatten_module_list(self.elastic_channel_helpers)
 
-        print("test")
         """
         # after the layers are processed, pass the relevant SequenceDiscovery to each output linear
         for i in range(self.min_depth, self.max_depth + 1):
