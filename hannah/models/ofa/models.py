@@ -10,7 +10,7 @@ from hydra.utils import instantiate
 # from ..utils import ConfigType, SerializableModule
 from omegaconf import ListConfig
 
-from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
+from .submodules.elasticchannelhelper import ElasticChannelHelper
 from .submodules.elasticLinear import ElasticQuantWidthLinear, ElasticWidthLinear
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .type_utils import (
@@ -227,7 +227,6 @@ def create_minor_block(
         dilation_sizes = block_config.dilation_sizes
         if not isinstance(dilation_sizes, ListConfig):
             dilation_sizes = [dilation_sizes]
-
         minor_block_internal_sequence = nn.ModuleList([])
         key = ""
         parameter = {
@@ -236,6 +235,7 @@ def create_minor_block(
             "out_channels": out_channels_full,
             "stride": stride,
             "dilation_sizes": dilation_sizes,
+            "out_channel_sizes": out_channels,
         }
 
         if block_config.get("norm", False):
@@ -260,13 +260,6 @@ def create_minor_block(
         new_block = module_list_to_module(
             flatten_module_list(minor_block_internal_sequence)
         )
-        # if multiple output channel widths are specified (elastic width), add an elastic width helper module
-        if len(out_channels) > 1:
-            # the sources of the elastic channel helper module are the previous conv, and its potential norm/act
-            helper_module = ElasticChannelHelper(out_channels)
-            # append the helper module to the sequence
-            new_sequence = nn.ModuleList([new_block, helper_module])
-            new_block = module_list_to_module(new_sequence)
         # the input channel count of the next minor block is the output channel count of the previous block
         # output channel count is specified by the elastic conv
         new_block_out_channels = new_minor_block.out_channels
@@ -450,17 +443,48 @@ class OFAModel(nn.Module):
 
     def perform_sequence_discovery(self):
         logging.info("Performing model sequence discovery.")
-        # start with a new, empty sequence discovery
-        sequence_discovery = SequenceDiscovery(is_accumulating_sources=True)
-        per_layer_output_discoveries = []
-        for layer in self.conv_layers:
-            resulting_discovery = layer(sequence_discovery)
-            # for each layer, store a split discovery for the output linear at that layer.
-            # THESE MUST BE APPLIED AFTER THE FULL MODULE DISCOVERY IS COMPLETED
-            # to ensure that the primary targets are set correctly.
-            per_layer_output_discoveries.append(resulting_discovery.split())
-            sequence_discovery = resulting_discovery
+        # establisch outer channel Helper
+        for i in range(len(self.conv_layers) - 1):
+            pre_block = self.conv_layers[i]
+            post_block = self.conv_layers[i + 1]
+            pre_conv = self.get_pre_conv(pre_block)
+            post_conv = self.get_post_conv(post_block)
 
+            if isinstance(pre_conv, elastic_conv_type):
+                tmpconv = pre_conv
+            else:
+                tmpconv = pre_conv[0]
+
+            if len(tmpconv.out_channel_sizes) > 1:
+                ech = ElasticChannelHelper(tmpconv.out_channel_sizes)
+                ech.add_sources(pre_conv)
+                ech.add_targets(post_conv)
+
+                if i in range(self.min_depth - 1, self.max_depth - 1):
+                    idx = i - (self.min_depth - 1)
+                    ech.add_targets(self.linears[idx])
+                self.elastic_channel_helpers.append(ech)
+
+            if isinstance(self.conv_layers[i], ResBlock1d):
+                chl = self.conv_layers[i].create_internal_channelhelper()
+                self.elastic_channel_helpers.append(chl)
+
+        if len(self.conv_layers) > 0:
+            pre_conv = self.get_pre_conv(self.conv_layers[-1])
+
+            if hasattr(pre_conv, "__iter__"):
+                out_channels = pre_conv[0].out_channel_sizes
+            else:
+                out_channels = pre_conv.out_channel_sizes
+
+            ech = ElasticChannelHelper(out_channels)
+            ech.add_sources(pre_conv)
+            ech.add_targets(self.linears[-1])
+            self.elastic_channel_helpers.append(ech)
+
+        self.elastic_channel_helpers = flatten_module_list(self.elastic_channel_helpers)
+
+        """
         # after the layers are processed, pass the relevant SequenceDiscovery to each output linear
         for i in range(self.min_depth, self.max_depth + 1):
             # range goes from min depth to including the max depth
@@ -468,6 +492,27 @@ class OFAModel(nn.Module):
             sequence_discovery = per_layer_output_discoveries[i - 1]
             output_linear.forward(sequence_discovery)
             # the resulting output sequence discovery is dropped. no module trails the output linear.
+        """
+
+    def get_post_conv(self, post_block):
+        post_conv = None
+        if isinstance(post_block, ResBlock1d):
+            post_conv = post_block.get_input_layer()
+        elif isinstance(post_block, nn.Sequential):
+            post_conv = flatten_module_list(post_block)[0]
+        elif isinstance(post_block, elastic_conv_type):
+            post_conv = post_block
+        return post_conv
+
+    def get_pre_conv(self, pre_block):
+        pre_conv = None
+        if isinstance(pre_block, ResBlock1d):
+            pre_conv = pre_block.get_output_layer()
+        elif isinstance(pre_block, nn.Sequential):
+            pre_conv = flatten_module_list(pre_block)[-1]
+        elif isinstance(pre_block, elastic_conv_type):
+            pre_conv = pre_block
+        return pre_conv
 
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
@@ -847,16 +892,10 @@ def rebuild_extracted_blocks(blocks):
                 )
                 reassembled_module.blocks = reassembled_subblocks
                 reassembled_module.skip = reassembled_skip
-                norm = module.norm
                 act = module.act
-                if isinstance(norm, elastic_all_type):
-                    norm = norm.assemble_basic_module()
                 if isinstance(act, elastic_all_type):
                     act = act.assemble_basic_module()
-                reassembled_module.norm_before_act = module.norm_before_act
                 reassembled_module.do_act = module.do_act
-                reassembled_module.do_norm = module.do_norm
-                reassembled_module.norm = norm
                 reassembled_module.act = act
 
             elif isinstance(module, ElasticChannelHelper):

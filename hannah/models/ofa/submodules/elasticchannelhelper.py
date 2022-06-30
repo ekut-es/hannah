@@ -5,7 +5,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from ..type_utils import elastic_forward_type
 from ..utilities import flatten_module_list
+
+# imports are located at the bottom to circumvent circular dependency import issues
+from .elasticBatchnorm import ElasticWidthBatchnorm1d
 
 
 # helper module, deployed in an elastic width connection
@@ -271,6 +275,22 @@ class ElasticChannelHelper(nn.Module):
         else:
             self.add_source_item(self, source)
 
+    # add additional source(s) which must have their outputs adjusted if the channel width changes
+    def add_targets(self, target: nn.Module):
+        if hasattr(target, "__iter__"):
+            # if the input source is iterable, check every item
+            target_flat = flatten_module_list(target)
+
+            for item in target_flat:
+                # ascend the list of sources from the back
+                if isinstance(item, ElasticChannelHelper):
+                    logging.exception(
+                        "ElasticChannelHelper source accumulation found another ElasticChannelHelper!"
+                    )
+                self.discover_target(item)
+        else:
+            self.discover_target(target)
+
     # check a module, add it as a source if its weights would need modification when channel width changes
     def add_source_item(self, source: nn.Module):
         if self.is_valid_primary_target(source):
@@ -296,144 +316,3 @@ class ElasticChannelHelper(nn.Module):
 
     def get_available_width_steps(self):
         return len(self.channel_counts)
-
-    def forward(self, x):
-        if isinstance(x, SequenceDiscovery):
-            return x.discover(self)
-        return x
-
-
-class SequenceDiscovery:
-    def __init__(self, is_accumulating_sources: bool = True):
-        super().__init__()
-        # mode is either: accumulating sources for an upcoming elastic width connection
-        # or collecting targets of an elastic width connection
-        self.is_accumulating_sources = is_accumulating_sources
-        # when accumulating sources, they are added to the moduleList
-        self.accumulated_sources = nn.ModuleList([])
-        # when seeking targets, the relevant helper module is stored here.
-        self.helper: ElasticChannelHelper = None
-
-    # process a module, return the next sequence discovery for it to pass forward
-    # simply pass a reference to the new module, this includes helper modules.
-    def discover(self, new_module, force_secondary_target: bool = False):
-        # primary targets will re-set collected modules, and change mode to source accumulation
-        if (
-            ElasticChannelHelper.is_primary_target(new_module)
-            and not force_secondary_target
-        ):
-            if not self.is_accumulating_sources:
-                # if in target finding mode, pass the newly discovered module as a target to the helper
-                if self.helper is None:
-                    logging.error(
-                        "SequenceDiscovery is in target mode, but has no helper module!"
-                    )
-                else:
-                    self.helper.discover_target(new_module)
-            # with primary modules, a new source sequence is always started:
-            # after a primary module, we are no longer seeking a target for a previous helper (if applicable)
-            # and the channel width of previous sources is irrelevant to subsequent helpers
-            new_discovery = SequenceDiscovery(is_accumulating_sources=True)
-            new_discovery.accumulated_sources.append(new_module)
-            return new_discovery
-
-        elif ElasticChannelHelper.is_primary_target(new_module):
-            # if the module is technically a primary target, but force_secondary_target is specified
-            # (this will happen on skip connection convs of a residual block, for example)
-            # process it as a secondary target in target discovery mode.
-            if not self.is_accumulating_sources:
-                # if accumulating targets with force_secondary_target, add module as secondary target
-                if self.helper is None:
-                    logging.error(
-                        "SequenceDiscovery is in target mode, but has no helper module!"
-                    )
-                else:
-                    self.helper.add_secondary_target_item(new_module)
-            # since the module is still a primary module, switch to a new source discovery (regardless of previous mode)
-            new_discovery = SequenceDiscovery(is_accumulating_sources=True)
-            new_discovery.accumulated_sources.append(new_module)
-            return new_discovery
-
-        elif isinstance(new_module, ElasticChannelHelper):
-            if self.is_accumulating_sources:
-                # if in source accumulation mode, pass accumulated sources to the helper.
-                print(
-                    f"Passing to elastic helper: {len(self.accumulated_sources)} modules as sources"
-                )
-                new_module.add_sources(self.accumulated_sources)
-            else:
-                logging.error(
-                    "Elastic width helper target accumulation reached another helper module!"
-                )
-            # after discovery reaches a helper module, the mode is switched to target discovery.
-            new_discovery = SequenceDiscovery(is_accumulating_sources=False)
-            new_discovery.helper = new_module
-            return new_discovery
-
-        else:
-            # for secondary modules, simply add them to the known sources, or pass them as secondary targets
-            if self.is_accumulating_sources:
-                self.accumulated_sources.append(new_module)
-            else:
-                if self.helper is None:
-                    logging.error(
-                        "SequenceDiscovery is in target mode, but has no helper module!"
-                    )
-                else:
-                    self.helper.add_secondary_target_item(new_module)
-            return self
-
-    # process when two discovery modules would be added together (with parallel modules, e.g. skip connections)
-    def merge_sequence_discovery(self, second_discovery):
-        if self.is_accumulating_sources and second_discovery.is_accumulating_sources:
-            # if both are in source discovery mode, simply pass the sum of sources on.
-            for new_source in second_discovery.accumulated_sources:
-                self.accumulated_sources.append(new_source)
-            return self
-        elif (
-            not self.is_accumulating_sources
-            and second_discovery.is_accumulating_sources
-        ):
-            # if this module is in find target mode, and is being merged with sources, add sources to this helper
-            # then, pass on the target discovery unmodified.
-            if self.helper is None:
-                logging.error(
-                    "SequenceDiscovery is in target mode, but has no helper module!"
-                )
-            else:
-                self.helper.add_sources(second_discovery.accumulated_sources)
-            return self
-        elif (
-            self.is_accumulating_sources
-            and not second_discovery.is_accumulating_sources
-        ):
-            # if the other discovery is in target mode, and this discovery is not,
-            # simply re-call the merge on the other module to avoid code duplication
-            return second_discovery.merge_sequence_discovery(self)
-        else:
-            # if both discoveries are in target mode, the next target(s) could theoretically be passed to both helpers
-            # as they would calculate the same norms, they should both pass forward the same filter
-            # optimally, both helpers should probably be merged
-            raise NotImplementedError(
-                "merging target discoveries of separate helpers from parallel blocks is NYI."
-            )
-            # skip connections on residual blocks don't need to contain their own helper module.
-            # for parallel blocks, simply having the the last connection be elastic on only one of the blocks is sufficient:
-            # the 'sources' of the other block will be added to the helper of the 'primary' block during the merge
-
-    # return a second, new discovery with the same references, for splitting off a connection
-    # this may be done at the input of a resblock for example.
-    def split(self):
-        new_discovery = SequenceDiscovery(
-            is_accumulating_sources=self.is_accumulating_sources
-        )
-        # yield shallow copy of sources list
-        new_discovery.accumulated_sources = list(self.accumulated_sources)
-        new_discovery.helper = self.helper
-        return new_discovery
-
-
-from ..type_utils import elastic_forward_type
-
-# imports are located at the bottom to circumvent circular dependency import issues
-from .elasticBatchnorm import ElasticWidthBatchnorm1d

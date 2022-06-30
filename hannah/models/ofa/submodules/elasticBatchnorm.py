@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as nnf
 
 from ..utilities import filter_single_dimensional_weights, make_parameter
-from .elasticchannelhelper import SequenceDiscovery
 
 
 class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
@@ -29,14 +28,11 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         self.channel_filter = [True] * num_features
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         """if self.track_running_stats:
-            logging.warn(
-                "ElasticWidthBatchnorm with tracked running stats currently not fully implemented!"
-            )
-            # num_batches_tracked and exponential averaging are currently not implemented.
+        logging.warn(
+            "ElasticWidthBatchnorm with tracked running stats currently not fully implemented!"
+        )
+        # num_batches_tracked and exponential averaging are currently not implemented.
         """
         running_mean = self.running_mean
         running_var = self.running_var

@@ -12,7 +12,6 @@ from ...factory import qat
 from ..utilities import conv1d_get_padding, filter_single_dimensional_weights
 from .elasticBase import ElasticBase1d
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
-from .elasticchannelhelper import SequenceDiscovery
 from .elasticLinear import ElasticPermissiveReLU
 
 
@@ -46,6 +45,7 @@ class _ElasticConvBnNd(
         dim=1,
         out_quant=True,
         track_running_stats=True,
+        out_channel_sizes=None,
     ):
         ElasticBase1d.__init__(
             self,
@@ -58,6 +58,7 @@ class _ElasticConvBnNd(
             groups=groups,
             bias=bias,
             padding_mode=padding_mode,
+            out_channel_sizes=out_channel_sizes,
         )
         assert qconfig, "qconfig must be provided for QAT module"
         self.qconfig = qconfig
@@ -367,6 +368,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         padding_mode="zeros",
         qconfig=None,
         out_quant=True,
+        out_channel_sizes=None,
     ):
 
         # sort available kernel sizes from largest to smallest (descending order)
@@ -390,6 +392,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
 
         assert qconfig, "qconfig must be provided for QAT module"
@@ -432,9 +435,6 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         self.set_kernel_size(self.max_kernel_size)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
@@ -495,6 +495,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         padding_mode="zeros",
         qconfig=None,
         out_quant=True,
+        out_channel_sizes=None,
     ):
 
         # sort available kernel sizes from largest to smallest (descending order)
@@ -517,6 +518,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
 
         assert qconfig, "qconfig must be provided for QAT module"
@@ -560,9 +562,6 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         self.set_kernel_size(self.max_kernel_size)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
@@ -622,6 +621,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         track_running_stats=True,
         qconfig=None,
         out_quant=True,
+        out_channel_sizes=None,
     ):
         _ElasticConvBnNd.__init__(
             self,
@@ -634,13 +634,11 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             groups=groups,
             bias=bias,
             qconfig=qconfig,
+            out_channel_sizes=out_channel_sizes,
         )
         self.out_quant = out_quant
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
@@ -700,6 +698,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         track_running_stats=True,
         qconfig=None,
         out_quant=True,
+        out_channel_sizes=None,
     ):
         ElasticQuantConvBn1d.__init__(
             self,
@@ -712,15 +711,13 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             groups=groups,
             bias=bias,
             qconfig=qconfig,
+            out_channel_sizes=out_channel_sizes,
         )
         self.out_quant = out_quant
 
         self.relu = ElasticPermissiveReLU()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation

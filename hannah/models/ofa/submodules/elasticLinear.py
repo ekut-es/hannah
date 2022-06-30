@@ -12,7 +12,6 @@ from ..utilities import (
     make_parameter,
 )
 from .elasticBase import _Elastic
-from .elasticchannelhelper import SequenceDiscovery
 
 
 class ElasticWidthLinear(nn.Linear, _Elastic):
@@ -21,9 +20,6 @@ class ElasticWidthLinear(nn.Linear, _Elastic):
         _Elastic.__init__(self, [True] * in_features, [True] * out_features)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         if all(self.in_channel_filter) and all(self.out_channel_filter):
             # if no channel filtering is required, simply use the full linear
             return nnf.linear(input, self.weight, self.bias)
@@ -121,9 +117,6 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
         )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         return self.activation_post_process(
             nnf.linear(input, self.scaled_weight, self.scaled_bias)
         )
@@ -193,10 +186,7 @@ class ElasticPermissiveReLU(nn.ReLU):
         super().__init__()
 
     def forward(self, x):
-        if isinstance(x, SequenceDiscovery):
-            return x
-        else:
-            return super().forward(x)
+        return super().forward(x)
 
     def assemble_basic_module(self):
         return nn.ReLU()

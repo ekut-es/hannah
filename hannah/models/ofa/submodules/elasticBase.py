@@ -16,13 +16,17 @@ from ..utilities import (
 # It's a wrapper for a convolutional layer that allows for the number of input and
 # output channels to be changed
 class _Elastic:
-    def __init__(self, in_channel_filter, out_channel_filter):
+    def __init__(self, in_channel_filter, out_channel_filter, out_channel_sizes=None):
         self.in_channel_filter: int = in_channel_filter
         self.out_channel_filter: int = out_channel_filter
+        self.out_channel_sizes: List[int] = out_channel_sizes
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
         return None
+
+    def get_out_channel_sizes(self):
+        return self.out_channel_sizes
 
     # return a safe copy of a conv1d equivalent to this module in the current state
     def assemble_basic_module(self) -> nn.Conv1d:
@@ -55,6 +59,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         groups: int = 1,
         bias: bool = False,
         padding_mode: str = "zeros",
+        out_channel_sizes=None,
     ):
         # sort available kernel sizes from largest to smallest (descending order)
         kernel_sizes.sort(reverse=True)
@@ -100,7 +105,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             bias=bias,
         )
 
-        _Elastic.__init__(self, [True] * in_channels, [True] * out_channels)
+        _Elastic.__init__(
+            self, [True] * in_channels, [True] * out_channels, out_channel_sizes
+        )
 
         # the list of kernel transforms will have one element less than the list of kernel sizes.
         # between every two sequential kernel sizes, there will be a kernel transform
