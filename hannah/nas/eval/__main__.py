@@ -3,9 +3,8 @@ import logging
 import os
 from unittest import result
 
-from omegaconf import OmegaConf
-
 import hydra
+from omegaconf import OmegaConf
 
 from .extract import extract_models
 from .plot import plot_comparison
@@ -45,11 +44,6 @@ def main(config):
             logger.warning("unknown plot type: %s")
 
     extract_models(parameters, derived_metrics, config.metrics, config.extract)
-
-    logger.info("Writing metrics.xlsx")
-
-    with open("metrics.xlsx", "wb") as f:
-        derived_metrics.to_excel(f)
 
 
 if __name__ == "__main__":

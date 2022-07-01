@@ -26,7 +26,7 @@ extract: loudest
 silence_prob: 1.0
 unknown_prob: 1.0
 test_snr: .inf
-train_snr_high: 500.0
-train_snr_low: 5.0
+train_snr_high: 1000.0
+train_snr_low: 0.0
 clear_download: false
 sampler: random

@@ -99,10 +99,7 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
 
     @property
     def filtered_bias(self):
-        if all(self.in_channel_filter) and all(self.out_channel_filter):
-            return self.bias
-        else:
-            return filter_single_dimensional_weights(self.bias, self.out_channel_filter)
+        return filter_single_dimensional_weights(self.bias, self.out_channel_filter)
 
     @property
     def scaled_weight(self):

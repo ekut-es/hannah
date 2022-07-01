@@ -4,8 +4,8 @@ import torch.nn as nn
 from ..utilities import flatten_module_list
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticchannelhelper import ElasticChannelHelper
-from .elastickernelconv import ElasticConv1d, ElasticConvBn1d
-from .elasticquantkernelconv import ElasticQuantConv1d, ElasticQuantConvBn1d
+from .elastickernelconv import ElasticConvBnReLu1d
+from .elasticquantkernelconv import ElasticQuantConvBnReLu1d
 
 
 class ResBlockBase(nn.Module):
@@ -74,7 +74,7 @@ class ResBlock1d(ResBlockBase):
         # stride is also applied to the skip layer (if specified, default is 1)
         if not quant_skip:
             self.skip = nn.Sequential(
-                ElasticConvBn1d(
+                ElasticConvBnReLu1d(
                     self.in_channels,
                     out_channels,
                     kernel_sizes=[1],
@@ -88,7 +88,7 @@ class ResBlock1d(ResBlockBase):
             )
         else:
             self.skip = nn.Sequential(
-                ElasticQuantConvBn1d(
+                ElasticQuantConvBnReLu1d(
                     self.in_channels,
                     out_channels,
                     kernel_sizes=[1],

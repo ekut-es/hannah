@@ -38,6 +38,8 @@ class ElasticConv1d(ElasticBase1d):
             bias=bias,
             out_channel_sizes=out_channel_sizes,
         )
+        self.norm = False
+        self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
@@ -101,6 +103,8 @@ class ElasticConvReLu1d(ElasticBase1d):
             out_channel_sizes=out_channel_sizes,
         )
         self.relu = ElasticPermissiveReLU()
+        self.norm = False
+        self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
@@ -165,6 +169,8 @@ class ElasticConvBn1d(ElasticConv1d):
             out_channel_sizes=out_channel_sizes,
         )
         self.bn = ElasticWidthBatchnorm1d(out_channels, track_running_stats)
+        self.norm = True
+        self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
@@ -235,6 +241,8 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         )
 
         self.relu = ElasticPermissiveReLU()
+        self.norm = True
+        self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.relu(super(ElasticConvBnReLu1d, self).forward(input))
@@ -294,6 +302,8 @@ class ConvRelu1d(nn.Conv1d):
             bias=bias,
         )
         self.relu = nn.ReLU()
+        self.norm = False
+        self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.relu(super(ConvRelu1d, self).forward(input))
@@ -323,6 +333,8 @@ class ConvBn1d(nn.Conv1d):
             bias=bias,
         )
         self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
+        self.norm = True
+        self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.bn(super(ConvBn1d, self).forward(input))
@@ -353,6 +365,8 @@ class ConvBnReLu1d(ConvBn1d):
         )
         self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
         self.relu = nn.ReLU()
+        self.norm = True
+        self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.relu(super(ConvBnReLu1d, self).forward(input))

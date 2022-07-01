@@ -131,6 +131,22 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             new_transform_module.weight.requires_grad = True
             self.kernel_transforms.append(new_transform_module)
         self.set_kernel_size(self.max_kernel_size)
+        """
+        self.dilation_transforms = nn.ModuleList()
+        for k in range(len(kernel_sizes)):
+            self.dilation_transforms.append(nn.ModuleList())
+            for i in range(len(dilation_sizes) - 1):
+                new_transform_module = nn.Linear(
+                    self.kernel_sizes[k], self.kernel_sizes[k], bias=False
+                )
+                # initialise the transform as the identity matrix to start training
+                # from the center of the larger kernel
+                new_transform_module.weight.data.copy_(torch.eye(self.kernel_sizes[k]))
+                # transform weights are initially frozen
+                new_transform_module.weight.requires_grad = True
+                self.dilation_transforms[k].append(new_transform_module)
+        """
+        self.update_padding()
 
     def set_kernel_size(self, new_kernel_size):
         """
@@ -157,6 +173,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         try:
             index = self.kernel_sizes.index(new_kernel_size)
             self.target_kernel_index = index
+            self.kernel_size = new_kernel_size
+            self.update_padding()
+
         except ValueError:
             logging.warn(
                 f"requested elastic kernel size {new_kernel_size} is not an available kernel size. Defaulting to full size ({self.max_kernel_size})"
@@ -202,6 +221,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         :return: The found target kernel.
         """
         current_kernel_index = 0
+        current_dilation_index = 1
         current_kernel = self.weight
 
         logging.debug("Target kernel index: %s", str(self.target_kernel_index))
@@ -227,6 +247,24 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             current_kernel = next_kernel
             current_kernel_index += 1
 
+        # step through dilation until the target index is reached.
+        """
+        while current_dilation_index < self.target_dilation_index:
+            if current_dilation_index >= len(self.dilation_sizes):
+                logging.warn(
+                    f"kernel size index {current_kernel_index} is out of range. Elastic kernel acquisition stopping at last available kernel"
+                )
+                break
+            # apply the kernel transformation to the next kernel. the n-th transformation
+            # is applied to the n-th kernel, yielding the (n+1)-th kernel
+            next_kernel = self.dilation_transforms[self.target_kernel_index][
+                current_dilation_index
+            ](current_kernel)
+            # the kernel has now advanced through the available sizes by one
+            current_kernel = next_kernel
+            current_dilation_index += 1
+        """
+
         return current_kernel
 
     def get_kernel(self):
@@ -251,14 +289,10 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         if self.bias is None:
             return new_kernel, None
         else:
-            if all(self.out_channel_filter):
-                # if out_channels are unfiltered, the output bias does not need filtering.
-                return new_kernel, self.bias
-            else:
-                new_bias = filter_single_dimensional_weights(
-                    self.bias, self.out_channel_filter
-                )
-                return new_kernel, new_bias
+            new_bias = filter_single_dimensional_weights(
+                self.bias, self.out_channel_filter
+            )
+            return new_kernel, new_bias
 
     def set_dilation_size(self, new_dilation_size):
         if (
@@ -278,10 +312,15 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             index = self.dilation_sizes.index(new_dilation_size)
             self.target_dilation_index = index
             self.dilation = self.dilation_sizes[self.target_dilation_index]
+            self.update_padding()
+
         except ValueError:
             logging.warn(
                 f"requested elastic dilation size {new_dilation_size} is not an available dilation size. Defaulting to full size ({self.max_dilation_size})"
             )
+
+    def update_padding(self):
+        self.padding = conv1d_get_padding(self.kernel_size, self.dilation)
 
     # the initial dilation size is the first element of the list of available sizes
     # set the dilation back to its initial size
@@ -319,3 +358,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         pass
+
+    def extra_repr(self):
+        # TODO(jerryzh): extend
+        pass
+        # return super(ElasticBase1d, self).extra_repr()
