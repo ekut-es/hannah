@@ -176,7 +176,7 @@ class ElasticChannelHelper(nn.Module):
         self.set_channel_filter()
 
     def reset_channel_step(self):
-        self.channel_step = 0
+        self.set_channel_step(0)
 
     # set the primary target from an input module. For iterable inputs, extract additional secondary targets
     def set_primary_target(self, target: nn.Module):

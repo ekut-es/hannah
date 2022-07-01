@@ -2,13 +2,11 @@ import copy
 import logging
 from typing import List, Tuple
 
-# import torch.nn.functional as nnf
 import numpy as np
 import torch.nn as nn
+import yaml
 from hydra.utils import instantiate
-
-# from ..utils import ConfigType, SerializableModule
-from omegaconf import ListConfig
+from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from .submodules.elasticchannelhelper import ElasticChannelHelper
 from .submodules.elasticLinear import ElasticQuantWidthLinear, ElasticWidthLinear
@@ -19,16 +17,12 @@ from .type_utils import (
     elastic_conv_type,
     elastic_Linear_type,
 )
-
-# from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
     call_function_from_deep_nested,
     flatten_module_list,
     get_instances_from_deep_nested,
     module_list_to_module,
 )
-
-# import torch
 
 
 def create(
@@ -194,7 +188,6 @@ def create_minor_block_sequence(
 
         minor_block_sequence.append(minor_block)
 
-    # return module_list_to_module(minor_block_sequence), elastic_helper
     return module_list_to_module(minor_block_sequence)
 
 
@@ -412,6 +405,109 @@ class OFAModel(nn.Module):
         logging.info(
             f"OFA model accumulated {len(self.elastic_channel_helpers)} elastic width connections for sampling."
         )
+        self.block_config = block_config
+        self.full_config = None
+
+    def extract_conv(self, conv, general_config, parallel=True, bp=False):
+        deletkeys = ["dilation_sizes", "kernel_sizes", "quant"]
+        for key in deletkeys:
+            if general_config.get(key) is not None:
+                del general_config[key]
+
+        general_config["kernel_size"] = conv.kernel_size
+        general_config["out_channels"] = conv.out_channel_filter.count(True)
+        general_config["act"] = conv.act
+        general_config["norm"] = conv.norm
+        general_config["dilation"] = conv.get_dilation_size()
+        if bp:
+            general_config["padding"] = False
+            general_config["bias"] = False
+
+        if parallel:
+            general_config["parallel"] = True
+
+        if (
+            general_config.get("target") == "elastic_conv1d"
+            or general_config.get("target", None) is None
+        ):
+            general_config["target"] = "conv1d"
+
+        return general_config
+
+    def extract_config(self, conv, general_config, bp=False):
+        """set all conv attributes in config"""
+        if isinstance(conv, ResBlockBase):
+            general_config["target"] = "residual"
+            if general_config.get("quant_skip") is not None:
+                del general_config["quant_skip"]
+            if not isinstance(conv.blocks, nn.Sequential):
+                config = general_config["blocks"][0]
+            else:
+                config = general_config["blocks"]
+            block = self.extract_config(conv.blocks, config)
+            block.append(self.extract_conv(conv.skip[0], dict()))
+            general_config["blocks"] = block
+            print(block)
+        elif isinstance(conv, nn.Sequential):
+            config = general_config
+            if (
+                isinstance(general_config, dict)
+                and general_config.get("blocks", None) is not None
+            ):
+                config = general_config["blocks"]
+            for tmpconv, layer in zip(
+                get_instances_from_deep_nested(conv, elastic_conv_type), config
+            ):
+                layer = self.extract_config(tmpconv, layer, bp=bp)
+        elif (
+            isinstance(conv, elastic_conv_type)
+            and general_config.get("blocks", None) is None
+        ):
+            general_config = self.extract_conv(conv, general_config, bp=bp)
+        elif (
+            isinstance(conv, elastic_conv_type)
+            and general_config.get("blocks", None) is not None
+        ):
+            general_config["blocks"][0] = self.extract_conv(
+                conv, general_config["blocks"][0], bp=bp
+            )
+        return general_config
+
+    def print_config(self, filename):
+        cfg = copy.copy(self.full_config)
+        cfg = OmegaConf.to_container(cfg)
+
+        removelist = [
+            "_target_",
+            "name",
+            "skew_sampling_distribution",
+            "min_depth",
+            "norm_before_act",
+            "dropout",
+        ]
+
+        for element in removelist:
+            cfg.pop(element)
+        first = True
+        for conv, gen in zip(self.conv_layers, cfg["conv"]):
+            if first:
+                gen = self.extract_config(conv, gen, bp=True)
+                first = False
+            gen = self.extract_config(conv, gen)
+        cfg["conv"] = cfg["conv"][0 : self.active_depth]
+
+        d = OmegaConf.to_yaml(cfg)
+        with open(filename + ".yaml", "w") as f:
+            f.write("\n")
+            f.write("_target_: hannah.models.factory.factory.create_cnn\n")
+            f.write("name: conv_net_trax\n")
+            f.write("norm:\n")
+            f.write("  target: bn\n")
+            f.write("act:\n")
+            f.write("  target: relu\n")
+            f.write(d)
+
+        print("fertig")
 
     def forward(self, x):
         self.last_input = x
@@ -428,6 +524,7 @@ class OFAModel(nn.Module):
             self.sampling_max_depth_step > 0
             or self.sampling_max_kernel_step > 0
             or self.sampling_max_width_step > 0
+            or self.sampling_max_dilation_step > 0
         ) and not self.eval_mode:
             self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
@@ -484,16 +581,6 @@ class OFAModel(nn.Module):
 
         self.elastic_channel_helpers = flatten_module_list(self.elastic_channel_helpers)
 
-        """
-        # after the layers are processed, pass the relevant SequenceDiscovery to each output linear
-        for i in range(self.min_depth, self.max_depth + 1):
-            # range goes from min depth to including the max depth
-            output_linear = self.get_output_linear_layer(i)
-            sequence_discovery = per_layer_output_discoveries[i - 1]
-            output_linear.forward(sequence_discovery)
-            # the resulting output sequence discovery is dropped. no module trails the output linear.
-        """
-
     def get_post_conv(self, post_block):
         post_conv = None
         if isinstance(post_block, ResBlock1d):
@@ -523,7 +610,6 @@ class OFAModel(nn.Module):
             "width_steps": [],
         }
         if self.elastic_depth_allowed:
-            # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
             new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
             self.active_depth = self.max_depth - new_depth_step
             state["depth_step"] = new_depth_step
@@ -587,14 +673,22 @@ class OFAModel(nn.Module):
         max_depth_step = self.sampling_max_depth_step
         kernel_steps = []
         width_steps = []
+        dilation_steps = []
+
         for conv in self.elastic_kernel_convs:
             kernel_steps.append(conv.get_available_kernel_steps())
+
+        for conv in self.elastic_kernel_convs:
+            kernel_steps.append(conv.get_available_dilation_steps())
+
         for helper in self.elastic_channel_helpers:
             width_steps.append(helper.get_available_width_steps())
+
         state = {
             "depth_step": max_depth_step,
             "kernel_steps": kernel_steps,
             "width_steps": width_steps,
+            "dilation_steps": dilation_steps,
         }
         return state
 
@@ -617,11 +711,13 @@ class OFAModel(nn.Module):
             depth_step = state["depth_step"]
             kernel_steps = state["kernel_steps"]
             width_steps = state["width_steps"]
+            dilation_steps = state["dilation_steps"]
         except KeyError:
             logging.error(
                 "Invalid state dict passed to get_submodel! Keys should be 'depth_step', 'kernel_steps', 'width_steps'!"
             )
             return False
+
         if len(kernel_steps) != len(self.elastic_kernel_convs):
             print(
                 f"State dict provides invalid amount of kernel steps: model has {len(self.elastic_kernel_convs)}, {len(kernel_steps)} provided."
@@ -633,9 +729,17 @@ class OFAModel(nn.Module):
             )
             return False
 
+        if len(dilation_steps) != len(self.elastic_channel_helpers):
+            print(
+                f"State dict provides invalid amount of width steps: model has {len(self.elastic_channel_helpers)}, {len(dilation_steps)} provided."
+            )
+            return False
+
         self.active_depth = self.max_depth - depth_step
         for i in range(len(kernel_steps)):
             self.elastic_kernel_convs[i].pick_kernel_index(kernel_steps[i])
+        for i in range(len(dilation_steps)):
+            self.elastic_kernel_convs[i].pick_dilation_index(dilation_steps[i])
         for i in range(len(width_steps)):
             self.elastic_channel_helpers[i].set_channel_step(width_steps[i])
 
@@ -686,8 +790,7 @@ class OFAModel(nn.Module):
         if isinstance(output_linear, elastic_Linear_type):
             output_linear = output_linear.assemble_basic_module()
         extracted_module_list.append(output_linear)
-        # extracted_module_list = flatten_module_list(extracted_module_list)
-        # return copy.deepcopy(module_list_to_module(extracted_module_list))
+
         return copy.deepcopy(nn.Sequential(*extracted_module_list))
 
     # return extracted module for a given progressive shrinking depth step
@@ -792,7 +895,7 @@ class OFAModel(nn.Module):
         # reset kernel sizes to start from a known point
         self.reset_all_kernel_sizes()
         self.current_kernel_step = step
-        for i in range(self.current_kernel_step):
+        for _ in range(self.current_kernel_step):
             # perform one step down call for each current kernel step
             if not self.step_down_all_kernels():
                 # if this iteration of stepping down kernel size returned false,
@@ -820,7 +923,7 @@ class OFAModel(nn.Module):
         if self.sampling_max_dilation_step >= self.ofa_steps_dilation:
             self.sampling_max_dilation_step -= 1
             logging.warn(
-                f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
+                f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_dilation}) already reached"
             )
 
     def progressive_shrinking_add_depth(self):
@@ -850,6 +953,13 @@ class OFAModel(nn.Module):
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
         self.sampling_max_width_step = 0
+
+    def reset_shrinking(self):
+        self.reset_validation_model()
+        self.reset_all_widths()
+        self.reset_all_kernel_sizes()
+        self.reset_all_dilation_sizes()
+        self.reset_active_depth()
 
 
 def rebuild_extracted_blocks(blocks):
