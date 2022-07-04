@@ -63,7 +63,7 @@ pytest-cov = ">2.10.1"
 rope = "^0.19.0"
 mypy = "^0.910"
 torch-tb-profiler = "^0.2.0"
-black = "^22.3.0"
+black = "^22.6.0"
 coverage = "^6.3.2"
 isort = "^5.10.1"
 
@@ -74,9 +74,9 @@ vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown"]
 
 [tool.poetry.scripts]
 hannah-train = 'hannah.tools.train:main'
-hannah-characterize = 'hannah.characterize:main'
-hannah-eval = 'hannah.eval:main'
-hannah-objectdetection-eval = 'hannah.objectdetection_eval:main'
+hannah-characterize = 'hannah.tools.characterize:main'
+hannah-eval = 'hannah.tools.eval:main'
+hannah-objectdetection-eval = 'hannah.tools.objectdetection_eval:main'
 hannah-nas-eval = "hannah.nas.eval.__main__:main"
 
 [build-system]
