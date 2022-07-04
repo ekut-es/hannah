@@ -44,7 +44,6 @@ test_python_38:
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=hannah test
-    - poetry run pydoc-markdown --build --site-dir _build
   tags:
     - docker
   interruptible: true
@@ -59,9 +58,8 @@ test_tvm:
     - pushd external/hannah-tvm
     - ./scripts/build_full.sh
     - popd
-    - poetry install -E tvm-backend
-    - python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
-    - pydoc-markdown --build --site-dir _build
+    - poetry install -E tvm-backend -E vision
+    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
   tags:
     - docker
     - nfs
