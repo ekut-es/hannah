@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import random
 
-from hannah.objectdetection_eval import eval
-
 
 @dataclass
 class ParameterRange:
