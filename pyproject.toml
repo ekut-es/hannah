@@ -8,6 +8,9 @@ authors = [
     "Felix Lorenz <felix.lorenz@student.uni-tuebingen.de>",
     "Tobias Hald <tobias.hald@student.uni-tuebingen.de>"
 ]
+packages = [
+    {include='hydra_plugins'}
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8 <3.10"
@@ -55,6 +58,10 @@ pycocotools = {version="^2.0.2", optional = true}
 gdown = {version="^4.4.0", optional = true}
 albumentations = {version = "^1.1.0", optional = true}
 
+# optional dependencies for tvm backend
+dgl-cu102 = {version = "^0.6.1", optional = true}
+hannah-tvm = {path = "external/hannah-tvm", optional = true, extras = ["automate"]}
+
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.0"
 flake8 = "^4.0.1"
@@ -70,6 +77,7 @@ isort = "^5.10.1"
 [tool.poetry.extras]
 tf-backend = ["onnx-tf"]
 onnxrt-backend = ["onnxruntime"]
+tvm-backend = ["hannah-tvm", "dgl-cu102"]
 vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown"]
 
 [tool.poetry.scripts]
