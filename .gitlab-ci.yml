@@ -54,11 +54,8 @@ test_tvm:
   image: python:3.9
   script:
     - set -e
-    - poetry shell
-    - pushd external/hannah-tvm
-    - ./scripts/build_full.sh
-    - popd
     - poetry install -E tvm-backend -E vision
+    - poetry run external/hannah_tvm/scripts/build_full.sh
     - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
   tags:
     - docker

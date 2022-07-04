@@ -1,20 +1,6 @@
 defaults:
-    - dataset: kws
-    - features: mfcc
-    - model: conv-net-trax
-    - scheduler: 1cycle
-    - optimizer: sgd
-    - normalizer: fixedpoint
-    - module: stream_classifier
-    - compress: null
-    - trainer: default
-    - checkpoint: default
-    #- backend: tvm
-    - early_stopping: null
-    - profiler: null
-    - pruning: null
-    - nas: aging_evolution_nas
-    - optional dataset/features: ${dataset}_${features}
+    - config
+    - _self_
 
 
 experiment_id: nas_kws2

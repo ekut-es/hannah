@@ -7,7 +7,7 @@ import yaml
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-import hannah.conf
+import hannah.conf  # noqa
 import hydra
 from hannah.nas.graph_conversion import model_to_graph
 from hannah.nas.parametrization import SearchSpace
