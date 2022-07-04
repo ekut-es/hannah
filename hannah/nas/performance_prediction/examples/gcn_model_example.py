@@ -1,15 +1,14 @@
-from dgl import data
-from search_space.space import NetworkSpace, NetworkEntity
-from features import dataset as ds
-from dgl.dataloading import GraphDataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
-from gcn.model import GCN
 import torch
 import torch.nn.functional as F
-from tvm import relay
+from dgl import data
+from dgl.dataloading import GraphDataLoader
+from features import dataset as ds
+from gcn.model import GCN
+from search_space.space import NetworkEntity, NetworkSpace
 from torch.optim.lr_scheduler import StepLR
-
+from torch.utils.data.sampler import SubsetRandomSampler
+from tvm import relay
 
 wd = "/home/moritz/Dokumente/Hiwi/code/nas/subgraph_generator"
 name = "test_net"

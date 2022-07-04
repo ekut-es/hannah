@@ -1,8 +1,8 @@
 import copy
 
 import torch
-import torch.optim as optim
 import torch.nn.functional as F
+import torch.optim as optim
 
 from hannah.features import SincConv
 

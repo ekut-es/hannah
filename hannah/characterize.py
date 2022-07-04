@@ -1,29 +1,24 @@
 import logging
 import sys
-import yaml
-import hydra
-
-import numpy as np
-
 from pathlib import Path
 
+import numpy as np
+import yaml
 from hydra.utils import instantiate
-from omegaconf import OmegaConf, DictConfig
-
-
-from hannah.nas.graph_conversion import model_to_graph
-from hannah.nas.performance_prediction.simple import to_dgl_graph
-from hannah.nas.parametrization import SearchSpace
-from hannah.nas.graph_conversion import model_to_graph
+from omegaconf import DictConfig, OmegaConf
 
 import hannah.conf
+import hydra
+from hannah.nas.graph_conversion import model_to_graph
+from hannah.nas.parametrization import SearchSpace
+from hannah.nas.performance_prediction.simple import to_dgl_graph
 
 
 @hydra.main(config_name="characterize", config_path="conf")
 def main(config: DictConfig):
     random_state = np.random.RandomState(seed=1234)
     search_space = SearchSpace(config.nas.parametrization, random_state)
-  
+
     backend = instantiate(config.backend)
 
     for i in range(0, 20000):

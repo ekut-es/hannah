@@ -1,21 +1,21 @@
-from .model import GCN, GCNEmbedding
-import torch
 import dgl
-import torch.nn.functional as F
 import numpy as np
-from dgl.dataloading import GraphDataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
+import torch
+import torch.nn.functional as F
 import xgboost as xgb
-
+from dgl.dataloading import GraphDataLoader
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import (
-    DotProduct,
-    WhiteKernel,
     RBF,
-    RationalQuadratic,
-    Matern,
+    DotProduct,
     Kernel,
+    Matern,
+    RationalQuadratic,
+    WhiteKernel,
 )
+from torch.utils.data.sampler import SubsetRandomSampler
+
+from .model import GCN, GCNEmbedding
 
 
 class Predictor:
@@ -175,7 +175,7 @@ class GaussianProcessPredictor(Predictor):
         readout="mean",
         fea_name="features",
         kernel="default",
-        alpha=1e-10
+        alpha=1e-10,
     ) -> None:
         """Predictor that generates a graph embedding that is used as input for a gaussian process predictor.
 
@@ -209,7 +209,13 @@ class GaussianProcessPredictor(Predictor):
             kernel = RBF() + DotProduct() + WhiteKernel()
         else:
             assert isinstance(kernel, Kernel), "Not a valid kernel."
-        self.predictor = GaussianProcessRegressor(kernel=kernel, random_state=0, normalize_y=True, n_restarts_optimizer=2, alpha=alpha)
+        self.predictor = GaussianProcessRegressor(
+            kernel=kernel,
+            random_state=0,
+            normalize_y=True,
+            n_restarts_optimizer=2,
+            alpha=alpha,
+        )
 
     def set_predictor(self, predictor):
         self.predictor = predictor
@@ -250,8 +256,6 @@ class GaussianProcessPredictor(Predictor):
         embeddings = torch.vstack(embeddings).detach().numpy()
         labels = torch.hstack(labels).detach().numpy()
         return embeddings, labels
-
-
 
     def train_and_fit(
         self,
@@ -516,7 +520,6 @@ class XGBPredictor(Predictor):
         preds = self.predictor.predict(dtest)
         return preds
 
-
     def embedd_and_fit(self, dataloader, verbose=True):
         embeddings = []
         labels = []
@@ -532,8 +535,10 @@ class XGBPredictor(Predictor):
         self.fit_predictor(embeddings, labels)
 
 
-def prepare_dataloader(dataset, batch_size=50, train_test_split=1, subset=0, seed=0, validation=False):
-    """ helper function to construct dataloaders from NASGraphDataset
+def prepare_dataloader(
+    dataset, batch_size=50, train_test_split=1, subset=0, seed=0, validation=False
+):
+    """helper function to construct dataloaders from NASGraphDataset
 
     Parameters
     ----------
@@ -571,8 +576,8 @@ def prepare_dataloader(dataset, batch_size=50, train_test_split=1, subset=0, see
     indices = np.random.choice(valid_indices, size=num_examples, replace=False)
     print("Indices", indices)
     train_indices = indices[:num_train]
-    val_indices = indices[num_train:num_train + num_val]
-    test_indices = indices[num_train + num_val:]
+    val_indices = indices[num_train : num_train + num_val]
+    test_indices = indices[num_train + num_val :]
 
     train_sampler = SubsetRandomSampler(train_indices)
     val_sampler = SubsetRandomSampler(val_indices)

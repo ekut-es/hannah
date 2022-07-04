@@ -1,11 +1,9 @@
-from gcn.predictor import GCNPredictor, prepare_dataloader, get_input_feature_size
-from search_space.space import NetworkSpace
-from features.dataset import NASGraphDataset
-
-import pandas as pd
-import numpy as np
-
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from features.dataset import NASGraphDataset
+from gcn.predictor import GCNPredictor, get_input_feature_size, prepare_dataloader
+from search_space.space import NetworkSpace
 
 plt.style.use("seaborn")
 

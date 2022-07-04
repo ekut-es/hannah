@@ -1,16 +1,14 @@
-import logging
 import copy
-
+import logging
+import math
 from dataclasses import dataclass
-from typing import Dict, Tuple, Any
+from typing import Any, Dict, Tuple
 
 import networkx as nx
 import numpy as np
-
-import math
-
 import torch.fx
-from hannah.models.factory import qat, qconfig, pooling
+
+from hannah.models.factory import pooling, qat, qconfig
 
 
 class GraphConversionTracer(torch.fx.Tracer):

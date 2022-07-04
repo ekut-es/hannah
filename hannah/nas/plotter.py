@@ -1,12 +1,10 @@
-import sys
 import logging
-
+import sys
 from pathlib import Path
 from typing import List, Union
 
-import yaml
 import numpy as np
-
+import yaml
 from tabulate import tabulate
 
 from .aging_evolution import EvolutionResult

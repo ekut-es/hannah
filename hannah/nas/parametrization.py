@@ -1,8 +1,7 @@
-from dataclasses import dataclass
 import math
-from typing import Any, MutableMapping, MutableSequence
 from copy import deepcopy
-
+from dataclasses import dataclass
+from typing import Any, MutableMapping, MutableSequence
 
 from .config import ChoiceList, Partition, Scalar, Subset
 
@@ -291,19 +290,19 @@ class ScalarParameter(Parameter):
             if self.config.integer:
                 value = int(self.random_state.random_integers(int(lower), int(upper)))
                 if self.config.log:
-                    value = 2 ** value
+                    value = 2**value
                 return ScalarParameterState(value, (upper - lower) / 6.0)
             else:
                 value = self.random_state.uniform(lower, upper)
                 if self.config.log:
-                    value = 2 ** value
+                    value = 2**value
                 return ScalarParameterState(value, (upper - lower) / 6.0)
         else:
             res = self.random_state.random()
             if self.config.integer:
                 res = int(res)
             if self.config.log:
-                res = 2 ** res
+                res = 2**res
             return ScalarParameterState(res, 1.0)
 
     def mutations(self, state):
@@ -314,7 +313,7 @@ class ScalarParameter(Parameter):
                 value = math.log2(value)
             new_value = self.random_state.normal(value, state.sigma)
             if self.config.log:
-                value = 2 ** new_value
+                value = 2**new_value
             if self.config.lower is not None:
                 if new_value < self.config.lower:
                     new_value = self.config.lower

@@ -1,13 +1,13 @@
-from hannah.nas.graph_conversion import GraphConversionTracer, model_to_graph
 import logging
-from tabulate import tabulate
-from hannah.callbacks.summaries import MacSummaryCallback
-from hydra.utils import instantiate
 
-import torch
 import dgl
-
 import numpy as np
+import torch
+from hydra.utils import instantiate
+from tabulate import tabulate
+
+from hannah.callbacks.summaries import MacSummaryCallback
+from hannah.nas.graph_conversion import GraphConversionTracer, model_to_graph
 
 logger = logging.getLogger(__name__)
 

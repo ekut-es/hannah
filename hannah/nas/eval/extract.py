@@ -1,11 +1,9 @@
-from genericpath import exists
 import logging
-import yaml
-
-import pandas as pd
-
 from pathlib import Path
 
+import pandas as pd
+import yaml
+from genericpath import exists
 from hannah_optimizer.utils import is_pareto
 
 logger = logging.getLogger("nas_eval.extract")

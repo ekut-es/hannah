@@ -3,8 +3,9 @@ import logging
 import os
 from unittest import result
 
-import hydra
 from omegaconf import OmegaConf
+
+import hydra
 
 from .extract import extract_models
 from .plot import plot_comparison

@@ -1,13 +1,11 @@
-from gcn.predictor import XGBPredictor, prepare_dataloader, get_input_feature_size
-from search_space.space import NetworkSpace
-from features.dataset import NASGraphDataset
-
-import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn.functional as F
-
-import matplotlib.pyplot as plt
+from features.dataset import NASGraphDataset
+from gcn.predictor import XGBPredictor, get_input_feature_size, prepare_dataloader
+from search_space.space import NetworkSpace
 
 plt.style.use("seaborn")
 
