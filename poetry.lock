@@ -813,7 +813,7 @@ xgboost = "1.5.2"
 XlsxWriter = "^1.4.0"
 
 [package.extras]
-automate = ["automate[postgres] @ external/automate", "jinja2 (>3.0,<3.1)"]
+automate = ["automate", "jinja2 (>3.0,<3.1)"]
 micro = ["pyserial (>=3.5,<4.0)", "usb (>=0.0.83-alpha.0,<0.0.84)", "west (>=0.11.0,<0.12.0)"]
 dash = ["dash (>=2.3.1,<3.0.0)"]
 
@@ -1806,6 +1806,14 @@ description = "passive checker of Python programs"
 category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[[package]]
+name = "pyment"
+version = "0.3.3"
+description = "Generate/convert automatically the docstrings from code signature"
+category = "dev"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "pynacl"
@@ -2806,7 +2814,7 @@ vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "2b64c95a3c117b99b4c3675f71b5f566c81da6c4850d7933ae5cf7f929ebc6d9"
+content-hash = "acea5d8325f859ebf1d358c950db1570d415b2a95d206c336b3b2050dc28f152"
 
 [metadata.files]
 absl-py = [
@@ -4239,6 +4247,10 @@ pyelftools = [
 pyflakes = [
     {file = "pyflakes-2.4.0-py2.py3-none-any.whl", hash = "sha256:3bb3a3f256f4b7968c9c788781e4ff07dce46bdf12339dcda61053375426ee2e"},
     {file = "pyflakes-2.4.0.tar.gz", hash = "sha256:05a85c2872edf37a4ed30b0cce2f6093e1d0581f8c19d7393122da7e25b2b24c"},
+]
+pyment = [
+    {file = "Pyment-0.3.3-py2.py3-none-any.whl", hash = "sha256:a0c6ec59d06d24aeec3eaecb22115d0dc95d09e14209b2df838381fdf47a78cc"},
+    {file = "Pyment-0.3.3.tar.gz", hash = "sha256:951a4c52d6791ccec55bc739811169eed69917d3874f5fe722866623a697f39d"},
 ]
 pynacl = [
     {file = "PyNaCl-1.5.0-cp36-abi3-macosx_10_10_universal2.whl", hash = "sha256:401002a4aaa07c9414132aaed7f6836ff98f59277a234704ff66878c2ee4a0d1"},

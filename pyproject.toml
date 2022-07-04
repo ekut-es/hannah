@@ -73,6 +73,7 @@ torch-tb-profiler = "^0.2.0"
 black = "^22.6.0"
 coverage = "^6.3.2"
 isort = "^5.10.1"
+pyment = "^0.3.3"
 
 [tool.poetry.extras]
 tf-backend = ["onnx-tf"]
