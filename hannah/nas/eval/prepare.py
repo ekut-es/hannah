@@ -24,12 +24,12 @@ def prepare_summary(
 
     results_file = Path("metrics.pkl")
     parameters_file = Path("parameters.pkl")
-    base_dir = Path(base_dir)
+    base_path = Path(base_dir)
     if results_file.exists() and not force:
         changed = False
         results_mtime = results_file.stat().st_mtime
         for name, source in data.items():
-            history_path = base_dir / source / "history.pkl"
+            history_path = base_path / source / "history.pkl"
             if history_path.exists():
                 history_mtime = history_path.stat().st_mtime
                 if history_mtime >= results_mtime:
@@ -47,30 +47,29 @@ def prepare_summary(
     parameters_all = {}
     for name, source in data.items():
         logger.info("  Extracting design points for task: %s", name)
-        history_path = base_dir / source / "history.pkl"
+        history_path = base_path / source / "history.pkl"
 
         if history_path.suffix == ".yml":
-            with history_path.open("r") as f:
-                history_file = yaml.unsafe_load(f)
+            with history_path.open("r") as yaml_file:
+                history_file = yaml.unsafe_load(yaml_file)
         elif history_path.suffix == ".pkl":
-            with history_path.open("rb") as f:
-                history_file = pickle.load(f)
+            with history_path.open("rb") as pickle_file:
+                history_file = pickle.load(pickle_file)
         else:
             raise Exception("Could not load history file: %s", str(history_path))
 
         results = (h.result for h in history_file)
-        test_results = (h.test_result for h in history_file)
 
         metrics = pd.DataFrame(results)
-        test_metrics = pd.DataFrame(test_results)
-
-        metrics = pd.concat([metrics, test_metrics], axis=1)
-
         metrics["Task"] = name
         metrics["Step"] = metrics.index
 
         parameters = [h.parameters for h in history_file]
         parameters_all[name] = parameters
+
+        from pprint import pprint
+
+        pprint(parameters)
 
         result_stack.append(metrics)
 
@@ -81,10 +80,6 @@ def prepare_summary(
 
     result.insert(0, "Step", step_column)
     result.insert(0, "Task", task_column)
-
-    for column in result:
-        if column not in ["Step", "Task"]:
-            result[column] = result[column].astype(float)
 
     result.to_pickle(results_file)
     with parameters_file.open("wb") as param_f:
@@ -97,7 +92,6 @@ def calculate_derived_metrics(
     result_metrics: pd.DataFrame, metric_definitions: Dict[str, Any]
 ):
     for name, metric_def in metric_definitions.items():
-        logger.info("Preparing metric: %s", name)
         derived = metric_def.get("derived", None)
         if derived is not None:
             try:
@@ -106,6 +100,6 @@ def calculate_derived_metrics(
                 logger.critical("Could not calculate derived metric %s", name)
                 logger.critical(str(e))
 
-    # result_metrics = result_metrics.fillna(float('inf'))
+    result_metrics = result_metrics.dropna()
 
     return result_metrics

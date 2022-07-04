@@ -107,4 +107,8 @@ class HistogramNormalizer(nn.Module):
             x, min=int(self.min_val), max=int(self.max_val), bins=self.bins
         )
 
+        self.histogram = self.histogram * 0.9 + histogram * 0.1
+        print(self.min_val)
+        print(self.max_val)
+
         return x_orig

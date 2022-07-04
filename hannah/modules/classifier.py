@@ -11,8 +11,11 @@ import torchvision
 from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
+from sklearn.metrics import auc
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 from torchmetrics import (
+    AUC,
+    AUROC,
     ROC,
     Accuracy,
     ConfusionMatrix,
@@ -27,7 +30,6 @@ from hannah.datasets.base import ctc_collate_fn
 from ..datasets import SpeechDataset
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import set_deterministic
-from .augmentation import MixupAudio
 from .base import ClassifierModule
 from .config_utils import get_loss_function, get_model
 from .metrics import Error
@@ -115,6 +117,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_recall": Recall(num_classes=self.num_classes),
                 "val_precision": Precision(num_classes=self.num_classes),
                 "val_f1": F1Score(num_classes=self.num_classes),
+                "val_auroc": AUROC(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
@@ -124,26 +127,23 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_recall": Recall(num_classes=self.num_classes),
                 "test_precision": Precision(num_classes=self.num_classes),
                 "test_f1": F1Score(num_classes=self.num_classes),
+                "test_auroc": AUROC(num_classes=self.num_classes),
             }
         )
 
         self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
         self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
 
-        # Setup augmentations
         augmentation_passes = []
         if self.hparams.time_masking > 0:
             augmentation_passes.append(TimeMasking(self.hparams.time_masking))
         if self.hparams.frequency_masking > 0:
             augmentation_passes.append(TimeMasking(self.hparams.frequency_masking))
 
-        self.augmentation = None
         if augmentation_passes:
             self.augmentation = torch.nn.Sequential(*augmentation_passes)
-
-        self.mixup = None
-        if "mixup" in self.hparams and self.hparams.mixup:
-            self.mixup = MixupAudio(self.num_classes, **self.hparams.mixup)
+        else:
+            self.augmentation = torch.nn.Identity()
 
     @abstractmethod
     def get_example_input_array(self):
@@ -177,29 +177,14 @@ class BaseStreamClassifierModule(ClassifierModule):
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
 
-        x = self._extract_features(x)
-
-        x, y = self._augment(x, y)
-
-        x = self.normalizer(x)
-
-        output = self.model(x)
-
-        if y.dim() == 2 and y.size(1) == 1:
-            y = y.view(-1)
+        output = self(x)
+        y = y.view(-1)
         loss = self.criterion(output, y)
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
         return loss
-
-    def _augment(self, x, y):
-        if self.augmentation is not None:
-            x = self.augmentation(x)
-        if self.mixup is not None:
-            x, y = self.mixup(x, y)
-        return x, y
 
     @abstractmethod
     def train_dataloader(self):

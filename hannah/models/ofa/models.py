@@ -2,15 +2,13 @@ import copy
 import logging
 from typing import List, Tuple
 
-# import torch.nn.functional as nnf
 import numpy as np
 import torch.nn as nn
+import yaml
 from hydra.utils import instantiate
+from omegaconf import DictConfig, ListConfig, OmegaConf
 
-# from ..utils import ConfigType, SerializableModule
-from omegaconf import ListConfig
-
-from .submodules.elasticchannelhelper import ElasticChannelHelper, SequenceDiscovery
+from .submodules.elasticchannelhelper import ElasticChannelHelper
 from .submodules.elasticLinear import ElasticQuantWidthLinear, ElasticWidthLinear
 from .submodules.resblock import ResBlock1d, ResBlockBase
 from .type_utils import (
@@ -19,16 +17,12 @@ from .type_utils import (
     elastic_conv_type,
     elastic_Linear_type,
 )
-
-# from .submodules.sequencediscovery import SequenceDiscovery
 from .utilities import (
     call_function_from_deep_nested,
     flatten_module_list,
     get_instances_from_deep_nested,
     module_list_to_module,
 )
-
-# import torch
 
 
 def create(
@@ -194,7 +188,6 @@ def create_minor_block_sequence(
 
         minor_block_sequence.append(minor_block)
 
-    # return module_list_to_module(minor_block_sequence), elastic_helper
     return module_list_to_module(minor_block_sequence)
 
 
@@ -227,7 +220,6 @@ def create_minor_block(
         dilation_sizes = block_config.dilation_sizes
         if not isinstance(dilation_sizes, ListConfig):
             dilation_sizes = [dilation_sizes]
-
         minor_block_internal_sequence = nn.ModuleList([])
         key = ""
         parameter = {
@@ -236,6 +228,7 @@ def create_minor_block(
             "out_channels": out_channels_full,
             "stride": stride,
             "dilation_sizes": dilation_sizes,
+            "out_channel_sizes": out_channels,
         }
 
         if block_config.get("norm", False):
@@ -260,13 +253,6 @@ def create_minor_block(
         new_block = module_list_to_module(
             flatten_module_list(minor_block_internal_sequence)
         )
-        # if multiple output channel widths are specified (elastic width), add an elastic width helper module
-        if len(out_channels) > 1:
-            # the sources of the elastic channel helper module are the previous conv, and its potential norm/act
-            helper_module = ElasticChannelHelper(out_channels)
-            # append the helper module to the sequence
-            new_sequence = nn.ModuleList([new_block, helper_module])
-            new_block = module_list_to_module(new_sequence)
         # the input channel count of the next minor block is the output channel count of the previous block
         # output channel count is specified by the elastic conv
         new_block_out_channels = new_minor_block.out_channels
@@ -419,6 +405,109 @@ class OFAModel(nn.Module):
         logging.info(
             f"OFA model accumulated {len(self.elastic_channel_helpers)} elastic width connections for sampling."
         )
+        self.block_config = block_config
+        self.full_config = None
+
+    def extract_conv(self, conv, general_config, parallel=True, bp=False):
+        deletkeys = ["dilation_sizes", "kernel_sizes", "quant"]
+        for key in deletkeys:
+            if general_config.get(key) is not None:
+                del general_config[key]
+
+        general_config["kernel_size"] = conv.kernel_size
+        general_config["out_channels"] = conv.out_channel_filter.count(True)
+        general_config["act"] = conv.act
+        general_config["norm"] = conv.norm
+        general_config["dilation"] = conv.get_dilation_size()
+        if bp:
+            general_config["padding"] = False
+            general_config["bias"] = False
+
+        if parallel:
+            general_config["parallel"] = True
+
+        if (
+            general_config.get("target") == "elastic_conv1d"
+            or general_config.get("target", None) is None
+        ):
+            general_config["target"] = "conv1d"
+
+        return general_config
+
+    def extract_config(self, conv, general_config, bp=False):
+        """set all conv attributes in config"""
+        if isinstance(conv, ResBlockBase):
+            general_config["target"] = "residual"
+            if general_config.get("quant_skip") is not None:
+                del general_config["quant_skip"]
+            if not isinstance(conv.blocks, nn.Sequential):
+                config = general_config["blocks"][0]
+            else:
+                config = general_config["blocks"]
+            block = self.extract_config(conv.blocks, config)
+            block.append(self.extract_conv(conv.skip[0], dict()))
+            general_config["blocks"] = block
+            print(block)
+        elif isinstance(conv, nn.Sequential):
+            config = general_config
+            if (
+                isinstance(general_config, dict)
+                and general_config.get("blocks", None) is not None
+            ):
+                config = general_config["blocks"]
+            for tmpconv, layer in zip(
+                get_instances_from_deep_nested(conv, elastic_conv_type), config
+            ):
+                layer = self.extract_config(tmpconv, layer, bp=bp)
+        elif (
+            isinstance(conv, elastic_conv_type)
+            and general_config.get("blocks", None) is None
+        ):
+            general_config = self.extract_conv(conv, general_config, bp=bp)
+        elif (
+            isinstance(conv, elastic_conv_type)
+            and general_config.get("blocks", None) is not None
+        ):
+            general_config["blocks"][0] = self.extract_conv(
+                conv, general_config["blocks"][0], bp=bp
+            )
+        return general_config
+
+    def print_config(self, filename):
+        cfg = copy.copy(self.full_config)
+        cfg = OmegaConf.to_container(cfg)
+
+        removelist = [
+            "_target_",
+            "name",
+            "skew_sampling_distribution",
+            "min_depth",
+            "norm_before_act",
+            "dropout",
+        ]
+
+        for element in removelist:
+            cfg.pop(element)
+        first = True
+        for conv, gen in zip(self.conv_layers, cfg["conv"]):
+            if first:
+                gen = self.extract_config(conv, gen, bp=True)
+                first = False
+            gen = self.extract_config(conv, gen)
+        cfg["conv"] = cfg["conv"][0 : self.active_depth]
+
+        d = OmegaConf.to_yaml(cfg)
+        with open(filename + ".yaml", "w") as f:
+            f.write("\n")
+            f.write("_target_: hannah.models.factory.factory.create_cnn\n")
+            f.write("name: conv_net_trax\n")
+            f.write("norm:\n")
+            f.write("  target: bn\n")
+            f.write("act:\n")
+            f.write("  target: relu\n")
+            f.write(d)
+
+        print("fertig")
 
     def forward(self, x):
         self.last_input = x
@@ -435,6 +524,7 @@ class OFAModel(nn.Module):
             self.sampling_max_depth_step > 0
             or self.sampling_max_kernel_step > 0
             or self.sampling_max_width_step > 0
+            or self.sampling_max_dilation_step > 0
         ) and not self.eval_mode:
             self.sample_subnetwork()
         for layer in self.conv_layers[: self.active_depth]:
@@ -450,24 +540,66 @@ class OFAModel(nn.Module):
 
     def perform_sequence_discovery(self):
         logging.info("Performing model sequence discovery.")
-        # start with a new, empty sequence discovery
-        sequence_discovery = SequenceDiscovery(is_accumulating_sources=True)
-        per_layer_output_discoveries = []
-        for layer in self.conv_layers:
-            resulting_discovery = layer(sequence_discovery)
-            # for each layer, store a split discovery for the output linear at that layer.
-            # THESE MUST BE APPLIED AFTER THE FULL MODULE DISCOVERY IS COMPLETED
-            # to ensure that the primary targets are set correctly.
-            per_layer_output_discoveries.append(resulting_discovery.split())
-            sequence_discovery = resulting_discovery
+        # establisch outer channel Helper
+        for i in range(len(self.conv_layers) - 1):
+            pre_block = self.conv_layers[i]
+            post_block = self.conv_layers[i + 1]
+            pre_conv = self.get_pre_conv(pre_block)
+            post_conv = self.get_post_conv(post_block)
 
-        # after the layers are processed, pass the relevant SequenceDiscovery to each output linear
-        for i in range(self.min_depth, self.max_depth + 1):
-            # range goes from min depth to including the max depth
-            output_linear = self.get_output_linear_layer(i)
-            sequence_discovery = per_layer_output_discoveries[i - 1]
-            output_linear.forward(sequence_discovery)
-            # the resulting output sequence discovery is dropped. no module trails the output linear.
+            if isinstance(pre_conv, elastic_conv_type):
+                tmpconv = pre_conv
+            else:
+                tmpconv = pre_conv[0]
+
+            if len(tmpconv.out_channel_sizes) > 1:
+                ech = ElasticChannelHelper(tmpconv.out_channel_sizes)
+                ech.add_sources(pre_conv)
+                ech.add_targets(post_conv)
+
+                if i in range(self.min_depth - 1, self.max_depth - 1):
+                    idx = i - (self.min_depth - 1)
+                    ech.add_targets(self.linears[idx])
+                self.elastic_channel_helpers.append(ech)
+
+            if isinstance(self.conv_layers[i], ResBlock1d):
+                chl = self.conv_layers[i].create_internal_channelhelper()
+                self.elastic_channel_helpers.append(chl)
+
+        if len(self.conv_layers) > 0:
+            pre_conv = self.get_pre_conv(self.conv_layers[-1])
+
+            if hasattr(pre_conv, "__iter__"):
+                out_channels = pre_conv[0].out_channel_sizes
+            else:
+                out_channels = pre_conv.out_channel_sizes
+
+            ech = ElasticChannelHelper(out_channels)
+            ech.add_sources(pre_conv)
+            ech.add_targets(self.linears[-1])
+            self.elastic_channel_helpers.append(ech)
+
+        self.elastic_channel_helpers = flatten_module_list(self.elastic_channel_helpers)
+
+    def get_post_conv(self, post_block):
+        post_conv = None
+        if isinstance(post_block, ResBlock1d):
+            post_conv = post_block.get_input_layer()
+        elif isinstance(post_block, nn.Sequential):
+            post_conv = flatten_module_list(post_block)[0]
+        elif isinstance(post_block, elastic_conv_type):
+            post_conv = post_block
+        return post_conv
+
+    def get_pre_conv(self, pre_block):
+        pre_conv = None
+        if isinstance(pre_block, ResBlock1d):
+            pre_conv = pre_block.get_output_layer()
+        elif isinstance(pre_block, nn.Sequential):
+            pre_conv = flatten_module_list(pre_block)[-1]
+        elif isinstance(pre_block, elastic_conv_type):
+            pre_conv = pre_block
+        return pre_conv
 
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
@@ -478,7 +610,6 @@ class OFAModel(nn.Module):
             "width_steps": [],
         }
         if self.elastic_depth_allowed:
-            # new_depth_step = np.random.randint(self.sampling_max_depth_step+1)
             new_depth_step = self.get_random_step(self.sampling_max_depth_step + 1)
             self.active_depth = self.max_depth - new_depth_step
             state["depth_step"] = new_depth_step
@@ -542,14 +673,22 @@ class OFAModel(nn.Module):
         max_depth_step = self.sampling_max_depth_step
         kernel_steps = []
         width_steps = []
+        dilation_steps = []
+
         for conv in self.elastic_kernel_convs:
             kernel_steps.append(conv.get_available_kernel_steps())
+
+        for conv in self.elastic_kernel_convs:
+            kernel_steps.append(conv.get_available_dilation_steps())
+
         for helper in self.elastic_channel_helpers:
             width_steps.append(helper.get_available_width_steps())
+
         state = {
             "depth_step": max_depth_step,
             "kernel_steps": kernel_steps,
             "width_steps": width_steps,
+            "dilation_steps": dilation_steps,
         }
         return state
 
@@ -572,11 +711,13 @@ class OFAModel(nn.Module):
             depth_step = state["depth_step"]
             kernel_steps = state["kernel_steps"]
             width_steps = state["width_steps"]
+            dilation_steps = state["dilation_steps"]
         except KeyError:
             logging.error(
                 "Invalid state dict passed to get_submodel! Keys should be 'depth_step', 'kernel_steps', 'width_steps'!"
             )
             return False
+
         if len(kernel_steps) != len(self.elastic_kernel_convs):
             print(
                 f"State dict provides invalid amount of kernel steps: model has {len(self.elastic_kernel_convs)}, {len(kernel_steps)} provided."
@@ -588,9 +729,17 @@ class OFAModel(nn.Module):
             )
             return False
 
+        if len(dilation_steps) != len(self.elastic_channel_helpers):
+            print(
+                f"State dict provides invalid amount of width steps: model has {len(self.elastic_channel_helpers)}, {len(dilation_steps)} provided."
+            )
+            return False
+
         self.active_depth = self.max_depth - depth_step
         for i in range(len(kernel_steps)):
             self.elastic_kernel_convs[i].pick_kernel_index(kernel_steps[i])
+        for i in range(len(dilation_steps)):
+            self.elastic_kernel_convs[i].pick_dilation_index(dilation_steps[i])
         for i in range(len(width_steps)):
             self.elastic_channel_helpers[i].set_channel_step(width_steps[i])
 
@@ -641,8 +790,7 @@ class OFAModel(nn.Module):
         if isinstance(output_linear, elastic_Linear_type):
             output_linear = output_linear.assemble_basic_module()
         extracted_module_list.append(output_linear)
-        # extracted_module_list = flatten_module_list(extracted_module_list)
-        # return copy.deepcopy(module_list_to_module(extracted_module_list))
+
         return copy.deepcopy(nn.Sequential(*extracted_module_list))
 
     # return extracted module for a given progressive shrinking depth step
@@ -747,7 +895,7 @@ class OFAModel(nn.Module):
         # reset kernel sizes to start from a known point
         self.reset_all_kernel_sizes()
         self.current_kernel_step = step
-        for i in range(self.current_kernel_step):
+        for _ in range(self.current_kernel_step):
             # perform one step down call for each current kernel step
             if not self.step_down_all_kernels():
                 # if this iteration of stepping down kernel size returned false,
@@ -775,7 +923,7 @@ class OFAModel(nn.Module):
         if self.sampling_max_dilation_step >= self.ofa_steps_dilation:
             self.sampling_max_dilation_step -= 1
             logging.warn(
-                f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_kernel}) already reached"
+                f"excessive OFA kernel stepping! Attempting to add a kernel step when max ({self.ofa_steps_dilation}) already reached"
             )
 
     def progressive_shrinking_add_depth(self):
@@ -805,6 +953,13 @@ class OFAModel(nn.Module):
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
         self.sampling_max_width_step = 0
+
+    def reset_shrinking(self):
+        self.reset_validation_model()
+        self.reset_all_widths()
+        self.reset_all_kernel_sizes()
+        self.reset_all_dilation_sizes()
+        self.reset_active_depth()
 
 
 def rebuild_extracted_blocks(blocks):
@@ -847,16 +1002,10 @@ def rebuild_extracted_blocks(blocks):
                 )
                 reassembled_module.blocks = reassembled_subblocks
                 reassembled_module.skip = reassembled_skip
-                norm = module.norm
                 act = module.act
-                if isinstance(norm, elastic_all_type):
-                    norm = norm.assemble_basic_module()
                 if isinstance(act, elastic_all_type):
                     act = act.assemble_basic_module()
-                reassembled_module.norm_before_act = module.norm_before_act
                 reassembled_module.do_act = module.do_act
-                reassembled_module.do_norm = module.do_norm
-                reassembled_module.norm = norm
                 reassembled_module.act = act
 
             elif isinstance(module, ElasticChannelHelper):

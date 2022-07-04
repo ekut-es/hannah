@@ -1,8 +1,6 @@
 import logging
 import os
-import pathlib
 import shutil
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,7 +8,6 @@ from typing import Any, Dict
 
 import numpy as np
 import omegaconf
-import pandas as pd
 import torch
 import torch.package as package
 import yaml
@@ -32,28 +29,16 @@ msglogger = logging.getLogger("nas")
 @dataclass
 class WorklistItem:
     parameters: Any
-    results: Dict[str, float]  # Partial results predicted by fast model
+    results: Dict[str, float]
 
 
-@dataclass
-class ResultItem:
-    metrics: Dict[str, float]
-    test_metrics: Dict[str, float]
-    curves: pd.DataFrame
-    start_time: float
-    end_time: float
-    duration: float
-
-
-def run_training(num, config) -> ResultItem:
-    start_time = time.time()
+def run_training(num, config):
     if os.path.exists(str(num)):
         shutil.rmtree(str(num))
 
     os.makedirs(str(num), exist_ok=True)
 
     try:
-
         os.chdir(str(num))
         config = OmegaConf.create(config)
         logger = TensorBoardLogger(".")
@@ -100,7 +85,6 @@ def run_training(num, config) -> ResultItem:
                 features=config.features,
                 scheduler=config.get("scheduler", None),
                 normalizer=config.get("normalizer", None),
-                num_sanity_val_steps=0,
                 _recursive_=False,
             )
             trainer.fit(model)
@@ -113,39 +97,16 @@ def run_training(num, config) -> ResultItem:
 
             reset_seed()
             trainer.validate(ckpt_path=ckpt_path, verbose=False)
-
-            reset_seed()
-            trainer.test(ckpt_path=ckpt_path, verbose=False)
-
         except Exception as e:
             msglogger.critical("Training failed with exception")
             msglogger.critical(str(e))
+            res = {}
+            for monitor in opt_monitor:
+                res[monitor] = float("inf")
 
-            return None
-
-        result_metrics = opt_callback.result(dict=True)
-        test_results = opt_callback.test_result()
-        learning_curves = opt_callback.result_curve()
-
-        msglogger.info("Result Metrics:")
-        for k, v in result_metrics.items():
-            msglogger.info("  %s: %s", str(k), str(v))
-
-        end_time = time.time()
-        duration = end_time - start_time
-
-        result = ResultItem(
-            result_metrics,
-            test_results,
-            learning_curves,
-            start_time,
-            end_time,
-            duration,
-        )
-
+        return opt_callback.result(dict=True)
     finally:
         os.chdir("..")
-    return result
 
 
 class NASTrainerBase(ABC):
@@ -165,6 +126,18 @@ class NASTrainerBase(ABC):
 
     @abstractmethod
     def run(self, model):
+        pass
+
+
+class RandomNASTrainer(NASTrainerBase):
+    def __init__(self, budget=2000, *args, **kwargs):
+        super().__init__(*args, budget=budget, **kwargs)
+
+    def fit(self, module: LightningModule):
+        # Presample Population
+
+        # Sample Population
+
         pass
 
 
@@ -190,7 +163,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         )
         self.population_size = population_size
 
-        self.random_state = np.random.RandomState(seed=seed)
+        self.random_state = np.random.RandomState()
         self.optimizer = AgingEvolution(
             parametrization=parametrization,
             bounds=bounds,
@@ -227,25 +200,22 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             )
             msglogger.critical(str(e))
         else:
-            try:
-                estimated_metrics = self.estimator.estimate(model)
+            estimated_metrics = self.predictor.estimate(model)
 
-                satisfied_bounds = []
-                for k, v in estimated_metrics.items():
-                    if k in self.bounds:
-                        distance = v / self.bounds[k]
-                        msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
-                        satisfied_bounds.append(distance <= 1.2)
+            satisfied_bounds = []
+            for k, v in estimated_metrics.items():
+                if k in self.bounds:
+                    distance = v / self.bounds[k]
+                    msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
+                    satisfied_bounds.append(distance <= 1.2)
 
-                worklist_item = WorklistItem(parameters, estimated_metrics)
+            worklist_item = WorklistItem(parameters, estimated_metrics)
 
-                if self.presample:
-                    if all(satisfied_bounds):
-                        self.worklist.append(worklist_item)
-                else:
+            if self.presample:
+                if all(satisfied_bounds):
                     self.worklist.append(worklist_item)
-            except Exception as e:
-                msglogger.critical("Could not estimate metrics (Reason: %s)", str(e))
+            else:
+                self.worklist.append(worklist_item)
 
     def run(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
@@ -295,14 +265,12 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                         yaml.safe_dump(result_history, result_file)
 
                 for result, item in zip(results, self.worklist):
-                    if item is not None:
-                        parameters = item.parameters
-                        fast_results = item.results
+                    parameters = item.parameters
+                    metrics = {**item.results, **result}
+                    for k, v in metrics.items():
+                        metrics[k] = float(v)
 
-                        for k, v in fast_results.items():
-                            result.metrics[k] = float(v)
-
-                        self.optimizer.tell_result(parameters, result)
+                    self.optimizer.tell_result(parameters, metrics)
 
 
 class OFANasTrainer(NASTrainerBase):
@@ -321,7 +289,7 @@ class OFANasTrainer(NASTrainerBase):
         evaluate=True,
         random_evaluate=True,
         random_eval_number=100,
-        package_eval_models=False,
+        warmup_model_path="",
         # epochs_warmup_after_width=5,
         # epochs_kernel_after_width=5,
         # epochs_depth_after_width=5,
@@ -342,11 +310,12 @@ class OFANasTrainer(NASTrainerBase):
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
         self.random_eval_number = random_eval_number
-        self.package_eval_models = package_eval_models
+        self.warmup_model_path = warmup_model_path
 
     def run(self):
-        os.makedirs("ofa_nas_dir", exist_ok=True)
-        os.chdir("ofa_nas_dir")
+        if "ofa_nas_dir" not in os.path.abspath(os.path.curdir):
+            os.makedirs("ofa_nas_dir", exist_ok=True)
+            os.chdir("ofa_nas_dir")
         config = OmegaConf.create(self.config)
         # logger = TensorBoardLogger(".")
 
@@ -387,6 +356,7 @@ class OFANasTrainer(NASTrainerBase):
         ofa_model.elastic_depth_allowed = self.elastic_depth_allowed
         ofa_model.elastic_width_allowed = self.elastic_width_allowed
         ofa_model.elastic_dilation_allowed = self.elastic_dilation_allowed
+        ofa_model.full_config = self.config["model"]
 
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
@@ -427,10 +397,16 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("Once for all Model:\n %s", str(ofa_model))
 
         self.warmup(model, ofa_model)
+        ofa_model.reset_shrinking()
+
         self.train_elastic_kernel(model, ofa_model)
+        ofa_model.reset_shrinking()
         self.train_elastic_dilation(model, ofa_model)
+        ofa_model.reset_shrinking()
         self.train_elastic_depth(model, ofa_model)
+        ofa_model.reset_shrinking()
         self.train_elastic_width(model, ofa_model)
+        ofa_model.reset_shrinking()
 
         if self.evaluate:
             self.eval_model(model, ofa_model)
@@ -456,9 +432,12 @@ class OFANasTrainer(NASTrainerBase):
         """
         # warm-up.
         self.rebuild_trainer("warmup", self.epochs_warmup)
-        self.trainer.fit(model)
-        ckpt_path = "best"
-        self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
+        if self.epochs_warmup > 0 and self.warmup_model_path == "":
+            self.trainer.fit(model)
+            ckpt_path = "best"
+        elif self.warmup_model_path != "":
+            ckpt_path = self.warmup_model_path
+        self.trainer.validate(ckpt_path=ckpt_path, model=model, verbose=True)
         ofa_model.on_warmup_end()
         ofa_model.reset_validation_model()
         logging.info("OFA completed warm-up.")
@@ -476,20 +455,16 @@ class OFANasTrainer(NASTrainerBase):
             # train elastic width
             # first, run channel priority computation
             ofa_model.progressive_shrinking_compute_channel_priorities()
-
-            # self.eval_model(model, ofa_model, 0)
-
-            for current_width_step in range(self.width_step_count):
-                if current_width_step == 0:
-                    # the very first width step (step 0) was already processed before this loop was entered.
-                    continue
-
+            for current_width_step in range(1, self.width_step_count):
                 # add a width step
                 ofa_model.progressive_shrinking_add_width()
-                self.rebuild_trainer(
-                    f"width_{current_width_step}", self.epochs_width_step
-                )
-                self.trainer.fit(model)
+                if self.epochs_width_step > 0:
+                    self.rebuild_trainer(
+                        f"width_{current_width_step}", self.epochs_width_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             logging.info("OFA completed width steps.")
 
     def train_elastic_depth(self, model, ofa_model):
@@ -503,16 +478,16 @@ class OFANasTrainer(NASTrainerBase):
         """
         if self.elastic_depth_allowed:
             # train elastic depth
-            for current_depth_step in range(self.depth_step_count):
-                if current_depth_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
+            for current_depth_step in range(1, self.depth_step_count):
                 # add a depth reduction step
                 ofa_model.progressive_shrinking_add_depth()
-                self.rebuild_trainer(
-                    f"depth_{current_depth_step}", self.epochs_depth_step
-                )
-                self.trainer.fit(model)
+                if self.epochs_depth_step > 0:
+                    self.rebuild_trainer(
+                        f"depth_{current_depth_step}", self.epochs_depth_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             logging.info("OFA completed depth steps.")
 
     def train_elastic_kernel(self, model, ofa_model):
@@ -526,16 +501,16 @@ class OFANasTrainer(NASTrainerBase):
         """
         if self.elastic_kernels_allowed is True:
             # train elastic kernels
-            for current_kernel_step in range(self.kernel_step_count):
-                if current_kernel_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
+            for current_kernel_step in range(1, self.kernel_step_count):
                 # add a kernel step
                 ofa_model.progressive_shrinking_add_kernel()
-                self.rebuild_trainer(
-                    f"kernel_{current_kernel_step}", self.epochs_kernel_step
-                )
-                self.trainer.fit(model)
+                if self.epochs_kernel_step > 0:
+                    self.rebuild_trainer(
+                        f"kernel_{current_kernel_step}", self.epochs_kernel_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             logging.info("OFA completed kernel matrices.")
 
     def train_elastic_dilation(self, model, ofa_model):
@@ -549,16 +524,16 @@ class OFANasTrainer(NASTrainerBase):
         """
         if self.elastic_dilation_allowed is True:
             # train elastic kernels
-            for current_dilation_step in range(self.dilation_step_count):
-                if current_dilation_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
+            for current_dilation_step in range(1, self.dilation_step_count):
                 # add a kernel step
                 ofa_model.progressive_shrinking_add_dilation()
-                self.rebuild_trainer(
-                    f"kernel_{current_dilation_step}", self.epochs_dilation_step
-                )
-                self.trainer.fit(model)
+                if self.epochs_dilation_step > 0:
+                    self.rebuild_trainer(
+                        f"kernel_{current_dilation_step}", self.epochs_dilation_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             logging.info("OFA completed dilation matrices.")
 
     def eval_elastic_width(
@@ -715,7 +690,7 @@ class OFANasTrainer(NASTrainerBase):
 
         return metrics_csv
 
-    def eval_elatic_depth(
+    def eval_elastic_depth(
         self,
         method_stack,
         method_index,
@@ -815,7 +790,7 @@ class OFANasTrainer(NASTrainerBase):
 
     def eval_model(self, lightning_model, model):
         """
-        First the method stack for the evaluation ist build and then it is accoding to this evaluated
+        First the method stack for the evaluation ist build and then it is according to this evaluated
 
         :param lightning_model: the lightning model
         :param model: the model to be evaluated
@@ -835,7 +810,7 @@ class OFANasTrainer(NASTrainerBase):
             eval_methods.append(self.eval_elastic_dilation)
 
         if self.elastic_depth_allowed:
-            eval_methods.append(self.eval_elatic_depth)
+            eval_methods.append(self.eval_elastic_depth)
 
         if len(eval_methods) > 0:
             eval_methods.append(self.eval_single_model)
@@ -871,41 +846,32 @@ class OFANasTrainer(NASTrainerBase):
             random_state = model.sample_subnetwork()
 
             loginfo_output = f"OFA validating random sample:\n{random_state}"
-            trainer_path = f"eval_random{i}"
-            # trainer_path = f"Eval random sample: "
-
-            if self.package_eval_models:
-                model.build_validation_model()
-                validation_model = model.validation_model
-
-                export_path = pathlib.Path("exports") / f"{trainer_path}.pkl"
-                export_path.parent.mkdir(parents=True, exist_ok=True)
-                torch.save(validation_model, export_path)
-
+            trainer_path = "Eval random sample: "
             metrics_output = ""
+
             if self.elastic_width_allowed:
                 selected_widths = random_state["width_steps"]
                 selected_widths_string = str(selected_widths).replace(",", ";")
                 metrics_output += f"{selected_widths_string}, "
-                # trainer_path += f"Ws {selected_widths}, "
+                trainer_path += f"Ws {selected_widths}, "
 
             if self.elastic_kernels_allowed:
                 selected_kernels = random_state["kernel_steps"]
                 selected_kernels_string = str(selected_kernels).replace(",", ";")
                 metrics_output += f" {selected_kernels_string}, "
-                # trainer_path += f"Ks {selected_kernels}, "
+                trainer_path += f"Ks {selected_kernels}, "
 
             if self.elastic_dilation_allowed:
                 selected_dilations = random_state["dilation_steps"]
                 selected_dilations_string = str(selected_dilations).replace(",", ";")
                 metrics_output += f" {selected_dilations_string}, "
-                # trainer_path += f"Dils {selected_dilations}, "
+                trainer_path += f"Dils {selected_dilations}, "
 
             if self.elastic_depth_allowed:
                 selected_depth = random_state["depth_step"]
-                # trainer_path += f"D {selected_depth}, "
+                trainer_path += f"D {selected_depth}, "
                 metrics_output += f"{selected_depth}, "
-
+            model.print_config(str(i))
             self.random_metrics_csv = self.eval_single_model(
                 None,
                 None,

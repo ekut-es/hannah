@@ -8,16 +8,17 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import scipy.stats as stats
+
 try:
     from imagecorruptions import corrupt
 except ModuleNotFoundError:
-    corrupt = None 
+    corrupt = None
 
 from PIL import Image
 
 try:
     import albumentations as A
-except:
+except ModuleNotFoundError:
     A = None
 
 from hannah.datasets.base import DatasetType

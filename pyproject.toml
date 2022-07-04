@@ -73,7 +73,7 @@ onnxrt-backend = ["onnxruntime"]
 vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown"]
 
 [tool.poetry.scripts]
-hannah-train = 'hannah.train:main'
+hannah-train = 'hannah.tools.train:main'
 hannah-characterize = 'hannah.characterize:main'
 hannah-eval = 'hannah.eval:main'
 hannah-objectdetection-eval = 'hannah.objectdetection_eval:main'

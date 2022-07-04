@@ -10,7 +10,60 @@
             "request": "launch",
             "module": "hannah.train",
             "args": [
+                "trainer.limit_train_batches=1.0",
+                "trainer.max_epochs=2",
+                "model=conv-net-trax",
+                "normalizer=fixedpoint",
+                "compression=pruning_only"
+            ]
+        },
+        {
+            "name": "quantized",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
                 "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=20",
+                "model=conv-net-trax"
+            ]
+        },
+        {
+            "name": "ofa",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "module.num_workers=8",
+                "model=ofa_quant"
+            ]
+        },
+        {
+            "name": "ofa_quant",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "module.num_workers=8",
+                "model=ofa_quant"
+            ]
+        },
+        {
+            "name": "multi_gpu",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "trainer.gpus=[0,1]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.limit_val_batches=0.1",
+                "trainer.limit_test_batches=0.1",
                 "trainer.max_epochs=3",
                 "model=tc-res8"
             ]

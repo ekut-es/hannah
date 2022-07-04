@@ -155,7 +155,6 @@ test_image:
     - docker
     - privileged
   script:
-    - export PWD=`pwd`
     - singularity run --no-home --bind $PWD ml_cloud/ml_cloud.sif  python -m hannah.train trainer.fast_dev_run=True
   dependencies:
     - build_image
