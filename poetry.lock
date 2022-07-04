@@ -2973,7 +2973,7 @@ vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "c3e3f15dd742574f039e036bcba88de46f837947a21f4d6aa137e6ab283eebb6"
+content-hash = "70df29628e6f8b4cfa86ceaa991a44765733f41c359e393cb554747195ee7ace"
 
 [metadata.files]
 absl-py = [
