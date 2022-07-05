@@ -52,7 +52,10 @@ class BaseStreamClassifierModule(ClassifierModule):
             self.logger.log_hyperparams(self.hparams)
 
         if self.initialized:
+            # if not (hasattr(self.model, 'grouping_changed') and self.model.grouping_changed):
             return
+            # else:
+            #    msglogger.info("Grouping Changed, building validation model again. Grouping is now")
 
         self.initialized = True
 

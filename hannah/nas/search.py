@@ -800,6 +800,7 @@ class OFANasTrainer(NASTrainerBase):
             if current_group_step > 0:
                 # iteration 0 is the full model with no stepping
                 model.step_down_all_groups()
+                model.grouping_changed = True
 
             trainer_path_tmp = trainer_path + f"G {current_group_step}, "
             loginfo_output_tmp = loginfo_output + f"Group {current_group_step}, "
@@ -858,7 +859,8 @@ class OFANasTrainer(NASTrainerBase):
         metrics_csv += metrics_output
         results = validation_results[0]
         torch_params = model.get_validation_model_weight_count()
-        metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
+        # TODO WIEDER REINHÄNGEN!!!!!! metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
+        metrics_csv += f"{results['val_accuracy']},  {torch_params}"
         metrics_csv += "\n"
         return metrics_csv
 
