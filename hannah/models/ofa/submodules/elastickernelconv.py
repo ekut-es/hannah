@@ -105,7 +105,7 @@ class ElasticConv1d(ElasticBase1d):
             new_conv.bias = bias
 
         # new_conv.forward = self.hook_forward
-        new_conv.register_forward_pre_hook(pre_hook_forward)
+        # new_conv.register_forward_pre_hook(pre_hook_forward)
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
@@ -375,9 +375,7 @@ class ConvRelu1d(nn.Conv1d):
             stride=stride,
             padding=padding,
             dilation=dilation_sizes,
-            groups=1,
-            # TODO this will throw a exception with the residual x += residual,
-            # groups=groups,
+            groups=groups,
             bias=bias,
         )
         self.relu = nn.ReLU()
