@@ -111,12 +111,12 @@ conv1_size: 3
 conv1_stride: 1
 conv1_timesteps: 99
 conv1_batchnorm: BN
-conv1_conv_type: NN
+conv1_conv_type: SNN
 conv1_alpha: 0.75
 conv1_beta: 0.65
 conv1_gamma: 0.75
 conv1_rho: 0.15
-conv1_neuron_type: eLIF
+#conv1_neuron_type: eLIF
 conv1_flattendoutput: False
 dropout_prob: 0.5
 fully_convolutional: false
@@ -125,7 +125,7 @@ width_multiplier: 1.0
 dilation: 1
 clipping_value: 100000.0
 small: false
-conv_type: NN
+conv_type: SNN
 spike_fn: SBPHeaviside
 #general_conv_type: SNN
 #general_BN: BNTTv1
