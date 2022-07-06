@@ -239,11 +239,11 @@ class MacSummaryCallback(Callback):
     @rank_zero_only
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
-        # TODO WIEDER REINHÄNGEN!!!!!! try: try:
-        #     self._do_summary(pl_module)
-        # except Exception as e:
-        #     msglogger.critical("_do_summary failed")
-        #     msglogger.critical(str(e))
+        try:
+            self._do_summary(pl_module)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
         pl_module.train()
 
     @rank_zero_only
@@ -254,11 +254,11 @@ class MacSummaryCallback(Callback):
     @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
         res = {}
-        # TODO WIEDER REINHÄNGEN!!!!!! try:
-        #     res = self._do_summary(pl_module, print_log=False)
-        # except Exception as e:
-        #     msglogger.critical("_do_summary failed")
-        #     msglogger.critical(str(e))
+        try:
+            res = self._do_summary(pl_module, print_log=False)
+        except Exception as e:
+            msglogger.critical("_do_summary failed")
+            msglogger.critical(str(e))
 
         for k, v in res.items():
             pl_module.log(k, float(v), rank_zero_only=True)

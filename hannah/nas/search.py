@@ -859,8 +859,8 @@ class OFANasTrainer(NASTrainerBase):
         metrics_csv += metrics_output
         results = validation_results[0]
         torch_params = model.get_validation_model_weight_count()
-        # TODO WIEDER REINHÄNGEN!!!!!! metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
-        metrics_csv += f"{results['val_accuracy']},  {torch_params}"
+        metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
+        #metrics_csv += f"{results['val_accuracy']},  {torch_params}"
         metrics_csv += "\n"
         return metrics_csv
 
