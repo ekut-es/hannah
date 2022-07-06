@@ -452,6 +452,12 @@ class OFAModel(nn.Module):
         # in eval mode, run the forward on the extracted validation model.
         if self.eval_mode and self.validate_on_extracted:
             if self.validation_model is None:
+                # TESTING THIS if self.validation_model is None:
+                # Beim zweiten mal builden nutzt er einen cache - Zweite mal is None
+                self.build_validation_model()
+            else:
+                logging.info("XKA_G Validation model is already there!")
+                # TODO maybe here or on eval step -> check if validation model needs to be build new ?
                 self.build_validation_model()
             return self.validation_model.forward(x)
 

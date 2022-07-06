@@ -198,17 +198,30 @@ def getGroups(max_group, with_max_group_member : bool = True, addOneForNoGroupin
     return tmp
 
 
+def gather_information(module):
+    weight_adjustment_needed = is_weight_adjusting_needed(module.weight, module.in_channels, module.groups)
+    target = get_target_weight(module.weight, module.in_channels, module.groups)
+    if weight_adjustment_needed:
+        if hasattr(module, 'id'):
+            logging.info(f"ID: {module.id}")
+        logging.info(f"WARNING XKA_G ModuleName={module.__class__}  g={module.groups} ic={module.in_channels}, oc={module.out_channels}, last_g={module.last_grouping_param}")
+        logging.info(f"WARNING XKA_G Weight Change is needed though the weights were updated {list(module.weight.shape)} target:{target}")
+
+
 # MR TODO fit those two together
 def pre_hook_forward(module, input):
     """
         This Hook is called before the forward will be executed.
         TODO: maybe use that for normal conv evolution as well ?
     """
+    gather_information(module)
     adjust_weight_if_needed(module=module, kernel=module.weight, groups=module.groups, in_place_adjustment=True)
 
 
 def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustment: bool = False):
     """
+    TODO doc schreiben
+
     :throws: RuntimeError
     returns (kernel, is adjusted) (adjusted if needed) otherwise throws a RuntimeError
     """
@@ -222,15 +235,21 @@ def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustmen
 
     is_adjusted = False
     grouping_changed = groups != module.last_grouping_param
-    logging.debug(f"Shape:{module.weight.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
+    logging.debug(f"Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
     if grouping_changed and groups > 1:
-        weight_adjustment_needed = is_weight_adjusting_needed(module.weight, module.in_channels, groups)
+        weight_adjustment_needed = is_weight_adjusting_needed(kernel, module.in_channels, groups)
         if weight_adjustment_needed:
             is_adjusted = True
-            logging.info(f"NOW Shape:{module.weight.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
+            logging.info(f"NOW Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
             kernel = adjust_weights_for_grouping(kernel, groups)
             if in_place_adjustment:
                 module.weight = nn.Parameter(kernel)
+        else:
+            target = get_target_weight(kernel, module.in_channels, groups)
+            if hasattr(module, 'id'):
+                logging.info(f"ID: {module.id}")
+            logging.debug(f"XKA ModuleName={module.__class__}  g={groups} ic={module.in_channels}, oc={module.out_channels}")
+            logging.debug(f"XKA Grouping changed BUT no weight change is needed - hurray! {list(kernel.shape)} target:{target}")
 
     return (kernel, is_adjusted)
     # grouping_changed = groups != last_grouping_param
@@ -252,6 +271,18 @@ def is_weight_adjusting_needed(weights, input_channels, groups):
     current_weight_dimension = weights.shape[1]
     target_weight_dimension = input_channels // groups
     return target_weight_dimension != current_weight_dimension
+
+
+def get_target_weight(weights, input_channels, groups):
+    """
+        Gives the targeted weight shape (out_channel, in_channel // groups, kernel)
+        :param: weights - the weights that needs to be checked
+        :param: input_channels - Input Channels of the Convolution Module
+        :param: groups - Grouping Param of the Convolution Module
+    """
+    target_shape = list(weights.shape)
+    target_shape[1] = input_channels // groups
+    return target_shape
 
 
 def adjust_weights_for_grouping(weights, input_divided_by=2):

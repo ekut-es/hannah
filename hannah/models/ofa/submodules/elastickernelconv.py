@@ -1,4 +1,5 @@
 from inspect import Parameter
+import random
 from tokenize import group
 from typing import List
 import torch.nn as nn
@@ -92,6 +93,13 @@ class ElasticConv1d(ElasticBase1d):
         )
         new_conv.last_grouping_param = self.groups
 
+        if not hasattr(new_conv, 'id'):
+            new_conv.id = "tinkerbell - " + str(random.randint(0, 1000)*2000)
+            logging.info(f"XKA_G INIT: id created: {new_conv.id}")
+        else:
+            logging.info("XKA_G: id already present: {new_conv.id}")
+            new_conv.id2 = "tinkerbell"
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=self.groups, in_place_adjustment=False)
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
@@ -185,6 +193,9 @@ class ElasticConvReLu1d(ElasticBase1d):
             bias=False,
             groups=grouping
         )
+        new_conv.last_grouping_param = self.groups
+        new_conv.id = "peter"
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=self.groups, in_place_adjustment=False)
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
@@ -251,6 +262,10 @@ class ElasticConvBn1d(ElasticConv1d):
             groups=grouping
         )
         tmp_bn = self.bn.get_basic_batchnorm1d()
+
+        new_conv.last_grouping_param = self.groups
+        new_conv.id = "zelda"
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=self.groups, in_place_adjustment=False)
 
         new_conv.weight.data = kernel
         new_conv.bias = bias
@@ -323,6 +338,9 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         logging.info(f"Groups: {grouping}")
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
+        new_conv.last_grouping_param = self.groups
+        new_conv.id = "anna"
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=self.groups, in_place_adjustment=False)
         new_conv.weight.data = kernel
         new_conv.bias = bias
 
@@ -358,7 +376,8 @@ class ConvRelu1d(nn.Conv1d):
             padding=padding,
             dilation=dilation_sizes,
             groups=1,
-            # groups=1
+            # TODO this will throw a exception with the residual x += residual,
+            # groups=groups,
             bias=bias,
         )
         self.relu = nn.ReLU()
