@@ -94,16 +94,17 @@ class ElasticConv1d(ElasticBase1d):
         new_conv.last_grouping_param = self.groups
 
         if not hasattr(new_conv, 'id'):
-            new_conv.id = "tinkerbell - " + str(random.randint(0, 1000)*2000)
-            logging.info(f"XKA_G INIT: id created: {new_conv.id}")
+            new_conv.id = "ElasticConv1d-" + str(random.randint(0, 1000)*2000)
+            logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
         else:
-            logging.info("XKA_G: id already present: {new_conv.id}")
-            new_conv.id2 = "tinkerbell"
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=self.groups, in_place_adjustment=False)
+            logging.debug("Validation id already present: {new_conv.id}")
+
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups, in_place_adjustment=False)
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
 
+        logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
         # new_conv.forward = self.hook_forward
         # new_conv.register_forward_pre_hook(pre_hook_forward)
         # print("\nassembled a basic conv from elastic kernel!")
@@ -194,8 +195,14 @@ class ElasticConvReLu1d(ElasticBase1d):
             groups=grouping
         )
         new_conv.last_grouping_param = self.groups
-        new_conv.id = "peter"
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=self.groups, in_place_adjustment=False)
+        if not hasattr(new_conv, 'id'):
+            new_conv.id = "ConvRelu1d-" + str(random.randint(0, 1000)*2000)
+            logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+        else:
+            logging.debug("Validation id already present: {new_conv.id}")
+
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups, in_place_adjustment=False)
+        logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
@@ -264,8 +271,13 @@ class ElasticConvBn1d(ElasticConv1d):
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
         new_conv.last_grouping_param = self.groups
-        new_conv.id = "zelda"
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=self.groups, in_place_adjustment=False)
+        if not hasattr(new_conv, 'id'):
+            new_conv.id = "ElasticConvBn1d-" + str(random.randint(0, 1000)*2000)
+            logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+        else:
+            logging.debug("id already present: {new_conv.id}")
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups, in_place_adjustment=False)
+        logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
 
         new_conv.weight.data = kernel
         new_conv.bias = bias
@@ -335,12 +347,16 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             bias=False,
             groups=grouping
         )
-        logging.info(f"Groups: {grouping}")
         tmp_bn = self.bn.get_basic_batchnorm1d()
 
         new_conv.last_grouping_param = self.groups
-        new_conv.id = "anna"
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=self.groups, in_place_adjustment=False)
+        if not hasattr(new_conv, 'id'):
+            new_conv.id = "ElasticConvBnReLu1d-" + str(random.randint(0, 1000)*2000)
+            logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+        else:
+            logging.debug("id already present: {new_conv.id}")
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups, in_place_adjustment=False)
+        logging.info(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
         new_conv.weight.data = kernel
         new_conv.bias = bias
 

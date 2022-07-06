@@ -203,7 +203,7 @@ def gather_information(module):
     target = get_target_weight(module.weight, module.in_channels, module.groups)
     if weight_adjustment_needed:
         if hasattr(module, 'id'):
-            logging.info(f"ID: {module.id}")
+            logging.debug(f"ID: {module.id}")
         logging.info(f"WARNING XKA_G ModuleName={module.__class__}  g={module.groups} ic={module.in_channels}, oc={module.out_channels}, last_g={module.last_grouping_param}")
         logging.info(f"WARNING XKA_G Weight Change is needed though the weights were updated {list(module.weight.shape)} target:{target}")
 
@@ -240,14 +240,14 @@ def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustmen
         weight_adjustment_needed = is_weight_adjusting_needed(kernel, module.in_channels, groups)
         if weight_adjustment_needed:
             is_adjusted = True
-            logging.info(f"NOW Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
+            logging.debug(f"NOW Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
             kernel = adjust_weights_for_grouping(kernel, groups)
             if in_place_adjustment:
                 module.weight = nn.Parameter(kernel)
         else:
             target = get_target_weight(kernel, module.in_channels, groups)
             if hasattr(module, 'id'):
-                logging.info(f"ID: {module.id}")
+                logging.debug(f"ID: {module.id}")
             logging.debug(f"XKA ModuleName={module.__class__}  g={groups} ic={module.in_channels}, oc={module.out_channels}")
             logging.debug(f"XKA Grouping changed BUT no weight change is needed - hurray! {list(kernel.shape)} target:{target}")
 
