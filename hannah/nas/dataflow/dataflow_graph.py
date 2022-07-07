@@ -1,6 +1,6 @@
 from typing import Iterable
 from hannah.nas.dataflow.op_type import OpType
-from hannah.nas.dataflow.tensor_type import TensorTuple
+from hannah.nas.dataflow.tensor import TensorTuple
 from hannah.nas.dataflow.dataflow_utils import find_first_op_in_dfg, find_leaf_nodes
 from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.dataflow.tensor import Tensor
@@ -64,38 +64,6 @@ class DataFlowGraph(TensorExpression):
             last_output.users.append(self)
             self.users.append(corresponding_placeholder)
             _rewire_to_placeholder(operand, self.output, corresponding_placeholder)
-
-    # def set_scope_ids(self, node, visited, current_scope, counters):
-    #     """Recursively traverse the graph in a forward direction (-> users) and set the scopes
-    #     of the encountered nodes. To consider diverging branches, at each node
-    #     we look for leaf nodes. The "scope: node" relation is saved in self._scopes
-    #     to enable later subscriptability.
-
-    #     Parameters
-    #     ----------
-    #     node : TensorExpression
-    #         Current node
-    #     visited : list[TensorExpression]
-    #         Already visited nodes
-    #     current_scope : list[TensorExpression]
-    #         Represents the current hierarchy in descending order and
-    #         thus the scope of the current node
-    #     counters : dict
-    #         Tracks the scopes to distinguish similar TensorExpressions with
-    #         increasing counters
-    #     """
-    #     current_scope = update_scope(node, current_scope)
-    #     scope_id = get_id_and_update_counters(current_scope, counters)
-    #     node.set_id(scope_id)
-    #     self._scopes[scope_id] = node
-    #     leafs = []
-    #     visited.append(node)
-    #     find_leaf_nodes(node, leafs, visited)
-    #     for leaf in leafs:
-    #         self.set_scope_ids(leaf, visited, current_scope, counters)
-    #     for u in node.users:
-    #         if u not in visited:
-    #             self.set_scope_ids(u, visited, current_scope, counters)
 
     def set_scope_ids(self, visited=[]):
         node = find_first_input(self)
@@ -208,12 +176,6 @@ def collect_users(node):
                 collected_users.append(u)
 
     return collected_users
-
-
-
-
-
-
 
 
 def reset_scope_ids(node):
