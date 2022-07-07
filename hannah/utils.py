@@ -96,7 +96,7 @@ def log_execution_env_state() -> None:
     if HAVE_LSB:
         try:
             logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
-        except:
+        except Exception:
             pass
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)

@@ -1,9 +1,9 @@
 import logging
 from copy import deepcopy
-from typing import Any, Optional, Union, List, Dict
+from typing import Any, Dict, List, Optional, Union
 
 import tabulate
-from pytorch_lightning import LightningModule, LightningDataModule
+from pytorch_lightning import LightningDataModule, LightningModule
 from pytorch_lightning.callbacks import ModelCheckpoint, ProgressBar
 from pytorch_lightning.callbacks.progress import tqdm
 from pytorch_lightning.loggers import LoggerCollection
@@ -179,8 +179,8 @@ class CrossValidationTrainer:
 
         confusion_plot = plot_confusion_matrix(overall_confusion, self.class_names)
 
-        confusion_plot.savefig(f"test_confusion.png")
-        confusion_plot.savefig(f"test_confusion.pdf")
+        confusion_plot.savefig("test_confusion.png")
+        confusion_plot.savefig("test_confusion.pdf")
 
     # Do all in fit
     def fit(self, model: LightningModule) -> None:

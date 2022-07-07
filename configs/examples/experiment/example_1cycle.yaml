@@ -1,0 +1,10 @@
+# @package _global_
+defaults:
+  - override /dataset: vad
+  - override /scheduler: null
+  - _self_
+
+experiment_id: example
+
+trainer:
+  max_epochs: 30

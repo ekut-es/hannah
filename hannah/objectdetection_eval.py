@@ -1,19 +1,14 @@
 import logging
-
-
 from pathlib import Path
 
-import hydra
 import torch
-
-from hannah.datasets.Kitti import Kitti, object_collate_fn
-
-from omegaconf import open_dict, OmegaConf
-
-from hydra.utils import to_absolute_path, instantiate
-from omegaconf import DictConfig
+from hydra.utils import instantiate, to_absolute_path
+from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Trainer
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
+import hydra
+from hannah.datasets.Kitti import Kitti, object_collate_fn
 
 
 def eval_train(config, module, test=True):
@@ -87,6 +82,7 @@ def eval_checkpoint(config: DictConfig, checkpoint):
 
     # FIXME: remove when snapshots use new modules
     import sys
+
     import hannah
 
     sys.modules["speech_recognition"] = hannah
@@ -130,7 +126,7 @@ def eval(config: DictConfig):
     return retval
 
 
-@hydra.main(config_name="objectdetection_eval", config_path="conf")
+@hydra.main(config_name="objectdetection_eval", config_path="conf", version_base="1.2")
 def main(config: DictConfig):
     return eval(config)
 

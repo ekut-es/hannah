@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+
 from ..utils import next_power_of2
 
 

@@ -543,7 +543,7 @@ class Surrogate_BP_Function(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_output):
-        input, = ctx.saved_tensors
+        (input,) = ctx.saved_tensors
         grad_input = grad_output.clone()
         grad = (
             grad_input
@@ -569,7 +569,7 @@ class SurrogateHeaviside(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
 
-        input, = ctx.saved_tensors
+        (input,) = ctx.saved_tensors
         grad_input = grad_output.clone()
         # approximation of the gradient using sigmoid function
         grad = (

@@ -1,30 +1,9 @@
 defaults:
-    - dataset: siren
-    - model: tc-res8
-    - scheduler: 1cycle
-    - optimizer: adamw
-    - features: mfcc
-    - normalizer: null
-    - module: stream_classifier
-    - compress: null
-    - trainer: default
-    - checkpoint: default
-    - backend: null
-    - early_stopping: null
-    - profiler: null
-
-type: train
-experiment_id: test
-output_dir: trained_models
-auto_lr: false
-seed: [1234]
-
-hydra:
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
-
-#TODO:
-dump_test: false
-input_file: ''
+    - config
+    - override dataset: siren
+    - override model: tc-res8
+    - override scheduler: 1cycle
+    - override optimizer: adamw
+    - override features: mfcc
+    - override normalizer: null
+    - _self_

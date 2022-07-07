@@ -56,7 +56,7 @@ class MADGRAD(torch.optim.Optimizer):
         if weight_decay < 0:
             raise ValueError(f"Weight decay {weight_decay} must be non-negative")
         if eps < 0:
-            raise ValueError(f"Eps must be non-negative")
+            raise ValueError(f"Eps must be non-negative current_value: {eps}")
 
         defaults = dict(lr=lr, eps=eps, momentum=momentum, weight_decay=weight_decay)
         super().__init__(params, defaults)

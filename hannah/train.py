@@ -21,6 +21,7 @@ from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 from .callbacks.summaries import MacSummaryCallback
+from .logo import print_logo
 from .utils import (
     auto_select_gpus,
     clear_outputs,
@@ -215,9 +216,10 @@ def nas(config: DictConfig) -> None:
     nas_trainer.run()
 
 
-@hydra.main(config_name="config", config_path="conf")
+@hydra.main(config_name="config", config_path="conf", version_base="1.2")
 def main(config: DictConfig):
     logging.captureWarnings(True)
+    print_logo()
     try:
         log_execution_env_state()
         if config.get("dataset_creation", None) is not None:

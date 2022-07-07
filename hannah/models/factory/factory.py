@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import torch.nn as nn
 from hydra.utils import instantiate
 from omegaconf import MISSING, OmegaConf
+from torch.nn.modules.container import Sequential
+from torch.nn.modules.linear import Identity
 
 from hannah.models.factory import pooling
 
@@ -20,7 +22,7 @@ from . import qat
 from .act import DummyActivation
 from .network import ConvNet
 from .reduction import ReductionBlockAdd, ReductionBlockConcat
-import torch.nn as nn
+
 
 @dataclass
 class NormConfig:
@@ -56,7 +58,7 @@ class HardtanhConfig(ActConfig):
 
 @dataclass
 class MinorBlockConfig:
-    #breakpoint()
+    # breakpoint()
     target: str = "conv1d"
     "target Operation"
     parallel: bool = False
@@ -116,7 +118,9 @@ class NetworkConfig:
 
 
 class NetworkFactory:
-    def __init__(self,) -> None:
+    def __init__(
+        self,
+    ) -> None:
         self.default_norm = None
         self.default_act = None
         self.default_qconfig = None
@@ -534,13 +538,13 @@ class NetworkFactory:
             )
         else:
             raise Exception(f"Unknown minor block config {config}")
-        ''' Depthwise separable convolution can be splitted into dephtwise convolution first
+        """ Depthwise separable convolution can be splitted into dephtwise convolution first
         followed by pointwise convolution.
         if config.target == "conv1d":
             #breakpoint()
             depthwise_conv = self.conv1d(
                 input_shape,
-                out_channels=input_shape[1],#*config.kernel_per_layer, # adjust number of output channels 
+                out_channels=input_shape[1],#*config.kernel_per_layer, # adjust number of output channels
                 kernel_size=config.kernel_size,
                 stride=config.stride,
                 padding=config.padding,
@@ -565,9 +569,14 @@ class NetworkFactory:
                 bias=config.bias,
                 out_quant=config.out_quant,
             )
-            return nn.Sequential(depthwise_conv, pointwise_conv) '''
+            return nn.Sequential(depthwise_conv, pointwise_conv) """
 
-    def _build_chain(self, input_shape, block_configs, major_stride):
+    def _build_chain(
+        self,
+        input_shape: Tuple[int, int, int],
+        block_configs: List[MinorBlockConfig],
+        major_stride: Optional[Any],
+    ) -> List[Tuple[Tuple[int, int, int], Sequential]]:
         block_input_shape = input_shape
         result_chain = []
         for block_config in block_configs:
@@ -580,18 +589,19 @@ class NetworkFactory:
 
         return result_chain
 
-    def _build_reduction(self, reduction, input_shape, *input_chains):
+    def _build_reduction(
+        self,
+        reduction: str,
+        input_shape: Tuple[int, int, int],
+        *input_chains: List[Tuple[Tuple[int, int, int], Sequential]],
+    ) -> Tuple[Tuple[int, int, int], Union[ReductionBlockConcat, Sequential]]:
         output_shapes = []
         for chain in input_chains:
             output_shapes.append(chain[-1][0] if len(chain) > 0 else input_shape)
 
-        print("Shapes", output_shapes)
-
         minimum_output_shape = tuple(map(min, zip(*output_shapes)))
         maximum_output_shape = tuple(map(max, zip(*output_shapes)))
         target_output_shape = maximum_output_shape[:2] + minimum_output_shape[2:]
-
-        print("Target Shape", target_output_shape)
 
         for output_shape, chain in zip(output_shapes, input_chains):
             if output_shape != target_output_shape:
@@ -602,9 +612,7 @@ class NetworkFactory:
 
                 if reduction == "add":
                     output_channels = target_output_shape[1]
-                    groups = (
-                        1
-                    )  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
+                    groups = 1  # For now do not use grouped convs for resampling: math.gcd(output_channels, groups)
 
                 stride = tuple(
                     (
@@ -747,6 +755,7 @@ class NetworkFactory:
         """
 
         out_channels = config.out_channels
+        block = None
         return out_channels, block
 
     def full(self, in_channels: int, config: MajorBlockConfig):
@@ -762,6 +771,7 @@ class NetworkFactory:
         If there are no parallel blocks the block is a standard feed forward network.
         """
         out_channels = config.out_channels
+        block = None
         return out_channels, block
 
     def major(self, input_shape, config: MajorBlockConfig):
@@ -814,7 +824,7 @@ class NetworkFactory:
 
         return out_shape, layers
 
-    def identity(self):
+    def identity(self) -> Identity:
         qconfig = self.default_qconfig
 
         if not qconfig:
@@ -877,11 +887,13 @@ class NetworkFactory:
 
         return output_shape, model
 
-    def _calc_spatial_dim(self, in_dim, kernel_size, stride, padding, dilation):
+    def _calc_spatial_dim(
+        self, in_dim: int, kernel_size: int, stride: int, padding: int, dilation: int
+    ) -> int:
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:
-        padding = (((kernel_size-1)*_dilation)+1) // 2
+        padding = (((kernel_size - 1) * _dilation) + 1) // 2
         return padding
 
 

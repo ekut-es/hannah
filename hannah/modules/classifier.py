@@ -11,8 +11,11 @@ import torchvision
 from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
+from sklearn.metrics import auc
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 from torchmetrics import (
+    AUC,
+    AUROC,
     ROC,
     Accuracy,
     ConfusionMatrix,
@@ -27,7 +30,6 @@ from hannah.datasets.base import ctc_collate_fn
 from ..datasets import SpeechDataset
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import set_deterministic
-from .augmentation import MixupAudio
 from .base import ClassifierModule
 from .config_utils import get_loss_function, get_model
 from .metrics import Error
@@ -47,12 +49,13 @@ class BaseStreamClassifierModule(ClassifierModule):
     def setup(self, stage):
         # TODO stage variable is not used!
         msglogger.info("Setting up model")
-        if self.logger:
-            msglogger.info("Model setup already completed skipping setup")
-            self.logger.log_hyperparams(self.hparams)
+        if self.trainer:
+            for logger in self.trainer.loggers:
+                logger.log_hyperparams(self.hparams)
 
         if self.initialized:
             # if not (hasattr(self.model, 'grouping_changed') and self.model.grouping_changed):
+            msglogger.info("Model setup already completed skipping setup")
             return
             # else:
             #    msglogger.info("Grouping Changed, building validation model again. Grouping is now")
@@ -93,7 +96,6 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Instantiate Model
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
@@ -118,6 +120,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_recall": Recall(num_classes=self.num_classes),
                 "val_precision": Precision(num_classes=self.num_classes),
                 "val_f1": F1Score(num_classes=self.num_classes),
+                "val_auroc": AUROC(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
@@ -127,26 +130,23 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_recall": Recall(num_classes=self.num_classes),
                 "test_precision": Precision(num_classes=self.num_classes),
                 "test_f1": F1Score(num_classes=self.num_classes),
+                "test_auroc": AUROC(num_classes=self.num_classes),
             }
         )
 
         self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
         self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
 
-        # Setup augmentations
         augmentation_passes = []
         if self.hparams.time_masking > 0:
             augmentation_passes.append(TimeMasking(self.hparams.time_masking))
         if self.hparams.frequency_masking > 0:
             augmentation_passes.append(TimeMasking(self.hparams.frequency_masking))
 
-        self.augmentation = None
         if augmentation_passes:
             self.augmentation = torch.nn.Sequential(*augmentation_passes)
-
-        self.mixup = None
-        if "mixup" in self.hparams and self.hparams.mixup:
-            self.mixup = MixupAudio(self.num_classes, **self.hparams.mixup)
+        else:
+            self.augmentation = torch.nn.Identity()
 
     @abstractmethod
     def get_example_input_array(self):
@@ -161,9 +161,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         pass
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
-        if y.dtype not in [torch.int8, torch.int16, torch.int32, torch.int64]:
-            y = y.round().long()
-
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
@@ -175,7 +172,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 metrics(output, y)
                 self.log_dict(metrics)
             except ValueError as e:
-                logging.critical(f"Could not calculate batch metrics: {outputs}")
+                logging.critical(f"Could not calculate batch metrics: output={output}")
 
         self.log(f"{prefix}_loss", loss)
 
@@ -183,29 +180,14 @@ class BaseStreamClassifierModule(ClassifierModule):
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
 
-        x = self._extract_features(x)
-
-        x, y = self._augment(x, y)
-
-        x = self.normalizer(x)
-
-        output = self.model(x)
-
-        if y.dim() == 2 and y.size(1) == 1:
-            y = y.view(-1)
+        output = self(x)
+        y = y.view(-1)
         loss = self.criterion(output, y)
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
         return loss
-
-    def _augment(self, x, y):
-        if self.augmentation is not None:
-            x = self.augmentation(x)
-        if self.mixup is not None:
-            x, y = self.mixup(x, y)
-        return x, y
 
     @abstractmethod
     def train_dataloader(self):
@@ -262,7 +244,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         dev_loader = data.DataLoader(
             dev_set,
             batch_size=min(len(dev_set), self.hparams["batch_size"]),
-            shuffle=False,
+            shuffle=self.shuffle_all_dataloaders,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
@@ -302,7 +284,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         test_loader = data.DataLoader(
             test_set,
             batch_size=min(len(test_set), self.hparams["batch_size"]),
-            shuffle=False,
+            shuffle=self.shuffle_all_dataloaders,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,

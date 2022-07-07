@@ -37,7 +37,7 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
         torchaudio.set_audio_backend("sox_io")
         try:
             data, samplingrate = torchaudio.load(file_name)
-        except:
+        except RuntimeError:
             msglogger.warning(
                 "Could not load %s with default backend trying sndfile", str(file_name)
             )
@@ -656,8 +656,10 @@ class VadDataset(SpeechDataset):
 
     @classmethod
     def splits(cls, config):
-        """Splits the dataset in training, development and test set and returns
+        """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
+
+        msglogger = logging.getLogger()
 
         # open the saved dataset
         sdataset, _ = VadDataset.read_config(config)
@@ -725,7 +727,7 @@ class VadDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            download_folder_tmp = os.path.join(data_folder, "downloads")
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)

@@ -4,10 +4,16 @@ from tokenize import group
 from typing import List
 import torch.nn as nn
 import torch.nn.functional as nnf
+import copy
 import logging
 import math
-import torch
+from typing import List
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as nnf
+
+from ..utilities import conv1d_get_padding
 from .elasticBase import ElasticBase1d
 from ..utilities import (
     adjust_weight_if_needed,
@@ -16,7 +22,6 @@ from ..utilities import (
     is_weight_adjusting_needed,
     pre_hook_forward
 )
-from .elasticchannelhelper import SequenceDiscovery
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
 
@@ -35,6 +40,7 @@ class ElasticConv1d(ElasticBase1d):
         stride: int = 1,
         padding: int = 0,
         bias: bool = False,
+        out_channel_sizes=None,
     ):
         ElasticBase1d.__init__(
             self,
@@ -46,12 +52,12 @@ class ElasticConv1d(ElasticBase1d):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
+        self.norm = False
+        self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
@@ -138,6 +144,7 @@ class ElasticConvReLu1d(ElasticBase1d):
         stride: int = 1,
         padding: int = 0,
         bias: bool = False,
+        out_channel_sizes=None,
     ):
         ElasticBase1d.__init__(
             self,
@@ -149,13 +156,13 @@ class ElasticConvReLu1d(ElasticBase1d):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
         self.relu = ElasticPermissiveReLU()
+        self.norm = False
+        self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
@@ -223,6 +230,7 @@ class ElasticConvBn1d(ElasticConv1d):
         padding: int = 0,
         bias: bool = False,
         track_running_stats=False,
+        out_channel_sizes=None,
     ):
         ElasticBase1d.__init__(
             self,
@@ -234,13 +242,13 @@ class ElasticConvBn1d(ElasticConv1d):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
         self.bn = ElasticWidthBatchnorm1d(out_channels, track_running_stats)
+        self.norm = True
+        self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         dilation = self.get_dilation_size()
         # get padding for the size of the kernel
@@ -305,6 +313,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         padding: int = 0,
         bias: bool = False,
         track_running_stats=False,
+        out_channel_sizes=None,
     ):
         ElasticConvBn1d.__init__(
             self,
@@ -316,14 +325,14 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             dilation_sizes=dilation_sizes,
             groups=groups,
             bias=bias,
+            out_channel_sizes=out_channel_sizes,
         )
 
         self.relu = ElasticPermissiveReLU()
+        self.norm = True
+        self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         return self.relu(super(ElasticConvBnReLu1d, self).forward(input))
 
     # return a normal conv1d equivalent to this module in the current state
@@ -395,11 +404,10 @@ class ConvRelu1d(nn.Conv1d):
             bias=bias,
         )
         self.relu = nn.ReLU()
+        self.norm = False
+        self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         if(self.groups == 1):
             return self.relu(super(ConvRelu1d, self).forward(input))
 
@@ -439,11 +447,10 @@ class ConvBn1d(nn.Conv1d):
             bias=bias,
         )
         self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
+        self.norm = True
+        self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         if(self.groups == 1):
             return self.bn(super(ConvBn1d, self).forward(input))
 
@@ -484,11 +491,10 @@ class ConvBnReLu1d(ConvBn1d):
         )
         self.bn = nn.BatchNorm1d(out_channels, track_running_stats=track_running_stats)
         self.relu = nn.ReLU()
+        self.norm = True
+        self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         if(self.groups == 1):
             return self.relu(super(ConvBnReLu1d, self).forward(input))
 

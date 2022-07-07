@@ -1,34 +1,30 @@
-import os
-import sys
 import csv
 import logging
-import numpy as np
-from torch.functional import Tensor
-
-import torch
-
 import math
-
+import os
 import shutil
+import sys
 
-import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from torch.functional import Tensor
 
 try:
     from pycocotools.coco import COCO
 except ModuleNotFoundError:
-    COCO = None
-
-from torchvision import transforms
-
-from .base import DatasetType, AbstractDataset
+    COCO = object
 
 from PIL import Image
+from torchvision import transforms
+
+from .base import AbstractDataset, DatasetType
 
 
 class Kitti(AbstractDataset):
-    ""
+    """"""
 
     IMAGE_PATH = os.path.join("training/image_2/")
 

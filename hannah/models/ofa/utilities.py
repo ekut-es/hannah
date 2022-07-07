@@ -1,5 +1,6 @@
 # import logging
 import logging
+
 import torch
 import torch.nn as nn
 
@@ -11,6 +12,14 @@ def conv1d_auto_padding(conv1d: nn.Conv1d):
 
 
 def conv1d_get_padding(kernel_size, dilation=1):
+    # check type of kernel_size
+    if isinstance(kernel_size, tuple):
+        kernel_size = kernel_size[0]
+
+    # check type of dilation
+    if isinstance(dilation, tuple):
+        dilation = dilation[0]
+
     dil = (kernel_size - 1) * (dilation - 1)
     new_kernel_size = kernel_size + dil
     padding = new_kernel_size // 2
@@ -159,6 +168,8 @@ def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter
 def filter_single_dimensional_weights(weights, channel_filter):
     if weights is None:
         return None
+    if all(channel_filter):
+        return weights
     channel_count = len(weights)
     if len(channel_filter) != channel_count:
         logging.error(

@@ -1,21 +1,29 @@
+import logging
 import os
-import sys
 import random
 import subprocess
+import sys
 import threading
-import logging
-import numpy as np
-
-import albumentations as A
-
-from imagecorruptions import corrupt
 import xml.etree.ElementTree as ET
-from PIL import Image
-from hannah.datasets.base import DatasetType
-from hannah.modules.augmentation.bordersearch import Parameter, ParameterRange
+
+import numpy as np
 import scipy.stats as stats
 
+try:
+    from imagecorruptions import corrupt
+except ModuleNotFoundError:
+    corrupt = None
+
+from PIL import Image
+
+try:
+    import albumentations as A
+except ModuleNotFoundError:
+    A = None
+
+from hannah.datasets.base import DatasetType
 from hannah.datasets.Kitti import Kitti
+from hannah.modules.augmentation.bordersearch import Parameter, ParameterRange
 
 
 class XmlAugmentationParser:

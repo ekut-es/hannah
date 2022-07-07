@@ -1,20 +1,18 @@
 import logging
 import os
 import shutil
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict
 
 import numpy as np
 import omegaconf
-import pandas as pd
 import torch
 from hannah_optimizer.aging_evolution import AgingEvolution
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
 from omegaconf import OmegaConf
-from pytorch_lightning import LightningModule
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
@@ -28,27 +26,15 @@ msglogger = logging.getLogger("nas")
 @dataclass
 class WorklistItem:
     parameters: Any
-    results: Dict[str, float]  # Partial results predicted by fast model
+    results: Dict[str, float]
 
 
-@dataclass
-class ResultItem:
-    metrics: Dict[str, float]
-    test_metrics: Dict[str, float]
-    curves: pd.DataFrame
-    start_time: float
-    end_time: float
-    duration: float
-
-
-def run_training(num, config) -> ResultItem:
-    start_time = time.time()
+def run_training(num, config):
     if os.path.exists(str(num)):
         shutil.rmtree(str(num))
 
     os.makedirs(str(num), exist_ok=True)
     try:
-
         os.chdir(str(num))
         config = OmegaConf.create(config)
         logger = TensorBoardLogger(".")
@@ -85,7 +71,6 @@ def run_training(num, config) -> ResultItem:
                 features=config.features,
                 scheduler=config.get("scheduler", None),
                 normalizer=config.get("normalizer", None),
-                num_sanity_val_steps=0,
                 _recursive_=False,
             )
             trainer.fit(model)
@@ -98,39 +83,16 @@ def run_training(num, config) -> ResultItem:
 
             reset_seed()
             trainer.validate(ckpt_path=ckpt_path, verbose=False)
-
-            reset_seed()
-            trainer.test(ckpt_path=ckpt_path, verbose=False)
-
         except Exception as e:
             msglogger.critical("Training failed with exception")
             msglogger.critical(str(e))
+            res = {}
+            for monitor in opt_monitor:
+                res[monitor] = float("inf")
 
-            return None
-
-        result_metrics = opt_callback.result(dict=True)
-        test_results = opt_callback.test_result()
-        learning_curves = opt_callback.result_curve()
-
-        msglogger.info("Result Metrics:")
-        for k, v in result_metrics.items():
-            msglogger.info("  %s: %s", str(k), str(v))
-
-        end_time = time.time()
-        duration = end_time - start_time
-
-        result = ResultItem(
-            result_metrics,
-            test_results,
-            learning_curves,
-            start_time,
-            end_time,
-            duration,
-        )
-
+        return opt_callback.result(dict=True)
     finally:
         os.chdir("..")
-    return result
 
 
 class NASTrainerBase(ABC):
@@ -153,6 +115,18 @@ class NASTrainerBase(ABC):
         pass
 
 
+class RandomNASTrainer(NASTrainerBase):
+    def __init__(self, budget=2000, *args, **kwargs):
+        super().__init__(*args, budget=budget, **kwargs)
+
+    def fit(self, module: LightningModule):
+        # Presample Population
+
+        # Sample Population
+
+        pass
+
+
 class AgingEvolutionNASTrainer(NASTrainerBase):
     def __init__(
         self,
@@ -163,7 +137,6 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         parent_config=None,
         presample=True,
         n_jobs=10,
-        seed=1234,
     ):
         super().__init__(
             budget=budget,
@@ -174,7 +147,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         )
         self.population_size = population_size
 
-        self.random_state = np.random.RandomState(seed=seed)
+        self.random_state = np.random.RandomState()
         self.optimizer = AgingEvolution(
             parametrization=parametrization,
             bounds=bounds,
@@ -208,29 +181,26 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             model.setup("train")
         except AssertionError as e:
             msglogger.critical(
-                "Instantiation failed. Probably #input/output channels are not divisible by #groups!"
+                "Instantion failed. Probably #input/output channels are not divisable by #groups!"
             )
             msglogger.critical(str(e))
         else:
-            try:
-                estimated_metrics = estimator.estimate(model)
+            estimated_metrics = estimator.estimate(model)
 
-                satisfied_bounds = []
-                for k, v in estimated_metrics.items():
-                    if k in self.bounds:
-                        distance = v / self.bounds[k]
-                        msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
-                        satisfied_bounds.append(distance <= 1.2)
+            satisfied_bounds = []
+            for k, v in estimated_metrics.items():
+                if k in self.bounds:
+                    distance = v / self.bounds[k]
+                    msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
+                    satisfied_bounds.append(distance <= 1.2)
 
-                worklist_item = WorklistItem(parameters, estimated_metrics)
+            worklist_item = WorklistItem(parameters, estimated_metrics)
 
-                if self.presample:
-                    if all(satisfied_bounds):
-                        self.worklist.append(worklist_item)
-                else:
+            if self.presample:
+                if all(satisfied_bounds):
                     self.worklist.append(worklist_item)
-            except Exception as e:
-                msglogger.critical("Could not estimate metrics (Reason: %s)", str(e))
+            else:
+                self.worklist.append(worklist_item)
 
     def run(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
@@ -255,14 +225,12 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                     ]
                 )
                 for result, item in zip(results, self.worklist):
-                    if item is not None:
-                        parameters = item.parameters
-                        fast_results = item.results
+                    parameters = item.parameters
+                    metrics = {**item.results, **result}
+                    for k, v in metrics.items():
+                        metrics[k] = float(v)
 
-                        for k, v in fast_results.items():
-                            result.metrics[k] = float(v)
-
-                        self.optimizer.tell_result(parameters, result)
+                    self.optimizer.tell_result(parameters, metrics)
 
 class OFANasTrainer(NASTrainerBase):
     def __init__(
@@ -282,6 +250,7 @@ class OFANasTrainer(NASTrainerBase):
         evaluate=True,
         random_evaluate=True,
         random_eval_number=100,
+        warmup_model_path="",
         # epochs_warmup_after_width=5,
         # epochs_kernel_after_width=5,
         # epochs_depth_after_width=5,
@@ -305,10 +274,12 @@ class OFANasTrainer(NASTrainerBase):
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
         self.random_eval_number = random_eval_number
+        self.warmup_model_path = warmup_model_path
 
     def run(self):
-        os.makedirs("ofa_nas_dir", exist_ok=True)
-        os.chdir("ofa_nas_dir")
+        if "ofa_nas_dir" not in os.path.abspath(os.path.curdir):
+            os.makedirs("ofa_nas_dir", exist_ok=True)
+            os.chdir("ofa_nas_dir")
         config = OmegaConf.create(self.config)
         # logger = TensorBoardLogger(".")
 
@@ -352,6 +323,7 @@ class OFANasTrainer(NASTrainerBase):
         ofa_model.elastic_width_allowed = self.elastic_width_allowed
         ofa_model.elastic_dilation_allowed = self.elastic_dilation_allowed
         ofa_model.elastic_grouping_allowed = self.elastic_grouping_allowed
+        ofa_model.full_config = self.config["model"]
 
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
@@ -398,13 +370,18 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("Once for all Model:\n %s", str(ofa_model))
 
         self.warmup(model, ofa_model)
+        ofa_model.reset_shrinking()
 
         self.train_elastic_kernel(model, ofa_model)
+        ofa_model.reset_shrinking()
         self.train_elastic_dilation(model, ofa_model)
+        ofa_model.reset_shrinking()
         self.train_elastic_depth(model, ofa_model)
+        ofa_model.reset_shrinking()
         self.train_elastic_width(model, ofa_model)
         # MR 218912
         self.train_elastic_grouping(model, ofa_model)
+        ofa_model.reset_shrinking()
 
         if self.evaluate:
             self.eval_model(model, ofa_model)
@@ -430,9 +407,12 @@ class OFANasTrainer(NASTrainerBase):
         """
         # warm-up.
         self.rebuild_trainer("warmup", self.epochs_warmup)
-        self.trainer.fit(model)
-        ckpt_path = "best"
-        self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
+        if self.epochs_warmup > 0 and self.warmup_model_path == "":
+            self.trainer.fit(model)
+            ckpt_path = "best"
+        elif self.warmup_model_path != "":
+            ckpt_path = self.warmup_model_path
+        self.trainer.validate(ckpt_path=ckpt_path, model=model, verbose=True)
         ofa_model.on_warmup_end()
         ofa_model.reset_validation_model()
         logging.info("OFA completed warm-up.")
@@ -450,20 +430,16 @@ class OFANasTrainer(NASTrainerBase):
             # train elastic width
             # first, run channel priority computation
             ofa_model.progressive_shrinking_compute_channel_priorities()
-
-            # self.eval_model(model, ofa_model, 0)
-
-            for current_width_step in range(self.width_step_count):
-                if current_width_step == 0:
-                    # the very first width step (step 0) was already processed before this loop was entered.
-                    continue
-
+            for current_width_step in range(1, self.width_step_count):
                 # add a width step
                 ofa_model.progressive_shrinking_add_width()
-                self.rebuild_trainer(
-                    f"width_{current_width_step}", self.epochs_width_step
-                )
-                self.trainer.fit(model)
+                if self.epochs_width_step > 0:
+                    self.rebuild_trainer(
+                        f"width_{current_width_step}", self.epochs_width_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             logging.info("OFA completed width steps.")
 
     def train_elastic_depth(self, model, ofa_model):
@@ -477,16 +453,16 @@ class OFANasTrainer(NASTrainerBase):
         """
         if self.elastic_depth_allowed:
             # train elastic depth
-            for current_depth_step in range(self.depth_step_count):
-                if current_depth_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
+            for current_depth_step in range(1, self.depth_step_count):
                 # add a depth reduction step
                 ofa_model.progressive_shrinking_add_depth()
-                self.rebuild_trainer(
-                    f"depth_{current_depth_step}", self.epochs_depth_step
-                )
-                self.trainer.fit(model)
+                if self.epochs_depth_step > 0:
+                    self.rebuild_trainer(
+                        f"depth_{current_depth_step}", self.epochs_depth_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             logging.info("OFA completed depth steps.")
 
     def train_elastic_kernel(self, model, ofa_model):
@@ -498,18 +474,18 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to train
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_kernels_allowed == True:
+        if self.elastic_kernels_allowed is True:
             # train elastic kernels
-            for current_kernel_step in range(self.kernel_step_count):
-                if current_kernel_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
+            for current_kernel_step in range(1, self.kernel_step_count):
                 # add a kernel step
                 ofa_model.progressive_shrinking_add_kernel()
-                self.rebuild_trainer(
-                    f"kernel_{current_kernel_step}", self.epochs_kernel_step
-                )
-                self.trainer.fit(model)
+                if self.epochs_kernel_step > 0:
+                    self.rebuild_trainer(
+                        f"kernel_{current_kernel_step}", self.epochs_kernel_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             logging.info("OFA completed kernel matrices.")
 
     def train_elastic_dilation(self, model, ofa_model):
@@ -521,18 +497,18 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_dilation_allowed == True:
+        if self.elastic_dilation_allowed is True:
             # train elastic kernels
-            for current_dilation_step in range(self.dilation_step_count):
-                if current_dilation_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
+            for current_dilation_step in range(1, self.dilation_step_count):
                 # add a kernel step
                 ofa_model.progressive_shrinking_add_dilation()
-                self.rebuild_trainer(
-                    f"kernel_{current_dilation_step}", self.epochs_dilation_step
-                )
-                self.trainer.fit(model)
+                if self.epochs_dilation_step > 0:
+                    self.rebuild_trainer(
+                        f"kernel_{current_dilation_step}", self.epochs_dilation_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             logging.info("OFA completed dilation matrices.")
 
     def train_elastic_grouping(self, model, ofa_model):
@@ -851,6 +827,7 @@ class OFANasTrainer(NASTrainerBase):
         self.rebuild_trainer(trainer_path)
         logging.info(loginfo_output)
         model.reset_validation_model()
+
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
@@ -873,10 +850,8 @@ class OFANasTrainer(NASTrainerBase):
         """
         # disable sampling in forward during evaluation.
         model.eval_mode = True
-        # reset_seed()  # run_training does this (?)
-        # reset target values to step through
 
-        eval_methods = list()
+        eval_methods = []
 
         if self.elastic_width_allowed:
             eval_methods.append(self.eval_elastic_width)
@@ -929,7 +904,7 @@ class OFANasTrainer(NASTrainerBase):
             random_state = model.sample_subnetwork()
 
             loginfo_output = f"OFA validating random sample:\n{random_state}"
-            trainer_path = f"Eval random sample: "
+            trainer_path = "Eval random sample: "
             metrics_output = ""
 
             if self.elastic_width_allowed:
@@ -960,7 +935,7 @@ class OFANasTrainer(NASTrainerBase):
                 selected_depth = random_state["depth_step"]
                 trainer_path += f"D {selected_depth}, "
                 metrics_output += f"{selected_depth}, "
-
+            model.print_config(str(i))
             self.random_metrics_csv = self.eval_single_model(
                 None,
                 None,
@@ -978,7 +953,7 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_depth_step = prev_max_depth
         model.sampling_max_width_step = prev_max_width
 
-    def rebuild_trainer(self, step_name: str, epochs: int = 1):
+    def rebuild_trainer(self, step_name: str, epochs: int = 1) -> Trainer:
         logger = TensorBoardLogger(".", version=step_name)
         callbacks = common_callbacks(self.config)
         self.trainer = instantiate(
