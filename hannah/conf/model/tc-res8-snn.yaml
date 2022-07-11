@@ -66,7 +66,7 @@ conv1_size: 3
 conv1_stride: 1
 conv1_timesteps: 99
 conv1_batchnorm: BN
-conv1_conv_type: NN
+conv1_conv_type: SNN
 conv1_flattendoutput: False
 conv1_alpha: 0.75
 conv1_beta: 0.65
@@ -81,8 +81,8 @@ width_multiplier: 1.0
 dilation: 1
 clipping_value: 100000.0
 small: false
-conv_type: NN
-readout_type: s2net
+conv_type: SNN
+readout_type: count
 readout_neuron_type: eLIF
 readout_alpha: 1
 readout_beta: 0.695
