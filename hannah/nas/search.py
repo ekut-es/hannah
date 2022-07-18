@@ -249,6 +249,7 @@ class OFANasTrainer(NASTrainerBase):
         evaluate=True,
         random_evaluate=True,
         random_eval_number=100,
+        extract_model_config=False,
         warmup_model_path="",
         # epochs_warmup_after_width=5,
         # epochs_kernel_after_width=5,
@@ -271,6 +272,7 @@ class OFANasTrainer(NASTrainerBase):
         self.random_evaluate = random_evaluate
         self.random_eval_number = random_eval_number
         self.warmup_model_path = warmup_model_path
+        self.extract_model_config = extract_model_config
 
     def run(self):
         if "ofa_nas_dir" not in os.path.abspath(os.path.curdir):
@@ -831,7 +833,8 @@ class OFANasTrainer(NASTrainerBase):
                 selected_depth = random_state["depth_step"]
                 trainer_path += f"D {selected_depth}, "
                 metrics_output += f"{selected_depth}, "
-            model.print_config(str(i))
+            if self.extract_model_config:
+                model.print_config("r" + str(i))
             self.random_metrics_csv = self.eval_single_model(
                 None,
                 None,
