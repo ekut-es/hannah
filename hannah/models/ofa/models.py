@@ -507,8 +507,6 @@ class OFAModel(nn.Module):
             f.write("  target: relu\n")
             f.write(d)
 
-        print("fertig")
-
     def forward(self, x):
         self.last_input = x
         self.current_step = self.current_step + 1
