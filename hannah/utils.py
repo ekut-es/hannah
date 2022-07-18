@@ -50,6 +50,9 @@ except ImportError:
     HAVE_LSB: bool = False
 
 
+logger = logging.getLogger(__name__)
+
+
 def log_execution_env_state() -> None:
     """Log information about the execution environment.
     File 'config_path' will be copied to directory 'logdir'. A common use-case
@@ -61,8 +64,6 @@ def log_execution_env_state() -> None:
         logdir: log directory
         git_root: the path to the .git root directory
     """
-
-    logger = logging.getLogger()
 
     logger.info("Environment info:")
 
@@ -157,7 +158,7 @@ def extract_from_download_cache(
     if filename not in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        print("download and extract: " + str(filename))
+        logger.info("download and extract: %s", str(filename))
         download_and_extract_archive(
             url,
             target_cache,
@@ -168,7 +169,7 @@ def extract_from_download_cache(
     elif filename in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        print("extract from download_cache: " + str(filename))
+        logger.info("extract from download_cache: %s", str(filename))
         extract_archive(
             os.path.join(target_cache, filename),
             target_folder,
