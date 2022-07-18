@@ -20,7 +20,7 @@ from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.summaries import MacSummaryCallback
 from ..utils import clear_outputs, common_callbacks, fullname
 
-msglogger = logging.getLogger("nas")
+msglogger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -390,11 +390,11 @@ class OFANasTrainer(NASTrainerBase):
 
             if self.random_evaluate:
                 # save random metrics
-                print(self.random_metrics_csv)
+                msglogger.info("\n%s", self.random_metrics_csv)
                 with open("OFA_random_sample_metrics.csv", "w") as f:
                     f.write(self.random_metrics_csv)
             # save self.submodel_metrics_csv
-            print(self.submodel_metrics_csv)
+            msglogger.info("\n%s", str(self.submodel_metrics_csv))
             with open("OFA_elastic_metrics.csv", "w") as f:
                 f.write(self.submodel_metrics_csv)
 
@@ -417,7 +417,7 @@ class OFANasTrainer(NASTrainerBase):
         self.trainer.validate(ckpt_path=ckpt_path, model=model, verbose=True)
         ofa_model.on_warmup_end()
         ofa_model.reset_validation_model()
-        logging.info("OFA completed warm-up.")
+        msglogger.info("OFA completed warm-up.")
 
     def train_elastic_width(self, model, ofa_model):
         """
@@ -442,7 +442,7 @@ class OFANasTrainer(NASTrainerBase):
                     self.trainer.fit(model)
                     ckpt_path = "best"
                     self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
-            logging.info("OFA completed width steps.")
+            msglogger.info("OFA completed width steps.")
 
     def train_elastic_depth(self, model, ofa_model):
         """
@@ -465,7 +465,7 @@ class OFANasTrainer(NASTrainerBase):
                     self.trainer.fit(model)
                     ckpt_path = "best"
                     self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
-            logging.info("OFA completed depth steps.")
+            msglogger.info("OFA completed depth steps.")
 
     def train_elastic_kernel(self, model, ofa_model):
         """
@@ -488,7 +488,7 @@ class OFANasTrainer(NASTrainerBase):
                     self.trainer.fit(model)
                     ckpt_path = "best"
                     self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
-            logging.info("OFA completed kernel matrices.")
+            msglogger.info("OFA completed kernel matrices.")
 
     def train_elastic_dilation(self, model, ofa_model):
         """
@@ -511,7 +511,7 @@ class OFANasTrainer(NASTrainerBase):
                     self.trainer.fit(model)
                     ckpt_path = "best"
                     self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
-            logging.info("OFA completed dilation matrices.")
+            msglogger.info("OFA completed dilation matrices.")
 
     def train_elastic_grouping(self, model, ofa_model):
         """
@@ -827,7 +827,7 @@ class OFANasTrainer(NASTrainerBase):
         :return: The metrics_csv is being returned.
         """
         self.rebuild_trainer(trainer_path)
-        logging.info(loginfo_output)
+        msglogger.info(loginfo_output)
         model.reset_validation_model()
 
         validation_results = self.trainer.validate(

@@ -1,8 +1,11 @@
 import json
+import logging
 import os
 
 import torch.nn as nn
 from pytorch_lightning import Callback
+
+logger = logging.getLogger(__name__)
 
 
 class TestDumperCallback(Callback):
@@ -10,7 +13,7 @@ class TestDumperCallback(Callback):
         self.output_dir = output_dir
 
     def on_test_start(self, pl_trainer, pl_model):
-        print("Activating layer dumping")
+        logger.info("Activating layer dumping")
 
         def dump_layers(model, output_dir):
             class DumpForwardHook:

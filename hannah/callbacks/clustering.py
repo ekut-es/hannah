@@ -1,4 +1,4 @@
-from asyncio.log import logger
+import logging
 
 import numpy as np
 import torch
@@ -8,6 +8,8 @@ from scipy.sparse import csr_matrix
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 from ..models.factory.qat import Conv1d, ConvBn1d, ConvBnReLU1d, ConvReLU1d
+
+logger = logging.getLogger(__name__)
 
 
 def clustering(params, inertia, cluster):
@@ -103,7 +105,7 @@ class kMeans(Callback):
                     replace_values_by_centers
                 )  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                 module.to(device=device)  # move from cpu to gpu
-        print("Clustering error: ", inertia)
+        logger.critical("Clustering error: %f", float(inertia))
 
     def on_epoch_end(self, trainer, pl_module):
         inertia = 0
@@ -131,4 +133,4 @@ class kMeans(Callback):
                 )
                 module.weight.data = clustered_data
                 module.to(device=device)
-        logger.info("Clustering error: %s", inertia)  # summed over all layers
+        logger.info("Clustering error: %f", float(inertia))  # summed over all layers
