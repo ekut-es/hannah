@@ -54,11 +54,8 @@ class DSCNNSpeechModel(nn.Module):
 
         current_shape = x.shape
 
-        print("x:", x.shape)
-
         count = 1
         while "conv{}_size".format(count) in config:
-            print("generating conv{}".format(count))
             conv_size = config["conv{}_size".format(count)]
             conv_stride = (1,) * len(conv_size)
 
@@ -81,7 +78,6 @@ class DSCNNSpeechModel(nn.Module):
             self.convs.append(conv)
             x = conv(x)
             current_shape = x.shape
-            print("x:", x.shape)
 
             batch_norm = nn.BatchNorm2d(n_maps)
             self.convs.append(batch_norm)
@@ -93,7 +89,6 @@ class DSCNNSpeechModel(nn.Module):
 
         count = 1
         while "ds_conv{}_size".format(count) in config:
-            print("generating ds_conv{}".format(count))
             conv_size = config["ds_conv{}_size".format(count)]
             conv_stride = config["ds_conv{}_stride".format(count)]
 
@@ -103,48 +98,31 @@ class DSCNNSpeechModel(nn.Module):
 
             self.ds_convs.append(conv)
             x = conv(x)
-            print("x:", x.shape)
 
             count += 1
 
-        print("x:", x.shape)
-
         self.avg_pool = nn.AvgPool2d((x.size(2), x.size(3)), stride=0)
         x = self.avg_pool(x)
-        print("x:", x.shape)
 
         x = x.view(x.size(0), -1)
 
         self.output = nn.Linear(x.shape[1], n_labels)
         x = self.output(x)
 
-        print("x:", x.shape)
-
     def forward(self, x):
         layer = 0
         x = x.unsqueeze(1)
 
-        # print("x:", x.shape)
-
         for conv in self.convs:
-            # print("layer:", layer)
             layer += 1
             x = conv(x)
-
-            # print("x:", x.shape)
 
         for conv in self.ds_convs:
-            # print("layer:", layer)
             layer += 1
             x = conv(x)
 
-            # print("x:", x.shape)
-
-        # print("layer:", layer)
         layer += 1
-        # print("x:", x.shape)
         x = self.avg_pool(x)
-        # print("x:", x.shape)
         x = x.view(x.size(0), -1)
         x = self.output(x)
 
@@ -189,10 +167,7 @@ class DNNSpeechModel(nn.Module):
 
         sum = 0
         for param in self.parameters():
-            print(param.size())
             sum += param.view(-1).size(0)
-
-        print("total_paramters:", sum)
 
     def forward(self, x):
         x = x.view(x.size(0), -1)

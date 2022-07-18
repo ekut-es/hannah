@@ -1,3 +1,4 @@
+import logging
 import os
 
 import numpy as np
@@ -5,6 +6,8 @@ import torchaudio
 from torchvision.datasets.utils import list_dir, list_files
 
 from ..utils import list_all_files
+
+logger = logging.getLogger(__name__)
 
 
 class Downsample:
@@ -43,7 +46,7 @@ class Downsample:
 
         samplerate = config["downsample"]
         if samplerate > 0:
-            print("downsample data begins")
+            logger.info("downsample data begins")
             config["downsample"] = 0
             downsample_folder = ["train", "dev", "test"]
             torchaudio.set_audio_backend("sox_io")

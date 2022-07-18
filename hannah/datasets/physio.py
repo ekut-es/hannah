@@ -1,5 +1,6 @@
 import csv
 import hashlib
+import logging
 import os
 import pickle
 from collections import defaultdict
@@ -10,6 +11,8 @@ import wfdb
 
 from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
+
+logger = logging.getLogger(__name__)
 
 
 class PhysioDataset(AbstractDataset):
@@ -145,13 +148,13 @@ class PhysioCincDataset(PhysioDataset):
 
     @classmethod
     def prepare_files(cls, config):
-        print("Preparing files...")
+        logger.info("Preparing files...")
         files_list = list()
         data_folder = config["data_folder"]
         raw_folder = os.path.join(data_folder, "cinc_2017", "training2017")
         output_folder = os.path.join(data_folder, "cinc_2017_prepared")
         if os.path.isdir(output_folder):
-            print("Preparation folder already exists, skipping...")
+            logger.info("Preparation folder already exists, skipping...")
             return
         os.makedirs(output_folder)
 
@@ -327,13 +330,13 @@ class AtrialFibrillationDataset(PhysioDataset):
 
     @classmethod
     def prepare_files(cls, config):
-        print("Preparing files...")
+        logger.info("Preparing files...")
         files_list = list()
         data_folder = config["data_folder"]
         raw_folder = os.path.join(data_folder, "atrial_fibrillation", "files")
         output_folder = os.path.join(data_folder, "atrial_fibrillation_prepared")
         if os.path.isdir(output_folder):
-            print("Preparation folder already exists, skipping...")
+            logger.info("Preparation folder already exists, skipping...")
             return
         os.makedirs(output_folder)
         for label in cls.get_label_mapping().keys():
