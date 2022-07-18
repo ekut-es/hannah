@@ -244,11 +244,15 @@ def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustmen
     if not hasattr(module, 'last_grouping_param'):
         raise RuntimeError
 
+    in_channels = kernel.size(1)
+
     is_adjusted = False
+
+    #FIXME: only use for inplace adjustment, or try to get completely rid of inplace adjustment
     grouping_changed = groups != module.last_grouping_param
     logging.debug(f"Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
     if grouping_changed and groups > 1:
-        weight_adjustment_needed = is_weight_adjusting_needed(kernel, module.in_channels, groups)
+        weight_adjustment_needed = is_weight_adjusting_needed(kernel, in_channels, groups)
         if weight_adjustment_needed:
             is_adjusted = True
             logging.debug(f"NOW Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
@@ -256,7 +260,7 @@ def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustmen
             if in_place_adjustment:
                 module.weight = nn.Parameter(kernel)
         else:
-            target = get_target_weight(kernel, module.in_channels, groups)
+            target = get_target_weight(kernel, in_channels, groups)
             if hasattr(module, 'id'):
                 logging.debug(f"ID: {module.id}")
             logging.debug(f"XKA ModuleName={module.__class__}  g={groups} ic={module.in_channels}, oc={module.out_channels}")
