@@ -16,4 +16,5 @@ elastic_dilation_allowed: False
 evaluate: True
 random_evaluate: False
 random_eval_number: 100
+extract_model_config: True
 warmup_model_path: ""
