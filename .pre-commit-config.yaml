@@ -34,7 +34,7 @@ repos:
         - id: licenseheaders
           args: ["-t", ".copyright.tmpl", "-n", "hannah", "-u", "https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah", "-o", "University of Tübingen", "-cy", "-f"]
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 22.6.0
     hooks:
     -   id: black
   - repo: https://github.com/pycqa/isort
