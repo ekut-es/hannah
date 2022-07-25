@@ -13,8 +13,8 @@ class Add:
 
 @add_shape_func("Add")
 def add_shape(op: OpType):
-    input = op.input.output_tensor()
-    other = op.other.output_tensor()
+    input = op.operands[0].output_tensor()
+    other = op.operands[1].output_tensor()
 
     assert input.dim == other.dim
     ax = []
