@@ -12,6 +12,13 @@ def find_first_op_in_dfg(node):
         return node
 
 
+def remove_old_users(node):
+    if hasattr(node, 'output'):
+        return find_first_op_in_dfg(node.output)
+    else:
+        return node
+
+
 def find_leaf_nodes(node, leafs, visited):
     for o in node.operands:
         if o not in visited:
