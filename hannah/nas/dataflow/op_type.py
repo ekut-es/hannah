@@ -38,6 +38,7 @@ class OpType(TensorExpression):
         while leafs:
             leaf = leafs.pop(-1)
             leaf.set_scope(current_scope, counters, visited)
+            visited.append(leaf)
 
     def output_tensor(self):
         tensortype = reg.shape(self.name)(self)
