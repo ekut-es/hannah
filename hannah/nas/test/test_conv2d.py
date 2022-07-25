@@ -10,17 +10,17 @@ from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarPara
 def conv2d(input, channel, kernel_size=DefaultInt(1), stride=DefaultInt(1), dilation=DefaultInt(1)):
     weight = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
     padding = kernel_size // 2
-    return op("Conv2d", input, weight, kernel_size=kernel_size, dilation=dilation, stride=stride, padding=padding)
+    return op("Conv2d", input, weight, dilation=dilation, stride=stride, padding=padding)
 
 
 @dataflow
 def chained_convs(input, channel, kernel_size=DefaultInt(1), stride=DefaultInt(1), dilation=DefaultInt(1)):
     padding = kernel_size // 2
     weight1 = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
-    conv1 = op("Conv2d", input, weight1, kernel_size=kernel_size, dilation=dilation, stride=stride, padding=padding)
+    conv1 = op("Conv2d", input, weight1, dilation=dilation, stride=stride, padding=padding)
 
     weight2 = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
-    conv2 = op("Conv2d", conv1, weight2, kernel_size=kernel_size, dilation=dilation, stride=stride, padding=padding)
+    conv2 = op("Conv2d", conv1, weight2, dilation=dilation, stride=stride, padding=padding)
 
     return conv2
 
