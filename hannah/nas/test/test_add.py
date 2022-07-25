@@ -26,15 +26,15 @@ def parallel_convs(input):
     stride = CategoricalParameter([1, 2])
     dilation = DefaultInt(1)
 
-    input = input.output_tensor()
+    input_tensor = input.output_tensor()
 
-    weight1 = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
-    conv1 = op("Conv2d", input, weight1, kernel_size=kernel_size, dilation=dilation, stride=stride)
+    weight1 = weight_tensor(shape=(channel, input_tensor['c'], kernel_size, kernel_size), name='weight')
+    conv1 = op("Conv2d", input, weight1, dilation=dilation, stride=stride)
 
-    weight2 = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
-    conv2 = op("Conv2d", input, weight2, kernel_size=kernel_size, dilation=dilation, stride=stride)
+    weight2 = weight_tensor(shape=(channel, input_tensor['c'], kernel_size, kernel_size), name='weight')
+    conv2 = op("Conv2d", input, weight2, dilation=dilation, stride=stride)
 
-    add_op = add_op = op('Add', conv1, conv2)
+    add_op = op('Add', conv1, conv2)
 
     return add_op
 
@@ -43,7 +43,7 @@ def test_parallel_convs():
     input_tensor = tensor_by_tuples((1, 3, 16, 16), ('n', 'c', 'h', 'w'), name='input')
     convs = parallel_convs(input_tensor)
 
-    convs['parallel_convs.0.Conv2d.0'].stride.set_current(2)
+    # convs['parallel_convs.0.Conv2d.0'].stride.set_current(2)
 
     returned_tensor = convs.output.output_tensor()
 
@@ -53,6 +53,6 @@ def test_parallel_convs():
 
 
 if __name__ == '__main__':
-    # test_add()
+    test_add()
     test_parallel_convs()
     print()
