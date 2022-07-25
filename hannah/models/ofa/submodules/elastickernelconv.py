@@ -87,6 +87,9 @@ class ElasticConv1d(ElasticBase1d):
         grouping = self.get_group_size()
 
         padding = conv1d_get_padding(kernel_size, dilation)
+
+        self.in_channels = kernel.size(1)
+        self.out_channels = kernel.size(0)
         new_conv = nn.Conv1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
@@ -189,6 +192,8 @@ class ElasticConvReLu1d(ElasticBase1d):
 
         # if(grouping > 1):
         #     kernel = adjust_weights_for_grouping(kernel, grouping)
+        self.in_channels = kernel.size(1)
+        self.out_channels = kernel.size(0)
 
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvRelu1d(
@@ -266,6 +271,10 @@ class ElasticConvBn1d(ElasticConv1d):
         grouping = self.get_group_size()
 
         padding = conv1d_get_padding(kernel_size, dilation)
+
+        self.in_channels = kernel.size(1)
+        self.out_channels = kernel.size(0)
+
         new_conv = ConvBn1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
@@ -345,6 +354,9 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         # if(grouping > 1):
         #     kernel = adjust_weights_for_grouping(kernel, grouping)
 
+        self.in_channels = kernel.size(1)
+        self.out_channels = kernel.size(0)
+
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBnReLu1d(
             in_channels=self.in_channels,
@@ -416,7 +428,8 @@ class ConvRelu1d(nn.Conv1d):
         full_kernel.copy_(self.weight)
         # if(self.groups > 1):
         #     self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
-        adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
+        # TODO MR ist das so nötig ?
+        #adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
 
         tensor = self.relu(super(ConvRelu1d, self).forward(input))
         self.weight = nn.Parameter(full_kernel)
@@ -459,7 +472,8 @@ class ConvBn1d(nn.Conv1d):
         full_kernel.copy_(self.weight)
         # if(self.groups > 1):
         #     self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
-        adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
+        # TODO MR ist das so nötig ?
+        #adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
 
         tensor = self.bn(super(ConvBn1d, self).forward(input))
         self.weight = nn.Parameter(full_kernel)
@@ -499,11 +513,12 @@ class ConvBnReLu1d(ConvBn1d):
             return self.relu(super(ConvBnReLu1d, self).forward(input))
 
         logging.debug(f"Groups in forward: {self.groups}")
+        # TODO MR ist das so nötig ?
         full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
         full_kernel.copy_(self.weight)
         # if(self.groups > 1):
         #     self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
-        adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
+        #adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
 
         tensor = self.relu(super(ConvBnReLu1d, self).forward(input))
         self.weight = nn.Parameter(full_kernel)
