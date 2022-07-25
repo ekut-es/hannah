@@ -104,7 +104,7 @@ class IntScalarParameter(Parameter):
             )
         elif value > self.max or value < self.min:
             raise ValueError(
-                "Value {} must be in range [{}, {}], ".format(value, self.min, self.max)
+                "Value {} is not in range [{}, {}], ".format(value, self.min, self.max)
             )
 
     def set_current(self, value):
@@ -186,6 +186,9 @@ class CategoricalParameter(Parameter):
     def set_current(self, value):
         self.check(value)
         self.current_value = value
+
+    def __iter__(self):
+        yield from iter(self.choices)
 
 
 class SubsetParameter(Parameter):
