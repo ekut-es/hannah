@@ -2,7 +2,7 @@ from ..hardware_description.memory_type import MemoryType
 from .quantization_type import QuantizationType
 from .data_type import DataType
 from .axis_type import AxisType
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 
 class TensorType:
@@ -22,6 +22,7 @@ class TensorType:
         self.memory = memory
         self.name = name
         self.id = name
+        self.parameters = {}
 
     def dim(self) -> int:
         return len(self.axis)
@@ -29,15 +30,12 @@ class TensorType:
     def shape(self) -> Tuple[int, ...]:
         return tuple((ax.size for ax in self.axis.values))
 
+    # def register_parameters(self):
+    #     for
+
     def __repr__(self) -> str:
         # return 'Tensor(name=' + self.name + ", axis=(" + ' '.join(['{}, '.format(a) for a in self.axis.keys()]) + '))'
         return "TensorType({})".format(self.name)
 
 
-class TensorTuple:
-    def __init__(self, types : List[TensorType], name: str = ""):
-        self.types = types
-        self.name = name
-
-
-OutputType = Union[TensorType, TensorTuple]
+# OutputType = Union[TensorType, TensorTuple]
