@@ -12,6 +12,7 @@ class DataFlowGraph(TensorExpression):
         super().__init__(*operands, tensor_type=None, name=name)
         self.inputs = []
         self.output = output
+        # reset_user(self)
         self.link_users()
         self._scopes = {}
         reset_scope_ids(self)
@@ -31,8 +32,9 @@ class DataFlowGraph(TensorExpression):
                 node which uses the operand
             """
             if operand in node.operands:
-                last_output = find_first_op_in_dfg(operand)
-                last_output.users.remove(node)
+                last_output = find_first_op_in_dfg(operand)  # operand.output if hasattr(operand, 'output') else operand
+                if node in last_output.users:
+                    last_output.users.remove(node)
 
                 self.enter = node
             elif isinstance(node, DataFlowGraph):
@@ -42,8 +44,13 @@ class DataFlowGraph(TensorExpression):
                     _rewire_to_placeholder(operand, o)
 
         for operand in self.operands:
-            operand.users.append(self)
             _rewire_to_placeholder(operand, self.output)
+
+            # remove users if it is enclosed in 'self'
+            for user in operand.users:
+                if hasattr(self, 'enter') and user == self.enter:
+                    operand.users.remove(user)
+            operand.users.append(self)
 
         self.output.users.append(self)
 
@@ -64,6 +71,7 @@ class DataFlowGraph(TensorExpression):
             while leafs:
                 leaf = leafs.pop(-1)
                 leaf.set_scope(current_scope, counters, visited)
+                visited.append(leaf)
 
             for u in node.users:
                 if u not in visited:
@@ -89,6 +97,8 @@ class DataFlowGraph(TensorExpression):
             while leafs:
                 leaf = leafs.pop(-1)
                 leaf.set_scope(current_scope, counters, visited)
+                visited.append(leaf)
+
                 # self._scopes[scope_id] = leaf
 
             for u in node.users:
@@ -141,57 +151,6 @@ def dataflow(func):
         return dfg
 
     return wrapper_func
-
-
-# FIXME: I'd rather have these methods in a different place but
-# one has to be careful to avoid circular imports. This works for now.
-# def get_id_and_update_counters(current_scope, counters):
-#     if len(current_scope) > 1:
-#         scope = '.'.join([current_scope[-2].id, current_scope[-1].name])
-#     else:
-#         scope = current_scope[-1].name
-#     if scope not in counters:
-#         counters[scope] = 0
-#     else:
-#         counters[scope] += 1
-
-#     return '{}.{}'.format(scope, counters[scope])
-
-
-# def update_scope(node, current_scope):
-#     return current_scope + [node]
-#     # to_remove = []
-#     # for scope in current_scope:
-#     #     if isinstance(scope, Tensor):
-#     #         # Tensors are always leaf-nodes and can therefore always be removed from scope
-#     #         to_remove.append(scope)
-#     #     elif isinstance(scope, OpType) and node in scope.users:
-#     #         # if the scope-lvl is an OpType and `node` is a user of scope-node
-#     #         # this means that `node`-op directly follows `scope`-op. As we don't have
-#     #         # nested OpTypes, the `scope`-lvl can be removed
-#     #         to_remove.append(scope)
-#     #     # elif isinstance(scope, (OpType, DataFlowGraph)) and scope not in collect_users(node):
-#     #     elif isinstance(scope, OpType) and scope not in collect_users(node):
-#     #         # `scope` does not show up in the users of the branch of
-#     #         # `node` (see collect_users()). This means that it is most likely
-#     #         # a parallel branch and the scope can be deleted.
-#     #         to_remove.append(scope)
-#     #     elif isinstance(scope, DataFlowGraph) and isinstance(node, DataFlowGraph) and scope not in collect_users(node):
-#     #         to_remove.append(scope)
-#     #     elif isinstance(scope, DataFlowGraph) and scope in node.operands:
-#     #         to_remove.append(scope)
-
-#     # new_scope = []
-#     # for s in current_scope:
-#     #     if s not in to_remove:
-#     #         new_scope.append(s)
-#     #     else:
-#     #         # if a scope is removed, all lower-hierarchy scopes
-#     #         # are removed too because we assume strictly nested scopes
-#     #         # i.e. not overlapping
-#     #         break
-#     # new_scope.append(node)
-#     # return new_scope
 
 
 def flatten(graph):
