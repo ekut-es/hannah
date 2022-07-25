@@ -53,8 +53,8 @@ def _create_op(cls, *operands, **attributes):
     optype = OpType(*operands, **full_attributes, name=str(cls.__name__))
 
     # retrospectively set operands as fields with keyword name
-    for operand, operand_name in zip(operands, cls.operands):
-        setattr(optype, operand_name, operand)
+    # for operand, operand_name in zip(operands, cls.operands):
+    #     setattr(optype, operand_name, operand)
 
     return optype
 
