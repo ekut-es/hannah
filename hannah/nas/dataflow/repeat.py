@@ -1,5 +1,5 @@
 from typing import Any
-from hannah.nas.dataflow.dataflow_graph import DataFlowGraph
+from hannah.nas.dataflow.dataflow_graph import DataFlowGraph, delete_users
 
 
 class Repeater:
@@ -13,9 +13,15 @@ class Repeater:
 
     def __call__(self, input) -> Any:
         out = self.block(input)
+        operands = out.operands
+        output = out.output
+        name = out.name
+
+        delete_users(out)
+        del out
 
         # create Repeat (i.e. child) instance from DataFlowGraph instance
-        out = Repeat(*out.operands, output=out.output, num_repeats=self.num_repeats, name=out.name)
+        out = Repeat(*operands, output=output, num_repeats=self.num_repeats, name=name)
         return out
 
 
@@ -26,6 +32,9 @@ class Repeat(DataFlowGraph):
 
     def dfg_line_representation(self, indent, input_names):
         return '\t'*indent + self.id + " (repeats: {})".format(self.num_repeats) + ':'
+
+    def __repr__(self) -> str:
+        return "DataFlowGraph(id={}) - repeats: ({})".format(self.id, self.num_repeats)
 
 
 def repeat(block, num_repeats=1):
