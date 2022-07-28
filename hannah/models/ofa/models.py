@@ -684,9 +684,10 @@ class OFAModel(nn.Module):
                     self.sampling_max_grouping_step + 1,
                     conv.get_available_grouping_steps() - 1,  # zero index array
                 )
-                # new_grouping_step = self.get_random_step(max_available_sampling_step)
-                conv.pick_group_index(sampling_step)
-                state["grouping_steps"].append(sampling_step)
+                # TODO BECAREFUL TO TEST
+                new_grouping_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_group_index(new_grouping_step)
+                state["grouping_steps"].append(new_grouping_step)
 
         if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
@@ -723,16 +724,22 @@ class OFAModel(nn.Module):
 
     # return max available step values
     def get_max_submodel_steps(self):
+        # FIXME das kann nicht für alle stimmen, dass alle convs an den kernel step appended werden
         max_depth_step = self.sampling_max_depth_step
         kernel_steps = []
         width_steps = []
         dilation_steps = []
+        grouping_steps = []
 
         for conv in self.elastic_kernel_convs:
             kernel_steps.append(conv.get_available_kernel_steps())
 
         for conv in self.elastic_kernel_convs:
             kernel_steps.append(conv.get_available_dilation_steps())
+
+        # for grouping
+        for conv in self.elastic_kernel_convs:
+            grouping_steps.append(conv.get_available_grouping_steps)
 
         for helper in self.elastic_channel_helpers:
             width_steps.append(helper.get_available_width_steps())
@@ -742,6 +749,7 @@ class OFAModel(nn.Module):
             "kernel_steps": kernel_steps,
             "width_steps": width_steps,
             "dilation_steps": dilation_steps,
+            "grouping_steps": grouping_steps,
         }
         return state
 
@@ -765,6 +773,7 @@ class OFAModel(nn.Module):
             kernel_steps = state["kernel_steps"]
             width_steps = state["width_steps"]
             dilation_steps = state["dilation_steps"]
+            grouping_steps = state["grouping_steps"]
         except KeyError:
             logging.error(
                 "Invalid state dict passed to get_submodel! Keys should be 'depth_step', 'kernel_steps', 'width_steps'!"
@@ -774,6 +783,11 @@ class OFAModel(nn.Module):
         if len(kernel_steps) != len(self.elastic_kernel_convs):
             print(
                 f"State dict provides invalid amount of kernel steps: model has {len(self.elastic_kernel_convs)}, {len(kernel_steps)} provided."
+            )
+            return False
+        if len(grouping_steps) != len(self.elastic_kernel_convs):
+            print(
+                f"State dict provides invalid amount of grouping steps: model has {len(self.elastic_kernel_convs)}, {len(grouping_steps)} provided."
             )
             return False
         if len(width_steps) != len(self.elastic_channel_helpers):
@@ -793,6 +807,9 @@ class OFAModel(nn.Module):
             self.elastic_kernel_convs[i].pick_kernel_index(kernel_steps[i])
         for i in range(len(dilation_steps)):
             self.elastic_kernel_convs[i].pick_dilation_index(dilation_steps[i])
+        # grouping
+        for i in range(len(grouping_steps)):
+            self.elastic_kernel_convs[i].pick_group_index(grouping_steps[i])
         for i in range(len(width_steps)):
             self.elastic_channel_helpers[i].set_channel_step(width_steps[i])
 
@@ -1037,6 +1054,7 @@ class OFAModel(nn.Module):
         self.reset_all_widths()
         self.reset_all_kernel_sizes()
         self.reset_all_dilation_sizes()
+        self.reset_all_group_sizes()
         self.reset_active_depth()
 
 

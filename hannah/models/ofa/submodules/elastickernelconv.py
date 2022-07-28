@@ -422,20 +422,20 @@ class ConvRelu1d(nn.Conv1d):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if(self.groups == 1):
-            return self.relu(super(ConvRelu1d, self).forward(input))
+        # if(self.groups == 1):
+        return self.relu(super(ConvRelu1d, self).forward(input))
 
-        logging.debug(f"Groups in forward: {self.groups}")
-        full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
-        full_kernel.copy_(self.weight)
+        # logging.debug(f"Groups in forward: {self.groups}")
+        # full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
+        # full_kernel.copy_(self.weight)
         # if(self.groups > 1):
         #     self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
         # TODO MR ist das so nötig ?
-        #adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
+        # adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
 
-        tensor = self.relu(super(ConvRelu1d, self).forward(input))
-        self.weight = nn.Parameter(full_kernel)
-        return tensor
+        # tensor = self.relu(super(ConvRelu1d, self).forward(input))
+        # self.weight = nn.Parameter(full_kernel)
+        # return tensor
 
 
 class ConvBn1d(nn.Conv1d):
@@ -466,20 +466,20 @@ class ConvBn1d(nn.Conv1d):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if(self.groups == 1):
-            return self.bn(super(ConvBn1d, self).forward(input))
+        # if(self.groups == 1):
+        return self.bn(super(ConvBn1d, self).forward(input))
 
-        logging.debug(f"Groups in forward: {self.groups}")
-        full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
-        full_kernel.copy_(self.weight)
+        # logging.debug(f"Groups in forward: {self.groups}")
+        # full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
+        # full_kernel.copy_(self.weight)
         # if(self.groups > 1):
         #     self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
         # TODO MR ist das so nötig ?
-        #adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
+        # adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
 
-        tensor = self.bn(super(ConvBn1d, self).forward(input))
-        self.weight = nn.Parameter(full_kernel)
-        return tensor
+        # tensor = self.bn(super(ConvBn1d, self).forward(input))
+        # self.weight = nn.Parameter(full_kernel)
+        # return tensor
 
 
 class ConvBnReLu1d(ConvBn1d):
@@ -511,17 +511,17 @@ class ConvBnReLu1d(ConvBn1d):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if(self.groups == 1):
-            return self.relu(super(ConvBnReLu1d, self).forward(input))
+        # if(self.groups == 1):
+        return self.relu(super(ConvBnReLu1d, self).forward(input))
 
-        logging.debug(f"Groups in forward: {self.groups}")
+        # logging.debug(f"Groups in forward: {self.groups}")
         # TODO MR ist das so nötig ?
-        full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
-        full_kernel.copy_(self.weight)
+        # full_kernel = torch.ones(self.weight.shape, device=self.weight.device)
+        # full_kernel.copy_(self.weight)
         # if(self.groups > 1):
         #     self.weight = nn.Parameter(adjust_weights_for_grouping(self.weight, self.groups))
-        #adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
+        # adjust_weight_if_needed(module=self, kernel=self.weight, groups=self.groups, in_place_adjustment=True)
 
-        tensor = self.relu(super(ConvBnReLu1d, self).forward(input))
-        self.weight = nn.Parameter(full_kernel)
-        return tensor
+        # tensor = self.relu(super(ConvBnReLu1d, self).forward(input))
+        # self.weight = nn.Parameter(full_kernel)
+        # return tensor
