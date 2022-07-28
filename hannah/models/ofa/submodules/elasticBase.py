@@ -450,8 +450,10 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         try:
             index = self.group_sizes.index(new_group_size)
             self.target_group_index = index
-            #   with torch.no_grad():
-            # self.groups = self.group_sizes[index]
+            # if hasattr(self, 'from_skipping') and self.from_skipping is True:
+            #     logging.warn(f"setting groupsizes from skipping is: {self.from_skipping}")
+            # else:
+            #     self.groups = self.group_sizes[index]
 
         except ValueError:
             logging.warn(

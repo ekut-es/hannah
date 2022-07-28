@@ -898,10 +898,12 @@ class OFANasTrainer(NASTrainerBase):
         prev_max_depth = model.sampling_max_depth_step
         prev_max_width = model.sampling_max_width_step
         prev_max_dilation = model.sampling_max_dilation_step
+        prev_max_grouping = model.sampling_max_grouping_step
         model.sampling_max_kernel_step = model.ofa_steps_kernel - 1
         model.sampling_max_dilation_step = model.ofa_steps_dilation - 1
         model.sampling_max_depth_step = model.ofa_steps_depth - 1
         model.sampling_max_width_step = model.ofa_steps_width - 1
+        model.sampling_max_grouping_step = model.ofa_steps_grouping - 1
         for i in range(random_eval_number):
             random_state = model.sample_subnetwork()
 
@@ -955,6 +957,7 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_dilation_step = prev_max_dilation
         model.sampling_max_depth_step = prev_max_depth
         model.sampling_max_width_step = prev_max_width
+        model.sampling_max_grouping_step = prev_max_grouping
 
     def rebuild_trainer(self, step_name: str, epochs: int = 1) -> Trainer:
         logger = TensorBoardLogger(".", version=step_name)
