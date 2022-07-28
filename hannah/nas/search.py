@@ -743,8 +743,6 @@ class OFANasTrainer(NASTrainerBase):
 
         return metrics_csv
 
-    ## TODO: check all calls
-    ## MR04 Fertig bis auf self.group_step_count
     def eval_elastic_grouping(
         self,
         method_stack,
@@ -773,12 +771,10 @@ class OFANasTrainer(NASTrainerBase):
         """
         model.reset_all_group_sizes()
         method = method_stack[method_index]
-        #TODO group step count oben anpassen
         for current_group_step in range(self.grouping_step_count):
             if current_group_step > 0:
                 # iteration 0 is the full model with no stepping
                 model.step_down_all_groups()
-                model.grouping_changed = True
 
             trainer_path_tmp = trainer_path + f"G {current_group_step}, "
             loginfo_output_tmp = loginfo_output + f"Group {current_group_step}, "
@@ -839,7 +835,6 @@ class OFANasTrainer(NASTrainerBase):
         results = validation_results[0]
         torch_params = model.get_validation_model_weight_count()
         metrics_csv += f"{results['val_accuracy']}, {results['total_macs']}, {results['total_weights']}, {torch_params}"
-        #metrics_csv += f"{results['val_accuracy']},  {torch_params}"
         metrics_csv += "\n"
         return metrics_csv
 
@@ -867,8 +862,6 @@ class OFANasTrainer(NASTrainerBase):
         if self.elastic_depth_allowed:
             eval_methods.append(self.eval_elatic_depth)
 
-        # TODO here eval anschauen was hier schief läuft
-        # self.elastic_grouping_allowed = False
         if self.elastic_grouping_allowed:
             eval_methods.append(self.eval_elastic_grouping)
 

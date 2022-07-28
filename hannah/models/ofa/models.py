@@ -256,8 +256,8 @@ def create_minor_block(
             key += "norm"
         if block_config.get("act", False):
             key += "act"
-        # if block_config.get("quant", False):
-        # MR 20220614 TODO reset this
+        # MR 20220728 if block_config.get("quant", False):
+        # TODO reset this
         # key += "quant"
         # parameter["qconfig"] = qconfig
         if key == "":
@@ -660,31 +660,8 @@ class OFAModel(nn.Module):
                 new_dilation_step = self.get_random_step(max_available_sampling_step)
                 conv.pick_dilation_index(new_dilation_step)
                 state["dilation_steps"].append(new_dilation_step)
-        # TODO hier reingrätschen 19052022 - ist das richtig implementiert ?
-        # TODO hier reingrätschen für randomized entry
-        # if self.elastic_grouping_allowed:
-        #     for conv in self.elastic_kernel_convs:
-        #         # pick an available grouping index for every elastic kernel conv, independently.
-        #         # TODO turn it to max
-        #         # max_available_sampling_step = min(
-        #         #     self.sampling_max_grouping_step + 1,
-        #         #     conv.get_available_grouping_steps(),
-        #         # )
-        #         # new_grouping_step = self.get_random_step(max_available_sampling_step)
-        #         # fix für warmup, auf alles
-        #         #
-        #         choice = conv.pick_random_group_index()
-        #         # conv.pick_group_index(new_grouping_step)
-        #         state["grouping_steps"].append(choice)
-
         if self.elastic_grouping_allowed:
             for conv in self.elastic_kernel_convs:
-                # pick an available grouping index for every elastic kernel conv, independently.
-                # TODO MR -> Fragen was hier gedacht wurde wie man das umsetzt ?
-                #max_available_sampling_step = max(
-                #    self.sampling_max_grouping_step,
-                #    conv.get_available_grouping_steps() - 1,  # zero index array
-                #)
                 max_available_sampling_step = min(
                     self.sampling_max_grouping_step + 1,
                     conv.get_available_grouping_steps(),  # zero index array

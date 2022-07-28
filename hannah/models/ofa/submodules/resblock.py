@@ -11,10 +11,6 @@ from .elasticchannelhelper import ElasticChannelHelper
 from .elastickernelconv import ElasticConvBnReLu1d
 from .elasticquantkernelconv import ElasticQuantConvBnReLu1d
 
-# MR 20220622
-# TODO vereinheitlichen
-
-
 class ResBlockBase(nn.Module):
     def __init__(
         self,
@@ -45,7 +41,6 @@ class ResBlockBase(nn.Module):
         try:
             x = self.blocks(x)
         except RuntimeError as r:
-            # MR TODO still necessary ?
             logging.warn(r)
             for _, actualModel in self.blocks._modules.items():
                 logging.info(f"XKA Module List: {actualModel}")
@@ -54,7 +49,6 @@ class ResBlockBase(nn.Module):
                 )
 
         # logging.debug(f"Shape input: {x.shape} , Shape residual: {residual.shape}")
-
         x += residual
         if self.do_act:
             x = self.act(x)

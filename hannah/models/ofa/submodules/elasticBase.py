@@ -96,20 +96,16 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.initial_in_channels : int = in_channels
         self.initial_out_channels : int = out_channels
 
-        #  MR01
         # sort available grouping sizes from largest to smallest (descending order)
         groups.sort(reverse=False)
         # make sure 0 is not set as grouping size. Must be at least 1
         if 0 in groups:
             groups.remove(0)
-        # TODO 2342 MR does this make sense ?
-        self.group_sizes: List[int] = groups
-        # self.group_sizes = self.getGrouping()
 
-        logging.info(f"adjusted grouping is now: {self.group_sizes}")
+        self.group_sizes: List[int] = groups
+
         self.max_group_size: int = self.group_sizes[-1]
         self.min_group_size: int = self.group_sizes[0]
-        ###
         self.target_group_index: int = 0
 
         # MR 20220622  TODO: still needed ?
@@ -394,7 +390,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         if (target_dilation_index < 0) or (
             target_dilation_index >= len(self.dilation_sizes)
         ):
-            ## MR-Optional
+            # MR-Optional Change (can be done in master)
             logging.warn(
                 f"selected dilation index {target_dilation_index} is out of range: 0 .. {len(self.dilation_sizes)}. Setting to last index."
             )
@@ -474,7 +470,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             )
             return False
 
-    # MR: not in use at the moment
+    # MR: not in use at the moment - but maybe later
     def getGrouping(self):
         """"
              Returns a possible Grouping using GCD
@@ -494,7 +490,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         return self.group_sizes
 
     # Wrapper Class
-    def adjust_weights_for_grouping(self, weights, input_divided_by=2):
+    def adjust_weights_for_grouping(self, weights, input_divided_by):
         return adjust_weights_for_grouping(weights, input_divided_by)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:

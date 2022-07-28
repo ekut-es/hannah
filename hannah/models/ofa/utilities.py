@@ -198,6 +198,7 @@ def make_parameter(t: torch.Tensor) -> nn.Parameter:
         return None
 
 
+# TODO not in usage, can be cleaned after evaluation
 def getGroups(max_group, with_max_group_member : bool = True, addOneForNoGrouping : bool = True, divide_by : int = 2):
     tmp = [x for x in range(max_group) if x % divide_by == 0 and x != 0]
     if with_max_group_member:
@@ -209,35 +210,35 @@ def getGroups(max_group, with_max_group_member : bool = True, addOneForNoGroupin
     return tmp
 
 
+# MR can be deleted if not needed anymore
 def gather_information(module):
+    """
+        Collects information about the module regarding kernel adjustment with grouping
+    """
     weight_adjustment_needed = is_weight_adjusting_needed(module.weight, module.in_channels, module.groups)
     target = get_target_weight(module.weight, module.in_channels, module.groups)
     if weight_adjustment_needed:
         if hasattr(module, 'id'):
             logging.debug(f"ID: {module.id}")
         logging.info(f"WARNING XKA_G ModuleName={module.__class__}  g={module.groups} ic={module.in_channels}, oc={module.out_channels}, last_g={module.last_grouping_param}")
-        logging.info(f"WARNING XKA_G Weight Change is needed though the weights were updated {list(module.weight.shape)} target:{target}")
+        logging.info(f"WARNING XKA_G Weight Change is needed  {list(module.weight.shape)} target:{target}")
 
 
-# MR TODO fit those two together
-def pre_hook_forward(module, input):
+def adjust_weight_if_needed(module, kernel=None, groups=None):
     """
-        This Hook is called before the forward will be executed.
-        TODO: maybe use that for normal conv evolution as well ?
-    """
-    gather_information(module)
-    adjust_weight_if_needed(module=module, kernel=module.weight, groups=module.groups, in_place_adjustment=True)
+    Adjust the weight if the adjustment is needded. This means, if the kernel does not have the size of
+    (out_channel, in_channel / group, kernel).
 
+    :param: kernel the kernel that should be checked and adjusted if needed. If None module.weight.data will be used
+    :param: grouping value of the conv, if None module.groups will be used
+    :param: module the conv
 
-def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustment: bool = False):
-    """
-    TODO doc schreiben
+    :throws: RuntimeError if there is no last_grouping_param for comporing current group value to past group value
 
-    :throws: RuntimeError
     returns (kernel, is adjusted) (adjusted if needed) otherwise throws a RuntimeError
     """
     if kernel is None:
-        kernel = module.weigth
+        kernel = module.weigth.data
     if groups is None:
         groups = module.groups
 
@@ -248,7 +249,6 @@ def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustmen
 
     is_adjusted = False
 
-    #FIXME: only use for inplace adjustment, or try to get completely rid of inplace adjustment
     grouping_changed = groups != module.last_grouping_param
     logging.debug(f"Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
     if grouping_changed and groups > 1:
@@ -257,8 +257,6 @@ def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustmen
             is_adjusted = True
             logging.debug(f"NOW Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
             kernel = adjust_weights_for_grouping(kernel, groups)
-            if in_place_adjustment:
-                module.weight = nn.Parameter(kernel)
         else:
             target = get_target_weight(kernel, in_channels, groups)
             if hasattr(module, 'id'):
@@ -267,10 +265,6 @@ def adjust_weight_if_needed(module, kernel=None, groups=None, in_place_adjustmen
             logging.debug(f"XKA Grouping changed BUT no weight change is needed - hurray! {list(kernel.shape)} target:{target}")
 
     return (kernel, is_adjusted)
-    # grouping_changed = groups != last_grouping_param
-    #     if(grouping_changed and groups > 1):
-    #         # kernel_a = adjust_weights_for_grouping(kernel, 2)
-    #         weights = adjust_weights_for_grouping(weigths, groups)
 
 
 def is_weight_adjusting_needed(weights, input_channels, groups):
@@ -282,7 +276,6 @@ def is_weight_adjusting_needed(weights, input_channels, groups):
         :param: input_channels - Input Channels of the Convolution Module
         :param: groups - Grouping Param of the Convolution Module
     """
-
     current_weight_dimension = weights.shape[1]
     target_weight_dimension = input_channels // groups
     return target_weight_dimension != current_weight_dimension
@@ -300,7 +293,7 @@ def get_target_weight(weights, input_channels, groups):
     return target_shape
 
 
-def adjust_weights_for_grouping(weights, input_divided_by=2):
+def adjust_weights_for_grouping(weights, input_divided_by):
     """
         Adjusts the Weights for the Forward of the Convulution
         Shape(outchannels, inchannels / group, kW)
@@ -321,31 +314,4 @@ def adjust_weights_for_grouping(weights, input_divided_by=2):
 
     full_kernel = torch.concat(result_weights)
 
-    # print(full_kernel.shape)
     return full_kernel
-
-
-# def restore_shape_weights(weights, input_was_divided_by=2):
-#     """
-#     """
-
-#     # if(not self.training):
-#     #     logging.info(f"Validation Step, Weight Shape is {weights.shape}")
-#     #     logging.info(f"New Weight Shape is {full_kernel.shape}")
-
-#     channels_per_group = weights.shape[1] * input_was_divided_by
-
-#     splitted_weights = torch.tensor_split(weights, input_was_divided_by)
-#     result_weights = []
-
-#     # for current_group in range(groups):
-#     for current_group, current_weight in enumerate(splitted_weights):
-#         input_start = current_group * channels_per_group
-#         input_end = input_start + channels_per_group
-#         current_result_weight = current_weight[:, input_start:input_end, :]
-#         result_weights.append(current_result_weight)
-
-#     full_kernel = torch.concat(result_weights)
-
-#     # print(full_kernel.shape)
-#     return full_kernel
