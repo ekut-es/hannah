@@ -801,6 +801,7 @@ class OFAModel(nn.Module):
             )
             return False
 
+        # FIXME channelhelper must be wrong for dilation step
         if len(dilation_steps) != len(self.elastic_channel_helpers):
             print(
                 f"State dict provides invalid amount of width steps: model has {len(self.elastic_channel_helpers)}, {len(dilation_steps)} provided."
