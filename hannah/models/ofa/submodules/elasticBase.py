@@ -91,6 +91,11 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.in_channels: int = in_channels
         self.out_channels: int = out_channels
 
+        # dynamic width changes the in and out_channels
+        # hence we save then here
+        self.initial_in_channels : int = in_channels
+        self.initial_out_channels : int = out_channels
+
         #  MR01
         # sort available grouping sizes from largest to smallest (descending order)
         groups.sort(reverse=False)
@@ -173,6 +178,23 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 self.dilation_transforms[k].append(new_transform_module)
         """
         self.update_padding()
+
+    def set_in_and_out_channel(self, kernel, filtered : bool = True):
+        """
+        this method uses the kernel for setting the input and outputchannel
+        if dynamic width is activated (channelfilters), the amount of channels is reduced,
+        hence we can't use the initial values (self.(in/out)_channel) of the constructor
+
+        This method sets the self.(in/out)_channel value to the right amount of channels
+        extracted from the kernel that will be used.
+
+        if filtered is False, the self.initial_(in/out)_channels will be used.
+
+        :param: kernel : the weights , size(1) for in channel, size(0) for out_channels
+        :param: filtered: use kernel size data for setting the (in/out) channels
+        """
+        self.in_channels = kernel.size(1) if filtered else self.initial_in_channels
+        self.out_channels = kernel.size(0) if filtered else self.initial_out_channels
 
     def set_kernel_size(self, new_kernel_size):
         """

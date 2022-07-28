@@ -88,8 +88,10 @@ class ElasticConv1d(ElasticBase1d):
 
         padding = conv1d_get_padding(kernel_size, dilation)
 
-        self.in_channels = kernel.size(1)
-        self.out_channels = kernel.size(0)
+        #self.in_channels = kernel.size(1)
+        #self.out_channels = kernel.size(0)
+        self.set_in_and_out_channel(kernel)
+
         new_conv = nn.Conv1d(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
@@ -192,8 +194,9 @@ class ElasticConvReLu1d(ElasticBase1d):
 
         # if(grouping > 1):
         #     kernel = adjust_weights_for_grouping(kernel, grouping)
-        self.in_channels = kernel.size(1)
-        self.out_channels = kernel.size(0)
+        #self.in_channels = kernel.size(1)
+        #self.out_channels = kernel.size(0)
+        self.set_in_and_out_channel(kernel)
 
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvRelu1d(
@@ -272,8 +275,9 @@ class ElasticConvBn1d(ElasticConv1d):
 
         padding = conv1d_get_padding(kernel_size, dilation)
 
-        self.in_channels = kernel.size(1)
-        self.out_channels = kernel.size(0)
+        # self.in_channels = kernel.size(1)
+        # self.out_channels = kernel.size(0)
+        self.set_in_and_out_channel(kernel)
 
         new_conv = ConvBn1d(
             in_channels=self.in_channels,
@@ -351,11 +355,9 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         dilation = self.get_dilation_size()
         grouping = self.get_group_size()
 
-        # if(grouping > 1):
-        #     kernel = adjust_weights_for_grouping(kernel, grouping)
-
-        self.in_channels = kernel.size(1)
-        self.out_channels = kernel.size(0)
+        #self.in_channels = kernel.size(1)
+        #self.out_channels = kernel.size(0)
+        self.set_in_and_out_channel(kernel)
 
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = ConvBnReLu1d(
