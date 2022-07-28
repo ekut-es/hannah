@@ -115,6 +115,8 @@ class ResBlock1d(ResBlockBase):
                     out_channel_sizes=flatten_module_list(self.blocks)[
                         -1
                     ].out_channel_sizes,
+                    # TODO to delete after ana
+                    from_skipping=True
                 ),
             )
         else:

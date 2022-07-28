@@ -327,6 +327,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         bias: bool = False,
         track_running_stats=False,
         out_channel_sizes=None,
+        from_skipping=False,
     ):
         ElasticConvBn1d.__init__(
             self,
@@ -344,6 +345,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         self.relu = ElasticPermissiveReLU()
         self.norm = True
         self.act = True
+        self.from_skipping = from_skipping
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.relu(super(ElasticConvBnReLu1d, self).forward(input))
@@ -378,8 +380,9 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
         else:
             logging.debug("id already present: {new_conv.id}")
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups, in_place_adjustment=False)
-        logging.info(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
+        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
+        logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}, fromSkipping={self.from_skipping}")
+
         new_conv.weight.data = kernel
         new_conv.bias = bias
 
