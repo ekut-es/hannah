@@ -382,8 +382,8 @@ class OFANasTrainer(NASTrainerBase):
         ofa_model.reset_shrinking()
         self.train_elastic_width(model, ofa_model)
         # MR 218912
-        self.train_elastic_grouping(model, ofa_model)
         ofa_model.reset_shrinking()
+        self.train_elastic_grouping(model, ofa_model)
 
         if self.evaluate:
             self.eval_model(model, ofa_model)
@@ -522,19 +522,19 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_grouping_allowed == True:
+        if self.elastic_grouping_allowed is True:
             # train elastic groups
-            for current_grouping_step in range(self.grouping_step_count):
-                if current_grouping_step == 0:
-                    # step 0 is the full model, and was processed during warm-up
-                    continue
+            for current_grouping_step in range(1, self.grouping_step_count):
                 # add a group step
                 ofa_model.progressive_shrinking_add_group()
-                self.rebuild_trainer(
-                    f"group_{current_grouping_step}", self.epochs_grouping_step
-                )
-                self.trainer.fit(model)
-            logging.info("OFA completed grouping matrices.")
+                if self.epochs_grouping_step > 0:
+                    self.rebuild_trainer(
+                        f"group_{current_grouping_step}", self.epochs_grouping_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
+            msglogger.info("OFA completed grouping matrices.")
 
     def eval_elastic_width(
         self,
