@@ -685,12 +685,12 @@ class OFAModel(nn.Module):
                 #    self.sampling_max_grouping_step,
                 #    conv.get_available_grouping_steps() - 1,  # zero index array
                 #)
-                sampling_step = min(
+                max_available_sampling_step = min(
                     self.sampling_max_grouping_step + 1,
-                    conv.get_available_grouping_steps() - 1,  # zero index array
+                    conv.get_available_grouping_steps(),  # zero index array
                 )
                 # TODO BECAREFUL TO TEST
-                new_grouping_step = self.get_random_step(sampling_step)
+                new_grouping_step = self.get_random_step(max_available_sampling_step)
                 conv.pick_group_index(new_grouping_step)
                 state["grouping_steps"].append(new_grouping_step)
 
