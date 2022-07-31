@@ -15,7 +15,6 @@ conv:
       - target: conv1d
         kernel_sizes: 3
         dilation_sizes: 1
-        grouping_sizes: 1
         act: false
         norm: true
         quant: false
@@ -51,10 +50,6 @@ conv:
             - 9
             - 3
             - 1
-        grouping_sizes:
-            - 1
-            - 2
-            - 4
         act: false
         norm: false
         quant: false
@@ -76,10 +71,6 @@ conv:
             - 9
             - 3
             - 1
-        grouping_sizes:
-            - 1
-            - 2
-            - 4
         act: true
         norm: true
         quant: false
@@ -97,10 +88,6 @@ conv:
             - 9
             - 3
             - 1
-        grouping_sizes:
-            - 1
-            - 2
-            - 4
         act: false
         norm: false
         quant: false
@@ -122,10 +109,6 @@ conv:
             - 9
             - 3
             - 1
-        grouping_sizes:
-            - 1
-            - 2
-            - 4
         act: true
         norm: true
         quant: false
@@ -143,10 +126,6 @@ conv:
             - 9
             - 3
             - 1
-        grouping_sizes:
-            - 1
-            - 2
-            - 4
         act: false
         norm: false
         quant: false
@@ -168,10 +147,6 @@ conv:
             - 9
             - 3
             - 1
-        grouping_sizes:
-            - 1
-            - 2
-            - 4
         act: true
         norm: true
         quant: false
@@ -189,10 +164,6 @@ conv:
             - 9
             - 3
             - 1
-        grouping_sizes:
-            - 1
-            - 2
-            - 4
         act: false
         norm: false
         quant: false

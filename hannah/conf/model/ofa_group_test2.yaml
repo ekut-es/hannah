@@ -53,8 +53,6 @@ conv:
             - 1
         grouping_sizes:
             - 1
-            - 2
-            - 4
         act: false
         norm: false
         quant: false
@@ -78,8 +76,6 @@ conv:
             - 1
         grouping_sizes:
             - 1
-            - 2
-            - 4
         act: true
         norm: true
         quant: false
@@ -99,8 +95,6 @@ conv:
             - 1
         grouping_sizes:
             - 1
-            - 2
-            - 4
         act: false
         norm: false
         quant: false
@@ -124,8 +118,6 @@ conv:
             - 1
         grouping_sizes:
             - 1
-            - 2
-            - 4
         act: true
         norm: true
         quant: false
@@ -145,8 +137,6 @@ conv:
             - 1
         grouping_sizes:
             - 1
-            - 2
-            - 4
         act: false
         norm: false
         quant: false
@@ -170,8 +160,6 @@ conv:
             - 1
         grouping_sizes:
             - 1
-            - 2
-            - 4
         act: true
         norm: true
         quant: false
@@ -191,8 +179,6 @@ conv:
             - 1
         grouping_sizes:
             - 1
-            - 2
-            - 4
         act: false
         norm: false
         quant: false
