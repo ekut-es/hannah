@@ -3,6 +3,7 @@ import logging
 from typing import List
 
 import torch
+import numpy as np
 import torch.nn as nn
 
 from ..utilities import (
@@ -10,6 +11,8 @@ from ..utilities import (
     filter_primary_module_weights,
     filter_single_dimensional_weights,
     sub_filter_start_end,
+    getGroups,
+    adjust_weights_for_grouping
 )
 
 
@@ -54,9 +57,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         out_channels: int,
         kernel_sizes: List[int],
         dilation_sizes: List[int],
+        groups: List[int],
         stride: int = 1,
         padding: int = 0,
-        groups: int = 1,
         bias: bool = False,
         padding_mode: str = "zeros",
         out_channel_sizes=None,
@@ -88,6 +91,30 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.in_channels: int = in_channels
         self.out_channels: int = out_channels
 
+        # dynamic width changes the in and out_channels
+        # hence we save then here
+        self.initial_in_channels : int = in_channels
+        self.initial_out_channels : int = out_channels
+
+        # sort available grouping sizes from largest to smallest (descending order)
+        groups.sort(reverse=False)
+        # make sure 0 is not set as grouping size. Must be at least 1
+        if 0 in groups:
+            groups.remove(0)
+
+        self.group_sizes: List[int] = groups
+
+        self.max_group_size: int = self.group_sizes[-1]
+        self.min_group_size: int = self.group_sizes[0]
+        self.target_group_index: int = 0
+
+        # MR 20220622  TODO: still needed ?
+        # store first grouping param
+        self.last_grouping_param = self.get_group_size()
+
+        # set the groups value in the model
+        self.groups = self.get_group_size()
+
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index],
             self.dilation_sizes[self.target_dilation_index],
@@ -101,7 +128,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             stride=stride,
             padding=self.padding,
             dilation=self.dilation_sizes[self.target_dilation_index],
-            groups=groups,
+            groups=self.group_sizes[self.target_group_index],
             bias=bias,
         )
 
@@ -147,6 +174,23 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 self.dilation_transforms[k].append(new_transform_module)
         """
         self.update_padding()
+
+    def set_in_and_out_channel(self, kernel, filtered : bool = True):
+        """
+        this method uses the kernel for setting the input and outputchannel
+        if dynamic width is activated (channelfilters), the amount of channels is reduced,
+        hence we can't use the initial values (self.(in/out)_channel) of the constructor
+
+        This method sets the self.(in/out)_channel value to the right amount of channels
+        extracted from the kernel that will be used.
+
+        if filtered is False, the self.initial_(in/out)_channels will be used.
+
+        :param: kernel : the weights , size(1) for in channel, size(0) for out_channels
+        :param: filtered: use kernel size data for setting the (in/out) channels
+        """
+        self.in_channels = kernel.size(1) if filtered else self.initial_in_channels
+        self.out_channels = kernel.size(0) if filtered else self.initial_out_channels
 
     def set_kernel_size(self, new_kernel_size):
         """
@@ -204,7 +248,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             return False
 
     def pick_kernel_index(self, target_kernel_index: int):
-        if (target_kernel_index < 0) or (target_kernel_index >= len(self.kernel_sizes)):
+        if (target_kernel_index < 0) or (
+            target_kernel_index >= len(self.kernel_sizes)):
             logging.warn(
                 f"selected kernel index {target_kernel_index} is out of range: 0 .. {len(self.kernel_sizes)}. Setting to last index."
             )
@@ -242,7 +287,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             kernel_center = current_kernel[:, :, start:end]
             # apply the kernel transformation to the next kernel. the n-th transformation
             # is applied to the n-th kernel, yielding the (n+1)-th kernel
-            next_kernel = self.kernel_transforms[current_kernel_index](kernel_center)
+            next_kernel = self.kernel_transforms[current_kernel_index](
+                kernel_center)
             # the kernel has now advanced through the available sizes by one
             current_kernel = next_kernel
             current_kernel_index += 1
@@ -344,8 +390,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         if (target_dilation_index < 0) or (
             target_dilation_index >= len(self.dilation_sizes)
         ):
+            # MR-Optional Change (can be done in master)
             logging.warn(
-                f"selected kernel index {target_dilation_index} is out of range: 0 .. {len(self.dilation_sizes)}. Setting to last index."
+                f"selected dilation index {target_dilation_index} is out of range: 0 .. {len(self.dilation_sizes)}. Setting to last index."
             )
             target_dilation_index = len(self.dilation_sizes) - 1
         self.set_dilation_size(self.dilation_sizes[target_dilation_index])
@@ -353,8 +400,98 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
     def get_available_dilation_steps(self):
         return len(self.dilation_sizes)
 
+    def get_available_grouping_steps(self):
+        return len(self.group_sizes)
+
     def get_dilation_size(self):
         return self.dilation_sizes[self.target_dilation_index]
+
+    def pick_group_index(self, target_group_index: int):
+        if (target_group_index < 0) or (
+            target_group_index >= len(self.group_sizes)
+        ):
+            logging.warn(
+                f"selected group index {target_group_index} is out of range: 0 .. {len(self.group_sizes)}. Setting to last index."
+            )
+            target_group_index = len(self.group_sizes) - 1
+        self.set_group_size(self.group_sizes[target_group_index])
+
+    def pick_random_group_index(self):
+        choice = np.random.choice(self.group_sizes, size=1)
+        self.set_group_size(choice[0])
+        return self.get_group_size()
+
+    # the initial group size is the first element of the list of available sizes
+    # resets the group size back to its initial size
+    def reset_group_size(self):
+        self.set_group_size(self.group_sizes[0])
+
+    def get_group_size(self):
+        return self.group_sizes[self.target_group_index]
+
+    def set_group_size(self, new_group_size):
+        if (
+            new_group_size < self.min_group_size
+            or new_group_size > self.max_group_size
+        ):
+            logging.warn(
+                f"requested elastic group size ({new_group_size}) outside of min/max range: ({self.max_group_size}, {self.min_group_size}). clamping."
+            )
+            if new_group_size < self.min_group_size:
+                new_group_size = self.min_group_size
+            else:
+                new_group_size = self.max_group_size
+
+        self.target_group_index = 0
+        try:
+            index = self.group_sizes.index(new_group_size)
+            self.target_group_index = index
+            # if hasattr(self, 'from_skipping') and self.from_skipping is True:
+            #     logging.warn(f"setting groupsizes from skipping is: {self.from_skipping}")
+            # else:
+            #     self.groups = self.group_sizes[index]
+
+        except ValueError:
+            logging.warn(
+                f"requested elastic group size {new_group_size} is not an available group size. Defaulting to full size ({self.max_group_size})"
+            )
+
+    # step current kernel size down by one index, if possible.
+    # return True if the size limit was not reached
+    def step_down_group_size(self):
+        next_group_index = self.target_group_index + 1
+        if next_group_index < len(self.group_sizes):
+            self.set_group_size(self.group_sizes[next_group_index])
+            # print(f"stepped down group size of a module! Index is now {self.target_group_index}")
+            return True
+        else:
+            logging.debug(
+                f"unable to step down group size, no available index after current: {self.target_group_index} with size: {self.group_sizes[self.target_group_index]}"
+            )
+            return False
+
+    # MR: not in use at the moment - but maybe later
+    def getGrouping(self):
+        """"
+             Returns a possible Grouping using GCD
+         """
+        gcd_input_output = np.gcd(self.in_channels, self.out_channels)
+        self.group_sizes = getGroups(gcd_input_output)
+        logging.info(
+            f"InputSize: {self.in_channels},  OutputSize: {self.out_channels}")
+        logging.info(f"GCD: {gcd_input_output}")
+        for group in self.group_sizes:
+            grouping_possible_input = self.in_channels % group == 0
+            grouping_possible_output = self.out_channels % group == 0
+            logging.info(
+                f"Grouping: {group}, Possible Grouping(I,O)? ({grouping_possible_input},{grouping_possible_output})")
+            if not (grouping_possible_output and grouping_possible_input):
+                self.group_sizes.remove(group)
+        return self.group_sizes
+
+    # Wrapper Class
+    def adjust_weights_for_grouping(self, weights, input_divided_by):
+        return adjust_weights_for_grouping(weights, input_divided_by)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         pass

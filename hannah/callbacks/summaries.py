@@ -7,6 +7,8 @@ from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.distributed import rank_zero_only
 from tabulate import tabulate
 
+from hannah.models.ofa.submodules.elasticBase import ElasticBase1d
+
 from ..models.factory import qat
 from ..models.ofa import OFAModel
 from ..models.ofa.submodules.elastickernelconv import ConvBn1d, ConvBnReLu1d, ConvRelu1d
@@ -113,7 +115,8 @@ def walk_model(model, dummy_input):
     def get_conv_attrs(module):
         attrs = "k=" + "(" + (", ").join(["%d" % v for v in module.kernel_size]) + ")"
         attrs += ", s=" + "(" + (", ").join(["%d" % v for v in module.stride]) + ")"
-        attrs += ", g=%d" % module.groups
+        attrs += ", g=(%d)" % module.groups
+        # attrs += ", g=" + "(" + ", ".join(["%d" % v for v in groups]) + ")"
         attrs += ", d=" + "(" + ", ".join(["%d" % v for v in module.dilation]) + ")"
         return attrs
 

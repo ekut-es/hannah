@@ -1,0 +1,198 @@
+_target_: hannah.models.ofa.models.create
+name: ofa
+skew_sampling_distribution: false
+min_depth: 3
+norm_before_act: true
+dropout: 0.5
+# to add elastic channel count following a module which is not elastic_conv1d
+# an "elastic_channel_helper" module with only a channel_count list may be added after
+# the maximum channel count of the elastic helper must match the out_channels of the previous module
+
+conv:
+  - target: forward
+    stride: 1
+    blocks:
+      - target: conv1d
+        kernel_sizes: 3
+        dilation_sizes: 1
+        grouping_sizes: 1
+        act: false
+        norm: true
+        quant: false
+        out_channels: 16
+  - target: residual1d
+    stride: 2
+    quant_skip: false
+    blocks:
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
+        grouping_sizes:
+            - 1
+            - 2
+        act: true
+        norm: true
+        quant: false
+        out_channels:
+          - 24
+          - 16
+          - 8
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
+        grouping_sizes:
+            - 1
+            - 2
+        act: false
+        norm: false
+        quant: false
+        out_channels:
+          - 24
+          - 16
+          - 8
+  - target: residual1d
+    stride: 2
+    quant_skip: false
+    blocks:
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
+        grouping_sizes:
+            - 1
+            - 2
+        act: true
+        norm: true
+        quant: false
+        out_channels:
+          - 32
+          - 24
+          - 16
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
+        grouping_sizes:
+            - 1
+            - 2
+        act: false
+        norm: false
+        quant: false
+        out_channels:
+          - 32
+          - 24
+          - 16
+  - target: residual1d
+    stride: 2
+    quant_skip: false
+    blocks:
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
+        grouping_sizes:
+            - 1
+            - 2
+        act: true
+        norm: true
+        quant: false
+        out_channels:
+          - 48
+          - 32
+          - 24
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
+        grouping_sizes:
+            - 1
+            - 2
+        act: false
+        norm: false
+        quant: false
+        out_channels:
+          - 48
+          - 32
+          - 24
+  - target: residual1d
+    stride: 2
+    quant_skip: false
+    blocks:
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
+        grouping_sizes:
+            - 1
+            - 2
+        act: true
+        norm: true
+        quant: false
+        out_channels:
+          - 64
+          - 48
+          - 32
+      - target: elastic_conv1d
+        kernel_sizes:
+          - 9
+          - 7
+          - 5
+          - 3
+        dilation_sizes:
+            - 9
+            - 3
+            - 1
+        grouping_sizes:
+            - 1
+            - 2
+        act: false
+        norm: false
+        quant: false
+        out_channels:
+          - 64
+          - 48
+          - 32

@@ -1,12 +1,15 @@
+import logging
+
 import torch.nn as nn
 
-# base construct of a residual block
 from ..utilities import flatten_module_list
+
+# base construct of a residual block
+from .elasticBase import ElasticBase1d
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticchannelhelper import ElasticChannelHelper
 from .elastickernelconv import ElasticConvBnReLu1d
 from .elasticquantkernelconv import ElasticQuantConvBnReLu1d
-
 
 class ResBlockBase(nn.Module):
     def __init__(
@@ -35,7 +38,17 @@ class ResBlockBase(nn.Module):
         # residual block implementation does not replace it with a skip or None
         if self.skip is not None:
             residual = self.skip(residual)
-        x = self.blocks(x)
+        try:
+            x = self.blocks(x)
+        except RuntimeError as r:
+            logging.warn(r)
+            for _, actualModel in self.blocks._modules.items():
+                logging.info(f"XKA Module List: {actualModel}")
+                logging.info(
+                    f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}"
+                )
+
+        # logging.debug(f"Shape input: {x.shape} , Shape residual: {residual.shape}")
         x += residual
         if self.do_act:
             x = self.act(x)
@@ -67,6 +80,17 @@ class ResBlock1d(ResBlockBase):
         # set the minor block sequence if specified in construction
         # if minor_blocks is not None:
         self.blocks = minor_blocks
+
+        # MR 20220622
+        # TODO vereinheitlichen - still necessary ?
+        for _, block in minor_blocks._modules.items():
+            for _, actualModel in block._modules.items():
+                logging.info(f"XKA Module List: {actualModel}")
+                if isinstance(actualModel, ElasticBase1d):
+                    logging.info(
+                        f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}"
+                    )
+        self.norm = ElasticWidthBatchnorm1d(out_channels)
         self.act = nn.ReLU()
         self.qconfig = qconfig
         self.quant_skip = quant_skip
@@ -79,11 +103,14 @@ class ResBlock1d(ResBlockBase):
                     out_channels,
                     kernel_sizes=[1],
                     dilation_sizes=[1],
+                    groups=[1],
                     stride=stride,
                     bias=False,
                     out_channel_sizes=flatten_module_list(self.blocks)[
                         -1
                     ].out_channel_sizes,
+                    # TODO to delete after ana
+                    from_skipping=True
                 ),
             )
         else:
@@ -94,6 +121,7 @@ class ResBlock1d(ResBlockBase):
                     kernel_sizes=[1],
                     dilation_sizes=[1],
                     stride=stride,
+                    # groups=[1]
                     bias=False,
                     qconfig=qconfig,
                     out_channel_sizes=flatten_module_list(self.blocks)[
