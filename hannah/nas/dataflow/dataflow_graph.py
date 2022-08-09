@@ -5,13 +5,16 @@ from hannah.nas.dataflow.dataflow_utils import find_first_op_in_dfg, find_leaf_n
 from hannah.nas.dataflow.scoping_utils import get_id_and_update_counters, update_scope
 from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.expressions.placeholder import DefaultInt
+from hannah.nas.parameters.parametrize import parametrize
 
 
+@parametrize
 class DataFlowGraph(TensorExpression):
     def __init__(self, *operands, output, name: str = "dataflow") -> None:
         super().__init__(*operands, tensor_type=None, name=name)
         self.inputs = []
         self.output = output
+        self.enter = []
         # reset_user(self)
         self.link_users()
         self._scopes = {}
@@ -36,7 +39,7 @@ class DataFlowGraph(TensorExpression):
                 if node in last_output.users:
                     last_output.users.remove(node)
 
-                self.enter = node
+                self.enter.append(node)
             elif isinstance(node, DataFlowGraph):
                 _rewire_to_placeholder(operand, node.output)
             elif isinstance(node, OpType):
@@ -48,7 +51,7 @@ class DataFlowGraph(TensorExpression):
 
             # remove users if it is enclosed in 'self'
             for user in operand.users:
-                if hasattr(self, 'enter') and user == self.enter:
+                if hasattr(self, 'enter') and user in self.enter:
                     operand.users.remove(user)
             operand.users.append(self)
 
@@ -58,7 +61,7 @@ class DataFlowGraph(TensorExpression):
         current_scope = update_scope(self, current_scope)
         scope_id = get_id_and_update_counters(current_scope, counters)
         self.id = scope_id
-        queue = [self.enter]
+        queue = [*self.enter]
         visited.append(self)
 
         while queue:
@@ -106,8 +109,8 @@ class DataFlowGraph(TensorExpression):
                     queue = [u] + queue
                     visited.append(u)
 
-    def output_tensor(self):
-        return self.output.output_tensor()
+    def tensor_type(self):
+        return self.output.tensor_type()
 
     # def match(self, other):
     #     """Checks equivalence between `self` and `other`. Equivalence is defined
@@ -133,6 +136,39 @@ class DataFlowGraph(TensorExpression):
 
     def __repr__(self) -> str:
         return "DataFlowGraph(id={})".format(self.id)
+
+    def __str__(self) -> str:
+        lines = []
+        print_from_input(find_first_input(self), 0, [], lines)
+
+        return_str = "\n".join(lines)
+        return return_str
+
+
+def print_from_input(input, indent, visited, lines):
+    queue = [input]
+    visited.append(input)
+
+    while queue:
+        node = queue.pop(-1)
+
+        leafs = []
+        find_leaf_nodes(node, leafs, visited)
+        while leafs:
+            leaf = leafs.pop(-1)
+            print_from_input(leaf, indent + 1, visited, lines)
+            visited.append(leaf)
+
+
+        lines.append('\t'*indent + f'{node.id}')
+        if isinstance(node, DataFlowGraph):
+            for e in node.enter:
+                print_from_input(e, indent + 1, visited, lines)
+
+        for u in node.users:
+            if u not in visited:
+                queue = [u] + queue
+                visited.append(u)
 
 
 def dataflow(func):
