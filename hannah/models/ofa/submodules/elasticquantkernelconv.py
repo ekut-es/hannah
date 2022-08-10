@@ -435,6 +435,10 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_size
         dilation = self.get_dilation_size()
+
+        grouping = self.get_group_size()
+        self.set_in_and_out_channel(kernel)
+
         padding = conv1d_get_padding(kernel_size, dilation)
         new_conv = qat.Conv1d(
             self.in_channels,
@@ -443,11 +447,12 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
             self.stride,
             padding,
             dilation,
-            self.groups,
+            grouping,
             bias,
             qconfig=self.qconfig,
             out_quant=self.out_quant,
         )
+        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
@@ -530,6 +535,9 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         padding = conv1d_get_padding(kernel_size, dilation)
+        grouping = self.get_group_size()
+        self.set_in_and_out_channel(kernel)
+
         new_conv = qat.ConvReLU1d(
             self.in_channels,
             self.out_channels,
@@ -537,11 +545,12 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             self.stride,
             padding,
             dilation,
-            self.groups,
+            grouping,
             bias,
             qconfig=self.qconfig,
             out_quant=self.out_quant,
         )
+        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
         new_conv.weight.data = kernel
         if bias is not None:
             new_conv.bias = bias
@@ -587,6 +596,10 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
+        grouping = self.get_group_size()
+        if grouping > 1:
+            # TODO kernel will be not used, is not needed?
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
         # get padding for the size of the kernel
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
@@ -598,6 +611,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
+        grouping = self.get_group_size()
         new_conv = qat.ConvBn1d(
             kernel.shape[1],
             kernel.shape[0],
@@ -605,13 +619,14 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             self.stride,
             self.padding,
             self.dilation,
-            self.groups,
+            grouping,
             bias,
             eps=self.bn[self.target_kernel_index].eps,
             momentum=self.bn[self.target_kernel_index].momentum,
             qconfig=self.qconfig,
             out_quant=self.out_quant,
         )
+        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
         new_conv.weight.data = kernel
         new_conv.bias = bias
         tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
@@ -672,6 +687,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
+        grouping = self.get_group_size()
         new_conv = qat.ConvBnReLU1d(
             kernel.shape[1],
             kernel.shape[0],
@@ -679,13 +695,14 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             self.stride,
             self.padding,
             self.dilation,
-            self.groups,
+            grouping,
             bias,
             eps=self.bn[self.target_kernel_index].eps,
             momentum=self.bn[self.target_kernel_index].momentum,
             qconfig=self.qconfig,
             out_quant=self.out_quant,
         )
+        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
         new_conv.weight.data = kernel
         new_conv.bias = bias
         tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
