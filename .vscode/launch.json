@@ -58,6 +58,74 @@
             ]
         },
         {
+            "name": "ofa_quant small",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "module.num_workers=8",
+                "model=ofa_group_quant",
+                "nas=ofa_nas_group_test",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa_quant only",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "module.num_workers=8",
+                "model=ofa_group_quant",
+                "nas=ofa_nas_group_test_only",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa_quant (normal) only",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "module.num_workers=8",
+                "model=ofa_quant",
+                "nas=ofa_nas_group_test_only",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa_quant (normal) no grouping",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "module.num_workers=8",
+                "model=ofa_quant",
+                "nas=ofa_nas_group_no_grouping",
+                "module.num_workers=8"
+            ]
+        },
+        {
             "name": "multi_gpu",
             "type": "python",
             "request": "launch",
