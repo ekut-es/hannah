@@ -256,10 +256,9 @@ def create_minor_block(
             key += "norm"
         if block_config.get("act", False):
             key += "act"
-        # MR 20220728 if block_config.get("quant", False):
-        # TODO reset this
-        # key += "quant"
-        # parameter["qconfig"] = qconfig
+        if block_config.get("quant", False):
+            key += "quant"
+            parameter["qconfig"] = qconfig
         if key == "":
             key = "none"
 
