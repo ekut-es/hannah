@@ -121,7 +121,7 @@ class ResBlock1d(ResBlockBase):
                     kernel_sizes=[1],
                     dilation_sizes=[1],
                     stride=stride,
-                    # groups=[1]
+                    groups=[1],
                     bias=False,
                     qconfig=qconfig,
                     out_channel_sizes=flatten_module_list(self.blocks)[

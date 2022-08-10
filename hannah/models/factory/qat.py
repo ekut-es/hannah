@@ -31,6 +31,7 @@ class _ConvForwardMixin:
         input: Tensor,
         weight: Union[Tensor, Parameter],
         bias: Union[Tensor, Parameter],
+        groups: int = 1
     ) -> Tensor:
         if self.dim == 1:
             return F.conv1d(
@@ -40,7 +41,7 @@ class _ConvForwardMixin:
                 self.stride,
                 self.padding,
                 self.dilation,
-                self.groups,
+                groups,
             )
         elif self.dim == 2:
             return F.conv2d(
