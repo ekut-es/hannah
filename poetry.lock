@@ -2964,13 +2964,13 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [extras]
 onnxrt-backend = ["onnxruntime"]
 tf-backend = ["onnx-tf"]
-tvm-backend = ["hannah-tvm", "dgl-cu102"]
+tvm = ["hannah-tvm", "dgl-cu102"]
 vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8 <3.10"
-content-hash = "70df29628e6f8b4cfa86ceaa991a44765733f41c359e393cb554747195ee7ace"
+content-hash = "dc893ae8327365aba33f9bfe171c6b49c3cdfaa279f5dbcc48e4a01933880c22"
 
 [metadata.files]
 absl-py = []
