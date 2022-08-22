@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 from collections import OrderedDict
 
@@ -6,6 +24,8 @@ import torch
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.distributed import rank_zero_only
 from tabulate import tabulate
+
+from hannah.models.ofa.submodules.elasticBase import ElasticBase1d
 
 from ..models.factory import qat
 from ..models.ofa import OFAModel
@@ -113,7 +133,8 @@ def walk_model(model, dummy_input):
     def get_conv_attrs(module):
         attrs = "k=" + "(" + (", ").join(["%d" % v for v in module.kernel_size]) + ")"
         attrs += ", s=" + "(" + (", ").join(["%d" % v for v in module.stride]) + ")"
-        attrs += ", g=%d" % module.groups
+        attrs += ", g=(%d)" % module.groups
+        # attrs += ", g=" + "(" + ", ".join(["%d" % v for v in groups]) + ")"
         attrs += ", d=" + "(" + ", ".join(["%d" % v for v in module.dilation]) + ")"
         return attrs
 

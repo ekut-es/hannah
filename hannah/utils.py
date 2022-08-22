@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import importlib
 import logging
 import os
@@ -51,6 +69,9 @@ except ImportError:
 msglogger = logging.getLogger(__name__)
 
 
+logger = logging.getLogger(__name__)
+
+
 def log_execution_env_state() -> None:
     """Log information about the execution environment.
     File 'config_path' will be copied to directory 'logdir'. A common use-case
@@ -62,8 +83,6 @@ def log_execution_env_state() -> None:
         logdir: log directory
         git_root: the path to the .git root directory
     """
-
-    logger = logging.getLogger()
 
     logger.info("Environment info:")
 
@@ -158,7 +177,8 @@ def extract_from_download_cache(
     if filename not in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        logging.info("download and extract: " + str(filename))
+        logger.info("download and extract: %s", str(filename))
+
         download_and_extract_archive(
             url,
             target_cache,
@@ -169,7 +189,8 @@ def extract_from_download_cache(
     elif filename in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        logging.info("extract from download_cache: " + str(filename))
+        logger.info("extract from download_cache: %s", str(filename))
+
         extract_archive(
             os.path.join(target_cache, filename),
             target_folder,
