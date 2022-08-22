@@ -22,7 +22,6 @@ from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
 from pytorch_lightning.callbacks import (
     Callback,
     DeviceStatsMonitor,
-    GPUStatsMonitor,
     LearningRateMonitor,
 )
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
@@ -48,6 +47,8 @@ try:
     HAVE_LSB: bool = True
 except ImportError:
     HAVE_LSB: bool = False
+
+msglogger = logging.getLogger(__name__)
 
 
 def log_execution_env_state() -> None:
@@ -201,12 +202,12 @@ def common_callbacks(config: DictConfig) -> list:
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
 
-    if config.get("gpu_stats", None):
-        gpu_stats = GPUStatsMonitor()
-        callbacks.append(gpu_stats)
-
-    if config.get("device_stats", None):
-        device_stats = DeviceStatsMonitor()
+    if config.get("device_stats", None) or config.get("gpu_stats", None):
+        if config.get("gpu_stats", None):
+            msglogger.warning(
+                "config option gpu_stats has been deprecated use device_stats instead"
+            )
+        device_stats = DeviceStatsMonitor(cpu_stats=True)
         callbacks.append(device_stats)
 
     if config.get("data_monitor", False):

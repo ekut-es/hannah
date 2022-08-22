@@ -11,7 +11,6 @@ overfit_batches: 0.0
 benchmark: False
 deterministic: True
 gradient_clip_val: 0
-stochastic_weight_avg: false
 auto_scale_batch_size: null
 accumulate_grad_batches: 1
 plugins: null
