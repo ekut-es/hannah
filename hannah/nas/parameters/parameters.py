@@ -12,7 +12,7 @@ from ..core.parametrized import is_parametrized
 class Parameter(Expression):
     def __init__(
         self,
-        scope: Optional[str] = None,
+        id: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__()
@@ -24,7 +24,7 @@ class Parameter(Expression):
             self.rng = rng
         else:
             raise Exception("rng should be either np.random.Generator or int (or None)")
-        self.scope = scope
+        self.id = id
 
     @abstractmethod
     def sample(self):
@@ -66,12 +66,14 @@ class IntScalarParameter(Parameter):
         self,
         min: Union[int, IntScalarParameter],
         max: Union[int, IntScalarParameter],
-        scope: Optional[str] = None,
+        step_size: int = 1,
+        id: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
-        super().__init__(scope, rng)
+        super().__init__(id, rng)
         self.min = min
         self.max = max
+        self.step_size = step_size
         self.current_value = self.evaluate_field("min")
 
     def evaluate_field(self, field_str):
@@ -111,19 +113,25 @@ class IntScalarParameter(Parameter):
         self.check(value)
         self.current_value = value
 
+    # def eq(self, other):
+    #     if self.min == other.min and \
+    #        self.max == other.max and \
+    #        self.step_size == other.step_size and \
+
+
 
 class FloatScalarParameter(Parameter):
     def __init__(
         self,
         min,
         max,
-        scope: Optional[str] = None,
+        id: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
-        super().__init__(scope, rng)
-        self.min = min
-        self.max = max
-        self.current_value = min
+        super().__init__(id, rng)
+        self.min = float(min)
+        self.max = float(max)
+        self.current_value = self.min
 
     def sample(self):
         self.current_value = self.rng.uniform(self.min, self.max)
@@ -153,10 +161,10 @@ class CategoricalParameter(Parameter):
     def __init__(
         self,
         choices,
-        scope: Optional[str] = None,
+        id: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
-        super().__init__(scope, rng)
+        super().__init__(id, rng)
         self.choices = choices
         self.sample()
 
@@ -197,10 +205,10 @@ class SubsetParameter(Parameter):
         choices,
         min,
         max,
-        scope: Optional[str] = None,
+        id: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
-        super().__init__(scope, rng)
+        super().__init__(id, rng)
         self.choices = choices
         self.min = min
         self.max = max
@@ -244,3 +252,26 @@ class SubsetParameter(Parameter):
     def set_current(self, value):
         self.check(value)
         self.current_value = value
+
+
+# class CombinatorialSubset(Parameter):
+#     def __init__(self,
+#                  number,
+#                  len,
+#                  id: Optional[str] = None,
+#                  rng: Optional[Union[np.random.Generator, int]] = None) -> None:
+#         super().__init__(id, rng)
+#         self.number = number
+#         self.len = len
+
+#     def sample(self):
+#         pass
+
+#     def instantiate(self):
+#         pass
+
+#     def check(self):
+#         pass
+
+#     def set_current(self, value):
+#         pass
