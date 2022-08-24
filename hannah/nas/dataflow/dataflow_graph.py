@@ -138,11 +138,12 @@ class DataFlowGraph(TensorExpression):
         return "DataFlowGraph(id={})".format(self.id)
 
     def __str__(self) -> str:
-        lines = []
-        print_from_input(find_first_input(self), 0, [], lines)
+        # lines = []
+        # print_from_input(find_first_input(self), 0, [], lines)
 
-        return_str = "\n".join(lines)
-        return return_str
+        # return_str = "\n".join(lines)
+        # return return_str
+        return self.__repr__()
 
 
 def print_from_input(input, indent, visited, lines):
@@ -158,7 +159,6 @@ def print_from_input(input, indent, visited, lines):
             leaf = leafs.pop(-1)
             print_from_input(leaf, indent + 1, visited, lines)
             visited.append(leaf)
-
 
         lines.append('\t'*indent + f'{node.id}')
         if isinstance(node, DataFlowGraph):
