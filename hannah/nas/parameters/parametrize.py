@@ -1,7 +1,8 @@
 from copy import deepcopy
 import inspect
-from typing import Optional
+from typing import Iterable, Optional
 from ..core.parametrized import is_parametrized
+from inspect import Parameter as P
 
 
 def _create_parametrize_wrapper(params, cls):
@@ -13,15 +14,25 @@ def _create_parametrize_wrapper(params, cls):
         self._annotations = {}
         self._conditions = []
 
-        for num, arg in enumerate(args):
+        num = 1
+        tuple_idx = 0
+        for arg in args:
             if is_parametrized(arg):
-                name = parameter_list[num + 1].name
+                name = parameter_list[num].name
+                if parameter_list[num].kind == P.VAR_POSITIONAL:
+                    name = name + f'_{tuple_idx}'
+                    tuple_idx += 1
+                else:
+                    num += 1
                 self._PARAMETERS[name] = arg
-                self._annotations[name] = parameter_list[num + 1]._annotation
+
+
+                # self._annotations[name] = parameter_list[num + 1]._annotation
+        print()
         for name, arg in kwargs.items():
             if is_parametrized(arg):
                 self._PARAMETERS[name] = arg
-                self._annotations[name] = params[name]._annotation
+                # self._annotations[name] = params[name]._annotation
 
         # TODO:
         cls.sample = sample
