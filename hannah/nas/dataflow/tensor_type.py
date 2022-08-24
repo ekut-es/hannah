@@ -1,3 +1,5 @@
+from .tensor_expression import TensorExpression
+from hannah.nas.parameters.parametrize import parametrize
 from ..hardware_description.memory_type import MemoryType
 from .quantization_type import QuantizationType
 from .data_type import DataType
@@ -5,6 +7,7 @@ from .axis_type import AxisType
 from typing import Optional, Tuple
 
 
+@parametrize
 class TensorType:
     def __init__(
         self,
@@ -22,7 +25,6 @@ class TensorType:
         self.memory = memory
         self.name = name
         self.id = name
-        self.parameters = {}
 
     def dim(self) -> int:
         return len(self.axis)
@@ -30,8 +32,8 @@ class TensorType:
     def shape(self) -> Tuple[int, ...]:
         return tuple((ax.size for ax in self.axis.values))
 
-    # def register_parameters(self):
-    #     for
+    def __getitem__(self, key):
+        return self.axis[key]
 
     def __repr__(self) -> str:
         # return 'Tensor(name=' + self.name + ", axis=(" + ' '.join(['{}, '.format(a) for a in self.axis.keys()]) + '))'
