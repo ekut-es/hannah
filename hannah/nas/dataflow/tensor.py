@@ -3,8 +3,13 @@ from typing import List
 from hannah.nas.dataflow.scoping_utils import get_id_and_update_counters, update_scope
 from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.dataflow.tensor_type import TensorType
+from hannah.nas.parameters.parametrize import parametrize
+# from hannah.nas.parameters.parameters import Parameter
+# from hannah.nas.expressions.placeholder import Placeholder
+from hannah.nas.core.expression import Expression
 
 
+@parametrize
 class Tensor(TensorExpression):
     def __init__(self, *operands, tensor_type : TensorType = None, name : str = "") -> None:
         super().__init__(*operands, tensor_type=tensor_type, name=name)
@@ -14,11 +19,11 @@ class Tensor(TensorExpression):
         scope_id = get_id_and_update_counters(current_scope, counters)
         self.id = scope_id
 
-    def output_tensor(self):
-        return self
-
-    def parameters(self):
-        return self.tensor_type.parameters()
+        if self._tensor_type:
+            for name, ax in self._tensor_type.axis.items():
+                ax.id = f'{self.id}.{name}'
+                if isinstance(ax.size, Expression):
+                    ax.size.id = f'{self.id}.{name}.size'
 
     def new(self):
         new_tensor = deepcopy(self)
@@ -35,7 +40,7 @@ class Tensor(TensorExpression):
         return self.__repr__()
 
     def __getitem__(self, key):
-        return self.tensor_type.axis[key]
+        return self._tensor_type.axis[key]
 
 
 class TensorTuple(TensorExpression):
