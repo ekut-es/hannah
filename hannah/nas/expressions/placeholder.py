@@ -4,8 +4,8 @@ from ..core.expression import Expression
 
 
 class Placeholder(Expression):
-    def __init__(self, name: Optional[str] = None):
-        self.name = name
+    def __init__(self, id: Optional[str] = None):
+        self.id = id
         self._conditions = []
 
     def evaluate(self):
@@ -16,19 +16,19 @@ class Placeholder(Expression):
 
 
 class UndefinedInt(Placeholder):
-    def __init__(self, name: Optional[str] = None) -> None:
-        super().__init__(name)
+    def __init__(self, id: Optional[str] = None) -> None:
+        super().__init__(id)
 
 
 # TODO:
 class UndefinedFloat(Placeholder):
-    def __init__(self, name: Optional[str] = None) -> None:
-        super().__init__(name)
+    def __init__(self, id: Optional[str] = None) -> None:
+        super().__init__(id)
 
 
 class DefaultInt(Placeholder):
-    def __init__(self, value: int, name: Optional[str] = None) -> None:
-        super().__init__(name)
+    def __init__(self, value: int, id: Optional[str] = None) -> None:
+        super().__init__(id)
         self.value = value
 
     def evaluate(self):
@@ -42,26 +42,26 @@ class DefaultInt(Placeholder):
 
 
 class DefaultFloat(Placeholder):
-    def __init__(self, value: float, name: Optional[str] = None) -> None:
-        super().__init__(name)
+    def __init__(self, value: float, id: Optional[str] = None) -> None:
+        super().__init__(id)
         self.value = value
 
 
 class IntRange(Placeholder):
-    def __init__(self, lower: int, upper: int, name: Optional[str] = None) -> None:
-        super().__init__(name)
-        self.upper = upper
-        self.lower = lower
+    def __init__(self, min: int, max: int, id: Optional[str] = None) -> None:
+        super().__init__(id)
+        self.min = min
+        self.max = max
         # TODO: self.value = ??
 
 
 class FloatRange(Placeholder):
-    def __init__(self, lower: int, upper: int, name: Optional[str] = None):
-        super().__init__(name)
+    def __init__(self, lower: int, upper: int, id: Optional[str] = None):
+        super().__init__(id)
         self.lower = lower
         self.upper = upper
 
 
 class Categorical(Placeholder):
-    def __init__(self, name: Optional[str] = None):
-        super().__init__(name)
+    def __init__(self, id: Optional[str] = None):
+        super().__init__(id)
