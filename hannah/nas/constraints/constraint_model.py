@@ -45,30 +45,9 @@ class ConstraintModel:
                 self.process_tensor(graph)
 
     def process_dataflow(self, graph):
-        for operand in graph.operands:
-            input_tensor = operand.tensor_type()
-            self.input_dict[graph] = {}
-            self.output_dict[graph.output] = {}
-            for e in graph.enter:
-                self.enter_dict[e] = {}
-
-            for ax_name, ax in input_tensor.axis.items():
-                ax_in = Int(f'{graph.id}.ax_{ax_name}.in')
-                ax_out = Int(f'{graph.id}.ax_{ax_name}.out')
-
-                self.vars[str(ax_in)] = ax_in
-                self.vars[str(ax_out)] = ax_out
-
-                self.input_dict[graph][ax_name] = ax_in
-                self.output_dict[graph.output][ax_name] = ax_out
-                for e in graph.enter:
-                    self.enter_dict[e][ax_name] = ax_in
-
-                self.link_output_to_next_input(graph, ax_name, ax_out)
-                self.passthrough_output(graph, ax_name, ax_out)
-                self.passthrough_enter(graph, ax_name, ax_in)
-
-        print()
+        # currently not needed because we use a flattened graph
+        # with only OpTypes and Tensors
+        pass
 
     def process_optype(self, op):
         if op.name == 'Conv2d':
@@ -77,33 +56,10 @@ class ConstraintModel:
             self.extract_add_constraints(op)
         else:
             self.extract_passthrough_constraints(op)
-        # output_tensor = op.tensor_type()
-        # for operand in op.operands:
-        #     input_tensor = operand.tensor_type()
-        #     self.input_dict[op] = {}
-        #     for ax_name, ax in input_tensor.axis.items():
-        #         ax_in = Int(f'{op.id}.ax_{ax_name}.in')
-        #         ax_out = Int(f'{op.id}.ax_{ax_name}.out')
-        #         self.input_dict[op][ax_name] = ax_in
 
     def process_tensor(self, tensor):
         for name, ax in tensor.tensor_type().axis.items():
             self.build_constraint_from_expression(ax.size, [])
-
-        print()
-
-    def link_output_to_next_input(self, graph, ax_name, out_var):
-        for user in graph.users:
-            if user in self.input_dict and not graph == user.output:
-                self.solver.add(self.input_dict[user][ax_name] == out_var)
-
-    def passthrough_output(self, graph, ax_name, out_var):
-        if graph in self.output_dict:
-            self.solver.add(out_var == self.output_dict[graph][ax_name])
-
-    def passthrough_enter(self, graph, ax_name, in_var):
-        if graph in self.enter_dict:
-            self.solver.add(in_var == self.enter_dict[graph][ax_name])
 
     def extract_conv_constraints(self, op):
         input_tensor = op.operands[0].tensor_type()
