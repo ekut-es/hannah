@@ -106,14 +106,14 @@ class ConstraintModel:
             self.solver.add(in_var == self.enter_dict[graph][ax_name])
 
     def extract_conv_constraints(self, op):
-        # self.solver.add(kernel_size / 2 == padding) TODO; Padding constraint
         input_tensor = op.operands[0].tensor_type()
         output_tensor = op.tensor_type()
 
-        n_con = self.build_constraint_from_expression(output_tensor['n'].size, [input_tensor['n'].size])
-        c_con = self.build_constraint_from_expression(output_tensor['c'].size, [input_tensor['c'].size])
-        h_con = self.build_constraint_from_expression(output_tensor['h'].size, [input_tensor['h'].size])
-        w_con = self.build_constraint_from_expression(output_tensor['w'].size, [input_tensor['w'].size])
+        for ax_name, ax in output_tensor.axis.items():
+            con = self.build_constraint_from_expression(output_tensor[ax_name].size, [input_tensor[ax_name].size])
+            var = Int(f'{op.id}.{ax_name}.size')
+            self.vars[str(var)] = var
+            self.solver.add(var == con)
 
         padding = None
         kernel_size = []
@@ -125,16 +125,6 @@ class ConstraintModel:
 
         for ks in kernel_size:
             self.solver.add(ks / 2 == padding)
-
-        n_var = Int(op.id + '.n.size')
-        c_var = Int(op.id + '.c.size')
-        h_var = Int(op.id + '.h.size')
-        w_var = Int(op.id + '.w.size')
-
-        self.solver.add(n_var == n_con)
-        self.solver.add(c_var == c_con)
-        self.solver.add(h_var == h_con)
-        self.solver.add(w_var == w_con)
 
     def extract_add_constraints(self, op):
         output_tensor = op.tensor_type()
