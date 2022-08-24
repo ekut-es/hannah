@@ -13,19 +13,22 @@ class Add:
 
 @add_shape_func("Add")
 def add_shape(op: OpType):
-    input = op.operands[0].output_tensor()
-    other = op.operands[1].output_tensor()
+    input = op.operands[0].tensor_type()
+    other = op.operands[1].tensor_type()
 
-    assert input.dim == other.dim
+    assert input.dim() == other.dim()
     ax = []
-    for ax1, ax2 in zip(input.tensor_type.axis, other.tensor_type.axis):
-        con = input.tensor_type.axis[ax1].size == other.tensor_type.axis[ax2].size
-        assert con.evaluate(), """Tensor axis sizes do not match: Axis {} with dimension
-                               {} and axis {} with dimension {}""".format(ax1,
-                                                                          input.tensor_type.axis[ax1].size,
-                                                                          ax2,
-                                                                          other.tensor_type.axis[ax2].size)
-        ax.append(input.tensor_type.axis[ax1].new())
+    # constraints = []
+    for ax1, ax2 in zip(input.axis, other.axis):
+        con = input.axis[ax1].size == other.axis[ax2].size
+        # constraints.append(con)
+        op.cond(con)
+        # assert con.evaluate(), """Tensor axis sizes do not match: Axis {} with dimension
+        #                        {} and axis {} with dimension {}""".format(ax1,
+        #                                                                   input.tensor_type.axis[ax1].size,
+        #                                                                   ax2,
+        #                                                                   other.tensor_type.axis[ax2].size)
+        ax.append(input.axis[ax1].new())
 
     ax = tuple(ax)
-    return TensorType(ax, input.tensor_type.dtype)
+    return TensorType(ax, dtype=input.dtype)
