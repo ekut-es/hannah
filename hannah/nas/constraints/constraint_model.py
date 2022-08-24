@@ -49,7 +49,15 @@ class ConstraintModel:
         # with only OpTypes and Tensors
         pass
 
-    def process_optype(self, op):
+    def process_optype(self, op: OpType):
+        """Extracts the constraints based on the type of op.
+        New variables are added to self.vars and the constraints
+        are added to the solver.
+
+        Parameters
+        ----------
+        op : OpType
+        """
         if op.name == 'Conv2d':
             self.extract_conv_constraints(op)
         elif op.name == 'Add':
@@ -57,11 +65,19 @@ class ConstraintModel:
         else:
             self.extract_passthrough_constraints(op)
 
-    def process_tensor(self, tensor):
+    def process_tensor(self, tensor: Tensor):
+        """Goes through all axis and extracts the constraints for
+        the respective axis sizes
+
+        Parameters
+        ----------
+        tensor : Tensor
+            _description_
+        """
         for name, ax in tensor.tensor_type().axis.items():
             self.build_constraint_from_expression(ax.size, [])
 
-    def extract_conv_constraints(self, op):
+    def extract_conv_constraints(self, op: OpType):
         input_tensor = op.operands[0].tensor_type()
         output_tensor = op.tensor_type()
 
@@ -96,11 +112,12 @@ class ConstraintModel:
 
     def extract_passthrough_constraints(self, op):
         input_tensor = op.operands[0].tensor_type()
+        output_tensor = op.tensor_type()
 
-        for ax_name, ax in input_tensor.axis.items():
-            ax_in = Int(f'{op.operands[0].id}.{ax_name}.size')
-            ax_out = Int(f'{op.id}.{ax_name}.size')
-            self.solver.add(ax_in == ax_out)
+        for ax_name, ax in output_tensor.axis.items():
+            con = self.build_constraint_from_expression(output_tensor[ax_name].size, [input_tensor[ax_name].size])
+            var = Int(f'{op.id}.{ax_name}.size')
+            self.solver.add(var == con)
 
     def extract_parameter(self, expr):
         if isinstance(expr, (IntScalarParameter, IntRange)):
@@ -115,12 +132,16 @@ class ConstraintModel:
             return var
 
     def extract_int_range(self, expr):
-        var = Int(expr.id)
-        self.vars[expr.id] = var
+        if expr.id:
+            var = Int(expr.id)
+        else:
+            var = Int(f"IntRange({expr.min}, {expr.max})")
+            # TODO: unique scope ids for DFG parameters
+        self.vars[str(var)] = var
         self.solver.add(var >= expr.min)
         self.solver.add(var <= expr.max)
         if hasattr(expr, 'step_size') and expr.step_size != 1:
-            self.solver.add((var - expr.min) % expr.step_size != 0)
+            self.solver.add((var - expr.min) % expr.step_size == 0)
 
         return var
 
@@ -219,7 +240,7 @@ def find_operand_in_expression(operand, expr):
 if __name__ == '__main__':
     cm = ConstraintModel()
     input = batched_image_tensor(shape=(1, 3, 32, 32), dtype=CategoricalParameter(choices=['int6', 'int8']), name='input')
-    graph = residual_block(input, stride=IntScalarParameter(1, 2), output_channel=DefaultInt(64))
+    graph = residual_block(input, stride=IntScalarParameter(1, 2), output_channel=IntScalarParameter(4, 512, 4))
     graph = flatten(graph)
     cm = ConstraintModel()
     cm.build_model(graph)
