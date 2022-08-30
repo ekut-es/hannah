@@ -38,40 +38,10 @@ function switch_work_branch {
 function do_run_normal {
 
     do_run "ofa_group_test" "${BRANCH_TAG}_group_yes" "${BRANCH_TAG}_group_no"
-    # let model
-    # model="ofa_group_test"
-
-    # echo "Doing hannah config ${CONFIG_1} with grouping"
-    # cat "${PATH_TO_HANNAH}/conf/nas/${CONFIG_1}.yml"
-    # let experiment_id="nas_ofa_group_test_g_long"
-    # echo "$experiment_id with model $model"
-    # hannah-train --config-name nas_ofa model="$model" experiment_id="$experiment_id"  nas="${CONFIG_1}" module.num_workers=8
-
-    # # no grouping
-    # echo "Doing hannah config ${CONFIG_2} without grouping"
-    # cat "${PATH_TO_HANNAH}/conf/nas/${CONFIG_2}.yml"
-    # let experiment_id="nas_ofa_group_test_no_grouping_long"
-    # echo "$experiment_id with model $model"
-    # hannah-train --config-name nas_ofa model="$model" experiment_id="$experiment_id"  nas="${CONFIG_2}" module.num_workers=8
 }
 function do_run_quant {
 
     do_run "ofa_group_quant" "${BRANCH_TAG}_quant_group_yes" "${BRANCH_TAG}_quant_group_no"
-    # let model
-    # model="ofa_group_quant"
-
-    # echo "Doing hannah config ${CONFIG_1} with grouping"
-    # cat "${PATH_TO_HANNAH}/conf/nas/${CONFIG_1}.yml"
-    # let experiment_id="quant_nas_ofa_group_test_g_long"
-    # echo "$experiment_id with model $model"
-    # hannah-train --config-name nas_ofa model="$model" experiment_id="$experiment_id"  nas="${CONFIG_1}" module.num_workers=8
-
-    # # no grouping
-    # echo "Doing hannah config ${CONFIG_2} without grouping"
-    # cat "${PATH_TO_HANNAH}/conf/nas/${CONFIG_2}.yml"
-    # let experiment_id="quant_nas_ofa_group_test_no_grouping_long"
-    # echo "$experiment_id with model $model"
-    # hannah-train --config-name nas_ofa model="$model" experiment_id="$experiment_id"  nas="${CONFIG_2}" module.num_workers=8
 }
 function do_run {
 
