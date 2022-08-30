@@ -5,7 +5,7 @@ CONFIG_1="ofa_nas_group_test_long"
 CONFIG_2="ofa_nas_group_test_long_no_grouping"
 PATH_TO_HANNAH="/local/raugustm/hannah/hannah"
 
-
+BRANCH_TAG="quant_branch"
 
 red="\e[0;91m"
 blue="\e[0;94m"
@@ -37,7 +37,7 @@ function switch_work_branch {
 
 function do_run_normal {
 
-    do_run "ofa_group_test" "nas_ofa_group_test_g_long" "nas_ofa_group_test_no_grouping_long"
+    do_run "ofa_group_test" "${BRANCH_TAG}_group_yes" "${BRANCH_TAG}_group_no"
     # let model
     # model="ofa_group_test"
 
@@ -56,7 +56,7 @@ function do_run_normal {
 }
 function do_run_quant {
 
-    do_run "ofa_group_quant" "quant_nas_ofa_group_test_g_long" "quant_nas_ofa_group_test_no_grouping_long"
+    do_run "ofa_group_quant" "${BRANCH_TAG}_quant_group_yes" "${BRANCH_TAG}_quant_group_no"
     # let model
     # model="ofa_group_quant"
 
