@@ -12,7 +12,7 @@ epochs_dilation_step: 1
 epochs_grouping_step: 1
 elastic_kernels_allowed: True
 elastic_depth_allowed: True
-elastic_dilation_allowed: True
+elastic_dilation_allowed: False
 elastic_width_allowed: True
 elastic_grouping_allowed: False
 evaluate: True
