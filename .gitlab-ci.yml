@@ -35,7 +35,7 @@ before_script:
 
 
   # Install poetry using recommended method
-  - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
+  - curl -sSL https://install.python-poetry.org/ | python3
   - export PATH=${POETRY_HOME}/bin:${PATH}
 
   # Work around: https://github.com/python-poetry/poetry/issues/3199
@@ -127,7 +127,7 @@ build_image:
     # Install poetry using recommended method
     - apk add python3
     - apk add curl
-    - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
+    - curl -sSL https://install.python-poetry.org/ | python3
     - export PATH=${POETRY_HOME}/bin:${PATH}
   image:
     name: quay.io/singularity/singularity:v3.7.3
