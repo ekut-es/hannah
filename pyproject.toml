@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "hannah"
 version = "0.1.0"
-description = ""
+description = "Hardware Accelerator and Neural Network Architecture seArcH"
 authors = [
     "Christoph Gerum <christoph.gerum@uni-tuebingen.de>",
     "Adrian Frischknecht <adrian.frischknecht@uni-tuebingen.de>",
@@ -59,7 +59,7 @@ albumentations = {version = "^1.1.0", optional = true}
 
 # optional dependencies for tvm backend
 dgl-cu102 = {version = "^0.6.1", optional = true}
-hannah-tvm = {path = "external/hannah-tvm", optional = true, extras = ["automate"], develop=true}
+hannah-tvm = {path = "external/hannah-tvm", optional = true, extras = ["automate", "micro"], develop=true}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.0"
