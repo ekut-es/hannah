@@ -47,7 +47,7 @@ Install a python 3.8 or python 3.9 version using [pyenv](https://github.com/pyen
 
 ### Install poetry
 
-    curl -sSL https://install.python-poetry.org/ | python
+    curl -sSL https://install.python-poetry.org/ | python3
 
 For alternative installation methods see:  https://python-poetry.org/docs/#installation
 

@@ -63,7 +63,6 @@ hannah-tvm = {path = "external/hannah-tvm", optional = true, extras = ["automate
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.0"
-flake8 = "^4.0.1"
 pre_commit = "^2.7.1"
 pytest-cov = ">2.10.1"
 rope = "^0.19.0"
