@@ -42,7 +42,7 @@ before_script:
   - poetry config experimental.new-installer false
 
   # install and manage dependencies with poetry
-  - poetry install -E vision -E tvm
+  - poetry install -E vision
 
   # Show limits
   - ulimit -a
@@ -63,8 +63,8 @@ test_tvm:
   image: python:3.9
   script:
     - set -e
-    - poetry install -E tvm-backend -E vision
     - poetry run external/hannah-tvm/scripts/install_full.sh
+    - poetry install -E tvm -E vision
     - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
   tags:
     - docker
