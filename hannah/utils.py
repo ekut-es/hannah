@@ -228,8 +228,7 @@ def common_callbacks(config: DictConfig) -> list:
             msglogger.warning(
                 "config option gpu_stats has been deprecated use device_stats instead"
             )
-        device_stats = DeviceStatsMonitor(cpu_stats=True)
-        callbacks.append(device_stats)
+        device_stats = DeviceStatsMonitor(cpu_stats=config.get("device_stats", False))
 
     if config.get("data_monitor", False):
         data_monitor = ModuleDataMonitor(submodules=True)
