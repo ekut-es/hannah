@@ -72,6 +72,7 @@ test_tvm:
   interruptible: true
   only:
     - master
+    - main
     - /.*tvm.*/
 
 test_python_39:
@@ -117,6 +118,7 @@ build_docs:
     - native
   only:
     - master
+    - main
 
   # Empty dependencies to disable artifacts passing
   dependencies: []
@@ -146,7 +148,8 @@ build_image:
     expire_in: 1 day
   only:
     - master
-    - docker_container
+    - main
+    - /.*container.*/
 
 test_image:
   stage: test
@@ -164,7 +167,8 @@ test_image:
     - build_image
   only:
     - master
-    - docker_container
+    - main
+    - /.*container.*/
 
 deploy_image:
   stage: deploy
@@ -189,7 +193,8 @@ deploy_image:
     - test_image
   only:
     - master
-    - docker_container
+    - main
+    - /.*container.+/
 
 
 deploy_test:
@@ -213,7 +218,8 @@ deploy_test:
     - deploy_image
   only:
     - master
-    - docker_container
+    - main
+    - /.*container.*/
 
 run_ml_cloud:
   stage: run
@@ -321,3 +327,4 @@ ml_cloud_update_env:
   dependencies: []
   only:
     - master
+    - main
