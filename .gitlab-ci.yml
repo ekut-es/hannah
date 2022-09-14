@@ -63,6 +63,7 @@ test_tvm:
   image: python:3.9
   script:
     - set -e
+    - apt-get install -y llvm-dev libclang-dev
     - poetry run external/hannah-tvm/scripts/install_full.sh
     - poetry install -E tvm -E vision
     - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
