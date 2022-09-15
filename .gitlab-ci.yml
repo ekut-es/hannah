@@ -122,7 +122,9 @@ run_ml_cloud:
   tags:
     - ml-cloud
   script:
-    - sbatch scripts/ml_cloud_kws.sh"
+    - cml ci
+    - echo "Test comment" > report.md
+    - cml send-comment report.md
   only:
     - master
   dependencies: []
