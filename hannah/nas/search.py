@@ -247,6 +247,7 @@ class OFANasTrainer(NASTrainerBase):
         elastic_width_allowed=False,
         elastic_dilation_allowed=False,
         elastic_grouping_allowed=False,
+        elastic_dpc_allowed=False,
         evaluate=True,
         random_evaluate=True,
         random_eval_number=100,
@@ -271,6 +272,7 @@ class OFANasTrainer(NASTrainerBase):
         self.elastic_width_allowed = elastic_width_allowed
         self.elastic_dilation_allowed = elastic_dilation_allowed
         self.elastic_grouping_allowed = elastic_grouping_allowed
+        self.elastic_dpc_allowed = elastic_dpc_allowed
 
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
@@ -331,6 +333,7 @@ class OFANasTrainer(NASTrainerBase):
         logging.info("Depth Steps: %d", self.depth_step_count)
         logging.info("Width Steps: %d", self.width_step_count)
         logging.info("Grouping Steps: %d", self.grouping_step_count)
+        #logging.info("DPC: %d", self.grouping_step_count)
 
         self.submodel_metrics_csv = ""
         self.random_metrics_csv = ""
@@ -355,12 +358,17 @@ class OFANasTrainer(NASTrainerBase):
             self.submodel_metrics_csv += "grouping, "
             self.random_metrics_csv += "group_steps, "
 
+        if self.elastic_dpc_allowed:
+            self.submodel_metrics_csv += "dpc, "
+            self.random_metrics_csv += "dpc, "
+
         if (
             self.elastic_width_allowed
             | self.elastic_kernels_allowed
             | self.elastic_dilation_allowed
             | self.elastic_depth_allowed
             | self.elastic_grouping_allowed
+            | self.elastic_dpc_allowed
         ):
             self.submodel_metrics_csv += (
                 "acc, total_macs, total_weights, torch_params\n"

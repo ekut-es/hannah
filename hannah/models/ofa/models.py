@@ -239,6 +239,8 @@ def create_minor_block(
         if not isinstance(grouping_sizes, ListConfig):
             grouping_sizes = [grouping_sizes]
 
+        dpc = block_config.get("dpc", False)
+
         minor_block_internal_sequence = nn.ModuleList([])
         key = ""
         parameter = {
@@ -249,6 +251,7 @@ def create_minor_block(
             "dilation_sizes": dilation_sizes,
             # new entry  edit to group_sizes
             "groups": grouping_sizes,
+            "dpc": dpc,
             "out_channel_sizes": out_channels,
         }
 
