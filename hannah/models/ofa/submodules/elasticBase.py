@@ -58,6 +58,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         kernel_sizes: List[int],
         dilation_sizes: List[int],
         groups: List[int],
+        dscs: List[bool],
         stride: int = 1,
         padding: int = 0,
         bias: bool = False,
@@ -115,11 +116,32 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         # set the groups value in the model
         self.groups = self.get_group_size()
 
+        # sort available grouping sizes from largest to smallest (descending order)
+        # TODO hier überprüfen wie sich das mit True, False verhält
+        dscs.sort(reverse=False)
+        # make sure 0 is not set as grouping size. Must be at least 1
+        #if 0 in dscs:
+        #    dscs.remove(0)
+
+        self.dscs: List[bool] = dscs
+
+        self.max_dsc: bool = self.group_sizes[-1]
+        self.min_dsc: bool = self.group_sizes[0]
+        self.target_dsc_index: int = 0
+
+        # MR 20220622  TODO: still needed ?
+        # store first grouping param
+        self.last_dsc_param = self.get_dsc()
+
+        # set the groups value in the model
+        # TODO achten wo aufgerufen
+        self.dsc = self.get_dsc()
+
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index],
             self.dilation_sizes[self.target_dilation_index],
         )
-
+        # TODO wenn DSC on dann achte hier drauf
         nn.Conv1d.__init__(
             self,
             in_channels=self.in_channels,
@@ -174,6 +196,33 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 self.dilation_transforms[k].append(new_transform_module)
         """
         self.update_padding()
+
+    def do_dpc(self, input, kernel, bias, stride, padding, dilation, in_channel, out_channel):
+
+        # TODO: ändern
+
+        """
+            this  method will perform the DSC.
+        """
+        # from torch.nn import Conv2d
+
+        # conv = Conv2d(in_channels=10, out_channels=32, kernel_size=3)
+        # params = sum(p.numel() for p in conv.parameters() if p.requires_grad)
+
+        # x = torch.rand(5, 10, 50, 50)
+        # out = conv(x)
+
+        # depth_conv = Conv2d(in_channels=10, out_channels=10, kernel_size=3, groups=10)
+        # point_conv = Conv2d(in_channels=10, out_channels=32, kernel_size=1)
+
+        # depthwise_separable_conv = torch.nn.Sequential(depth_conv, point_conv)
+        # params_depthwise = sum(p.numel() for p in depthwise_separable_conv.parameters() if p.requires_grad)
+
+        # out_depthwise = depthwise_separable_conv(x)
+
+        # # kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+        # return output_of_dsc
+        pass
 
     def set_in_and_out_channel(self, kernel, filtered : bool = True):
         """
@@ -403,6 +452,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
     def get_available_grouping_steps(self):
         return len(self.group_sizes)
 
+    def get_available_dsc_steps(self):
+        return len(self.dscs)
+
     def get_dilation_size(self):
         return self.dilation_sizes[self.target_dilation_index]
 
@@ -416,18 +468,35 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             target_group_index = len(self.group_sizes) - 1
         self.set_group_size(self.group_sizes[target_group_index])
 
-    def pick_random_group_index(self):
-        choice = np.random.choice(self.group_sizes, size=1)
-        self.set_group_size(choice[0])
-        return self.get_group_size()
+    def pick_dsc_index(self, target_dsc_index: int):
+        if (target_dsc_index < 0) or (
+            target_dsc_index >= len(self.dscs)
+        ):
+            logging.warn(
+                f"selected dsc index {target_dsc_index} is out of range: 0 .. {len(self.dscs)}. Setting to last index."
+            )
+            target_dsc_index = len(self.dscs) - 1
+        self.set_dsc(self.dscs[target_dsc_index])
+
+    # not used anymore
+    # def pick_random_group_index(self):
+    #     choice = np.random.choice(self.group_sizes, size=1)
+    #     self.set_group_size(choice[0])
+    #     return self.get_group_size()
 
     # the initial group size is the first element of the list of available sizes
     # resets the group size back to its initial size
     def reset_group_size(self):
         self.set_group_size(self.group_sizes[0])
 
+    def reset_dscs(self):
+        self.set_dscs(self.dscs[0])
+
     def get_group_size(self):
         return self.group_sizes[self.target_group_index]
+
+    def get_dsc(self):
+        return self.dscs[self.target_dsc_index]
 
     def set_group_size(self, new_group_size):
         if (
@@ -456,6 +525,33 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 f"requested elastic group size {new_group_size} is not an available group size. Defaulting to full size ({self.max_group_size})"
             )
 
+    def set_dsc(self, new_dsc):
+        if (
+            new_dsc < self.min_dsc
+            or new_dsc > self.max_dsc
+        ):
+            logging.warn(
+                f"requested elastic dsc ({new_dsc}) outside of min/max range: ({self.max_dsc}, {self.min_dsc}). clamping."
+            )
+            if new_dsc < self.min_dsc:
+                new_dsc = self.min_dsc
+            else:
+                new_dsc = self.max_dsc
+
+        self.target_dsc_index = 0
+        try:
+            index = self.dscs.index(new_dsc)
+            self.target_dsc_index = index
+            # if hasattr(self, 'from_skipping') and self.from_skipping is True:
+            #     logging.warn(f"setting groupsizes from skipping is: {self.from_skipping}")
+            # else:
+            #     self.groups = self.group_sizes[index]
+
+        except ValueError:
+            logging.warn(
+                f"requested elastic dsc {new_dsc} is not an available group size. Defaulting to full size ({self.max_dsc})"
+            )
+
     # step current kernel size down by one index, if possible.
     # return True if the size limit was not reached
     def step_down_group_size(self):
@@ -467,6 +563,18 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         else:
             logging.debug(
                 f"unable to step down group size, no available index after current: {self.target_group_index} with size: {self.group_sizes[self.target_group_index]}"
+            )
+            return False
+
+    def step_down_dsc(self):
+        next_dsc_index = self.target_dsc_index + 1
+        if next_dsc_index < len(self.dscs):
+            self.set_dsc(self.dscs[next_dsc_index])
+            # print(f"stepped down group size of a module! Index is now {self.target_group_index}")
+            return True
+        else:
+            logging.debug(
+                f"unable to step down dsc, no available index after current: {self.target_dsc_index} with size: {self.dscs[self.target_dsc_index]}"
             )
             return False
 

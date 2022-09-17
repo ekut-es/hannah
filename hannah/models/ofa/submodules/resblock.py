@@ -104,6 +104,7 @@ class ResBlock1d(ResBlockBase):
                     kernel_sizes=[1],
                     dilation_sizes=[1],
                     groups=[1],
+                    dscs=[False],
                     stride=stride,
                     bias=False,
                     out_channel_sizes=flatten_module_list(self.blocks)[

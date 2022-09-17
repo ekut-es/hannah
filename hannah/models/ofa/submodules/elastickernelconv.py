@@ -31,7 +31,7 @@ class ElasticConv1d(ElasticBase1d):
         kernel_sizes: List[int],
         dilation_sizes: List[int],
         groups: List[int],
-        dpc: bool = False,
+        dscs: List[bool],
         stride: int = 1,
         padding: int = 0,
         bias: bool = False,
@@ -46,11 +46,14 @@ class ElasticConv1d(ElasticBase1d):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             out_channel_sizes=out_channel_sizes,
         )
         self.norm = False
         self.act = False
+        # TODO es wäre auch möglich das ganze als Flag einzubauen wie norm und act, aber hier wäre die Frage wie man es mit dem trainieren macht ?
+        # So wäre es statisch und nicht wirklich sinnvoll
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # get the kernel for the current index
@@ -61,12 +64,20 @@ class ElasticConv1d(ElasticBase1d):
             self.kernel_sizes[self.target_kernel_index], dilation
         )
         grouping = self.get_group_size()
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-
-        return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
+        # Hier muss dann wenn DSC on ist, die Logik implementiert werden dass DSC komplett greift
+        dsc = self.get_dsc()
+        if dsc is False:
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
+        else:
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            self.do_dpc(input, kernel, bias, self.stride, padding, dilation, in_channel, out_channel)
+            return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
+        # TODO MR Validaiton model needs to be done after normal thing works
+
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -113,7 +124,7 @@ class ElasticConvReLu1d(ElasticBase1d):
         kernel_sizes: List[int],
         dilation_sizes: List[int],
         groups: List[int],
-        dpc: bool = False,
+        dscs: List[bool],
         stride: int = 1,
         padding: int = 0,
         bias: bool = False,
@@ -128,6 +139,7 @@ class ElasticConvReLu1d(ElasticBase1d):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             out_channel_sizes=out_channel_sizes,
         )
@@ -146,7 +158,15 @@ class ElasticConvReLu1d(ElasticBase1d):
         )
 
         grouping = self.get_group_size()
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+        # Hier muss dann wenn DSC on ist, die Logik implementiert werden dass DSC komplett greift
+        dsc = self.get_dsc()
+        if dsc is False:
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
+        else:
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            self.do_dpc(input, kernel, bias, self.stride, padding, dilation, in_channel, out_channel)
+            return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
 
         return self.relu(
             nnf.conv1d(input, kernel, bias, self.stride, padding, dilation,  grouping)
@@ -199,7 +219,7 @@ class ElasticConvBn1d(ElasticConv1d):
         kernel_sizes: List[int],
         dilation_sizes: List[int],
         groups: List[int],
-        dpc: bool = False,
+        dscs: List[bool],
         stride: int = 1,
         padding: int = 0,
         bias: bool = False,
@@ -215,6 +235,7 @@ class ElasticConvBn1d(ElasticConv1d):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             out_channel_sizes=out_channel_sizes,
         )
@@ -287,7 +308,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         kernel_sizes: List[int],
         dilation_sizes: List[int],
         groups: List[int],
-        dpc: bool = False,
+        dscs: List[bool],
         stride: int = 1,
         padding: int = 0,
         bias: bool = False,
@@ -304,6 +325,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             out_channel_sizes=out_channel_sizes,
         )
@@ -372,7 +394,7 @@ class ConvRelu1d(nn.Conv1d):
         stride: int = 1,
         padding: int = 0,
         groups: int = 1,
-        dpc: bool = False,
+        dsc: bool = False,
         bias: bool = False,
         track_running_stats=False,
     ):
@@ -400,11 +422,11 @@ class ConvBn1d(nn.Conv1d):
         in_channels: int,
         out_channels: int,
         kernel_size: int,
+        dsc: bool = False,
         stride: int = 1,
         padding: int = 0,
         dilation: int = 1,
         groups: int = 1,
-        dpc: bool = False,
         bias: bool = False,
         track_running_stats=False,
     ):
@@ -436,7 +458,7 @@ class ConvBnReLu1d(ConvBn1d):
         padding: int = 0,
         dilation: int = 1,
         groups: int = 1,
-        dpc: bool = False,
+        dsc: bool = False,
         bias: bool = False,
         track_running_stats=False,
     ):
