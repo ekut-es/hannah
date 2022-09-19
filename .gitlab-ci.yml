@@ -71,6 +71,7 @@ test_tvm:
     - docker
     - nfs
   interruptible: true
+  allow_failure: true
   only:
     - master
     - main

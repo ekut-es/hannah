@@ -17,7 +17,13 @@
 ## limitations under the License.
 ##
 
-
+# @package _global_
 defaults:
-    - base_config
-    - _self_
+  - override /dataset: vad
+  - override /scheduler: null
+  - _self_
+
+experiment_id: example
+
+trainer:
+  max_epochs: 30

@@ -26,12 +26,12 @@ from hydra.plugins.search_path_plugin import SearchPathPlugin
 
 class HannahSearchPathPlugin(SearchPathPlugin):
     def manipulate_search_path(self, search_path: ConfigSearchPath) -> None:
-        config_dir = pathlib.Path(".") / "configs"
-        if config_dir.exists():
-            for path in (x for x in config_dir.iterdir() if x.is_dir()):
-                search_path.append(provider="hannah", path=f"file://{path}")
+        config_dir = pathlib.Path(".")
+        search_path.prepend(provider="hannah", path=f"file://{config_dir}")
+        search_path.append(provider="hannah", path="pkg://hannah.conf")
 
         # Add hannah_tvm to search path
+        # FIXME: add generic plugin discovery
         try:
             import hannah_tvm.conf as conf
             import hannah_tvm.config as config  # noqa
