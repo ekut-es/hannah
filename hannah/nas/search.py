@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+import copy
 import logging
 import os
 import shutil
@@ -302,6 +303,7 @@ class OFANasTrainer(NASTrainerBase):
         epochs_width_step=10,
         epochs_dilation_step=10,
         epochs_grouping_step=10,
+        epochs_tuning_step=5,
         elastic_kernels_allowed=False,
         elastic_depth_allowed=False,
         elastic_width_allowed=False,
@@ -323,6 +325,7 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_width_step = epochs_width_step
         self.epochs_dilation_step = epochs_dilation_step
         self.epochs_grouping_step = epochs_grouping_step
+        self.epochs_tuning_step = epochs_tuning_step
         self.elastic_kernels_allowed = elastic_kernels_allowed
         self.elastic_depth_allowed = elastic_depth_allowed
         self.elastic_width_allowed = elastic_width_allowed
@@ -875,14 +878,18 @@ class OFANasTrainer(NASTrainerBase):
         :param metrics_csv: a string that will be written to a csv file
         :return: The metrics_csv is being returned.
         """
-        self.rebuild_trainer(trainer_path)
+        self.rebuild_trainer(trainer_path, self.epochs_tuning_step, tensorboard=False)
         msglogger.info(loginfo_output)
-        model.reset_validation_model()
+
+        lightning_model = copy.deepcopy(lightning_model)
+        model = lightning_model.model
+
+        if self.epochs_tuning_step > 0:
+            self.trainer.fit(lightning_model)
 
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
-        model.reset_validation_model()
 
         metrics_csv += metrics_output
         results = validation_results[0]
@@ -987,6 +994,7 @@ class OFANasTrainer(NASTrainerBase):
                 metrics_output += f"{selected_depth}, "
             if self.extract_model_config:
                 model.print_config("r" + str(i))
+
             self.random_metrics_csv = self.eval_single_model(
                 None,
                 None,
@@ -1005,8 +1013,13 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_width_step = prev_max_width
         model.sampling_max_grouping_step = prev_max_grouping
 
-    def rebuild_trainer(self, step_name: str, epochs: int = 1) -> Trainer:
-        logger = TensorBoardLogger(".", version=step_name)
+    def rebuild_trainer(
+        self, step_name: str, epochs: int = 1, tensorboard: bool = True
+    ) -> Trainer:
+        if tensorboard:
+            logger = TensorBoardLogger(".", version=step_name)
+        else:
+            logger = None
         callbacks = common_callbacks(self.config)
         self.trainer = instantiate(
             self.config.trainer, callbacks=callbacks, logger=logger, max_epochs=epochs

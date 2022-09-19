@@ -33,9 +33,7 @@ defaults:
     - profiler: null
     - compression: null
     - optional dataset/features: ${dataset}_${features}
-    - experiment: null
     - nas: null
-    - experiment: null
     - override hydra/job_logging: silent
     - _self_
 
