@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import logging
 import os
 import shutil
@@ -311,9 +312,6 @@ class OFANasTrainer(NASTrainerBase):
         random_eval_number=100,
         extract_model_config=False,
         warmup_model_path="",
-        # epochs_warmup_after_width=5,
-        # epochs_kernel_after_width=5,
-        # epochs_depth_after_width=5,
         *args,
         **kwargs,
     ):
@@ -338,9 +336,6 @@ class OFANasTrainer(NASTrainerBase):
         self.extract_model_config = extract_model_config
 
     def run(self):
-        if "ofa_nas_dir" not in os.path.abspath(os.path.curdir):
-            os.makedirs("ofa_nas_dir", exist_ok=True)
-            os.chdir("ofa_nas_dir")
         config = OmegaConf.create(self.config)
         # logger = TensorBoardLogger(".")
 
@@ -440,7 +435,6 @@ class OFANasTrainer(NASTrainerBase):
         self.train_elastic_depth(model, ofa_model)
         ofa_model.reset_shrinking()
         self.train_elastic_width(model, ofa_model)
-        # MR 218912
         ofa_model.reset_shrinking()
         self.train_elastic_grouping(model, ofa_model)
 

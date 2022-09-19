@@ -125,8 +125,6 @@ build_docs:
   # Empty dependencies to disable artifacts passing
   dependencies: []
 
-
-
 run_ml_cloud:
   before_script: []
   stage: build
