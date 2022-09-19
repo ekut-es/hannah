@@ -125,125 +125,20 @@ build_docs:
   # Empty dependencies to disable artifacts passing
   dependencies: []
 
-build_image:
-  stage: build
-  before_script:
-    # Install poetry using recommended method
-    - apk add python3
-    - apk add curl
-    - curl -sSL https://install.python-poetry.org/ | python3
-    - export PATH=${POETRY_HOME}/bin:${PATH}
-  image:
-    name: quay.io/singularity/singularity:v3.7.3
-    entrypoint: [""]
 
-  tags:
-    - docker
-    - privileged
-  script:
-    - set -e
-    - cd ml_cloud
-    - ./build_image.sh
-  artifacts:
-    paths:
-      - ml_cloud/ml_cloud.sif
-    expire_in: 1 day
-  only:
-    - master
-    - main
-    - /.*container.*/
-
-test_image:
-  stage: test
-  before_script: [""]
-  image:
-    name: quay.io/singularity/singularity:v3.7.3
-    entrypoint: [""]
-
-  tags:
-    - docker
-    - privileged
-  script:
-    - singularity run --no-home --bind $PWD ml_cloud/ml_cloud.sif  python -m hannah.train trainer.fast_dev_run=True
-  dependencies:
-    - build_image
-  only:
-    - master
-    - main
-    - /.*container.*/
-
-deploy_image:
-  stage: deploy
-  before_script:
-    - eval $(ssh-agent -s)
-    - ssh-add <(echo "$ML_CLOUD_KEY")
-    - mkdir -p ~/.ssh
-    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
-  image:
-    name: quay.io/singularity/singularity:v3.7.3
-    entrypoint: [""]
-
-  tags:
-    - docker
-    - privileged
-  script:
-    - cd ml_cloud
-    - scp ml_cloud.sif cgerum05@134.2.168.52:/mnt/qb/work/bringmann/cgerum05
-  dependencies:
-    - build_image
-    - test_image
-  only:
-    - master
-    - main
-    - /.*container.+/
-
-
-deploy_test:
-  stage: deploy_test
-  before_script:
-    - eval $(ssh-agent -s)
-    - ssh-add <(echo "$ML_CLOUD_KEY")
-    - mkdir -p ~/.ssh
-    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
-  image:
-    name: quay.io/singularity/singularity:v3.7.3
-    entrypoint: [""]
-
-  tags:
-    - docker
-  script:
-    - cd ml_cloud
-    - ssh cgerum05@134.2.168.52 ls
-  dependencies:
-    - deploy_image
-  only:
-    - master
-    - main
-    - /.*container.*/
 
 run_ml_cloud:
-  stage: run
-  image: ubuntu:latest
-  before_script:
-    - apt update
-    - apt -y install openssh-client
-    - eval $(ssh-agent -s)
-    - ssh-add <(echo "$ML_CLOUD_KEY")
-    - mkdir -p ~/.ssh
-    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
+  before_script: []
+  stage: build 
+  # run
   tags:
-    - docker
+    - ml-cloud
   script:
-    - set -e
-    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
-    - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-    - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
-    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_kws.sh"
-  when: manual
+    - cml ci
+    - echo "Test comment" > report.md
+    - cml send-comment report.md
+  only:
+    - master
   dependencies: []
 
 run_ml_cloud_progressive_shrinking:
