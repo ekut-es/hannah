@@ -35,7 +35,7 @@ from hydra.utils import instantiate
 from joblib import Parallel, delayed
 from omegaconf import OmegaConf
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from ..callbacks.optimization import HydraOptCallback
@@ -303,7 +303,7 @@ class OFANasTrainer(NASTrainerBase):
         epochs_width_step=10,
         epochs_dilation_step=10,
         epochs_grouping_step=10,
-        epochs_tuning_step=5,
+        epochs_tuning_step=0,
         elastic_kernels_allowed=False,
         elastic_depth_allowed=False,
         elastic_width_allowed=False,
@@ -532,7 +532,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to train
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_kernels_allowed is True:
+        if self.elastic_kernels_allowed:
             # train elastic kernels
             for current_kernel_step in range(1, self.kernel_step_count):
                 # add a kernel step
@@ -555,7 +555,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_dilation_allowed is True:
+        if self.elastic_dilation_allowed:
             # train elastic kernels
             for current_dilation_step in range(1, self.dilation_step_count):
                 # add a kernel step
@@ -578,7 +578,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_grouping_allowed is True:
+        if self.elastic_grouping_allowed:
             # train elastic groups
             for current_grouping_step in range(1, self.grouping_step_count):
                 # add a group step
@@ -881,8 +881,10 @@ class OFANasTrainer(NASTrainerBase):
         self.rebuild_trainer(trainer_path, self.epochs_tuning_step, tensorboard=False)
         msglogger.info(loginfo_output)
 
-        lightning_model = copy.deepcopy(lightning_model)
-        model = lightning_model.model
+        validation_model = model.build_validation_model()
+
+        lightning_model.model = validation_model
+        assert model.eval_mode is True
 
         if self.epochs_tuning_step > 0:
             self.trainer.fit(lightning_model)
@@ -890,6 +892,8 @@ class OFANasTrainer(NASTrainerBase):
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
+
+        lightning_model.model = model
 
         metrics_csv += metrics_output
         results = validation_results[0]
@@ -945,7 +949,7 @@ class OFANasTrainer(NASTrainerBase):
 
     def eval_random_combination(self, lightning_model, model):
         # sample a few random combinations
-        model.reset_validation_model()
+
         random_eval_number = self.random_eval_number
         prev_max_kernel = model.sampling_max_kernel_step
         prev_max_depth = model.sampling_max_depth_step
@@ -957,7 +961,9 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_depth_step = model.ofa_steps_depth - 1
         model.sampling_max_width_step = model.ofa_steps_width - 1
         model.sampling_max_grouping_step = model.ofa_steps_grouping - 1
+        assert model.eval_mode is True
         for i in range(random_eval_number):
+            model.reset_validation_model()
             random_state = model.sample_subnetwork()
 
             loginfo_output = f"OFA validating random sample:\n{random_state}"
@@ -1019,7 +1025,7 @@ class OFANasTrainer(NASTrainerBase):
         if tensorboard:
             logger = TensorBoardLogger(".", version=step_name)
         else:
-            logger = None
+            logger = CSVLogger(".", version=step_name)
         callbacks = common_callbacks(self.config)
         self.trainer = instantiate(
             self.config.trainer, callbacks=callbacks, logger=logger, max_epochs=epochs

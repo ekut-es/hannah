@@ -29,6 +29,7 @@ from contextlib import _GeneratorContextManager, contextmanager
 from pathlib import Path
 from typing import Any, Callable, Iterator, List, Type, TypeVar
 
+import hydra
 import numpy as np
 import nvsmi
 import pytorch_lightning
@@ -50,8 +51,6 @@ from torchvision.datasets.utils import (
     list_dir,
     list_files,
 )
-
-import hydra
 
 from .callbacks.clustering import kMeans
 from .callbacks.optimization import HydraOptCallback
