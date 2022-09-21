@@ -18,7 +18,6 @@ from .elasticLinear import ElasticPermissiveReLU
 # Adapted base Class used for the Quantization
 # pytype: enable=attribute-error
 
-#  TODO Validation and Testing
 class _ElasticConvBnNd(
     ElasticBase1d, qat._ConvForwardMixin
 ):  # pytype: disable=module-attr
