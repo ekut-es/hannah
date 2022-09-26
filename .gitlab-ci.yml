@@ -223,3 +223,18 @@ run_sca:
 #   only:
 #     - master
 #     - main
+
+
+
+deploy to github:
+  stage: build
+  image: ilyasemenov/gitlab-ci-git-push
+
+  variables:
+    # Prevent "shallow update not allowed" error.
+    # Set it to maximum possible count of *new* commits that you foresee being pushed to a remote.
+    GIT_DEPTH: 1000
+
+  only:
+    - main
+  script: git-push git@github.com:ekut-es/hannah.git
