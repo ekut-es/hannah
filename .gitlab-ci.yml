@@ -73,7 +73,6 @@ test_tvm:
   interruptible: true
   allow_failure: true
   only:
-    - master
     - main
     - /.*tvm.*/
 
@@ -119,7 +118,6 @@ build_docs:
     - afs
     - native
   only:
-    - master
     - main
 
   # Empty dependencies to disable artifacts passing
@@ -136,7 +134,7 @@ run_ml_cloud:
     - echo "Test comment" > report.md
     - cml send-comment report.md
   only:
-    - master
+    - main
   dependencies: []
 
 run_ml_cloud_progressive_shrinking:
@@ -221,7 +219,6 @@ run_sca:
 #     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && scripts/ml_cloud_update_env.sh"
 #   dependencies: []
 #   only:
-#     - master
 #     - main
 
 
