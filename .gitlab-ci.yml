@@ -228,9 +228,10 @@ run_sca:
 
 deploy to github:
   stage: build
-  image: ilyasemenov/gitlab-ci-git-push
+  image: ubuntu:latest
   before_script:
-    - apk add --no-cache git-lfs
+    - apt update
+    - apt -y install openssh-client git git-lfs
 
   variables:
     # Prevent "shallow update not allowed" error.
@@ -239,4 +240,4 @@ deploy to github:
 
   only:
     - main
-  script: git-push git@github.com:ekut-es/hannah.git
+  script: ./scripts/git-push git@github.com:ekut-es/hannah.git
