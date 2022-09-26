@@ -34,5 +34,5 @@ elastic_dilation_allowed: True
 elastic_width_allowed: True
 elastic_grouping_allowed: True
 evaluate: True
-random_evaluate: False
+random_evaluate: True
 random_eval_number: 1

@@ -126,7 +126,6 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.min_group_size: int = self.group_sizes[0]
         self.target_group_index: int = 0
 
-        # MR 20220622  TODO: still needed ?
         # store first grouping param
         self.last_grouping_param = self.get_group_size()
 
