@@ -229,6 +229,7 @@ run_sca:
 deploy to github:
   stage: build
   image: ilyasemenov/gitlab-ci-git-push
+  before_script: []
 
   variables:
     # Prevent "shallow update not allowed" error.
