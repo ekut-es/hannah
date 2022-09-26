@@ -240,6 +240,6 @@ deploy to github:
 
   only:
     - main
-  script: ./scripts/git-push git@github.com:ekut-es/hannah.git
+  script: ./scripts/git-push git@github.com:ekut-es/hannah.git main
   tags:
     - docker
