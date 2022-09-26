@@ -145,18 +145,19 @@ def create(
                 ofa_steps_kernel = max(ofa_steps_kernel, this_block_kernel_steps)
                 ofa_steps_dilation = max(ofa_steps_dilation, this_block_dilation_steps)
                 ofa_steps_grouping = max(ofa_steps_grouping, this_block_grouping_steps)
+                ofa_steps_dsc = max(ofa_steps_dsc, this_block_grouping_steps)
             elif block.target == "elastic_channel_helper":
                 this_block_width_steps = len(block.out_channels)
                 ofa_steps_width = max(ofa_steps_width, this_block_width_steps)
     logging.info(
-        f"OFA steps are {ofa_steps_kernel} kernel sizes, {ofa_steps_depth} depths, {ofa_steps_width} widths, {ofa_steps_grouping} groups."
+        f"OFA steps are {ofa_steps_kernel} kernel sizes, {ofa_steps_depth} depths, {ofa_steps_width} widths, {ofa_steps_grouping} groups, {ofa_steps_dsc} dscs."
     )
     model.ofa_steps_kernel = ofa_steps_kernel
     model.ofa_steps_depth = ofa_steps_depth
     model.ofa_steps_width = ofa_steps_width
     model.ofa_steps_dilation = ofa_steps_dilation
     model.ofa_steps_grouping = ofa_steps_grouping
-    model.ofa_steps_dsc = ofa_steps_grouping
+    model.ofa_steps_dsc = ofa_steps_dsc
 
     model.perform_sequence_discovery()
 
@@ -690,9 +691,9 @@ class OFAModel(nn.Module):
                     self.sampling_max_dsc_step + 1,
                     conv.get_available_dsc_steps(),  # zero index array
                 )
-                new_grouping_step = self.get_random_step(max_available_sampling_step)
-                conv.pick_group_index(new_grouping_step)
-                state["dsc_steps"].append(new_grouping_step)
+                new_dsc_step = self.get_random_step(max_available_sampling_step)
+                conv.pick_dsc_index(new_dsc_step)
+                state["dsc_steps"].append(new_dsc_step)
 
         if self.elastic_width_allowed:
             for helper in self.elastic_channel_helpers:
@@ -976,7 +977,7 @@ class OFAModel(nn.Module):
     def reset_all_dsc(self):
         return call_function_from_deep_nested(
             input=self.conv_layers,
-            function="reset_dsc",
+            function="reset_dscs",
             type_selection=elastic_conv_type,
         )
 
@@ -995,6 +996,7 @@ class OFAModel(nn.Module):
             function="step_down_group_size",  # In ChannelHelper implementieren
             type_selection=elastic_conv_type,
         )
+
     def step_down_all_dsc(self):
         return call_function_from_deep_nested(
             input=self.conv_layers,

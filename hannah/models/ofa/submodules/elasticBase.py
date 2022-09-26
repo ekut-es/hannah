@@ -5,8 +5,10 @@ from typing import List
 import torch
 import numpy as np
 import torch.nn as nn
+import torch.nn.functional as nnf
 
 from ..utilities import (
+    adjust_weight_if_needed,
     conv1d_get_padding,
     filter_primary_module_weights,
     filter_single_dimensional_weights,
@@ -120,13 +122,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         # TODO hier überprüfen wie sich das mit True, False verhält
         dscs.sort(reverse=False)
         # make sure 0 is not set as grouping size. Must be at least 1
-        #if 0 in dscs:
+        # if 0 in dscs:
         #    dscs.remove(0)
 
         self.dscs: List[bool] = dscs
 
-        self.max_dsc: bool = self.group_sizes[-1]
-        self.min_dsc: bool = self.group_sizes[0]
+        self.max_dsc: bool = self.dscs[-1]
+        self.min_dsc: bool = self.dscs[0]
         self.target_dsc_index: int = 0
 
         # MR 20220622  TODO: still needed ?
@@ -142,6 +144,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             self.dilation_sizes[self.target_dilation_index],
         )
         # TODO wenn DSC on dann achte hier drauf
+        # hier
+        # eventuell hier schon umstellen.
         nn.Conv1d.__init__(
             self,
             in_channels=self.in_channels,
@@ -197,12 +201,27 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
         self.update_padding()
 
-    def do_dpc(self, input, kernel, bias, stride, padding, dilation, in_channel, out_channel):
+    # do_dpc(input,  in_channels=self.in_channels, out_channels=self.out_channels, grouping=grouping,
+    #  kernel=kernel, bias=bias, stride=self.stride, padding=padding, dilation=dilation)
+    def do_dpc(self,
+        input,
+        in_channels,
+        out_channels,
+        grouping,
+        kernel,
+        bias,
+        stride,
+        padding,
+        dilation
+    ):
 
         # TODO: ändern
 
         """
             this  method will perform the DSC.
+            DSC is done in two steps:
+            1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
+            2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
         """
         # from torch.nn import Conv2d
 
@@ -211,8 +230,12 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         # x = torch.rand(5, 10, 50, 50)
         # out = conv(x)
-
-        # depth_conv = Conv2d(in_channels=10, out_channels=10, kernel_size=3, groups=10)
+        # depth_conv = Conv1d(in_channels=in_channels, out_channels=in_channels, , groups=in_channels)
+        # Adjust Kernel first
+        # hier muss ich noch kernel auf output zuschneiden
+        # input auch auf kernel zuschneiden
+        kernel, _ = adjust_weight_if_needed(self, kernel=kernel, groups=in_channels)
+        output_depthwise = nnf.conv1d(input, kernel, bias, stride=self.stride, padding=padding, dilation=dilation, grouping=grouping)
         # point_conv = Conv2d(in_channels=10, out_channels=32, kernel_size=1)
 
         # depthwise_separable_conv = torch.nn.Sequential(depth_conv, point_conv)
@@ -490,7 +513,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.set_group_size(self.group_sizes[0])
 
     def reset_dscs(self):
-        self.set_dscs(self.dscs[0])
+        self.set_dsc(self.dscs[0])
 
     def get_group_size(self):
         return self.group_sizes[self.target_group_index]

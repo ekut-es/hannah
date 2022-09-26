@@ -22,7 +22,7 @@ from ..utilities import (
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
 
-
+# TODO Validation
 class ElasticConv1d(ElasticBase1d):
     def __init__(
         self,
@@ -71,7 +71,7 @@ class ElasticConv1d(ElasticBase1d):
             return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-            self.do_dpc(input, kernel, bias, self.stride, padding, dilation, in_channel, out_channel)
+            # self.do_dpc(input, kernel, bias, self.stride, padding, dilation, in_channel, out_channel)
             return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
 
     # return a normal conv1d equivalent to this module in the current state
@@ -157,15 +157,17 @@ class ElasticConvReLu1d(ElasticBase1d):
             self.kernel_sizes[self.target_kernel_index], dilation
         )
 
+        self.get_c
         grouping = self.get_group_size()
         # Hier muss dann wenn DSC on ist, die Logik implementiert werden dass DSC komplett greift
-        dsc = self.get_dsc()
-        if dsc is False:
+        dsc_on = self.get_dsc()
+        if dsc_on is False:
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
             return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-            self.do_dpc(input, kernel, bias, self.stride, padding, dilation, in_channel, out_channel)
+            # TODO hier einklinken - Testen im Unit Test wie man das mit nnf am besten umsetzt
+            # self.do_dpc(input=input,  in_channels=self.in_channels, out_channels=self.out_channels, grouping=grouping, kernel=kernel, bias=bias, stride=self.stride, padding=padding, dilation=dilation)
             return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
 
         return self.relu(

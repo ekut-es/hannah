@@ -242,6 +242,7 @@ class OFANasTrainer(NASTrainerBase):
         epochs_width_step=10,
         epochs_dilation_step=10,
         epochs_grouping_step=10,
+        epochs_dsc_step=10,
         elastic_kernels_allowed=False,
         elastic_depth_allowed=False,
         elastic_width_allowed=False,
@@ -267,6 +268,7 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_width_step = epochs_width_step
         self.epochs_dilation_step = epochs_dilation_step
         self.epochs_grouping_step = epochs_grouping_step
+        self.epochs_dsc_step = epochs_dsc_step
         self.elastic_kernels_allowed = elastic_kernels_allowed
         self.elastic_depth_allowed = elastic_depth_allowed
         self.elastic_width_allowed = elastic_width_allowed
@@ -381,7 +383,7 @@ class OFANasTrainer(NASTrainerBase):
         # self.random_metrics_csv = "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
 
         logging.info("Once for all Model:\n %s", str(ofa_model))
-
+        # TODO Warmup DSC on or off?
         self.warmup(model, ofa_model)
         ofa_model.reset_shrinking()
 
