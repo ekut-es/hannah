@@ -92,3 +92,8 @@ def test_unimplemeted(x, y):
 
 if __name__ == "__main__":
     test_print()
+    test_evaluate()
+    test_expressions()
+    test_and_expr()
+    test_le_expr()
+    test_complex_expressions()
