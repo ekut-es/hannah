@@ -1,18 +1,36 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import copy
 import logging
 from typing import List
 
-import torch
 import numpy as np
+import torch
 import torch.nn as nn
 
 from ..utilities import (
+    adjust_weights_for_grouping,
     conv1d_get_padding,
     filter_primary_module_weights,
     filter_single_dimensional_weights,
-    sub_filter_start_end,
     getGroups,
-    adjust_weights_for_grouping
+    sub_filter_start_end,
 )
 
 
@@ -93,8 +111,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         # dynamic width changes the in and out_channels
         # hence we save then here
-        self.initial_in_channels : int = in_channels
-        self.initial_out_channels : int = out_channels
+        self.initial_in_channels: int = in_channels
+        self.initial_out_channels: int = out_channels
 
         # sort available grouping sizes from largest to smallest (descending order)
         groups.sort(reverse=False)
@@ -174,7 +192,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
         self.update_padding()
 
-    def set_in_and_out_channel(self, kernel, filtered : bool = True):
+    def set_in_and_out_channel(self, kernel, filtered: bool = True):
         """
         this method uses the kernel for setting the input and outputchannel
         if dynamic width is activated (channelfilters), the amount of channels is reduced,
@@ -185,8 +203,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         if filtered is False, the self.initial_(in/out)_channels will be used.
 
-        :param: kernel : the weights , size(1) for in channel, size(0) for out_channels
-        :param: filtered: use kernel size data for setting the (in/out) channels
+        :param kernel (int): the weights , size(1) for in channel, size(0) for out_channels
+        :param filtered (bool): use kernel size data for setting the (in/out) channels
         """
         self.in_channels = kernel.size(1) if filtered else self.initial_in_channels
         self.out_channels = kernel.size(0) if filtered else self.initial_out_channels
@@ -197,7 +215,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         the min/max range. If the requested kernel size is not an available kernel
         size, default to the max kernel size
 
-        :param new_kernel_size: the size of the kernel you want to use
+        :param new_kernel_size (int): the size of the kernel you want to use
         """
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
         if (
@@ -247,8 +265,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             return False
 
     def pick_kernel_index(self, target_kernel_index: int):
-        if (target_kernel_index < 0) or (
-            target_kernel_index >= len(self.kernel_sizes)):
+        if (target_kernel_index < 0) or (target_kernel_index >= len(self.kernel_sizes)):
             logging.warn(
                 f"selected kernel index {target_kernel_index} is out of range: 0 .. {len(self.kernel_sizes)}. Setting to last index."
             )
@@ -286,8 +303,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             kernel_center = current_kernel[:, :, start:end]
             # apply the kernel transformation to the next kernel. the n-th transformation
             # is applied to the n-th kernel, yielding the (n+1)-th kernel
-            next_kernel = self.kernel_transforms[current_kernel_index](
-                kernel_center)
+            next_kernel = self.kernel_transforms[current_kernel_index](kernel_center)
             # the kernel has now advanced through the available sizes by one
             current_kernel = next_kernel
             current_kernel_index += 1
@@ -406,9 +422,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         return self.dilation_sizes[self.target_dilation_index]
 
     def pick_group_index(self, target_group_index: int):
-        if (target_group_index < 0) or (
-            target_group_index >= len(self.group_sizes)
-        ):
+        if (target_group_index < 0) or (target_group_index >= len(self.group_sizes)):
             logging.warn(
                 f"selected group index {target_group_index} is out of range: 0 .. {len(self.group_sizes)}. Setting to last index."
             )
@@ -429,10 +443,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         return self.group_sizes[self.target_group_index]
 
     def set_group_size(self, new_group_size):
-        if (
-            new_group_size < self.min_group_size
-            or new_group_size > self.max_group_size
-        ):
+        if new_group_size < self.min_group_size or new_group_size > self.max_group_size:
             logging.warn(
                 f"requested elastic group size ({new_group_size}) outside of min/max range: ({self.max_group_size}, {self.min_group_size}). clamping."
             )
@@ -471,19 +482,19 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
     # MR: not in use at the moment - but maybe later
     def getGrouping(self):
-        """"
-             Returns a possible Grouping using GCD
-         """
+        """ "
+        Returns a possible Grouping using GCD
+        """
         gcd_input_output = np.gcd(self.in_channels, self.out_channels)
         self.group_sizes = getGroups(gcd_input_output)
-        logging.info(
-            f"InputSize: {self.in_channels},  OutputSize: {self.out_channels}")
+        logging.info(f"InputSize: {self.in_channels},  OutputSize: {self.out_channels}")
         logging.info(f"GCD: {gcd_input_output}")
         for group in self.group_sizes:
             grouping_possible_input = self.in_channels % group == 0
             grouping_possible_output = self.out_channels % group == 0
             logging.info(
-                f"Grouping: {group}, Possible Grouping(I,O)? ({grouping_possible_input},{grouping_possible_output})")
+                f"Grouping: {group}, Possible Grouping(I,O)? ({grouping_possible_input},{grouping_possible_output})"
+            )
             if not (grouping_possible_output and grouping_possible_input):
                 self.group_sizes.remove(group)
         return self.group_sizes
@@ -496,6 +507,5 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         pass
 
     def extra_repr(self):
-        # TODO(jerryzh): extend
         pass
         # return super(ElasticBase1d, self).extra_repr()

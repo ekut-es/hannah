@@ -1,5 +1,23 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from collections import namedtuple
-from typing import Union
+from typing import Optional, Union
 
 import torch
 import torch.autograd as autograd
@@ -86,12 +104,15 @@ class FixedpointObserver(ObserverBase):
 
 class SymmetricQuantization:
     def __init__(
-        self, bits: int, rounding_mode: str = "EVEN", debug: bool = False
+        self, bits: int, rounding_mode: str = "EVEN", debug: bool = False, scale=None
     ) -> None:
         self.bits = bits
         self.max = 2.0 ** (bits - 1) - 1
         self.min = -(2.0 ** (bits - 1))
-        self.scale = 1.0 / 2 ** (bits - 1)
+        if scale is None:
+            self.scale = 1.0 / 2 ** (bits - 1)
+        else:
+            self.scale = scale
         self.rounding_mode = rounding_mode
         self.round = RoundingMode(rounding_mode)
         self.debug = debug
@@ -118,8 +139,9 @@ class SymmetricQuantization:
         return x
 
 
-class PowerOf2Quantization:
+class PowerOf2Quantization(torch.nn.Module):
     def __init__(self, bits, debug=False):
+        super().__init__()
         self.bits = bits
         self.debug = debug
 
@@ -139,7 +161,7 @@ class PowerOf2Quantization:
 
         return log_x
 
-    def __call__(self, x):
+    def forward(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
         mask_x = torch.ge(abs_x, 1 / 2 ** ((2**self.bits - 1))).float()
@@ -170,11 +192,12 @@ class STEQuantize(FakeQuantizeBase):
     def __init__(
         self,
         bits: int,
-        quantization_loss: bool = True,
         power_of_2: bool = False,
         noise_prob: float = 1.0,
         rounding_mode: str = "EVEN",
         debug: bool = False,
+        dtype: str = "int",
+        scale: Optional[float] = None,
     ) -> None:
         super().__init__()
 
@@ -183,10 +206,12 @@ class STEQuantize(FakeQuantizeBase):
         self.rounding_mode = rounding_mode
         self.debug = debug
         self.power_of_2 = power_of_2
-        self.rounding_mode = rounding_mode
+        self.dtype = dtype
 
         if power_of_2:
-            self.quantization_function = PowerOf2Quantization(bits, debug=self.debug)
+            self.quantization_function = PowerOf2Quantization(
+                bits, scale=scale, debug=self.debug
+            )
         else:
             self.quantization_function = SymmetricQuantization(
                 bits, rounding_mode=rounding_mode, debug=self.debug
@@ -195,7 +220,6 @@ class STEQuantize(FakeQuantizeBase):
         self.quantization_loss = torch.zeros(1)
 
     def forward(self, x: Union[Tensor, Parameter]) -> Tensor:
-
         quantized_x = STE.apply(x, self.quantization_function)
         if self.noise_prob < 1.0 and self.training:
             mask = torch.bernoulli(
@@ -216,7 +240,7 @@ class STEQuantize(FakeQuantizeBase):
         )
 
     def extra_repr(self):
-        return f"(bits={self.bits} noise_prob={self.noise_prob}, )"
+        return f"(dtype={self.dtype} bits={self.bits} noise_prob={self.noise_prob}, rounding_mode={self.rounding_mode})"
 
 
 def get_trax_qat_qconfig(config) -> QConfig:

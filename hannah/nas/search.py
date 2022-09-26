@@ -1,24 +1,47 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import copy
 import logging
 import os
 import shutil
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict
 
 import numpy as np
 import omegaconf
 import torch
-from hannah_optimizer.aging_evolution import AgingEvolution
+import torch.package as package
+import yaml
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
 from omegaconf import OmegaConf
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.summaries import MacSummaryCallback
 from ..utils import clear_outputs, common_callbacks, fullname
+from .aging_evolution import AgingEvolution
 
 msglogger = logging.getLogger(__name__)
 
@@ -34,6 +57,7 @@ def run_training(num, config):
         shutil.rmtree(str(num))
 
     os.makedirs(str(num), exist_ok=True)
+
     try:
         os.chdir(str(num))
         config = OmegaConf.create(config)
@@ -44,25 +68,35 @@ def run_training(num, config):
             seed = seed[0]
         seed_everything(seed, workers=True)
 
-        num_gpus = torch.cuda.device_count()
-        gpu = num % num_gpus
-        config.trainer.gpus = [gpu]
+        if config.trainer.gpus is not None:
+            if isinstance(config.trainer.gpus, int):
+                num_gpus = config.trainer.gpus
+                gpu = num % num_gpus
+            elif len(config.trainer.gpus) == 0:
+                num_gpus = torch.cuda.device_count()
+                gpu = num % num_gpus
+            else:
+                gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
+
+            if gpu >= torch.cuda.device_count():
+                logger.warning(
+                    "GPU %d is not available on this device using GPU %d instead",
+                    gpu,
+                    gpu % torch.cuda.device_count(),
+                )
+                gpu = gpu % torch.cuda.device_count()
+
+            config.trainer.gpus = [gpu]
 
         callbacks = common_callbacks(config)
         opt_monitor = config.get("monitor", ["val_error"])
         opt_callback = HydraOptCallback(monitor=opt_monitor)
         callbacks.append(opt_callback)
 
-        checkpoint_callback = instantiate(config.checkpoint, _recursive_=False)
+        checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
         try:
-            trainer = instantiate(
-                config.trainer,
-                callbacks=callbacks,
-                logger=logger,
-                _recursive_=False,
-                _convert_="partial",
-            )
+            trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
             model = instantiate(
                 config.module,
                 dataset=config.dataset,
@@ -137,6 +171,8 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         parent_config=None,
         presample=True,
         n_jobs=10,
+        predictor=None,
+        seed=1234,
     ):
         super().__init__(
             budget=budget,
@@ -154,18 +190,16 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             random_state=self.random_state,
         )
 
+        self.predictor = None
+        if predictor is not None:
+            self.predictor = instantiate(predictor, _recursive_=False)
+
         self.worklist = []
         self.presample = presample
 
     def _sample(self):
         parameters = self.optimizer.next_parameters()
-
         config = OmegaConf.merge(self.config, parameters.flatten())
-
-        if "backend" in config:
-            estimator = instantiate(config.backend, _recursive_=False)
-        else:
-            estimator = MacSummaryCallback()
 
         try:
             model = instantiate(
@@ -179,13 +213,14 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 _recursive_=False,
             )
             model.setup("train")
+
         except AssertionError as e:
             msglogger.critical(
-                "Instantion failed. Probably #input/output channels are not divisable by #groups!"
+                "Instantiation failed. Probably #input/output channels are not divisible by #groups!"
             )
             msglogger.critical(str(e))
         else:
-            estimated_metrics = estimator.estimate(model)
+            estimated_metrics = self.predictor.estimate(model)
 
             satisfied_bounds = []
             for k, v in estimated_metrics.items():
@@ -224,6 +259,31 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                         for num, config in enumerate(configs)
                     ]
                 )
+
+                for num, (config, result) in enumerate(zip(configs, results)):
+                    nas_result_path = Path("results")
+                    if not nas_result_path.exists():
+                        nas_result_path.mkdir(parents=True, exist_ok=True)
+                    config_file_name = f"config_{len(self.optimizer.history)+num}.yaml"
+                    config_path = nas_result_path / config_file_name
+                    with config_path.open("w") as config_file:
+                        config_file.write(OmegaConf.to_yaml(config))
+
+                    result_path = nas_result_path / "results.yaml"
+                    result_history = []
+                    if result_path.exists():
+                        with result_path.open("r") as result_file:
+                            result_history = yaml.safe_load(result_file)
+                        if not isinstance(result_history, list):
+                            result_history = []
+
+                    result_history.append(
+                        {"config": str(config_file_name), "metrics": result}
+                    )
+
+                    with result_path.open("w") as result_file:
+                        yaml.safe_dump(result_history, result_file)
+
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
                     metrics = {**item.results, **result}
@@ -231,6 +291,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                         metrics[k] = float(v)
 
                     self.optimizer.tell_result(parameters, metrics)
+
 
 class OFANasTrainer(NASTrainerBase):
     def __init__(
@@ -242,6 +303,7 @@ class OFANasTrainer(NASTrainerBase):
         epochs_width_step=10,
         epochs_dilation_step=10,
         epochs_grouping_step=10,
+        epochs_tuning_step=0,
         elastic_kernels_allowed=False,
         elastic_depth_allowed=False,
         elastic_width_allowed=False,
@@ -252,9 +314,6 @@ class OFANasTrainer(NASTrainerBase):
         random_eval_number=100,
         extract_model_config=False,
         warmup_model_path="",
-        # epochs_warmup_after_width=5,
-        # epochs_kernel_after_width=5,
-        # epochs_depth_after_width=5,
         *args,
         **kwargs,
     ):
@@ -266,6 +325,7 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_width_step = epochs_width_step
         self.epochs_dilation_step = epochs_dilation_step
         self.epochs_grouping_step = epochs_grouping_step
+        self.epochs_tuning_step = epochs_tuning_step
         self.elastic_kernels_allowed = elastic_kernels_allowed
         self.elastic_depth_allowed = elastic_depth_allowed
         self.elastic_width_allowed = elastic_width_allowed
@@ -279,9 +339,6 @@ class OFANasTrainer(NASTrainerBase):
         self.extract_model_config = extract_model_config
 
     def run(self):
-        if "ofa_nas_dir" not in os.path.abspath(os.path.curdir):
-            os.makedirs("ofa_nas_dir", exist_ok=True)
-            os.chdir("ofa_nas_dir")
         config = OmegaConf.create(self.config)
         # logger = TensorBoardLogger(".")
 
@@ -381,7 +438,6 @@ class OFANasTrainer(NASTrainerBase):
         self.train_elastic_depth(model, ofa_model)
         ofa_model.reset_shrinking()
         self.train_elastic_width(model, ofa_model)
-        # MR 218912
         ofa_model.reset_shrinking()
         self.train_elastic_grouping(model, ofa_model)
 
@@ -476,7 +532,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to train
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_kernels_allowed is True:
+        if self.elastic_kernels_allowed:
             # train elastic kernels
             for current_kernel_step in range(1, self.kernel_step_count):
                 # add a kernel step
@@ -499,7 +555,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_dilation_allowed is True:
+        if self.elastic_dilation_allowed:
             # train elastic kernels
             for current_dilation_step in range(1, self.dilation_step_count):
                 # add a kernel step
@@ -522,7 +578,7 @@ class OFANasTrainer(NASTrainerBase):
         :param model: the model to be trained
         :param ofa_model: the model that will be trained
         """
-        if self.elastic_grouping_allowed is True:
+        if self.elastic_grouping_allowed:
             # train elastic groups
             for current_grouping_step in range(1, self.grouping_step_count):
                 # add a group step
@@ -690,7 +746,7 @@ class OFANasTrainer(NASTrainerBase):
 
         return metrics_csv
 
-    def eval_elatic_depth(
+    def eval_elastic_depth(
         self,
         method_stack,
         method_index,
@@ -822,14 +878,22 @@ class OFANasTrainer(NASTrainerBase):
         :param metrics_csv: a string that will be written to a csv file
         :return: The metrics_csv is being returned.
         """
-        self.rebuild_trainer(trainer_path)
+        self.rebuild_trainer(trainer_path, self.epochs_tuning_step, tensorboard=False)
         msglogger.info(loginfo_output)
-        model.reset_validation_model()
+
+        validation_model = model.build_validation_model()
+
+        lightning_model.model = validation_model
+        assert model.eval_mode is True
+
+        if self.epochs_tuning_step > 0:
+            self.trainer.fit(lightning_model)
 
         validation_results = self.trainer.validate(
             lightning_model, ckpt_path=None, verbose=True
         )
-        model.reset_validation_model()
+
+        lightning_model.model = model
 
         metrics_csv += metrics_output
         results = validation_results[0]
@@ -840,7 +904,7 @@ class OFANasTrainer(NASTrainerBase):
 
     def eval_model(self, lightning_model, model):
         """
-        First the method stack for the evaluation ist build and then it is accoding to this evaluated
+        First the method stack for the evaluation ist build and then it is according to this evaluated
 
         :param lightning_model: the lightning model
         :param model: the model to be evaluated
@@ -860,7 +924,7 @@ class OFANasTrainer(NASTrainerBase):
             eval_methods.append(self.eval_elastic_dilation)
 
         if self.elastic_depth_allowed:
-            eval_methods.append(self.eval_elatic_depth)
+            eval_methods.append(self.eval_elastic_depth)
 
         if self.elastic_grouping_allowed:
             eval_methods.append(self.eval_elastic_grouping)
@@ -885,7 +949,7 @@ class OFANasTrainer(NASTrainerBase):
 
     def eval_random_combination(self, lightning_model, model):
         # sample a few random combinations
-        model.reset_validation_model()
+
         random_eval_number = self.random_eval_number
         prev_max_kernel = model.sampling_max_kernel_step
         prev_max_depth = model.sampling_max_depth_step
@@ -897,7 +961,9 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_depth_step = model.ofa_steps_depth - 1
         model.sampling_max_width_step = model.ofa_steps_width - 1
         model.sampling_max_grouping_step = model.ofa_steps_grouping - 1
+        assert model.eval_mode is True
         for i in range(random_eval_number):
+            model.reset_validation_model()
             random_state = model.sample_subnetwork()
 
             loginfo_output = f"OFA validating random sample:\n{random_state}"
@@ -934,6 +1000,7 @@ class OFANasTrainer(NASTrainerBase):
                 metrics_output += f"{selected_depth}, "
             if self.extract_model_config:
                 model.print_config("r" + str(i))
+
             self.random_metrics_csv = self.eval_single_model(
                 None,
                 None,
@@ -952,8 +1019,13 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_width_step = prev_max_width
         model.sampling_max_grouping_step = prev_max_grouping
 
-    def rebuild_trainer(self, step_name: str, epochs: int = 1) -> Trainer:
-        logger = TensorBoardLogger(".", version=step_name)
+    def rebuild_trainer(
+        self, step_name: str, epochs: int = 1, tensorboard: bool = True
+    ) -> Trainer:
+        if tensorboard:
+            logger = TensorBoardLogger(".", version=step_name)
+        else:
+            logger = CSVLogger(".", version=step_name)
         callbacks = common_callbacks(self.config)
         self.trainer = instantiate(
             self.config.trainer, callbacks=callbacks, logger=logger, max_epochs=epochs

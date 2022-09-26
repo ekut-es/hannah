@@ -17,6 +17,11 @@
     "files.associations": {
         "*.inc": "cpp"
     },
+    "python.testing.pytestArgs": [
+        "test"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
     "cSpell.words": [
         "accum",
         "AUROC",

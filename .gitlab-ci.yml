@@ -223,3 +223,21 @@ run_sca:
 #   only:
 #     - master
 #     - main
+
+
+
+deploy to github:
+  stage: build
+  image: ubuntu:latest
+  before_script:
+    - apt update
+    - apt -y install openssh-client git git-lfs
+
+  variables:
+    # Prevent "shallow update not allowed" error.
+    # Set it to maximum possible count of *new* commits that you foresee being pushed to a remote.
+    GIT_DEPTH: 1000
+
+  only:
+    - main
+  script: ./scripts/git-push git@github.com:ekut-es/hannah.git

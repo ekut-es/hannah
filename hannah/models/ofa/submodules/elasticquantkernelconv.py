@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import copy
 import logging
 import math
@@ -9,14 +27,18 @@ import torch.nn.functional as nnf
 from torch.nn import init
 
 from ...factory import qat
-from ..utilities import adjust_weight_if_needed, conv1d_get_padding, filter_single_dimensional_weights
+from ..utilities import (
+    adjust_weight_if_needed,
+    conv1d_get_padding,
+    filter_single_dimensional_weights,
+)
 from .elasticBase import ElasticBase1d
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
 
-
 # Adapted base Class used for the Quantization
 # pytype: enable=attribute-error
+
 
 class _ElasticConvBnNd(
     ElasticBase1d, qat._ConvForwardMixin
@@ -167,7 +189,9 @@ class _ElasticConvBnNd(
         # if we get the scaled weight we need to shape it according to the grouping
         grouping = self.get_group_size()
         if grouping > 1:
-            weight, _ = adjust_weight_if_needed(module=self, kernel=weight, groups=grouping)
+            weight, _ = adjust_weight_if_needed(
+                module=self, kernel=weight, groups=grouping
+            )
 
         scaled_weight = self.weight_fake_quant(
             weight * scale_factor.reshape(weight_shape)
@@ -417,14 +441,16 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
 
         grouping = self.get_group_size()
         if grouping > 1:
-            weight, _ = adjust_weight_if_needed(module=self, kernel=weight, groups=grouping)
+            weight, _ = adjust_weight_if_needed(
+                module=self, kernel=weight, groups=grouping
+            )
 
         y = self.activation_post_process(
             self._real_conv_forward(
                 input,
                 self.weight_fake_quant(weight),
                 self.bias_fake_quant(bias) if self.bias is not None else None,
-                grouping
+                grouping,
             )
         )
         return y
@@ -515,14 +541,16 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         weight, bias = self.get_kernel()
         grouping = self.get_group_size()
         if grouping > 1:
-            weight, _ = adjust_weight_if_needed(module=self, kernel=weight, groups=grouping)
+            weight, _ = adjust_weight_if_needed(
+                module=self, kernel=weight, groups=grouping
+            )
         y = self.activation_post_process(
             self.relu(
                 self._real_conv_forward(
                     input,
                     self.weight_fake_quant(weight),
                     self.bias_fake_quant(bias) if self.bias is not None else None,
-                    grouping
+                    grouping,
                 )
             )
         )
@@ -598,7 +626,9 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         grouping = self.get_group_size()
         if grouping > 1:
             # TODO kernel will be not used, is not needed?
-            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
         # get padding for the size of the kernel
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(

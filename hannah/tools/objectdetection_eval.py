@@ -1,17 +1,45 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 from pathlib import Path
 
+import hydra
 import torch
 from hydra.utils import instantiate, to_absolute_path
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Trainer
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
-import hydra
 from hannah.datasets.Kitti import Kitti, object_collate_fn
 
 
 def eval_train(config, module, test=True):
+    """
+
+    Args:
+      config: param module:
+      test: Default value = True)
+      module:
+
+    Returns:
+
+    """
     gpus = config["gpus"] if len(config["gpus"]) > 0 else 0
     trainer = Trainer(gpus=gpus, deterministic=True, logger=False)
     val = trainer.validate(model=module, ckpt_path=None, verbose=test)
@@ -20,6 +48,17 @@ def eval_train(config, module, test=True):
 
 
 def eval_steps(config, module, hparams, checkpoint):
+    """
+
+    Args:
+      config: param module:
+      hparams: param checkpoint:
+      module:
+      checkpoint:
+
+    Returns:
+
+    """
     methods = config["methods"]
     folder = hparams["dataset"]["kitti_folder"]
 
@@ -77,6 +116,17 @@ def eval_steps(config, module, hparams, checkpoint):
 
 
 def eval_checkpoint(config: DictConfig, checkpoint):
+    """
+
+    Args:
+      config: DictConfig:
+      checkpoint:
+      config: DictConfig:
+      config: DictConfig:
+
+    Returns:
+
+    """
     seed_everything(1234, workers=True)
     checkpoint_path = to_absolute_path(checkpoint)
 
@@ -108,6 +158,16 @@ def eval_checkpoint(config: DictConfig, checkpoint):
 
 
 def eval(config: DictConfig):
+    """
+
+    Args:
+      config: DictConfig:
+      config: DictConfig:
+      config: DictConfig:
+
+    Returns:
+
+    """
     retval = list()
     checkpoints = (
         config.checkpoints if hasattr(config, "checkpoints") else config["checkpoints"]
@@ -126,8 +186,20 @@ def eval(config: DictConfig):
     return retval
 
 
-@hydra.main(config_name="objectdetection_eval", config_path="conf", version_base="1.2")
+@hydra.main(
+    config_name="objectdetection_eval", config_path="../conf", version_base="1.2"
+)
 def main(config: DictConfig):
+    """
+
+    Args:
+      config: DictConfig:
+      config: DictConfig:
+      config: DictConfig:
+
+    Returns:
+
+    """
     return eval(config)
 
 
