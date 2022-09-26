@@ -229,7 +229,8 @@ run_sca:
 deploy to github:
   stage: build
   image: ilyasemenov/gitlab-ci-git-push
-  before_script: []
+  before_script:
+    - apk add --no-cache git-lfs
 
   variables:
     # Prevent "shallow update not allowed" error.
