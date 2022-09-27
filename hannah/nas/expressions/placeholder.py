@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Optional
 
 from ..core.expression import Expression
@@ -10,6 +11,9 @@ class Placeholder(Expression):
 
     def evaluate(self):
         raise NotImplementedError()
+
+    def new(self):
+        return deepcopy(self)
 
     def format(self, indent=2, length=80) -> str:
         return self.__class__.__name__ + "()"
