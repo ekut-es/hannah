@@ -221,8 +221,6 @@ run_sca:
 #   only:
 #     - main
 
-
-
 deploy to github:
   stage: build
   image: ubuntu:latest
