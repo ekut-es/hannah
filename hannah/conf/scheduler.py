@@ -114,7 +114,7 @@ class CosineAnnealingWarmRestartsConf:
     last_epoch: Any = -1
 
 
-cs.store(group="scheduler", name="cosine_warm", node="CosineAnnealingWarmRestartsConf")
+cs.store(group="scheduler", name="cosine_warm", node=CosineAnnealingWarmRestartsConf())
 
 
 @dataclass
