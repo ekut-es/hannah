@@ -70,9 +70,7 @@ class ElasticConv1d(ElasticBase1d):
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
             return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
-            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-            # self.do_dpc(input, kernel, bias, self.stride, padding, dilation, in_channel, out_channel)
-            return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
+            return self.do_dpc(input, kernel=kernel, bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
@@ -163,15 +161,12 @@ class ElasticConvReLu1d(ElasticBase1d):
         dsc_on = self.get_dsc()
         if dsc_on is False:
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-            return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
+            output = nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
-            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-            # TODO hier einklinken - Testen im Unit Test wie man das mit nnf am besten umsetzt
-            # self.do_dpc(input=input,  in_channels=self.in_channels, out_channels=self.out_channels, grouping=grouping, kernel=kernel, bias=bias, stride=self.stride, padding=padding, dilation=dilation)
-            return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
+            output = self.do_dpc(input, kernel=kernel, bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
 
         return self.relu(
-            nnf.conv1d(input, kernel, bias, self.stride, padding, dilation,  grouping)
+            output
         )
 
     # return a normal conv1d equivalent to this module in the current state

@@ -10,8 +10,10 @@ import torch.nn.functional as nnf
 from ..utilities import (
     adjust_weight_if_needed,
     conv1d_get_padding,
+    create_channel_filter,
     filter_primary_module_weights,
     filter_single_dimensional_weights,
+    prepare_kernel_for_depthwise_separable_convolution,
     sub_filter_start_end,
     getGroups,
     adjust_weights_for_grouping
@@ -203,13 +205,12 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
     # do_dpc(input,  in_channels=self.in_channels, out_channels=self.out_channels, grouping=grouping,
     #  kernel=kernel, bias=bias, stride=self.stride, padding=padding, dilation=dilation)
-    def do_dpc(self,
+    def do_dpc(
+        self,
         input,
-        in_channels,
-        out_channels,
-        grouping,
         kernel,
         bias,
+        grouping,
         stride,
         padding,
         dilation
@@ -223,29 +224,28 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
             2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
         """
-        # from torch.nn import Conv2d
-
-        # conv = Conv2d(in_channels=10, out_channels=32, kernel_size=3)
-        # params = sum(p.numel() for p in conv.parameters() if p.requires_grad)
-
-        # x = torch.rand(5, 10, 50, 50)
-        # out = conv(x)
-        # depth_conv = Conv1d(in_channels=in_channels, out_channels=in_channels, , groups=in_channels)
-        # Adjust Kernel first
-        # hier muss ich noch kernel auf output zuschneiden
-        # input auch auf kernel zuschneiden
-        kernel, _ = adjust_weight_if_needed(self, kernel=kernel, groups=in_channels)
-        output_depthwise = nnf.conv1d(input, kernel, bias, stride=self.stride, padding=padding, dilation=dilation, grouping=grouping)
-        # point_conv = Conv2d(in_channels=10, out_channels=32, kernel_size=1)
-
-        # depthwise_separable_conv = torch.nn.Sequential(depth_conv, point_conv)
-        # params_depthwise = sum(p.numel() for p in depthwise_separable_conv.parameters() if p.requires_grad)
-
-        # out_depthwise = depthwise_separable_conv(x)
-
-        # # kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        # return output_of_dsc
-        pass
+        # QUESTION TODO : must the kernel be saved somehow during DSC ?
+        depthwise_output_filter = create_channel_filter(self, kernel, current_channel=self.out_channels, reduced_target_channel_size=self.in_channels)
+        filtered_kernel_depthwise, bias = prepare_kernel_for_depthwise_separable_convolution(
+             kernel=kernel,
+             bias=bias,
+             in_channel_count=self.in_channels,
+             in_channel_filter=self.in_channel_filter,
+             out_channel_filter=depthwise_output_filter
+        )
+        # do depthwise
+        res_depthwise = nnf.conv1d(
+            input,
+            filtered_kernel_depthwise, bias, groups=self.in_channels,
+            stride=stride, dilation=dilation, padding=padding
+        )
+        filtered_kernel = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+        res_pointwise = nnf.conv1d(
+            res_depthwise,
+            filtered_kernel, bias, groups=grouping,
+            stride=stride, dilation=dilation, padding=padding
+        )
+        return res_pointwise
 
     def set_in_and_out_channel(self, kernel, filtered : bool = True):
         """
