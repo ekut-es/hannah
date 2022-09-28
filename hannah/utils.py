@@ -37,7 +37,7 @@ import torch
 import torch.nn as nn
 from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+from pl_bolts.callbacks import ModuleDataMonitor
 from pytorch_lightning.callbacks import (
     Callback,
     DeviceStatsMonitor,
@@ -232,10 +232,6 @@ def common_callbacks(config: DictConfig) -> list:
     if config.get("data_monitor", False):
         data_monitor = ModuleDataMonitor(submodules=True)
         callbacks.append(data_monitor)
-
-    if config.get("print_metrics", False):
-        metrics_printer = PrintTableMetricsCallback()
-        callbacks.append(metrics_printer)
 
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
