@@ -4,9 +4,6 @@ from hannah.nas.dataflow.scoping_utils import get_id_and_update_counters, update
 from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.dataflow.tensor_type import TensorType
 from hannah.nas.parameters.parametrize import parametrize
-# from hannah.nas.parameters.parameters import Parameter
-# from hannah.nas.expressions.placeholder import Placeholder
-from hannah.nas.core.expression import Expression
 
 
 @parametrize
@@ -20,10 +17,7 @@ class Tensor(TensorExpression):
         self.id = scope_id
 
         if self._tensor_type:
-            for name, ax in self._tensor_type.axis.items():
-                ax.id = f'{self.id}.{name}'
-                if isinstance(ax.size, Expression):
-                    ax.size.id = f'{self.id}.{name}.size'
+            self._tensor_type.set_scope(current_scope, counters, visited)
 
     def new(self):
         new_tensor = deepcopy(self)
