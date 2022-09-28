@@ -1,8 +1,8 @@
+from hannah.nas.dataflow.scoping_utils import get_id
 from hannah.nas.expressions.placeholder import UndefinedInt
 from .compression_type import CompressionType
 from typing import Optional
 from copy import deepcopy
-from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.parameters.parametrize import parametrize
 
 
@@ -27,6 +27,27 @@ class AxisType:
             new_axis.name = new_name
         return new_axis
 
-    def set_scope(self, current_scope):
-        self.id = f'{current_scope}.{self.name}'
-        self.set_param_scopes()
+    def set_scope(self, current_scope, counters, visited):
+        scope_id = get_id(current_scope, counters)
+        self.id = f'{scope_id}.axis.{self.name}'
+        # self.set_param_scopes()
+
+
+@parametrize
+class AxisTuple:
+    """Used to have the axis dict as a parametrized object
+    """
+    def __init__(self, *axis) -> None:
+        self.axis = {}
+        for ax in axis:
+            self.axis[ax.name] = ax
+
+    def set_scope(self, current_scope, counters, visited):
+        for _, ax in self.axis.items():
+            ax.set_scope(current_scope, counters, visited)
+
+    def __getitem__(self, key):
+        return self.axis[key]
+
+    def __repr__(self) -> str:
+        return str(self.axis)
