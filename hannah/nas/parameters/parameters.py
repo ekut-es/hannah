@@ -8,6 +8,8 @@ import numpy as np
 from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
 
+from copy import deepcopy
+
 
 class Parameter(Expression):
     def __init__(
@@ -48,6 +50,9 @@ class Parameter(Expression):
 
     def parameters(self):
         return self
+
+    def new(self):
+        return deepcopy(self)
 
     def format(self, indent=2, length=80) -> str:
         return repr(self)
@@ -112,12 +117,6 @@ class IntScalarParameter(Parameter):
     def set_current(self, value):
         self.check(value)
         self.current_value = value
-
-    # def eq(self, other):
-    #     if self.min == other.min and \
-    #        self.max == other.max and \
-    #        self.step_size == other.step_size and \
-
 
 
 class FloatScalarParameter(Parameter):
@@ -252,26 +251,3 @@ class SubsetParameter(Parameter):
     def set_current(self, value):
         self.check(value)
         self.current_value = value
-
-
-# class CombinatorialSubset(Parameter):
-#     def __init__(self,
-#                  number,
-#                  len,
-#                  id: Optional[str] = None,
-#                  rng: Optional[Union[np.random.Generator, int]] = None) -> None:
-#         super().__init__(id, rng)
-#         self.number = number
-#         self.len = len
-
-#     def sample(self):
-#         pass
-
-#     def instantiate(self):
-#         pass
-
-#     def check(self):
-#         pass
-
-#     def set_current(self, value):
-#         pass
