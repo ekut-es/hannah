@@ -24,6 +24,7 @@ from ..utilities import (
 # It's a wrapper for a convolutional layer that allows for the number of input and
 # output channels to be changed
 class _Elastic:
+
     def __init__(self, in_channel_filter, out_channel_filter, out_channel_sizes=None):
         self.in_channel_filter: int = in_channel_filter
         self.out_channel_filter: int = out_channel_filter
@@ -56,6 +57,9 @@ class _Elastic:
 
 # It's a 1D convolutional layer that can change its kernel size and dilation size
 class ElasticBase1d(nn.Conv1d, _Elastic):
+
+    res_break : bool = False
+
     def __init__(
         self,
         in_channels: int,
@@ -204,6 +208,46 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
         self.update_padding()
 
+    # # do_dpc(input,  in_channels=self.in_channels, out_channels=self.out_channels, grouping=grouping,
+    # #  kernel=kernel, bias=bias, stride=self.stride, padding=padding, dilation=dilation)
+    # def do_dpc(
+    #     self,
+    #     input,
+    #     kernel,
+    #     bias,
+    #     grouping,
+    #     stride,
+    #     padding,
+    #     dilation
+    # ):
+
+    #     """
+    #         this  method will perform the DSC.
+    #         DSC is done in two steps:
+    #         1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
+    #         2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
+    #     """
+    #     depthwise_output_filter = create_channel_filter(self, kernel, current_channel=self.out_channels, reduced_target_channel_size=self.in_channels)
+    #     filtered_kernel_depthwise, bias = prepare_kernel_for_depthwise_separable_convolution(
+    #          kernel=kernel,
+    #          bias=bias,
+    #          in_channel_count=self.in_channels,
+    #          in_channel_filter=self.in_channel_filter,
+    #          out_channel_filter=depthwise_output_filter
+    #     )
+
+    #     filtered_kernel, bias = prepare_kernel_for_pointwise_convolution(
+    #         kernel=kernel,
+    #         bias=bias,
+    #         in_channel_filter=self.in_channel_filter, out_channel_filter=self.out_channel_filter,
+    #         grouping=grouping
+    #     )
+
+    #     depth_conv = nn.Conv1d(in_channels=self.in_channels, out_channels=self.in_channels, kernel_size=kernel.size(2), groups=self.in_channels)
+    #     point_conv = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels, kernel_size=1)
+    #     depthwise_separable_conv = nn.Sequential(depth_conv, point_conv)
+
+        #return res_pointwise
     # do_dpc(input,  in_channels=self.in_channels, out_channels=self.out_channels, grouping=grouping,
     #  kernel=kernel, bias=bias, stride=self.stride, padding=padding, dilation=dilation)
     def do_dpc(
@@ -237,8 +281,12 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         res_depthwise = nnf.conv1d(
             input,
             filtered_kernel_depthwise, bias, groups=self.in_channels,
-            stride=stride, dilation=dilation, padding=padding
+            padding=padding  # Padding 1 is required, else the Kernel_Size is greater, than actual input_size
+            # Important!! Kein Stride, keine Dilation, kein Padding, da sonst der Effekt von Depthwise daneben geht.
+            # Dies kann dann im nächsten Step nachgeholt werden. Sonst stimmt der Output nicht.
+            # stride=stride, dilation=dilation, padding=padding
         )
+
         filtered_kernel, bias = prepare_kernel_for_pointwise_convolution(
             kernel=kernel,
             bias=bias,
@@ -248,7 +296,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         res_pointwise = nnf.conv1d(
             res_depthwise,
             filtered_kernel, bias, groups=grouping,
-            stride=stride, dilation=dilation, padding=padding
+            stride=stride, dilation=dilation
         )
         return res_pointwise
 

@@ -14,7 +14,7 @@ from hannah.models.ofa.utilities import (
 
 
 class Test_DSC(unittest.TestCase):
-    # TODO: nächster Schritt, vergleiche Depthwise Separable mit normalen, und zwar input und output.
+
     def test_dsc(self):
 
         input = torch.randn(10, 16, 100)  # batch, input, c_out

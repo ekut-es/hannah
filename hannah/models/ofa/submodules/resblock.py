@@ -11,6 +11,11 @@ from .elasticchannelhelper import ElasticChannelHelper
 from .elastickernelconv import ElasticConvBnReLu1d
 from .elasticquantkernelconv import ElasticQuantConvBnReLu1d
 
+
+counter_res = 0
+time_to_break = 1260
+time_to_break = 1299
+
 class ResBlockBase(nn.Module):
     def __init__(
         self,
@@ -31,6 +36,10 @@ class ResBlockBase(nn.Module):
         self.skip = nn.Identity()
 
     def forward(self, x):
+        global counter_res
+        global time_to_break
+
+        ElasticBase1d.res_break = counter_res == time_to_break
         residual = x
         # do not use self.apply_skip for this: a skip connection may still be
         # added to support elastic width
@@ -52,6 +61,7 @@ class ResBlockBase(nn.Module):
         x += residual
         if self.do_act:
             x = self.act(x)
+        counter_res += 1
         return x
 
     def get_nested_modules(self):

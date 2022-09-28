@@ -22,6 +22,8 @@ from ..utilities import (
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
 
+
+
 # TODO Validation
 class ElasticConv1d(ElasticBase1d):
     def __init__(
