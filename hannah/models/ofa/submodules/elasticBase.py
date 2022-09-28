@@ -14,6 +14,7 @@ from ..utilities import (
     filter_primary_module_weights,
     filter_single_dimensional_weights,
     prepare_kernel_for_depthwise_separable_convolution,
+    prepare_kernel_for_pointwise_convolution,
     sub_filter_start_end,
     getGroups,
     adjust_weights_for_grouping
@@ -216,14 +217,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         dilation
     ):
 
-        # TODO: ändern
-
         """
             this  method will perform the DSC.
             DSC is done in two steps:
             1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
             2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
         """
+        # # TODO: nächster Schritt, vergleiche Depthwise Separable mit normalen, und zwar input und output.
         # QUESTION TODO : must the kernel be saved somehow during DSC ?
         depthwise_output_filter = create_channel_filter(self, kernel, current_channel=self.out_channels, reduced_target_channel_size=self.in_channels)
         filtered_kernel_depthwise, bias = prepare_kernel_for_depthwise_separable_convolution(
@@ -239,7 +239,12 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             filtered_kernel_depthwise, bias, groups=self.in_channels,
             stride=stride, dilation=dilation, padding=padding
         )
-        filtered_kernel = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+        filtered_kernel, bias = prepare_kernel_for_pointwise_convolution(
+            kernel=kernel,
+            bias=bias,
+            in_channel_filter=self.in_channel_filter, out_channel_filter=self.out_channel_filter,
+            grouping=grouping
+        )
         res_pointwise = nnf.conv1d(
             res_depthwise,
             filtered_kernel, bias, groups=grouping,

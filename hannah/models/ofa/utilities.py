@@ -189,18 +189,11 @@ def compute_channel_priorities(module : nn.Module, kernel):
     return channels_by_priority
 
 
-def get_kernel_for_dpc_by_priority(kernel):
-    # TODO: wie kann ich hier den Kernel filtenr
-    # channel_norms = torch.linalg.norm(kernel, ord=1, dim=-1)
-    # channels_by_priority = torch.argsort(channel_norms)
-    # filtered_channel_index = channels_by_priority[0]
-    # channel_pass_filter = [True] * len(kernel[0])
-    # channel_pass_filter[filtered_channel_index] = False
-    # new_kernel = kernel[0][:][:]
-    # hier muss kernel mit einem 1x1 kernel durchgeführt werden.
-    # TODO: tutorials anschauen zu multidimensions in python
-    # hier muss also nnf. angepasst werden ; Frage : wie kommt man also von 32,16, 3 auf 32,16,1
-    return kernel
+def get_kernel_for_dpc(kernel):
+    """
+        At the moment uses the first kernel dimension
+    """
+    return kernel[:, :, 0:1]
 
 
 # copied and adapted from elasticchannelhelper.py
@@ -391,11 +384,11 @@ def prepare_kernel_for_depthwise_separable_convolution(kernel, bias, in_channel_
     return new_kernel, new_bias
 
 
-def prepare_kernel_for_pointwise_convolution(kernel, bias, in_channel_count, in_channel_filter, out_channel_filter, grouping):
+def prepare_kernel_for_pointwise_convolution(kernel, bias, in_channel_filter, out_channel_filter, grouping):
     # outchannel is adapted
     new_kernel = filter_primary_module_weights(kernel, in_channel_filter, out_channel_filter)
     # use 1x1 kernel
-    new_kernel = get_kernel_for_dpc_by_priority(kernel)
+    new_kernel = get_kernel_for_dpc(kernel)
     # grouping = in_channel_count
     new_kernel = adjust_weights_for_grouping(new_kernel, grouping)
 
