@@ -1,10 +1,11 @@
-from .tensor_expression import TensorExpression
 from hannah.nas.parameters.parametrize import parametrize
 from ..hardware_description.memory_type import MemoryType
 from .quantization_type import QuantizationType
 from .data_type import DataType
-from .axis_type import AxisType
+from .axis_type import AxisTuple, AxisType
 from typing import Optional, Tuple
+
+from hannah.nas.dataflow.scoping_utils import get_id
 
 
 @parametrize
@@ -17,14 +18,21 @@ class TensorType:
         memory: Optional[MemoryType] = None,
         name: str = "",
     ):
-        self.axis = {}
-        for ax in axis:
-            self.axis[ax.name] = ax
+        self.axis = AxisTuple(*axis)
+        self._PARAMETERS['axis'] = self.axis
+        # for ax in axis:
+        #     self.axis[ax.name] = ax
         self.dtype = dtype
         self.quantization = quantization
         self.memory = memory
         self.name = name
         self.id = name
+
+    def set_scope(self, current_scope, counters, visited):
+        scope_id = get_id(current_scope, counters)
+        self.id = f'{scope_id}.tensor_type'
+
+        self.axis.set_scope(current_scope, counters, visited)
 
     def dim(self) -> int:
         return len(self.axis)
