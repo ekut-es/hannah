@@ -4,6 +4,7 @@ from .compression_type import CompressionType
 from typing import Optional
 from copy import deepcopy
 from hannah.nas.parameters.parametrize import parametrize
+from ..core.parametrized import is_parametrized
 
 
 @parametrize
@@ -39,8 +40,12 @@ class AxisTuple:
     """
     def __init__(self, *axis) -> None:
         self.axis = {}
+        # reset parameters to improve naming
+        self._PARAMETERS = {}
         for ax in axis:
             self.axis[ax.name] = ax
+            if is_parametrized(ax):
+                self._PARAMETERS[ax.name] = ax
 
     def set_scope(self, current_scope, counters, visited):
         for _, ax in self.axis.items():
