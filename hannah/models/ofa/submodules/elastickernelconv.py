@@ -60,6 +60,11 @@ class ElasticConv1d(ElasticBase1d):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
+        # First get the correct count of in and outchannels
+        # given by the kernel (after setting the kernel correctly, with the help of input-/output_filters)
+        # TODO auch bei Quant version checken!
+        self.set_in_and_out_channel(kernel)
+
         dilation = self.get_dilation_size()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(
@@ -68,6 +73,16 @@ class ElasticConv1d(ElasticBase1d):
         grouping = self.get_group_size()
         # Hier muss dann wenn DSC on ist, die Logik implementiert werden dass DSC komplett greift
         dsc = self.get_dsc()
+        if self.in_channels > self.out_channels and dsc is True:
+            # in that case, we can't set grouping bigger, than out_channels
+            # so we set  out_channel = grouping = in_channels
+            # TODO hier Sonderbehandlung für DSC_IN_OUT_CHANNEL_QUESTION
+            # im Moment wird hier dann mit einem Logging Eintrag geskipped.
+            logging.info(
+                    f"DSC: Can't apply Depthwise Separable Convolution. In_Channel_Count is not smaller (or equal) than Out_channel_Count. \
+                    ic:{self.in_channels} oc:{self.out_channels}"
+            )
+            dsc = False
         if dsc is False:
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
             return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
@@ -151,6 +166,9 @@ class ElasticConvReLu1d(ElasticBase1d):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
+        # First get the correct count of in and outchannels
+        # given by the kernel (after setting the kernel correctly, with the help of input-/output_filters)
+        self.set_in_and_out_channel(kernel)
         dilation = self.get_dilation_size()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(

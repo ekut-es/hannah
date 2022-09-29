@@ -152,7 +152,7 @@ def get_instances_from_deep_nested(input, type_selection: type = None):
 # copied and adapted from elasticchannelhelper.py
 # compute channel priorities based on the l1 norm of the weights of whichever
 # target module follows this elastic channel section
-def compute_channel_priorities(module : nn.Module, kernel):
+def compute_channel_priorities(module : nn.Module, kernel, channel_index : int = 0):
     channel_norms = []
 
     if kernel is None:
@@ -165,7 +165,7 @@ def compute_channel_priorities(module : nn.Module, kernel):
     # computed on the base module (full kernel)
     if isinstance(module, nn.Conv1d):
         weights = kernel
-        norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=0)
+        norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=channel_index)
         channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
     # the channel priorities for linears need to also be computable:
     # especially for the exit connections, a linear may follow after an elastic width
@@ -214,8 +214,10 @@ def get_channel_filter(current_channel_size, reduced_target_channel_size, channe
     return channel_pass_filter
 
 
-def create_channel_filter(module: nn.Module, kernel, current_channel, reduced_target_channel_size):
-    channel_filter_priorities = compute_channel_priorities(module, kernel)
+def create_channel_filter(module: nn.Module, kernel, current_channel, reduced_target_channel_size, is_output_filter : bool = True):
+    # create one channel filter
+    channel_index = 1 if is_output_filter else 0
+    channel_filter_priorities = compute_channel_priorities(module, kernel, channel_index)
     return get_channel_filter(current_channel, reduced_target_channel_size, channel_filter_priorities)
 
 
@@ -365,10 +367,10 @@ def get_target_weight(weights, input_channels, groups):
 
 
 def prepare_kernel_for_depthwise_separable_convolution(kernel, bias, in_channel_count, in_channel_filter, out_channel_filter):
-    if in_channel_count != len(in_channel_filter):
-        logging.warning(f"input channel filter has not the same length as the given input channel count. \
-        filter:{len(in_channel_filter)} size: {in_channel_count}")
-        return None
+    # if in_channel_count != len(in_channel_filter):
+    #     logging.warning(f"input channel filter has not the same length as the given input channel count. \
+    #     filter:{len(in_channel_filter)} size: {in_channel_count}")
+    #     return None TODO: need sum not
 
     # outchannel is adapted
     new_kernel = filter_primary_module_weights(kernel, in_channel_filter, out_channel_filter)

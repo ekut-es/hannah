@@ -267,7 +267,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
             2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
         """
-        # # TODO: nächster Schritt, vergleiche Depthwise Separable mit normalen, und zwar input und output.
+        # # TODO: eventuell Hilfmethoden verlagern in einfache Steps in ElasticBase
         # QUESTION TODO : must the kernel be saved somehow during DSC ?
         depthwise_output_filter = create_channel_filter(self, kernel, current_channel=self.out_channels, reduced_target_channel_size=self.in_channels)
         filtered_kernel_depthwise, bias = prepare_kernel_for_depthwise_separable_convolution(
