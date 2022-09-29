@@ -267,14 +267,15 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
             2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
         """
-        # # TODO: eventuell Hilfmethoden verlagern in einfache Steps in ElasticBase
         # QUESTION TODO : must the kernel be saved somehow during DSC ?
-        depthwise_output_filter = create_channel_filter(self, kernel, current_channel=self.out_channels, reduced_target_channel_size=self.in_channels)
+
+        depthwise_output_filter = create_channel_filter(self, kernel, current_channel=kernel.size(0), reduced_target_channel_size=self.in_channels)
+        depthwise_input_filter = create_channel_filter(self, kernel, current_channel=kernel.size(1), reduced_target_channel_size=self.in_channels, is_output_filter=False)
         filtered_kernel_depthwise, bias = prepare_kernel_for_depthwise_separable_convolution(
              kernel=kernel,
              bias=bias,
              in_channel_count=self.in_channels,
-             in_channel_filter=self.in_channel_filter,
+             in_channel_filter=depthwise_input_filter,
              out_channel_filter=depthwise_output_filter
         )
         # do depthwise
@@ -287,10 +288,14 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             # stride=stride, dilation=dilation, padding=padding
         )
 
-        filtered_kernel, bias = prepare_kernel_for_pointwise_convolution(
+        # if kernel.size(1) != self.in_channels or kernel.size(0) != self.out_channels:
+        # get the current kernel
+
+        kernel, bias = self.get_kernel()
+        # logging.info("Kernel was not same size of in and out_channel - getting kernel again")
+
+        filtered_kernel = prepare_kernel_for_pointwise_convolution(
             kernel=kernel,
-            bias=bias,
-            in_channel_filter=self.in_channel_filter, out_channel_filter=self.out_channel_filter,
             grouping=grouping
         )
         res_pointwise = nnf.conv1d(

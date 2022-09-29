@@ -386,21 +386,12 @@ def prepare_kernel_for_depthwise_separable_convolution(kernel, bias, in_channel_
     return new_kernel, new_bias
 
 
-def prepare_kernel_for_pointwise_convolution(kernel, bias, in_channel_filter, out_channel_filter, grouping):
-    # outchannel is adapted
-    new_kernel = filter_primary_module_weights(kernel, in_channel_filter, out_channel_filter)
+def prepare_kernel_for_pointwise_convolution(kernel, grouping):
     # use 1x1 kernel
     new_kernel = get_kernel_for_dpc(kernel)
     # grouping = in_channel_count
     new_kernel = adjust_weights_for_grouping(new_kernel, grouping)
-
-    if bias is None:
-        return new_kernel, None
-    else:
-        new_bias = filter_single_dimensional_weights(
-            bias, out_channel_filter
-        )
-    return new_kernel, new_bias
+    return new_kernel
 
 
 def adjust_weights_for_grouping(weights, input_divided_by):
