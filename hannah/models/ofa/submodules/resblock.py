@@ -15,6 +15,8 @@ from .elasticquantkernelconv import ElasticQuantConvBnReLu1d
 counter_res = 0
 time_to_break = 1260
 time_to_break = 1299
+time_to_break = 2100
+time_to_break = 2105
 
 class ResBlockBase(nn.Module):
     def __init__(
