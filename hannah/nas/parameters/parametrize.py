@@ -1,7 +1,9 @@
 from copy import deepcopy
 import inspect
-from typing import Iterable, Optional
-from ..core.parametrized import is_parametrized
+from typing import Optional
+from hannah.nas.core.expression import Expression
+from hannah.nas.core.parametrized import is_parametrized
+from hannah.nas.parameters.parameters import Parameter
 from inspect import Parameter as P
 
 
@@ -25,8 +27,6 @@ def _create_parametrize_wrapper(params, cls):
                 else:
                     num += 1
                 self._PARAMETERS[name] = arg
-
-
                 # self._annotations[name] = parameter_list[num + 1]._annotation
         print()
         for name, arg in kwargs.items():
@@ -41,6 +41,8 @@ def _create_parametrize_wrapper(params, cls):
         cls.check = check
         cls.set_params = set_params
         cls.parameters = parameters
+        cls.get_parameters = get_parameters
+        cls.set_param_scopes = set_param_scopes
         cls.cond = cond
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
@@ -109,8 +111,52 @@ def instantiate(self):
     return instance
 
 
-def parameters(self, scope: Optional[str] = None):
-    if scope is None:
-        return self._PARAMETERS
-    else:
-        return {name: param for name, param in self._PARAMETERS.items() if param.scope == scope}
+def get_parameters(self, scope: Optional[str] = None):
+    params = {}
+    visited = []
+    queue = []
+    queue.extend(self._PARAMETERS.values())
+
+    while queue:
+        current = queue.pop(-1)
+        visited.append(current.id)
+        params[current.id] = current
+
+        if hasattr(current, '_PARAMETERS'):
+            for param in current._PARAMETERS.values():
+                if param.id not in visited:
+                    queue.append(param)
+
+    params = hierarchical_parameter_dict(params)
+    return params
+
+
+def parameters(self):
+    return self.get_parameters()
+
+
+def set_param_scopes(self):
+    for name, param in self._PARAMETERS.items():
+        if isinstance(param, Expression):
+            param.id = self.id + '.' + name
+
+
+def hierarchical_parameter_dict(parameter):
+    hierarchical_params = {}
+    for key, param in parameter.items():
+        key_list = key.split('.')
+        current_param_branch = hierarchical_params
+
+        for k in key_list:
+            try:
+                index = int(k)
+                if index not in current_param_branch:
+                    current_param_branch[index] = {}
+                current_param_branch = current_param_branch[index]
+            except Exception:
+                if k not in current_param_branch:
+                    current_param_branch[k] = {}
+                current_param_branch = current_param_branch[k]
+            if k == key_list[-1] and isinstance(param, Parameter):
+                current_param_branch[k] = param
+    return hierarchical_params
