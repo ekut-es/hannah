@@ -111,7 +111,7 @@ def instantiate(self):
     return instance
 
 
-def get_parameters(self, scope: Optional[str] = None):
+def get_parameters(self, scope: Optional[str] = None, include_empty=False, flatten=False):
     params = {}
     visited = []
     queue = []
@@ -127,12 +127,12 @@ def get_parameters(self, scope: Optional[str] = None):
                 if param.id not in visited:
                     queue.append(param)
 
-    params = hierarchical_parameter_dict(params)
+    params = hierarchical_parameter_dict(params, include_empty, flatten)
     return params
 
 
-def parameters(self):
-    return self.get_parameters()
+def parameters(self, include_empty=False, flatten=False):
+    return self.get_parameters(include_empty=include_empty, flatten=flatten)
 
 
 def set_param_scopes(self):
@@ -141,22 +141,33 @@ def set_param_scopes(self):
             param.id = self.id + '.' + name
 
 
-def hierarchical_parameter_dict(parameter):
+def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
     hierarchical_params = {}
     for key, param in parameter.items():
+        if not include_empty and not isinstance(param, Parameter):
+            continue
         key_list = key.split('.')
-        current_param_branch = hierarchical_params
+        if flatten:
+            current_param_branch = {}
+        else:
+            current_param_branch = hierarchical_params
 
         for k in key_list:
             try:
                 index = int(k)
                 if index not in current_param_branch:
                     current_param_branch[index] = {}
-                current_param_branch = current_param_branch[index]
+                # current_param_branch = current_param_branch[index]
             except Exception:
+                index = k
                 if k not in current_param_branch:
                     current_param_branch[k] = {}
-                current_param_branch = current_param_branch[k]
-            if k == key_list[-1] and isinstance(param, Parameter):
-                current_param_branch[k] = param
+
+            if k == key_list[-1] and isinstance(param, Expression):
+                if flatten:
+                    hierarchical_params[param.id] = param
+                else:
+                    current_param_branch[index] = param
+            else:
+                current_param_branch = current_param_branch[index]
     return hierarchical_params
