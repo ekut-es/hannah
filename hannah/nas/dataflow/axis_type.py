@@ -31,7 +31,7 @@ class AxisType:
     def set_scope(self, current_scope, counters, visited):
         scope_id = get_id(current_scope, counters)
         self.id = f'{scope_id}.axis.{self.name}'
-        # self.set_param_scopes()
+        self.set_param_scopes()
 
 
 @parametrize
@@ -48,6 +48,8 @@ class AxisTuple:
                 self._PARAMETERS[ax.name] = ax
 
     def set_scope(self, current_scope, counters, visited):
+        scope_id = get_id(current_scope, counters)
+        self.id = f'{scope_id}.axis'
         for _, ax in self.axis.items():
             ax.set_scope(current_scope, counters, visited)
 
