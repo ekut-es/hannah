@@ -14,6 +14,7 @@ from .elasticBase import ElasticBase1d
 from ..utilities import (
     adjust_weight_if_needed,
     conv1d_get_padding,
+    flatten_module_list,
 )
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
@@ -305,7 +306,8 @@ class ElasticConvBn1d(ElasticConv1d):
             )
             # TODO probieren ob conv_class nur bei der letzten Sinnvoll ist oder nicht -> wegen Batchnorm
             tmp_bn = self.bn.get_basic_batchnorm1d()
-            for module in dsc_sequence.modules():
+            list_mod = flatten_module_list(dsc_sequence)
+            for module in list_mod:
                 self.set_bn_parameter(module, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
             return dsc_sequence
         else:
@@ -397,6 +399,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
 
         dsc_on = self.get_dsc()
         if dsc_on:
+            # Hier stimmt es noch nicht ganz in der Validation
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=ConvBnReLu1d,
                 full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
@@ -406,7 +409,8 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             )
             # TODO probieren ob conv_class nur bei der letzten Sinnvoll ist oder nicht -> wegen Batchnorm
             tmp_bn = self.bn.get_basic_batchnorm1d()
-            for module in dsc_sequence.modules():
+            list_mod = flatten_module_list(dsc_sequence)
+            for module in list_mod:
                 self.set_bn_parameter(module, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
             return dsc_sequence
         else:
