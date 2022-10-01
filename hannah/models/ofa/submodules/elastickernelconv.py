@@ -81,7 +81,7 @@ class ElasticConv1d(ElasticBase1d):
             # is in that particular case to small.
             kernel, bias = self.get_full_width_kernel(), self.bias   # if self.in_channels > self.out_channels else (kernel, bias)
             # kernel, bias = self.get_full_width_kernel(), self.bias   if self.in_channels > self.out_channels else (kernel, bias)
-            return self.do_dpc(input, kernel=kernel, bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
+            return self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
@@ -177,11 +177,12 @@ class ElasticConvReLu1d(ElasticBase1d):
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
             output = nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
-            output = self.do_dpc(input, kernel=kernel, bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
+            output = self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
 
         return self.relu(
             output
         )
+
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
@@ -405,7 +406,6 @@ class ConvRelu1d(nn.Conv1d):
         stride: int = 1,
         padding: int = 0,
         groups: int = 1,
-        dsc: bool = False,
         bias: bool = False,
         track_running_stats=False,
     ):
@@ -433,7 +433,6 @@ class ConvBn1d(nn.Conv1d):
         in_channels: int,
         out_channels: int,
         kernel_size: int,
-        dsc: bool = False,
         stride: int = 1,
         padding: int = 0,
         dilation: int = 1,
@@ -469,7 +468,6 @@ class ConvBnReLu1d(ConvBn1d):
         padding: int = 0,
         dilation: int = 1,
         groups: int = 1,
-        dsc: bool = False,
         bias: bool = False,
         track_running_stats=False,
     ):
@@ -490,4 +488,3 @@ class ConvBnReLu1d(ConvBn1d):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.relu(super(ConvBnReLu1d, self).forward(input))
-

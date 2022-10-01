@@ -33,24 +33,11 @@ class Test_DSC(unittest.TestCase):
             groups=1,
         )
         full_kernel = t.weight.data
-        depthwise_output_filter = create_channel_filter(
-            t,
-            full_kernel,
-            current_channel=out_channel,
-            reduced_target_channel_size=in_channel,
-        )
-        input_filter = create_channel_filter(
-            t,
-            full_kernel,
-            current_channel=in_channel,
-            reduced_target_channel_size=in_channel,
-        )
         new_kernel, bias = prepare_kernel_for_depthwise_separable_convolution(
+            t,
             kernel=full_kernel,
             bias=None,
-            in_channel_count=in_channel,
-            in_channel_filter=input_filter,
-            out_channel_filter=depthwise_output_filter,
+            in_channels=in_channel
         )
         print(
             f"kernel:{new_kernel.shape} bias: {bias.shape if bias is not None else bias}"
@@ -64,14 +51,8 @@ class Test_DSC(unittest.TestCase):
         print(res_depthwise.shape)
         # get new kernel size
         # use full kernel
-        point_wise_output_filter = create_channel_filter(
-            t,
-            full_kernel,
-            current_channel=out_channel,
-            reduced_target_channel_size=out_channel,
-        )
         # grouping = in_channel_count
-        new_kernel, bias = prepare_kernel_for_pointwise_convolution(
+        new_kernel = prepare_kernel_for_pointwise_convolution(
             kernel=full_kernel,
             grouping=groups,
         )

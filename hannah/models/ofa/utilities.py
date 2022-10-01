@@ -294,22 +294,24 @@ def get_target_weight(weights, input_channels, groups):
     return target_shape
 
 
-def prepare_kernel_for_depthwise_separable_convolution(kernel, bias, in_channel_count, in_channel_filter, out_channel_filter):
-    # if in_channel_count != len(in_channel_filter):
-    #     logging.warning(f"input channel filter has not the same length as the given input channel count. \
-    #     filter:{len(in_channel_filter)} size: {in_channel_count}")
-    #     return None TODO: need sum not
+def prepare_kernel_for_depthwise_separable_convolution(model, kernel, bias, in_channels):
+    # if in_channel_count != in_channel_filter.count(True):
+    #     logging.warning(f"input channel filter has not the same True values as the given input channel count. \
+    #      filter:{in_channel_filter.count(True)} size: {in_channel_count}")
+
+    depthwise_output_filter = create_channel_filter(model, kernel, current_channel=kernel.size(0), reduced_target_channel_size=in_channels, is_output_filter=True)
+    depthwise_input_filter = create_channel_filter(model, kernel, current_channel=kernel.size(1), reduced_target_channel_size=in_channels, is_output_filter=False)
 
     # outchannel is adapted
-    new_kernel = filter_primary_module_weights(kernel, in_channel_filter, out_channel_filter)
+    new_kernel = filter_primary_module_weights(kernel, depthwise_input_filter, depthwise_output_filter)
     # grouping = in_channel_count
-    new_kernel = adjust_weights_for_grouping(new_kernel, in_channel_count)
+    new_kernel = adjust_weights_for_grouping(new_kernel, in_channels)
 
     if bias is None:
         return new_kernel, None
     else:
         new_bias = filter_single_dimensional_weights(
-            bias, out_channel_filter
+            bias, depthwise_output_filter
         )
     return new_kernel, new_bias
 

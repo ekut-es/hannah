@@ -1,5 +1,6 @@
 import copy
 import logging
+from pyclbr import Function
 from typing import List
 
 import torch
@@ -38,7 +39,7 @@ class _Elastic:
         return self.out_channel_sizes
 
     # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Conv1d:
+    def assemble_basic_module(self) -> nn.Module:  # Module, so that Sequentials are possible, like DSC
         return copy.deepcopy(self.get_basic_module())
 
     def set_out_channel_filter(self, out_channel_filter):
@@ -208,15 +209,80 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
         self.update_padding()
 
-    def do_dpc(
+        # Caller for BatchNorm Parameters
+        # TODO committen und dann das überall einfügen
+    def set_bn_parameter(self, conv : nn.Conv1d, tmp_bn, num_tracked):
+        # tmp_bn = self.bn.get_basic_batchnorm1d()
+        conv.bn.num_features = tmp_bn.num_features
+        conv.bn.weight = tmp_bn.weight
+        conv.bn.bias = tmp_bn.bias
+        conv.bn.running_var = tmp_bn.running_var
+        conv.bn.running_mean = tmp_bn.running_mean
+        conv.bn.num_batches_tracked = num_tracked
+        return conv
+
+    def prepare_dsc_for_validation_model(
         self,
-        input,
-        kernel,
-        bias,
+        conv_class : nn.Module,
+        full_kernel,
+        full_bias,
+        in_channels,
         grouping,
         stride,
         padding,
-        dilation
+        dilation,
+        bn_caller : Function = None,
+    ):
+        """
+        this method creates the necessary validation models for DSC
+        """
+
+        # depthwise
+        filtered_kernel_depth, bias = prepare_kernel_for_depthwise_separable_convolution(
+             self,
+             kernel=full_kernel,
+             bias=full_bias,
+             in_channels=in_channels
+        )
+        in_channel_depth = filtered_kernel_depth.size(1)
+
+        depthwise_separable = conv_class(
+                in_channels=in_channel_depth,
+                out_channels=filtered_kernel_depth.size(0), kernel_size=filtered_kernel_depth.size(2),
+                bias=bias,
+                groups=in_channel_depth, padding=padding
+        )
+        depthwise_separable.weight.data = filtered_kernel_depth
+
+        # pointwise
+        kernel, bias = self.get_kernel()
+        filtered_kernel_point = prepare_kernel_for_pointwise_convolution(
+            kernel=kernel,
+            grouping=grouping
+        )
+
+        pointwise = conv_class(
+                in_channels=filtered_kernel_point.size(1),
+                out_channels=filtered_kernel_point.size(0), kernel_size=filtered_kernel_point.size(2),
+                bias=bias,
+                groups=grouping, stride=stride, dilation=dilation
+        )
+        pointwise.weight.data = filtered_kernel_point
+
+        depthwise_separable_conv = nn.Sequential(depthwise_separable, pointwise)
+        return depthwise_separable_conv
+
+    def do_dpc(
+        self,
+        input,
+        full_kernel,
+        full_bias,
+        grouping,
+        stride,
+        padding,
+        dilation,
+        quant_weight_function : Function = None,  # for quantization
+        quant_bias_function : Function = None  # for quantization
     ):
 
         """
@@ -225,25 +291,26 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
             2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
         """
-        # QUESTION TODO : must the kernel be saved somehow during DSC ?
+        # TODO evtl padding auch bei pointwise
 
-        depthwise_output_filter = create_channel_filter(self, kernel, current_channel=kernel.size(0), reduced_target_channel_size=self.in_channels)
-        depthwise_input_filter = create_channel_filter(self, kernel, current_channel=kernel.size(1), reduced_target_channel_size=self.in_channels, is_output_filter=False)
-        filtered_kernel_depthwise, bias = prepare_kernel_for_depthwise_separable_convolution(
-             kernel=kernel,
-             bias=bias,
-             in_channel_count=self.in_channels,
-             in_channel_filter=depthwise_input_filter,
-             out_channel_filter=depthwise_output_filter
+        use_fake_weight = quant_weight_function is not None
+        use_fake_bias = quant_bias_function is not None and full_bias is not None
+
+        filtered_kernel, bias = prepare_kernel_for_depthwise_separable_convolution(
+             self,
+             kernel=full_kernel,
+             bias=full_bias,
+             in_channels=self.in_channels
         )
         # do depthwise
         res_depthwise = nnf.conv1d(
             input,
-            filtered_kernel_depthwise, bias, groups=self.in_channels,
-            padding=padding  # Padding 1 is required, else the Kernel_Size is greater, than actual input_size
-            # Important!! Kein Stride, keine Dilation, kein Padding, da sonst der Effekt von Depthwise daneben geht.
+            filtered_kernel if use_fake_weight is False else quant_weight_function(filtered_kernel),
+            bias if use_fake_bias is False else quant_bias_function(bias),
+            groups=self.in_channels,
+            padding=padding
+            # Important!! Kein Stride, keine Dilation, da sonst der Effekt von Depthwise daneben geht.
             # Dies kann dann im nächsten Step nachgeholt werden. Sonst stimmt der Output nicht.
-            # stride=stride, dilation=dilation, padding=padding
         )
 
         kernel, bias = self.get_kernel()
@@ -254,7 +321,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         )
         res_pointwise = nnf.conv1d(
             res_depthwise,
-            filtered_kernel, bias, groups=grouping,
+            filtered_kernel if use_fake_weight is False else quant_weight_function(filtered_kernel),
+            bias if use_fake_bias is False else quant_bias_function(bias),
+            groups=grouping,
             stride=stride, dilation=dilation
         )
         return res_pointwise
