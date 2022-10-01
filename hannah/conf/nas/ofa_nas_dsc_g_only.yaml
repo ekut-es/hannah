@@ -11,13 +11,13 @@ epochs_width_step: 1
 epochs_dilation_step: 1
 epochs_grouping_step: 1
 epochs_dsc_step: 1
-elastic_kernels_allowed: True
-elastic_depth_allowed: True
+elastic_kernels_allowed: False
+elastic_depth_allowed: False
 elastic_dilation_allowed: False
-elastic_width_allowed: True
+elastic_width_allowed: False
 elastic_grouping_allowed: True
 #depthwise_separable_convolution
 elastic_dsc_allowed: True
-evaluate: False
+evaluate: True
 random_evaluate: False
 random_eval_number: 1

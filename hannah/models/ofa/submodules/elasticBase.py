@@ -227,6 +227,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         full_kernel,
         full_bias,
         in_channels,
+        out_channels,
         grouping,
         stride,
         padding,
@@ -244,7 +245,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
              bias=full_bias,
              in_channels=in_channels
         )
-        in_channel_depth = filtered_kernel_depth.size(1)
+        in_channel_depth = in_channels
 
         depthwise_separable = conv_class(
                 in_channels=in_channel_depth,
@@ -262,8 +263,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         )
 
         pointwise = conv_class(
-                in_channels=filtered_kernel_point.size(1),
-                out_channels=filtered_kernel_point.size(0), kernel_size=filtered_kernel_point.size(2),
+                in_channels=in_channels,
+                out_channels=out_channels, kernel_size=filtered_kernel_point.size(2),
                 bias=bias,
                 groups=grouping, stride=stride, dilation=dilation
         )

@@ -41,7 +41,7 @@
                 "nas_ofa",
                 "trainer.gpus=[0]",
                 "module.num_workers=8",
-                "model=ofa_quant"
+                "model=ofa"
             ]
         },
         {
@@ -171,7 +171,6 @@
                 "trainer.gpus=[0]",
                 "trainer.limit_train_batches=0.1",
                 "trainer.max_epochs=1",
-                "module.num_workers=8",
                 "model=ofa_group_dsc",
                 "nas=ofa_nas_dsc_g_only",
                 "experiment_id=dsc_bughunt",

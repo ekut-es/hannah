@@ -7,13 +7,9 @@ import torch.nn.functional as nnf
 import copy
 import logging
 import math
-from typing import List
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as nnf
 
-from ..utilities import conv1d_get_padding
 from .elasticBase import ElasticBase1d
 from ..utilities import (
     adjust_weight_if_needed,
@@ -21,7 +17,6 @@ from ..utilities import (
 )
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
-
 
 
 # TODO Validation
@@ -69,10 +64,10 @@ class ElasticConv1d(ElasticBase1d):
             self.kernel_sizes[self.target_kernel_index], dilation
         )
         grouping = self.get_group_size()
-        # Hier muss dann wenn DSC on ist, die Logik implementiert werden dass DSC komplett greift
-        dsc = self.get_dsc()
+        # Hier muss dann wenn dsc_on on ist, die Logik implementiert werden dass DSC komplett greift
+        dsc_on = self.get_dsc()
 
-        if dsc is False:
+        if dsc_on is False:
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
             return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
@@ -96,33 +91,45 @@ class ElasticConv1d(ElasticBase1d):
         padding = conv1d_get_padding(kernel_size, dilation)
 
         self.set_in_and_out_channel(kernel)
+        dsc_on = self.get_dsc()
+        dsc_on = False
 
-        new_conv = nn.Conv1d(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            kernel_size=kernel_size,
-            stride=self.stride,
-            padding=padding,
-            dilation=dilation,
-            bias=False,
-            groups=grouping
-        )
-        new_conv.last_grouping_param = self.groups
-
-        # for ana purposes handy - set a unique id so we can track this specific convolution
-        if not hasattr(new_conv, 'id'):
-            new_conv.id = "ElasticConv1d-" + str(random.randint(0, 1000)*2000)
-            logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+        if dsc_on:
+            dsc_sequence = self.prepare_dsc_for_validation_model(
+                conv_class=nn.Conv1d,
+                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
+                in_channels=self.in_channels, out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride, padding=padding, dilation=dilation
+            )
+            return dsc_sequence
         else:
-            logging.debug("Validation id already present: {new_conv.id}")
+            new_conv = nn.Conv1d(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=kernel_size,
+                stride=self.stride,
+                padding=padding,
+                dilation=dilation,
+                bias=False,
+                groups=grouping
+            )
+            new_conv.last_grouping_param = self.groups
 
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
-        new_conv.weight.data = kernel
-        if bias is not None:
-            new_conv.bias = bias
+            # for ana purposes handy - set a unique id so we can track this specific convolution
+            if not hasattr(new_conv, 'id'):
+                new_conv.id = "ElasticConv1d-" + str(random.randint(0, 1000)*2000)
+                logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+            else:
+                logging.debug("Validation id already present: {new_conv.id}")
 
-        logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
-        return new_conv
+            kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
+            new_conv.weight.data = kernel
+            if bias is not None:
+                new_conv.bias = bias
+
+            logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
+            return new_conv
 
 
 class ElasticConvReLu1d(ElasticBase1d):
@@ -183,7 +190,6 @@ class ElasticConvReLu1d(ElasticBase1d):
             output
         )
 
-
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Conv1d:
         kernel, bias = self.get_kernel()
@@ -194,33 +200,44 @@ class ElasticConvReLu1d(ElasticBase1d):
         self.set_in_and_out_channel(kernel)
 
         padding = conv1d_get_padding(kernel_size, dilation)
-        new_conv = ConvRelu1d(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            kernel_size=kernel_size,
-            stride=self.stride,
-            padding=padding,
-            dilation_sizes=dilation,
-            bias=False,
-            groups=grouping
-        )
-
-        # for ana purposes handy - set a unique id so we can track this specific convolution
-        new_conv.last_grouping_param = self.groups
-        if not hasattr(new_conv, 'id'):
-            new_conv.id = "ConvRelu1d-" + str(random.randint(0, 1000)*2000)
-            logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+        dsc_on = self.get_dsc()
+        if dsc_on:
+            dsc_sequence = self.prepare_dsc_for_validation_model(
+                conv_class=ConvRelu1d,
+                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
+                in_channels=self.in_channels, out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride, padding=padding, dilation=dilation,
+            )
+            return dsc_sequence
         else:
-            logging.debug("Validation id already present: {new_conv.id}")
+            new_conv = ConvRelu1d(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=kernel_size,
+                stride=self.stride,
+                padding=padding,
+                dilation_sizes=dilation,
+                bias=False,
+                groups=grouping
+            )
 
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
-        logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
-        new_conv.weight.data = kernel
-        if bias is not None:
-            new_conv.bias = bias
+            # for ana purposes handy - set a unique id so we can track this specific convolution
+            new_conv.last_grouping_param = self.groups
+            if not hasattr(new_conv, 'id'):
+                new_conv.id = "ConvRelu1d-" + str(random.randint(0, 1000)*2000)
+                logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+            else:
+                logging.debug("Validation id already present: {new_conv.id}")
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+            kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
+            logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
+            new_conv.weight.data = kernel
+            if bias is not None:
+                new_conv.bias = bias
+
+            # print("\nassembled a basic conv from elastic kernel!")
+            return new_conv
 
 
 class ElasticConvBn1d(ElasticConv1d):
@@ -276,40 +293,57 @@ class ElasticConvBn1d(ElasticConv1d):
 
         self.set_in_and_out_channel(kernel)
 
-        new_conv = ConvBn1d(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            kernel_size=kernel_size,
-            stride=self.stride,
-            padding=padding,
-            dilation=dilation,
-            bias=False,
-            groups=grouping
-        )
-        tmp_bn = self.bn.get_basic_batchnorm1d()
-
-        # for ana purposes handy - set a unique id so we can track this specific convolution
-        new_conv.last_grouping_param = self.groups
-        if not hasattr(new_conv, 'id'):
-            new_conv.id = "ElasticConvBn1d-" + str(random.randint(0, 1000)*2000)
-            logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+        dsc_on = self.get_dsc()
+        # TODO batch norm aufpassen
+        if dsc_on:
+            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=ConvBn1d,
+                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
+                in_channels=self.in_channels, out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride, padding=padding, dilation=dilation,
+            )
+            # TODO probieren ob conv_class nur bei der letzten Sinnvoll ist oder nicht -> wegen Batchnorm
+            tmp_bn = self.bn.get_basic_batchnorm1d()
+            for module in dsc_sequence.modules():
+                self.set_bn_parameter(module, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
+            return dsc_sequence
         else:
-            logging.debug("id already present: {new_conv.id}")
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
-        logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
+            new_conv = ConvBn1d(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=kernel_size,
+                stride=self.stride,
+                padding=padding,
+                dilation=dilation,
+                bias=False,
+                groups=grouping
+            )
+            tmp_bn = self.bn.get_basic_batchnorm1d()
 
-        new_conv.weight.data = kernel
-        new_conv.bias = bias
+            # for ana purposes handy - set a unique id so we can track this specific convolution
+            new_conv.last_grouping_param = self.groups
+            if not hasattr(new_conv, 'id'):
+                new_conv.id = "ElasticConvBn1d-" + str(random.randint(0, 1000)*2000)
+                logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+            else:
+                logging.debug("id already present: {new_conv.id}")
+            kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
+            logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
 
-        new_conv.bn.num_features = tmp_bn.num_features
-        new_conv.bn.weight = tmp_bn.weight
-        new_conv.bn.bias = tmp_bn.bias
-        new_conv.bn.running_var = tmp_bn.running_var
-        new_conv.bn.running_mean = tmp_bn.running_mean
-        new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
+            new_conv.weight.data = kernel
+            new_conv.bias = bias
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+            # new_conv.bn.num_features = tmp_bn.num_features
+            # new_conv.bn.weight = tmp_bn.weight
+            # new_conv.bn.bias = tmp_bn.bias
+            # new_conv.bn.running_var = tmp_bn.running_var
+            # new_conv.bn.running_mean = tmp_bn.running_mean
+            # new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
+            self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
+
+            # print("\nassembled a basic conv from elastic kernel!")
+            return new_conv
 
 
 class ElasticConvBnReLu1d(ElasticConvBn1d):
@@ -360,40 +394,56 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         self.set_in_and_out_channel(kernel)
 
         padding = conv1d_get_padding(kernel_size, dilation)
-        new_conv = ConvBnReLu1d(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            kernel_size=kernel_size,
-            stride=self.stride,
-            padding=padding,
-            dilation=dilation,
-            bias=False,
-            groups=grouping
-        )
-        tmp_bn = self.bn.get_basic_batchnorm1d()
 
-        # for ana purposes handy - set a unique id so we can track this specific convolution
-        new_conv.last_grouping_param = self.groups
-        if not hasattr(new_conv, 'id'):
-            new_conv.id = "ElasticConvBnReLu1d-" + str(random.randint(0, 1000)*2000)
-            logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+        dsc_on = self.get_dsc()
+        if dsc_on:
+            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=ConvBnReLu1d,
+                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
+                in_channels=self.in_channels, out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride, padding=padding, dilation=dilation,
+            )
+            # TODO probieren ob conv_class nur bei der letzten Sinnvoll ist oder nicht -> wegen Batchnorm
+            tmp_bn = self.bn.get_basic_batchnorm1d()
+            for module in dsc_sequence.modules():
+                self.set_bn_parameter(module, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
+            return dsc_sequence
         else:
-            logging.debug("id already present: {new_conv.id}")
-        kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
-        logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}, fromSkipping={self.from_skipping}")
+            new_conv = ConvBnReLu1d(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=kernel_size,
+                stride=self.stride,
+                padding=padding,
+                dilation=dilation,
+                bias=False,
+                groups=grouping
+            )
+            tmp_bn = self.bn.get_basic_batchnorm1d()
 
-        new_conv.weight.data = kernel
-        new_conv.bias = bias
+            # for ana purposes handy - set a unique id so we can track this specific convolution
+            new_conv.last_grouping_param = self.groups
+            if not hasattr(new_conv, 'id'):
+                new_conv.id = "ElasticConvBnReLu1d-" + str(random.randint(0, 1000)*2000)
+                logging.debug(f"Validation id created: {new_conv.id} ; g={grouping}, w_before={kernel.shape}, ic={self.in_channels}")
+            else:
+                logging.debug("id already present: {new_conv.id}")
+            kernel, _ = adjust_weight_if_needed(module=new_conv, kernel=kernel, groups=new_conv.groups)
+            logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}, fromSkipping={self.from_skipping}")
 
-        new_conv.bn.num_features = tmp_bn.num_features
-        new_conv.bn.weight = tmp_bn.weight
-        new_conv.bn.bias = tmp_bn.bias
-        new_conv.bn.running_var = tmp_bn.running_var
-        new_conv.bn.running_mean = tmp_bn.running_mean
-        new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
+            new_conv.weight.data = kernel
+            new_conv.bias = bias
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+            # new_conv.bn.num_features = tmp_bn.num_features
+            # new_conv.bn.weight = tmp_bn.weight
+            # new_conv.bn.bias = tmp_bn.bias
+            # new_conv.bn.running_var = tmp_bn.running_var
+            # new_conv.bn.running_mean = tmp_bn.running_mean
+            # new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
+            self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
+            # print("\nassembled a basic conv from elastic kernel!")
+            return new_conv
 
 
 class ConvRelu1d(nn.Conv1d):
