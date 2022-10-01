@@ -149,78 +149,6 @@ def get_instances_from_deep_nested(input, type_selection: type = None):
     return results
 
 
-# copied and adapted from elasticchannelhelper.py
-# compute channel priorities based on the l1 norm of the weights of whichever
-# target module follows this elastic channel section
-def compute_channel_priorities(module : nn.Module, kernel, channel_index : int = 0):
-    channel_norms = []
-
-    if kernel is None:
-        logging.warning(
-            f"Unable to compute channel priorities! Kernel is None: {kernel}"
-        )
-        return None
-    # this will also include the elastic kernel convolutions
-    # for elastic kernel convolutions, the priorities will then also be
-    # computed on the base module (full kernel)
-    if isinstance(module, nn.Conv1d):
-        weights = kernel
-        norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=channel_index)
-        channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
-    # the channel priorities for linears need to also be computable:
-    # especially for the exit connections, a linear may follow after an elastic width
-    elif isinstance(module, nn.Linear):
-        weights = kernel
-        channel_norms = torch.linalg.norm(weights, ord=1, dim=0)
-    else:
-        # the channel priorities will keep their previous / default value in
-        # this case. Reduction will probably occur by channel order
-        logging.warning(
-            f"Unable to compute channel priorities! Unsupported target module after elastic channels: {type(module)}"
-        )
-
-    # contains the indices of the channels, sorted from channel with smallest
-    # norm to channel with largest norm
-    # the least important channel index is at the beginning of the list,
-    # the most important channel index is at the end
-    # np -> torch.argsort()
-    channels_by_priority = torch.argsort(channel_norms)
-
-    return channels_by_priority
-
-
-def get_kernel_for_dpc(kernel):
-    """
-        At the moment uses the first kernel dimension
-    """
-    return kernel[:, :, 0:1]
-
-
-# copied and adapted from elasticchannelhelper.py
-# set the channel filter list based on the channel priorities and the reduced_target_channel count
-def get_channel_filter(current_channel_size, reduced_target_channel_size, channel_priority_list):
-    # get the amount of channels to be removed from the max and current channel counts
-    channel_reduction_amount: int = current_channel_size - reduced_target_channel_size
-    # start with an empty filter, where every channel passes through, then remove channels by priority
-    channel_pass_filter = [True] * current_channel_size
-
-    # filter the least important n channels, specified by the reduction amount
-    for i in range(channel_reduction_amount):
-        # priority list of channels contains channel indices from least important to most important
-        # the first n channel indices specified in this list will be filtered out
-        filtered_channel_index = channel_priority_list[i]
-        channel_pass_filter[filtered_channel_index] = False
-
-    return channel_pass_filter
-
-
-def create_channel_filter(module: nn.Module, kernel, current_channel, reduced_target_channel_size, is_output_filter : bool = True):
-    # create one channel filter
-    channel_index = 1 if is_output_filter else 0
-    channel_filter_priorities = compute_channel_priorities(module, kernel, channel_index)
-    return get_channel_filter(current_channel, reduced_target_channel_size, channel_filter_priorities)
-
-
 def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter):
     # out_channel count will be length in dim 0
     out_channel_count = len(weights)
@@ -416,3 +344,75 @@ def adjust_weights_for_grouping(weights, input_divided_by):
     full_kernel = torch.concat(result_weights)
 
     return full_kernel
+
+
+# copied and adapted from elasticchannelhelper.py
+# compute channel priorities based on the l1 norm of the weights of whichever
+# target module follows this elastic channel section
+def compute_channel_priorities(module : nn.Module, kernel, channel_index : int = 0):
+    channel_norms = []
+
+    if kernel is None:
+        logging.warning(
+            f"Unable to compute channel priorities! Kernel is None: {kernel}"
+        )
+        return None
+    # this will also include the elastic kernel convolutions
+    # for elastic kernel convolutions, the priorities will then also be
+    # computed on the base module (full kernel)
+    if isinstance(module, nn.Conv1d):
+        weights = kernel
+        norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=channel_index)
+        channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
+    # the channel priorities for linears need to also be computable:
+    # especially for the exit connections, a linear may follow after an elastic width
+    elif isinstance(module, nn.Linear):
+        weights = kernel
+        channel_norms = torch.linalg.norm(weights, ord=1, dim=0)
+    else:
+        # the channel priorities will keep their previous / default value in
+        # this case. Reduction will probably occur by channel order
+        logging.warning(
+            f"Unable to compute channel priorities! Unsupported target module after elastic channels: {type(module)}"
+        )
+
+    # contains the indices of the channels, sorted from channel with smallest
+    # norm to channel with largest norm
+    # the least important channel index is at the beginning of the list,
+    # the most important channel index is at the end
+    # np -> torch.argsort()
+    channels_by_priority = torch.argsort(channel_norms)
+
+    return channels_by_priority
+
+
+def get_kernel_for_dpc(kernel):
+    """
+        At the moment uses the first kernel dimension
+    """
+    return kernel[:, :, 0:1]
+
+
+# copied and adapted from elasticchannelhelper.py
+# set the channel filter list based on the channel priorities and the reduced_target_channel count
+def get_channel_filter(current_channel_size, reduced_target_channel_size, channel_priority_list):
+    # get the amount of channels to be removed from the max and current channel counts
+    channel_reduction_amount: int = current_channel_size - reduced_target_channel_size
+    # start with an empty filter, where every channel passes through, then remove channels by priority
+    channel_pass_filter = [True] * current_channel_size
+
+    # filter the least important n channels, specified by the reduction amount
+    for i in range(channel_reduction_amount):
+        # priority list of channels contains channel indices from least important to most important
+        # the first n channel indices specified in this list will be filtered out
+        filtered_channel_index = channel_priority_list[i]
+        channel_pass_filter[filtered_channel_index] = False
+
+    return channel_pass_filter
+
+
+def create_channel_filter(module: nn.Module, kernel, current_channel, reduced_target_channel_size, is_output_filter : bool = True):
+    # create one channel filter
+    channel_index = 1 if is_output_filter else 0
+    channel_filter_priorities = compute_channel_priorities(module, kernel, channel_index)
+    return get_channel_filter(current_channel, reduced_target_channel_size, channel_filter_priorities)

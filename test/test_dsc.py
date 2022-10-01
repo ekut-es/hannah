@@ -73,9 +73,6 @@ class Test_DSC(unittest.TestCase):
         # grouping = in_channel_count
         new_kernel, bias = prepare_kernel_for_pointwise_convolution(
             kernel=full_kernel,
-            bias=None,
-            in_channel_filter=input_filter,
-            out_channel_filter=point_wise_output_filter,
             grouping=groups,
         )
         res_pointwise = F.conv1d(res_depthwise, new_kernel, bias, groups=groups)
