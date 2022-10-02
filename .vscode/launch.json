@@ -150,14 +150,12 @@
             "args": [
                 "--config-name",
                 "nas_ofa",
-                "trainer.gpus=[0]",
                 "trainer.limit_train_batches=0.1",
                 "trainer.max_epochs=1",
                 "module.num_workers=8",
                 "model=ofa_group_dsc",
                 "nas=ofa_nas_dsc_g_only",
                 "experiment_id=dsc_test_normal",
-                "module.num_workers=8"
             ]
         },
         {
@@ -168,12 +166,11 @@
             "args": [
                 "--config-name",
                 "nas_ofa",
-                "trainer.gpus=[0]",
                 "trainer.limit_train_batches=0.1",
                 "trainer.max_epochs=1",
                 "model=ofa_group_dsc",
                 "nas=ofa_nas_dsc_g_only",
-                "experiment_id=dsc_bughunt",
+                "experiment_id=dsc_bughunt_randotest",
                 "module.num_workers=8"
             ]
         },
@@ -214,7 +211,8 @@
                 "nas_ofa",
                 "model=ofa_group_test",
                 "nas=ofa_nas_group_test",
-                "module.num_workers=8"
+                "module.num_workers=8",
+                "trainer.gpus=[1]",
             ]
         },
         {
