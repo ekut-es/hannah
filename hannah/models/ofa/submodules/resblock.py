@@ -17,6 +17,8 @@ time_to_break = 1260
 time_to_break = 1299
 time_to_break = 2100
 time_to_break = 2105
+time_to_break = 1272
+time_to_break = 692
 
 class ResBlockBase(nn.Module):
     def __init__(

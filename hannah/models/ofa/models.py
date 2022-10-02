@@ -684,7 +684,6 @@ class OFAModel(nn.Module):
                 new_grouping_step = self.get_random_step(max_available_sampling_step)
                 conv.pick_group_index(new_grouping_step)
                 state["grouping_steps"].append(new_grouping_step)
-        # TODO sampling for dsc, does this work like this ?
         if self.elastic_dsc_allowed:
             for conv in self.elastic_kernel_convs:
                 max_available_sampling_step = min(

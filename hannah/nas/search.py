@@ -399,6 +399,7 @@ class OFANasTrainer(NASTrainerBase):
         self.train_elastic_grouping(model, ofa_model)
         ofa_model.reset_shrinking()
         self.train_elastic_dsc(model, ofa_model)
+        ofa_model.reset_shrinking()
 
         if self.evaluate:
             self.eval_model(model, ofa_model)

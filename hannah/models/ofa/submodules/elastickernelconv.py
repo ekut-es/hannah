@@ -76,6 +76,9 @@ class ElasticConv1d(ElasticBase1d):
             # we have to increase the output_channel_size for dpc, hence we need the full kernel, because, the filtered kernel
             # is in that particular case to small.
             kernel, bias = self.get_full_width_kernel(), self.bias   # if self.in_channels > self.out_channels else (kernel, bias)
+            if self.in_channels > kernel.size(0):
+                logging.warning(f"In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
+            # logging.warning(f"({self.in_channels > kernel.size(0)}) - In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
             # kernel, bias = self.get_full_width_kernel(), self.bias   if self.in_channels > self.out_channels else (kernel, bias)
             return self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
 
@@ -93,7 +96,6 @@ class ElasticConv1d(ElasticBase1d):
 
         self.set_in_and_out_channel(kernel)
         dsc_on = self.get_dsc()
-        dsc_on = False
 
         if dsc_on:
             dsc_sequence = self.prepare_dsc_for_validation_model(
@@ -185,8 +187,15 @@ class ElasticConvReLu1d(ElasticBase1d):
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
             output = nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
-            output = self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
-
+            # we use the full kernel here, because if the input_channel_size is greater than the output_channel_size
+            # we have to increase the output_channel_size for dpc, hence we need the full kernel, because, the filtered kernel
+            # is in that particular case to small.
+            kernel, bias = self.get_full_width_kernel(), self.bias   # if self.in_channels > self.out_channels else (kernel, bias)
+            if self.in_channels > kernel.size(0):
+                logging.warning(f"In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
+            # logging.warning(f"({self.in_channels > kernel.size(0)}) - In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
+            # kernel, bias = self.get_full_width_kernel(), self.bias   if self.in_channels > self.out_channels else (kernel, bias)
+            return self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
         return self.relu(
             output
         )
@@ -295,20 +304,22 @@ class ElasticConvBn1d(ElasticConv1d):
         self.set_in_and_out_channel(kernel)
 
         dsc_on = self.get_dsc()
-        # TODO batch norm aufpassen
+        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
+            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
+            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
+            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
+            logging.info("Can't do DSC, cause Input is bigger than max output.")
+            dsc_on = False
         if dsc_on:
+            tmp_bn = self.bn.get_basic_batchnorm1d()
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=ConvBn1d,
                 full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
                 in_channels=self.in_channels, out_channels=self.out_channels,
                 grouping=grouping,
                 stride=self.stride, padding=padding, dilation=dilation,
+                bn_caller=(self.set_bn_parameter, tmp_bn, self.bn.num_batches_tracked)
             )
-            # TODO probieren ob conv_class nur bei der letzten Sinnvoll ist oder nicht -> wegen Batchnorm
-            tmp_bn = self.bn.get_basic_batchnorm1d()
-            list_mod = flatten_module_list(dsc_sequence)
-            for module in list_mod:
-                self.set_bn_parameter(module, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
             return dsc_sequence
         else:
             new_conv = ConvBn1d(
@@ -342,7 +353,7 @@ class ElasticConvBn1d(ElasticConv1d):
             # new_conv.bn.running_var = tmp_bn.running_var
             # new_conv.bn.running_mean = tmp_bn.running_mean
             # new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
-            self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
+            new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
 
             # print("\nassembled a basic conv from elastic kernel!")
             return new_conv
@@ -398,20 +409,22 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         padding = conv1d_get_padding(kernel_size, dilation)
 
         dsc_on = self.get_dsc()
+        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
+            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
+            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
+            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
+            logging.info("Can't do DSC, cause Input is bigger than max output.")
+            dsc_on = False
         if dsc_on:
-            # Hier stimmt es noch nicht ganz in der Validation
+            tmp_bn = self.bn.get_basic_batchnorm1d()
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=ConvBnReLu1d,
                 full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
                 in_channels=self.in_channels, out_channels=self.out_channels,
                 grouping=grouping,
                 stride=self.stride, padding=padding, dilation=dilation,
+                bn_caller=(self.set_bn_parameter, tmp_bn, self.bn.num_batches_tracked)
             )
-            # TODO probieren ob conv_class nur bei der letzten Sinnvoll ist oder nicht -> wegen Batchnorm
-            tmp_bn = self.bn.get_basic_batchnorm1d()
-            list_mod = flatten_module_list(dsc_sequence)
-            for module in list_mod:
-                self.set_bn_parameter(module, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
             return dsc_sequence
         else:
             new_conv = ConvBnReLu1d(
@@ -445,7 +458,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             # new_conv.bn.running_var = tmp_bn.running_var
             # new_conv.bn.running_mean = tmp_bn.running_mean
             # new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
-            self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
+            new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
             # print("\nassembled a basic conv from elastic kernel!")
             return new_conv
 

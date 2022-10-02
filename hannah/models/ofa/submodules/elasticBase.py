@@ -21,7 +21,8 @@ from ..utilities import (
     adjust_weights_for_grouping
 )
 
-
+# counter_res = 0
+# time_to_break = 18
 # It's a wrapper for a convolutional layer that allows for the number of input and
 # output channels to be changed
 class _Elastic:
@@ -232,12 +233,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         stride,
         padding,
         dilation,
-        bn_caller : Function = None,
+        bn_caller : tuple = None,
     ):
         """
         this method creates the necessary validation models for DSC
         """
-
+        # global counter_res
+        # ElasticBase1d.res_break = counter_res == time_to_break
         # depthwise
         filtered_kernel_depth, bias = prepare_kernel_for_depthwise_separable_convolution(
              self,
@@ -247,7 +249,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         )
         in_channel_depth = in_channels
 
-        depthwise_separable = conv_class(
+        depthwise_separable = nn.Conv1d(
                 in_channels=in_channel_depth,
                 out_channels=filtered_kernel_depth.size(0), kernel_size=filtered_kernel_depth.size(2),
                 bias=bias,
@@ -268,9 +270,15 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 bias=bias,
                 groups=grouping, stride=stride, dilation=dilation
         )
+
         pointwise.weight.data = filtered_kernel_point
+        if bn_caller is not None:
+            bn_function, bn_norm, num_tracked = bn_caller
+            pointwise = bn_function(pointwise, bn_norm, num_tracked)
 
         depthwise_separable_conv = nn.Sequential(depthwise_separable, pointwise)
+        # counter_res += 1
+
         return depthwise_separable_conv
 
     def do_dpc(
