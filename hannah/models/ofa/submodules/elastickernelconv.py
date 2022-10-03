@@ -83,7 +83,7 @@ class ElasticConv1d(ElasticBase1d):
             return self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         # TODO MR Validaiton model needs to be done after normal thing works
 
         kernel, bias = self.get_kernel()
@@ -201,7 +201,7 @@ class ElasticConvReLu1d(ElasticBase1d):
         )
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -293,7 +293,7 @@ class ElasticConvBn1d(ElasticConv1d):
         return self.bn(super(ElasticConvBn1d, self).forward(input))
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -398,7 +398,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         return self.relu(super(ElasticConvBnReLu1d, self).forward(input))
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
