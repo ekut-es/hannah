@@ -45,6 +45,21 @@
             ]
         },
         {
+          "name": "ofa_quant dsc test",
+          "type": "python",
+          "request": "launch",
+          "module": "hannah.train",
+          "args": [
+              "--config-name",
+              "nas_ofa",
+              "trainer.gpus=[1]",
+              "module.num_workers=8",
+              "model=ofa_dsc_quant",
+              "nas=ofa_nas_dsc_g_only",
+              "experiment_id=dsc_quant_small_test"
+          ]
+      },
+        {
             "name": "ofa_quant",
             "type": "python",
             "request": "launch",
@@ -170,7 +185,7 @@
                 "trainer.max_epochs=1",
                 "model=ofa_group_dsc",
                 "nas=ofa_nas_dsc_g_only",
-                "experiment_id=dsc_bughunt_randotest",
+                "experiment_id=dsc_bughunt_test",
                 "module.num_workers=8"
             ]
         },

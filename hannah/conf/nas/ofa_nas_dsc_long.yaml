@@ -18,6 +18,6 @@ elastic_width_allowed: True
 elastic_grouping_allowed: True
 #depthwise_separable_convolution
 elastic_dsc_allowed: True
-evaluate: False
-random_evaluate: False
-random_eval_number: 1
+evaluate: True
+random_evaluate: True
+random_eval_number: 100
