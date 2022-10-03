@@ -1,6 +1,7 @@
 import copy
 import logging
 import math
+from modulefinder import Module
 from typing import List
 
 import torch
@@ -9,7 +10,11 @@ import torch.nn.functional as nnf
 from torch.nn import init
 
 from ...factory import qat
-from ..utilities import adjust_weight_if_needed, conv1d_get_padding, filter_single_dimensional_weights
+from ..utilities import (
+    adjust_weight_if_needed,
+    conv1d_get_padding,
+    filter_single_dimensional_weights,
+)
 from .elasticBase import ElasticBase1d
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
@@ -18,7 +23,42 @@ from .elasticLinear import ElasticPermissiveReLU
 # Adapted base Class used for the Quantization
 # pytype: enable=attribute-error
 
-#  TODO Validation and Testing
+
+class QuadDataHelper:
+    """
+    Data Container so that _forward and _dsc has the same data.
+    """
+
+    bias_shape = None
+    kernelsize = None
+    dilation = None
+    grouping = None
+    padding = None
+    scale_factor = None
+    scaled_weight = None
+    zero_bias = None
+
+    def __init__(
+        self,
+        bias_shape,
+        kernelsize,
+        dilation,
+        grouping,
+        padding,
+        scale_factor,
+        scaled_weight,
+        zero_bias,
+    ):
+        self.bias_shape = bias_shape
+        self.kernelsize = kernelsize
+        self.dilation = dilation
+        self.grouping = grouping
+        self.padding = padding
+        self.scale_factor = scale_factor
+        self.scaled_weight = scaled_weight
+        self.zero_bias = zero_bias
+
+
 class _ElasticConvBnNd(
     ElasticBase1d, qat._ConvForwardMixin
 ):  # pytype: disable=module-attr
@@ -37,6 +77,7 @@ class _ElasticConvBnNd(
         transposed=False,
         output_padding=0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias=False,
         padding_mode="zeros",
         # BatchNormNd args
@@ -59,6 +100,7 @@ class _ElasticConvBnNd(
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             padding_mode=padding_mode,
             out_channel_sizes=out_channel_sizes,
@@ -168,7 +210,9 @@ class _ElasticConvBnNd(
         # if we get the scaled weight we need to shape it according to the grouping
         grouping = self.get_group_size()
         if grouping > 1:
-            weight, _ = adjust_weight_if_needed(module=self, kernel=weight, groups=grouping)
+            weight, _ = adjust_weight_if_needed(
+                module=self, kernel=weight, groups=grouping
+            )
 
         scaled_weight = self.weight_fake_quant(
             weight * scale_factor.reshape(weight_shape)
@@ -176,7 +220,11 @@ class _ElasticConvBnNd(
 
         return scaled_weight
 
-    def _forward(self, input):
+    def _get_params(self) -> QuadDataHelper:
+
+        # copied from forward
+        # TODO: auch in _forward inkludieren
+
         bias_shape = [1] * len(self.weight.shape)
         bias_shape[1] = -1
         kernelsize = self.kernel_sizes[self.target_kernel_index]
@@ -196,8 +244,22 @@ class _ElasticConvBnNd(
         zero_bias = filter_single_dimensional_weights(
             zero_bias, self.out_channel_filter
         )
+        return QuadDataHelper(
+            bias_shape,
+            kernelsize,
+            dilation,
+            grouping,
+            self.padding,
+            scale_factor,
+            scaled_weight,
+            zero_bias,
+        )
 
-        conv = self._real_conv_forward(input, scaled_weight, zero_bias, grouping)
+    def _after_forward_function(self, conv : nn.Module, quad_params : QuadDataHelper):
+        # TODO nur für letztere Funktion wichtig ?
+        scale_factor = quad_params.scale_factor
+        bias_shape = quad_params.bias_shape
+        zero_bias = quad_params.zero_bias
 
         if self.training or not self.fuse_bn:
             conv_orig = conv / scale_factor.reshape(bias_shape)
@@ -230,6 +292,91 @@ class _ElasticConvBnNd(
                 (bias - bn_rmean) * scale_factor + bn_bias
             ).reshape(bias_shape)
             conv = conv + bias
+
+        return conv
+
+    def _dsc(self):
+        """
+        this method is used for dsc.
+        it is called as an alternative of _forward
+        """
+        tmp_quad_helper = self._get_params()
+        bias_shape = tmp_quad_helper.bias_shape
+        kernelsize = tmp_quad_helper.kernelsize
+        dilation = tmp_quad_helper.dilation
+        grouping = tmp_quad_helper.grouping
+        padding = tmp_quad_helper.padding
+        scale_factor = tmp_quad_helper.scale_factor
+        scaled_weight = tmp_quad_helper.scaled_weight
+        zero_bias = tmp_quad_helper.zero_bias
+
+        pass
+
+    def _forward(self, input):
+        tmp_quad_helper : QuadDataHelper = self._get_params()
+        bias_shape = tmp_quad_helper.bias_shape
+        kernelsize = tmp_quad_helper.kernelsize
+        dilation = tmp_quad_helper.dilation
+        grouping = tmp_quad_helper.grouping
+        padding = tmp_quad_helper.padding
+        scale_factor = tmp_quad_helper.scale_factor
+        scaled_weight = tmp_quad_helper.scaled_weight
+        zero_bias = tmp_quad_helper.zero_bias
+
+        # bias_shape = [1] * len(self.weight.shape)
+        # bias_shape[1] = -1
+        # kernelsize = self.kernel_sizes[self.target_kernel_index]
+        # dilation = self.get_dilation_size()
+        # grouping = self.get_group_size()
+        # self.padding = conv1d_get_padding(kernelsize, dilation)
+
+        # scale_factor = self.scale_factor
+        # # if scaled weight is called, the grouping adjusts the weights if needed
+        # scaled_weight = self.scaled_weight
+        # # using zero bias here since the bias for original conv
+        # # will be added later
+        # if self.bias is not None:
+        #     zero_bias = torch.zeros_like(self.bias)
+        # else:
+        #     zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
+        # zero_bias = filter_single_dimensional_weights(
+        #     zero_bias, self.out_channel_filter
+        # )
+
+        conv = self._real_conv_forward(input, scaled_weight, zero_bias, grouping)
+
+        conv = self._after_forward_function(conv, quad_params=tmp_quad_helper)
+        # if self.training or not self.fuse_bn:
+        #     conv_orig = conv / scale_factor.reshape(bias_shape)
+
+        #     if self.bias is not None:
+        #         bias = filter_single_dimensional_weights(
+        #             self.bias, self.out_channel_filter
+        #         )
+        #         conv_orig = conv_orig + bias.reshape(bias_shape)
+
+        #     conv = self.bn[self.target_kernel_index](conv_orig)
+        #     # conv = conv - (self.bn.bias - self.bn.running_mean).reshape(bias_shape)
+        # else:
+        #     bias = zero_bias
+        #     if self.bias is not None:
+        #         _, bias = self.get_kernel()
+        #         bias = filter_single_dimensional_weights(bias, self.out_channel_filter)
+
+        #     bn_rmean = self.bn[self.target_kernel_index].running_mean
+        #     bn_bias = self.bn[self.target_kernel_index].bias
+
+        #     bn_rmean = filter_single_dimensional_weights(
+        #         bn_rmean, self.out_channel_filter
+        #     )
+        #     bn_bias = filter_single_dimensional_weights(
+        #         bn_bias, self.out_channel_filter
+        #     )
+
+        #     bias = self.bias_fake_quant(
+        #         (bias - bn_rmean) * scale_factor + bn_bias
+        #     ).reshape(bias_shape)
+        #     conv = conv + bias
 
         return conv
 
@@ -377,6 +524,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         stride: int = 1,
         padding: int = 0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias: bool = False,
         padding_mode="zeros",
         qconfig=None,
@@ -392,6 +540,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             out_channel_sizes=out_channel_sizes,
             padding_mode=padding_mode,
@@ -418,14 +567,16 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
 
         grouping = self.get_group_size()
         if grouping > 1:
-            weight, _ = adjust_weight_if_needed(module=self, kernel=weight, groups=grouping)
+            weight, _ = adjust_weight_if_needed(
+                module=self, kernel=weight, groups=grouping
+            )
 
         y = self.activation_post_process(
             self._real_conv_forward(
                 input,
                 self.weight_fake_quant(weight),
                 self.bias_fake_quant(bias) if self.bias is not None else None,
-                grouping
+                grouping,
             )
         )
         return y
@@ -474,6 +625,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         stride: int = 1,
         padding: int = 0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias: bool = False,
         padding_mode="zeros",
         qconfig=None,
@@ -490,6 +642,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             out_channel_sizes=out_channel_sizes,
         )
@@ -516,14 +669,16 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         weight, bias = self.get_kernel()
         grouping = self.get_group_size()
         if grouping > 1:
-            weight, _ = adjust_weight_if_needed(module=self, kernel=weight, groups=grouping)
+            weight, _ = adjust_weight_if_needed(
+                module=self, kernel=weight, groups=grouping
+            )
         y = self.activation_post_process(
             self.relu(
                 self._real_conv_forward(
                     input,
                     self.weight_fake_quant(weight),
                     self.bias_fake_quant(bias) if self.bias is not None else None,
-                    grouping
+                    grouping,
                 )
             )
         )
@@ -569,6 +724,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         stride: int = 1,
         padding: int = 0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias: bool = False,
         track_running_stats=True,
         qconfig=None,
@@ -584,6 +740,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             qconfig=qconfig,
             out_channel_sizes=out_channel_sizes,
@@ -599,7 +756,9 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         grouping = self.get_group_size()
         if grouping > 1:
             # TODO kernel will be not used, is not needed?
-            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
         # get padding for the size of the kernel
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
@@ -651,6 +810,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         stride: int = 1,
         padding: int = 0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias: bool = False,
         track_running_stats=True,
         qconfig=None,
@@ -666,6 +826,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             qconfig=qconfig,
             out_channel_sizes=out_channel_sizes,

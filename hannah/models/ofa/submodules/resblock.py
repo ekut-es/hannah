@@ -97,13 +97,13 @@ class ResBlock1d(ResBlockBase):
 
         # MR 20220622
         # TODO vereinheitlichen - still necessary ?
-        for _, block in minor_blocks._modules.items():
-            for _, actualModel in block._modules.items():
-                logging.info(f"XKA Module List: {actualModel}")
-                if isinstance(actualModel, ElasticBase1d):
-                    logging.info(
-                        f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}"
-                    )
+        # for _, block in minor_blocks._modules.items():
+        #     for _, actualModel in block._modules.items():
+        #         logging.info(f"XKA Module List: {actualModel}")
+        #         if isinstance(actualModel, ElasticBase1d):
+        #             logging.info(
+        #                 f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}"
+        #             )
         self.norm = ElasticWidthBatchnorm1d(out_channels)
         self.act = nn.ReLU()
         self.qconfig = qconfig
@@ -137,6 +137,7 @@ class ResBlock1d(ResBlockBase):
                     dilation_sizes=[1],
                     stride=stride,
                     groups=[1],
+                    dscs=[False],
                     bias=False,
                     qconfig=qconfig,
                     out_channel_sizes=flatten_module_list(self.blocks)[
