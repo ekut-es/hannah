@@ -8,6 +8,8 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as nnf
 
+from hannah.models.factory import qat
+
 from ..utilities import (
     adjust_weight_if_needed,
     conv1d_get_padding,
@@ -34,7 +36,7 @@ class _Elastic:
         self.out_channel_sizes: List[int] = out_channel_sizes
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         return None
 
     def get_out_channel_sizes(self):
@@ -213,7 +215,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         # Caller for BatchNorm Parameters
         # TODO committen und dann das überall einfügen
-    def set_bn_parameter(self, conv : nn.Conv1d, tmp_bn, num_tracked):
+    def set_bn_parameter(self, conv : nn.Conv1d, tmp_bn, num_tracked, with_num_features : bool = False):
         # tmp_bn = self.bn.get_basic_batchnorm1d()
         conv.bn.num_features = tmp_bn.num_features
         conv.bn.weight = tmp_bn.weight
@@ -234,14 +236,25 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         stride,
         padding,
         dilation,
+        # for quant
+        qconfig=None,
+        out_quant=None,
+        eps=None,
+        momentum=None,
         bn_caller : tuple = None,
     ):
         """
         this method creates the necessary validation models for DSC
         """
+
+        is_quant = qconfig is not None and out_quant is not None
+        uses_batch_norm = eps is not None and momentum is not None
+
+        depthwise_conv = qat.Conv1d if is_quant else nn.Conv1d
         # global counter_res
         # ElasticBase1d.res_break = counter_res == time_to_break
         # depthwise
+
         filtered_kernel_depth, bias = prepare_kernel_for_depthwise_separable_convolution(
              self,
              kernel=full_kernel,
@@ -250,11 +263,27 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         )
         in_channel_depth = in_channels
 
-        depthwise_separable = nn.Conv1d(
-                in_channels=in_channel_depth,
-                out_channels=filtered_kernel_depth.size(0), kernel_size=filtered_kernel_depth.size(2),
-                bias=bias,
-                groups=in_channel_depth, padding=padding
+        param_depthwise_conv : dict = {
+            "in_channels": in_channel_depth,
+            "out_channels": filtered_kernel_depth.size(0),
+            "kernel_size": filtered_kernel_depth.size(2),
+            "bias": bias,
+            "groups": in_channel_depth,
+            "padding": padding
+        }
+
+        if is_quant:
+            # add this for normal
+            param_depthwise_conv["qconfig"] = qconfig
+            param_depthwise_conv["out_quant"] = out_quant
+
+        # is either quant Conv1d or normal Conv1d
+        depthwise_separable = depthwise_conv(
+                **param_depthwise_conv
+                # in_channels=in_channel_depth,
+                # out_channels=filtered_kernel_depth.size(0), kernel_size=filtered_kernel_depth.size(2),
+                # bias=bias,
+                # groups=in_channel_depth, padding=padding
         )
         depthwise_separable.weight.data = filtered_kernel_depth
 
@@ -265,15 +294,37 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             grouping=grouping
         )
 
+        param_point_conv : dict = {
+            "in_channels": in_channels,
+            "out_channels": out_channels,
+            "kernel_size": filtered_kernel_point.size(2),
+            "bias": bias,
+            "groups": grouping,
+            # "padding": padding TODO maybe für feinschliff
+            "stride": stride,
+            "dilation": dilation,
+        }
+        if is_quant:
+            param_point_conv["qconfig"] = qconfig
+            param_point_conv["out_quant"] = out_quant
+
+        if is_quant and uses_batch_norm:
+
+            param_point_conv["eps"] = eps
+            param_point_conv["momentum"] = momentum
+            # eps=self.bn[self.target_kernel_index].eps,
+            # momentum=self.bn[self.target_kernel_index].momentum,
+
         pointwise = conv_class(
-                in_channels=in_channels,
-                out_channels=out_channels, kernel_size=filtered_kernel_point.size(2),
-                bias=bias,
-                groups=grouping, stride=stride, dilation=dilation
+                # in_channels=in_channels,
+                # out_channels=out_channels, kernel_size=filtered_kernel_point.size(2),
+                # bias=bias,
+                # groups=grouping, stride=stride, dilation=dilation
+                **param_point_conv
         )
 
         pointwise.weight.data = filtered_kernel_point
-        if bn_caller is not None:
+        if bn_caller:  # is not None:
             bn_function, bn_norm, num_tracked = bn_caller
             pointwise = bn_function(pointwise, bn_norm, num_tracked)
 
@@ -281,6 +332,89 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         # counter_res += 1
 
         return depthwise_separable_conv
+
+    # def prepare_dsc_for_validation_model_quant(
+    #     self,
+    #     conv_class : nn.Module,
+    #     full_kernel,
+    #     full_bias,
+    #     in_channels,
+    #     out_channels,
+    #     grouping,
+    #     stride,
+    #     padding,
+    #     dilation,
+    #     qconfig,
+    #     out_quant,
+    #     eps=None,
+    #     momentum=None,
+    #     bn_caller : tuple = None,
+
+    # ):
+    #     """
+    #     this method creates the necessary validation models for DSC, for quant (this is for start just a copy)
+    #     """
+    #     # eps=self.bn[self.target_kernel_index].eps,
+    #     # momentum=self.bn[self.target_kernel_index].momentum,
+    #     # qconfig=self.qconfig,
+    #     # out_quant=self.out_quant,
+    #     # global counter_res
+
+    #     # ElasticBase1d.res_break = counter_res == time_to_break
+    #     # depthwise
+    #     filtered_kernel_depth, bias = prepare_kernel_for_depthwise_separable_convolution(
+    #          self,
+    #          kernel=full_kernel,
+    #          bias=full_bias,
+    #          in_channels=in_channels
+    #     )
+    #     in_channel_depth = in_channels
+
+    #     # quant version of this
+    #     depthwise_separable = qat.Conv1d(
+    #             in_channels=in_channel_depth,
+    #             out_channels=filtered_kernel_depth.size(0), kernel_size=filtered_kernel_depth.size(2),
+    #             bias=bias,
+    #             groups=in_channel_depth, padding=padding
+    #     )
+    #     depthwise_separable.weight.data = filtered_kernel_depth
+
+    #     # pointwise
+    #     kernel, bias = self.get_kernel()
+    #     filtered_kernel_point = prepare_kernel_for_pointwise_convolution(
+    #         kernel=kernel,
+    #         grouping=grouping
+    #     )
+
+    #     if isinstance(conv_class, (qat.Conv1d,  qat.ConvReLU1d)):
+    #         # add this for normal
+    #         # qconfig=self.qconfig,
+    #         # out_quant=self.out_quant,
+    #         pass
+    #     if isinstance(conv_class, (qat.ConvBn1d, qat.ConvBnReLU1d)):
+    #         # add this for normal
+    #         # qconfig=self.qconfig,
+    #         # out_quant=self.out_quant,
+    #         # eps=self.bn[self.target_kernel_index].eps,
+    #         # momentum=self.bn[self.target_kernel_index].momentum,
+    #         pass
+
+    #     pointwise = conv_class(
+    #             in_channels=in_channels,
+    #             out_channels=out_channels, kernel_size=filtered_kernel_point.size(2),
+    #             bias=bias,
+    #             groups=grouping, stride=stride, dilation=dilation
+    #     )
+
+    #     pointwise.weight.data = filtered_kernel_point
+    #     if bn_caller is not None:
+    #         bn_function, bn_norm, num_tracked = bn_caller
+    #         pointwise = bn_function(pointwise, bn_norm, num_tracked)
+
+    #     depthwise_separable_conv = nn.Sequential(depthwise_separable, pointwise)
+    #     # counter_res += 1
+
+    #     return depthwise_separable_conv
 
     # TODO refactoring: dpc -> dsc
     def do_dpc(

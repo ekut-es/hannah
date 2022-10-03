@@ -675,32 +675,54 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         return y
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_size
         dilation = self.get_dilation_size()
 
         grouping = self.get_group_size()
+        dsc_on = self.get_dsc()
+        padding = conv1d_get_padding(kernel_size, dilation)
         self.set_in_and_out_channel(kernel)
 
-        padding = conv1d_get_padding(kernel_size, dilation)
-        new_conv = qat.Conv1d(
-            self.in_channels,
-            self.out_channels,
-            kernel_size,
-            self.stride,
-            padding,
-            dilation,
-            grouping,
-            bias,
-            qconfig=self.qconfig,
-            out_quant=self.out_quant,
-        )
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        new_conv.weight.data = kernel
-        if bias is not None:
-            new_conv.bias = bias
+        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
+            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
+            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
+            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
+            logging.info("Can't do DSC, cause Input is bigger than max output.")
+            dsc_on = False
+        if dsc_on:
+            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=qat.Conv1d,
+                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
+                in_channels=self.in_channels, out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride, padding=padding, dilation=dilation,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+                # bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked)
+            )
+            self.reset_in_and_out_channel_to_previous()
+            return dsc_sequence
+        else:
+            new_conv = qat.Conv1d(
+                self.in_channels,
+                self.out_channels,
+                kernel_size,
+                self.stride,
+                padding,
+                dilation,
+                grouping,
+                bias,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            new_conv.weight.data = kernel
+            if bias is not None:
+                new_conv.bias = bias
 
+        self.reset_in_and_out_channel_to_previous()
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
@@ -801,31 +823,54 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         return y
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         grouping = self.get_group_size()
+        dsc_on = self.get_dsc()
         self.set_in_and_out_channel(kernel)
 
-        new_conv = qat.ConvReLU1d(
-            self.in_channels,
-            self.out_channels,
-            kernel_size,
-            self.stride,
-            padding,
-            dilation,
-            grouping,
-            bias,
-            qconfig=self.qconfig,
-            out_quant=self.out_quant,
-        )
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        new_conv.weight.data = kernel
-        if bias is not None:
-            new_conv.bias = bias
-
+        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
+            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
+            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
+            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
+            logging.info("Can't do DSC, cause Input is bigger than max output.")
+            dsc_on = False
+        if dsc_on:
+            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=qat.ConvReLU1d,
+                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
+                in_channels=self.in_channels, out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride, padding=padding, dilation=dilation,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+                # bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked)
+                # qconfig=self.qconfig,
+                # out_quant=self.out_quant,
+            )
+            self.reset_in_and_out_channel_to_previous()
+            return dsc_sequence
+        else:
+            new_conv = qat.ConvReLU1d(
+                self.in_channels,
+                self.out_channels,
+                kernel_size,
+                self.stride,
+                padding,
+                dilation,
+                grouping,
+                bias,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            new_conv.weight.data = kernel
+            if bias is not None:
+                new_conv.bias = bias
+        self.reset_in_and_out_channel_to_previous()
         # print("\nassembled a basic conv from elastic kernel!")
         return new_conv
 
@@ -887,36 +932,64 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
         grouping = self.get_group_size()
-        new_conv = qat.ConvBn1d(
-            kernel.shape[1],
-            kernel.shape[0],
-            self.kernel_size,
-            self.stride,
-            self.padding,
-            self.dilation,
-            grouping,
-            bias,
-            eps=self.bn[self.target_kernel_index].eps,
-            momentum=self.bn[self.target_kernel_index].momentum,
-            qconfig=self.qconfig,
-            out_quant=self.out_quant,
-        )
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        new_conv.weight.data = kernel
-        new_conv.bias = bias
-        tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+        dsc_on = self.get_dsc()
+        self.set_in_and_out_channel(kernel)
 
-        new_conv.bn.weight = tmp_bn.weight
-        new_conv.bn.bias = tmp_bn.bias
-        new_conv.bn.running_var = tmp_bn.running_var
-        new_conv.bn.running_mean = tmp_bn.running_mean
-        new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
+        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
+            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
+            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
+            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
+            logging.info("Can't do DSC, cause Input is bigger than max output.")
+            dsc_on = False
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+        if dsc_on:
+            tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=qat.ConvReLU1d,
+                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
+                in_channels=self.in_channels, out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride, padding=self.padding, dilation=self.dilation,
+                eps=self.bn[self.target_kernel_index].eps,
+                momentum=self.bn[self.target_kernel_index].momentum,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+                bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked)
+            )
+            self.reset_in_and_out_channel_to_previous()
+            return dsc_sequence
+        else:
+            new_conv = qat.ConvBn1d(
+                kernel.shape[1],
+                kernel.shape[0],
+                self.kernel_size,
+                self.stride,
+                self.padding,
+                self.dilation,
+                grouping,
+                bias,
+                eps=self.bn[self.target_kernel_index].eps,
+                momentum=self.bn[self.target_kernel_index].momentum,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            new_conv.weight.data = kernel
+            new_conv.bias = bias
+            tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+
+            # new_conv.bn.weight = tmp_bn.weight
+            # new_conv.bn.bias = tmp_bn.bias
+            # new_conv.bn.running_var = tmp_bn.running_var
+            # new_conv.bn.running_mean = tmp_bn.running_mean
+            # new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
+            new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked)
+            # print("\nassembled a basic conv from elastic kernel!")
+            self.reset_in_and_out_channel_to_previous()
+            return new_conv
 
 
 class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
@@ -971,33 +1044,67 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         return self.activation_post_process(self.relu(y))
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
         grouping = self.get_group_size()
-        new_conv = qat.ConvBnReLU1d(
-            kernel.shape[1],
-            kernel.shape[0],
-            self.kernel_size,
-            self.stride,
-            self.padding,
-            self.dilation,
-            grouping,
-            bias,
-            eps=self.bn[self.target_kernel_index].eps,
-            momentum=self.bn[self.target_kernel_index].momentum,
-            qconfig=self.qconfig,
-            out_quant=self.out_quant,
-        )
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        new_conv.weight.data = kernel
-        new_conv.bias = bias
-        tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+        dsc_on = self.get_dsc()
+        self.set_in_and_out_channel(kernel)
 
-        new_conv.bn.weight = tmp_bn.weight
-        new_conv.bn.bias = tmp_bn.bias
-        new_conv.bn.running_var = tmp_bn.running_var
-        new_conv.bn.running_mean = tmp_bn.running_mean
-        new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
+        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
+            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
+            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
+            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
+            logging.info("Can't do DSC, cause Input is bigger than max output.")
+            dsc_on = False
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+        if dsc_on:
+            tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=qat.ConvBnReLU1d,
+                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
+                in_channels=self.in_channels, out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride, padding=self.padding, dilation=self.dilation,
+                eps=self.bn[self.target_kernel_index].eps,
+                momentum=self.bn[self.target_kernel_index].momentum,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+                bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked)
+            )
+            # TODO
+            # eps=self.bn[self.target_kernel_index].eps,
+            # momentum=self.bn[self.target_kernel_index].momentum,
+            # qconfig=self.qconfig,
+            # out_quant=self.out_quant,
+            self.reset_in_and_out_channel_to_previous()
+            return dsc_sequence
+        else:
+
+            new_conv = qat.ConvBnReLU1d(
+                kernel.shape[1],
+                kernel.shape[0],
+                self.kernel_size,
+                self.stride,
+                self.padding,
+                self.dilation,
+                grouping,
+                bias,
+                eps=self.bn[self.target_kernel_index].eps,
+                momentum=self.bn[self.target_kernel_index].momentum,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            new_conv.weight.data = kernel
+            new_conv.bias = bias
+            tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+
+            # new_conv.bn.weight = tmp_bn.weight
+            # new_conv.bn.bias = tmp_bn.bias
+            # new_conv.bn.running_var = tmp_bn.running_var
+            # new_conv.bn.running_mean = tmp_bn.running_mean
+            # new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
+            new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked)
+            self.reset_in_and_out_channel_to_previous()
+            # print("\nassembled a basic conv from elastic kernel!")
+            return new_conv
