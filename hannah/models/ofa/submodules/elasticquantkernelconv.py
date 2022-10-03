@@ -14,6 +14,7 @@ from ..utilities import (
     adjust_weight_if_needed,
     conv1d_get_padding,
     filter_single_dimensional_weights,
+    flatten_module_list,
 )
 from .elasticBase import ElasticBase1d
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
@@ -199,6 +200,23 @@ class _ElasticConvBnNd(
         return filter_single_dimensional_weights(scale_factor, self.out_channel_filter)
 
     @property
+    def full_scale_factor(self):
+        if self.fuse_bn:
+            running_std = torch.sqrt(
+                self.bn[self.target_kernel_index].running_var
+                + self.bn[self.target_kernel_index].eps
+            )
+
+            scale_factor = self.bn[self.target_kernel_index].weight / running_std
+        else:
+            scale_factor = torch.ones(
+                (self.weight.shape[0],), device=self.weight.device
+            )
+
+        #return filter_single_dimensional_weights(scale_factor, self.out_channel_filter)
+        return scale_factor
+
+    @property
     def scaled_weight(self):
         scale_factor = self.scale_factor
         weight, bias = self.get_kernel()
@@ -219,6 +237,32 @@ class _ElasticConvBnNd(
         )
 
         return scaled_weight
+
+    def get_full_kernel_bias(self):
+        scale_factor = self.full_scale_factor
+        weight = self.get_full_width_kernel()
+        weight_shape = [1] * len(weight.shape)
+        weight_shape[0] = -1
+        bias_shape = [1] * len(weight.shape)
+        bias_shape[1] = -1
+
+        # # if we get the scaled weight we need to shape it according to the grouping
+        # grouping = self.get_group_size()
+        # if grouping > 1:
+        #     weight, _ = adjust_weight_if_needed(
+        #         module=self, kernel=weight, groups=grouping
+        #     )
+
+        scaled_weight = self.weight_fake_quant(
+            weight * scale_factor.reshape(weight_shape)
+        )
+
+        if self.bias is not None:
+            full_bias = torch.zeros_like(self.bias)
+        else:
+            full_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
+
+        return scaled_weight, full_bias
 
     def _get_params(self) -> QuadDataHelper:
 
@@ -255,7 +299,7 @@ class _ElasticConvBnNd(
             zero_bias,
         )
 
-    def _after_forward_function(self, conv : nn.Module, quad_params : QuadDataHelper):
+    def _after_forward_function(self, conv, quad_params : QuadDataHelper):
         # TODO nur für letztere Funktion wichtig ?
         scale_factor = quad_params.scale_factor
         bias_shape = quad_params.bias_shape
@@ -295,11 +339,12 @@ class _ElasticConvBnNd(
 
         return conv
 
-    def _dsc(self):
+    def _dsc(self, input):
         """
         this method is used for dsc.
         it is called as an alternative of _forward
         """
+
         tmp_quad_helper = self._get_params()
         bias_shape = tmp_quad_helper.bias_shape
         kernelsize = tmp_quad_helper.kernelsize
@@ -310,7 +355,25 @@ class _ElasticConvBnNd(
         scaled_weight = tmp_quad_helper.scaled_weight
         zero_bias = tmp_quad_helper.zero_bias
 
-        pass
+        self.set_in_and_out_channel(self.get_kernel()[0])
+
+        full_kernel, full_bias = self.get_full_width_kernel(), self.bias
+        dsc_sequence_output = self.do_dpc(
+            input=input,
+            full_kernel=full_kernel,
+            full_bias=full_bias,
+            grouping=grouping,
+            stride=self.stride,
+            padding=padding,
+            dilation=dilation,
+            # TODO ich glaube hier muss man noch was machen
+            quant_weight=scaled_weight,
+            quant_bias=zero_bias
+        )
+
+        conv_output = self._after_forward_function(dsc_sequence_output, quad_params=tmp_quad_helper)
+        self.reset_in_and_out_channel_to_previous()
+        return conv_output
 
     def _forward(self, input):
         tmp_quad_helper : QuadDataHelper = self._get_params()
@@ -385,8 +448,12 @@ class _ElasticConvBnNd(
         return super(_ElasticConvBnNd, self).extra_repr()
 
     def forward(self, input):
-        y = self._forward(input)
+        dsc = self.get_dsc()
 
+        if not dsc:
+            y = self._forward(input)
+        else:
+            y = self._dsc(input)
         return y
 
     def train(self, mode=True):
@@ -564,21 +631,47 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
+        self.set_in_and_out_channel(weight)
 
         grouping = self.get_group_size()
         if grouping > 1:
             weight, _ = adjust_weight_if_needed(
                 module=self, kernel=weight, groups=grouping
             )
+        dsc = self.get_dsc()
 
-        y = self.activation_post_process(
-            self._real_conv_forward(
-                input,
-                self.weight_fake_quant(weight),
-                self.bias_fake_quant(bias) if self.bias is not None else None,
-                grouping,
+        if not dsc:
+            y = self.activation_post_process(
+                self._real_conv_forward(
+                    input,
+                    self.weight_fake_quant(weight),
+                    self.bias_fake_quant(bias) if self.bias is not None else None,
+                    grouping,
+                )
             )
-        )
+        else:
+            # TODO forward hier anpassen
+            # y = self.activation_post_process(
+            # self._
+            # )
+            full_kernel, full_bias = self.get_full_width_kernel(), self.bias
+            y = self.activation_post_process(
+                self.do_dpc(
+                    input=input,
+                    full_kernel=full_kernel,
+                    full_bias=full_bias,
+                    grouping=grouping,
+                    stride=self.stride,
+                    padding=self.padding,
+                    dilation=self.dilation,
+                    quant_weight=weight,
+                    quant_bias=bias,
+                    quant_weight_function=self.weight_fake_quant,
+                    quant_bias_function=self.bias_fake_quant
+                )
+            )
+        self.reset_in_and_out_channel_to_previous()
+
         return y
 
     # return a normal conv1d equivalent to this module in the current state
@@ -667,21 +760,44 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
+        self.set_in_and_out_channel(weight)
         grouping = self.get_group_size()
         if grouping > 1:
             weight, _ = adjust_weight_if_needed(
                 module=self, kernel=weight, groups=grouping
             )
-        y = self.activation_post_process(
-            self.relu(
-                self._real_conv_forward(
-                    input,
-                    self.weight_fake_quant(weight),
-                    self.bias_fake_quant(bias) if self.bias is not None else None,
-                    grouping,
+        dsc = self.get_dsc()
+        if not dsc:
+            y = self.activation_post_process(
+                self.relu(
+                    self._real_conv_forward(
+                        input,
+                        self.weight_fake_quant(weight),
+                        self.bias_fake_quant(bias) if self.bias is not None else None,
+                        grouping,
+                    )
                 )
             )
-        )
+        else:
+
+            full_kernel, full_bias = self.get_full_width_kernel, self.bias
+            y = self.activation_post_process(
+                            self.do_dpc(
+                                input=input,
+                                full_kernel=full_kernel,
+                                full_bias=full_bias,
+                                grouping=grouping,
+                                stride=self.stride,
+                                padding=self.padding,
+                                dilation=self.dilation,
+                                quant_weight=weight,
+                                quant_bias=bias,
+                                quant_weight_function=self.weight_fake_quant,
+                                quant_bias_function=self.bias_fake_quant
+                            )
+                        )
+        self.reset_in_and_out_channel_to_previous()
+
         return y
 
     # return a normal conv1d equivalent to this module in the current state
@@ -753,6 +869,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
+        self.set_in_and_out_channel(kernel)
+
         grouping = self.get_group_size()
         if grouping > 1:
             # TODO kernel will be not used, is not needed?
@@ -765,6 +883,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             self.kernel_sizes[self.target_kernel_index], dilation
         )
         y = super(ElasticQuantConvBn1d, self).forward(input)
+        self.reset_in_and_out_channel_to_previous()
         return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
@@ -842,7 +961,13 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
-        y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
+        dsc = self.get_dsc()
+
+        if not dsc:
+            y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
+        else:
+            # TODO testen ob das so geht
+            y = super(ElasticQuantConvBnReLu1d, self)._dsc(input)
         return self.activation_post_process(self.relu(y))
 
     # return a normal conv1d equivalent to this module in the current state

@@ -14,6 +14,7 @@ from ..utilities import (
     create_channel_filter,
     filter_primary_module_weights,
     filter_single_dimensional_weights,
+    get_kernel_for_dpc,
     prepare_kernel_for_depthwise_separable_convolution,
     prepare_kernel_for_pointwise_convolution,
     sub_filter_start_end,
@@ -281,6 +282,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         return depthwise_separable_conv
 
+    # TODO refactoring: dpc -> dsc
     def do_dpc(
         self,
         input,
@@ -290,8 +292,10 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         stride,
         padding,
         dilation,
+        quant_weight=None,
+        quant_bias=None,
         quant_weight_function : Function = None,  # for quantization
-        quant_bias_function : Function = None  # for quantization
+        quant_bias_function : Function = None,  # for quantization
     ):
 
         """
@@ -321,13 +325,17 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             # Important!! Kein Stride, keine Dilation, da sonst der Effekt von Depthwise daneben geht.
             # Dies kann dann im nächsten Step nachgeholt werden. Sonst stimmt der Output nicht.
         )
+        cond = torch.is_tensor(quant_weight) and torch.is_tensor(quant_bias)
+        if cond:
+            kernel, bias = quant_weight, quant_bias
+            filtered_kernel = get_kernel_for_dpc(kernel)
+        else:
+            kernel, bias = self.get_kernel()
+            filtered_kernel = prepare_kernel_for_pointwise_convolution(
+                kernel=kernel,
+                grouping=grouping
+            )
 
-        kernel, bias = self.get_kernel()
-
-        filtered_kernel = prepare_kernel_for_pointwise_convolution(
-            kernel=kernel,
-            grouping=grouping
-        )
         res_pointwise = nnf.conv1d(
             res_depthwise,
             filtered_kernel if use_fake_weight is False else quant_weight_function(filtered_kernel),
@@ -351,8 +359,15 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         :param: kernel : the weights , size(1) for in channel, size(0) for out_channels
         :param: filtered: use kernel size data for setting the (in/out) channels
         """
+        self.prev_in_channels = self.in_channels
+        self.prev_out_channels = self.out_channels
         self.in_channels = kernel.size(1) if filtered else self.initial_in_channels
         self.out_channels = kernel.size(0) if filtered else self.initial_out_channels
+
+    def reset_in_and_out_channel_to_previous(self):
+        # TODO kann später entfernt werden.
+        self.in_channels = self.prev_in_channels
+        self.out_channels = self.prev_out_channels
 
     def set_kernel_size(self, new_kernel_size):
         """
