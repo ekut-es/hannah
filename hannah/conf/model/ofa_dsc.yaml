@@ -7,14 +7,6 @@ dropout: 0.5
 # to add elastic channel count following a module which is not elastic_conv1d
 # an "elastic_channel_helper" module with only a channel_count list may be added after
 # the maximum channel count of the elastic helper must match the out_channels of the previous module
-qconfig:
-  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
-  config:
-    bw_b: 8
-    bw_w: 6
-    bw_f: 8
-    power_of_2: false  # Use power of two quantization for weights
-    noise_prob: 0.7   # Probability of quantizing a value during training
 
 conv:
   - target: forward
@@ -26,11 +18,12 @@ conv:
         grouping_sizes: 1
         act: false
         norm: true
-        quant: true
+        quant: false
+        dsc:  [false]
         out_channels: 16
   - target: residual1d
     stride: 2
-    quant_skip: true
+    quant_skip: false
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -46,10 +39,10 @@ conv:
             - 1
             - 2
             - 4
-            - 8
         act: true
         norm: true
-        quant: true
+        quant: false
+        dsc:  [false, true]
         out_channels:
           - 24
           - 16
@@ -68,17 +61,17 @@ conv:
             - 1
             - 2
             - 4
-            - 8
         act: false
         norm: false
-        quant: true
+        quant: false
+        dsc:  [false, true]
         out_channels:
           - 24
           - 16
           - 8
   - target: residual1d
     stride: 2
-    quant_skip: true
+    quant_skip: false
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -94,10 +87,10 @@ conv:
             - 1
             - 2
             - 4
-            - 8
         act: true
         norm: true
-        quant: true
+        quant: false
+        dsc:  [false, true]
         out_channels:
           - 32
           - 24
@@ -116,17 +109,17 @@ conv:
             - 1
             - 2
             - 4
-            - 8
         act: false
         norm: false
-        quant: true
+        quant: false
+        dsc:  [false, true]
         out_channels:
           - 32
           - 24
           - 16
   - target: residual1d
     stride: 2
-    quant_skip: true
+    quant_skip: false
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -142,10 +135,10 @@ conv:
             - 1
             - 2
             - 4
-            - 8
         act: true
         norm: true
-        quant: true
+        quant: false
+        dsc:  [false, true]
         out_channels:
           - 48
           - 32
@@ -164,17 +157,17 @@ conv:
             - 1
             - 2
             - 4
-            - 8
         act: false
         norm: false
-        quant: true
+        quant: false
+        dsc:  [false, true]
         out_channels:
           - 48
           - 32
           - 24
   - target: residual1d
     stride: 2
-    quant_skip: true
+    quant_skip: false
     blocks:
       - target: elastic_conv1d
         kernel_sizes:
@@ -190,10 +183,10 @@ conv:
             - 1
             - 2
             - 4
-            - 8
         act: true
         norm: true
-        quant: true
+        quant: false
+        dsc:  [false, true]
         out_channels:
           - 64
           - 48
@@ -212,10 +205,10 @@ conv:
             - 1
             - 2
             - 4
-            - 8
         act: false
         norm: false
-        quant: true
+        quant: false
+        dsc:  [false, true]
         out_channels:
           - 64
           - 48
