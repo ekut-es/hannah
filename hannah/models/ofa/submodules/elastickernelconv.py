@@ -302,12 +302,12 @@ class ElasticConvBn1d(ElasticConv1d):
         padding = conv1d_get_padding(kernel_size, dilation)
         dsc_on = self.get_dsc()
 
-        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
-            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
-            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
-            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
-            logging.info("Can't do DSC, cause Input is bigger than max output.")
-            dsc_on = False
+        # if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
+        #     # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
+        #     # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
+        #     # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
+        #     logging.info("Can't do DSC, cause Input is bigger than max output.")
+        #     dsc_on = False
 
         if dsc_on:
             tmp_bn = self.bn.get_basic_batchnorm1d()
@@ -403,12 +403,12 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         padding = conv1d_get_padding(kernel_size, dilation)
 
         dsc_on = self.get_dsc()
-        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
-            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
-            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
-            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
-            logging.info("Can't do DSC, cause Input is bigger than max output.")
-            dsc_on = False
+        # if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
+        #     # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
+        #     # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
+        #     # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
+        #     logging.info("Can't do DSC, cause Input is bigger than max output.")
+        #     dsc_on = False
         if dsc_on:
             tmp_bn = self.bn.get_basic_batchnorm1d()
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
