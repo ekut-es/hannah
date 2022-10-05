@@ -340,12 +340,9 @@ class _ElasticConvBnNd(
         """
 
         tmp_quad_helper = self._get_params()
-        # bias_shape = tmp_quad_helper.bias_shape
-        # kernelsize = tmp_quad_helper.kernelsize
         dilation = tmp_quad_helper.dilation
         grouping = tmp_quad_helper.grouping
         padding = tmp_quad_helper.padding
-        # scale_factor = tmp_quad_helper.scale_factor
         scaled_weight = tmp_quad_helper.scaled_weight
         zero_bias = tmp_quad_helper.zero_bias
 
@@ -370,12 +367,7 @@ class _ElasticConvBnNd(
 
     def _forward(self, input):
         tmp_quad_helper : QuadDataHelper = self._get_params()
-        # bias_shape = tmp_quad_helper.bias_shape
-        # kernelsize = tmp_quad_helper.kernelsize
-        # dilation = tmp_quad_helper.dilation
         grouping = tmp_quad_helper.grouping
-        # padding = tmp_quad_helper.padding
-        # scale_factor = tmp_quad_helper.scale_factor
         scaled_weight = tmp_quad_helper.scaled_weight
         zero_bias = tmp_quad_helper.zero_bias
 
@@ -623,12 +615,6 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         dsc_on = self.get_dsc()
         padding = conv1d_get_padding(kernel_size, dilation)
 
-        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
-            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
-            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
-            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
-            logging.info("Can't do DSC, cause Input is bigger than max output.")
-            dsc_on = False
         if dsc_on:
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.Conv1d,
@@ -769,12 +755,6 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         dsc_on = self.get_dsc()
         self.set_in_and_out_channel(kernel)
 
-        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
-            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
-            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
-            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
-            logging.info("Can't do DSC, cause Input is bigger than max output.")
-            dsc_on = False
         if dsc_on:
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvReLU1d,
@@ -851,12 +831,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         kernel, bias = self.get_kernel()
         self.set_in_and_out_channel(kernel)
 
-        # grouping = self.get_group_size()
-        # if grouping > 1:
-        #     # TODO kernel will be not used, is not needed?
-        #     kernel, _ = adjust_weight_if_needed(
-        #         module=self, kernel=kernel, groups=grouping
-        #     )
         # get padding for the size of the kernel
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
@@ -872,13 +846,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         grouping = self.get_group_size()
         dsc_on = self.get_dsc()
         self.set_in_and_out_channel(kernel)
-
-        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
-            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
-            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
-            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
-            logging.info("Can't do DSC, cause Input is bigger than max output.")
-            dsc_on = False
 
         if dsc_on:
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
@@ -979,13 +946,6 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
 
         grouping = self.get_group_size()
         dsc_on = self.get_dsc()
-
-        if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
-            # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
-            # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
-            # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
-            logging.info("Can't do DSC, cause Input is bigger than max output.")
-            dsc_on = False
 
         if dsc_on:
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
