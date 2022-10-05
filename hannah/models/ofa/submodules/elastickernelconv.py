@@ -1,26 +1,19 @@
-from inspect import Parameter
 import random
-from tokenize import group
 from typing import List
 import torch.nn as nn
 import torch.nn.functional as nnf
-import copy
 import logging
-import math
-
 import torch
 
 from .elasticBase import ElasticBase1d
 from ..utilities import (
     adjust_weight_if_needed,
     conv1d_get_padding,
-    flatten_module_list,
 )
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
 
 
-# TODO Validation
 class ElasticConv1d(ElasticBase1d):
     def __init__(
         self,
@@ -70,7 +63,7 @@ class ElasticConv1d(ElasticBase1d):
 
         if dsc_on is False:
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-            return nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
+            output = nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
             # we use the full kernel here, because if the input_channel_size is greater than the output_channel_size
             # we have to increase the output_channel_size for dpc, hence we need the full kernel, because, the filtered kernel
@@ -78,9 +71,10 @@ class ElasticConv1d(ElasticBase1d):
             kernel, bias = self.get_full_width_kernel(), self.bias   # if self.in_channels > self.out_channels else (kernel, bias)
             if self.in_channels > kernel.size(0):
                 logging.warning(f"In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
-            # logging.warning(f"({self.in_channels > kernel.size(0)}) - In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
-            # kernel, bias = self.get_full_width_kernel(), self.bias   if self.in_channels > self.out_channels else (kernel, bias)
-            return self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
+
+            output = self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
+        self.reset_in_and_out_channel_to_previous()
+        return output
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
@@ -88,13 +82,12 @@ class ElasticConv1d(ElasticBase1d):
 
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
-        dilation = self.get_dilation_size()
-        ##
-        grouping = self.get_group_size()
-
-        padding = conv1d_get_padding(kernel_size, dilation)
 
         self.set_in_and_out_channel(kernel)
+
+        dilation = self.get_dilation_size()
+        grouping = self.get_group_size()
+        padding = conv1d_get_padding(kernel_size, dilation)
         dsc_on = self.get_dsc()
 
         if dsc_on:
@@ -105,6 +98,7 @@ class ElasticConv1d(ElasticBase1d):
                 grouping=grouping,
                 stride=self.stride, padding=padding, dilation=dilation
             )
+            self.reset_in_and_out_channel_to_previous()
             return dsc_sequence
         else:
             new_conv = nn.Conv1d(
@@ -132,6 +126,8 @@ class ElasticConv1d(ElasticBase1d):
                 new_conv.bias = bias
 
             logging.debug(f"=====> id: {new_conv.id} ; g={grouping}, w_after={kernel.shape}, ic={self.in_channels}")
+
+            self.reset_in_and_out_channel_to_previous()
             return new_conv
 
 
@@ -173,16 +169,16 @@ class ElasticConvReLu1d(ElasticBase1d):
         # First get the correct count of in and outchannels
         # given by the kernel (after setting the kernel correctly, with the help of input-/output_filters)
         self.set_in_and_out_channel(kernel)
+
         dilation = self.get_dilation_size()
         # get padding for the size of the kernel
         padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
 
-        self.get_c
         grouping = self.get_group_size()
-        # Hier muss dann wenn DSC on ist, die Logik implementiert werden dass DSC komplett greift
         dsc_on = self.get_dsc()
+
         if dsc_on is False:
             kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
             output = nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
@@ -195,7 +191,8 @@ class ElasticConvReLu1d(ElasticBase1d):
                 logging.warning(f"In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
             # logging.warning(f"({self.in_channels > kernel.size(0)}) - In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
             # kernel, bias = self.get_full_width_kernel(), self.bias   if self.in_channels > self.out_channels else (kernel, bias)
-            return self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
+            output = self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
+        self.reset_in_and_out_channel_to_previous()
         return self.relu(
             output
         )
@@ -203,14 +200,14 @@ class ElasticConvReLu1d(ElasticBase1d):
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
+        self.set_in_and_out_channel(kernel)
+
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         grouping = self.get_group_size()
-
-        self.set_in_and_out_channel(kernel)
-
         padding = conv1d_get_padding(kernel_size, dilation)
         dsc_on = self.get_dsc()
+
         if dsc_on:
             dsc_sequence = self.prepare_dsc_for_validation_model(
                 conv_class=ConvRelu1d,
@@ -219,6 +216,7 @@ class ElasticConvReLu1d(ElasticBase1d):
                 grouping=grouping,
                 stride=self.stride, padding=padding, dilation=dilation,
             )
+            self.reset_in_and_out_channel_to_previous()
             return dsc_sequence
         else:
             new_conv = ConvRelu1d(
@@ -247,6 +245,7 @@ class ElasticConvReLu1d(ElasticBase1d):
                 new_conv.bias = bias
 
             # print("\nassembled a basic conv from elastic kernel!")
+            self.reset_in_and_out_channel_to_previous()
             return new_conv
 
 
@@ -295,21 +294,21 @@ class ElasticConvBn1d(ElasticConv1d):
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
+        self.set_in_and_out_channel(kernel)
+
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         grouping = self.get_group_size()
-
         padding = conv1d_get_padding(kernel_size, dilation)
-
-        self.set_in_and_out_channel(kernel)
-
         dsc_on = self.get_dsc()
+
         if self.in_channels > self.get_full_width_kernel().size(0) and dsc_on:
             # TODO: this is super weird, Kernel has [16, 40, 3] but nowhere other is this the case.
             # Not in the normal forward or anywhere else. In this special case, we can't do DSC in the normal way
             # Idea: set grouping = in_channel = out_channel to out_channel max  which would be 16?
             logging.info("Can't do DSC, cause Input is bigger than max output.")
             dsc_on = False
+
         if dsc_on:
             tmp_bn = self.bn.get_basic_batchnorm1d()
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
@@ -320,6 +319,7 @@ class ElasticConvBn1d(ElasticConv1d):
                 stride=self.stride, padding=padding, dilation=dilation,
                 bn_caller=(self.set_bn_parameter, tmp_bn, self.bn.num_batches_tracked)
             )
+            self.reset_in_and_out_channel_to_previous()
             return dsc_sequence
         else:
             new_conv = ConvBn1d(
@@ -347,15 +347,10 @@ class ElasticConvBn1d(ElasticConv1d):
             new_conv.weight.data = kernel
             new_conv.bias = bias
 
-            # new_conv.bn.num_features = tmp_bn.num_features
-            # new_conv.bn.weight = tmp_bn.weight
-            # new_conv.bn.bias = tmp_bn.bias
-            # new_conv.bn.running_var = tmp_bn.running_var
-            # new_conv.bn.running_mean = tmp_bn.running_mean
-            # new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
             new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
 
             # print("\nassembled a basic conv from elastic kernel!")
+            self.reset_in_and_out_channel_to_previous()
             return new_conv
 
 
@@ -400,12 +395,11 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
         kernel, bias = self.get_kernel()
+        self.set_in_and_out_channel(kernel)
+
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         grouping = self.get_group_size()
-
-        self.set_in_and_out_channel(kernel)
-
         padding = conv1d_get_padding(kernel_size, dilation)
 
         dsc_on = self.get_dsc()
@@ -425,6 +419,7 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
                 stride=self.stride, padding=padding, dilation=dilation,
                 bn_caller=(self.set_bn_parameter, tmp_bn, self.bn.num_batches_tracked)
             )
+            self.reset_in_and_out_channel_to_previous()
             return dsc_sequence
         else:
             new_conv = ConvBnReLu1d(
@@ -452,14 +447,9 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
             new_conv.weight.data = kernel
             new_conv.bias = bias
 
-            # new_conv.bn.num_features = tmp_bn.num_features
-            # new_conv.bn.weight = tmp_bn.weight
-            # new_conv.bn.bias = tmp_bn.bias
-            # new_conv.bn.running_var = tmp_bn.running_var
-            # new_conv.bn.running_mean = tmp_bn.running_mean
-            # new_conv.bn.num_batches_tracked = self.bn.num_batches_tracked
             new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=self.bn.num_batches_tracked)
             # print("\nassembled a basic conv from elastic kernel!")
+            self.reset_in_and_out_channel_to_previous()
             return new_conv
 
 
