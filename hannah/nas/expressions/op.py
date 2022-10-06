@@ -1,8 +1,9 @@
 import textwrap
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 from hannah.nas.expressions.placeholder import Placeholder
+from hannah.nas.parameters.parametrize import parametrize
 
 from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
@@ -32,6 +33,7 @@ class Op(Expression):
         return str(other)
 
 
+@parametrize
 class BinaryOp(Op):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
@@ -72,6 +74,7 @@ class BinaryOp(Op):
         ...
 
 
+@parametrize
 class UnaryOp(Op):
     def __init__(self, operand) -> None:
         super().__init__()
