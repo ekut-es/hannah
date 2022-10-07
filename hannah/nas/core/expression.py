@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
+
 
 T = TypeVar('T')
+
 
 class Expression(ABC, Generic[T]):
     @abstractmethod
@@ -99,3 +101,6 @@ class Expression(ABC, Generic[T]):
         from ..expressions.logic import Or
 
         return Or(self, other)
+
+    def set_scope(self, scope, name=""):
+        self.id = f'{scope}.{name}'
