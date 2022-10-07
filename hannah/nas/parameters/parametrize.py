@@ -139,6 +139,8 @@ def set_param_scopes(self):
     for name, param in self._PARAMETERS.items():
         if isinstance(param, Expression):
             param.id = self.id + '.' + name
+            param.set_scope(self.id, name)
+            print()
 
 
 def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
