@@ -3,6 +3,7 @@ from abc import abstractmethod
 from typing import Any
 
 from hannah.nas.expressions.placeholder import Placeholder
+from hannah.nas.parameters.parameters import Parameter
 from hannah.nas.parameters.parametrize import parametrize
 
 from ..core.expression import Expression
@@ -31,6 +32,21 @@ class Op(Expression):
         if isinstance(other, Op):
             return other.format(indent, length)
         return str(other)
+
+    def set_scope(self, scope, name):
+        def _recursive_scoping(expr, scope):
+            if isinstance(expr, BinaryOp):
+                _recursive_scoping(expr.lhs, scope)
+                _recursive_scoping(expr.rhs, scope)
+            elif isinstance(expr, UnaryOp):
+                _recursive_scoping(expr.operand, scope)
+            elif isinstance(expr, Parameter):
+                if hasattr(expr, 'name') and expr.name:
+                    expr.id = f'{scope}.{expr.name}'
+                else:
+                    expr.id = f'{scope}.{name}'
+
+        _recursive_scoping(self, scope)
 
 
 @parametrize
