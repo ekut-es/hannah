@@ -14,7 +14,7 @@ from copy import deepcopy
 class Parameter(Expression):
     def __init__(
         self,
-        id: Optional[str] = None,
+        name: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__()
@@ -26,7 +26,8 @@ class Parameter(Expression):
             self.rng = rng
         else:
             raise Exception("rng should be either np.random.Generator or int (or None)")
-        self.id = id
+        self.name = name
+        self.id = None
 
     @abstractmethod
     def sample(self):
@@ -72,10 +73,10 @@ class IntScalarParameter(Parameter):
         min: Union[int, IntScalarParameter],
         max: Union[int, IntScalarParameter],
         step_size: int = 1,
-        id: Optional[str] = None,
+        name: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
-        super().__init__(id, rng)
+        super().__init__(name, rng)
         self.min = min
         self.max = max
         self.step_size = step_size
@@ -124,10 +125,10 @@ class FloatScalarParameter(Parameter):
         self,
         min,
         max,
-        id: Optional[str] = None,
+        name: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
-        super().__init__(id, rng)
+        super().__init__(name, rng)
         self.min = float(min)
         self.max = float(max)
         self.current_value = self.min
@@ -160,10 +161,10 @@ class CategoricalParameter(Parameter):
     def __init__(
         self,
         choices,
-        id: Optional[str] = None,
+        name: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
-        super().__init__(id, rng)
+        super().__init__(name, rng)
         self.choices = choices
         self.sample()
 
@@ -204,10 +205,10 @@ class SubsetParameter(Parameter):
         choices,
         min,
         max,
-        id: Optional[str] = None,
+        name: Optional[str] = None,
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
-        super().__init__(id, rng)
+        super().__init__(name, rng)
         self.choices = choices
         self.min = min
         self.max = max
