@@ -19,8 +19,8 @@ def add_shape(op: OpType):
     assert input.dim() == other.dim()
     ax = []
     # constraints = []
-    for ax1, ax2 in zip(input.axis, other.axis):
-        con = input.axis[ax1].size == other.axis[ax2].size
+    for ax1, ax2 in zip(input.axis.values(), other.axis.values()):
+        con = ax1.size == ax2.size
         # constraints.append(con)
         op.cond(con)
         # assert con.evaluate(), """Tensor axis sizes do not match: Axis {} with dimension
@@ -28,7 +28,7 @@ def add_shape(op: OpType):
         #                                                                   input.tensor_type.axis[ax1].size,
         #                                                                   ax2,
         #                                                                   other.tensor_type.axis[ax2].size)
-        ax.append(input.axis[ax1].new())
+        ax.append(ax1.new())
 
     ax = tuple(ax)
     return TensorType(ax, dtype=input.dtype)
