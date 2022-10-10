@@ -17,8 +17,8 @@ def test_constraint_model():
     cm.build_model(graph)
 
     # retrieve constraint vars from cm for better clarity
-    out_channel_main = cm.vars['residual_block.0.block.0.conv_relu.2.Conv2d.0.weight.0.o.size']
-    out_channel_residual = cm.vars['residual_block.0.residual.0.conv_relu.0.Conv2d.0.weight.0.o.size']
+    out_channel_main = cm.vars['residual_block.0.block.0.conv_relu.2.Conv2d.0.weight.0.axis.o.size']
+    out_channel_residual = cm.vars['residual_block.0.residual.0.conv_relu.0.Conv2d.0.weight.0.axis.o.size']
 
     # Check assumptions for satisfiability
     assert cm.solver.check(out_channel_main <= 256).r > 0
