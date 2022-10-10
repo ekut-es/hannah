@@ -48,5 +48,27 @@ def test_constraint_model():
     assert cm.solver.check(out_channel_residual == 512).r > 0
 
 
+def test_constraint_model_parameters():
+    input = batched_image_tensor(shape=(1, 3, 32, 32), name='input')
+    graph = residual_block(input, stride=IntScalarParameter(1, 2), output_channel=IntScalarParameter(4, 512, 4))
+    graph = flatten(graph)
+
+    # build a constraint model
+    cm = ConstraintModel()
+    cm.build_model(graph)
+
+    params = graph.parameters(flatten=True)
+
+    for i in range(1000):
+        cm.solver.push()
+        for name, param in params.items():
+            assert name in cm.vars
+            cm.solver.add(cm.vars[name] == param.sample().item())
+
+        print("Sat: ", cm.solver.check())
+        cm.solver.pop()
+
+
 if __name__ == '__main__':
     test_constraint_model()
+    test_constraint_model_parameters()
