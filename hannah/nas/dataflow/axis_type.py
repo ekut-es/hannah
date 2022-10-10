@@ -56,5 +56,8 @@ class AxisTuple:
     def __getitem__(self, key):
         return self.axis[key]
 
+    def __len__(self):
+        return len(self.axis)
+
     def __repr__(self) -> str:
         return str(self.axis)
