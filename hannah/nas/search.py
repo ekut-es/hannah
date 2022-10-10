@@ -566,7 +566,7 @@ class OFANasTrainer(NASTrainerBase):
             for current_dsc_step in range(1, self.dsc_step_count):
                 # add a group step
                 ofa_model.progressive_shrinking_add_dsc()
-                if self.epochs_grouping_step > 0:
+                if self.epochs_dsc_step > 0:
                     self.rebuild_trainer(
                         f"dsc_{current_dsc_step}", self.epochs_dsc_step
                     )

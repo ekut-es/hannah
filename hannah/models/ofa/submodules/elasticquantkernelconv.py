@@ -382,9 +382,9 @@ class _ElasticConvBnNd(
         return super(_ElasticConvBnNd, self).extra_repr()
 
     def forward(self, input):
-        dsc = self.get_dsc()
+        dsc_on = self.get_dsc()
 
-        if not dsc:
+        if not dsc_on:
             y = self._forward(input)
         else:
             y = self._dsc(input)
@@ -572,9 +572,9 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
             weight, _ = adjust_weight_if_needed(
                 module=self, kernel=weight, groups=grouping
             )
-        dsc = self.get_dsc()
+        dsc_on = self.get_dsc()
 
-        if not dsc:
+        if not dsc_on:
             y = self.activation_post_process(
                 self._real_conv_forward(
                     input,
@@ -712,9 +712,9 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             weight, _ = adjust_weight_if_needed(
                 module=self, kernel=weight, groups=grouping
             )
-        dsc = self.get_dsc()
+        dsc_on = self.get_dsc()
 
-        if not dsc:
+        if not dsc_on:
             y = self.activation_post_process(
                 self.relu(
                     self._real_conv_forward(
@@ -726,7 +726,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
                 )
             )
         else:
-            full_kernel, full_bias = self.get_full_width_kernel, self.bias
+            full_kernel, full_bias = self.get_full_width_kernel(), self.bias
             y = self.activation_post_process(
                             self.do_dpc(
                                 input=input,
@@ -931,9 +931,9 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
-        dsc = self.get_dsc()
+        dsc_on = self.get_dsc()
 
-        if not dsc:
+        if not dsc_on:
             y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
         else:
             y = super(ElasticQuantConvBnReLu1d, self)._dsc(input)

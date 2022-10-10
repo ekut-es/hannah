@@ -116,8 +116,7 @@ def walk_model(model, dummy_input):
         attrs = "k=" + "(" + (", ").join(["%d" % v for v in module.kernel_size]) + ")"
         attrs += ", s=" + "(" + (", ").join(["%d" % v for v in module.stride]) + ")"
         attrs += ", g=(%d)" % module.groups
-        # TODO attrs += ", dsc=(%b)" % module.dsc_on
-        # attrs += ", g=" + "(" + ", ".join(["%d" % v for v in groups]) + ")"
+        attrs += ", dsc=(%s)" % str(module.in_channels == module.out_channels == module.groups)
         attrs += ", d=" + "(" + ", ".join(["%d" % v for v in module.dilation]) + ")"
         return attrs
 

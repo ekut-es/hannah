@@ -127,7 +127,6 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.groups = self.get_group_size()
 
         # sort available grouping sizes from largest to smallest (descending order)
-        # TODO hier überprüfen wie sich das mit True, False verhält
         dscs.sort(reverse=False)
         # make sure 0 is not set as grouping size. Must be at least 1
         # if 0 in dscs:
@@ -144,7 +143,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.last_dsc_param = self.get_dsc()
 
         # set the groups value in the model
-        self.dsc = self.get_dsc()
+        self.dsc_on = self.get_dsc()
 
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index],
