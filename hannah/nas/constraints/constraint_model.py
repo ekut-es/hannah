@@ -72,7 +72,6 @@ class ConstraintModel:
         Parameters
         ----------
         tensor : Tensor
-            _description_
         """
         for name, ax in tensor.tensor_type().axis.items():
             self.build_constraint_from_expression(ax.size, [])
@@ -208,6 +207,8 @@ class ConstraintModel:
 def check_for_id(a, b):
     return hasattr(a, 'id') and \
            hasattr(b, 'id') and \
+           a.id and \
+           b.id and \
            a.id == b.id
 
 
