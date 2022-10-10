@@ -318,7 +318,7 @@ def prepare_kernel_for_depthwise_separable_convolution(model, kernel, bias, in_c
 
 def prepare_kernel_for_pointwise_convolution(kernel, grouping):
     # use 1x1 kernel
-    new_kernel = get_kernel_for_dpc(kernel)
+    new_kernel = get_kernel_for_dsc(kernel)
     # grouping = in_channel_count
     new_kernel = adjust_weights_for_grouping(new_kernel, grouping)
     return new_kernel
@@ -388,7 +388,7 @@ def compute_channel_priorities(module : nn.Module, kernel, channel_index : int =
     return channels_by_priority
 
 
-def get_kernel_for_dpc(kernel):
+def get_kernel_for_dsc(kernel):
     """
         At the moment uses the first kernel dimension
     """

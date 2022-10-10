@@ -349,7 +349,7 @@ class _ElasticConvBnNd(
         self.set_in_and_out_channel(self.get_kernel()[0])
 
         full_kernel, full_bias = self.get_full_width_kernel(), self.bias
-        dsc_sequence_output = self.do_dpc(
+        dsc_sequence_output = self.do_dsc(
             input=input,
             full_kernel=full_kernel,
             full_bias=full_bias,
@@ -586,7 +586,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         else:
             full_kernel, full_bias = self.get_full_width_kernel(), self.bias
             y = self.activation_post_process(
-                self.do_dpc(
+                self.do_dsc(
                     input=input,
                     full_kernel=full_kernel,
                     full_bias=full_bias,
@@ -728,7 +728,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         else:
             full_kernel, full_bias = self.get_full_width_kernel(), self.bias
             y = self.activation_post_process(
-                            self.do_dpc(
+                            self.do_dsc(
                                 input=input,
                                 full_kernel=full_kernel,
                                 full_bias=full_bias,

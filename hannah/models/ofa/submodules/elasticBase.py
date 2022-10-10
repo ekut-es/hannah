@@ -16,7 +16,7 @@ from ..utilities import (
     create_channel_filter,
     filter_primary_module_weights,
     filter_single_dimensional_weights,
-    get_kernel_for_dpc,
+    get_kernel_for_dsc,
     prepare_kernel_for_depthwise_separable_convolution,
     prepare_kernel_for_pointwise_convolution,
     sub_filter_start_end,
@@ -234,7 +234,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
     ):
         """
         this method creates the necessary validation models for DSC.
-        Analog to the DSC method do_dsc (TODO: hier noch umbennen von dpc), this
+        Analog to the DSC method do_dsc
         """
 
         is_quant = qconfig is not None and out_quant is not None
@@ -314,8 +314,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         return depthwise_separable_conv
 
-    # TODO refactoring: dpc -> dsc
-    def do_dpc(
+    def do_dsc(
         self,
         input,
         full_kernel,
@@ -362,7 +361,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         cond = torch.is_tensor(quant_weight) and torch.is_tensor(quant_bias)
         if cond:
             kernel, bias = quant_weight, quant_bias
-            filtered_kernel = get_kernel_for_dpc(kernel)
+            filtered_kernel = get_kernel_for_dsc(kernel)
         else:
             kernel, bias = self.get_kernel()
             filtered_kernel = prepare_kernel_for_pointwise_convolution(

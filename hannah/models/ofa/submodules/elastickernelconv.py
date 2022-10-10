@@ -66,13 +66,13 @@ class ElasticConv1d(ElasticBase1d):
             output = nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
             # we use the full kernel here, because if the input_channel_size is greater than the output_channel_size
-            # we have to increase the output_channel_size for dpc, hence we need the full kernel, because, the filtered kernel
+            # we have to increase the output_channel_size for dsc, hence we need the full kernel, because, the filtered kernel
             # is in that particular case to small.
             kernel, bias = self.get_full_width_kernel(), self.bias   # if self.in_channels > self.out_channels else (kernel, bias)
             if self.in_channels > kernel.size(0):
                 logging.warning(f"In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
 
-            output = self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
+            output = self.do_dsc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
         self.reset_in_and_out_channel_to_previous()
         return output
 
@@ -182,14 +182,14 @@ class ElasticConvReLu1d(ElasticBase1d):
             output = nnf.conv1d(input, kernel, bias, self.stride, padding, dilation, grouping)
         else:
             # we use the full kernel here, because if the input_channel_size is greater than the output_channel_size
-            # we have to increase the output_channel_size for dpc, hence we need the full kernel, because, the filtered kernel
+            # we have to increase the output_channel_size for dsc, hence we need the full kernel, because, the filtered kernel
             # is in that particular case to small.
             kernel, bias = self.get_full_width_kernel(), self.bias   # if self.in_channels > self.out_channels else (kernel, bias)
             if self.in_channels > kernel.size(0):
                 logging.warning(f"In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
             # logging.warning(f"({self.in_channels > kernel.size(0)}) - In Channels vs Maximum of Outchannels : {self.in_channels} vs {kernel.size(0)}, full_kernel:({kernel.shape}), kernel:({self.get_kernel()[0].shape})")
             # kernel, bias = self.get_full_width_kernel(), self.bias   if self.in_channels > self.out_channels else (kernel, bias)
-            output = self.do_dpc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
+            output = self.do_dsc(input, full_kernel=kernel, full_bias=bias, grouping=grouping, stride=self.stride, padding=padding, dilation=dilation)
         self.reset_in_and_out_channel_to_previous()
         return self.relu(
             output
