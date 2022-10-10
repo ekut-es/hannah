@@ -53,6 +53,12 @@ class AxisTuple:
         for _, ax in self.axis.items():
             ax.set_scope(current_scope, counters, visited)
 
+    def values(self):
+        return self.axis.values()
+
+    def items(self):
+        return self.axis.items()
+
     def __getitem__(self, key):
         return self.axis[key]
 
