@@ -42,3 +42,10 @@ class TensorTuple(TensorExpression):
         super().__init__(name=name)
         self.tensors = tensors
         self.name = name
+
+    def set_scope(self, current_scope, counters, visited):
+        current_scope = update_scope(self, current_scope)
+        scope_id = get_id_and_update_counters(current_scope, counters)
+        self.id = scope_id
+        for tensor in self.tensors:
+            tensor.set_scope(current_scope, counters, visited)
