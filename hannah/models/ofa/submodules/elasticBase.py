@@ -338,18 +338,20 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         use_fake_weight = quant_weight_function is not None
         use_fake_bias = quant_bias_function is not None and full_bias is not None
 
+        in_channels = self.in_channel_filter.count(True)
+
         filtered_kernel, bias = prepare_kernel_for_depthwise_separable_convolution(
              self,
              kernel=full_kernel,
              bias=full_bias,
-             in_channels=self.in_channels
+             in_channels=in_channels
         )
         # params for depthwise separable convolution
         param_depthwise_conv : dict = {
             "input": input,
             "weight": filtered_kernel if use_fake_weight is False else quant_weight_function(filtered_kernel),
             "bias": bias if use_fake_bias is False else quant_bias_function(bias),
-            "groups": self.in_channels,
+            "groups": in_channels,
             "padding": padding
         }
         # do depthwise
@@ -395,6 +397,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         :param: kernel : the weights , size(1) for in channel, size(0) for out_channels
         :param: filtered: use kernel size data for setting the (in/out) channels
+
+        TODO: refactor to get in and out_channel
         """
         self.prev_in_channels = self.in_channels
         self.prev_out_channels = self.out_channels

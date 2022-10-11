@@ -346,9 +346,9 @@ class _ElasticConvBnNd(
         scaled_weight = tmp_quad_helper.scaled_weight
         zero_bias = tmp_quad_helper.zero_bias
 
-        self.set_in_and_out_channel(self.get_kernel()[0])
+        # self.set_in_and_out_channel(self.get_kernel()[0])
 
-        full_kernel, full_bias = self.get_full_width_kernel(), self.bias
+        full_kernel, full_bias = self.get_full_kernel_bias()  # self.get_full_width_kernel(), self.bias
         dsc_sequence_output = self.do_dsc(
             input=input,
             full_kernel=full_kernel,
@@ -362,7 +362,7 @@ class _ElasticConvBnNd(
         )
 
         conv_output = self._after_forward_function(dsc_sequence_output, quad_params=tmp_quad_helper)
-        self.reset_in_and_out_channel_to_previous()
+        # self.reset_in_and_out_channel_to_previous()
         return conv_output
 
     def _forward(self, input):
@@ -565,7 +565,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
-        self.set_in_and_out_channel(weight)
+        # self.set_in_and_out_channel(weight)
 
         grouping = self.get_group_size()
         if grouping > 1:
@@ -594,14 +594,14 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
                     stride=self.stride,
                     padding=self.padding,
                     dilation=self.dilation,
-                    quant_weight=weight,
-                    quant_bias=bias,
+                    # quant_weight=weight,
+                    # quant_bias=bias,
                     quant_weight_function=self.weight_fake_quant,
                     quant_bias_function=self.bias_fake_quant
                 )
             )
 
-        self.reset_in_and_out_channel_to_previous()
+        # self.reset_in_and_out_channel_to_previous()
         return y
 
     # return a normal conv1d equivalent to this module in the current state
@@ -705,7 +705,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
-        self.set_in_and_out_channel(weight)
+        # self.set_in_and_out_channel(weight)
 
         grouping = self.get_group_size()
         if grouping > 1:
@@ -736,13 +736,13 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
                                 stride=self.stride,
                                 padding=self.padding,
                                 dilation=self.dilation,
-                                quant_weight=weight,
-                                quant_bias=bias,
+                                # quant_weight=weight,
+                                # quant_bias=bias,
                                 quant_weight_function=self.weight_fake_quant,
                                 quant_bias_function=self.bias_fake_quant
                             )
                         )
-        self.reset_in_and_out_channel_to_previous()
+        # self.reset_in_and_out_channel_to_previous()
         return y
 
     # return a normal conv1d equivalent to this module in the current state
@@ -829,7 +829,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
-        self.set_in_and_out_channel(kernel)
+        # self.set_in_and_out_channel(kernel)
 
         # get padding for the size of the kernel
         dilation = self.get_dilation_size()
@@ -885,7 +885,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
 
             new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked)
             # print("\nassembled a basic conv from elastic kernel!")
-            self.reset_in_and_out_channel_to_previous()
+            # self.reset_in_and_out_channel_to_previous()
             return new_conv
 
 
