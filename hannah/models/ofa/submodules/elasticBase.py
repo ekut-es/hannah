@@ -397,8 +397,6 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         :param: kernel : the weights , size(1) for in channel, size(0) for out_channels
         :param: filtered: use kernel size data for setting the (in/out) channels
-
-        TODO: refactor to get in and out_channel
         """
         self.prev_in_channels = self.in_channels
         self.prev_out_channels = self.out_channels

@@ -837,7 +837,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             self.kernel_sizes[self.target_kernel_index], dilation
         )
         y = super(ElasticQuantConvBn1d, self).forward(input)
-        self.reset_in_and_out_channel_to_previous()
+        # self.reset_in_and_out_channel_to_previous()
         return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
