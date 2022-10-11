@@ -1,0 +1,28 @@
+_target_: hannah.nas.OFANasTrainer
+#epochs_warmup: 35
+#epochs_kernel_step: 35
+#epochs_depth_step: 35
+#epochs_width_step: 35
+#epochs_dilation_step: 35
+# ab 10 bekomme ich histogramm schwierigkeiten
+#hannah-train --config-name nas_ofa model="ofa_dsc_quant"
+# experiment_id="dsc_quant_long_dsc_kernel_on_small_hannah_train"  nas="ofa_nas_dsc_kernel"
+#module.num_workers=8  trainer.gpus=[1] trainer.limit_train_batches=0.1 trainer.max_epochs=1
+epochs_warmup: 15
+epochs_kernel_step: 15
+epochs_depth_step: 15
+epochs_width_step: 15
+epochs_dilation_step: 15
+epochs_grouping_step: 15
+epochs_dsc_step: 15
+# war vorher false dann gings
+elastic_kernels_allowed: True
+elastic_depth_allowed: False
+elastic_dilation_allowed: False
+elastic_width_allowed: False
+elastic_grouping_allowed: False
+#depthwise_separable_convolution
+elastic_dsc_allowed: True
+evaluate: False
+random_evaluate: False
+random_eval_number: 100

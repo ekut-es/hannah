@@ -4,14 +4,13 @@ _target_: hannah.nas.OFANasTrainer
 #epochs_depth_step: 35
 #epochs_width_step: 35
 #epochs_dilation_step: 35
-epochs_warmup: 35
-epochs_kernel_step: 35
-epochs_depth_step: 35
-epochs_width_step: 35
-epochs_dilation_step: 35
-epochs_grouping_step: 35
-epochs_dsc_step: 35
-# war vorher false dann gings
+epochs_warmup: 1
+epochs_kernel_step: 1
+epochs_depth_step: 1
+epochs_width_step: 1
+epochs_dilation_step: 1
+epochs_grouping_step: 1
+epochs_dsc_step: 1
 elastic_kernels_allowed: True
 elastic_depth_allowed: True
 elastic_dilation_allowed: False

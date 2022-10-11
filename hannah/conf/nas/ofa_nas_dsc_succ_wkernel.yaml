@@ -12,7 +12,7 @@ epochs_dilation_step: 35
 epochs_grouping_step: 35
 epochs_dsc_step: 35
 # war vorher false dann gings
-elastic_kernels_allowed: True
+elastic_kernels_allowed: False
 elastic_depth_allowed: True
 elastic_dilation_allowed: False
 elastic_width_allowed: True
