@@ -240,7 +240,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         is_quant = qconfig is not None and out_quant is not None
         uses_batch_norm = eps is not None and momentum is not None
 
-        depthwise_conv = qat.Conv1d if is_quant else nn.Conv1d
+        # depthwise_conv = qat.Conv1d if is_quant else nn.Conv1d
+        depthwise_conv = nn.Conv1d
         # for Debugging
         # global counter_res
         # ElasticBase1d.res_break = counter_res == time_to_break
@@ -263,7 +264,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             "padding": padding
         }
 
-        if is_quant:
+        if is_quant and False:
             # add this for normal
             param_depthwise_conv["qconfig"] = qconfig
             param_depthwise_conv["out_quant"] = out_quant
@@ -287,7 +288,6 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             "kernel_size": filtered_kernel_point.size(2),
             "bias": bias,
             "groups": grouping,
-            # "padding": padding TODO maybe für feinschliff
             "stride": stride,
             "dilation": dilation,
         }
