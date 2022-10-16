@@ -645,9 +645,9 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
             if bias is not None:
                 new_conv.bias = bias
 
-        self.reset_in_and_out_channel_to_previous()
+            self.reset_in_and_out_channel_to_previous()
         # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+            return new_conv
 
 
 class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
@@ -785,9 +785,9 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             if bias is not None:
                 new_conv.bias = bias
 
-        self.reset_in_and_out_channel_to_previous()
+            self.reset_in_and_out_channel_to_previous()
         # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+            return new_conv
 
 
 class ElasticQuantConvBn1d(_ElasticConvBnNd):
@@ -885,7 +885,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
 
             new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked)
             # print("\nassembled a basic conv from elastic kernel!")
-            # self.reset_in_and_out_channel_to_previous()
+            self.reset_in_and_out_channel_to_previous()
             return new_conv
 
 

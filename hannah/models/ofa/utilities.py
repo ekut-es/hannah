@@ -318,9 +318,12 @@ def prepare_kernel_for_depthwise_separable_convolution(model, kernel, bias, in_c
 
 def prepare_kernel_for_pointwise_convolution(kernel, grouping):
     # use 1x1 kernel
-    new_kernel = get_kernel_for_dsc(kernel)
-    # grouping = in_channel_count
-    new_kernel = adjust_weights_for_grouping(new_kernel, grouping)
+    new_kernel = kernel
+    if grouping > 1:
+        new_kernel = adjust_weights_for_grouping(kernel, grouping)
+
+    new_kernel = get_kernel_for_dsc(new_kernel)
+
     return new_kernel
 
 
