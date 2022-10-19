@@ -44,9 +44,9 @@ class ResBlockBase(nn.Module):
         except RuntimeError as r:
             logging.warn(r)
             for _, actualModel in self.blocks._modules.items():
-                logging.info(f"XKA Module List: {actualModel}")
+                logging.info(f"DEBUG Module List: {actualModel}")
                 logging.info(
-                    f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}"
+                    f"DEBUG Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}"
                 )
         x += residual
         if self.do_act:

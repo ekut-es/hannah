@@ -18,7 +18,6 @@ from ..utilities import (
     prepare_kernel_for_depthwise_separable_convolution,
     prepare_kernel_for_pointwise_convolution,
     sub_filter_start_end,
-    getGroups,
     adjust_weights_for_grouping
 )
 
