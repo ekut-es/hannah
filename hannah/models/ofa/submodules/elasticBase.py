@@ -11,9 +11,7 @@ import torch.nn.functional as nnf
 from hannah.models.factory import qat
 
 from ..utilities import (
-    adjust_weight_if_needed,
     conv1d_get_padding,
-    create_channel_filter,
     filter_primary_module_weights,
     filter_single_dimensional_weights,
     get_kernel_for_dsc,
@@ -129,17 +127,14 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         # sort available grouping sizes from largest to smallest (descending order)
         dscs.sort(reverse=False)
         # make sure 0 is not set as grouping size. Must be at least 1
-        # if 0 in dscs:
-        #    dscs.remove(0)
-
         self.dscs: List[bool] = dscs
 
         self.max_dsc: bool = self.dscs[-1]
         self.min_dsc: bool = self.dscs[0]
         self.target_dsc_index: int = 0
 
-        # MR 20220622  TODO: still needed ?
-        # store first grouping param
+        # store first grouping param -
+        # needed for speedup of check if weight needs to be adjusted for grouping
         self.last_dsc_param = self.get_dsc()
 
         # set the groups value in the model
@@ -204,8 +199,12 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
         self.update_padding()
 
-    # Caller for BatchNorm Parameters
-    def set_bn_parameter(self, conv : nn.Conv1d, tmp_bn, num_tracked, with_num_features : bool = False):
+    def set_bn_parameter(self, conv : nn.Conv1d, tmp_bn, num_tracked):
+        """
+        Caller for BatchNorm Parameters
+        This unifies the call in the different methods, especially in dsc / not dsc forward
+        And assigns the attributes in tmp_bn to the param conv
+        """
         conv.bn.num_features = tmp_bn.num_features
         conv.bn.weight = tmp_bn.weight
         conv.bn.bias = tmp_bn.bias
@@ -228,23 +227,25 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         # for quant
         qconfig=None,
         out_quant=None,
-        eps=None,
-        momentum=None,
+        bn_eps=None,
+        bn_momentum=None,
         bn_caller : tuple = None,
     ):
         """
-        this method creates the necessary validation models for DSC.
-        Analog to the DSC method do_dsc
+        This method creates the necessary validation models for DSC.
+        It creates the validation model as torch.Sequence of standard pytorch convolution models.
+        The structure is analog to the DSC method do_dsc.
+        This method can also handle quantization models.
+
+        :param: conv_class: the conv class that should be used for DSC
+        :param: bn_eps: batchnorm parameter
+        :param: bn_momentum:  batchnorm parameter
+        :param: bn_caller: batchnorm_caller, for applying batch norm to the conv_class
         """
 
+        # use qconfig and out_quant parameters
         is_quant = qconfig is not None and out_quant is not None
-        uses_batch_norm = eps is not None and momentum is not None
-
-        # depthwise_conv = qat.Conv1d if is_quant else nn.Conv1d
-        depthwise_conv = nn.Conv1d
-        # for Debugging
-        # global counter_res
-        # ElasticBase1d.res_break = counter_res == time_to_break
+        uses_batch_norm = bn_eps is not None and bn_momentum is not None
 
         # depthwise
         filtered_kernel_depth, bias = prepare_kernel_for_depthwise_separable_convolution(
@@ -264,18 +265,13 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             "padding": padding
         }
 
-        if is_quant and False:
-            # add this for normal
-            param_depthwise_conv["qconfig"] = qconfig
-            param_depthwise_conv["out_quant"] = out_quant
-
         # is either quant Conv1d or normal Conv1d
-        depthwise_separable = depthwise_conv(
+        depthwise_separable = nn.Conv1d(
                 **param_depthwise_conv
         )
         depthwise_separable.weight.data = filtered_kernel_depth
 
-        # pointwise
+        # pointwise  convolution
         kernel, bias = self.get_kernel()
         filtered_kernel_point = prepare_kernel_for_pointwise_convolution(
             kernel=kernel,
@@ -296,17 +292,17 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             param_point_conv["out_quant"] = out_quant
 
         if is_quant and uses_batch_norm:
+            param_point_conv["eps"] = bn_eps
+            param_point_conv["momentum"] = bn_momentum
 
-            param_point_conv["eps"] = eps
-            param_point_conv["momentum"] = momentum
-
+        # create a convolution model, from the kwargs params above
         pointwise = conv_class(
                 **param_point_conv
         )
-
         pointwise.weight.data = filtered_kernel_point
-        if bn_caller:  # is not None:
-            # bn_caller is used for batchnorm calls
+
+        if bn_caller:
+            # if batchnorm should be applied call bn_caller
             bn_function, bn_norm, num_tracked = bn_caller
             pointwise = bn_function(pointwise, bn_norm, num_tracked)
 
@@ -330,14 +326,22 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
     ):
 
         """
-            this  method will perform the DSC.
+            This  method will perform the DSC(=Depthwise Separable Convolution).
+            This  method can also handle quantized models.
             DSC is done in two steps:
             1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
             2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
+
+            The Params above are used for quantized models
+            :param: quant_weight: quantized weights
+            :param: quant_bias: quantized zero_bias
+            :param: quant_weight_function: fake_quant function for weight
+            :param: quant_bias_function: fake_quant function for bias
         """
         use_fake_weight = quant_weight_function is not None
         use_fake_bias = quant_bias_function is not None and full_bias is not None
 
+        # get the **actual** count of in_channels
         in_channels = self.in_channel_filter.count(True)
 
         filtered_kernel, bias = prepare_kernel_for_depthwise_separable_convolution(
@@ -360,8 +364,9 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             # Important!! Kein Stride, keine Dilation, da sonst der Effekt von Depthwise daneben geht.
             # Dies kann dann im nächsten Step nachgeholt werden. Sonst stimmt der Output nicht.
         )
-        cond = torch.is_tensor(quant_weight) and torch.is_tensor(quant_bias)
-        if cond:
+        use_quant = torch.is_tensor(quant_weight) and torch.is_tensor(quant_bias)
+
+        if use_quant:
             kernel, bias = quant_weight, quant_bias
             filtered_kernel = get_kernel_for_dsc(kernel)
         else:
@@ -370,6 +375,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
                 kernel=kernel,
                 grouping=grouping
             )
+
+        # pointwise convolution
         param_point_conv : dict = {
             "input": res_depthwise,
             "weight": filtered_kernel if use_fake_weight is False else quant_weight_function(filtered_kernel),
@@ -386,7 +393,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
     def set_in_and_out_channel(self, kernel, filtered : bool = True):
         """
-        this method uses the kernel for setting the input and outputchannel
+        This method uses the kernel for setting the input and outputchannel
         if dynamic width is activated (channelfilters), the amount of channels is reduced,
         hence we can't use the initial values (self.(in/out)_channel) of the constructor
 
@@ -394,6 +401,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         extracted from the kernel that will be used.
 
         if filtered is False, the self.initial_(in/out)_channels will be used.
+
+        The previous values will be stored in the attribute prev_in_channels and prev_out_channels.
 
         :param: kernel : the weights , size(1) for in channel, size(0) for out_channels
         :param: filtered: use kernel size data for setting the (in/out) channels
@@ -404,6 +413,10 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.out_channels = kernel.size(0) if filtered else self.initial_out_channels
 
     def reset_in_and_out_channel_to_previous(self):
+        """
+        Analog to set_in_and_out_channels:
+        Resets the in and out_channels
+        """
         self.in_channels = self.prev_in_channels
         self.out_channels = self.prev_out_channels
 
@@ -738,24 +751,25 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             )
             return False
 
+    # TODO:
     # MR: not in use at the moment - but maybe later
-    def getGrouping(self):
-        """"
-             Returns a possible Grouping using GCD
-         """
-        gcd_input_output = np.gcd(self.in_channels, self.out_channels)
-        self.group_sizes = getGroups(gcd_input_output)
-        logging.info(
-            f"InputSize: {self.in_channels},  OutputSize: {self.out_channels}")
-        logging.info(f"GCD: {gcd_input_output}")
-        for group in self.group_sizes:
-            grouping_possible_input = self.in_channels % group == 0
-            grouping_possible_output = self.out_channels % group == 0
-            logging.info(
-                f"Grouping: {group}, Possible Grouping(I,O)? ({grouping_possible_input},{grouping_possible_output})")
-            if not (grouping_possible_output and grouping_possible_input):
-                self.group_sizes.remove(group)
-        return self.group_sizes
+    # def getGrouping(self):
+    #     """"
+    #          Returns a possible Grouping using GCD
+    #      """
+    #     gcd_input_output = np.gcd(self.in_channels, self.out_channels)
+    #     self.group_sizes = getGroups(gcd_input_output)
+    #     logging.info(
+    #         f"InputSize: {self.in_channels},  OutputSize: {self.out_channels}")
+    #     logging.info(f"GCD: {gcd_input_output}")
+    #     for group in self.group_sizes:
+    #         grouping_possible_input = self.in_channels % group == 0
+    #         grouping_possible_output = self.out_channels % group == 0
+    #         logging.info(
+    #             f"Grouping: {group}, Possible Grouping(I,O)? ({grouping_possible_input},{grouping_possible_output})")
+    #         if not (grouping_possible_output and grouping_possible_input):
+    #             self.group_sizes.remove(group)
+    #     return self.group_sizes
 
     # Wrapper Class
     def adjust_weights_for_grouping(self, weights, input_divided_by):

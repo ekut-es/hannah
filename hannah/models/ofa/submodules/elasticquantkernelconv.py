@@ -621,7 +621,6 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         padding = conv1d_get_padding(kernel_size, dilation)
 
         if dsc_on:
-            # TODO TEST - does this help
             # with torch.no_grad():
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.Conv1d,
@@ -864,8 +863,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
                 in_channels=self.in_channels, out_channels=self.out_channels,
                 grouping=grouping,
                 stride=self.stride, padding=self.padding, dilation=self.dilation,
-                eps=self.bn[self.target_kernel_index].eps,
-                momentum=self.bn[self.target_kernel_index].momentum,
+                bn_eps=self.bn[self.target_kernel_index].eps,
+                bn_momentum=self.bn[self.target_kernel_index].momentum,
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
                 bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked)
@@ -965,8 +964,8 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
                 in_channels=self.in_channels, out_channels=self.out_channels,
                 grouping=grouping,
                 stride=self.stride, padding=self.padding, dilation=self.dilation,
-                eps=self.bn[self.target_kernel_index].eps,
-                momentum=self.bn[self.target_kernel_index].momentum,
+                bn_eps=self.bn[self.target_kernel_index].eps,
+                bn_momentum=self.bn[self.target_kernel_index].momentum,
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
                 bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked)
