@@ -239,6 +239,7 @@ class _ElasticConvBnNd(
         """
             Gets the full kernel and bias. Used for dsc
         """
+        # with torch.no_grad():
         scale_factor = self.full_scale_factor
         weight = self.get_full_width_kernel()
         weight_shape = [1] * len(weight.shape)
@@ -348,7 +349,11 @@ class _ElasticConvBnNd(
 
         # self.set_in_and_out_channel(self.get_kernel()[0])
 
+        # full_kernel, full_bias = self.get_full_kernel_bias()  # self.get_full_width_kernel(), self.bias
         full_kernel, full_bias = self.get_full_kernel_bias()  # self.get_full_width_kernel(), self.bias
+        # TODO mal ein trial
+        # full_kernel, full_bias = self.get_kernel()
+        # full_kernel, full_bias = scaled_weight, zero_bias
         dsc_sequence_output = self.do_dsc(
             input=input,
             full_kernel=full_kernel,
@@ -616,6 +621,8 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         padding = conv1d_get_padding(kernel_size, dilation)
 
         if dsc_on:
+            # TODO TEST - does this help
+            # with torch.no_grad():
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.Conv1d,
                 full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
@@ -756,6 +763,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         self.set_in_and_out_channel(kernel)
 
         if dsc_on:
+            # with torch.no_grad():
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvReLU1d,
                 full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
@@ -848,6 +856,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         self.set_in_and_out_channel(kernel)
 
         if dsc_on:
+            # with torch.no_grad():
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvReLU1d,
@@ -948,6 +957,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         dsc_on = self.get_dsc()
 
         if dsc_on:
+            # with torch.no_grad():
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvBnReLU1d,
