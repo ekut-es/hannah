@@ -748,26 +748,6 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             )
             return False
 
-    # TODO:
-    # MR: not in use at the moment - but maybe later
-    # def getGrouping(self):
-    #     """"
-    #          Returns a possible Grouping using GCD
-    #      """
-    #     gcd_input_output = np.gcd(self.in_channels, self.out_channels)
-    #     self.group_sizes = getGroups(gcd_input_output)
-    #     logging.info(
-    #         f"InputSize: {self.in_channels},  OutputSize: {self.out_channels}")
-    #     logging.info(f"GCD: {gcd_input_output}")
-    #     for group in self.group_sizes:
-    #         grouping_possible_input = self.in_channels % group == 0
-    #         grouping_possible_output = self.out_channels % group == 0
-    #         logging.info(
-    #             f"Grouping: {group}, Possible Grouping(I,O)? ({grouping_possible_input},{grouping_possible_output})")
-    #         if not (grouping_possible_output and grouping_possible_input):
-    #             self.group_sizes.remove(group)
-    #     return self.group_sizes
-
     # Wrapper Class
     def adjust_weights_for_grouping(self, weights, input_divided_by):
         return adjust_weights_for_grouping(weights, input_divided_by)

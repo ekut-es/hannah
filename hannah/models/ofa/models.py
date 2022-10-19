@@ -219,11 +219,6 @@ def create_minor_block(
     # use it as the default value if available, otherwise it must be set by the specific code handling the target type
     new_block_out_channels = getattr(block_config, "out_channels", 1)
 
-    #  TODO MR 20220614 If Config needs to be hardcoded, place it here
-    #  block_config.grouping_sizes : List[int] = [2]
-    #  logging.info("Grouping Sizes: {block_config.grouping_sizes}")
-    #  hardcoded
-
     if "conv1d" in block_config.target:
         out_channels = block_config.out_channels
         if not isinstance(out_channels, ListConfig):
@@ -730,19 +725,18 @@ class OFAModel(nn.Module):
 
     # return max available step values
     def get_max_submodel_steps(self):
-        # FIXME das kann nicht für alle stimmen, dass alle convs an den kernel step appended werden
         max_depth_step = self.sampling_max_depth_step
         kernel_steps = []
         width_steps = []
         dilation_steps = []
         grouping_steps = []
-        # TODO DSC
         dsc_steps = []
 
         for conv in self.elastic_kernel_convs:
             kernel_steps.append(conv.get_available_kernel_steps())
 
         for conv in self.elastic_kernel_convs:
+            # MR -> Any FIXME das kann nicht für dilation stimmen, dass alle convs an den kernel step appended werden, oder?
             kernel_steps.append(conv.get_available_dilation_steps())
 
         # for grouping
@@ -802,12 +796,6 @@ class OFAModel(nn.Module):
                 f"State dict provides invalid amount of grouping steps: model has {len(self.elastic_kernel_convs)}, {len(grouping_steps)} provided."
             )
             return False
-        # TODO das hier macht kein sinn
-        # if len(dsc_steps) != len(self.elastic_kernel_convs):
-        #     print(
-        #         f"State dict provides invalid amount of dsc steps: model has {len(self.elastic_kernel_convs)}, {len(grouping_steps)} provided."
-        #     )
-        #     return False
         if len(width_steps) != len(self.elastic_channel_helpers):
             print(
                 f"State dict provides invalid amount of width steps: model has {len(self.elastic_channel_helpers)}, {len(width_steps)} provided."
@@ -972,7 +960,6 @@ class OFAModel(nn.Module):
             function="reset_group_size",
             type_selection=elastic_conv_type,
         )
-    # TODO überall anpassen wo dsc aufgerufen wird
 
     def reset_all_dsc(self):
         return call_function_from_deep_nested(
@@ -1000,7 +987,6 @@ class OFAModel(nn.Module):
     def step_down_all_dsc(self):
         return call_function_from_deep_nested(
             input=self.conv_layers,
-            # TODO wichtig das zu übertragen
             function="step_down_dsc",  # In ChannelHelper implementieren
             type_selection=elastic_conv_type,
         )

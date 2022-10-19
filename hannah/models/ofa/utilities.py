@@ -198,32 +198,6 @@ def make_parameter(t: torch.Tensor) -> nn.Parameter:
         return None
 
 
-# # TODO not in usage, can be cleaned after evaluation
-# def getGroups(max_group, with_max_group_member : bool = True, addOneForNoGrouping : bool = True, divide_by : int = 2):
-#     tmp = [x for x in range(max_group) if x % divide_by == 0 and x != 0]
-#     if with_max_group_member:
-#         tmp.append(max_group)
-#     if addOneForNoGrouping and not (1 in tmp):
-#         tmp.append(1)
-#         tmp.sort(reverse=False)
-
-#     return tmp
-
-
-# MR can be deleted if not needed anymore
-# def gather_information(module):
-#     """
-#         Collects information about the module regarding kernel adjustment with grouping
-#     """
-#     weight_adjustment_needed = is_weight_adjusting_needed(module.weight, module.in_channels, module.groups)
-#     target = get_target_weight(module.weight, module.in_channels, module.groups)
-#     if weight_adjustment_needed:
-#         if hasattr(module, 'id'):
-#             logging.debug(f"ID: {module.id}")
-#         logging.info(f"WARNING XKA_G ModuleName={module.__class__}  g={module.groups} ic={module.in_channels}, oc={module.out_channels}, last_g={module.last_grouping_param}")
-#         logging.info(f"WARNING XKA_G Weight Change is needed  {list(module.weight.shape)} target:{target}")
-
-
 def adjust_weight_if_needed(module, kernel=None, groups=None):
     """
     Adjust the weight if the adjustment is needded. This means, if the kernel does not have the size of
@@ -236,7 +210,6 @@ def adjust_weight_if_needed(module, kernel=None, groups=None):
     :throws: RuntimeError if there is no last_grouping_param for comporing current group value to past group value
 
     returns (kernel, is adjusted) (adjusted if needed) otherwise throws a RuntimeError
-    TODO
     """
     if kernel is None:
         kernel = module.weigth.data
@@ -251,19 +224,15 @@ def adjust_weight_if_needed(module, kernel=None, groups=None):
     is_adjusted = False
 
     grouping_changed = groups != module.last_grouping_param
-    # logging.debug(f"Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
     if grouping_changed and groups > 1:
         weight_adjustment_needed = is_weight_adjusting_needed(kernel, in_channels, groups)
         if weight_adjustment_needed:
             is_adjusted = True
-            # logging.debug(f"NOW Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}")
             kernel = adjust_weights_for_grouping(kernel, groups)
         else:
             target = get_target_weight(kernel, in_channels, groups)
             if hasattr(module, 'id'):
                 logging.debug(f"ID: {module.id}")
-            # logging.debug(f"DEBUG (Grouping): ModuleName={module.__class__}  g={groups} ic={module.in_channels}, oc={module.out_channels}")
-            # logging.debug(f"DEBUG (Grouping): Grouping changed BUT no weight change is needed - hurray! {list(kernel.shape)} target:{target}")
 
     return (kernel, is_adjusted)
 
