@@ -12,15 +12,6 @@ from .elastickernelconv import ElasticConvBnReLu1d
 from .elasticquantkernelconv import ElasticQuantConvBnReLu1d
 
 
-counter_res = 0
-time_to_break = 1260
-time_to_break = 1299
-time_to_break = 2100
-time_to_break = 2105
-time_to_break = 1272
-time_to_break = 692
-time_to_break = 7301
-
 class ResBlockBase(nn.Module):
     def __init__(
         self,
@@ -41,10 +32,6 @@ class ResBlockBase(nn.Module):
         self.skip = nn.Identity()
 
     def forward(self, x):
-        global counter_res
-        global time_to_break
-
-        ElasticBase1d.res_break = counter_res == time_to_break
         residual = x
         # do not use self.apply_skip for this: a skip connection may still be
         # added to support elastic width
@@ -61,12 +48,9 @@ class ResBlockBase(nn.Module):
                 logging.info(
                     f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}"
                 )
-
-        # logging.debug(f"Shape input: {x.shape} , Shape residual: {residual.shape}")
         x += residual
         if self.do_act:
             x = self.act(x)
-        counter_res += 1
         return x
 
     def get_nested_modules(self):
@@ -96,15 +80,6 @@ class ResBlock1d(ResBlockBase):
         # if minor_blocks is not None:
         self.blocks = minor_blocks
 
-        # MR 20220622
-        # TODO vereinheitlichen - still necessary ?
-        # for _, block in minor_blocks._modules.items():
-        #     for _, actualModel in block._modules.items():
-        #         logging.info(f"XKA Module List: {actualModel}")
-        #         if isinstance(actualModel, ElasticBase1d):
-        #             logging.info(
-        #                 f"XKA Settings: oc={actualModel.out_channels}, ic={actualModel.in_channels}, weights={actualModel.weight.shape}, k={actualModel.kernel_size}, s={actualModel.stride}, g={actualModel.groups}"
-        #             )
         self.norm = ElasticWidthBatchnorm1d(out_channels)
         self.act = nn.ReLU()
         self.qconfig = qconfig
@@ -125,7 +100,6 @@ class ResBlock1d(ResBlockBase):
                     out_channel_sizes=flatten_module_list(self.blocks)[
                         -1
                     ].out_channel_sizes,
-                    # TODO to delete after ana
                     from_skipping=True
                 ),
             )

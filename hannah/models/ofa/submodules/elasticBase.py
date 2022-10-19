@@ -60,8 +60,6 @@ class _Elastic:
 # It's a 1D convolutional layer that can change its kernel size and dilation size
 class ElasticBase1d(nn.Conv1d, _Elastic):
 
-    res_break : bool = False
-
     def __init__(
         self,
         in_channels: int,
