@@ -1,5 +1,4 @@
 import copy
-import logging
 import math
 from typing import List
 
@@ -239,7 +238,6 @@ class _ElasticConvBnNd(
         """
             Gets the full kernel and bias. Used for dsc
         """
-        # with torch.no_grad():
         scale_factor = self.full_scale_factor
         weight = self.get_full_width_kernel()
         weight_shape = [1] * len(weight.shape)
@@ -310,6 +308,7 @@ class _ElasticConvBnNd(
                 conv_orig = conv_orig + bias.reshape(bias_shape)
 
             conv = self.bn[self.target_kernel_index](conv_orig)
+            # copied from previous _forward (commented code line):
             # conv = conv - (self.bn.bias - self.bn.running_mean).reshape(bias_shape)
         else:
             bias = zero_bias
@@ -341,19 +340,14 @@ class _ElasticConvBnNd(
         """
 
         tmp_quad_helper = self._get_params()
+        # expand to variables
         dilation = tmp_quad_helper.dilation
         grouping = tmp_quad_helper.grouping
         padding = tmp_quad_helper.padding
         scaled_weight = tmp_quad_helper.scaled_weight
         zero_bias = tmp_quad_helper.zero_bias
 
-        # self.set_in_and_out_channel(self.get_kernel()[0])
-
-        # full_kernel, full_bias = self.get_full_kernel_bias()  # self.get_full_width_kernel(), self.bias
-        full_kernel, full_bias = self.get_full_kernel_bias()  # self.get_full_width_kernel(), self.bias
-        # TODO mal ein trial
-        # full_kernel, full_bias = self.get_kernel()
-        # full_kernel, full_bias = scaled_weight, zero_bias
+        full_kernel, full_bias = self.get_full_kernel_bias()
         dsc_sequence_output = self.do_dsc(
             input=input,
             full_kernel=full_kernel,
@@ -367,7 +361,6 @@ class _ElasticConvBnNd(
         )
 
         conv_output = self._after_forward_function(dsc_sequence_output, quad_params=tmp_quad_helper)
-        # self.reset_in_and_out_channel_to_previous()
         return conv_output
 
     def _forward(self, input):
@@ -377,7 +370,6 @@ class _ElasticConvBnNd(
         zero_bias = tmp_quad_helper.zero_bias
 
         conv = self._real_conv_forward(input, scaled_weight, zero_bias, grouping)
-
         conv = self._after_forward_function(conv, quad_params=tmp_quad_helper)
 
         return conv
@@ -567,16 +559,14 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
-        # self.set_in_and_out_channel(weight)
-
         grouping = self.get_group_size()
         if grouping > 1:
             weight, _ = adjust_weight_if_needed(
                 module=self, kernel=weight, groups=grouping
             )
+
         dsc_on = self.get_dsc()
 
         if not dsc_on:
@@ -599,14 +589,10 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
                     stride=self.stride,
                     padding=self.padding,
                     dilation=self.dilation,
-                    # quant_weight=weight,
-                    # quant_bias=bias,
                     quant_weight_function=self.weight_fake_quant,
                     quant_bias_function=self.bias_fake_quant
                 )
             )
-
-        # self.reset_in_and_out_channel_to_previous()
         return y
 
     # return a normal conv1d equivalent to this module in the current state
@@ -621,7 +607,6 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         padding = conv1d_get_padding(kernel_size, dilation)
 
         if dsc_on:
-            # with torch.no_grad():
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.Conv1d,
                 full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
@@ -708,16 +693,14 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         weight, bias = self.get_kernel()
-        # self.set_in_and_out_channel(weight)
-
         grouping = self.get_group_size()
         if grouping > 1:
             weight, _ = adjust_weight_if_needed(
                 module=self, kernel=weight, groups=grouping
             )
+
         dsc_on = self.get_dsc()
 
         if not dsc_on:
@@ -742,8 +725,6 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
                                 stride=self.stride,
                                 padding=self.padding,
                                 dilation=self.dilation,
-                                # quant_weight=weight,
-                                # quant_bias=bias,
                                 quant_weight_function=self.weight_fake_quant,
                                 quant_bias_function=self.bias_fake_quant
                             )
@@ -762,7 +743,6 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         self.set_in_and_out_channel(kernel)
 
         if dsc_on:
-            # with torch.no_grad():
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvReLU1d,
                 full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
@@ -833,11 +813,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
-        # get the kernel for the current index
-        kernel, bias = self.get_kernel()
-        # self.set_in_and_out_channel(kernel)
-
         # get padding for the size of the kernel
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
@@ -855,7 +830,6 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         self.set_in_and_out_channel(kernel)
 
         if dsc_on:
-            # with torch.no_grad():
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvReLU1d,
@@ -956,7 +930,6 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         dsc_on = self.get_dsc()
 
         if dsc_on:
-            # with torch.no_grad():
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
             dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvBnReLU1d,
