@@ -21,6 +21,8 @@ class DataFlowGraph(TensorExpression):
         reset_scope_ids(self)
         self.set_scopes()
 
+        self.collect_scopes()
+
     def link_users(self):
         """ Link the DFG to its users and the users of the DFG to
         the DFG
@@ -92,7 +94,6 @@ class DataFlowGraph(TensorExpression):
         while queue:
             node = queue.pop(-1)
             node.set_scope(current_scope, counters, visited)
-            # self._scopes[scope_id] = node
 
             leafs = []
             find_leaf_nodes(node, leafs, visited)
@@ -102,12 +103,28 @@ class DataFlowGraph(TensorExpression):
                 leaf.set_scope(current_scope, counters, visited)
                 visited.append(leaf)
 
-                # self._scopes[scope_id] = leaf
-
             for u in node.users:
                 if u not in visited:
                     queue = [u] + queue
                     visited.append(u)
+
+    def collect_scopes(self):
+        queue = [self]
+        visited = [self]
+
+        while queue:
+            current = queue.pop(-1)
+            self._scopes[current.id] = current
+
+            if isinstance(current, DataFlowGraph):
+                if current.output not in visited:
+                    queue.append(current.output)
+                    visited.append(current.output)
+            elif isinstance(current, OpType):
+                for operand in current.operands:
+                    if operand not in visited:
+                        queue.append(operand)
+                        visited.append(operand)
 
     def tensor_type(self):
         return self.output.tensor_type()
@@ -138,12 +155,12 @@ class DataFlowGraph(TensorExpression):
         return "DataFlowGraph(id={})".format(self.id)
 
     def __str__(self) -> str:
-        # lines = []
-        # print_from_input(find_first_input(self), 0, [], lines)
+        lines = []
+        print_from_input(find_first_input(self), 0, [], lines)
 
-        # return_str = "\n".join(lines)
-        # return return_str
-        return self.__repr__()
+        return_str = "\n".join(lines)
+        return return_str
+        # return self.__repr__()
 
 
 def print_from_input(input, indent, visited, lines):
@@ -221,6 +238,10 @@ def flatten(graph):
             current.operands = tuple(current.operands)
 
     return find_first_op_in_dfg(graph)
+
+
+def unflatten(graph):
+    pass
 
 
 def delete_users(graph):
