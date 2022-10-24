@@ -126,6 +126,8 @@ class DataFlowGraph(TensorExpression):
                         queue.append(operand)
                         visited.append(operand)
 
+        self._scopes = dict(sorted(self._scopes.items()))
+
     def tensor_type(self):
         return self.output.tensor_type()
 
@@ -296,8 +298,12 @@ def collect_users(node):
 
 def reset_scope_ids(node):
     node.set_id(node.name)
-    for o in node.operands:
-        reset_scope_ids(o)
+
+    if isinstance(node, DataFlowGraph):
+        reset_scope_ids(node.output)
+    elif isinstance(node, OpType):
+        for o in node.operands:
+            reset_scope_ids(o)
 
 
 def find_first_input(node):
