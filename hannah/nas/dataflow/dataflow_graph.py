@@ -7,6 +7,8 @@ from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.expressions.placeholder import DefaultInt
 from hannah.nas.parameters.parametrize import parametrize
 
+import numpy as np
+
 
 @parametrize
 class DataFlowGraph(TensorExpression):
@@ -24,14 +26,19 @@ class DataFlowGraph(TensorExpression):
         self.collect_scopes()
 
     def num_nodes(self):
+        n = len(self.nodes())
+        return n
+
+    def nodes(self):
         g = flatten(self)
 
         queue = [g]
         visited = [g]
-        n = 0
+        node_list = []
         while queue:
             current = queue.pop(-1)
-            n += 1
+            node_list.append(current.id)
+
             if isinstance(current, DataFlowGraph):
                 if current.output not in visited:
                     queue.append(current.output)
@@ -41,8 +48,7 @@ class DataFlowGraph(TensorExpression):
                     if operand not in visited:
                         queue.append(operand)
                         visited.append(operand)
-
-        return n
+        return node_list
 
     def link_users(self):
         """ Link the DFG to its users and the users of the DFG to
