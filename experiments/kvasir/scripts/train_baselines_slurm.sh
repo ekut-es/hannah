@@ -61,4 +61,4 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-hannah-train experiment_id=$EXPERIMENT_$RESOLUTION module.num_workers=8 module.batch_size=32 trainer=sharded trainer.gpus=4 dataset.resolution=$RESOLUTION
+hannah-train experiment_id=${EXPERIMENT}_${RESOLUTION} module.num_workers=8 module.batch_size=32 trainer=sharded trainer.gpus=4 dataset.resolution=$RESOLUTION
