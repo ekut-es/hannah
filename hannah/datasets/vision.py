@@ -30,7 +30,6 @@ import torch.utils.data as data
 import torchvision
 import torchvision.datasets as datasets
 from albumentations.pytorch.transforms import ToTensorV2
-from hydra.utils import get_original_cwd
 from torchvision import transforms
 
 import albumentations as A
@@ -183,6 +182,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         extract_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
+        resolution = config.resolution
 
         # download and extract dataset
         if not os.path.isdir(extract_root):
@@ -249,12 +249,14 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
 
+        resolution = config.resolution 
+        
         # Todo: test und train transforms from kvasir capsule github
         train_transform = transforms.Compose(
             [
-                transforms.Resize(256),
-                transforms.CenterCrop(256),
-                transforms.Resize(224),
+                transforms.Resize(resolution+32),
+                transforms.CenterCrop(resolution+32),
+                transforms.Resize(resolution),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
                 transforms.RandomRotation(90),
@@ -265,9 +267,9 @@ class KvasirCapsuleDataset(VisionDatasetBase):
 
         test_transofrm = transforms.Compose(
             [
-                transforms.Resize(256),
-                transforms.CenterCrop(256),
-                transforms.Resize(224),
+                transforms.Resize(resolution+32),
+                transforms.CenterCrop(resolution+32),
+                transforms.Resize(resolution),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
             ]

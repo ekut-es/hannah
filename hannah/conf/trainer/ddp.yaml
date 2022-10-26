@@ -18,4 +18,4 @@
 ##
 defaults:
   - default # inherit from default trainer conf
-accelerator: ddp
+strategy: ddp

@@ -32,4 +32,5 @@ gradient_clip_val: 0
 auto_scale_batch_size: null
 accumulate_grad_batches: 1
 plugins: null
+strategy: null
 reload_dataloaders_every_n_epochs: 0
