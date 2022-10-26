@@ -33,3 +33,6 @@ dataset:
 
 trainer:
   max_epochs: 50
+
+scheduler:
+  max_lr: 0.05
