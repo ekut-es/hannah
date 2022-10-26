@@ -23,6 +23,27 @@ class DataFlowGraph(TensorExpression):
 
         self.collect_scopes()
 
+    def num_nodes(self):
+        g = flatten(self)
+
+        queue = [g]
+        visited = [g]
+        n = 0
+        while queue:
+            current = queue.pop(-1)
+            n += 1
+            if isinstance(current, DataFlowGraph):
+                if current.output not in visited:
+                    queue.append(current.output)
+                    visited.append(current.output)
+            elif isinstance(current, OpType):
+                for operand in current.operands:
+                    if operand not in visited:
+                        queue.append(operand)
+                        visited.append(operand)
+
+        return n
+
     def link_users(self):
         """ Link the DFG to its users and the users of the DFG to
         the DFG
