@@ -7,7 +7,7 @@ from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.expressions.placeholder import DefaultInt
 from hannah.nas.parameters.parametrize import parametrize
 
-# import numpy as np
+import numpy as np
 
 
 @parametrize
@@ -134,35 +134,26 @@ class DataFlowGraph(TensorExpression):
                     queue = [u] + queue
                     visited.append(u)
 
-    def collect_scopes(self):
-        queue = [self]
-        visited = [self]
-
-        while queue:
-            current = queue.pop(-1)
-            self._scopes[current.id] = current
-
-            for next_node in current.next_backwards():
-                if next_node not in visited:
-                    queue.append(next_node)
-                    visited.append(next_node)
-
-        self._scopes = dict(sorted(self._scopes.items()))
-
     def tensor_type(self):
         return self.output.tensor_type()
 
-    # def adjacency(self):
-    #     g = flatten(self)
+    def adjacency(self):
+        g = flatten(self)
+        g.collect_scopes()
 
-    #     node_list = self.nodes()
-    #     n = len(node_list)
+        node_list = self.nodes()
+        n = len(node_list)
 
-    #     adj = np.zeros((n, n))
+        adj = np.zeros((n, n), dtype=np.int8)
+        indices = {n: i for i, n in enumerate(node_list)}
 
-        # for node_id in node_list:
-        #     node = g._scopes[node_id]
-        #     print()
+        for node_id in node_list:
+            node = g._scopes[node_id]
+
+            for user in node.users:
+                adj[indices[node_id]][indices[user.id]] = 1
+
+        return adj, indices
 
     def __getitem__(self, key):
         return self._scopes[key]
