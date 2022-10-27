@@ -85,7 +85,10 @@ class ImageClassifierModule(ClassifierModule):
         )
 
         # FIXME run forward to initialize parameters
-        self.model(self.example_input_array)
+        self.model.eval()
+        with torch.no_grad():
+            self.model(self.example_input_array)
+        self.model.train()
 
         if self.hparams.dataset.get("weighted_loss", False) is True:
             loss_weights = torch.tensor(self.train_set.weights)
