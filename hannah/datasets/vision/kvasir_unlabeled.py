@@ -136,7 +136,10 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
 
         mean = tuple(config.mean)
         std = tuple(config.mean)
-        resolution = tuple(config.resolution)
+        if isinstance(config.resolution, int):
+            resolution = (config.resolution, config.resolution)
+        else:
+            resolution = tuple(config.resolution)
 
         train_transforms = A.Compose(
             [
