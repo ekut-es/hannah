@@ -21,12 +21,11 @@ import logging
 import math
 from collections import namedtuple
 from typing import Any, Mapping, Tuple, Union
-import timm
-
-import torch
-import torch.nn as nn
 
 import hydra
+import timm
+import torch
+import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 

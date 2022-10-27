@@ -52,8 +52,6 @@ from torchvision.datasets.utils import (
     list_files,
 )
 
-import hydra
-
 from ..callbacks.clustering import kMeans
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.pruning import PruningAmountScheduler

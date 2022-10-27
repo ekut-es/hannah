@@ -40,6 +40,8 @@ from hannah.modules.augmentation.bordersearch import (
     random_sample,
 )
 
+msglogger = logging.getLogger(__name__)
+
 
 class ObjectDetectionModule(ClassifierModule):
     def __init__(self, augmentation: list(), *args, **kwargs):

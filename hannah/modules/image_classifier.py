@@ -83,7 +83,7 @@ class ImageClassifierModule(ClassifierModule):
             labels=self.num_classes,
             _recursive_=False,
         )
-        
+
         # FIXME run forward to initialize parameters
         self.model(self.example_input_array)
 

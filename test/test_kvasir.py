@@ -1,13 +1,28 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import warnings
+from collections import Counter
+from pathlib import Path
 
 import omegaconf
-
-from pathlib import Path
-from collections import Counter
-
+from hydra import compose, initialize
 from hydra.utils import get_class
-from hydra import initialize, compose
-
 
 topdir = Path(__file__).parent.absolute() / ".."
 data_folder = topdir / "datasets"
@@ -96,7 +111,3 @@ def test_kvasir_unlabelled_dataset():
     train_set[200000]
     train_set[1000000]
     train_set[len(train_set) - 1]
-
-
-if __name__ == "__main__":
-    test_kvasir_dataset()

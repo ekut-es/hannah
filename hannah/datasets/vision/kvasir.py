@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import os
 import pathlib
@@ -5,15 +23,14 @@ import tarfile
 from collections import Counter, namedtuple
 from typing import Dict, List
 
+import albumentations as A
 import cv2
 import pandas as pd
 import requests
 import torchvision
 from albumentations.pytorch import ToTensorV2
-
 from sklearn.model_selection import train_test_split
 
-import albumentations as A
 from hannah.modules.augmentation import rand_augment
 
 from ..base import AbstractDataset
@@ -108,9 +125,9 @@ class KvasirCapsuleDataset(AbstractDataset):
         )
 
         resolution = config.resolution
-        if isinstance(int(resolution)):
+        if isinstance(resolution, int):
             resolution = (resolution, resolution)
-            
+
         res_x, res_y = resolution
 
         # FIXME(gerum):  add back rand augment
@@ -149,6 +166,7 @@ class KvasirCapsuleDataset(AbstractDataset):
         }
 
         if config.split == "official":
+
             def process_official_split(df: pd.DataFrame):
 
                 files = df["filename"].to_list()
@@ -191,16 +209,21 @@ class KvasirCapsuleDataset(AbstractDataset):
                     labels.append(label)
             classes = list(set(labels))
             classes.sort()
-            
-            train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=0.2, random_state=1)
-            train_images, val_images, train_labels, val_labels = train_test_split(train_images, train_labels, test_size=0.25, random_state=1)  
+
+            train_images, test_images, train_labels, test_labels = train_test_split(
+                images, labels, test_size=0.2, random_state=1
+            )
+            train_images, val_images, train_labels, val_labels = train_test_split(
+                train_images, train_labels, test_size=0.25, random_state=1
+            )
         else:
             raise Exception(
                 f"Split {config.split} is not defined for dataset kvasir_capsule"
             )
-            
+
         if config.get("anomaly"):
             classes = ["Normal", "Anomaly"]
+
             def relable_anomaly(X):
                 label_to_anomaly = {
                     "Angiectasia": "Anomaly",
@@ -219,13 +242,12 @@ class KvasirCapsuleDataset(AbstractDataset):
                     "Polyp": "Anomaly",
                     "Blood - hematin": "Anomaly",
                 }
-                
+
                 return [label_to_anomaly[x] for x in X]
-            
+
             train_labels = relable_anomaly(train_labels)
             val_labels = relable_anomaly(val_labels)
             test_labels = relable_anomaly(test_labels)
-                
 
         return (
             cls(

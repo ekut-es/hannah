@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import bisect
 import json
 import logging
@@ -5,11 +23,10 @@ import pathlib
 import urllib
 from typing import List
 
+import albumentations as A
 import cv2
 from albumentations.pytorch.transforms import ToTensorV2
 from tqdm import tqdm
-
-import albumentations as A
 
 from ..base import AbstractDataset
 from ..utils import generate_file_md5
@@ -82,13 +99,13 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
             video_capture = self._video_captures[video_file]
         else:
             video_capture = cv2.VideoCapture(str(video_file))
-            #self._video_captures[video_file] = video_capture
+            # self._video_captures[video_file] = video_capture
 
         ret, frame = video_capture.read()
         if not ret:
             video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
             ret, frame = video_capture.read()
-            assert ret == True
+            assert ret is True
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return frame, video_metadata
@@ -241,7 +258,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
 
             if target_filename.suffix in [".mp4"]:
                 video_capture = cv2.VideoCapture(str(target_filename))
-                #video_captures.append(video_capture)
+                # video_captures.append(video_capture)
                 total_frames = video_capture.get(cv2.CAP_PROP_FRAME_COUNT)
                 frame_height = video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
                 frame_width = video_capture.get(cv2.CAP_PROP_FRAME_WIDTH)
