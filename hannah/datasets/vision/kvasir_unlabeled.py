@@ -82,7 +82,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
             video_capture = self._video_captures[video_file]
         else:
             video_capture = cv2.VideoCapture(str(video_file))
-            self._video_captures[video_file] = video_capture
+            #self._video_captures[video_file] = video_capture
 
         ret, frame = video_capture.read()
         if not ret:
@@ -238,7 +238,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
 
             if target_filename.suffix in [".mp4"]:
                 video_capture = cv2.VideoCapture(str(target_filename))
-                video_captures.append(video_capture)
+                #video_captures.append(video_capture)
                 total_frames = video_capture.get(cv2.CAP_PROP_FRAME_COUNT)
                 frame_height = video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
                 frame_width = video_capture.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -262,8 +262,9 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         logger.info("Sum of Frames total: %f", sum_frames)
 
         json_data["metadata"] = video_metadata
-        with files_json.open("w") as f:
-            json.dump(json_data, f)
+        if not files_json.exists:
+            with files_json.open("w") as f:
+                json.dump(json_data, f)
 
         return None
 

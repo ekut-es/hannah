@@ -83,8 +83,8 @@ class KvasirCapsuleAnomalyDataset(AbstractDataset):
         )
         X_train, X_val, y_train, y_val = train_test_split(
             X_train, y_train, test_size=0.25, random_state=1
-        )  # 0.25 x 0.8 = 0.2
-
+        )  
+        
         train_transform = transforms.Compose(
             [
                 transforms.Resize(256),

@@ -2,6 +2,7 @@ defaults:
     - augmentation:
         - rand_augment
         - mixup
+    - _self_
 
 cls: hannah.datasets.vision.KvasirCapsuleDataset
 data_folder: ${hydra:runtime.cwd}/datasets/
@@ -9,6 +10,7 @@ dataset: kvasir_capsule
 val_percent: 0.1
 sampler: random
 weighted_loss: false
+anomaly: false
 
 split: official
 normalize:
@@ -20,5 +22,6 @@ normalize:
         - 0.5
         - 0.5
         - 0.5
+
 
 resolution: [224,224]

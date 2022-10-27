@@ -11,6 +11,8 @@ import requests
 import torchvision
 from albumentations.pytorch import ToTensorV2
 
+from sklearn.model_selection import train_test_split
+
 import albumentations as A
 from hannah.modules.augmentation import rand_augment
 
@@ -91,9 +93,10 @@ class KvasirCapsuleDataset(AbstractDataset):
         metadata_path = os.path.join(
             config.data_folder, "kvasir_capsule", "metadata.json"
         )
-        metadata_request = requests.get(cls.METADATA_URL)
-        with open(metadata_path, "wb") as f:
-            f.write(metadata_request.content)
+        if not os.path.exists(metadata_path):
+            metadata_request = requests.get(cls.METADATA_URL)
+            with open(metadata_path, "wb") as f:
+                f.write(metadata_request.content)
 
     @classmethod
     def splits(cls, config):
@@ -104,10 +107,16 @@ class KvasirCapsuleDataset(AbstractDataset):
             config.data_folder, "kvasir_capsule", "official_splits"
         )
 
+        resolution = config.resolution
+        if isinstance(int(resolution)):
+            resolution = (resolution, resolution)
+            
+        res_x, res_y = resolution
+
         # FIXME(gerum):  add back rand augment
         train_transform = A.Compose(
             [
-                A.RandomResizedCrop(config.resolution[0], config.resolution[1]),
+                A.RandomResizedCrop(res_x, res_y),
                 A.Normalize(mean=config.normalize.mean, std=config.normalize.std),
                 ToTensorV2(),
             ]
@@ -115,7 +124,7 @@ class KvasirCapsuleDataset(AbstractDataset):
 
         test_transform = A.Compose(
             [
-                A.Resize(config.resolution[0], config.resolution[1]),
+                A.Resize(res_x, res_y),
                 A.Normalize(mean=config.normalize.mean, std=config.normalize.std),
                 ToTensorV2(),
             ]
@@ -124,12 +133,12 @@ class KvasirCapsuleDataset(AbstractDataset):
         label_to_folder = {
             "Angiectasia": "Angiectasia",
             "Pylorus": "Pylorus",
-            "Blood": "Blood",
-            "Reduced Mucosal View": "Reduced Mucosal View",
-            "Ileo-cecal valve": "Ileo-cecal valve",
-            "Erythematous": "Erythematous",
-            "Foreign Bodies": "Foreign Bodies",
-            "Normal": "Normal",
+            "Blood": "Blood - fresh",
+            "Reduced Mucosal View": "Reduced mucosal view",
+            "Ileo-cecal valve": "Ileocecal valve",
+            "Erythematous": "Erythema",
+            "Foreign Bodies": "Foreign body",
+            "Normal": "Normal clean mucosa",
             "Ulcer": "Ulcer",
             "Erosion": "Erosion",
             "Lymphangiectasia": "Lymphangiectasia",
@@ -140,7 +149,6 @@ class KvasirCapsuleDataset(AbstractDataset):
         }
 
         if config.split == "official":
-
             def process_official_split(df: pd.DataFrame):
 
                 files = df["filename"].to_list()
@@ -172,10 +180,52 @@ class KvasirCapsuleDataset(AbstractDataset):
 
             classes = list(set(split0_labels + split1_labels))
             classes.sort()
+        elif config.split == "random":
+            images = []
+            labels = []
+
+            for label, folder in label_to_folder.items():
+                current_folder = pathlib.Path(data_root) / folder
+                for file in current_folder.glob("*.jpg"):
+                    images.append(file)
+                    labels.append(label)
+            classes = list(set(labels))
+            classes.sort()
+            
+            train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=0.2, random_state=1)
+            train_images, val_images, train_labels, val_labels = train_test_split(train_images, train_labels, test_size=0.25, random_state=1)  
         else:
             raise Exception(
                 f"Split {config.split} is not defined for dataset kvasir_capsule"
             )
+            
+        if config.get("anomaly"):
+            classes = ["Normal", "Anomaly"]
+            def relable_anomaly(X):
+                label_to_anomaly = {
+                    "Angiectasia": "Anomaly",
+                    "Pylorus": "Normal",
+                    "Blood": "Anomaly",
+                    "Reduced Mucosal View": "Anomaly",
+                    "Ileo-cecal valve": "Normal",
+                    "Erythematous": "Anomaly",
+                    "Foreign Bodies": "Anomaly",
+                    "Normal": "Normal",
+                    "Ulcer": "Anomaly",
+                    "Erosion": "Anomaly",
+                    "Lymphangiectasia": "Anomaly",
+                    # Not Used in official splits dataset
+                    "Ampulla of vater": "Normal",
+                    "Polyp": "Anomaly",
+                    "Blood - hematin": "Anomaly",
+                }
+                
+                return [label_to_anomaly[x] for x in X]
+            
+            train_labels = relable_anomaly(train_labels)
+            val_labels = relable_anomaly(val_labels)
+            test_labels = relable_anomaly(test_labels)
+                
 
         return (
             cls(
@@ -207,16 +257,11 @@ class KvasirCapsuleDataset(AbstractDataset):
 
     @property
     def class_counts(self):
-        csv = pd.read_csv(self.csv_file)
-        classes = [self.class_to_idx[csv.iloc[i][1]] for i in self.indices]
-        counter = Counter(classes)
-        classes_tupels = list(dict(counter).items())
-        dataset_classes = list(self.class_to_idx.values())
-        # random splits sometimes returns a val_split_Subset, that has 0 sampels from a dataset class, fill this with class index and None
-        for i in dataset_classes:
-            if i not in [j[0] for j in classes_tupels]:
-                classes_tupels.append((i, None))
-        counts = dict(sorted(classes_tupels))
+        counter = Counter(self.y)
+        counts = dict(counter)
+        for i in len(self.classes):
+            if i not in counts:
+                counts[i] = 0
         return counts
 
     @property
@@ -226,9 +271,7 @@ class KvasirCapsuleDataset(AbstractDataset):
     # retuns a list of class index for every sample
     @property
     def get_label_list(self) -> List[int]:
-        csv = pd.read_csv(self.csv_file)
-        labels = [self.class_to_idx[csv.iloc[i][1]] for i in self.indices]
-        return labels
+        return self.y
 
     @property
     def class_names_abbreviated(self) -> List[str]:

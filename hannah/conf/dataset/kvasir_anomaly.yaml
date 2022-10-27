@@ -1,13 +1,6 @@
 defaults:
-    - augmentation: null
+    - kvasir_capsule
+    - override augmentation: null
+    - _self_
 
-data_folder: ${hydra:runtime.cwd}/datasets/
-data_root: ${dataset.data_folder}/kvasir_capsule/labelled_images
-cls: hannah.datasets.vision.KvasirCapsuleAnomalyDataset
-dataset: kvasir_capsule
-val_percent: 0.1
-sampler: random
-weighted_loss: false
-
-train_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_0.csv
-test_val_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_1.csv
+anomaly: true
