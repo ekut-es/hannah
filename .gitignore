@@ -47,3 +47,11 @@ nas_results/
 .python_history
 .bash_history
 .cache
+#exclude datasets as file for symlinks
+datasets
+
+# Delete tmp
+tmp/
+.python_history
+.bash_history
+.nv/

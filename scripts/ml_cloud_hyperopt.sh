@@ -1,4 +1,23 @@
 #!/bin/bash
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+
 
 ####
 #a) Define slurm job parameters
@@ -18,14 +37,13 @@
 #SBATCH --gres=gpu:rtx2080ti:1
 #the job can use and see 1 GPUs (8 GPUs are available in total on one node)
 
-#SBATCH --cpus-per-task=8
-
 #SBATCH --time=4320
 # the maximum time the scripts needs to run in minutes
 
 #SBATCH --error=jobs/job_%j.err
 # write the error output to job.*jobID*.err
 
+#TSBATCH --output/home/bringmann/cgerum05/job_%j.out
 #SBATCH --output=jobs/job_%j.out
 # write the standard output to your home directory job.*jobID*.out
 
@@ -36,16 +54,16 @@
 # your mail address
 
 ## Number of parallel jobs per node
-HANNAH_N_JOBS=2
+HANNAH_N_JOBS=5
 
 ## Number of total trials for hyperparameter optimization
-HANNAH_N_TRIALS=100
+HANNAH_N_TRIALS=1000
 
 ## Dataset Name
 HANNAH_DATASET=speech_commands
 
 ## Mode Name
-HANNAH_MODEL=nas2_kws_5uw_lp_top2
+HANNAH_MODEL=conv-net-trax
 
 
 
@@ -59,6 +77,11 @@ date
 cp /home/bringmann/cgerum05/ml_cloud.sif $SCRATCH
 cp -r hannah $SCRATCH
 
+echo "Copy dataset to $SCRATCH"
+mkdir -p $SCRATCH/datasets
+cp -r $WORK/datasets/speech_commands_v0.02 $SCRATCH/datasets/speech_commands_v0.02
+
+
 echo "Running training with config $1"
 date
 
@@ -68,39 +91,34 @@ cd $SCRATCH
 mkdir -p $WORK/optuna_logs
 
 singularity run --nv -B $SCRATCH -B $WORK -H $PWD  $SCRATCH/ml_cloud.sif python -m hannah.train \
-	dataset.data_folder=$WORK/datasets \
+	dataset.data_folder=$SCRATCH/datasets \
 	module.num_workers=4 \
 	trainer.max_epochs=30 \
 	output_dir=$WORK/trained_models \
-	experiment_id=${SLURM_JOB_NAME}_${HANNAH_DATASET}_${HANNAH_MODEL} \
-    hydra/sweeper=optuna \
-	hydra.sweeper.study_name='${experiment_id}'\
+	experiment_id=${SLURM_JOB_NAME}_${HANNAH_DATASET} \
+        hydra/sweeper=optuna \
+	hydra.sweeper.study_name='${experiment_id}'_${HANNAH_MODEL} \
 	hydra.sweeper.storage=sqlite:///$WORK/optuna_logs/'${experiment_id}.sqlite' \
-	hydra.sweeper.n_jobs=$HANNAH_N_JOBS \
+        hydra.sweeper.n_jobs=$HANNAH_N_JOBS \
 	hydra.sweeper.n_trials=$HANNAH_N_TRIALS \
 	hydra.sweeper.sampler.multivariate=true \
 	hydra/launcher=joblib \
 	hydra.launcher.n_jobs=$HANNAH_N_JOBS \
-	scheduler.max_lr='0.01' \
+	dataset.train_snr_high='100,200,300,400,500,600,700' \
+	dataset.train_snr_low='1.0,5.0,10.0,15.0' \
+	features.n_mfcc='20,30,40' \
+	features.melkwargs.hop_length='128,256,512' \
+	features.melkwargs.f_min='0.0,10.0,20.0,30.0,40.0,50.0,60.0,70.0,80.0' \
+	features.melkwargs.f_max='4000.0,6000.0,8000.0' \
+	features.melkwargs.n_mels='${features.n_mfcc}' \
+	features.melkwargs.power='1.0, 2.0' \
+	features.melkwargs.normalized='false,true' \
+	scheduler.max_lr='tag(log,interval(1.0e-05, 0.1))' \
 	optimizer=adamw \
 	optimizer.weight_decay='tag(log,interval(1.0e-07, 1.0e-04))' \
-	module.time_masking='int(interval(0,100))' \
-	module.frequency_masking='int(interval(0,20))' \
-	+experiment=spec_mix \
-	module.mixup.spec_mix_prob=0.0 \
-	module.mixup.prob='interval(0.0, 1.0)' \
-	module.mixup.alpha='interval(0.0, 1.0)' \
+	module.time_masking='int(interval(0,30))' \
+	module.frequency_masking='int(interval(0,10))' \
 	-m
 date
 
 echo DONE!
-
-#dataset.train_snr_high='100,200,300,400,500,600,700' \
-	#dataset.train_snr_low='1.0,5.0,10.0,15.0' \
-	#features.n_mfcc='20,30,40' \
-	#features.melkwargs.hop_length='128,256,512' \
-	#features.melkwargs.f_min='0.0,10.0,20.0,30.0,40.0,50.0,60.0,70.0,80.0' \
-	#features.melkwargs.f_max='4000.0,6000.0,8000.0' \
-	#features.melkwargs.n_mels='${features.n_mfcc}' \
-	#features.melkwargs.power='1.0, 2.0' \
-	#features.melkwargs.normalized='false,true' \

@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import pickle
 from pathlib import Path
@@ -59,18 +77,17 @@ def prepare_summary(
             raise Exception("Could not load history file: %s", str(history_path))
 
         results = (h.result for h in history_file)
-        test_results = (h.test_result for h in history_file)
 
         metrics = pd.DataFrame(results)
-        test_metrics = pd.DataFrame(test_results)
-
-        metrics = pd.concat([metrics, test_metrics], axis=1)
-
         metrics["Task"] = name
         metrics["Step"] = metrics.index
 
         parameters = [h.parameters for h in history_file]
         parameters_all[name] = parameters
+
+        from pprint import pprint
+
+        pprint(parameters)
 
         result_stack.append(metrics)
 
@@ -81,10 +98,6 @@ def prepare_summary(
 
     result.insert(0, "Step", step_column)
     result.insert(0, "Task", task_column)
-
-    for column in result:
-        if column not in ["Step", "Task"]:
-            result[column] = result[column].astype(float)
 
     result.to_pickle(results_file)
     with parameters_file.open("wb") as param_f:
@@ -97,7 +110,6 @@ def calculate_derived_metrics(
     result_metrics: pd.DataFrame, metric_definitions: Dict[str, Any]
 ):
     for name, metric_def in metric_definitions.items():
-        logger.info("Preparing metric: %s", name)
         derived = metric_def.get("derived", None)
         if derived is not None:
             try:
@@ -106,6 +118,6 @@ def calculate_derived_metrics(
                 logger.critical("Could not calculate derived metric %s", name)
                 logger.critical(str(e))
 
-    # result_metrics = result_metrics.fillna(float('inf'))
+    result_metrics = result_metrics.dropna()
 
     return result_metrics

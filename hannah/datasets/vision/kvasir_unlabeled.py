@@ -190,8 +190,8 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
 
         # download and extract dataset
         if not files_json.exists():
-            logger.info("Getting file list from %s", cls.BASE_URL)
-            with urllib.request.urlopen(cls.BASE_URL_UNLABELLED) as url:
+            logger.info("Getting file list from %s", cls.BASE_URL_UNLABELED)
+            with urllib.request.urlopen(cls.BASE_URL_UNLABELED) as url:
                 data = url.read()
                 with files_json.open("w") as f:
                     f.write(data.decode())

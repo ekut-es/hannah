@@ -1,4 +1,21 @@
-import copy
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 from pathlib import Path
 
@@ -18,13 +35,8 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
             f"Extracting design points for {task_name} to {output_folder.absolute()}"
         )
 
-        task_parameters = copy.deepcopy(parameters)
-        task_parameters = task_parameters[task_name]
-        task_metrics = copy.deepcopy(metrics)
-        task_metrics = task_metrics[task_metrics["Task"] == task_name]
-
-        for metric, bound in task_config.bounds.items():
-            task_metrics = task_metrics[task_metrics[metric] < bound]
+        task_parameters = parameters[task_name]
+        task_metrics = metrics[metrics["Task"] == task_name]
 
         selected_metric_names = [m for m in task_config.bounds.keys()]
         selected_metrics = task_metrics[selected_metric_names]
@@ -35,6 +47,8 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
 
         candidates = task_metrics[task_metrics["is_pareto"]]
 
+        for metric, bound in task_config.bounds.items():
+            candidates = candidates[candidates[metric] < bound]
         logger.info("Network candidates:\n %s", str(candidates))
 
         for metric in task_config.bounds.keys():
@@ -43,11 +57,11 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
             index = point_metrics["Step"]
             num = 0
 
-            extracted_parameters = task_parameters[int(index)].flatten()
-            model_parameters = extracted_parameters["model"]
+            parameters = task_parameters[int(index)].flatten()
+            model_parameters = parameters["model"]
             backend_parameters = {}
-            if "backend" in extracted_parameters:
-                backend_parameters = extracted_parameters["backend"]
+            if "backend" in parameters:
+                backend_parameters = parameters["backend"]
 
             file_name = f"{task_name.lower()}_{metric}_top{num}.yaml"
             file_path = output_folder / file_name
@@ -61,19 +75,15 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
                     f.write(f"#   {metric_name}: {metric_val}\n")
                 f.write("\n")
 
-                # f.write("# Test Metrics:\n")
-                # for column in point_metrics:
-                #    if hasattr(column, "startswith") and column.startswith("test"):
-                #        f.write(f"#   {column}: {point_metrics[column].item()}\n")
-                # f.write("\n")
-
                 if backend_parameters:
                     f.write("# Backend parameters:\n")
                     for k, v in backend_parameters.items():
                         f.write(f"#   backend.{k}={v}\n")
                     f.write("\n")
                 f.write("\n")
-                f.write("_target_: hannah.models.factory.factory.create_cnn\n")
+                f.write(
+                    "_target_: speech_recognition.models.factory.factory.create_cnn\n"
+                )
                 f.write(f"name: {task_name.lower()}_{metric}_top{num}\n")
                 f.write("norm:\n")
                 f.write("  target: bn\n")
@@ -82,7 +92,7 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
 
                 model_parameters["qconfig"][
                     "_target_"
-                ] = "hannah.models.factory.qconfig.get_trax_qat_qconfig"
+                ] = "speech_recognition.models.factory.qconfig.get_trax_qat_qconfig"
                 model_parameters["qconfig"]["config"]["power_of_2"] = False
                 model_parameters["qconfig"]["config"]["noise_prob"] = 0.7
 

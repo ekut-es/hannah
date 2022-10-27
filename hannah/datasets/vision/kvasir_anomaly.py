@@ -51,18 +51,22 @@ class KvasirCapsuleAnomalyDataset(AbstractDataset):
             os.path.join(config.data_folder, "kvasir_capsule", "labelled_images")
         )
 
+
         folder2class = {
-            "Angiectasia": 1,
-            "Blood": 1,
-            "Erosion": 1,
-            "Erythematous": 1,
-            "Foreign Bodies": 1,
-            "Ileo-cecal valve": 0,
-            "Lymphangiectasia": 1,
-            "Normal": 0,
-            "Pylorus": 0,
-            "Reduced Mucosal View": 1,
-            "Ulcer": 1,
+            "Ampulla of vater" : 0,  
+            "Blood - fresh" : 1,
+            "Erosion" : 1,
+            "Foreign body" : 1,
+            "Lymphangiectasia" : 1,
+            "Polyp" : 1, 
+            "Reduced mucosal view" : 1,
+            "Angiectasia" : 1,
+            "Blood - hematin" : 1,
+            "Erythema" : 1, 
+            "Ileocecal valve" : 0, 
+            "Normal clean mucosa" : 0,
+            "Pylorus" : 0,
+            "Ulcer" : 1,
         }
 
         X = []
@@ -86,11 +90,11 @@ class KvasirCapsuleAnomalyDataset(AbstractDataset):
                 transforms.Resize(256),
                 transforms.CenterCrop(256),
                 transforms.Resize(224),
-                rand_augment.RandAugment(
-                    config.augmentations.rand_augment.N,
-                    config.augmentations.rand_augment.M,
-                    config=config,  # FIXME: make properly configurable
-                ),
+                # rand_augment.RandAugment(
+                #     config.augmentations.rand_augment.N,
+                #     config.augmentations.rand_augment.M,
+                #     config=config,  # FIXME: make properly configurable
+                # ),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
             ]

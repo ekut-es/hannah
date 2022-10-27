@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 """ A neural network model factory
 
 It allows us to construct quantized and unquantized versions of the same network,
@@ -94,6 +112,7 @@ class MajorBlockConfig:
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
     stride: Optional[int] = None  # Union[None, int, Tuple[int], Tuple[int, int]]
+    last: bool = False  # Indicates wether this block is the last reduction block
 
 
 @dataclass
@@ -154,7 +173,6 @@ class NetworkFactory:
         act: Union[ActConfig, bool] = False,
         bias: bool = False,
     ) -> None:
-
         in_channels = input_shape[1]
 
         if isinstance(kernel_size, int):
@@ -176,7 +194,6 @@ class NetworkFactory:
         if isinstance(padding, int):
             padding = (padding, padding)
 
-        print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
             input_shape[0],
             out_channels,
@@ -367,7 +384,6 @@ class NetworkFactory:
 
         qconfig = self.default_qconfig
 
-        # print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
             input_shape[0],
             out_channels,
@@ -594,6 +610,7 @@ class NetworkFactory:
         reduction: str,
         input_shape: Tuple[int, int, int],
         *input_chains: List[Tuple[Tuple[int, int, int], Sequential]],
+        reduction_quant: bool = False,
     ) -> Tuple[Tuple[int, int, int], Union[ReductionBlockConcat, Sequential]]:
         output_shapes = []
         for chain in input_chains:
@@ -654,8 +671,11 @@ class NetworkFactory:
         inputs = [nn.Sequential(*[x[1] for x in chain]) for chain in input_chains]
         if reduction == "add":
             reduction = ReductionBlockAdd(*inputs)
-            reduction_quant = self.identity()
-            return target_output_shape, nn.Sequential(reduction, reduction_quant)
+            if reduction_quant:
+                reduction_quant = self.identity()
+                return target_output_shape, nn.Sequential(reduction, reduction_quant)
+            else:
+                return target_output_shape, nn.Sequential(reduction)
         elif reduction == "concat":
             output_channels = sum((x[1] for x in output_shapes))
 
@@ -678,6 +698,8 @@ class NetworkFactory:
 
         for block_config in config.blocks:
             main_configs.append(block_config)
+
+        main_configs[-1].out_quant = False
 
         main_chain = self._build_chain(input_shape, main_configs, config.stride)
         output_shape = main_chain[-1][0]
@@ -736,7 +758,11 @@ class NetworkFactory:
         residual_chain = self._build_chain(input_shape, residual_configs, config.stride)
 
         output_shape, major_block = self._build_reduction(
-            config.reduction, input_shape, main_chain, residual_chain
+            config.reduction,
+            input_shape,
+            main_chain,
+            residual_chain,
+            reduction_quant=False if config.last else True,
         )
 
         return output_shape, major_block
@@ -842,6 +868,7 @@ class NetworkFactory:
         )
 
         conv_layers = []
+        network_config.conv[-1].last = True
         for block in network_config.conv:
             input_shape, block_model = self.major(input_shape, block)
             conv_layers.append(block_model)

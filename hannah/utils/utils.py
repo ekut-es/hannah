@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import importlib
 import logging
 import os
@@ -11,6 +29,7 @@ from contextlib import _GeneratorContextManager, contextmanager
 from pathlib import Path
 from typing import Any, Callable, Iterator, List, Type, TypeVar
 
+import hydra
 import numpy as np
 import nvsmi
 import pytorch_lightning
@@ -18,11 +37,10 @@ import torch
 import torch.nn as nn
 from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+from pl_bolts.callbacks import ModuleDataMonitor
 from pytorch_lightning.callbacks import (
     Callback,
     DeviceStatsMonitor,
-    GPUStatsMonitor,
     LearningRateMonitor,
 )
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
@@ -49,6 +67,11 @@ try:
 except ImportError:
     HAVE_LSB: bool = False
 
+msglogger = logging.getLogger(__name__)
+
+
+logger = logging.getLogger(__name__)
+
 
 def log_execution_env_state() -> None:
     """Log information about the execution environment.
@@ -61,8 +84,6 @@ def log_execution_env_state() -> None:
         logdir: log directory
         git_root: the path to the .git root directory
     """
-
-    logger = logging.getLogger()
 
     logger.info("Environment info:")
 
@@ -102,7 +123,7 @@ def log_execution_env_state() -> None:
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Pytorch Lightning: %s", pytorch_lightning.__version__)
     logger.info("  Numpy: %s", np.__version__)
-    logger.info("  Speech Recognition info:")
+    logger.info("  Hannah version info:")
     log_git_state(os.path.join(os.path.dirname(__file__), ".."))
     logger.info("  Command line: %s", " ".join(sys.argv))
     logger.info("  ")
@@ -157,7 +178,8 @@ def extract_from_download_cache(
     if filename not in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        print("download and extract: " + str(filename))
+        logger.info("download and extract: %s", str(filename))
+
         download_and_extract_archive(
             url,
             target_cache,
@@ -168,7 +190,8 @@ def extract_from_download_cache(
     elif filename in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        print("extract from download_cache: " + str(filename))
+        logger.info("extract from download_cache: %s", str(filename))
+
         extract_archive(
             os.path.join(target_cache, filename),
             target_folder,
@@ -201,21 +224,16 @@ def common_callbacks(config: DictConfig) -> list:
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
 
-    if config.get("gpu_stats", None):
-        gpu_stats = GPUStatsMonitor()
-        callbacks.append(gpu_stats)
-
-    if config.get("device_stats", None):
-        device_stats = DeviceStatsMonitor()
-        callbacks.append(device_stats)
+    if config.get("device_stats", None) or config.get("gpu_stats", None):
+        if config.get("gpu_stats", None):
+            msglogger.warning(
+                "config option gpu_stats has been deprecated use device_stats instead"
+            )
+        device_stats = DeviceStatsMonitor(cpu_stats=config.get("device_stats", False))
 
     if config.get("data_monitor", False):
         data_monitor = ModuleDataMonitor(submodules=True)
         callbacks.append(data_monitor)
-
-    if config.get("print_metrics", False):
-        metrics_printer = PrintTableMetricsCallback()
-        callbacks.append(metrics_printer)
 
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
