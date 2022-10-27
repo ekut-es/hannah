@@ -35,4 +35,4 @@ trainer:
   max_epochs: 50
 
 scheduler:
-  max_lr: 0.05
+  max_lr: 0.01
