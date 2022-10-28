@@ -171,7 +171,10 @@ class TimmModel(nn.Module):
             name, num_classes=0, global_pool="", pretrained=pretrained, **kwargs
         )
 
-        dummy_latent = self.encoder(dummy_input)
+        with torch.no_grad():
+            self.encoder.eval()
+            dummy_latent = self.encoder(dummy_input)
+            self.encoder.train()
 
         self.decoder = None
         if decoder is True:
