@@ -55,17 +55,12 @@ For alternative installation methods see:  https://python-poetry.org/docs/#insta
 
     ~/.local/bin/poetry
 
-#### Mac OS
-Install poetry from pip
-
-    pip3 install poetry
 
 ## Software installation
 
 In the root directory of the project run:
 
     git submodule update --init --recursive
-    poetry run pip install --upgrade pip
     poetry install
 
 This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.
