@@ -53,6 +53,7 @@ from torchvision.datasets.utils import (
 )
 
 from .callbacks.clustering import kMeans
+from .callbacks.dump_layers import TestDumperCallback
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 from .callbacks.summaries import MacSummaryCallback
@@ -239,6 +240,9 @@ def common_callbacks(config: DictConfig) -> list:
     if config.get("early_stopping", None):
         stop_callback = hydra.utils.instantiate(config.early_stopping)
         callbacks.append(stop_callback)
+
+    if config.get("dump_test", False):
+        callbacks.append(TestDumperCallback())
 
     if config.get("compression", None):
         config_compression = config.get("compression")
