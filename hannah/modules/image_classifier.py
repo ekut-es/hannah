@@ -188,6 +188,7 @@ class ImageClassifierModule(ClassifierModule):
         prediction_result = self.forward(augmented_data)
 
         loss = torch.tensor([0.0], device=self.device)
+        preds = None
         if labels is not None and prediction_result.logits is not None:
             logits = prediction_result.logits
 
@@ -217,7 +218,7 @@ class ImageClassifierModule(ClassifierModule):
         return loss, prediction_result, batch
 
     def training_step(self, batch, batch_idx):
-        loss, _, _ = self.common_step("train", batch, batch_idx)
+        loss, _, _, _ = self.common_step("train", batch, batch_idx)
 
         return loss
 
@@ -225,10 +226,9 @@ class ImageClassifierModule(ClassifierModule):
         self.common_step("val", batch, batch_idx)
 
     def test_step(self, batch, batch_idx):
-        _, step_results, batch = self.common_step("test", batch, batch_idx)
+        _, step_results, batch, preds = self.common_step("test", batch, batch_idx)
 
         y = batch.get("labels", None)
-        preds = step_results.preds
         if y is not None and preds is not None:
             with set_deterministic(False):
                 self.test_confusion(preds, y)

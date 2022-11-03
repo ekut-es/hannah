@@ -19,11 +19,10 @@
 ##
 
 EXPERIMENT="baseline"
-MODEL="timm_resnet18,timm_resnet50,timm_resnet152,timm_efficientnet_lite1,timm_mobilenetv3_small_100,timm_mobilenetv3_small_075,timm_mobilenetv3_large_100"
+MODELS="timm_resnet18 timm_resnet50 timm_resnet152 timm_efficientnet_lite1 timm_mobilenetv3_small_100 timm_mobilenetv3_small_075 timm_mobilenetv3_large_100"
 
 export HANNAH_DATA_FOLDER=/mnt/qb/datasets/STAGING/bringmann/datasets/
 
-hannah-train experiment_id=$EXPERIMENT model=$MODEL hydra/launcher=ml_cloud_4gpu \
-    hydra.sweep.dir='${output_dir}/${experiment_id}/' hydra.sweep.subdir='${model.name}' \
-    module.num_workers=8 module.batch_size=16 trainer.gpus=4 trainer=sharded \
-    -m
+for MODEL in ${MODELS}; do
+  sbatch --job-name=baseline scripts/train_baselines_slurm.sh  -m $MODEL
+done
