@@ -42,6 +42,7 @@ from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.summaries import MacSummaryCallback
 from ..utils import clear_outputs, common_callbacks, fullname
 from .aging_evolution import AgingEvolution
+from .graph_conversion import model_to_graph
 
 msglogger = logging.getLogger(__name__)
 
@@ -107,6 +108,7 @@ def run_training(num, config):
                 normalizer=config.get("normalizer", None),
                 _recursive_=False,
             )
+
             trainer.fit(model)
             ckpt_path = "best"
             if trainer.fast_dev_run:
@@ -123,6 +125,18 @@ def run_training(num, config):
             res = {}
             for monitor in opt_monitor:
                 res[monitor] = float("inf")
+
+        nx_model = model_to_graph(model.model, model.example_feature_array)
+        from networkx.readwrite import json_graph
+
+        json_data = json_graph.node_link_data(nx_model)
+        print(json_data)
+        with open(f"model_{num}.json", "w") as res_file:
+            import json
+
+            json.dump(
+                {"graph": json_data, "result": opt_callback.result(dict=True)}, res_file
+            )
 
         return opt_callback.result(dict=True)
     finally:
@@ -191,8 +205,8 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         )
 
         self.predictor = None
-        if predictor is not None:
-            self.predictor = instantiate(predictor, _recursive_=False)
+        # if predictor is not None:
+        #    self.predictor = instantiate(predictor, _recursive_=False)
 
         self.worklist = []
         self.presample = presample
@@ -220,7 +234,8 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             )
             msglogger.critical(str(e))
         else:
-            estimated_metrics = self.predictor.estimate(model)
+            estimated_metrics = {}
+            # estimated_metrics = self.predictor.estimate(model)
 
             satisfied_bounds = []
             for k, v in estimated_metrics.items():
