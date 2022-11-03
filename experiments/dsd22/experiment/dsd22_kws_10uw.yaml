@@ -19,7 +19,7 @@
 
 # @package _global_
 defaults:
-    - /nas: aging_evolution_nas
+    - override /nas: aging_evolution_nas
     - override /dataset: kws
     - override /features: mfcc
     - override /model: conv-net-trax
@@ -29,6 +29,7 @@ defaults:
     - override /module: stream_classifier
     - override /backend: trax_ut
     - override /early_stopping: null
+    - _self_
 
 experiment_id: dsd22_kws_10uw
 

@@ -195,7 +195,9 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         input_attrs = self.extract_input_attrs(args)
         output_quant = {"dtype": "float", "bits": 32, "method": "none"}
         if (
-            input_attrs[0]["quant"]["dtype"] != "float"
+            None
+            and input_attrs
+            and input_attrs[0]["quant"]["dtype"] != "float"
             and weight_attrs["quant"]["dtype"] != "float"
         ):
             output_bits = (
@@ -277,7 +279,10 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         input_attrs = self.extract_input_attrs(args)
         output_quant = {"dtype": "float", "bits": 32, "method": "none"}
         if (
-            input_attrs[0]["quant"]["dtype"] != "float"
+            None
+            and input_attrs
+            and "quant" in input_attrs[0]
+            and input_attrs[0]["quant"]["dtype"] != "float"
             and weight_attrs["quant"]["dtype"] != "float"
         ):
             output_bits = (

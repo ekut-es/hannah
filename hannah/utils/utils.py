@@ -52,11 +52,20 @@ from torchvision.datasets.utils import (
     list_files,
 )
 
+<<<<<<< HEAD:hannah/utils/utils.py
 from ..callbacks.clustering import kMeans
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.pruning import PruningAmountScheduler
 from ..callbacks.summaries import MacSummaryCallback
 from ..callbacks.svd_compress import SVD
+=======
+from .callbacks.clustering import kMeans
+from .callbacks.dump_layers import TestDumperCallback
+from .callbacks.optimization import HydraOptCallback
+from .callbacks.pruning import PruningAmountScheduler
+from .callbacks.summaries import MacSummaryCallback
+from .callbacks.svd_compress import SVD
+>>>>>>> origin/main:hannah/utils.py
 
 try:
     import lsb_release  # pytype: disable=import-error
@@ -239,6 +248,9 @@ def common_callbacks(config: DictConfig) -> list:
     if config.get("early_stopping", None):
         stop_callback = hydra.utils.instantiate(config.early_stopping)
         callbacks.append(stop_callback)
+
+    if config.get("dump_test", False):
+        callbacks.append(TestDumperCallback())
 
     if config.get("compression", None):
         config_compression = config.get("compression")

@@ -19,7 +19,7 @@
 defaults:
   - predictor: gcn
 
-_target_: hannah.nas.unas.AgingEvolutionNASTrainer
+_target_: hannah.nas.search.AgingEvolutionNASTrainer
 parametrization: {}
 bounds: {}
 budget: 10000
