@@ -699,7 +699,7 @@ class NetworkFactory:
         for block_config in config.blocks:
             main_configs.append(block_config)
 
-        main_configs[-1].out_quant = False
+        main_configs[-1].out_quant = True
 
         main_chain = self._build_chain(input_shape, main_configs, config.stride)
         output_shape = main_chain[-1][0]
@@ -762,7 +762,7 @@ class NetworkFactory:
             input_shape,
             main_chain,
             residual_chain,
-            reduction_quant=False if config.last else True,
+            reduction_quant=True,
         )
 
         return output_shape, major_block
