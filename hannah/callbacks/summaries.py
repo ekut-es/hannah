@@ -22,7 +22,7 @@ from collections import OrderedDict
 import pandas as pd
 import torch
 from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from tabulate import tabulate
 
 from hannah.models.ofa.submodules.elasticBase import ElasticBase1d

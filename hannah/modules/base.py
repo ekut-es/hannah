@@ -34,10 +34,9 @@ from PIL import Image
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import (
     LightningLoggerBase,
-    LoggerCollection,
     TensorBoardLogger,
 )
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from torchmetrics import MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS

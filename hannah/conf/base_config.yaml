@@ -20,6 +20,7 @@
 
 defaults:
     - dataset: kws
+    - unlabeled_data: null
     - features: mfcc
     - model: conv-net-trax
     - scheduler: 1cycle

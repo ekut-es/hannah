@@ -37,14 +37,14 @@ import torch
 import torch.nn as nn
 from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-from pl_bolts.callbacks import ModuleDataMonitor
+#from pl_bolts.callbacks import ModuleDataMonitor
 from pytorch_lightning.callbacks import (
     Callback,
     DeviceStatsMonitor,
     LearningRateMonitor,
 )
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from torchvision.datasets.utils import (
     download_and_extract_archive,
     extract_archive,
@@ -52,20 +52,11 @@ from torchvision.datasets.utils import (
     list_files,
 )
 
-<<<<<<< HEAD:hannah/utils/utils.py
 from ..callbacks.clustering import kMeans
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.pruning import PruningAmountScheduler
 from ..callbacks.summaries import MacSummaryCallback
 from ..callbacks.svd_compress import SVD
-=======
-from .callbacks.clustering import kMeans
-from .callbacks.dump_layers import TestDumperCallback
-from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
-from .callbacks.summaries import MacSummaryCallback
-from .callbacks.svd_compress import SVD
->>>>>>> origin/main:hannah/utils.py
 
 try:
     import lsb_release  # pytype: disable=import-error
