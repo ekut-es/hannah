@@ -22,3 +22,4 @@ from .classifier import StreamClassifierModule  # noqa
 from .distilling_classifier import SpeechKDClassifierModule  # noqa
 from .image_classifier import ImageClassifierModule  # noqa
 from .object_detection import ObjectDetectionModule  # noqa
+from .anomaly_detection import AnomalyDetectionModule # noqa

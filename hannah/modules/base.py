@@ -37,6 +37,8 @@ from pytorch_lightning.loggers import (
     TensorBoardLogger,
 )
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from pytorch_lightning.trainer.supporters import CombinedLoader
+
 from torchmetrics import MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
@@ -59,6 +61,7 @@ class ClassifierModule(LightningModule, ABC):
         frequency_masking: int = 0,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
+        unlabeled_data: Optional[DictConfig] = None,
         export_onnx: bool = True,
         export_relay: bool = False,
         gpus=None,
@@ -104,15 +107,15 @@ class ClassifierModule(LightningModule, ABC):
         pass
 
     def train_dataloader(self):
-        return self._get_dataloader(self.train_set, shuffle=True)
+        return self._get_dataloader(self.train_set, self.train_set_unlabeled, shuffle=True)
 
     def test_dataloader(self):
-        return self._get_dataloader(self.test_set)
+        return self._get_dataloader(self.test_set, self.test_set_unlabeled)
 
     def val_dataloader(self):
-        return self._get_dataloader(self.dev_set)
+        return self._get_dataloader(self.dev_set, self.dev_set_unlabeled)
 
-    def _get_dataloader(self, dataset, shuffle=False):
+    def _get_dataloader(self, dataset, unlabeled_data, shuffle=False):
         batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
         sampler = None
@@ -123,7 +126,7 @@ class ClassifierModule(LightningModule, ABC):
             else:
                 sampler = data.RandomSampler(dataset)
 
-        train_loader = data.DataLoader(
+        loader = data.DataLoader(
             dataset,
             batch_size=batch_size,
             drop_last=True,
@@ -131,9 +134,20 @@ class ClassifierModule(LightningModule, ABC):
             sampler=sampler,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-        self.batches_per_epoch = len(train_loader)
+        self.batches_per_epoch = len(loader)
 
-        return train_loader
+        if unlabeled_data:
+            loader_unlabeled = data.DataLoader(
+            unlabeled_data,
+            batch_size=batch_size,
+            drop_last=True,
+            num_workers=self.hparams["num_workers"],
+            sampler=data.RandomSampler(unlabeled_data),
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+            )
+            return CombinedLoader({"labeled": loader, "unlabeled": loader_unlabeled})
+
+        return loader
 
     def on_train_start(self) -> None:
         super().on_train_start()

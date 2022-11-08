@@ -137,6 +137,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
 
     @classmethod
     def splits(cls, config):
+        cls.prepare(config)
         data_root = (
             pathlib.Path(config.data_folder) / "kvasir_capsule" / "unlabelled_videos"
         )
@@ -282,7 +283,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         logger.info("Sum of Frames total: %f", sum_frames)
 
         json_data["metadata"] = video_metadata
-        if not files_json.exists:
+        if True: # not files_json.exists:
             with files_json.open("w") as f:
                 json.dump(json_data, f)
 
