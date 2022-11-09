@@ -60,7 +60,7 @@ test_python_38:
 
 test_tvm:
   stage: test
-  image: python:3.9
+  image: python:3.10
   script:
     - set -e
     - apt-get install -y llvm-dev libclang-dev
@@ -130,12 +130,17 @@ run_ml_cloud:
   tags:
     - ml-cloud
   script:
+    - conda active hannah
+    - poetry install
+    - poetry shell
     - cml ci
     - echo "Test comment" > report.md
     - cml send-comment report.md
   only:
     - main
   dependencies: []
+  resource_groups:
+    - cluster
 
 run_ml_cloud_progressive_shrinking:
   stage: run
