@@ -218,7 +218,7 @@ class ImageClassifierModule(ClassifierModule):
         return loss, prediction_result, batch
 
     def training_step(self, batch, batch_idx):
-        loss, _, _, _ = self.common_step("train", batch, batch_idx)
+        loss, _, _ = self.common_step("train", batch, batch_idx)
 
         return loss
 
@@ -226,12 +226,12 @@ class ImageClassifierModule(ClassifierModule):
         self.common_step("val", batch, batch_idx)
 
     def test_step(self, batch, batch_idx):
-        _, step_results, batch, preds = self.common_step("test", batch, batch_idx)
+        _, step_results, batch = self.common_step("test", batch, batch_idx)
 
         y = batch.get("labels", None)
-        if y is not None and preds is not None:
-            with set_deterministic(False):
-                self.test_confusion(preds, y)
+        # if y is not None and preds is not None:
+        #    with set_deterministic(False):
+        #        self.test_confusion(preds, y)
 
     def on_train_epoch_end(self):
         self.eval()

@@ -101,9 +101,7 @@ def test_datasets(model, dataset, split):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
-@pytest.mark.parametrize(
-    "model", ["conv-net-2d", "timm_resnet50", "timm_efficientnet_lite1"]
-)
+@pytest.mark.parametrize("model", ["timm_resnet50", "timm_efficientnet_lite1"])
 def test_2d(model):
     command_line = f"hannah-train module=image_classifier dataset=fake2d features=identity trainer.gpus=[1] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)

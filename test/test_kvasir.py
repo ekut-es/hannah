@@ -27,48 +27,20 @@ from hydra.utils import get_class
 topdir = Path(__file__).parent.absolute() / ".."
 data_folder = topdir / "datasets"
 
-config = f"""
-defaults:
-    - augmentation:
-        - rand_augment
-        - mixup
-    - _self_
-
-
-data_folder: {data_folder}
-cls: hannah.datasets.vision.KvasirCapsuleDataset
-dataset: kvasir_capsule
-val_percent: 0.1
-sampler: random
-weighted_loss: false
-anomaly: false
-
-split: official
-normalize:
-    mean:
-        - 0.5
-        - 0.5
-        - 0.5
-    std:
-        - 0.5
-        - 0.5
-        - 0.5
-
-
-resolution: [224,224]
-"""
-
 
 def test_kvasir_labelled_dataset():
-    data_folder = topdir / "datasets" / "kvasir_capsule" / "labelled_images"
+    labeled_folder = topdir / "datasets" / "kvasir_capsule" / "labelled_images"
 
-    if not data_folder.exists():
+    if not labeled_folder.exists():
         warnings.warn("Kvasir capsule is not available skipping test")
         return
 
-    conf = omegaconf.OmegaConf.create(config)
-    dataset_cls = get_class(conf.cls)
-    train_set, dev_set, test_set = dataset_cls.splits(conf)
+    with initialize(config_path="../hannah/conf/dataset"):
+        cfg = compose(
+            config_name="kvasir_capsule", overrides=[f"data_folder={data_folder}"]
+        )
+        dataset_cls = get_class(cfg.cls)
+        train_set, dev_set, test_set = dataset_cls.splits(cfg)
 
     total = 0
     class_counter = Counter()
@@ -76,7 +48,8 @@ def test_kvasir_labelled_dataset():
     class_names = train_set.class_names
     for dataset in [train_set, test_set]:
         for batch in dataset:
-            x, y = batch
+            x = batch["data"]
+            y = batch["labels"]
             class_name = class_names[y]
             class_counter[class_name] += 1
             id_counter[y] += 1

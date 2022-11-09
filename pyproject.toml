@@ -63,7 +63,7 @@ hannah-tvm = {path = "external/hannah-tvm", optional = true, extras = ["automate
 dgl = "^0.9.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.0"
+pytest = "^7.2.0"
 pre_commit = "^2.7.1"
 pytest-cov = ">2.10.1"
 rope = "^0.19.0"
@@ -95,6 +95,7 @@ name = "pytorch"
 url = "https://download.pytorch.org/whl/cu113"
 default = false
 secondary = true
+
 
 
 [build-system]
