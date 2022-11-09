@@ -28,25 +28,34 @@ topdir = Path(__file__).parent.absolute() / ".."
 data_folder = topdir / "datasets"
 
 config = f"""
+defaults:
+    - augmentation:
+        - rand_augment
+        - mixup
+    - _self_
+
+
 data_folder: {data_folder}
 cls: hannah.datasets.vision.KvasirCapsuleDataset
 dataset: kvasir_capsule
 val_percent: 0.1
-train_percent: 0.9
-
-sampler: weighted
-
-default_weights: True
+sampler: random
 weighted_loss: false
-weights: [0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809]
+anomaly: false
 
-train_val_split : {data_folder}/kvasir_capsule/official_splits/split_0.csv
-test_split : {data_folder}/kvasir_capsule/official_splits/split_1.csv
+split: official
+normalize:
+    mean:
+        - 0.5
+        - 0.5
+        - 0.5
+    std:
+        - 0.5
+        - 0.5
+        - 0.5
 
-augmentations:
-    rand_augment:
-        N: 8
-        M: 10
+
+resolution: [224,224]
 """
 
 
