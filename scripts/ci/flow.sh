@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash -l
 ##
 ## Copyright (c) 2022 University of Tübingen.
 ##
@@ -18,11 +18,16 @@
 ## limitations under the License.
 ##
 
+
 conda activate hannah
 poetry shell
 mkdir -p jobs
 
 
-UPDATE_ENV_ID = $(sbatch tasks/update_env.sh)
+UPDATE_ENV_ID=$(sbatch --parsable tasks/update_env.sh)
 
-echo "Started update env with id: ${}"
+echo "Started update env with id: ${UPDATE_ENV_ID}"
+
+pushd ../../experiments/kws
+KWS_ID=$(sbatch  --parsable --dependency=afterok:${UPDATE_ENV_ID} ./scripts/train_baselines_slurm.sh)
+popd
