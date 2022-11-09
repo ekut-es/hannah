@@ -184,9 +184,12 @@ Neural network to train: choices are gds (Old sinc1 with sinc convolutions remov
 
 ### module
 
-Currently only `stream_classifier` is available.
-
 The toplevel module implementing the training and eval loops.
+
+We curently support the following Tasks:
+
+`stream_classifier`: Classification on multichannel 1D data streams
+`image_classifier`: Classification on Image Data
 
 ### optimizer
 
