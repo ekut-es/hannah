@@ -132,7 +132,7 @@ run_ml_cloud:
   script:
     - conda activate hannah
     - pushd scripts/ci
-    - bash flow.sh
+    - ./flow.sh
     - popd
     - echo "Test comment" > report.md
     - cml send-comment report.md

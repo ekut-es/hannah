@@ -24,3 +24,6 @@ defaults:
 
 module:
   num_workers: 8
+
+trainer:
+  max_epochs: 30
