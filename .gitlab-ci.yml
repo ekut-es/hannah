@@ -76,9 +76,9 @@ test_tvm:
     - main
     - /.*tvm.*/
 
-test_python_39:
+test_python_310:
   stage: test
-  image: python:3.9
+  image: python:3.10
   script:
     - set -e
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
