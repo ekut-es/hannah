@@ -79,7 +79,7 @@ mkdocs-literate-nav = "^0.4.1"
 [tool.poetry.extras]
 tf-backend = ["onnx-tf"]
 onnxrt-backend = ["onnxruntime"]
-tvm = ["hannah-tvm", "dgl-cu113"]
+tvm = ["hannah-tvm"]
 vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown"]
 
 [tool.poetry.scripts]
