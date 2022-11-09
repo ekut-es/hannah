@@ -18,7 +18,6 @@
 ## limitations under the License.
 ##
 
-poetry shell
 mkdir -p jobs
 
 

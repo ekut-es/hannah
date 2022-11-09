@@ -74,4 +74,4 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-hannah-train experiment_id=${EXPERIMENT} model=${MODEL}
+poetry run hannah-train experiment_id=${EXPERIMENT} model=${MODEL}
