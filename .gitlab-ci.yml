@@ -130,17 +130,16 @@ run_ml_cloud:
   tags:
     - ml-cloud
   script:
-    - conda active hannah
-    - poetry install
-    - poetry shell
-    - cml ci
+    - conda activate hannah
+    - pushd scripts/ci
+    - bash flow.sh
+    - popd
     - echo "Test comment" > report.md
     - cml send-comment report.md
   only:
     - main
   dependencies: []
-  resource_groups:
-    - cluster
+  resource_group: cluster
 
 run_ml_cloud_progressive_shrinking:
   stage: run
