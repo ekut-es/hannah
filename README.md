@@ -220,5 +220,7 @@ The easiest way to resolve them is:
 
 ```
 git checkout --theirs poetry.lock
-poetry update
+poetry lock --no-update
 ```
+
+Try to avoid running `poetry update` on feature branches.
