@@ -27,5 +27,6 @@ echo "Started update env with id: ${UPDATE_ENV_ID}"
 
 
 pushd ../../experiments/kws
+mkdir -p jobs
 KWS_ID=$(sbatch  --parsable --dependency=afterok:${UPDATE_ENV_ID} ./scripts/train_baselines_slurm.sh)
 popd
