@@ -20,5 +20,9 @@
 
 conda activate hannah
 poetry shell
+mkdir -p jobs
+
 
 UPDATE_ENV_ID = $(sbatch tasks/update_env.sh)
+
+echo "Started update env with id: ${}"
