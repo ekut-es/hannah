@@ -16,10 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import os
 import pathlib
+import sys
 
 import hydra
+import pytest
 from omegaconf import OmegaConf
 
 import hannah.conf
@@ -30,6 +33,9 @@ config_dir = topdir / "hannah" / "conf"
 project_config_dir = topdir / "configs"
 
 
+@pytest.mark.skipif(
+    sys.version_info >= (3, 10), reason="currently does not run on python 3.10 or later"
+)
 def test_parse_configs():
     """This simply tests that all configs are parsable by hydra"""
     for config in config_dir.glob("*.yaml"):

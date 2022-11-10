@@ -16,6 +16,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
+
 # Configuration
 
 Configurations are managed by [hydra](http://hydra.cc). And follow a structured configuration.
@@ -184,9 +185,12 @@ Neural network to train: choices are gds (Old sinc1 with sinc convolutions remov
 
 ### module
 
-Currently only `stream_classifier` is available.
-
 The toplevel module implementing the training and eval loops.
+
+We curently support the following Tasks:
+
+`stream_classifier`: Classification on multichannel 1D data streams
+`image_classifier`: Classification on Image Data
 
 ### optimizer
 

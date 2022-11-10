@@ -60,7 +60,7 @@ test_python_38:
 
 test_tvm:
   stage: test
-  image: python:3.9
+  image: python:3.10
   script:
     - set -e
     - apt-get install -y llvm-dev libclang-dev
@@ -76,9 +76,9 @@ test_tvm:
     - main
     - /.*tvm.*/
 
-test_python_39:
+test_python_310:
   stage: test
-  image: python:3.9
+  image: python:3.10
   script:
     - set -e
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
@@ -130,12 +130,16 @@ run_ml_cloud:
   tags:
     - ml-cloud
   script:
-    - cml ci
+    - conda activate hannah
+    - pushd scripts/ci
+    - ./flow.sh
+    - popd
     - echo "Test comment" > report.md
     - cml send-comment report.md
   only:
     - main
   dependencies: []
+  resource_group: cluster
 
 run_ml_cloud_progressive_shrinking:
   stage: run
