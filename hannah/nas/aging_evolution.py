@@ -45,7 +45,7 @@ class EvolutionResult:
 class FitnessFunction:
     def __init__(self, bounds, random_state):
         self.bounds = bounds
-        self.lambdas = random_state.uniform(low=0.0, high=1.0, size=len(self.bounds))
+        self.lambdas =  random_state.uniform(low=0.0, high=1.0, size=len(self.bounds))
 
     def __call__(self, values):
 
