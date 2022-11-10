@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 """Implementations of torch.nn.intrinsics qat with an optional
    quantize bias parameter.
 
@@ -31,6 +49,7 @@ class _ConvForwardMixin:
         input: Tensor,
         weight: Union[Tensor, Parameter],
         bias: Union[Tensor, Parameter],
+        groups: int = 1,
     ) -> Tensor:
         if self.dim == 1:
             return F.conv1d(
@@ -40,7 +59,7 @@ class _ConvForwardMixin:
                 self.stride,
                 self.padding,
                 self.dilation,
-                self.groups,
+                groups,
             )
         elif self.dim == 2:
             return F.conv2d(
@@ -197,7 +216,7 @@ class _ConvBnNd(
             zero_bias = torch.zeros_like(self.bias)
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
-        conv = self._real_conv_forward(input, scaled_weight, zero_bias)
+        conv = self._real_conv_forward(input, scaled_weight, zero_bias, self.groups)
         if self.training:
             conv_orig = conv / scale_factor.reshape(bias_shape)
             if self.bias is not None:
@@ -685,6 +704,7 @@ class ConvReLU2d(nn.Conv2d, _ConvForwardMixin):
                     input,
                     self.weight_fake_quant(self.weight),
                     self.bias_fake_quant(self.bias),
+                    self.groups,
                 )
             )
         )
@@ -742,6 +762,7 @@ class ConvReLU1d(nn.Conv1d, _ConvForwardMixin):
             input,
             self.weight_fake_quant(self.weight),
             self.bias_fake_quant(self.bias) if self.bias is not None else None,
+            self.groups,
         )
         output = F.relu(output)
         return self.activation_post_process(output)
@@ -803,6 +824,7 @@ class Conv1d(nn.Conv1d, _ConvForwardMixin):
                 input,
                 self.weight_fake_quant(self.weight),
                 self.bias_fake_quant(self.bias) if self.bias is not None else None,
+                self.groups,
             )
         )
         return y
@@ -867,6 +889,7 @@ class Conv2d(nn.Conv2d, _ConvForwardMixin):
                 input,
                 self.weight_fake_quant(self.weight),
                 self.bias_fake_quant(self.bias) if self.bias is not None else None,
+                self.groups,
             )
         )
 

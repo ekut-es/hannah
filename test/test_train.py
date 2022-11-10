@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import os
 import platform
@@ -87,7 +105,7 @@ def test_datasets(model, dataset, split):
     "model", ["conv-net-2d", "timm_resnet50", "timm_efficientnet_lite1"]
 )
 def test_2d(model):
-    command_line = f"hannah-train module=image_classifier dataset=cifar10 features=identity trainer.gpus=[1] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5"
+    command_line = f"hannah-train module=image_classifier dataset=fake2d features=identity trainer.gpus=[1] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 

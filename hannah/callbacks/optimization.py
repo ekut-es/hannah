@@ -1,8 +1,25 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 from collections import defaultdict
 from typing import Any, Iterable, List, Mapping, Union
 
-import pandas as pd
 from pytorch_lightning.callbacks import Callback
 from torch import Tensor
 
@@ -18,8 +35,6 @@ class HydraOptCallback(Callback):
         self.test_values = {}
         self.monitor: List[str] = []
         self.directions: List[int] = []
-
-        self._curves = defaultdict(list)
 
         self._extract_monitor(monitor)
 
@@ -74,9 +89,6 @@ class HydraOptCallback(Callback):
                 self.values[monitor] = callback_metrics[monitor] * direction
 
     def on_validation_end(self, trainer, pl_module):
-        if trainer and trainer.sanity_checking:
-            return
-
         callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
@@ -104,6 +116,7 @@ class HydraOptCallback(Callback):
         return self.val_values
 
     def result(self, dict=False):
+
         return_values = {}
         for key, value in self.values.items():
             if isinstance(value, Tensor):
@@ -117,6 +130,3 @@ class HydraOptCallback(Callback):
             return list(return_values.values())[0]
 
         return return_values
-
-    def result_curve(self) -> pd.DataFrame:
-        return pd.DataFrame.from_dict(self._curves)

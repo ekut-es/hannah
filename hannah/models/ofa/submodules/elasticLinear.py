@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import copy
 import logging
 
@@ -12,7 +30,6 @@ from ..utilities import (
     make_parameter,
 )
 from .elasticBase import _Elastic
-from .elasticchannelhelper import SequenceDiscovery
 
 
 class ElasticWidthLinear(nn.Linear, _Elastic):
@@ -21,9 +38,6 @@ class ElasticWidthLinear(nn.Linear, _Elastic):
         _Elastic.__init__(self, [True] * in_features, [True] * out_features)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         if all(self.in_channel_filter) and all(self.out_channel_filter):
             # if no channel filtering is required, simply use the full linear
             return nnf.linear(input, self.weight, self.bias)
@@ -103,10 +117,7 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
 
     @property
     def filtered_bias(self):
-        if all(self.in_channel_filter) and all(self.out_channel_filter):
-            return self.bias
-        else:
-            return filter_single_dimensional_weights(self.bias, self.out_channel_filter)
+        return filter_single_dimensional_weights(self.bias, self.out_channel_filter)
 
     @property
     def scaled_weight(self):
@@ -121,9 +132,6 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
         )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if isinstance(input, SequenceDiscovery):
-            return input.discover(self)
-
         return self.activation_post_process(
             nnf.linear(input, self.scaled_weight, self.scaled_bias)
         )
@@ -193,10 +201,7 @@ class ElasticPermissiveReLU(nn.ReLU):
         super().__init__()
 
     def forward(self, x):
-        if isinstance(x, SequenceDiscovery):
-            return x
-        else:
-            return super().forward(x)
+        return super().forward(x)
 
     def assemble_basic_module(self):
         return nn.ReLU()

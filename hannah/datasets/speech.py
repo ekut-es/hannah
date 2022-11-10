@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import csv
 import hashlib
 import json
@@ -37,7 +55,9 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
         torchaudio.set_audio_backend("sox_io")
         try:
             data, samplingrate = torchaudio.load(file_name)
-        except RuntimeError:
+        except Exception as e:
+            if isinstance(e, KeyboardInterrupt):
+                raise e
             msglogger.warning(
                 "Could not load %s with default backend trying sndfile", str(file_name)
             )
@@ -656,8 +676,10 @@ class VadDataset(SpeechDataset):
 
     @classmethod
     def splits(cls, config):
-        """Splits the dataset in training, development and test set and returns
+        """Splits the dataset in training, devlopment and test set and returns
         the three sets as List"""
+
+        msglogger = logging.getLogger()
 
         # open the saved dataset
         sdataset, _ = VadDataset.read_config(config)
@@ -725,7 +747,7 @@ class VadDataset(SpeechDataset):
         downloadfolder_tmp = config["download_folder"]
 
         if len(downloadfolder_tmp) == 0:
-            download_folder_tmp = os.path.join(data_folder, "downloads")
+            download_folder = os.path.join(data_folder, "downloads")
 
         if not os.path.isdir(downloadfolder_tmp):
             os.makedirs(downloadfolder_tmp)

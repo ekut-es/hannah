@@ -1,4 +1,23 @@
 #!/bin/bash
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+
 
 ####
 #a) Define slurm job parameters
@@ -16,6 +35,8 @@
 
 #SBATCH --gres=gpu:rtx2080ti:1
 #the job can use and see 5 GPUs (8 GPUs are available in total on one node)
+
+#SBATCH --gres-flags=enforce-binding
 
 #SBATCH --time=300
 # the maximum time the scripts needs to run (300 minutes = 5 hours)

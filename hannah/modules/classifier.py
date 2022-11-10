@@ -1,5 +1,24 @@
-import math
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import logging
+import math
 import platform
 from abc import abstractmethod
 from typing import Dict, Optional, Union
@@ -32,7 +51,6 @@ from hannah.datasets.base import ctc_collate_fn
 from ..datasets import SpeechDataset
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import set_deterministic
-from .augmentation import MixupAudio
 from .base import ClassifierModule
 from .config_utils import get_loss_function, get_model
 from .metrics import Error
@@ -52,7 +70,7 @@ class BaseStreamClassifierModule(ClassifierModule):
     def setup(self, stage):
         # TODO stage variable is not used!
         msglogger.info("Setting up model")
-        if self.trainer:
+        if self._trainer:
             for logger in self.trainer.loggers:
                 logger.log_hyperparams(self.hparams)
 
@@ -137,20 +155,16 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
         self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
 
-        # Setup augmentations
         augmentation_passes = []
         if self.hparams.time_masking > 0:
             augmentation_passes.append(TimeMasking(self.hparams.time_masking))
         if self.hparams.frequency_masking > 0:
             augmentation_passes.append(TimeMasking(self.hparams.frequency_masking))
 
-        self.augmentation = None
         if augmentation_passes:
             self.augmentation = torch.nn.Sequential(*augmentation_passes)
-
-        self.mixup = None
-        if "mixup" in self.hparams and self.hparams.mixup:
-            self.mixup = MixupAudio(self.num_classes, **self.hparams.mixup)
+        else:
+            self.augmentation = torch.nn.Identity()
 
     @abstractmethod
     def get_example_input_array(self):
@@ -184,29 +198,14 @@ class BaseStreamClassifierModule(ClassifierModule):
     def training_step(self, batch, batch_idx):
         x, x_len, y, y_len = batch
 
-        x = self._extract_features(x)
-
-        x, y = self._augment(x, y)
-
-        x = self.normalizer(x)
-
-        output = self.model(x)
-
-        if y.dim() == 2 and y.size(1) == 1:
-            y = y.view(-1)
+        output = self(x)
+        y = y.view(-1)
         loss = self.criterion(output, y)
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
         return loss
-
-    def _augment(self, x, y):
-        if self.augmentation is not None:
-            x = self.augmentation(x)
-        if self.mixup is not None:
-            x, y = self.mixup(x, y)
-        return x, y
 
     @abstractmethod
     def train_dataloader(self):
@@ -215,11 +214,7 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_train_dataloader_by_set(self, train_set):
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
-        sampler_type = dataset_conf.get("sampler", "random")
-        if sampler_type == "weighted":
-            sampler = self.get_balancing_sampler(train_set)
-        else:
-            sampler = data.RandomSampler(train_set)
+        sampler = data.RandomSampler(train_set)
 
         train_loader = data.DataLoader(
             train_set,
