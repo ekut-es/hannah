@@ -1,3 +1,5 @@
+from hannah.nas.search_space.pruner import Pruner
+from hannah.nas.search_space.symbolic_constraint_solver import SymbolicConstrainer
 from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.symbolic_operator import Context, Choice, Variable, infer_in_channel, infer_padding_symbolic
 import hydra
@@ -8,7 +10,7 @@ from hannah.modules.config_utils import get_model
 import torch
 import numpy as np
 from hannah.nas.search_space.torch_converter import TorchConverter
-from hannah.nas.search_space.utils import get_first_cfg
+from hannah.nas.search_space.utils import get_random_cfg
 
 
 class TCResNetSpace(Space):
@@ -65,36 +67,19 @@ def main(config: DictConfig):
     # test_basic_model(config)
 
     space = TCResNetSpace(config, parameterization=True)
-    cfg_dims = space.get_config_dims()
-    # cfg = get_random_cfg(cfg_dims)
-    cfg = get_first_cfg(cfg_dims)
-    # cfg = {k: {k_: 0 if k_ == 'stride' else v_ for k_, v_ in v.items()} for k, v in cfg.items()}
-    ctx = Context(cfg)
     x = torch.ones([1, 40, 101])
+
+    pruner = Pruner(space)
+    channel_constrainer = SymbolicConstrainer(space)
+    cfg_dims = space.get_config_dims()
+    cfg = get_random_cfg(cfg_dims)
+    cfg = channel_constrainer.constrain_output_channels(cfg)
+    cfg = pruner.find_next_valid_config(x, cfg, exclude_keys=['out_channels', 'kernel_size', 'dilation'])
+    ctx = Context(cfg)
     instance, out = space.infer_parameters(x, ctx, verbose=True)
+
     print(instance)
     print(out.shape)
-
-    # keys = list(flatten_config(cfg).keys())
-    # df = pd.DataFrame(columns=keys + ['valid'])
-
-    # for i in range(500000):
-    #     if i % 1000 == 0:
-    #         print('{}|{}'.format(i, 500000))
-    #     cfg = get_random_cfg(cfg_dims)
-    #     flat_data = flatten_config(cfg)
-    #     try:
-    #         ctx = Context(cfg)
-    #         x = torch.ones([1, 40, 101])
-    #         instance, out = space.infer_parameters(x, ctx, verbose=False)
-    #         valid = 1
-    #     except Exception as e:
-    #         valid = 0
-    #     flat_data['valid'] = valid
-    #     df = df.append(flat_data, ignore_index=True)
-    # if i % 10000 == 0:
-    #     df.to_csv('/home/moritz/projects/hannah/hannah/nas/search_space/tcresnet/data.csv')
-    # df.to_csv('/home/moritz/projects/hannah/hannah/nas/search_space/tcresnet/data.csv')
 
 
 if __name__ == '__main__':
