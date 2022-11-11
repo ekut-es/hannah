@@ -20,7 +20,7 @@ import numpy as np
 
 from hannah.nas.search_space.symbolic_space import Space
 from hannah.nas.search_space.connectivity_constrainer import DARTSCell
-from hannah.nas.search_space.modules import Add, Concat
+from hannah.nas.search_space.modules.modules import Add, Concat
 # from hannah.nas.search_space.utils import generate_cfg_file
 from hannah.nas.search_space.darts.darts_modules import (
     MixedOpWS,
