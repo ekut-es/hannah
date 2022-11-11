@@ -1,4 +1,3 @@
-from torch import conv3d
 from hannah.nas.core.expression import Expression
 from hannah.nas.dataflow.axis_type import AxisType
 from hannah.nas.dataflow.op_type import OpType
@@ -21,6 +20,7 @@ class Conv2d:
     dilation: Expression = DefaultInt(1)
     stride : Expression = DefaultInt(1)
     padding: Expression = IntScalarParameter(0, 10)
+    groups: Expression = DefaultInt(1)
 
 
 @add_shape_func("Conv2d")
