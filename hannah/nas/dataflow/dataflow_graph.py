@@ -63,27 +63,25 @@ class DataFlowGraph(TensorExpression):
                 node which uses the operand
             """
             if operand in node.operands:
-                last_output = find_first_op_in_dfg(operand)  # operand.output if hasattr(operand, 'output') else operand
+                last_output = find_first_op_in_dfg(operand)
                 if node in last_output.users:
                     last_output.users.remove(node)
-
-                self.enter.append(node)
-            elif isinstance(node, DataFlowGraph):
-                _rewire_to_placeholder(operand, node.output)
-            elif isinstance(node, OpType):
-                for o in node.operands:
-                    _rewire_to_placeholder(operand, o)
-
+                if node not in self.enter:
+                    self.enter.append(node)
+            elif set(self.operands).isdisjoint(node.operands):
+                for n in node.next_backwards():
+                    _rewire_to_placeholder(operand, n)
         for operand in self.operands:
             _rewire_to_placeholder(operand, self.output)
-
             # remove users if it is enclosed in 'self'
             for user in operand.users:
                 if hasattr(self, 'enter') and user in self.enter:
                     operand.users.remove(user)
-            operand.users.append(self)
+            if self not in operand.users:
+                operand.users.append(self)
 
         self.output.users.append(self)
+
 
     def set_scope(self, current_scope, counters, visited):
         current_scope = update_scope(self, current_scope)
@@ -251,13 +249,17 @@ def unflatten(graph):
     pass
 
 
-def delete_users(graph):
+def delete_users(graph, user_to_delete=None):
     queue = [graph]
     visited = [graph]
 
     while queue:
         current = queue.pop(-1)
-        current.users = []
+        if user_to_delete:
+            if user_to_delete in current.users:
+                current.users.remove(user_to_delete)
+        else:
+            current.users = []
 
         for next_node in current.next_backwards():
             if next_node not in visited:
