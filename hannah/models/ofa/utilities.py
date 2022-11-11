@@ -1,5 +1,25 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 # import logging
 import logging
+
 import torch
 import torch.nn as nn
 
@@ -11,6 +31,14 @@ def conv1d_auto_padding(conv1d: nn.Conv1d):
 
 
 def conv1d_get_padding(kernel_size, dilation=1):
+    # check type of kernel_size
+    if isinstance(kernel_size, tuple):
+        kernel_size = kernel_size[0]
+
+    # check type of dilation
+    if isinstance(dilation, tuple):
+        dilation = dilation[0]
+
     dil = (kernel_size - 1) * (dilation - 1)
     new_kernel_size = kernel_size + dil
     padding = new_kernel_size // 2
@@ -159,6 +187,8 @@ def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter
 def filter_single_dimensional_weights(weights, channel_filter):
     if weights is None:
         return None
+    if all(channel_filter):
+        return weights
     channel_count = len(weights)
     if len(channel_filter) != channel_count:
         logging.error(
@@ -185,3 +215,143 @@ def make_parameter(t: torch.Tensor) -> nn.Parameter:
     else:
         logging.error(f"Could not create parameter from input of type '{type(t)}'.")
         return None
+
+
+# TODO not in usage, can be cleaned after evaluation
+def getGroups(
+    max_group,
+    with_max_group_member: bool = True,
+    addOneForNoGrouping: bool = True,
+    divide_by: int = 2,
+):
+    tmp = [x for x in range(max_group) if x % divide_by == 0 and x != 0]
+    if with_max_group_member:
+        tmp.append(max_group)
+    if addOneForNoGrouping and not (1 in tmp):
+        tmp.append(1)
+        tmp.sort(reverse=False)
+
+    return tmp
+
+
+# MR can be deleted if not needed anymore
+def gather_information(module):
+    """
+    Collects information about the module regarding kernel adjustment with grouping
+    """
+    weight_adjustment_needed = is_weight_adjusting_needed(
+        module.weight, module.in_channels, module.groups
+    )
+    target = get_target_weight(module.weight, module.in_channels, module.groups)
+    if weight_adjustment_needed:
+        if hasattr(module, "id"):
+            logging.debug(f"ID: {module.id}")
+        logging.info(
+            f"WARNING XKA_G ModuleName={module.__class__}  g={module.groups} ic={module.in_channels}, oc={module.out_channels}, last_g={module.last_grouping_param}"
+        )
+        logging.info(
+            f"WARNING XKA_G Weight Change is needed  {list(module.weight.shape)} target:{target}"
+        )
+
+
+def adjust_weight_if_needed(module, kernel=None, groups=None):
+    """
+    Adjust the weight if the adjustment is needded. This means, if the kernel does not have the size of
+    (out_channel, in_channel / group, kernel).
+
+    :param kernel: the kernel that should be checked and adjusted if needed. If None module.weight.data will be used
+    :param grouping: value of the conv, if None module.groups will be used
+    :param module: the conv
+
+    :throws: RuntimeError if there is no last_grouping_param for comporing current group value to past group value
+
+    returns (kernel, is adjusted) (adjusted if needed) otherwise throws a RuntimeError
+    """
+    if kernel is None:
+        kernel = module.weigth.data
+    if groups is None:
+        groups = module.groups
+
+    if not hasattr(module, "last_grouping_param"):
+        raise RuntimeError
+
+    in_channels = kernel.size(1)
+
+    is_adjusted = False
+
+    grouping_changed = groups != module.last_grouping_param
+    logging.debug(
+        f"Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}"
+    )
+    if grouping_changed and groups > 1:
+        weight_adjustment_needed = is_weight_adjusting_needed(
+            kernel, in_channels, groups
+        )
+        if weight_adjustment_needed:
+            is_adjusted = True
+            logging.debug(
+                f"NOW Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}"
+            )
+            kernel = adjust_weights_for_grouping(kernel, groups)
+        else:
+            target = get_target_weight(kernel, in_channels, groups)
+            if hasattr(module, "id"):
+                logging.debug(f"ID: {module.id}")
+            logging.debug(
+                f"XKA ModuleName={module.__class__}  g={groups} ic={module.in_channels}, oc={module.out_channels}"
+            )
+            logging.debug(
+                f"XKA Grouping changed BUT no weight change is needed - hurray! {list(kernel.shape)} target:{target}"
+            )
+
+    return (kernel, is_adjusted)
+
+
+def is_weight_adjusting_needed(weights, input_channels, groups):
+    """
+    Checks if a weight adjustment is needed
+    Requirement: weight.shape[1] must be input_channels/groups
+    true: weight adjustment is needed
+    :param weights: the weights that needs to be checked
+    :param input_channels: Input Channels of the Convolution Module
+    :param groups: Grouping Param of the Convolution Module
+    """
+    current_weight_dimension = weights.shape[1]
+    target_weight_dimension = input_channels // groups
+    return target_weight_dimension != current_weight_dimension
+
+
+def get_target_weight(weights, input_channels, groups):
+    """
+    Gives the targeted weight shape (out_channel, in_channel // groups, kernel)
+    :param weights: the weights that needs to be checked
+    :param input_channels: Input Channels of the Convolution Module
+    :param groups: Grouping Param of the Convolution Module
+    """
+    target_shape = list(weights.shape)
+    target_shape[1] = input_channels // groups
+    return target_shape
+
+
+def adjust_weights_for_grouping(weights, input_divided_by):
+    """
+    Adjusts the Weights for the Forward of the Convulution
+    Shape(outchannels, inchannels / group, kW)
+    weight – filters of shape (out_channels , in_channels / groups , kW)
+    input_divided_by
+    """
+    channels_per_group = weights.shape[1] // input_divided_by
+
+    splitted_weights = torch.tensor_split(weights, input_divided_by)
+    result_weights = []
+
+    # for current_group in range(groups):
+    for current_group, current_weight in enumerate(splitted_weights):
+        input_start = current_group * channels_per_group
+        input_end = input_start + channels_per_group
+        current_result_weight = current_weight[:, input_start:input_end, :]
+        result_weights.append(current_result_weight)
+
+    full_kernel = torch.concat(result_weights)
+
+    return full_kernel

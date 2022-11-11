@@ -1,34 +1,25 @@
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
 defaults:
-    - dataset: kitti
-    - features: raw
-    - model: fasterrcnn_resnet50
-    - scheduler: 1cycle
-    - optimizer: sgd
-    - normalizer: null
-    - module: object_detection
-    - compress: null
-    - trainer: default
-    - checkpoint: detection
-    - backend: null
-    - early_stopping: null
-    - profiler: null
-    - pruning: null
-    - dataset/features: ${defaults.0.dataset}_${defaults.1.features}
-      optional: true
-
-experiment_id: test
-output_dir: trained_models
-auto_lr: false
-seed: 1234
-
-hydra:
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-
-
-
-#TODO:
-dump_test: false
-input_file: ''
+    - config
+    - override dataset: kitti
+    - override features: raw
+    - override model: fasterrcnn_resnet50
+    - override scheduler: 1cycle
+    - _self_

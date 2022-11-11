@@ -1,10 +1,35 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from collections import namedtuple
+from typing import Optional, Union
 
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
-from torch.quantization.fake_quantize import FakeQuantizeBase
-from torch.quantization.observer import ObserverBase
+from torch import Tensor
+from torch.nn.parameter import Parameter
+from torch.quantization.fake_quantize import FakeQuantize, FakeQuantizeBase
+from torch.quantization.observer import (
+    MovingAverageMinMaxObserver,
+    ObserverBase,
+    _with_args,
+)
 
 from .rounding import RoundingMode
 
@@ -14,7 +39,11 @@ QConfig = namedtuple("QConfig", ["activation", "weight", "bias"])
 
 class STE(autograd.Function):
     @staticmethod
-    def forward(ctx, values, quant_function):
+    def forward(
+        ctx,
+        values: Union[Tensor, Parameter],
+        quant_function,
+    ) -> Tensor:
         ctx.save_for_backward(values)
         quantized_values = quant_function(values)
         return quantized_values
@@ -74,7 +103,9 @@ class FixedpointObserver(ObserverBase):
 
 
 class SymmetricQuantization:
-    def __init__(self, bits, scale=None, rounding_mode="EVEN", debug=False):
+    def __init__(
+        self, bits: int, rounding_mode: str = "EVEN", debug: bool = False, scale=None
+    ) -> None:
         self.bits = bits
         self.max = 2.0 ** (bits - 1) - 1
         self.min = -(2.0 ** (bits - 1))
@@ -86,7 +117,7 @@ class SymmetricQuantization:
         self.round = RoundingMode(rounding_mode)
         self.debug = debug
 
-    def quantize(self, x):
+    def quantize(self, x: Union[Tensor, Parameter]) -> Tensor:
 
         if self.debug:
             print("x", x)
@@ -98,7 +129,7 @@ class SymmetricQuantization:
 
         return x
 
-    def __call__(self, x):
+    def __call__(self, x: Union[Tensor, Parameter]) -> Tensor:
         x = self.quantize(x)
         x = x * self.scale
 
@@ -108,8 +139,9 @@ class SymmetricQuantization:
         return x
 
 
-class PowerOf2Quantization:
+class PowerOf2Quantization(torch.nn.Module):
     def __init__(self, bits, debug=False):
+        super().__init__()
         self.bits = bits
         self.debug = debug
 
@@ -129,7 +161,7 @@ class PowerOf2Quantization:
 
         return log_x
 
-    def __call__(self, x):
+    def forward(self, x):
         sign_x = torch.sign(x)
         abs_x = torch.abs(x)
         mask_x = torch.ge(abs_x, 1 / 2 ** ((2**self.bits - 1))).float()
@@ -146,8 +178,8 @@ class PowerOf2Quantization:
         # This is the number of digits after the radix point of WIDE_BW.
         # Currently this is set to 2*(BASE_BW-1) = 14. This can be changed
         # by bw_wide_i in the UltraTrail backend. Therefore the maximum shift is -7.
-        # Which achieves quiet good results for TC-Res8
-        # -7 is equal to use 4 bits for quantization using sign and magnitude representation.
+        # Which achieves quite good results for TC-Res8
+        # -7 is equal to use 4 bits for quantization using sign and magnitude represenation.
         # FIXME: Should only be active when UltraTrail is used with correct WIDE_BW
         # log_x = torch.clamp(log_x, -7.0, -1.0)
 
@@ -159,15 +191,14 @@ class PowerOf2Quantization:
 class STEQuantize(FakeQuantizeBase):
     def __init__(
         self,
-        bits,
-        scale=None,
-        quantization_loss=True,
-        power_of_2=False,
-        noise_prob=1.0,
-        rounding_mode="EVEN",
-        debug=False,
-        dtype="int",
-    ):
+        bits: int,
+        power_of_2: bool = False,
+        noise_prob: float = 1.0,
+        rounding_mode: str = "EVEN",
+        debug: bool = False,
+        dtype: str = "int",
+        scale: Optional[float] = None,
+    ) -> None:
         super().__init__()
 
         self.bits = bits
@@ -188,8 +219,7 @@ class STEQuantize(FakeQuantizeBase):
 
         self.quantization_loss = torch.zeros(1)
 
-    def forward(self, x):
-
+    def forward(self, x: Union[Tensor, Parameter]) -> Tensor:
         quantized_x = STE.apply(x, self.quantization_function)
         if self.noise_prob < 1.0 and self.training:
             mask = torch.bernoulli(
@@ -210,10 +240,10 @@ class STEQuantize(FakeQuantizeBase):
         )
 
     def extra_repr(self):
-        return f"(bits={self.bits} noise_prob={self.noise_prob}, )"
+        return f"(dtype={self.dtype} bits={self.bits} noise_prob={self.noise_prob}, rounding_mode={self.rounding_mode})"
 
 
-def get_trax_qat_qconfig(config):
+def get_trax_qat_qconfig(config) -> QConfig:
     bits_bias = config.bw_b if config.bw_b > 0 else config.bw_f
     bits_activation = config.bw_f
     bits_weight = config.bw_w

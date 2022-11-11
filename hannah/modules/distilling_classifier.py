@@ -1,16 +1,32 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import math
 import random
-
 from copy import deepcopy
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
-import torch.nn as nn
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import grad
-
 from omegaconf import DictConfig
+from torch.autograd import grad
 from torchmetrics import Accuracy
 
 from .classifier import StreamClassifierModule
@@ -309,7 +325,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         :param variance (float): Variance for adding noise
         """
 
-        return x * (1 + (variance ** 0.5) * torch.randn_like(x))
+        return x * (1 + (variance**0.5) * torch.randn_like(x))
 
     """
         Code taken from Paper: "MEAL V2: Boosting Vanilla ResNet-50 to 80%+ Top-1 Accuracy on ImageNet without Tricks"
@@ -345,7 +361,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         y_hat_s = softmax(student_logits_scaled.squeeze(1))
         y_hat_t = logsoftmax(teacher_logits_scaled.squeeze(1))
 
-        kl_div_t_s = (temp ** 2) * kl_div(y_hat_t, y_hat_s)
+        kl_div_t_s = (temp**2) * kl_div(y_hat_t, y_hat_s)
 
         # removing teacher logits
         assi_logits = teacher_logits[1:]
@@ -364,7 +380,7 @@ class SpeechKDClassifierModule(StreamClassifierModule):
         sum_kl_div_assis_s = 0
         for logits in assi_logits:
             y_hat_assi = logsoftmax(logits)
-            sum_kl_div_assis_s += (temp ** 2) * kl_div(y_hat_assi, y_hat_s)
+            sum_kl_div_assis_s += (temp**2) * kl_div(y_hat_assi, y_hat_s)
 
         # balancing cross entropy of student and Kullback-Leibler div
         lam = self.distil_weight
@@ -477,11 +493,11 @@ class SpeechKDClassifierModule(StreamClassifierModule):
 
     def PKT(self, feat_s, feat_t, eps=1e-6):
         # Normalize each vector by its norm
-        feat_s_norm = torch.sqrt(torch.sum(feat_s ** 2, dim=1, keepdim=True))
+        feat_s_norm = torch.sqrt(torch.sum(feat_s**2, dim=1, keepdim=True))
         feat_s = feat_s / (feat_s_norm + eps)
         feat_s[feat_s != feat_s] = 0
 
-        feat_t_norm = torch.sqrt(torch.sum(feat_t ** 2, dim=1, keepdim=True))
+        feat_t_norm = torch.sqrt(torch.sum(feat_t**2, dim=1, keepdim=True))
         feat_t = feat_t / (feat_t_norm + eps)
         feat_t[feat_t != feat_t] = 0
 

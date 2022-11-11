@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 """ A neural network model factory
 
 It allows us to construct quantized and unquantized versions of the same network,
@@ -13,6 +31,8 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 import torch.nn as nn
 from hydra.utils import instantiate
 from omegaconf import MISSING, OmegaConf
+from torch.nn.modules.container import Sequential
+from torch.nn.modules.linear import Identity
 
 from hannah.models.factory import pooling
 
@@ -91,6 +111,7 @@ class MajorBlockConfig:
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
     stride: Optional[int] = None  # Union[None, int, Tuple[int], Tuple[int, int]]
+    last: bool = False  # Indicates wether this block is the last reduction block
 
 
 @dataclass
@@ -151,7 +172,6 @@ class NetworkFactory:
         act: Union[ActConfig, bool] = False,
         bias: bool = False,
     ) -> None:
-
         in_channels = input_shape[1]
 
         if isinstance(kernel_size, int):
@@ -173,7 +193,6 @@ class NetworkFactory:
         if isinstance(padding, int):
             padding = (padding, padding)
 
-        print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
             input_shape[0],
             out_channels,
@@ -364,7 +383,6 @@ class NetworkFactory:
 
         qconfig = self.default_qconfig
 
-        # print(input_shape, kernel_size, stride, padding, dilation)
         output_shape = (
             input_shape[0],
             out_channels,
@@ -535,8 +553,7 @@ class NetworkFactory:
             )
         else:
             raise Exception(f"Unknown minor block config {config}")
-        """ Depthwise separable convolution can be splitted into depthwise convolution first
-        followed by pointwise convolution.
+        """ Depthwise separable convolution can be splitted into dephtwise convolution first followed by pointwise convolution.
         if config.target == "conv1d":
             #breakpoint()
             depthwise_conv = self.conv1d(
@@ -568,7 +585,12 @@ class NetworkFactory:
             )
             return nn.Sequential(depthwise_conv, pointwise_conv) """
 
-    def _build_chain(self, input_shape, block_configs, major_stride):
+    def _build_chain(
+        self,
+        input_shape: Tuple[int, int, int],
+        block_configs: List[MinorBlockConfig],
+        major_stride: Optional[Any],
+    ) -> List[Tuple[Tuple[int, int, int], Sequential]]:
         block_input_shape = input_shape
         result_chain = []
         for block_config in block_configs:
@@ -581,18 +603,20 @@ class NetworkFactory:
 
         return result_chain
 
-    def _build_reduction(self, reduction, input_shape, *input_chains):
+    def _build_reduction(
+        self,
+        reduction: str,
+        input_shape: Tuple[int, int, int],
+        *input_chains: List[Tuple[Tuple[int, int, int], Sequential]],
+        reduction_quant: bool = False,
+    ) -> Tuple[Tuple[int, int, int], Union[ReductionBlockConcat, Sequential]]:
         output_shapes = []
         for chain in input_chains:
             output_shapes.append(chain[-1][0] if len(chain) > 0 else input_shape)
 
-        print("Shapes", output_shapes)
-
         minimum_output_shape = tuple(map(min, zip(*output_shapes)))
         maximum_output_shape = tuple(map(max, zip(*output_shapes)))
         target_output_shape = maximum_output_shape[:2] + minimum_output_shape[2:]
-
-        print("Target Shape", target_output_shape)
 
         for output_shape, chain in zip(output_shapes, input_chains):
             if output_shape != target_output_shape:
@@ -645,8 +669,11 @@ class NetworkFactory:
         inputs = [nn.Sequential(*[x[1] for x in chain]) for chain in input_chains]
         if reduction == "add":
             reduction = ReductionBlockAdd(*inputs)
-            reduction_quant = self.identity()
-            return target_output_shape, nn.Sequential(reduction, reduction_quant)
+            if reduction_quant:
+                reduction_quant = self.identity()
+                return target_output_shape, nn.Sequential(reduction, reduction_quant)
+            else:
+                return target_output_shape, nn.Sequential(reduction)
         elif reduction == "concat":
             output_channels = sum((x[1] for x in output_shapes))
 
@@ -669,6 +696,8 @@ class NetworkFactory:
 
         for block_config in config.blocks:
             main_configs.append(block_config)
+
+        main_configs[-1].out_quant = True
 
         main_chain = self._build_chain(input_shape, main_configs, config.stride)
         output_shape = main_chain[-1][0]
@@ -727,7 +756,11 @@ class NetworkFactory:
         residual_chain = self._build_chain(input_shape, residual_configs, config.stride)
 
         output_shape, major_block = self._build_reduction(
-            config.reduction, input_shape, main_chain, residual_chain
+            config.reduction,
+            input_shape,
+            main_chain,
+            residual_chain,
+            reduction_quant=True,
         )
 
         return output_shape, major_block
@@ -815,7 +848,7 @@ class NetworkFactory:
 
         return out_shape, layers
 
-    def identity(self):
+    def identity(self) -> Identity:
         qconfig = self.default_qconfig
 
         if not qconfig:
@@ -833,6 +866,7 @@ class NetworkFactory:
         )
 
         conv_layers = []
+        network_config.conv[-1].last = True
         for block in network_config.conv:
             input_shape, block_model = self.major(input_shape, block)
             conv_layers.append(block_model)
@@ -878,7 +912,9 @@ class NetworkFactory:
 
         return output_shape, model
 
-    def _calc_spatial_dim(self, in_dim, kernel_size, stride, padding, dilation):
+    def _calc_spatial_dim(
+        self, in_dim: int, kernel_size: int, stride: int, padding: int, dilation: int
+    ) -> int:
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:

@@ -1,34 +1,48 @@
-import os
-import sys
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import csv
 import logging
-import numpy as np
-from torch.functional import Tensor
-
-import torch
-
 import math
-
+import os
 import shutil
+import sys
 
-import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from torch.functional import Tensor
 
 try:
     from pycocotools.coco import COCO
 except ModuleNotFoundError:
-    COCO = None
-
-from torchvision import transforms
-
-from .base import DatasetType, AbstractDataset
+    COCO = object
 
 from PIL import Image
+from torchvision import transforms
+
+from .base import AbstractDataset, DatasetType
 
 
 class Kitti(AbstractDataset):
-    ""
+    """"""
 
     IMAGE_PATH = os.path.join("training/image_2/")
 

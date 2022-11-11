@@ -1,16 +1,32 @@
-import logging
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import copy
-
+import logging
+import math
 from dataclasses import dataclass
-from typing import Dict, Tuple, Any
+from typing import Any, Dict, Tuple
 
 import networkx as nx
 import numpy as np
-
-import math
-
 import torch.fx
-from hannah.models.factory import qat, qconfig, pooling
+
+from hannah.models.factory import pooling, qat, qconfig
 
 
 class GraphConversionTracer(torch.fx.Tracer):
@@ -179,7 +195,9 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         input_attrs = self.extract_input_attrs(args)
         output_quant = {"dtype": "float", "bits": 32, "method": "none"}
         if (
-            input_attrs[0]["quant"]["dtype"] != "float"
+            None
+            and input_attrs
+            and input_attrs[0]["quant"]["dtype"] != "float"
             and weight_attrs["quant"]["dtype"] != "float"
         ):
             output_bits = (
@@ -261,7 +279,10 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         input_attrs = self.extract_input_attrs(args)
         output_quant = {"dtype": "float", "bits": 32, "method": "none"}
         if (
-            input_attrs[0]["quant"]["dtype"] != "float"
+            None
+            and input_attrs
+            and "quant" in input_attrs[0]
+            and input_attrs[0]["quant"]["dtype"] != "float"
             and weight_attrs["quant"]["dtype"] != "float"
         ):
             output_bits = (

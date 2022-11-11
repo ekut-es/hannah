@@ -1,21 +1,41 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from typing import Any
+
 import pytest
-from torch.quantization.qconfig import get_default_qconfig
-from hannah.models.factory.qat import (
-    ConvBnReLU1d,
-    ConvBnReLU2d,
-    ConvBn1d,
-    ConvBn2d,
-    ConvReLU1d,
-    ConvReLU2d,
-    Conv1d,
-    Conv2d,
-    QAT_MODULE_MAPPINGS,
-)
-from hannah.models.factory.qconfig import PowerOf2Quantization, get_trax_qat_qconfig
-from torch.quantization import default_qconfig, convert
 import torch
 import torch.nn as nn
+from torch.quantization import convert, default_qconfig
+from torch.quantization.qconfig import get_default_qconfig
+
+from hannah.models.factory.qat import (
+    QAT_MODULE_MAPPINGS,
+    Conv1d,
+    Conv2d,
+    ConvBn1d,
+    ConvBn2d,
+    ConvBnReLU1d,
+    ConvBnReLU2d,
+    ConvReLU1d,
+    ConvReLU2d,
+)
+from hannah.models.factory.qconfig import PowerOf2Quantization, get_trax_qat_qconfig
 
 
 @pytest.mark.parametrize(
@@ -197,7 +217,7 @@ def test_fused_relu_2d():
 
 
 if __name__ == "__main__":
-    test_fused_conv1d()
+    test_fused_relu_1d()
 
     # test_fused_bn_relu_1d()
     # test_fused_bn_relu_2d()

@@ -1,35 +1,33 @@
-from gcn.predictor import GCNPredictor, prepare_dataloader, get_input_feature_size
-from search_space.space import NetworkSpace
-from features.dataset import NASGraphDataset
-
-import pandas as pd
-import numpy as np
-
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from hannah.nas.performance_prediction.features.dataset import NASGraphDataset
+from hannah.nas.performance_prediction.gcn.predictor import GCNPredictor, get_input_feature_size, prepare_dataloader
 
 plt.style.use("seaborn")
 
 
-wd = "/home/moritz/Dokumente/Hiwi/code/nas/subgraph_generator"
-
-# name of the configuration space
-net = "test_net"
-
-# where to find the data
-data_name = "/data/test_net_tuned_jetsontx2"
-
-cfg_space = NetworkSpace()
-cfg_space.from_yaml(wd + "/configs/" + net + ".yaml")
-
-# Used to construct the graph structure ( unnecessary because graph also constructed
-# during graph_conversion)
-# edge_file = wd + data_name + '/graph_defs/graph_edges.csv'
-
-# properties, i.e. cost/latency
-prop_file = wd + data_name + "/graph_defs/graph_properties.csv"
 
 # dataset = NASGraphDataset(cfg_space, edge_file, prop_file)
-dataset = NASGraphDataset(cfg_space, prop_file)
+dataset = NASGraphDataset("/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data")
 
 train_dataloader, test_dataloader = prepare_dataloader(
     dataset, batch_size=250, train_test_split=0.7

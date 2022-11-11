@@ -1,3 +1,22 @@
+<!--
+Copyright (c) 2022 University of Tübingen.
+
+This file is part of hannah.
+See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 # Configuration
 
 Configurations are managed by [hydra](http://hydra.cc). And follow a structured configuration.
@@ -6,37 +25,40 @@ The currently used configuration can be shown with:
 
     hannah-train  -c job
 
-The default configurations are located under `speech_recognition/conf/config.yaml`.
+The default configuration is located under `speech_recognition/conf/`.
+
+## Configuration Structure
+
+There are two main locations for configuration:
+
+- Framework configuration files are located under `hannah/conf` configuration files located in this directory should be useful for more than one project.
+- Project specific configuration files are located in `configs/<project_name>` these usually contain a project specific configuration file and one or more configured experiments in the subfolder `experiment`
+- make use of composition using defaults lists as much as possible
+
+# Guideline for writing configuration files
+
+- Consider avoiding project specific main configuration files, and try to configure your project using experiments only.
+- Use composition defaults list composition as much as possible.
+
+## Configuration Groups
 
 We currently have the following configuration groups:
 
-## backend
+### backend
 
 Configures the app to run a subset of validation and test on configured backend
 
 Choices are: `null` (no backend, default),  `torchmobile` (translates model to backend)
 
-## checkpoint
+### checkpoint
 
-Choices are: `null` (no checkpoint), `all` (default, creates checkpoints for all training epoch) `best` (checkpoint, best 5 values , default)
+Choices are: `null` (no checkpoint), `all` (default, creates checkpoints for all training epoch) `best` (checkpoint, best 5 values, default)
 
-## compress
+### compression
 
-Compression configs for distiller with activated batch norm folding:
+Configuration for model compression.
 
-Choices are: fp_16_16_16, fp_4_4_4, ... linear_16_16_16, linear_1_1_1, ..
-
-Configurations have the following naming scheme: `<compression>_<bits_act>_<bits_weight>_<bits_bias>`.
-All activations currently have batch norm folding activated by default. To deactivate batch norm folding, either provide a new
-config file, or use `compress.bn_fold=null`.
-
-Options:
-
-`fold_bn` (float): use batch norm folding and freeze batch norms n % of total training
-
-The other configuration options follow the distiller configuration format with options for quantization see: https://intellabs.github.io/distiller/schedule.html#quantization-aware-training for quantization aware training options.
-
-## dataset
+### dataset
 
 Choices are: `kws` (For Google Keyword Spotting), `snips` (For hey snips dataset), `vad` (For Voice Activity Detection)
 
@@ -103,7 +125,7 @@ train_snr_low
 : maximal SNR for test data
 
 noise_dataset
-: ["TUT", "FSDKaggle", "FSDnoisy"] Downlaods all the specified datasets. Use TUT + one other
+: ["TUT", "FSDKaggle", "FSDnoisy"] Downloads all the specified datasets. Use TUT + one other
 
 data_split
 : initial split after downloading the datasets(Possibilities: "vad", "vad_speech", "vad_balanced", "getrennt")
@@ -111,7 +133,7 @@ data_split
 downsample
 : samplerate DESTRUCTIVE! change the samplerate of the real files to the target samplerate.  Use better parameter samplingrate
 
-### variants
+#### variants
 variants for `kws`
 - v1, v2
 
@@ -141,7 +163,7 @@ variants for `vad`
 
 
 
-## features
+### features
 
 Feature extractor to use, choices are: melspec, mfcc, raw, sinc, spectrogram .
 
@@ -150,44 +172,47 @@ torchaudio feature extractors and use the same input parameters.
 
 Sinc Convolutions have the following parameters:
 
-## normalizer:
+### normalizer
 
 Choices: `null` (default), fixedpoint (normalize feature values to [-1.0, 1.0])
 
 Feature Normalizer run between feature extraction and the neural network model.
 
 
-## model
+### model
 
 Neural network to train: choices are gds (Old sinc1 with sinc convolutions removed), lstm, tc-res8, branchy-tc-res8
 
-## module
-
-Currently only `stream_classifier` is available.
+### module
 
 The toplevel module implementing the training and eval loops.
 
-## optimizer
+We curently support the following Tasks:
+
+`stream_classifier`: Classification on multichannel 1D data streams
+`image_classifier`: Classification on Image Data
+
+### optimizer
 
 Choices are: adadelta, adam, adamax, adamw, asgd, lbfgs, rmsprop, rprop, sgd, sparse_adam
 
 Directly instantiate the corresponding pytorch classes and take the same options.
 
-## profiler
+### profiler
 
 Choices are: `null`, advanced, simple
 
 Run profiling for different phases.
 
-## scheduler
+### scheduler
 
 Choices are: `null`, 1cycle, cosine, cosine_warm, cyclic, exponential, multistep, plateau, step
 
 Learning rate scheduler to use for scheduling, default is null.
 
-## trainer
+### trainer
 
-Choices: default
+Choices: default, dds
 
 Capsules the options to the lightning trainer. Currently it sets the following defaults:
 
@@ -233,6 +258,10 @@ The default configurations interpolate the following environment variables:
 
 `TEDA_HOME`
 : Location of teda checkout for ultratrail backend
+
+
+`HANNAH_CACHE_DIR`
+: Location of a directory used to cache file loading in some datasets
 
 <!--
 `HANNAH_DATASETS`

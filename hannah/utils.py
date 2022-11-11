@@ -1,23 +1,49 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import importlib
 import logging
 import os
 import pathlib
 import platform
+import random
 import shutil
 import sys
-from contextlib import contextmanager
+import time
+from contextlib import _GeneratorContextManager, contextmanager
+from pathlib import Path
+from typing import Any, Callable, Iterator, List, Type, TypeVar
 
+import hydra
 import numpy as np
 import nvsmi
 import pytorch_lightning
 import torch
+import torch.nn as nn
 from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-from pl_bolts.callbacks import ModuleDataMonitor, PrintTableMetricsCallback
+from pl_bolts.callbacks import ModuleDataMonitor
 from pytorch_lightning.callbacks import (
+    Callback,
     DeviceStatsMonitor,
-    GPUStatsMonitor,
     LearningRateMonitor,
 )
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.distributed import rank_zero_only
 from torchvision.datasets.utils import (
     download_and_extract_archive,
@@ -26,9 +52,9 @@ from torchvision.datasets.utils import (
     list_files,
 )
 
-import hydra
-
 from .callbacks.clustering import kMeans
+from .callbacks.dump_layers import TestDumperCallback
+from .callbacks.optimization import HydraOptCallback
 from .callbacks.pruning import PruningAmountScheduler
 from .callbacks.summaries import MacSummaryCallback
 from .callbacks.svd_compress import SVD
@@ -36,12 +62,17 @@ from .callbacks.svd_compress import SVD
 try:
     import lsb_release  # pytype: disable=import-error
 
-    HAVE_LSB = True
+    HAVE_LSB: bool = True
 except ImportError:
-    HAVE_LSB = False
+    HAVE_LSB: bool = False
+
+msglogger = logging.getLogger(__name__)
 
 
-def log_execution_env_state():
+logger = logging.getLogger(__name__)
+
+
+def log_execution_env_state() -> None:
     """Log information about the execution environment.
     File 'config_path' will be copied to directory 'logdir'. A common use-case
     is passing the path to a (compression) schedule YAML file. Storing a copy
@@ -52,8 +83,6 @@ def log_execution_env_state():
         logdir: log directory
         git_root: the path to the .git root directory
     """
-
-    logger = logging.getLogger()
 
     logger.info("Environment info:")
 
@@ -87,8 +116,9 @@ def log_execution_env_state():
     if HAVE_LSB:
         try:
             logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
-        except:  # noqa
+        except Exception:
             pass
+
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Pytorch Lightning: %s", pytorch_lightning.__version__)
@@ -99,7 +129,9 @@ def log_execution_env_state():
     logger.info("  ")
 
 
-def list_all_files(path, file_suffix, file_prefix=False, remove_file_beginning=""):
+def list_all_files(
+    path, file_suffix, file_prefix=False, remove_file_beginning=""
+) -> Any:
     subfolder = list_dir(path, prefix=True)
     files_in_folder = list_files(path, file_suffix, prefix=file_prefix)
     for subfold in subfolder:
@@ -128,8 +160,8 @@ def extract_from_download_cache(
     target_test_folder="",
     clear_download=False,
     no_exist_check=False,
-):
-    """extracts given file from cache or downloads first from url
+) -> None:
+    """extracts given file from cache or donwloads first from url
 
     Args:
         filename (str): name of the file to download or extract
@@ -146,7 +178,8 @@ def extract_from_download_cache(
     if filename not in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        print("download and extract: " + str(filename))
+        logger.info("download and extract: %s", str(filename))
+
         download_and_extract_archive(
             url,
             target_cache,
@@ -157,7 +190,8 @@ def extract_from_download_cache(
     elif filename in cached_files and (
         not os.path.isdir(target_test_folder) or no_exist_check
     ):
-        print("extract from download_cache: " + str(filename))
+        logger.info("extract from download_cache: %s", str(filename))
+
         extract_archive(
             os.path.join(target_cache, filename),
             target_folder,
@@ -165,7 +199,7 @@ def extract_from_download_cache(
         )
 
 
-def auto_select_gpus(gpus=1):
+def auto_select_gpus(gpus=1) -> List[int]:
     num_gpus = gpus
 
     gpus = list(nvsmi.get_gpus())
@@ -184,27 +218,22 @@ def auto_select_gpus(gpus=1):
     return result
 
 
-def common_callbacks(config: DictConfig):
-    callbacks = []
+def common_callbacks(config: DictConfig) -> list:
+    callbacks: List[Callback] = []
 
     lr_monitor = LearningRateMonitor()
     callbacks.append(lr_monitor)
 
-    if config.get("gpu_stats", None):
-        gpu_stats = GPUStatsMonitor()
-        callbacks.append(gpu_stats)
-
-    if config.get("device_stats", None):
-        device_stats = DeviceStatsMonitor()
-        callbacks.append(device_stats)
+    if config.get("device_stats", None) or config.get("gpu_stats", None):
+        if config.get("gpu_stats", None):
+            msglogger.warning(
+                "config option gpu_stats has been deprecated use device_stats instead"
+            )
+        device_stats = DeviceStatsMonitor(cpu_stats=config.get("device_stats", False))
 
     if config.get("data_monitor", False):
         data_monitor = ModuleDataMonitor(submodules=True)
         callbacks.append(data_monitor)
-
-    if config.get("print_metrics", False):
-        metrics_printer = PrintTableMetricsCallback()
-        callbacks.append(metrics_printer)
 
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
@@ -212,6 +241,9 @@ def common_callbacks(config: DictConfig):
     if config.get("early_stopping", None):
         stop_callback = hydra.utils.instantiate(config.early_stopping)
         callbacks.append(stop_callback)
+
+    if config.get("dump_test", False):
+        callbacks.append(TestDumperCallback())
 
     if config.get("compression", None):
         config_compression = config.get("compression")
@@ -259,7 +291,7 @@ def clear_outputs():
             shutil.rmtree(component)
 
 
-def fullname(o):
+def fullname(o) -> Any:
     klass = o.__class__
     module = klass.__module__
     if module == "builtins":

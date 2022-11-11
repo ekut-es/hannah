@@ -1,11 +1,34 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import copy
+from typing import Any, Tuple
 
 import torch.nn as nn
 import torch.nn.functional as f
+from torch import Tensor
+from torch.nn.parameter import Parameter
 from torch.nn.utils import fuse_conv_bn_weights
 
+from hannah.models.factory.qconfig import STEQuantize
 
-def _quantize(tensor, qconfig):
+
+def _quantize(tensor: Parameter, qconfig: STEQuantize) -> Tensor:
     fake_quantized = qconfig(tensor)
 
     return fake_quantized
@@ -13,7 +36,7 @@ def _quantize(tensor, qconfig):
 
 class QuantizedConvModule(nn.Module):
     @classmethod
-    def from_float(cls, float_module):
+    def from_float(cls, float_module: Any) -> Any:
         assert hasattr(float_module, "weight_fake_quant")
         assert hasattr(float_module, "activation_post_process")
 
@@ -64,15 +87,15 @@ class QuantizedConvModule(nn.Module):
 class Conv1d(QuantizedConvModule):
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        padding_mode="zeros",
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Tuple[int],
+        stride: Tuple[int] = 1,
+        padding: Tuple[int] = 0,
+        dilation: Tuple[int] = 1,
+        groups: int = 1,
+        padding_mode: str = "zeros",
+    ) -> None:
         super().__init__()
 
         self.in_channels = in_channels
@@ -90,7 +113,7 @@ class Conv1d(QuantizedConvModule):
     def _get_name(self):
         return "QuantizedConv1d"
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         output = f.conv1d(
             input,
             self.weight,
@@ -126,7 +149,7 @@ class ConvReLU1d(Conv1d):
     def _get_name(self):
         return "QuantizedConvReLU1d"
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         output = f.conv1d(
             input,
             self.weight,
@@ -147,15 +170,15 @@ class ConvReLU1d(Conv1d):
 class Conv2d(QuantizedConvModule):
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        padding_mode="zeros",
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Tuple[int, int],
+        stride: Tuple[int, int] = 1,
+        padding: Tuple[int, int] = 0,
+        dilation: Tuple[int, int] = 1,
+        groups: int = 1,
+        padding_mode: str = "zeros",
+    ) -> None:
         super().__init__()
 
         self.in_channels = in_channels
@@ -173,7 +196,7 @@ class Conv2d(QuantizedConvModule):
     def _get_name(self):
         return "QuantizedConv1d"
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         output = f.conv2d(
             input,
             self.weight,
@@ -209,7 +232,7 @@ class ConvReLU2d(Conv2d):
     def _get_name(self):
         return "QuantizedConvReLU2d"
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         output = f.conv2d(
             input,
             self.weight,

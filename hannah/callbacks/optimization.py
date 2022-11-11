@@ -1,12 +1,31 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
-from typing import Iterable, Mapping, Union
+from collections import defaultdict
+from typing import Any, Iterable, List, Mapping, Union
 
 from pytorch_lightning.callbacks import Callback
 from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
-monitor_type = Union[Iterable[Mapping[str, any]], Mapping[str, any], Iterable[str], str]
+monitor_type = Union[Iterable[Mapping[str, Any]], Mapping[str, Any], Iterable[str], str]
 
 
 class HydraOptCallback(Callback):
@@ -14,8 +33,8 @@ class HydraOptCallback(Callback):
         self.values = {}
         self.val_values = {}
         self.test_values = {}
-        self.monitor = []
-        self.directions = []
+        self.monitor: List[str] = []
+        self.directions: List[int] = []
 
         self._extract_monitor(monitor)
 
@@ -56,7 +75,14 @@ class HydraOptCallback(Callback):
 
         for k, v in callback_metrics.items():
             if k.startswith("test"):
-                self.test_values[k] = v
+                value = v
+                if isinstance(v, Tensor):
+                    if v.numel() == 1:
+                        value = v.item()
+                    else:
+                        continue
+                value = float(value)
+                self.test_values[k] = value
 
         for monitor, direction in zip(self.monitor, self.directions):
             if monitor in callback_metrics:
@@ -71,7 +97,17 @@ class HydraOptCallback(Callback):
 
         for monitor, direction in zip(self.monitor, self.directions):
             if monitor in callback_metrics:
-                self.values[monitor] = callback_metrics[monitor] * direction
+                try:
+                    monitor_val = float(callback_metrics[monitor])
+                    directed_monitor_val = monitor_val * direction
+                    if (
+                        monitor not in self.values
+                        or directed_monitor_val < self.values[monitor]
+                    ):
+                        self.values[monitor] = directed_monitor_val
+                    self._curves[monitor].append(monitor_val)
+                except Exception:
+                    pass
 
     def test_result(self):
         return self.test_values

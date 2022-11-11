@@ -28,6 +28,7 @@
             "console": "integratedTerminal",
             "justMyCode": false
         },
+
         {
             "name": "standard",
             "type": "python",
@@ -105,7 +106,7 @@
             ]
         },
         {
-            "name": "ofa",
+            "name": "ofa_quant",
             "type": "python",
             "request": "launch",
             "module": "hannah.train",
@@ -115,6 +116,74 @@
                 "trainer.gpus=[0]",
                 "module.num_workers=8",
                 "model=ofa_quant"
+            ]
+        },
+        {
+            "name": "ofa_quant small",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "module.num_workers=8",
+                "model=ofa_group_quant",
+                "nas=ofa_nas_group_test",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa_quant only",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "module.num_workers=8",
+                "model=ofa_group_quant",
+                "nas=ofa_nas_group_test_only",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa_quant (normal) only",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "module.num_workers=8",
+                "model=ofa_quant",
+                "nas=ofa_nas_group_test_only",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa_quant (normal) no grouping",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.gpus=[0]",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "module.num_workers=8",
+                "model=ofa_quant",
+                "nas=ofa_nas_group_no_grouping",
+                "module.num_workers=8"
             ]
         },
         {
@@ -128,7 +197,7 @@
                 "trainer.limit_val_batches=0.1",
                 "trainer.limit_test_batches=0.1",
                 "trainer.max_epochs=3",
-                "+trainer.strategy='ddp_spawn'"
+                "model=tc-res8"
             ]
         },
         {
@@ -144,6 +213,79 @@
                 "model=tc-res4"
             ]
         },
+        {
+            "name": "ofa",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "model=ofa_group_test",
+                "nas=ofa_nas_group_test",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa limited",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "model=ofa_group_test",
+                "nas=ofa_nas_group_test",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa limited only",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "model=ofa_group_test",
+                "nas=ofa_nas_group_test_only",
+                "module.num_workers=8"
+            ]
+        },
+        {
+            "name": "ofa limited small",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.train",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "trainer.limit_train_batches=0.1",
+                "trainer.max_epochs=1",
+                "model=ofa_group_test_small",
+                "nas=ofa_nas_group_test",
+                "module.num_workers=8"
+            ]
+        },
+        {
+          "name": "ofa limited no validation",
+          "type": "python",
+          "request": "launch",
+          "module": "hannah.train",
+          "args": [
+              "--config-name",
+              "nas_ofa",
+              "trainer.limit_train_batches=0.1",
+              "trainer.max_epochs=1",
+              "model=ofa_group_test_small",
+              "nas=ofa_nas_group_test_no_validation",
+              "module.num_workers=8"
+          ]
+      },
         {
             "name": "object_detection",
             "type": "python",

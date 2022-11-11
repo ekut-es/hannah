@@ -1,6 +1,23 @@
-import torch
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import numpy as np
-
+import torch
 
 # Taken from Paper Low-activity supervised convolutional spiking neural networks applied to speech commands recognition Arxiv:2011.06846
 
@@ -32,7 +49,9 @@ class SNN(torch.nn.Module):
 
 
 class EmptyLayer(torch.nn.Module):
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
 
         super(EmptyLayer, self).__init__()
 
@@ -123,7 +142,7 @@ class SpikingDenseLayer(torch.nn.Module):
         if self.lateral_connections:
             d = torch.einsum("ab, ac -> bc", self.w, self.w)
 
-        norm = (self.w ** 2).sum(0)
+        norm = (self.w**2).sum(0)
 
         for t in range(nb_steps):
 
@@ -268,7 +287,7 @@ class SpikingConv2DLayer(torch.nn.Module):
             d = torch.einsum("abcd, ebcd -> ae", self.w, self.w)
         b = self.b.unsqueeze(1).repeat((1, self.output_shape))
 
-        norm = (self.w ** 2).sum((1, 2, 3))
+        norm = (self.w**2).sum((1, 2, 3))
 
         for t in range(nb_steps):
 
@@ -427,7 +446,7 @@ class SpikingConv3DLayer(torch.nn.Module):
             d = torch.einsum("abcde, fbcde -> af", self.w, self.w)
         b = self.b.unsqueeze(1).unsqueeze(1).repeat((1, *self.output_shape))
 
-        norm = (self.w ** 2).sum((1, 2, 3, 4))
+        norm = (self.w**2).sum((1, 2, 3, 4))
 
         for t in range(nb_steps):
 
@@ -534,7 +553,7 @@ class Spiking1DS2NetLayer(torch.nn.Module):
         )
 
         b = self.b
-        norm = (self.convolution.weight ** 2).sum((1, 2))
+        norm = (self.convolution.weight**2).sum((1, 2))
 
         for t in range(nb_steps):
 

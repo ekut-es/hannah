@@ -1,17 +1,38 @@
-from asyncio.log import logger
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import logging
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-
 from pytorch_lightning.callbacks import Callback
-from ..models.factory.qat import ConvBn1d, Conv1d, ConvBnReLU1d, ConvReLU1d
-from sklearn.cluster import KMeans, MiniBatchKMeans
 from scipy.sparse import csr_matrix
+from sklearn.cluster import KMeans, MiniBatchKMeans
+
+from ..models.factory.qat import Conv1d, ConvBn1d, ConvBnReLU1d, ConvReLU1d
+
+logger = logging.getLogger(__name__)
 
 
 def clustering(params, inertia, cluster):
     sparse_matrix = csr_matrix(params)
-    kmeans = MiniBatchKMeans(n_clusters=cluster, init='k-means++', random_state=1234)
+    kmeans = MiniBatchKMeans(n_clusters=cluster, init="k-means++", random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1, 1))
     centers = kmeans.cluster_centers_.reshape(-1)
     inertia += kmeans.inertia_
@@ -30,8 +51,13 @@ class kMeans(Callback):
                     if not isinstance(module, nn.Linear):
                         bias_shape = [1] * len(module.weight.shape)
                         bias_shape[1] = -1
-                        bias = torch.zeros(module.out_channels, device=module.weight.device)
-                        bias = module.bias_fake_quant((bias - module.bn.running_mean) * module.scale_factor + module.bn.bias)  # .reshape(bias_shape) #.view(-1, 1, 1) #.reshape(bias_shape)
+                        bias = torch.zeros(
+                            module.out_channels, device=module.weight.device
+                        )
+                        bias = module.bias_fake_quant(
+                            (bias - module.bn.running_mean) * module.scale_factor
+                            + module.bn.bias
+                        )  # .reshape(bias_shape) #.view(-1, 1, 1) #.reshape(bias_shape)
                         module.bias = torch.nn.Parameter(bias)
 
         def replace_modules(module):
@@ -49,8 +75,8 @@ class kMeans(Callback):
                         padding_mode=child.padding_mode,
                         dilation=child.dilation,
                         bias=True,
-                        qconfig=child.qconfig
-                        )
+                        qconfig=child.qconfig,
+                    )
                     tmp.weight.data = child.weight
                     tmp.bias = child.bias
                     setattr(module, name, tmp)
@@ -66,7 +92,8 @@ class kMeans(Callback):
                         padding_mode=child.padding_mode,
                         bias=True,
                         dilation=child.dilation,
-                        qconfig=child.qconfig)
+                        qconfig=child.qconfig,
+                    )
                     tmp.weight.data = child.weight
                     tmp.bias = child.bias
                     setattr(module, name, tmp)
@@ -91,9 +118,12 @@ class kMeans(Callback):
                     else:
                         i = (np.abs(centers - x)).argmin()
                         return centers[i]
-                module.weight.data = module.weight.data.cpu().apply_(replace_values_by_centers)  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
+
+                module.weight.data = module.weight.data.cpu().apply_(
+                    replace_values_by_centers
+                )  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                 module.to(device=device)  # move from cpu to gpu
-        print('Clustering error: ', inertia)
+        logger.critical("Clustering error: %f", float(inertia))
 
     def on_epoch_end(self, trainer, pl_module):
         inertia = 0
@@ -106,14 +136,19 @@ class kMeans(Callback):
                     centers, inertia = clustering(w, inertia, self.cluster)
                 else:
                     continue
-                
+
                 def replace_values_by_centers(x):
                     if x == 0.0:
                         return x
                     else:
                         i = (np.abs(centers - x)).argmin()
                         return centers[i]
-                clustered_data = module.weight.data.cpu().apply_(replace_values_by_centers).to(device=device)
+
+                clustered_data = (
+                    module.weight.data.cpu()
+                    .apply_(replace_values_by_centers)
+                    .to(device=device)
+                )
                 module.weight.data = clustered_data
                 module.to(device=device)
-        logger.info('Clustering error: %s', inertia)  # summed over all layers
+        logger.info("Clustering error: %f", float(inertia))  # summed over all layers

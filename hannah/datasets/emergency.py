@@ -1,16 +1,34 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import os
 import random
-import torch
-
 from collections import defaultdict
 
-from .speech import load_audio
+import torch
+
+from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
-from ..utils import list_all_files, extract_from_download_cache
+from .speech import load_audio
 
 
 class EmergencySirenDataset(AbstractDataset):
-    """ Emergency Dataset """
+    """Emergency Dataset"""
 
     def __init__(self, data, set_type, config):
         super().__init__()
@@ -25,7 +43,7 @@ class EmergencySirenDataset(AbstractDataset):
         self.samplingrate = config["samplingrate"]
         self.input_length = config["input_length"]
 
-        self.channels = 1 # Use mono
+        self.channels = 1  # Use mono
 
     @classmethod
     def class_labels(cls):
@@ -63,13 +81,13 @@ class EmergencySirenDataset(AbstractDataset):
             cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         extract_from_download_cache(
-                "siren_detection.tar.gz",
-                "https://atreus.informatik.uni-tuebingen.de/seafile/f/239614bc48604cb1bf1c/?dl=1",
-                cached_files,
-                os.path.join(downloadfolder_tmp, "siren_detection"),
-                target_folder,
-                clear_download=clear_download,
-            )
+            "siren_detection.tar.gz",
+            "https://atreus.informatik.uni-tuebingen.de/seafile/f/239614bc48604cb1bf1c/?dl=1",
+            cached_files,
+            os.path.join(downloadfolder_tmp, "siren_detection"),
+            target_folder,
+            clear_download=clear_download,
+        )
 
     def __getitem__(self, index):
 
@@ -83,6 +101,7 @@ class EmergencySirenDataset(AbstractDataset):
         data = load_audio(path, sr=self.samplingrate)
 
         data = torch.from_numpy(data)
+        data = data[:, : self.input_length]
 
         return data, data.shape[0], label, label.shape[0]
 
@@ -95,7 +114,9 @@ class EmergencySirenDataset(AbstractDataset):
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
 
-        folder = os.path.join(config["data_folder"], "siren_detection", "siren_detection")
+        folder = os.path.join(
+            config["data_folder"], "siren_detection", "siren_detection"
+        )
 
         train_files = dict()
         test_files = dict()

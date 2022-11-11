@@ -85,6 +85,19 @@
         "xyticks",
         "ylabel",
         "Yoshua",
-        "yticklabels"
+        "yticklabels",
+        "accum",
+        "AUROC",
+        "autograd",
+        "cpus",
+        "gres",
+        "hparams",
+        "hyperparams",
+        "onnx",
+        "opset",
+        "qconfig",
+        "qscheme",
+        "submitit",
+        "tablefmt"
     ]
 }

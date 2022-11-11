@@ -1,14 +1,30 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import networkx as nx
 import torch
+from omegaconf import OmegaConf
 from torch.nn import Module
-from hannah.models.factory.qat import ConvBn1d, ConvBnReLU1d, Linear
-from hannah.models.factory.qconfig import get_trax_qat_qconfig
-
-from hannah.nas.graph_conversion import model_to_graph
 
 from hannah.models.factory.pooling import ApproximateGlobalAveragePooling1D
-
-from omegaconf import OmegaConf
+from hannah.models.factory.qat import ConvBn1d, ConvBnReLU1d, Linear
+from hannah.models.factory.qconfig import get_trax_qat_qconfig
+from hannah.nas.graph_conversion import model_to_graph
 
 
 class Model(Module):
@@ -30,7 +46,7 @@ class Model(Module):
         x = self.conv(x)
         x = self.conv_relu(x)
         x = x + skip
-        if hasattr(self, 'pooling'):
+        if hasattr(self, "pooling"):
             x = self.pooling(x)
         x = self.linear(x)
         return x

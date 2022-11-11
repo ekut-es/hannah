@@ -1,8 +1,25 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import logging
+import os
 import platform
 import subprocess
-import os
-import logging
-
 from pathlib import Path
 
 import pytest
@@ -48,21 +65,6 @@ def test_models(model, features):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
-@pytest.mark.parametrize(
-    "model,epochs,random_evaluate,random_evaluate_number",
-    [
-        ("ofa_quant", "1", "True", "5"),
-        ("ofa", "1", "True", "5"),
-        ("ofa_quant", "1", "False", "5"),
-        ("ofa", "1", "False", "5"),
-    ],
-)
-def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
-    epochs = 1
-    command_line = f"python -m hannah.train --config-name nas_ofa trainer.overfit_batches=5 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_dilation_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model} nas.random_evaluate={random_evaluate} nas.random_eval_number={random_evaluate_number}"
-    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
-
-
 @pytest.mark.skipif(
     platform.processor() == "ppc64le",
     reason="currently needs cpu based fft wich is not available on ppc",
@@ -79,7 +81,6 @@ def test_backend(model, backend):
     "model,dataset,split",
     [
         ("tc-res8", "snips", ""),
-        #        ("tc-res8", "vad", "vad_balanced"),
         ("tc-res8", "kws", ""),
         ("tc-res8", "atrial_fibrillation", ""),
         ("tc-res8", "pamap2", ""),
@@ -104,7 +105,7 @@ def test_datasets(model, dataset, split):
     "model", ["conv-net-2d", "timm_resnet50", "timm_efficientnet_lite1"]
 )
 def test_2d(model):
-    command_line = f"hannah-train module=image_classifier dataset=cifar10 features=identity trainer.gpus=[1] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5"
+    command_line = f"hannah-train module=image_classifier dataset=fake2d features=identity trainer.gpus=[1] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
@@ -118,4 +119,21 @@ def test_kitti():
         return
 
     command_line = f"hannah-train --config-name config_object_detection dataset.data_folder={data_folder} trainer.fast_dev_run=true"
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
+@pytest.mark.parametrize(
+    "model,epochs,random_evaluate,random_evaluate_number",
+    [
+        ("ofa_quant", "1", "True", "5"),
+        ("ofa", "1", "True", "5"),
+        ("ofa_quant", "1", "False", "5"),
+        ("ofa", "1", "False", "5"),
+    ],
+)
+def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
+    epochs = 1
+    command_line = f"python -m hannah.train --config-name nas_ofa trainer.limit_train_batches=5 trainer.limit_val_batches=5 trainer.limit_test_batches=5 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_dilation_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model} nas.random_evaluate={random_evaluate} nas.random_eval_number={random_evaluate_number}"
+
+    logging.info("runing commandline %s", command_line)
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)

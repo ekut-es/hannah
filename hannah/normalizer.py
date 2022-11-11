@@ -1,4 +1,22 @@
-from typing import Optional
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+from typing import Any, Optional, TypeVar, Union
 
 import torch
 import torch.nn as nn
@@ -13,7 +31,7 @@ class FixedPointNormalizer(nn.Module):
         normalize_max: int = 256,
         divide=False,
         override_max=False,
-    ):
+    ) -> None:
         super().__init__()
         self.normalize_bits = normalize_bits
         self.normalize_max = normalize_max
@@ -64,12 +82,12 @@ class FixedPointNormalizer(nn.Module):
 class AdaptiveFixedPointNormalizer(nn.Module):
     "Simple feature normalizer for fixed point models"
 
-    def __init__(self, normalize_bits: int = 8, num_features: int = 40):
+    def __init__(self, normalize_bits: int = 8, num_features: int = 40) -> None:
         super().__init__()
         self.bn = nn.BatchNorm1d(num_features=num_features, affine=True)
         self.normalize_bits = normalize_bits
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
 
         normalize_factor = 2.0 ** (self.normalize_bits - 1)
         x = self.bn(x)
@@ -79,7 +97,7 @@ class AdaptiveFixedPointNormalizer(nn.Module):
 
 
 class HistogramNormalizer(nn.Module):
-    def __init__(self, bits: int = 8, bins: Optional[int] = None):
+    def __init__(self, bits: int = 8, bins: Optional[int] = None) -> None:
         super().__init__()
 
         self.bits = bits
@@ -91,7 +109,7 @@ class HistogramNormalizer(nn.Module):
         self.register_buffer("min_val", torch.tensor(float("inf")))
         self.register_buffer("max_val", torch.tensor(float("-inf")))
 
-    def forward(self, x_orig):
+    def forward(self, x_orig: torch.Tensor) -> torch.Tensor:
         if x_orig.numel() == 0:
             return x_orig
 
@@ -107,8 +125,7 @@ class HistogramNormalizer(nn.Module):
             x, min=int(self.min_val), max=int(self.max_val), bins=self.bins
         )
 
-        _ = histogram  # FIXME: implement histogram equalization
-
+        self.histogram = self.histogram * 0.9 + histogram * 0.1
         print(self.min_val)
         print(self.max_val)
 

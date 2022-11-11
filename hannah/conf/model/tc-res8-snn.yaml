@@ -1,3 +1,21 @@
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
 cls: hannah.models.tc_snn.models.TCResNetModel
 name: tc-res8-snn
 separable:
@@ -10,7 +28,7 @@ block1_timesteps: 50
 block1_flattendoutput: False
 block1_combination_type: ADD
 block1_batchnorm: BN
-block1_conv_type: NN
+block1_conv_type: SNN
 block1_alpha: 0.75
 block1_beta: 0.65
 block1_gamma: 0.75
@@ -24,7 +42,7 @@ block2_timesteps: 25
 block2_flattendoutput: False
 block2_combination_type: ADD
 block2_batchnorm: BN
-block2_conv_type: NN
+block2_conv_type: SNN
 block2_alpha: 0.75
 block2_beta: 0.65
 block2_gamma: 0.75
@@ -38,7 +56,7 @@ block3_timesteps: 13
 block3_flattendoutput: True
 block3_combination_type: ADD
 block3_batchnorm: BN
-block3_conv_type: NN
+block3_conv_type: SNN
 block3_alpha: 0.75
 block3_beta: 0.65
 block3_gamma: 0.75
@@ -66,7 +84,7 @@ conv1_size: 3
 conv1_stride: 1
 conv1_timesteps: 99
 conv1_batchnorm: BN
-conv1_conv_type: NN
+conv1_conv_type: SNN
 conv1_flattendoutput: False
 conv1_alpha: 0.75
 conv1_beta: 0.65
@@ -81,8 +99,8 @@ width_multiplier: 1.0
 dilation: 1
 clipping_value: 100000.0
 small: false
-conv_type: NN
-readout_type: s2net
+conv_type: SNN
+readout_type: count
 readout_neuron_type: eLIF
 readout_alpha: 1
 readout_beta: 0.695

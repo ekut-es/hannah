@@ -1,11 +1,28 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
-import yaml
 import pickle
-
-import pandas as pd
-
 from pathlib import Path
 from typing import Any, Dict
+
+import pandas as pd
+import yaml
 
 logger = logging.getLogger("nas_eval.prepare")
 
@@ -25,12 +42,12 @@ def prepare_summary(
 
     results_file = Path("metrics.pkl")
     parameters_file = Path("parameters.pkl")
-    base_dir = Path(base_dir)
+    base_path = Path(base_dir)
     if results_file.exists() and not force:
         changed = False
         results_mtime = results_file.stat().st_mtime
         for name, source in data.items():
-            history_path = base_dir / source / "history.yml"
+            history_path = base_path / source / "history.pkl"
             if history_path.exists():
                 history_mtime = history_path.stat().st_mtime
                 if history_mtime >= results_mtime:
@@ -48,9 +65,16 @@ def prepare_summary(
     parameters_all = {}
     for name, source in data.items():
         logger.info("  Extracting design points for task: %s", name)
-        history_path = base_dir / source / "history.yml"
-        with history_path.open("r") as f:
-            history_file = yaml.unsafe_load(f)
+        history_path = base_path / source / "history.pkl"
+
+        if history_path.suffix == ".yml":
+            with history_path.open("r") as yaml_file:
+                history_file = yaml.unsafe_load(yaml_file)
+        elif history_path.suffix == ".pkl":
+            with history_path.open("rb") as pickle_file:
+                history_file = pickle.load(pickle_file)
+        else:
+            raise Exception("Could not load history file: %s", str(history_path))
 
         results = (h.result for h in history_file)
 

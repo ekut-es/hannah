@@ -1,9 +1,26 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import collections
 import logging
 import os
 import pathlib
 import tarfile
-from logging import config
 from posixpath import split
 from typing import List
 
@@ -13,7 +30,6 @@ import torch.utils.data as data
 import torchvision
 import torchvision.datasets as datasets
 from albumentations.pytorch.transforms import ToTensorV2
-from hydra.utils import get_original_cwd
 from torchvision import transforms
 
 import albumentations as A
@@ -166,6 +182,7 @@ class KvasirCapsuleDataset(VisionDatasetBase):
         extract_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
+        resolution = config.resolution
 
         # download and extract dataset
         if not os.path.isdir(extract_root):
@@ -232,12 +249,14 @@ class KvasirCapsuleDataset(VisionDatasetBase):
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
 
+        resolution = config.resolution
+
         # Todo: test und train transforms from kvasir capsule github
         train_transform = transforms.Compose(
             [
-                transforms.Resize(256),
-                transforms.CenterCrop(256),
-                transforms.Resize(224),
+                transforms.Resize(resolution + 32),
+                transforms.CenterCrop(resolution + 32),
+                transforms.Resize(resolution),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
                 transforms.RandomRotation(90),
@@ -248,9 +267,9 @@ class KvasirCapsuleDataset(VisionDatasetBase):
 
         test_transofrm = transforms.Compose(
             [
-                transforms.Resize(256),
-                transforms.CenterCrop(256),
-                transforms.Resize(224),
+                transforms.Resize(resolution + 32),
+                transforms.CenterCrop(resolution + 32),
+                transforms.Resize(resolution),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
             ]

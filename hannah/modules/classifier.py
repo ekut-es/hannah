@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import platform
 from abc import abstractmethod
@@ -11,8 +29,11 @@ import torchvision
 from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
+from sklearn.metrics import auc
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 from torchmetrics import (
+    AUC,
+    AUROC,
     ROC,
     Accuracy,
     ConfusionMatrix,
@@ -31,7 +52,7 @@ from .base import ClassifierModule
 from .config_utils import get_loss_function, get_model
 from .metrics import Error
 
-logger = logging.getLogger(__name__)
+msglogger = logging.getLogger(__name__)
 
 
 class BaseStreamClassifierModule(ClassifierModule):
@@ -46,12 +67,13 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     def setup(self, stage):
         # TODO stage variable is not used!
-        logger.info("Setting up model")
-        if self.logger:
-            self.msglogger.info("Model setup already completed skipping setup")
-            self.logger.log_hyperparams(self.hparams)
+        msglogger.info("Setting up model")
+        if self._trainer:
+            for logger in self.trainer.loggers:
+                logger.log_hyperparams(self.hparams)
 
         if self.initialized:
+            msglogger.info("Model setup already completed skipping setup")
             return
 
         self.initialized = True
@@ -87,7 +109,6 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Instantiate Model
         if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            print(self.hparams.model._target_)
             self.model = instantiate(
                 self.hparams.model,
                 input_shape=self.example_feature_array.shape,
@@ -112,6 +133,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "val_recall": Recall(num_classes=self.num_classes),
                 "val_precision": Precision(num_classes=self.num_classes),
                 "val_f1": F1Score(num_classes=self.num_classes),
+                "val_auroc": AUROC(num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
@@ -121,6 +143,7 @@ class BaseStreamClassifierModule(ClassifierModule):
                 "test_recall": Recall(num_classes=self.num_classes),
                 "test_precision": Precision(num_classes=self.num_classes),
                 "test_f1": F1Score(num_classes=self.num_classes),
+                "test_auroc": AUROC(num_classes=self.num_classes),
             }
         )
 
@@ -161,8 +184,9 @@ class BaseStreamClassifierModule(ClassifierModule):
                 output = torch.nn.functional.softmax(output, dim=1)
                 metrics(output, y)
                 self.log_dict(metrics)
-            except ValueError:
-                logging.critical("Could not calculate batch metrics: {outputs}")
+            except ValueError as e:
+                logging.critical(f"Could not calculate batch metrics: output={output}")
+
         self.log(f"{prefix}_loss", loss)
 
     # TRAINING CODE
@@ -185,11 +209,7 @@ class BaseStreamClassifierModule(ClassifierModule):
     def get_train_dataloader_by_set(self, train_set):
         train_batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
-        sampler_type = dataset_conf.get("sampler", "random")
-        if sampler_type == "weighted":
-            sampler = self.get_balancing_sampler(train_set)
-        else:
-            sampler = data.RandomSampler(train_set)
+        sampler = data.RandomSampler(train_set)
 
         train_loader = data.DataLoader(
             train_set,
@@ -233,7 +253,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         dev_loader = data.DataLoader(
             dev_set,
             batch_size=min(len(dev_set), self.hparams["batch_size"]),
-            shuffle=True,
+            shuffle=self.shuffle_all_dataloaders,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
@@ -273,7 +293,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         test_loader = data.DataLoader(
             test_set,
             batch_size=min(len(test_set), self.hparams["batch_size"]),
-            shuffle=True,
+            shuffle=self.shuffle_all_dataloaders,
             num_workers=self.hparams["num_workers"],
             collate_fn=ctc_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
@@ -428,3 +448,11 @@ class CrossValidationStreamClassifierModule(BaseStreamClassifierModule):
 
     def register_trainer_fold_callback(self, callback):
         self.trainer_fold_callback = callback
+
+
+class SpeechClassifierModule(StreamClassifierModule):
+    def __init__(self, *args, **kwargs):
+        logging.critical(
+            "SpeechClassifierModule has been renamed to StreamClassifierModule speech classifier module will be removed soon"
+        )
+        super(SpeechClassifierModule, self).__init__(*args, **kwargs)

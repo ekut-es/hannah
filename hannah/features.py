@@ -1,5 +1,23 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import math
-from typing import Callable, Optional
+from typing import Any, Callable, List, Optional, TypeVar, Union
 
 import numpy as np
 import torch
@@ -23,11 +41,11 @@ class SincConv(nn.Module):
     """
 
     @staticmethod
-    def to_mel(hz):
+    def to_mel(hz) -> Any:
         return 2595 * np.log10(1 + hz / 700)
 
     @staticmethod
-    def to_hz(mel):
+    def to_hz(mel) -> Any:
         return 700 * (10 ** (mel / 2595) - 1)
 
     def __init__(
@@ -43,7 +61,7 @@ class SincConv(nn.Module):
         groups=1,
         min_low_hz=50,
         min_band_hz=50,
-    ):
+    ) -> None:
         super(SincConv, self).__init__()
 
         if in_channels != 1:
@@ -92,9 +110,8 @@ class SincConv(nn.Module):
         n_ = 2 * math.pi * torch.arange(-N, 0).view(1, -1) / self.sample_rate
         self.register_buffer("n_", n_, persistent=False)
 
-    def forward(self, waveforms):
+    def forward(self, waveforms) -> Any:
         f_low = torch.abs(self.low_freq_) + self.min_low_hz
-        # print(f_low[0:10])
         f_high = torch.clamp(
             f_low + self.min_band_hz + torch.abs(self.band_freq_),
             self.min_low_hz,
@@ -136,10 +153,10 @@ class SincConv(nn.Module):
 
 
 class Sinc_Act(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input) -> Any:
 
         return torch.log10(torch.abs(input) + 1)
 
@@ -160,7 +177,7 @@ class SincConvBlock(nn.Module):
         min_band_hz=50,
         bn_len=40,
         pool_len=20,
-    ):
+    ) -> None:
 
         super(SincConvBlock, self).__init__()
 
@@ -183,7 +200,7 @@ class SincConvBlock(nn.Module):
             nn.AvgPool1d(pool_len),
         )
 
-    def forward(self, x):
+    def forward(self, x) -> Any:
 
         out = self.layer(x)
 
@@ -191,23 +208,23 @@ class SincConvBlock(nn.Module):
 
 
 class RawFeatures(nn.Module):
-    def forward(self, x):
+    def forward(self, x) -> Any:
         x = torch.unsqueeze(x, dim=1)
         return x
 
 
 class SincConvFFT(nn.Module):
     @staticmethod
-    def to_mel(hz):
+    def to_mel(hz: float) -> float:
         return 2595 * np.log10(1 + hz / 700)
 
     @staticmethod
-    def to_hz(mel):
+    def to_hz(mel: float) -> float:
         return 700 * (10 ** (mel / 2595) - 1)
 
     def __init__(
         self, out_channels=40, sample_rate=16000, min_low_hz=50, min_band_hz=50
-    ):
+    ) -> None:
         super(SincConvFFT, self).__init__()
 
         self.out_channels = out_channels
@@ -227,7 +244,7 @@ class SincConvFFT(nn.Module):
         self.low_freq_ = nn.Parameter(torch.Tensor(hz[:-1]).view(-1, 1))
         self.band_freq_ = nn.Parameter(torch.Tensor(np.diff(hz)).view(-1, 1))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         spectrogram = torch.stft(x.squeeze(1), n_fft=160, hop_length=160)
         spectrogram = spectrogram[:, :, :, 0]
 
@@ -273,7 +290,14 @@ class LogSpectrogram(torch.nn.Module):
         onesided (bool, optional): controls whether to return half of results to
             avoid redundancy Default: ``True``
     """
-    __constants__ = ["n_fft", "win_length", "hop_length", "pad", "power", "normalized"]
+    __constants__: List[str] = [
+        "n_fft",
+        "win_length",
+        "hop_length",
+        "pad",
+        "power",
+        "normalized",
+    ]
 
     def __init__(
         self,
@@ -315,7 +339,7 @@ class LogSpectrogram(torch.nn.Module):
         self.pad_mode = pad_mode
         self.onesided = onesided
 
-    def forward(self, waveform: Tensor) -> Tensor:
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             waveform (Tensor): Tensor of audio of dimension (..., time).
