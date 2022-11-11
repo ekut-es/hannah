@@ -26,9 +26,8 @@ def block(input: TensorExpression,
           output_channel=IntScalarParameter(4, 64),
           kernel_size=CategoricalParameter([1, 3, 5]),
           stride=CategoricalParameter([1, 2])):
-
-    # TODO: Support parameter with expressions: output_channel*expansion
-    out = conv_relu(input, output_channel=output_channel.new(), kernel_size=kernel_size, stride=stride)
+    input_tensor = input.tensor_type()
+    out = conv_relu(input, output_channel=input_tensor['c'] * expansion, kernel_size=kernel_size, stride=stride)
     out = conv_relu(out, output_channel=output_channel.new(), kernel_size=kernel_size, stride=stride)
     out = conv_relu(out, output_channel=output_channel.new(), kernel_size=kernel_size, stride=stride)
     return out

@@ -11,14 +11,15 @@ class Repeater:
         ret = "Repeater"
         return ret
 
-    def __call__(self, input) -> Any:
-        out = self.block(input)
-        operands = out.operands
-        output = out.output
-        name = out.name
+    def __call__(self, *args, **kwargs) -> Any:
+        out_block = self.block(*args, **kwargs)
+        operands = out_block.operands
+        output = out_block.output
+        name = out_block.name
 
-        delete_users(out)
-        del out
+        delete_users(out_block, out_block)
+        del out_block
+
 
         # create Repeat (i.e. child) instance from DataFlowGraph instance
         out = Repeat(*operands, output=output, num_repeats=self.num_repeats, name=name)

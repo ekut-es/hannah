@@ -95,3 +95,4 @@ if __name__ == '__main__':
     test_dataflow_linking()
     test_dataflow_block()
     test_parallel_blocks()
+    test_parameter_extraction()

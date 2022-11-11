@@ -18,7 +18,7 @@ class DartsSearchTask(SearchTask):
         architect = Architect(module, 0.9, 1e-4)
         alpha_optimizer = torch.optim.SGD(lr=0.001, momentum=0.9, weight_decay=3e-4, params=architect.alphas(module))
         darts_opt = DartsOptimizerCallback(alpha_optimizer, architect)
-        trainer = instantiate(self.config.trainer, callbacks=[darts_opt], limit_train_batches=10, limit_val_batches=100)
+        trainer = instantiate(self.config.trainer, callbacks=[darts_opt])
         trainer.fit(module)
 
     def run(self):

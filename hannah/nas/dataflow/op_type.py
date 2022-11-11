@@ -1,11 +1,8 @@
-from copy import deepcopy
 from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.dataflow.dataflow_utils import find_first_op_in_dfg, find_leaf_nodes
 from hannah.nas.dataflow.scoping_utils import get_id_and_update_counters, update_scope
-from hannah.nas.dataflow.tensor import Tensor
 from hannah.nas.dataflow.tensor_expression import TensorExpression
 import hannah.nas.dataflow.registry as reg
-from hannah.nas.parameters.parameters import Parameter
 from hannah.nas.parameters.parametrize import parametrize
 
 
@@ -28,12 +25,15 @@ class OpType(TensorExpression):
 
         self.attributes = attributes
         self.link_users()
-        print()
+
+    def next_backwards(self):
+        return list(self.operands)
 
     def link_users(self):
         for operand in self.operands:
             last_output = find_first_op_in_dfg(operand)
-            last_output.users.append(self)
+            if self not in last_output.users:
+                last_output.users.append(self)
 
     def set_scope(self, current_scope, counters, visited):
         current_scope = update_scope(self, current_scope)

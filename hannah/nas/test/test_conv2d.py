@@ -19,7 +19,7 @@
 import pytest
 
 from hannah.nas.dataflow.dataflow_graph import dataflow
-from hannah.nas.dataflow.ops import conv2d  # Import to load in registry
+from hannah.nas.dataflow.ops import conv2d  # noqa  #Import to load in registry
 from hannah.nas.dataflow.registry import op
 from hannah.nas.expressions.placeholder import DefaultInt
 from hannah.nas.ops import batched_image_tensor, weight_tensor

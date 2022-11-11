@@ -7,6 +7,8 @@ from hannah.nas.dataflow.tensor_expression import TensorExpression
 from hannah.nas.expressions.placeholder import DefaultInt
 from hannah.nas.parameters.parametrize import parametrize
 
+import numpy as np
+
 
 @parametrize
 class DataFlowGraph(TensorExpression):
@@ -23,6 +25,30 @@ class DataFlowGraph(TensorExpression):
 
         self.collect_scopes()
 
+    def num_nodes(self):
+        n = len(self.nodes())
+        return n
+
+    def nodes(self):
+        g = flatten(self)
+
+        queue = [g]
+        visited = [g]
+        node_list = []
+        while queue:
+            current = queue.pop(-1)
+            node_list.append(current.id)
+
+            for next_node in current.next_backwards():
+                if next_node not in visited:
+                    queue.append(next_node)
+                    visited.append(next_node)
+
+        return node_list
+
+    def next_backwards(self):
+        return [self.output]
+
     def link_users(self):
         """ Link the DFG to its users and the users of the DFG to
         the DFG
@@ -37,27 +63,25 @@ class DataFlowGraph(TensorExpression):
                 node which uses the operand
             """
             if operand in node.operands:
-                last_output = find_first_op_in_dfg(operand)  # operand.output if hasattr(operand, 'output') else operand
+                last_output = find_first_op_in_dfg(operand)
                 if node in last_output.users:
                     last_output.users.remove(node)
-
-                self.enter.append(node)
-            elif isinstance(node, DataFlowGraph):
-                _rewire_to_placeholder(operand, node.output)
-            elif isinstance(node, OpType):
-                for o in node.operands:
-                    _rewire_to_placeholder(operand, o)
-
+                if node not in self.enter:
+                    self.enter.append(node)
+            elif set(self.operands).isdisjoint(node.operands):
+                for n in node.next_backwards():
+                    _rewire_to_placeholder(operand, n)
         for operand in self.operands:
             _rewire_to_placeholder(operand, self.output)
-
             # remove users if it is enclosed in 'self'
             for user in operand.users:
                 if hasattr(self, 'enter') and user in self.enter:
                     operand.users.remove(user)
-            operand.users.append(self)
+            if self not in operand.users:
+                operand.users.append(self)
 
         self.output.users.append(self)
+
 
     def set_scope(self, current_scope, counters, visited):
         current_scope = update_scope(self, current_scope)
@@ -108,47 +132,26 @@ class DataFlowGraph(TensorExpression):
                     queue = [u] + queue
                     visited.append(u)
 
-    def collect_scopes(self):
-        queue = [self]
-        visited = [self]
-
-        while queue:
-            current = queue.pop(-1)
-            self._scopes[current.id] = current
-
-            if isinstance(current, DataFlowGraph):
-                if current.output not in visited:
-                    queue.append(current.output)
-                    visited.append(current.output)
-            elif isinstance(current, OpType):
-                for operand in current.operands:
-                    if operand not in visited:
-                        queue.append(operand)
-                        visited.append(operand)
-
-        self._scopes = dict(sorted(self._scopes.items()))
-
     def tensor_type(self):
         return self.output.tensor_type()
 
-    # def match(self, other):
-    #     """Checks equivalence between `self` and `other`. Equivalence is defined
-    #     as the containment of similar ops and tensors. This is done by
-    #     recursive traversal which stops when the input node from the DFG
-    #     is reached (to avoid traversing the whole tail)
+    def adjacency(self):
+        g = flatten(self)
+        g.collect_scopes()
 
-    #     [WIP]
+        node_list = self.nodes()
+        n = len(node_list)
 
-    #     Parameters
-    #     ----------
-    #     other : DataFlowGraph
-    #     """
-    #     assert isinstance(other, DataFlowGraph), f"{other} is not a DataFlowGraph."
+        adj = np.zeros((n, n), dtype=np.int8)
+        indices = {n: i for i, n in enumerate(node_list)}
 
-    #     def print_name_hook(node):
-    #         print(node.name)
+        for node_id in node_list:
+            node = g._scopes[node_id]
 
-    #     recursive_traversal(self, hooks=[print_name_hook])
+            for user in node.users:
+                adj[indices[node_id]][indices[user.id]] = 1
+
+        return adj, indices
 
     def __getitem__(self, key):
         return self._scopes[key]
@@ -246,22 +249,22 @@ def unflatten(graph):
     pass
 
 
-def delete_users(graph):
+def delete_users(graph, user_to_delete=None):
     queue = [graph]
-    visited = []
+    visited = [graph]
 
     while queue:
         current = queue.pop(-1)
-        visited.append(current)
-        current.users = []
+        if user_to_delete:
+            if user_to_delete in current.users:
+                current.users.remove(user_to_delete)
+        else:
+            current.users = []
 
-        if isinstance(current, DataFlowGraph):
-            if current.output not in visited:
-                queue.append(current.output)
-        elif isinstance(current, OpType):
-            for operand in current.operands:
-                if operand not in visited:
-                    queue.append(operand)
+        for next_node in current.next_backwards():
+            if next_node not in visited:
+                queue.append(next_node)
+                visited.append(next_node)
 
 
 def collect_users(node):
@@ -299,11 +302,8 @@ def collect_users(node):
 def reset_scope_ids(node):
     node.set_id(node.name)
 
-    if isinstance(node, DataFlowGraph):
-        reset_scope_ids(node.output)
-    elif isinstance(node, OpType):
-        for o in node.operands:
-            reset_scope_ids(o)
+    for next_node in node.next_backwards():
+        reset_scope_ids(next_node)
 
 
 def find_first_input(node):
@@ -334,8 +334,5 @@ def recursive_traversal(node : TensorExpression, hooks : list = [], hook_paramet
         param = hook_parameter.get(hook, {})
         hook(node, **param)
     if node != end:
-        if isinstance(node, DataFlowGraph):
-            recursive_traversal(node.output, hooks, hook_parameter, end)
-        elif isinstance(node, OpType):
-            for operand in node.operands:
-                recursive_traversal(operand, hooks, hook_parameter, end)
+        for next_node in node.next_backwards():
+            recursive_traversal(next_node, hooks, hook_parameter, end)

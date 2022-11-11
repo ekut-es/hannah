@@ -96,7 +96,7 @@ def test_constraint_model_parameters():
 
     params = graph.parameters(flatten=True)
 
-    for i in range(1000):
+    for i in range(1):
         cm.solver.push()
         for name, param in params.items():
             assert name in cm.vars
