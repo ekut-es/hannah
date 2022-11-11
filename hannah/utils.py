@@ -118,6 +118,7 @@ def log_execution_env_state() -> None:
             logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
         except Exception:
             pass
+
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Pytorch Lightning: %s", pytorch_lightning.__version__)

@@ -52,7 +52,7 @@ test_python_38:
   image: python:3.8
   script:
     - set -e
-    - poetry run python3 -m pytest  -v --cov=hannah test
+    - poetry run python3 -m pytest  -v --cov=hannah test hannah
   tags:
     - docker
   interruptible: true

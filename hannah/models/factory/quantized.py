@@ -19,7 +19,6 @@
 import copy
 from typing import Any, Tuple
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as f
 from torch import Tensor

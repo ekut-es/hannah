@@ -47,7 +47,7 @@ class FixedPointNormalizer(nn.Module):
             if not override_max:
                 self.normalize_max = self.high_border
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
         normalize_factor = 2.0**self.bits
         x = x * normalize_factor / self.normalize_max
         x = x.round()

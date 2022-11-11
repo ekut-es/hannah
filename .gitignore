@@ -53,17 +53,20 @@ outputs/
 # lightning
 lightning_logs/
 
-# poetry
-srf-poetry/README.rst
-srf-poetry/srf_poetry/
-srf-poetry/tests/
-
 #doc
 doc/_build/
 nas_results/
 
-#exclude datasets as file for symlinks
-datasets
+tmp/
+out/
+
+.python_history
+.cache/
+
+*.sqlite
+*.pkl
+
+build/
 
 # Delete tmp
 tmp/

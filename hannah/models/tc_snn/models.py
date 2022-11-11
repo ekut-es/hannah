@@ -37,7 +37,10 @@ from ...torch_extensions.nn.LayerFactory import (
 )
 from ..utils import next_power_of2
 
+msglogger = logging.getLogger()
 
+# FIXME: fix qa errors or remove Spiking Models
+# flake8: noqa
 def create_act(act, clipping_value):
     if act == "relu":
         return nn.ReLU()

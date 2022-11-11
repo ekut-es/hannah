@@ -26,7 +26,7 @@ interface.
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
 from hydra.utils import instantiate
@@ -76,7 +76,6 @@ class HardtanhConfig(ActConfig):
 
 @dataclass
 class MinorBlockConfig:
-    # breakpoint()
     target: str = "conv1d"
     "target Operation"
     parallel: bool = False
@@ -554,8 +553,7 @@ class NetworkFactory:
             )
         else:
             raise Exception(f"Unknown minor block config {config}")
-        """ Depthwise separable convolution can be splitted into dephtwise convolution first
-        followed by pointwise convolution.
+        """ Depthwise separable convolution can be splitted into dephtwise convolution first followed by pointwise convolution.
         if config.target == "conv1d":
             #breakpoint()
             depthwise_conv = self.conv1d(
@@ -715,7 +713,7 @@ class NetworkFactory:
         Input: ------->|                                                +--->
                        |---> parallel: False --->  parallel: False ---> |
 
-        If the major block does change the ouptut dimensions compared to the input
+        If the major block does change the output dimensions compared to the input
         and one of the branches does not contain any layers, we infer
         1x1 conv of maximum group size (gcd (input_channels, output_channels)) to do the
         downsampling.
@@ -928,13 +926,17 @@ def create_cnn(
     input_shape: Sequence[int],
     labels: int,
     name: str,
-    conv: List[MajorBlockConfig] = [],
-    linear: List[LinearConfig] = [],
-    norm: Optional[NormConfig] = BNConfig(),
-    act: Optional[ActConfig] = ActConfig(),
+    conv: Optional[List[MajorBlockConfig]] = None,
+    linear: Optional[List[LinearConfig]] = None,
+    norm: Optional[NormConfig] = None,
+    act: Optional[ActConfig] = None,
     qconfig: Any = None,
     dropout: float = 0.5,
 ):
+    if conv is None:
+        conv = []
+    if linear is None:
+        linear = []
     factory = NetworkFactory()
     schema = OmegaConf.structured(NetworkConfig)
 
