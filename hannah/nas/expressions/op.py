@@ -1,10 +1,27 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import textwrap
 from abc import abstractmethod
 from typing import Any
 
 from hannah.nas.expressions.placeholder import Placeholder
 from hannah.nas.parameters.parameters import Parameter
-from hannah.nas.parameters.parametrize import parametrize
 
 from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
@@ -41,15 +58,14 @@ class Op(Expression):
             elif isinstance(expr, UnaryOp):
                 _recursive_scoping(expr.operand, scope)
             elif isinstance(expr, Parameter):
-                if hasattr(expr, 'name') and expr.name:
-                    expr.id = f'{scope}.{expr.name}'
+                if hasattr(expr, "name") and expr.name:
+                    expr.id = f"{scope}.{expr.name}"
                 else:
-                    expr.id = f'{scope}.{name}'
+                    expr.id = f"{scope}.{name}"
 
         _recursive_scoping(self, scope)
 
 
-@parametrize
 class BinaryOp(Op):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
@@ -90,7 +106,6 @@ class BinaryOp(Op):
         ...
 
 
-@parametrize
 class UnaryOp(Op):
     def __init__(self, operand) -> None:
         super().__init__()
