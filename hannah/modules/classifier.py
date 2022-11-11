@@ -62,7 +62,8 @@ class BaseStreamClassifierModule(ClassifierModule):
     def prepare_data(self):
         # get all the necessary data stuff
         if not self.train_set or not self.test_set or not self.dev_set:
-            get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
+            if self.hparams.dataset:
+                get_class(self.hparams.dataset.cls).prepare(self.hparams.dataset)
 
     def setup(self, stage):
         # TODO stage variable is not used!
@@ -86,20 +87,17 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Create example input
         device = self.device
-        self.example_input_array = self.get_example_input_array()
-        dummy_input = self.example_input_array.to(device)
+        if self.example_input_array is None:
+            self.example_input_array = self.get_example_input_array()
+        dummy_input = self.example_input_array
+
         logging.info("Example input array shape: %s", str(dummy_input.shape))
-        if platform.machine() == "ppc64le":
-            dummy_input = dummy_input.to("cuda:" + str(self.gpus[0]))
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
-        self.features.to(device)
-        if platform.machine() == "ppc64le":
-            self.features.to("cuda:" + str(self.gpus[0]))
 
         features = self._extract_features(dummy_input)
-        self.example_feature_array = features.to(self.device)
+        self.example_feature_array = features
 
         # Instantiate normalizer
         if self.hparams.normalizer is not None:
@@ -204,9 +202,9 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         return loss
 
-    @abstractmethod
-    def train_dataloader(self):
-        pass
+    # @abstractmethod
+    # def train_dataloader(self):
+    #    pass
 
     def get_train_dataloader_by_set(self, train_set):
         train_batch_size = self.hparams["batch_size"]
@@ -352,7 +350,10 @@ class StreamClassifierModule(BaseStreamClassifierModule):
         return len(self.train_set.class_names)
 
     def get_example_input_array(self):
-        return torch.zeros(1, *self.train_set.size())
+        if self.train_set is not None:
+            return torch.zeros(1, *self.train_set.size())
+        else:
+            return self.example_input_array
 
     def train_dataloader(self):
         return self.get_train_dataloader_by_set(self.train_set)

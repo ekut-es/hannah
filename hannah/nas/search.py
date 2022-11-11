@@ -53,7 +53,9 @@ class WorklistItem:
     results: Dict[str, float]
 
 
-def run_training(num, global_num, config): # num is the number of jobs global_num is the number of models to be created
+def run_training(
+    num, global_num, config
+):  # num is the number of jobs global_num is the number of models to be created
     if os.path.exists(str(num)):
         shutil.rmtree(str(num))
 
@@ -136,7 +138,8 @@ def run_training(num, global_num, config): # num is the number of jobs global_nu
             import json
 
             json.dump(
-                {"graph": json_data, "metrics": opt_callback.result(dict=True)}, res_file
+                {"graph": json_data, "metrics": opt_callback.result(dict=True)},
+                res_file,
             )
 
         return opt_callback.result(dict=True)
@@ -212,9 +215,9 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         self.worklist = []
         self.presample = presample
 
-    # sample parameters and estimated metrics from the space 
+    # sample parameters and estimated metrics from the space
     def _sample(self):
-        # sample the next parameters 
+        # sample the next parameters
         parameters = self.optimizer.next_parameters()
         config = OmegaConf.merge(self.config, parameters.flatten())
 
@@ -230,7 +233,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 normalizer=config.get("normalizer", None),
                 _recursive_=False,
             )
-            # train the model 
+            # train the model
             model.setup("train")
 
         except AssertionError as e:
@@ -274,7 +277,9 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 results = executor(
                     [
                         delayed(run_training)(
-                            num, len(self.optimizer.history)+num, OmegaConf.to_container(config, resolve=True)
+                            num,
+                            len(self.optimizer.history) + num,
+                            OmegaConf.to_container(config, resolve=True),
                         )
                         for num, config in enumerate(configs)
                     ]

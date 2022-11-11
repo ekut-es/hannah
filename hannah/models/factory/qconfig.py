@@ -236,7 +236,7 @@ class STEQuantize(FakeQuantizeBase):
 
     def calculate_qparams(self):
         raise NotImplementedError(
-            "Trainable quantizer has no calulate qparams implementation"
+            "Trainable quantizer has no calculate qparams implementation"
         )
 
     def extra_repr(self):

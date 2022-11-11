@@ -16,6 +16,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .factory import create_cnn
-
-__all__ = ["create_cnn"]
