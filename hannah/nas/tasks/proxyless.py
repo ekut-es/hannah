@@ -10,7 +10,7 @@ from pytorch_lightning.callbacks import Callback
 from .base import SearchTask
 
 
-class DartsSearchTask(SearchTask):
+class ProxylessSearchTask(SearchTask):
     def __init__(self, budget=2000, *args, **kwargs):
         super().__init__(*args, budget=budget, **kwargs)
 
