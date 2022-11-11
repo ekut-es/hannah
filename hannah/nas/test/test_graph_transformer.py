@@ -1,12 +1,34 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+from hannah.nas.dataflow.dataflow_graph import (
+    DataFlowGraph,
+    dataflow,
+    find_first_input,
+    flatten,
+)
 from hannah.nas.dataflow.op_type import OpType
 from hannah.nas.dataflow.registry import op
+from hannah.nas.dataflow.transformations.graph_tranformer import GraphTransformer
 from hannah.nas.expressions.placeholder import DefaultInt
 from hannah.nas.ops import batched_image_tensor, weight_tensor
-from hannah.nas.test.network import residual_block
 from hannah.nas.parameters.parameters import IntScalarParameter
-from hannah.nas.dataflow.transformations.graph_tranformer import GraphTransformer
-
-from hannah.nas.dataflow.dataflow_graph import DataFlowGraph, dataflow, find_first_input, flatten
+from hannah.nas.test.network import residual_block
 
 
 def get_dict(graph):
@@ -17,7 +39,7 @@ def get_dict(graph):
     while queue:
         current = queue.pop(-1)
         visited.append(current)
-        name = current.id.split('.')
+        name = current.id.split(".")
         sub_dict = hierarchy_dict
 
         for i, key in enumerate(name):
@@ -32,7 +54,7 @@ def get_dict(graph):
             if i != len(name) - 1:
                 sub_dict = sub_dict[k]
             else:
-                sub_dict[k]['texpr'] = current
+                sub_dict[k]["texpr"] = current
 
         for operand in current.operands:
             queue.append(operand)
@@ -40,7 +62,7 @@ def get_dict(graph):
 
 
 def get_parent_scope(node):
-    return node.id.split('.')[:-2]
+    return node.id.split(".")[:-2]
 
 
 def check_dfg_change(node, successor):
@@ -68,12 +90,16 @@ def create_dfgs(op_graph):
         if previous:
             if check_dfg_change(previous, current):
                 if get_dfg_depth(previous) > 0:
-                    dfg = DataFlowGraph(output=previous, name=get_parent_scope(previous)[-2])
+                    dfg = DataFlowGraph(
+                        output=previous, name=get_parent_scope(previous)[-2]
+                    )
                     dfg.enter = enter
                 enter = current
-                print(f'Enter dfg {get_parent_scope(current)}')
+                print(f"Enter dfg {get_parent_scope(current)}")
                 if get_dfg_depth(previous) != get_dfg_depth(current):
-                    print(f"changed dfg depth from {get_dfg_depth(previous)} to {get_dfg_depth(current)}")
+                    print(
+                        f"changed dfg depth from {get_dfg_depth(previous)} to {get_dfg_depth(current)}"
+                    )
 
         for user in current.users:
             queue.append(user)
@@ -81,25 +107,25 @@ def create_dfgs(op_graph):
         previous = current
 
 
-
-
 def make_dataflow_graph(hierarchy_dict, dfgs, output_dict):
     for key in hierarchy_dict.keys():
         for num in hierarchy_dict[key].keys():
-            if 'texpr' in hierarchy_dict[key][num]:
-                output = hierarchy_dict[key][num]['texpr']
+            if "texpr" in hierarchy_dict[key][num]:
+                output = hierarchy_dict[key][num]["texpr"]
 
-                name_list = output.id.split('.')
+                name_list = output.id.split(".")
                 if len(name_list) > 2:
-                    name = output.id.split('.')[-4]
+                    name = output.id.split(".")[-4]
                 else:
                     dfgs.append(output)
                     return output
             else:
-                output = make_dataflow_graph(hierarchy_dict[key][num], dfgs, output_dict)
+                output = make_dataflow_graph(
+                    hierarchy_dict[key][num], dfgs, output_dict
+                )
                 name = key
-            dfg = DataFlowGraph(output=output, name=f'{name}')
-            output_dict[output]= dfg
+            dfg = DataFlowGraph(output=output, name=f"{name}")
+            output_dict[output] = dfg
             dfgs.append(dfg)
     return dfgs[0]
 
@@ -113,7 +139,7 @@ def unflatten(graph):
     while queue:
         current = queue.pop(-1)
         visited.append(current)
-        name = current.id.split('.')
+        name = current.id.split(".")
 
 
 def write_down(graph):
@@ -125,22 +151,26 @@ def write_down(graph):
 @dataflow
 def exchange_block(input):
     input_tensor = input.tensor_type()
-    weight = weight_tensor(shape=(DefaultInt(1), input_tensor['c'], DefaultInt(1), DefaultInt(1)), name='weight')
+    weight = weight_tensor(
+        shape=(DefaultInt(1), input_tensor["c"], DefaultInt(1), DefaultInt(1)),
+        name="weight",
+    )
     c = op("Conv2d", input, weight, stride=DefaultInt(1))
-    relu = OpType(c, name='Relu')
+    relu = OpType(c, name="Relu")
     return relu
 
 
 def test_graph_transformer():
     # Create a network and flatten the graph
-    input = batched_image_tensor(shape=(1, 3, 32, 32), name='input')
-    graph = residual_block(input, stride=IntScalarParameter(1, 2), output_channel=IntScalarParameter(4, 512, 4))
-
-
+    input = batched_image_tensor(name="input")
+    graph = residual_block(
+        input,
+        stride=IntScalarParameter(1, 2),
+        output_channel=IntScalarParameter(4, 512, 4),
+    )
 
     # flat = flatten(graph)
     # create_dfgs(flat)
-
 
     # d = get_dict(flat)
     # dfgs = []
@@ -156,9 +186,9 @@ def test_graph_transformer():
 
         return args, kwargs
 
-    transformer.transform('conv_relu', exchange_block, transform)
+    transformer.transform("conv_relu", exchange_block, transform)
     print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_graph_transformer()

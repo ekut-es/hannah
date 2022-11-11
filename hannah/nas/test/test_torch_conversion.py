@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pytest
+
 from hannah.nas.backend import TorchBackend
 from hannah.nas.dataflow.dataflow_graph import dataflow
 from hannah.nas.dataflow.op_type import OpType
@@ -66,6 +68,7 @@ def block(
     return out
 
 
+@pytest.mark.xfail
 def test_convert_block():
     input = batched_image_tensor(name="input")
     out = block(input)

@@ -1,7 +1,26 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from typing import Optional, Tuple, Union
 
+import hannah.nas.dataflow.registry as registry
 from hannah.nas.core.expression import Expression
-
+from hannah.nas.dataflow.dataflow_utils import process_int
 from hannah.nas.dataflow.tensor import Tensor
 
 from .dataflow.axis_type import AxisType
@@ -14,8 +33,6 @@ from .dataflow.quantization_type import QuantizationType
 from .dataflow.tensor_type import TensorType
 from .expressions.placeholder import DefaultInt, UndefinedInt
 from .hardware_description.memory_type import MemoryType
-import hannah.nas.dataflow.registry as registry
-from hannah.nas.dataflow.dataflow_utils import process_int
 
 
 def int_t(signed: bool = True, bits: int = 8):
@@ -53,11 +70,13 @@ def tensor(
     memory: Optional[MemoryType] = None,
     name: str = "",
 ):
-    tensor_type = TensorType(axis=axis, dtype=dtype, quantization=quantization, memory=memory, name=name)
+    tensor_type = TensorType(
+        axis=axis, dtype=dtype, quantization=quantization, memory=memory, name=name
+    )
     return Tensor(tensor_type=tensor_type, name=name)
 
 
-def tensor_by_tuples(shape, axis_names, dtype=float_t(), name='tensor'):
+def tensor_by_tuples(shape, axis_names, dtype=float_t(), name="tensor"):
     assert len(shape) == len(axis_names)
     ax = []
     for dim, ax_name in zip(shape, axis_names):
@@ -66,22 +85,30 @@ def tensor_by_tuples(shape, axis_names, dtype=float_t(), name='tensor'):
     return tensor(axis=ax, dtype=dtype, name=name)
 
 
-def batched_image_tensor(dtype=float_t(), name=""):
-    return tensor((axis("n", DefaultInt(1)),
-                   axis("c", DefaultInt(3)),
-                   axis("h", DefaultInt(16)),
-                   axis("w", DefaultInt(16))), dtype=dtype, name=name)
+def batched_image_tensor(shape=(1, 3, 16, 16), dtype=float_t(), name=""):
+    assert len(shape) == 4
+    return tensor_by_tuples(
+        shape=shape, dtype=dtype, name=name, axis_names=("n", "c", "h", "w")
+    )
 
 
-def weight_tensor(dtype: DataType = float_t(), shape: tuple = (None, None, None, None), name=""):
+def weight_tensor(
+    dtype: DataType = float_t(), shape: tuple = (None, None, None, None), name=""
+):
     processed_shape = [None for i in range(len(shape))]
     for i in range(len(shape)):
         processed_shape[i] = process_int(shape[i])
 
-    return tensor((axis("o", processed_shape[0]),
-                   axis("i", processed_shape[1]),
-                   axis("kh", processed_shape[2]),
-                   axis("kw", processed_shape[3])), dtype=dtype, name=name)
+    return tensor(
+        (
+            axis("o", processed_shape[0]),
+            axis("i", processed_shape[1]),
+            axis("kh", processed_shape[2]),
+            axis("kw", processed_shape[3]),
+        ),
+        dtype=dtype,
+        name=name,
+    )
 
 
 @dataflow
