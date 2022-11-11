@@ -5,7 +5,7 @@ from hannah.nas.dataflow.ops import conv2d, identity, sum, concat
 
 def test_darts_space():
     input = batched_image_tensor(name='input')
-    darts  = darts_space(input)
+    # darts  = darts_space(input)
     print()
 
 
