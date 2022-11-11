@@ -51,6 +51,12 @@ class DefaultFloat(Placeholder):
         self.value = value
 
 
+class DefaultBool(Placeholder):
+    def __init__(self, value: bool, id: Optional[str] = None) -> None:
+        super().__init__(id)
+        self.value = value
+
+
 class IntRange(Placeholder):
     def __init__(self, min: int, max: int, id: Optional[str] = None) -> None:
         super().__init__(id)
