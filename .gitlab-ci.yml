@@ -60,7 +60,6 @@ test_python_38:
   cache:
     paths:
       - .cache/
-      - .poetry/
 
 test_tvm:
   stage: test
@@ -82,7 +81,6 @@ test_tvm:
   cache:
     paths:
       - .cache/
-      - .poetry/
 
 test_python_310:
   stage: test
@@ -107,7 +105,6 @@ test_python_310:
   cache:
     paths:
       - .cache/
-      - .poetry/
 
 build_docs:
   stage: deploy
@@ -214,7 +211,6 @@ run_sca:
   cache:
     paths:
       - .cache/
-      - .poetry/
 
 # ml_cloud_update_env:
 #   stage: deploy
