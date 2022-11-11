@@ -5,11 +5,20 @@ from hannah.nas.dataflow.tensor import Tensor
 from hannah.nas.expressions.placeholder import DefaultInt, UndefinedInt
 
 
+# FIXME: Rename to "last" op
 def find_first_op_in_dfg(node):
     if hasattr(node, 'output'):
         return find_first_op_in_dfg(node.output)
     else:
         return node
+
+
+def find_next_dataflow(node):
+    if hasattr(node, 'output'):
+        return node
+    else:
+        assert len(node.users) < 2, "Next DataflowGraph is ambiguous"
+        return find_next_dataflow(node.users[0])
 
 
 def remove_old_users(node):
