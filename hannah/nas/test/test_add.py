@@ -13,8 +13,8 @@ def test_add():
     tensor_b = tensor_by_tuples((1, 4, 16, 16), ('a', 'b', 'c', 'd'))
 
     add_op = op('Add', tensor_a, tensor_b)
-    returned_tensor = add_op.output_tensor()
-    for name, ax in returned_tensor.tensor_type.axis.items():
+    returned_tensor = add_op.tensor_type()  # FIXME: tensor_type()
+    for name, ax in returned_tensor.axis.items():
         print("{}: {}".format(name, ax.size.evaluate()))
     print()
 
@@ -26,7 +26,7 @@ def parallel_convs(input):
     stride = CategoricalParameter([1, 2])
     dilation = DefaultInt(1)
 
-    input_tensor = input.output_tensor()
+    input_tensor = input.tensor_type()
 
     weight1 = weight_tensor(shape=(channel, input_tensor['c'], kernel_size, kernel_size), name='weight')
     conv1 = op("Conv2d", input, weight1, dilation=dilation, stride=stride)
@@ -45,9 +45,9 @@ def test_parallel_convs():
 
     # convs['parallel_convs.0.Conv2d.0'].stride.set_current(2)
 
-    returned_tensor = convs.output.output_tensor()
+    returned_tensor = convs.output.tensor_type()
 
-    for name, ax in returned_tensor.tensor_type.axis.items():
+    for name, ax in returned_tensor.axis.items():
         print("{}: {}".format(name, ax.size.evaluate()))
     print()
 

@@ -10,14 +10,16 @@ def test_adjacency():
     graph = residual_block(input, stride=IntScalarParameter(1, 2), output_channel=IntScalarParameter(4, 512, 4))
 
     a, indices = graph.adjacency()
-    g = nx.from_numpy_array(a)
-    mapping = {i: n for n, i in indices.items()}
-    g = nx.relabel_nodes(g, mapping)
-
-    nx.draw(g, with_labels=True)
-    plt.show()
-
     print(a)
+    g = nx.from_numpy_array(a)
+    nx.topological_sort(g)
+    a_top = nx.to_numpy_array(g)
+    print(a_top)
+    # mapping = {i: n for n, i in indices.items()}
+    # g = nx.relabel_nodes(g, mapping)
+    # nx.draw(g, with_labels=True)
+    # plt.show()
+
     print()
 
 

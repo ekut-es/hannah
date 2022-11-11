@@ -1,4 +1,4 @@
-from hannah.nas.dataflow.dataflow_graph import dataflow, DataFlowGraph
+from hannah.nas.dataflow.dataflow_graph import dataflow, DataFlowGraph, flatten
 from hannah.nas.dataflow.op_type import OpType
 from hannah.nas.dataflow.tensor_type import TensorType
 from hannah.nas.expressions.placeholder import UndefinedInt
@@ -47,7 +47,7 @@ def test_repeat():
     input = batched_image_tensor(name='input')
     graph = repeat(block, num_repeats=IntScalarParameter(min=1, max=5))(input)
     graph = block(graph)
-    print()
+    print(graph)
 
     assert isinstance(graph, DataFlowGraph)
 

@@ -1,5 +1,5 @@
 from hannah.nas.dataflow.dataflow_graph import dataflow
-from hannah.nas.dataflow.ops import conv2d  # Import to load in registry
+from hannah.nas.dataflow.ops import conv2d  # noqa  #Import to load in registry
 from hannah.nas.dataflow.registry import op
 from hannah.nas.expressions.placeholder import DefaultInt
 from hannah.nas.ops import batched_image_tensor, weight_tensor
@@ -8,7 +8,8 @@ from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarPara
 
 @dataflow
 def conv2d(input, channel, kernel_size=DefaultInt(1), stride=DefaultInt(1), dilation=DefaultInt(1)):
-    weight = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
+    input_tensor = input.tensor_type()
+    weight = weight_tensor(shape=(channel, input_tensor['c'], kernel_size, kernel_size), name='weight')
     padding = kernel_size // 2
     return op("Conv2d", input, weight, dilation=dilation, stride=stride, padding=padding)
 
@@ -16,10 +17,11 @@ def conv2d(input, channel, kernel_size=DefaultInt(1), stride=DefaultInt(1), dila
 @dataflow
 def chained_convs(input, channel, kernel_size=DefaultInt(1), stride=DefaultInt(1), dilation=DefaultInt(1)):
     padding = kernel_size // 2
-    weight1 = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
+    input_tensor = input.tensor_type()
+    weight1 = weight_tensor(shape=(channel, input_tensor['c'], kernel_size, kernel_size), name='weight')
     conv1 = op("Conv2d", input, weight1, dilation=dilation, stride=stride, padding=padding)
 
-    weight2 = weight_tensor(shape=(channel, input['c'], kernel_size, kernel_size), name='weight')
+    weight2 = weight_tensor(shape=(channel, input_tensor['c'], kernel_size, kernel_size), name='weight')
     conv2 = op("Conv2d", conv1, weight2, dilation=dilation, stride=stride, padding=padding)
 
     return conv2
@@ -48,9 +50,9 @@ def test_chained_conv2d():
     ks = CategoricalParameter([1, 3, 5])
     ks.set_current(3)
     convs = chained_convs(inp, channel=IntScalarParameter(4, 64), kernel_size=ks)
-    returned_tensor = convs.output.output_tensor()
+    returned_tensor = convs.output.tensor_type()
 
-    for name, ax in returned_tensor.tensor_type.axis.items():
+    for name, ax in returned_tensor.axis.items():
         print("{}: {}".format(name, ax.size.evaluate()))
     print()
 

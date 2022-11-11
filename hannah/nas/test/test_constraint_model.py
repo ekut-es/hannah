@@ -2,6 +2,7 @@ from hannah.nas.constraints.constraint_model import ConstraintModel
 from hannah.nas.ops import batched_image_tensor
 from hannah.nas.test.network import residual_block
 from hannah.nas.parameters.parameters import IntScalarParameter
+from hannah.nas.expressions.placeholder import DefaultInt
 from hannah.nas.dataflow.dataflow_graph import flatten
 from z3 import And
 
@@ -9,7 +10,7 @@ from z3 import And
 def test_constraint_model():
     # Create a network and flatten the graph
     input = batched_image_tensor(shape=(1, 3, 32, 32), name='input')
-    graph = residual_block(input, stride=IntScalarParameter(1, 2), output_channel=IntScalarParameter(4, 512, 4))
+    graph = residual_block(input, stride=DefaultInt(1), output_channel=IntScalarParameter(4, 512, 4))
     graph = flatten(graph)
 
     # build a constraint model
@@ -59,7 +60,7 @@ def test_constraint_model_parameters():
 
     params = graph.parameters(flatten=True)
 
-    for i in range(1000):
+    for i in range(1):
         cm.solver.push()
         for name, param in params.items():
             assert name in cm.vars
