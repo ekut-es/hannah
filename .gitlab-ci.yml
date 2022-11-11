@@ -57,6 +57,10 @@ test_python_38:
     - docker
   interruptible: true
   dependencies: []
+  cache:
+    paths:
+      - .cache/
+      - .poetry/
 
 test_tvm:
   stage: test
@@ -75,6 +79,10 @@ test_tvm:
   only:
     - main
     - /.*tvm.*/
+  cache:
+    paths:
+      - .cache/
+      - .poetry/
 
 test_python_310:
   stage: test
@@ -96,6 +104,10 @@ test_python_310:
     reports:
       cobertura: coverage.xml
   dependencies: []
+  cache:
+    paths:
+      - .cache/
+      - .poetry/
 
 build_docs:
   stage: deploy
@@ -199,7 +211,10 @@ run_sca:
     - docker
   interruptible: true
   allow_failure: true
-
+  cache:
+    paths:
+      - .cache/
+      - .poetry/
 
 # ml_cloud_update_env:
 #   stage: deploy
