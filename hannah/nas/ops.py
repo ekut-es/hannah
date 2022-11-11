@@ -53,7 +53,7 @@ def tensor(
     memory: Optional[MemoryType] = None,
     name: str = "",
 ):
-    tensor_type = TensorType(axis=axis, dtype=dtype, quantization=quantization, memory=memory, name=name)
+    tensor_type = TensorType(axis, dtype=dtype, quantization=quantization, memory=memory, name=name)
     return Tensor(tensor_type=tensor_type, name=name)
 
 
@@ -66,11 +66,9 @@ def tensor_by_tuples(shape, axis_names, dtype=float_t(), name='tensor'):
     return tensor(axis=ax, dtype=dtype, name=name)
 
 
-def batched_image_tensor(dtype=float_t(), name=""):
-    return tensor((axis("n", DefaultInt(1)),
-                   axis("c", DefaultInt(3)),
-                   axis("h", DefaultInt(16)),
-                   axis("w", DefaultInt(16))), dtype=dtype, name=name)
+def batched_image_tensor(shape=(1, 3, 16, 16), dtype=float_t(), name=""):
+    assert len(shape) == 4
+    return tensor_by_tuples(shape=shape, axis_names=('n', 'c', 'h', 'w'), name=name, dtype=dtype)
 
 
 def weight_tensor(dtype: DataType = float_t(), shape: tuple = (None, None, None, None), name=""):
