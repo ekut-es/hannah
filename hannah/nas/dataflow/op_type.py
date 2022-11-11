@@ -32,7 +32,8 @@ class OpType(TensorExpression):
     def link_users(self):
         for operand in self.operands:
             last_output = find_first_op_in_dfg(operand)
-            last_output.users.append(self)
+            if self not in last_output.users:
+                last_output.users.append(self)
 
     def set_scope(self, current_scope, counters, visited):
         current_scope = update_scope(self, current_scope)
