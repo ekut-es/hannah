@@ -29,6 +29,9 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
 
+cache:
+  key: "$CI_JOB_NAME"
+
 before_script:
   - apt update
   - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build
