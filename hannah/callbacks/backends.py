@@ -210,7 +210,6 @@ class TRaxUltraTrailBackend(Callback):
     def __init__(
         self,
         backend_dir,
-        teda_dir,
         standalone,
         rtl_simulation,
         synthesis,
@@ -226,7 +225,6 @@ class TRaxUltraTrailBackend(Callback):
         use_acc_teda_data,
     ):
         self.backend_dir = backend_dir
-        self.teda_dir = Path(teda_dir)
         self.standalone = standalone
         self.rtl_simulation = rtl_simulation
         self.synthesis = synthesis
@@ -295,7 +293,6 @@ class TRaxUltraTrailBackend(Callback):
             True if self.rtl_simulation or self.postsyn_simulation else False
         )
         backend = UltraTrailBackend(
-            teda=self.teda_dir,
             bw_w=self.bw_w,
             bw_b=self.bw_b,
             bw_f=self.bw_f,
