@@ -24,7 +24,12 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
-from timm.data.mixup import Mixup
+
+try:
+    from timm.data.mixup import Mixup
+except ModuleNotFoundError:
+    logging.critical("Could not import Mixup from timm.data.mixup")
+    Mixup = None
 from torchmetrics import (
     Accuracy,
     ConfusionMatrix,
