@@ -37,9 +37,6 @@ import torch
 import torch.nn as nn
 from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-from pl_bolts.callbacks import TrainingDataMonitor
-
-# from pl_bolts.callbacks import ModuleDataMonitor
 from pytorch_lightning.callbacks import (
     Callback,
     DeviceStatsMonitor,
@@ -232,10 +229,7 @@ def common_callbacks(config: DictConfig) -> list:
                 "config option gpu_stats has been deprecated use device_stats instead"
             )
         device_stats = DeviceStatsMonitor(cpu_stats=config.get("device_stats", False))
-
-    if config.get("data_monitor", False):
-        data_monitor = TrainingDataMonitor(submodules=True)
-        callbacks.append(data_monitor)
+        callbacks.append(device_stats)
 
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
