@@ -34,7 +34,7 @@ project_config_dir = topdir / "configs"
 
 
 @pytest.mark.skipif(
-    sys.version_info >= (3, 10), reason="currently does not run on python 3.10 or later"
+    sys.version_info >= (3, 9), reason="currently does not run on python 3.10 or later"
 )
 def test_parse_configs():
     """This simply tests that all configs are parsable by hydra"""
