@@ -22,6 +22,7 @@ import os
 
 import torch.nn as nn
 from pytorch_lightning import Callback
+
 import hannah.models.factory.qat as qat
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,14 @@ class TestDumperCallback(Callback):
                         )
                     )
 
-                if type(module) in [nn.Conv1d, qat.Conv1d, qat.ConvBn1d, qat.ConvBnReLU1d, qat.ConvReLU1d, qat.Linear]:
+                if type(module) in [
+                    nn.Conv1d,
+                    qat.Conv1d,
+                    qat.ConvBn1d,
+                    qat.ConvBnReLU1d,
+                    qat.ConvReLU1d,
+                    qat.Linear,
+                ]:
                     module.register_forward_hook(
                         DumpForwardHook(
                             module, output_dir + "/test_data/layers/" + module_name

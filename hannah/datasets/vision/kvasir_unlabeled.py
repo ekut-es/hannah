@@ -23,10 +23,11 @@ import pathlib
 import urllib
 from typing import List
 
-import albumentations as A
 import cv2
 from albumentations.pytorch.transforms import ToTensorV2
 from tqdm import tqdm
+
+import albumentations as A
 
 from ..base import AbstractDataset
 from ..utils import generate_file_md5
@@ -283,7 +284,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         logger.info("Sum of Frames total: %f", sum_frames)
 
         json_data["metadata"] = video_metadata
-        if True: # not files_json.exists:
+        if True:  # not files_json.exists:
             with files_json.open("w") as f:
                 json.dump(json_data, f)
 

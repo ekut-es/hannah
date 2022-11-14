@@ -19,11 +19,12 @@
 import logging
 import os
 
-import albumentations as A
 import torch.utils.data as data
 import torchvision
 from albumentations.pytorch.transforms import ToTensorV2
 from torchvision import datasets
+
+import albumentations as A
 
 from .base import TorchvisionDatasetBase
 

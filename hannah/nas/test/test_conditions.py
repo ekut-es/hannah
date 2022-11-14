@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from hannah.nas.parameters import parametrize
 from hannah.nas.parameters.parameters import IntScalarParameter
 
@@ -23,10 +41,10 @@ def test_condition():
         accelerator_instance = accelerator.instantiate()
     except Exception:
         pass
-    accelerator.set_current({'a': 6})
+    accelerator.set_current({"a": 6})
     accelerator_instance = accelerator.instantiate()
     try:
-        accelerator.set_current({'a': 6, 'b': 6})
+        accelerator.set_current({"a": 6, "b": 6})
     except Exception:
         pass
 
@@ -39,7 +57,7 @@ def test_condition():
 
     other_accelerator.cond(other_a_param == accelerator.a)
 
-    other_accelerator.set_current({'a': 6})
+    other_accelerator.set_current({"a": 6})
 
     print()
 

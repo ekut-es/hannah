@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import pytest
 
 from hannah.nas.expressions.arithmetic import Add
@@ -36,18 +54,18 @@ def test_and_expr():
     one = DefaultInt(1)
     zero = DefaultInt(0)
 
-    assert (one & one).evaluate() == True
-    assert (one & zero).evaluate() == False
+    assert (one & one).evaluate() is True
+    assert (one & zero).evaluate() is False
 
 
 def test_le_expr():
     one = DefaultInt(1)
     zero = DefaultInt(0)
 
-    assert (one < one).evaluate() == False
-    assert (one < zero).evaluate() == False
-    assert (zero < one).evaluate() == True
-    assert (zero < zero).evaluate() == False
+    assert (one < one).evaluate() is False
+    assert (one < zero).evaluate() is False
+    assert (zero < one).evaluate() is True
+    assert (zero < zero).evaluate() is False
 
 
 def test_complex_expressions():

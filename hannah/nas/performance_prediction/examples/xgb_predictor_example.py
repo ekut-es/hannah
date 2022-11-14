@@ -21,9 +21,14 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from hannah.nas.performance_prediction.features.dataset import NASGraphDataset
-from hannah.nas.performance_prediction.gcn.predictor import XGBPredictor, get_input_feature_size, prepare_dataloader
 from search_space.space import NetworkSpace
+
+from hannah.nas.performance_prediction.features.dataset import NASGraphDataset
+from hannah.nas.performance_prediction.gcn.predictor import (
+    XGBPredictor,
+    get_input_feature_size,
+    prepare_dataloader,
+)
 
 plt.style.use("seaborn")
 

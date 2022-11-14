@@ -31,14 +31,13 @@ from dgl.data import DGLDataset
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from sklearn.preprocessing import MinMaxScaler
-from pathlib import Path
 
 import hannah.conf
 from hannah.nas.graph_conversion import model_to_graph
 
 
 class NASGraphDataset(DGLDataset):
-    def __init__(self, result_folder : str):
+    def __init__(self, result_folder: str):
         self.result_folder = Path(result_folder)
         super().__init__(name="nasgraph")
 
@@ -47,14 +46,14 @@ class NASGraphDataset(DGLDataset):
         self.graphs = []
         self.labels = []
         assert self.result_folder.exists()
-        
+
         data_dict = {}
         ct = 0
         for i, data_path in enumerate(self.result_folder.glob("model_*.json")):
             if i % 500 == 0:
                 print("Processing graph {}".format(i))
 
-            d = json.load(data_path.open())            
+            d = json.load(data_path.open())
 
             graph = nx.json_graph.node_link_graph(d["graph"])
             self.nx_graphs.append(graph)
