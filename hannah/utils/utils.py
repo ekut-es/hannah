@@ -52,7 +52,7 @@ from torchvision.datasets.utils import (
 )
 
 from ..callbacks.clustering import kMeans
-from ..callbacks.dump_layer import TestDumperCallback
+from ..callbacks.dump_layers import TestDumperCallback
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.pruning import PruningAmountScheduler
 from ..callbacks.summaries import MacSummaryCallback
