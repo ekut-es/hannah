@@ -1,11 +1,32 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 from typing import Sequence
 
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
+from sklearn.metrics import auc, roc_curve
 from timm.data.mixup import Mixup
 from torchmetrics import (
     Accuracy,
@@ -83,6 +104,13 @@ class AnomalyDetectionModule(ClassifierModule):
         self.mixup_fn = self.train_set.get_mixup_fn()
         self.batch_augment_fn = self.train_set.get_batch_augment_fn()
 
+        # setup list for train losses to compute anomaly score
+        self.train_losses = list()
+        self.normalized_train_errors = None
+        self.predictions = list()
+        self.labels = list()
+        self.test_losses = list()
+
         # Setup Metrics
         metrics = {}
         if self.num_classes > 0:
@@ -149,12 +177,25 @@ class AnomalyDetectionModule(ClassifierModule):
             if batch_idx == 0:
                 self._log_batch_images("decoded", batch_idx, decoded)
 
-        self.log(f"{step_name}_loss", loss) 
+        self.log(f"{step_name}_loss", loss)
 
         return loss
 
+    def compute_anomaly_score(self):
+
+        anomaly_score = None
+
+        if self.train_losses:
+            self.normalized_train_errors = torch.stack(self.train_losses) / (
+                torch.max(torch.stack(self.train_losses), dim=0).values
+            )
+            anomaly_score = np.percentile(
+                self.normalized_train_errors.cpu().numpy(), 90
+            )
+        return anomaly_score
+
     def common_step(self, step_name, batch, batch_idx):
-    
+
         batch = self._decode_batch(batch)
         x = batch["data"]
         labels = batch.get("labels", None)
@@ -168,8 +209,24 @@ class AnomalyDetectionModule(ClassifierModule):
         loss = torch.tensor([0.0], device=self.device)
         loss = self.compute_loss(prediction_result, x, step_name, batch_idx, loss)
 
-        return loss, prediction_result, batch
-  
+        anomaly_score = self.compute_anomaly_score()
+        preds = None
+
+        if anomaly_score:
+            if loss > anomaly_score:
+                preds = torch.empty(
+                    size=labels.size(), device=labels.device, dtype=labels.dtype
+                ).fill_(1)
+            else:
+                preds = torch.empty(
+                    size=labels.size(), device=labels.device, dtype=labels.dtype
+                ).fill_(0)
+
+            self.metrics[f"{step_name}_metrics"](preds, labels)
+            self.log_dict(self.metrics[f"{step_name}_metrics"])
+
+        return loss, prediction_result, batch, preds
+
     def augment(self, labels, batch_idx, x):
 
         augmented_data = x
@@ -190,9 +247,13 @@ class AnomalyDetectionModule(ClassifierModule):
 
         batch_labeled = batch["labeled"]
         batch_unlabeled = batch["unlabeled"]
-        normal_labeled_idx = (batch_labeled['labels'] == 0).nonzero(as_tuple=True)[0]  
+        normal_labeled_idx = (batch_labeled["labels"] == 0).nonzero(as_tuple=True)[0]
         labels_normal = batch_labeled["labels"][normal_labeled_idx]
-        batch_normal_labeled = {"data": torch.index_select(batch_labeled["data"], 0, normal_labeled_idx), "labels": labels_normal} 
+        batch_normal_labeled = {
+            "data": torch.index_select(batch_labeled["data"], 0, normal_labeled_idx),
+            "labels": labels_normal,
+        }
+
         batch_normal_labeled = self._decode_batch(batch_normal_labeled)
         batch_unlabeled = self._decode_batch(batch_unlabeled)
 
@@ -212,21 +273,25 @@ class AnomalyDetectionModule(ClassifierModule):
 
             loss += self.compute_loss(prediction_result, x, "train", batch_idx, loss)
 
+        self.train_losses.append(loss)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
         self.common_step("val", batch, batch_idx)
 
     def test_step(self, batch, batch_idx):
-        _, step_results, batch = self.common_step("test", batch, batch_idx)
+        loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
 
-        #y = batch.get("labels", None)
-        #preds = step_results.preds
-        #if y is not None and preds is not None:
-        #    with set_deterministic(False):
-        #        self.test_confusion(preds, y)
+        y = batch.get("labels", None)
+
+        # preds = step_results.preds
+        if y is not None and preds is not None:
+            with set_deterministic(False):
+                self.test_confusion(preds, y)
 
     def on_train_epoch_end(self):
+        self.train_losses = self.train_losses[-1000:]
         self.eval()
         self._log_weight_distribution()
         self.train()
