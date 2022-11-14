@@ -27,6 +27,10 @@ logger = logging.getLogger(__name__)
 
 monitor_type = Union[Iterable[Mapping[str, Any]], Mapping[str, Any], Iterable[str], str]
 
+logger = logging.getLogger(__name__)
+
+monitor_type = Union[Iterable[Mapping[str, any]], Mapping[str, any], Iterable[str], str]
+
 
 class HydraOptCallback(Callback):
     def __init__(self, monitor: monitor_type = ["val_loss"]):

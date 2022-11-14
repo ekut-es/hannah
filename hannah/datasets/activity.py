@@ -27,7 +27,7 @@ import h5py
 import numpy as np
 import torch
 
-from ..utils import extract_from_download_cache, list_all_files
+from ..utils.utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
 
 msglogger = logging.getLogger()

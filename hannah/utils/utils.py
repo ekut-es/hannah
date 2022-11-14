@@ -37,14 +37,13 @@ import torch
 import torch.nn as nn
 from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-from pl_bolts.callbacks import ModuleDataMonitor
 from pytorch_lightning.callbacks import (
     Callback,
     DeviceStatsMonitor,
     LearningRateMonitor,
 )
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from torchvision.datasets.utils import (
     download_and_extract_archive,
     extract_archive,
@@ -52,12 +51,12 @@ from torchvision.datasets.utils import (
     list_files,
 )
 
-from .callbacks.clustering import kMeans
-from .callbacks.dump_layers import TestDumperCallback
-from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
-from .callbacks.summaries import MacSummaryCallback
-from .callbacks.svd_compress import SVD
+from ..callbacks.clustering import kMeans
+from ..callbacks.dump_layers import TestDumperCallback
+from ..callbacks.optimization import HydraOptCallback
+from ..callbacks.pruning import PruningAmountScheduler
+from ..callbacks.summaries import MacSummaryCallback
+from ..callbacks.svd_compress import SVD
 
 try:
     import lsb_release  # pytype: disable=import-error
@@ -230,10 +229,7 @@ def common_callbacks(config: DictConfig) -> list:
                 "config option gpu_stats has been deprecated use device_stats instead"
             )
         device_stats = DeviceStatsMonitor(cpu_stats=config.get("device_stats", False))
-
-    if config.get("data_monitor", False):
-        data_monitor = ModuleDataMonitor(submodules=True)
-        callbacks.append(data_monitor)
+        callbacks.append(device_stats)
 
     mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)

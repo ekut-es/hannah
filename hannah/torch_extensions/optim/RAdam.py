@@ -19,7 +19,7 @@
 import math
 
 import torch
-from torch.optim.optimizer import Optimizer, required
+from torch.optim.optimizer import Optimizer
 
 # PyTorch implementation of Rectified Adam from https://github.com/LiyuanLucasLiu/RAdam
 

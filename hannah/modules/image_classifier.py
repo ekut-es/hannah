@@ -17,16 +17,27 @@
 # limitations under the License.
 #
 import logging
+from typing import Sequence
 
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
+import torchvision.utils
 from hydra.utils import get_class, instantiate
-from torchmetrics import ConfusionMatrix
-from torchmetrics.functional import accuracy, f1_score, precision, recall
+from timm.data.mixup import Mixup
+from torchmetrics import (
+    Accuracy,
+    ConfusionMatrix,
+    F1Score,
+    MetricCollection,
+    Precision,
+    Recall,
+)
 
-from ..utils import set_deterministic
+from ..utils.utils import set_deterministic
+from .augmentation.batch_augmentation import BatchAugmentationPipeline
 from .base import ClassifierModule
+from .metrics import Error
 
 msglogger = logging.getLogger(__name__)
 
@@ -46,20 +57,98 @@ class ImageClassifierModule(ClassifierModule):
         self.train_set, self.dev_set, self.test_set = dataset_cls.splits(
             self.hparams.dataset
         )
-        self.example_input_array = torch.tensor(self.test_set[0][0]).unsqueeze(0)
-        self.example_feature_array = torch.tensor(self.test_set[0][0]).unsqueeze(0)
 
-        self.num_classes = len(self.train_set.class_names)
+        self.train_set_unlabeled, self.dev_set_unlabeled, self.test_set_unlabeled = (
+            None,
+            None,
+            None,
+        )
+
+        example_data = self._decode_batch(self.test_set[0])["data"]
+
+        if not isinstance(example_data, torch.Tensor):
+            example_data = torch.tensor(example_data, device=self.device)
+
+        self.example_input_array = example_data.clone().detach().unsqueeze(0)
+        self.example_feature_array = example_data.clone().detach().unsqueeze(0)
+
+        self.num_classes = 0
+        if self.train_set.class_names:
+            self.num_classes = len(self.train_set.class_names)
 
         msglogger.info("Setting up model %s", self.hparams.model.name)
         self.model = instantiate(
             self.hparams.model,
-            labels=self.num_classes,
             input_shape=self.example_input_array.shape,
+            labels=self.num_classes,
             _recursive_=False,
         )
 
-        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+        # FIXME run forward to initialize parameters
+        self.model.eval()
+        with torch.no_grad():
+            self.model(self.example_input_array)
+        self.model.train()
+
+        if self.hparams.dataset.get("weighted_loss", False) is True:
+            loss_weights = torch.tensor(self.train_set.weights)
+            loss_weights *= len(self.train_set) / self.num_classes
+
+            msglogger.info("Using weighted loss with weights:")
+            for num, (weight, name) in enumerate(
+                zip(loss_weights, self.train_set.class_names)
+            ):
+                msglogger.info("- %s [%d]: %f", name, num, weight.item())
+
+            self.register_buffer("loss_weights", loss_weights)
+        else:
+            self.loss_weights = None
+
+        self.mixup_fn = self.train_set.get_mixup_fn()
+        self.batch_augment_fn = self.train_set.get_batch_augment_fn()
+
+        # Setup Metrics
+        metrics = {}
+        if self.num_classes > 0:
+            self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+
+            for step_name in ["train", "val", "test"]:
+                step_metrics = MetricCollection(
+                    {
+                        f"{step_name}_accuracy": Accuracy(num_classes=self.num_classes),
+                        f"{step_name}_error": Error(num_classes=self.num_classes),
+                        f"{step_name}_precision_micro": Precision(
+                            num_classes=self.num_classes, average="micro"
+                        ),
+                        f"{step_name}_recall_micro": Recall(
+                            num_classes=self.num_classes, average="micro"
+                        ),
+                        f"{step_name}_f1_micro": F1Score(
+                            num_classes=self.num_classes, average="micro"
+                        ),
+                        f"{step_name}_precision_macro": Precision(
+                            num_classes=self.num_classes, average="macro"
+                        ),
+                        f"{step_name}_recall_macro": Recall(
+                            num_classes=self.num_classes, average="macro"
+                        ),
+                        f"{step_name}_f1_macro": F1Score(
+                            num_classes=self.num_classes, average="macro"
+                        ),
+                    }
+                )
+                metrics[f"{step_name}_metrics"] = step_metrics
+
+        self.metrics = torch.nn.ModuleDict(metrics)
+
+    def _decode_batch(self, batch):
+        if isinstance(batch, Sequence):
+            assert len(batch) == 2
+            ret = {"data": batch[0], "labels": batch[1]}
+        else:
+            ret = batch
+
+        return ret
 
     def get_class_names(self):
         return self.train_set.class_names
@@ -72,116 +161,77 @@ class ImageClassifierModule(ClassifierModule):
     def forward(self, x):
         return self.model(x)
 
-    def _get_dataloader(self, dataset, shuffle=False):
-        batch_size = self.hparams["batch_size"]
-        dataset_conf = self.hparams.dataset
-        sampler = None
-        if shuffle:
-            sampler_type = dataset_conf.get("sampler", "random")
-            if sampler_type == "weighted":
-                sampler = self.get_balancing_sampler(dataset)
-            else:
-                sampler = data.RandomSampler(dataset)
+    def common_step(self, step_name, batch, batch_idx):
+        # print("step_name", step_name)
+        batch = self._decode_batch(batch)
 
-        train_loader = data.DataLoader(
-            dataset,
-            batch_size=batch_size,
-            drop_last=True,
-            num_workers=self.hparams["num_workers"],
-            sampler=sampler,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-
-        self.batches_per_epoch = len(train_loader)
-
-        return train_loader
-
-    def training_step(self, batch, batch_idx):
-        x, y = batch
+        x = batch["data"]
+        labels = batch.get("labels", None)
+        boxes = batch.get("bbox", None)
 
         if batch_idx == 0:
-            loggers = self._logger_iterator()
+            self._log_batch_images("input", batch_idx, x)
 
-            for logger in loggers:
-                if hasattr(logger.experiment, "add_image"):
-                    import torchvision.utils
+        mixup_labels = labels
+        augmented_data = x
+        if step_name == "train":
+            if labels is not None:
+                if self.mixup_fn is not None:
+                    x, mixup_labels = self.mixup_fn(x, labels)
 
-                    images = torchvision.utils.make_grid(x, normalize=True)
-                    logger.experiment.add_image(f"input{batch_idx}", images)
+            if self.batch_augment_fn is not None:
+                augmented_data = self.batch_augment_fn(data=x)
 
-        logits = self(x)
+        if batch_idx == 0:
+            self._log_batch_images("augmented", batch_idx, augmented_data)
 
-        loss = F.cross_entropy(
-            logits, y.squeeze()
-        )  # , weight=torch.tensor([0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809], device=self.device))
-        self.log("train_loss", loss)
+        prediction_result = self.forward(augmented_data)
+
+        loss = torch.tensor([0.0], device=self.device)
+        preds = None
+        if labels is not None and prediction_result.logits is not None:
+            logits = prediction_result.logits
+
+            classifier_loss = F.cross_entropy(
+                logits, mixup_labels.squeeze(), weight=self.loss_weights
+            )
+
+            self.log(f"{step_name}_classifier_loss", classifier_loss)
+            loss += classifier_loss
+
+            preds = torch.argmax(logits, dim=1)
+            self.metrics[f"{step_name}_metrics"](preds, labels)
+
+            self.log_dict(self.metrics[f"{step_name}_metrics"])
+
+        if prediction_result.decoded is not None:
+            decoded = prediction_result.decoded
+            decoder_loss = F.mse_loss(decoded, x)
+            # print(f"{step_name}_decoder_loss", decoder_loss)
+            self.log(f"{step_name}_decoder_loss", decoder_loss)
+            loss += decoder_loss
+
+            if batch_idx == 0:
+                self._log_batch_images("decoded", batch_idx, decoded)
+
+        self.log(f"{step_name}_loss", loss)
+        return loss, prediction_result, batch, preds
+
+    def training_step(self, batch, batch_idx):
+        loss, _, _, _ = self.common_step("train", batch, batch_idx)
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        logits = self(x)
-        loss = F.cross_entropy(logits, y.squeeze())
-        preds = torch.argmax(logits, dim=1)
-        acc = accuracy(preds, y.squeeze())
-
-        precision_micro = precision(preds, y)
-        recall_micro = recall(preds, y)
-        f1_micro = f1_score(preds, y)
-        precision_macro = precision(
-            preds, y, num_classes=self.num_classes, average="macro"
-        )
-        recall_macro = recall(preds, y, num_classes=self.num_classes, average="macro")
-        f1_macro = f1_score(preds, y, num_classes=self.num_classes, average="macro")
-
-        self.log("val_loss", loss)
-        self.log("val_error", 1 - acc, sync_dist=True)
-        self.log("val_accuracy", acc, sync_dist=True)
-        self.log("val_precision_micro", precision_micro, sync_dist=True)
-        self.log("val_recall_micro", recall_micro, sync_dist=True)
-        self.log("val_f1_micro", f1_micro, sync_dist=True)
-        self.log("val_precision_macro", precision_macro, sync_dist=True)
-        self.log("val_recall_macro", recall_macro, sync_dist=True)
-        self.log("val_f1_macro", f1_macro, sync_dist=True)
+        self.common_step("val", batch, batch_idx)
 
     def test_step(self, batch, batch_idx):
-        x, y = batch
-        logits = self(x)
-        loss = F.cross_entropy(logits, y.squeeze())
-        preds = torch.argmax(logits, dim=1)
-        softmax = F.softmax(logits)
-        acc = accuracy(preds, y.squeeze())
+        _, step_results, batch, preds = self.common_step("test", batch, batch_idx)
 
-        precision_micro = precision(preds, y)
-        recall_micro = recall(preds, y)
-        f1_micro = f1_score(preds, y)
-        precision_macro = precision(
-            preds, y, num_classes=self.num_classes, average="macro"
-        )
-        recall_macro = recall(preds, y, num_classes=self.num_classes, average="macro")
-        f1_macro = f1_score(preds, y, num_classes=self.num_classes, average="macro")
-
-        with set_deterministic(False):
-            self.test_confusion(preds, y)
-
-        self.log("test_loss", loss)
-        self.log("test_error", 1 - acc, sync_dist=True)
-        self.log("test_accuracy", acc, sync_dist=True)
-        self.log("test_precision_micro", precision_micro, sync_dist=True)
-        self.log("test_recall_micro", recall_micro, sync_dist=True)
-        self.log("test_f1_micro", f1_micro, sync_dist=True)
-        self.log("test_precision_macro", precision_macro, sync_dist=True)
-        self.log("test_recall_macro", recall_macro, sync_dist=True)
-        self.log("test_f1_macro", f1_macro, sync_dist=True)
-
-    def train_dataloader(self):
-        return self._get_dataloader(self.train_set, shuffle=True)
-
-    def test_dataloader(self):
-        return self._get_dataloader(self.test_set)
-
-    def val_dataloader(self):
-        return self._get_dataloader(self.dev_set)
+        y = batch.get("labels", None)
+        if y is not None and preds is not None:
+            with set_deterministic(False):
+                self.test_confusion(preds, y)
 
     def on_train_epoch_end(self):
         self.eval()
