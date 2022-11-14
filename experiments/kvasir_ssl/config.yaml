@@ -26,7 +26,6 @@ defaults:
     - override optimizer: adamw           # Optimizer config name
     - override normalizer: null           # Feature normalizer (used for quantized neural networks)
     - override module: anomaly_detection  # Lightning module config for the training loop (image classifier for image classification tasks)
-    - override checkpoint: last
     - _self_
 
 dataset:
