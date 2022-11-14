@@ -37,7 +37,9 @@ import torch
 import torch.nn as nn
 from git import InvalidGitRepositoryError, Repo
 from omegaconf import DictConfig
-#from pl_bolts.callbacks import ModuleDataMonitor
+from pl_bolts.callbacks import TrainingDataMonitor
+
+# from pl_bolts.callbacks import ModuleDataMonitor
 from pytorch_lightning.callbacks import (
     Callback,
     DeviceStatsMonitor,
@@ -53,6 +55,7 @@ from torchvision.datasets.utils import (
 )
 
 from ..callbacks.clustering import kMeans
+from ..callbacks.dump_layer import TestDumperCallback
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.pruning import PruningAmountScheduler
 from ..callbacks.summaries import MacSummaryCallback
@@ -117,6 +120,7 @@ def log_execution_env_state() -> None:
             logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
         except Exception:
             pass
+
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
     logger.info("  Pytorch Lightning: %s", pytorch_lightning.__version__)
@@ -230,7 +234,7 @@ def common_callbacks(config: DictConfig) -> list:
         device_stats = DeviceStatsMonitor(cpu_stats=config.get("device_stats", False))
 
     if config.get("data_monitor", False):
-        data_monitor = ModuleDataMonitor(submodules=True)
+        data_monitor = TrainingDataMonitor(submodules=True)
         callbacks.append(data_monitor)
 
     mac_summary_callback = MacSummaryCallback()

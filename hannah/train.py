@@ -34,7 +34,6 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
-from .logo import print_logo
 from .utils import (
     auto_select_gpus,
     clear_outputs,
@@ -95,7 +94,7 @@ def train(
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
             gpus=config.trainer.get("gpus", None),
-            unlabeled_data = config.get("unlabeled_data"),
+            unlabeled_data=config.get("unlabeled_data"),
             _recursive_=False,
         )
 

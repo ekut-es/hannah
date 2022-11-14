@@ -29,6 +29,9 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
 
+cache:
+  key: "$CI_JOB_NAME"
+
 before_script:
   - apt update
   - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build
@@ -52,7 +55,7 @@ test_python_38:
   image: python:3.8
   script:
     - set -e
-    - poetry run python3 -m pytest  -v --cov=hannah test
+    - poetry run python3 -m pytest  -v --cov=hannah test hannah
   tags:
     - docker
   interruptible: true
@@ -60,6 +63,9 @@ test_python_38:
     - master
     - merge_requests
   dependencies: []
+  cache:
+    paths:
+      - .cache/
 
 test_tvm:
   stage: test
@@ -78,6 +84,9 @@ test_tvm:
   only:
     - main
     - /.*tvm.*/
+  cache:
+    paths:
+      - .cache/
 
 test_python_310:
   stage: test
@@ -99,6 +108,9 @@ test_python_310:
     reports:
       cobertura: coverage.xml
   dependencies: []
+  cache:
+    paths:
+      - .cache/
 
 build_docs:
   stage: deploy
@@ -202,7 +214,9 @@ run_sca:
     - docker
   interruptible: true
   allow_failure: true
-
+  cache:
+    paths:
+      - .cache/
 
 # ml_cloud_update_env:
 #   stage: deploy

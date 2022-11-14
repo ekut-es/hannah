@@ -53,7 +53,9 @@ class WorklistItem:
     results: Dict[str, float]
 
 
-def run_training(num, config):
+def run_training(
+    num, global_num, config
+):  # num is the number of jobs global_num is the number of models to be created
     if os.path.exists(str(num)):
         shutil.rmtree(str(num))
 
@@ -130,12 +132,14 @@ def run_training(num, config):
         from networkx.readwrite import json_graph
 
         json_data = json_graph.node_link_data(nx_model)
-        print(json_data)
-        with open(f"model_{num}.json", "w") as res_file:
+        if not os.path.exists("../performance_data"):
+            os.mkdir("../performance_data")
+        with open(f"../performance_data/model_{global_num}.json", "w") as res_file:
             import json
 
             json.dump(
-                {"graph": json_data, "result": opt_callback.result(dict=True)}, res_file
+                {"graph": json_data, "metrics": opt_callback.result(dict=True)},
+                res_file,
             )
 
         return opt_callback.result(dict=True)
@@ -211,11 +215,14 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         self.worklist = []
         self.presample = presample
 
+    # sample parameters and estimated metrics from the space
     def _sample(self):
+        # sample the next parameters
         parameters = self.optimizer.next_parameters()
         config = OmegaConf.merge(self.config, parameters.flatten())
 
         try:
+            # setup the model
             model = instantiate(
                 config.module,
                 dataset=config.dataset,
@@ -226,6 +233,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 normalizer=config.get("normalizer", None),
                 _recursive_=False,
             )
+            # train the model
             model.setup("train")
 
         except AssertionError as e:
@@ -269,7 +277,9 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
                 results = executor(
                     [
                         delayed(run_training)(
-                            num, OmegaConf.to_container(config, resolve=True)
+                            num,
+                            len(self.optimizer.history) + num,
+                            OmegaConf.to_container(config, resolve=True),
                         )
                         for num, config in enumerate(configs)
                     ]

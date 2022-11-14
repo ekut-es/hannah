@@ -79,6 +79,8 @@ def main(config: DictConfig):
         network_graph = model_to_graph(model.model, model.example_feature_array)
         results = backend.characterize(model)
 
+        print(network_graph)
+
         for result in results:
             board = result["board"]
             directory = Path(board)

@@ -32,7 +32,7 @@ from ..models.ofa import OFAModel
 from ..models.ofa.submodules.elastickernelconv import ConvBn1d, ConvBnReLu1d, ConvRelu1d
 from ..models.ofa.type_utils import elastic_conv_type, elastic_Linear_type
 from ..models.sinc import SincNet
-from ..torch_extensions.nn import SNNActivationLayer, SNNLayers
+from ..torch_extensions.nn import SNNActivationLayer
 
 msglogger = logging.getLogger(__name__)
 
