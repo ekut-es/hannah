@@ -115,7 +115,9 @@ class ImageDatasetBase(AbstractDataset):
         self.X = X
         self.y = y
         self.classes = classes
-        self.transform = transform
+        self.transform = (
+            transform if transform else A.Compose([A.Normalize(), ToTensorV2()])
+        )
         self.label_to_index = {k: v for v, k in enumerate(classes)}
 
     def __getitem__(self, index):
@@ -124,6 +126,8 @@ class ImageDatasetBase(AbstractDataset):
         label = self.y[index]
         if self.transform:
             data = self.transform(image=image)["image"]
+        else:
+            data = image
         target = self.label_to_index[label]
         return {"data": data, "labels": target}
 
