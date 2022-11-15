@@ -17,10 +17,23 @@
 # limitations under the License.
 #
 import logging
+import os
+import pathlib
+import tarfile
+from collections import Counter, namedtuple
+from typing import Dict, List
 
+import cv2
 import numpy as np
+import pandas as pd
+import requests
+import torchvision
+from albumentations.pytorch import ToTensorV2
+from sklearn.model_selection import train_test_split
 from timm.data.mixup import Mixup
 
+import albumentations as A
+from hannah.modules.augmentation import rand_augment
 from hannah.modules.augmentation.batch_augmentation import BatchAugmentationPipeline
 
 from ..base import AbstractDataset
@@ -87,3 +100,59 @@ class TorchvisionDatasetBase(VisionDatasetBase):
 
     def __len__(self):
         return len(self.dataset)
+
+
+class ImageDatasetBase(AbstractDataset):
+    def __init__(self, X, y, classes, transform=None):
+        """Initialize vision dataset
+
+        Args:
+            X (List[str]): List of paths to image files
+            y (List[int]): Numeric Class id of corresponding image
+            classes (List[str]): List of class names, names must be ordered by numeric class id
+            transform (Callable[image,image], optional): Optional transformation/augmentation of input images. Defaults to None.
+        """
+        self.X = X
+        self.y = y
+        self.classes = classes
+        self.transform = transform
+        self.label_to_index = {k: v for v, k in enumerate(classes)}
+
+    def __getitem__(self, index):
+        image = cv2.imread(str(self.X[index]))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        label = self.y[index]
+        if self.transform:
+            data = self.transform(image=image)["image"]
+        target = self.label_to_index[label]
+        return {"data": data, "labels": target}
+
+    def __len__(self):
+        assert len(self.X) == len(self.y)
+        return len(self.X)
+
+    @property
+    def class_names(self):
+        return self.classes
+
+    @property
+    def class_counts(self):
+        counter = Counter(self.y)
+        counts = dict(counter)
+        for i in len(self.classes):
+            if i not in counts:
+                counts[i] = 0
+        return counts
+
+    @property
+    def num_classes(self):
+        return len(self.class_counts)
+
+    # retuns a list of class index for every sample
+    @property
+    def get_label_list(self) -> List[int]:
+        return self.y
+
+    @property
+    def class_names_abbreviated(self) -> List[str]:
+        return [cn[0:3] for cn in self.class_names]
