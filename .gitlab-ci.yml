@@ -26,6 +26,7 @@ stages:
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
+  POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pypoetry"
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
 
@@ -140,7 +141,7 @@ build_docs:
 
 run_ml_cloud:
   before_script: []
-  stage: build
+  stage: run
   # run
   tags:
     - ml-cloud
