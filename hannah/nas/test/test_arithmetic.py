@@ -54,8 +54,8 @@ def test_and_expr():
     one = DefaultInt(1)
     zero = DefaultInt(0)
 
-    assert (one & one).evaluate() is True
-    assert (one & zero).evaluate() is False
+    assert (one & one).evaluate()
+    assert not (one & zero).evaluate()
 
 
 def test_le_expr():

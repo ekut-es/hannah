@@ -33,40 +33,16 @@ from sklearn.model_selection import train_test_split
 import albumentations as A
 from hannah.modules.augmentation import rand_augment
 
-from ..base import AbstractDataset
+from .base import ImageDatasetBase
 
 logger = logging.getLogger(__name__)
 
 
-class KvasirCapsuleDataset(AbstractDataset):
+class KvasirCapsuleDataset(ImageDatasetBase):
     DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_images/?zip="
     METADATA_URL = (
         "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/metadata.json"
     )
-
-    def __init__(self, config, X, y, classes, transform=None):
-        self.data_root = (
-            pathlib.Path(config.data_folder) / "kvasir_capsule" / "labelled_images"
-        )
-
-        self.X = X
-        self.y = y
-        self.classes = classes
-        self.transform = transform
-        self.label_to_index = {k: v for v, k in enumerate(classes)}
-
-    def __getitem__(self, index):
-        image = cv2.imread(str(self.X[index]))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        label = self.y[index]
-        if self.transform:
-            data = self.transform(image=image)["image"]
-        target = self.label_to_index[label]
-        return {"data": data, "labels": target}
-
-    def __len__(self):
-        assert len(self.X) == len(self.y)
-        return len(self.X)
 
     @classmethod
     def prepare(cls, config):
@@ -272,29 +248,3 @@ class KvasirCapsuleDataset(AbstractDataset):
                 transform=test_transform,
             ),
         )
-
-    @property
-    def class_names(self):
-        return self.classes
-
-    @property
-    def class_counts(self):
-        counter = Counter(self.y)
-        counts = dict(counter)
-        for i in len(self.classes):
-            if i not in counts:
-                counts[i] = 0
-        return counts
-
-    @property
-    def num_classes(self):
-        return len(self.class_counts)
-
-    # retuns a list of class index for every sample
-    @property
-    def get_label_list(self) -> List[int]:
-        return self.y
-
-    @property
-    def class_names_abbreviated(self) -> List[str]:
-        return [cn[0:3] for cn in self.class_names]
