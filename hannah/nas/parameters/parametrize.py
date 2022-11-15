@@ -44,6 +44,7 @@ def _create_parametrize_wrapper(params, cls):
         cls.get_parameters = get_parameters
         cls.set_param_scopes = set_param_scopes
         cls.cond = cond
+        cls.add_param = add_param
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
@@ -89,7 +90,7 @@ def set_params(self, **kwargs):
             self._PARAMETERS[key].set_current(value)
 
 
-def check(self, value):
+def check(self, value=None):
     for con in self._conditions:
         if not con.evaluate():
             raise Exception("Condition not satisfied: {}".format(con))
@@ -109,6 +110,13 @@ def instantiate(self):
         instance._PARAMETERS[key] = instantiated_value
         setattr(instance, key, instantiated_value)
     return instance
+
+
+def add_param(self, id, param):
+    assert id not in self._PARAMETERS, f"Parameter with the ID {id} already registered."
+    param.id = id
+    self._PARAMETERS[id] = param
+    return param
 
 
 def get_parameters(self, scope: Optional[str] = None, include_empty=False, flatten=False):
