@@ -108,8 +108,8 @@ class ImageDatasetBase(AbstractDataset):
 
         Args:
             X (List[str]): List of paths to image files
-            y (List[int]): Numeric Class id of corresponding image
-            classes (List[str]): List of class names, names must be ordered by numeric class id
+            y (List[str]): Class id of corresponding image
+            classes (List[str]): List of class names, names are ordered by numeric class id
             transform (Callable[image,image], optional): Optional transformation/augmentation of input images. Defaults to None.
         """
         self.X = X
