@@ -194,7 +194,7 @@ class ImageClassifierModule(ClassifierModule):
 
         loss = torch.tensor([0.0], device=self.device)
         preds = None
-        if labels is not None and prediction_result.logits is not None:
+        if labels is not None and prediction_result.logits.nelement():
             logits = prediction_result.logits
 
             classifier_loss = F.cross_entropy(
@@ -209,7 +209,7 @@ class ImageClassifierModule(ClassifierModule):
 
             self.log_dict(self.metrics[f"{step_name}_metrics"])
 
-        if prediction_result.decoded is not None:
+        if prediction_result.decoded.nelement():
             decoded = prediction_result.decoded
             decoder_loss = F.mse_loss(decoded, x)
             # print(f"{step_name}_decoder_loss", decoder_loss)
