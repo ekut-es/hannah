@@ -52,6 +52,11 @@ class Expression(ABC, Generic[T]):
 
         return Add(self, other)
 
+    def __radd__(self, other):
+        from ..expressions.arithmetic import Add
+
+        return Add(other, self)
+
     def __sub__(self, other):
         from ..expressions.arithmetic import Sub
 
@@ -61,6 +66,11 @@ class Expression(ABC, Generic[T]):
         from ..expressions.arithmetic import Mul
 
         return Mul(self, other)
+
+    def __rmul__(self, other):
+        from ..expressions.arithmetic import Mul
+
+        return Mul(other, self)
 
     def __truediv__(self, other):
         from ..expressions.arithmetic import Truediv
