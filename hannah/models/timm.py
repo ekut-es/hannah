@@ -27,6 +27,8 @@ import timm
 import torch
 import torch.nn as nn
 
+from ._vendor import focalnet
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,7 +51,8 @@ class DefaultClassifierHead(nn.Module):
     def __init__(self, latent_shape, num_classes):
         super().__init__()
 
-        self.pooling = nn.AdaptiveAvgPool2d((1, 1))
+
+        self.pooling = nn.AdaptiveAvgPool2d((1, 1)) if len(latent_shape) == 4 else nn.Identity()
         self.flatten = nn.Flatten()
         self.linear = nn.LazyLinear(num_classes)
 
@@ -212,15 +215,15 @@ class TimmModel(nn.Module):
 
         latent = self.encoder(x)
 
-        decoded = latent
+        decoded = torch.tensor([])
         if self.decoder is not None:
             decoded = self.decoder(latent)
 
-        logits = latent
+        logits = torch.tensor([])
         if self.classifier is not None:
             logits = self.classifier(latent)
 
-        projection = latent
+        projection = torch.tensor([])
         if self.projector is not None:
             projection = self.projector(latent)
 

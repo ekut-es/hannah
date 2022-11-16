@@ -26,6 +26,9 @@ logger = logging.getLogger(__name__)
 
 
 class FakeDataset(TorchvisionDatasetBase):
+
+    resolution = 320
+
     @classmethod
     def prepare(cls, config):
         pass
@@ -36,19 +39,19 @@ class FakeDataset(TorchvisionDatasetBase):
 
         test_data = torchvision.datasets.FakeData(
             size=128,
-            image_size=(3, 32, 32),
+            image_size=(3, cls.resolution, cls.resolution),
             num_classes=config.num_classes,
             transform=transform,
         )
         val_data = torchvision.datasets.FakeData(
             size=128,
-            image_size=(3, 32, 32),
+            image_size=(3, cls.resolution, cls.resolution),
             num_classes=config.num_classes,
             transform=transform,
         )
         train_data = torchvision.datasets.FakeData(
             size=512,
-            image_size=(3, 32, 32),
+            image_size=(3, cls.resolution, cls.resolution),
             num_classes=config.num_classes,
             transform=transform,
         )
