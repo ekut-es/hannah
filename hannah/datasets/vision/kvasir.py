@@ -23,6 +23,7 @@ import tarfile
 from collections import Counter, namedtuple
 from typing import Dict, List
 
+import albumentations as A
 import cv2
 import pandas as pd
 import requests
@@ -30,7 +31,6 @@ import torchvision
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
 
-import albumentations as A
 from hannah.modules.augmentation import rand_augment
 
 from .base import ImageDatasetBase
@@ -227,21 +227,18 @@ class KvasirCapsuleDataset(ImageDatasetBase):
 
         return (
             cls(
-                config,
                 train_images,
                 train_labels,
                 classes,
                 transform=train_transform,
             ),
             cls(
-                config,
                 val_images,
                 val_labels,
                 classes,
                 transform=test_transform,
             ),
             cls(
-                config,
                 test_images,
                 test_labels,
                 classes,

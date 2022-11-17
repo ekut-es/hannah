@@ -19,7 +19,7 @@
 ##
 
 EXPERIMENT="baseline"
-MODELS="timm_resnet18 timm_resnet50 timm_resnet152 timm_efficientnet_lite1 timm_mobilenetv3_small_100 timm_mobilenetv3_small_075 timm_mobilenetv3_large_100"
+MODELS="timm_resnet18 timm_resnet50 timm_resnet152 timm_efficientnet_lite1 timm_mobilenetv3_small_100 timm_mobilenetv3_small_075 timm_mobilenetv3_large_100 timm_focalnet_base_srf"
 
 export HANNAH_DATA_FOLDER=/mnt/qb/datasets/STAGING/bringmann/datasets/
 
