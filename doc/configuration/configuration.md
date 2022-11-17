@@ -256,14 +256,7 @@ Default options are:
 
 The default configurations interpolate the following environment variables:
 
-`TEDA_HOME`
-: Location of teda checkout for ultratrail backend
-
-
 `HANNAH_CACHE_DIR`
 : Location of a directory used to cache file loading in some datasets
-
-<!--
-`HANNAH_DATASETS`
+`HANNAH_DATA_FOLDER`
 : Change default location of dataset folders by default we will use subdirectory `datasets` of current working directory
--->
