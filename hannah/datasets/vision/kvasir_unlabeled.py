@@ -23,11 +23,11 @@ import pathlib
 import urllib
 from typing import List
 
+import albumentations as A
 import cv2
+import numpy as np
 from albumentations.pytorch.transforms import ToTensorV2
 from tqdm import tqdm
-
-import albumentations as A
 
 from ..base import AbstractDataset
 from ..utils import generate_file_md5
@@ -52,7 +52,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
     def __init__(self, config, metadata, transform=None):
         self.config = config
         self.metadata = metadata
-        self.transform = transform
+        self.transform = transform if transform else A.Compose([ToTensorV2()])
 
         self.data_root = (
             pathlib.Path(config.data_folder) / "kvasir_capsule" / "unlabelled_videos"
@@ -108,7 +108,7 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
             ret, frame = video_capture.read()
             assert ret is True
 
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
         return frame, video_metadata
 
     def __getitem__(self, index):
@@ -160,31 +160,9 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         else:
             resolution = tuple(config.resolution)
 
-        train_transforms = A.Compose(
-            [
-                # A.RandomResizedCrop(height=config.resolution[0], width=config.resolution[1], scale=(0.5,1.0)),
-                A.Resize(height=resolution[0], width=resolution[1]),
-                A.HorizontalFlip(p=0.5),
-                A.VerticalFlip(p=0.5),
-                A.Rotate(limit=180, p=1.0),
-                A.Normalize(mean=mean, std=std),
-                ToTensorV2(),
-            ],
-            p=1.0,
-        )
-
-        test_transforms = A.Compose(
-            [
-                A.Resize(height=resolution[0], width=resolution[1]),
-                A.Normalize(mean=mean, std=std),
-                ToTensorV2(),
-            ],
-            p=1.0,
-        )
-
-        train_set = cls(config, train_split, transform=train_transforms)
-        test_set = cls(config, test_split, transform=test_transforms)
-        val_set = cls(config, val_split, transform=test_transforms)
+        train_set = cls(config, train_split)
+        test_set = cls(config, test_split)
+        val_set = cls(config, val_split)
 
         logger.debug("Train Data: %f Frames", train_set.total_frames)
         logger.debug("Val Data: %f Frames", val_set.total_frames)

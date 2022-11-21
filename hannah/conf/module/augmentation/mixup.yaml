@@ -16,10 +16,10 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-
-
-data_folder: ${hydra:runtime.cwd}/datasets/
-cls: hannah.datasets.vision.FakeDataset
-dataset: fake2d
-resolution: 320
-num_classes: 10
+mixup:
+    mixup_alpha: 0.1       # mixup alpha value, mixup is active if > 0.
+    cutmix_alpha: 0.1      # cutmix alpha value, cutmix is active if > 0.
+    prob: 1.0              # Probability of performing mixup or cutmix when either/both is enabled
+    switch_prob: 0.0       # Probability of switching to cutmix when both mixup and cutmix enabled
+    mode: pair             # batch, pair or elem - wise
+    label_smoothing : 0.0  # Apply label smoothing
