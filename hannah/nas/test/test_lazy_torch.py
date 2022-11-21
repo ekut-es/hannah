@@ -31,48 +31,51 @@ class RangeIterator:
 
 @parametrize
 class LazyTorchModule(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, input_shape) -> None:
         super().__init__()
 
         self.conv0 = conv2d('conv0',
+                            inputs=[input_shape],
                             in_channels=3,
                             out_channels=self.add_param('conv0_out_channels', IntScalarParameter(4, 128 , 4)),
                             kernel_size=self.add_param('conv0_kernel_size', IntScalarParameter(1, 7, 2)),
                             padding='same')
 
-        symbolic_shape = self.conv0.shape((1, 3, 16, 16))
-
-        self.relu = nn.ReLU()
+        self.relu0 = relu("relu0", inputs=[self.conv0])
         self.conv1 = conv2d('conv1',
+                            inputs=[self.relu0],
                             in_channels=self._PARAMETERS['conv0_out_channels'],
                             out_channels=self.add_param('conv1_out_channels', IntScalarParameter(4, 128 , 4)),
                             kernel_size=self.add_param('conv1_kernel_size', IntScalarParameter(1, 7, 2)),
                             padding='same')
 
-        symbolic_shape = self.conv1.shape(symbolic_shape)
+        self.relu1 = relu("relu1", inputs=[self.conv1])
         self.conv2 = conv2d('conv2',
+                            inputs=[self.relu1],
                             in_channels=self._PARAMETERS['conv1_out_channels'],
                             out_channels=self.add_param('conv2_out_channels', IntScalarParameter(4, 128 , 4)),
                             kernel_size=self.add_param('conv2_kernel_size', IntScalarParameter(1, 7, 2)),
                             stride=2,
                             padding=0)
 
-        symbolic_shape = self.conv2.shape(symbolic_shape)
-
-        self.linear = linear(self._PARAMETERS['conv1_out_channels'] * symbolic_shape[2] * symbolic_shape[3], 10)
+        self.relu2 = relu("relu2", inputs=[self.conv2])
+        self.linear = linear("linear",
+                             inputs=[self.relu2],
+                             in_features=self._PARAMETERS['conv1_out_channels'] * self.relu2.shape[2] * self.relu2.shape[3],
+                             out_features=10)
 
         self.cond(self._PARAMETERS['conv1_out_channels'] >= 64)
 
     def forward(self, x):
-        out = self.conv0.sample()(x)
-        out = self.relu(out)
-        out = self.conv1.sample()(out)
-        out = self.relu(out)
-        out = self.conv2.sample()(out)
-        out = self.relu(out)
+        out = self.conv0.instantiate()(x)
+        out = self.relu0.instantiate()(out)
+        out = self.conv1.instantiate()(out)
+        out = self.relu1.instantiate()(out)
+        out = self.conv2.instantiate()(out)
+        out = self.relu2.instantiate()(out)
 
         out = out.view(out.shape[0], -1)
-        out = self.linear.sample()(out)
+        out = self.linear.instantiate()(out)
         return out
 
 
@@ -83,30 +86,37 @@ class DynamicDepthModule(nn.Module):
         self.depth = self.add_param('depth', IntScalarParameter(1, 5))
         self.modules = []
         self.relu = nn.ReLU()
-
+        previous = (1, 3, 16, 16)
         for d in RangeIterator(self.depth, instance=False):
             in_channels = 3 if d-1 == 0 else self._PARAMETERS[f'conv{d-2}_out_channels']
-            layer = conv2d(in_channels=in_channels,
+
+            layer = conv2d(f'conv{d}',
+                           inputs=[previous],
+                           in_channels=in_channels,
                            out_channels=self.add_param(f'conv{d-1}_out_channels', IntScalarParameter(4, 128 , 4)),
                            kernel_size=self.add_param(f'conv{d-1}_kernel_size', CategoricalParameter([1, 3, 5, 7])),
                            padding='same')
             self.modules.append(layer)
+            previous = layer
 
     def forward(self, x):
         out = x
 
         for d in RangeIterator(self.depth, instance=True):
-            out = self.modules[d-1].sample()(out)
+            out = self.modules[d-1].instantiate()(out)
             out = self.relu(out)
 
         return out
 
 
 def test_lazy_torch_module():
-    mod = LazyTorchModule()
+    input_shape = (1, 3, 16, 16)
+    mod = LazyTorchModule(input_shape=input_shape)
+
     for k, v in mod.parameters().items():
         v.sample()
-    x = torch.ones(1, 3, 16, 16)
+
+    x = torch.ones(*input_shape)
     out = mod(x)
 
     assert 'conv0_out_channels' in mod.parameters().keys()
