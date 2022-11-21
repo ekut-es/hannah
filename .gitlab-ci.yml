@@ -154,6 +154,8 @@ run_ml_cloud:
     - cml send-comment report.md
   only:
     - main
+  rules:
+    - if: $CI_DEPLOY_FREEZE == null
   dependencies: []
   resource_group: cluster
 
