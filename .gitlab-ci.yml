@@ -152,8 +152,8 @@ run_ml_cloud:
     - popd
     - echo "Test comment" > report.md
     - cml send-comment report.md
-  only:
-    - main
+  rules:
+    - if: $CI_DEPLOY_FREEZE == null && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   dependencies: []
   resource_group: cluster
 
