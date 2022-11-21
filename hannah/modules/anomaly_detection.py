@@ -17,8 +17,10 @@
 # limitations under the License.
 #
 import logging
+import os
 from typing import Sequence
 
+import kornia.augmentation as K
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -183,15 +185,21 @@ class AnomalyDetectionModule(ClassifierModule):
     def compute_anomaly_score(self):
 
         anomaly_score = None
-
+        largest_train_error = None
+        # lowest_train_error = None
         if self.train_losses:
+            largest_train_error = torch.max(
+                torch.stack(self.train_losses), dim=0
+            ).values
+            # lowest_train_error = torch.max(torch.stack(self.train_losses), dim=0).values
             self.normalized_train_errors = torch.stack(self.train_losses) / (
-                torch.max(torch.stack(self.train_losses), dim=0).values
+                largest_train_error
             )
             anomaly_score = np.percentile(
-                self.normalized_train_errors.cpu().numpy(), 90
+                self.normalized_train_errors.cpu().numpy(), 85
             )
-        return anomaly_score
+            largest_train_error = largest_train_error.detach().cpu().numpy()
+        return anomaly_score, largest_train_error
 
     def common_step(self, step_name, batch, batch_idx):
 
@@ -208,11 +216,11 @@ class AnomalyDetectionModule(ClassifierModule):
         loss = torch.tensor([0.0], device=self.device)
         loss = self.compute_loss(prediction_result, x, step_name, batch_idx, loss)
 
-        anomaly_score = self.compute_anomaly_score()
+        anomaly_score, largest_train_error = self.compute_anomaly_score()
         preds = None
 
         if anomaly_score:
-            if loss > anomaly_score:
+            if (loss.cpu().numpy() / largest_train_error) > anomaly_score:
                 preds = torch.empty(
                     size=labels.size(), device=labels.device, dtype=labels.dtype
                 ).fill_(1)
@@ -228,14 +236,28 @@ class AnomalyDetectionModule(ClassifierModule):
 
     def augment(self, labels, batch_idx, x):
 
+        # print('x', x)
+        # print(labels)
+        # print('x',x)
+        # augmented_data = K.RandomGaussianNoise(std=0.05, keepdim=True)(x)
+        """augmentation = K.AugmentationSequential(
+        #K.RandomSharpness(),
+        K.RandomGaussianNoise(std=0.05, keepdim=True)
+        )"""
+        # augmented_data = augmentation(x)
+        """augmentation = K.AugmentationSequential(
+            K.RandomErasing(scale=(0.2, 0.21), p=1, keepdim=True),
+            K.RandomErasing(scale=(0.2, 0.21), p=1, keepdim=True),
+            K.RandomErasing(scale=(0.2, 0.21), p=1, keepdim=True)
+            )
+        augmented_data = augmentation(x)"""
         augmented_data = x
+        # f labels is not None:
+        #    if self.mixup_fn is not None:
+        #        x, mixup_labels = self.mixup_fn(x, labels)
 
-        if labels is not None:
-            if self.mixup_fn is not None:
-                x, mixup_labels = self.mixup_fn(x, labels)
-
-        if self.batch_augment_fn is not None:
-            augmented_data = self.batch_augment_fn(data=x)
+        # if self.batch_augment_fn is not None:
+        #    augmented_data = self.batch_augment_fn(data=x)
 
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)
@@ -243,7 +265,6 @@ class AnomalyDetectionModule(ClassifierModule):
         return augmented_data, x
 
     def training_step(self, batch, batch_idx):
-
         batch_labeled = batch["labeled"]
         batch_unlabeled = batch["unlabeled"]
         normal_labeled_idx = (batch_labeled["labels"] == 0).nonzero(as_tuple=True)[0]
@@ -270,9 +291,14 @@ class AnomalyDetectionModule(ClassifierModule):
 
             prediction_result = self.forward(augmented_data)
 
-            loss += self.compute_loss(prediction_result, x, "train", batch_idx, loss)
+            current_loss = torch.tensor([0.0], device=self.device)
+            current_loss = self.compute_loss(
+                prediction_result, x, "train", batch_idx, current_loss
+            )
 
-        self.train_losses.append(loss)
+            self.train_losses.append(current_loss)
+
+            loss += current_loss
 
         return loss
 
@@ -283,11 +309,34 @@ class AnomalyDetectionModule(ClassifierModule):
         loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
 
         y = batch.get("labels", None)
-
+        if ~torch.isnan(loss):
+            self.test_losses.extend(loss)
         # preds = step_results.preds
         if y is not None and preds is not None:
             with set_deterministic(False):
                 self.test_confusion(preds, y)
+
+    def on_test_end(self):
+        wd_dir = os.getcwd()
+        score, largest_train_error = self.compute_anomaly_score()
+        train_errors = self.normalized_train_errors
+        plt.hist(train_errors.detach().cpu().numpy(), bins=100)
+        plt.axvline(score, linestyle="dashed")
+        plt.title("Normalized train reconstruction errors")
+        plt.savefig(wd_dir + "/normalized_train_errors.png")
+        test = (
+            torch.tensor(self.test_losses, device="cuda:0")
+            / torch.max(torch.stack(self.train_losses), dim=0).values
+        )
+        plt.hist(test.detach().cpu().numpy(), bins=100)
+        plt.title("Normalized test reconstruction errors")
+        plt.savefig(wd_dir + "/normalized_test_errors.png")
+        self._plot_confusion_matrix()
+        print("Anomaly score", score)
+        print(
+            "Largest train error",
+            torch.max(torch.stack(self.train_losses), dim=0).values,
+        )
 
     def on_train_epoch_end(self):
         self.train_losses = self.train_losses[-1000:]
