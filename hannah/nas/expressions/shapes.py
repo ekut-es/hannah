@@ -7,7 +7,7 @@ def identity_shape(input_shape):
     return input_shape
 
 
-def conv2d_shape(input_shape, out_channels, kernel_size, stride=1, padding='same', dilation=1):
+def conv2d_shape(input_shape, kwargs):
     def _calc_output_dim(input_size, padding, dilation, kernel_size, stride) -> Expression:
         if padding == 'same':
             padding = kernel_size // 2
@@ -16,7 +16,7 @@ def conv2d_shape(input_shape, out_channels, kernel_size, stride=1, padding='same
 
     # assuming NCHW layout
     batch = input_shape[0]
-    output_height = _calc_output_dim(input_shape[2], padding, dilation, kernel_size, stride)
-    output_width = _calc_output_dim(input_shape[3], padding, dilation, kernel_size, stride)
+    output_height = _calc_output_dim(input_shape[2], kwargs.get("padding", "same"), kwargs.get("dilation", 1), kwargs.get("kernel_size", 1), kwargs.get("stride", 1))
+    output_width = _calc_output_dim(input_shape[3], kwargs.get("padding", "same"), kwargs.get("dilation", 1), kwargs.get("kernel_size", 1), kwargs.get("stride", 1))
 
-    return (batch, out_channels, output_height, output_width)
+    return (batch, kwargs["out_channels"], output_height, output_width)
