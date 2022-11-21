@@ -23,7 +23,6 @@ import tarfile
 from collections import Counter, namedtuple
 from typing import Dict, List
 
-import albumentations as A
 import cv2
 import pandas as pd
 import requests
@@ -31,6 +30,7 @@ import torchvision
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
 
+import albumentations as A
 from hannah.modules.augmentation import rand_augment
 
 from .base import ImageDatasetBase
@@ -103,27 +103,6 @@ class KvasirCapsuleDataset(ImageDatasetBase):
         resolution = config.resolution
         if isinstance(resolution, int):
             resolution = (resolution, resolution)
-
-        res_x, res_y = resolution
-
-        # FIXME(gerum):  add back rand augment
-        train_transform = A.Compose(
-            [
-                # A.Resize(int(res_x*1.1), int(res_y*1.1)),
-                # A.RandomResizedCrop(res_x, res_y),
-                A.Resize(res_x, res_y),
-                A.Normalize(mean=config.normalize.mean, std=config.normalize.std),
-                ToTensorV2(),
-            ]
-        )
-
-        test_transform = A.Compose(
-            [
-                A.Resize(res_x, res_y),
-                A.Normalize(mean=config.normalize.mean, std=config.normalize.std),
-                ToTensorV2(),
-            ]
-        )
 
         label_to_folder = {
             "Angiectasia": "Angiectasia",
@@ -232,18 +211,15 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                 train_images,
                 train_labels,
                 classes,
-                transform=train_transform,
             ),
             cls(
                 val_images,
                 val_labels,
                 classes,
-                transform=test_transform,
             ),
             cls(
                 test_images,
                 test_labels,
                 classes,
-                transform=test_transform,
             ),
         )

@@ -16,10 +16,21 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-
-
-data_folder: ${hydra:runtime.cwd}/datasets/
-cls: hannah.datasets.vision.FakeDataset
-dataset: fake2d
-resolution: 320
-num_classes: 10
+rand_augment:
+    N: 1
+    M: 1
+    probs:
+        Identity : 0.5
+        ShearX: 0.5
+        ShearY: 0.5
+        TranslateX: 0.5
+        TranslateY : 0.5
+        Rotate : 0.5
+        Brightness : 0.0
+        Color : 0.5
+        Contrast : 0.0
+        Sharpness : 0.5
+        Posterize : 0.0
+        Solarize : 0.0
+        AutoContrast : 0.0
+        Equalize : 0.1

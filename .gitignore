@@ -45,3 +45,9 @@ nas_results/
 
 .nv
 .tmp/
+tmp/
+
+.torch
+type_info.json
+*.log
+.pytest_cache

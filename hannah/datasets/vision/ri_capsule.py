@@ -36,6 +36,7 @@ from .base import ImageDatasetBase
 BASE_PATH = pathlib.Path(__file__).parent
 DATA_PATH = BASE_PATH / "ri_data"
 
+
 LABELS = {
     "esophagus": 0,
     "stomach": 1,
@@ -65,7 +66,7 @@ def read_official_test(study_folder: pathlib.Path, csv_file: pathlib.Path):
 
     for study in test_studies:
         current_study_folder = study_folder / study
-        assert not current_study_folder.exists(), "Dataset download not complete"
+        assert current_study_folder.exists(), "Dataset download not complete"
 
         for label_folder in current_study_folder.iterdir():
             if label_folder.is_dir():
