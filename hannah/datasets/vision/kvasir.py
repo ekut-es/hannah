@@ -109,7 +109,9 @@ class KvasirCapsuleDataset(ImageDatasetBase):
         # FIXME(gerum):  add back rand augment
         train_transform = A.Compose(
             [
-                A.RandomResizedCrop(res_x, res_y),
+                # A.Resize(int(res_x*1.1), int(res_y*1.1)),
+                # A.RandomResizedCrop(res_x, res_y),
+                A.Resize(res_x, res_y),
                 A.Normalize(mean=config.normalize.mean, std=config.normalize.std),
                 ToTensorV2(),
             ]
