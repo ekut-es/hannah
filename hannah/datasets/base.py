@@ -19,7 +19,7 @@
 import logging
 from abc import ABC, abstractclassmethod, abstractmethod, abstractproperty
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import torch
 from torch.utils.data import Dataset
@@ -112,6 +112,25 @@ class AbstractDataset(Dataset, ABC):
         """Returns dimension of output output without batch dimension"""
 
         return [self.channels, self.input_length]
+
+    @property
+    def std(self) -> Optional[Tuple[int, ...]]:
+        """Returns channel-wise standard deviation for dataset if applicable"""
+        return None
+
+    @property
+    def mean(self) -> Optional[Tuple[int, ...]]:
+        """Returns channel-wise means for dataset if applicable"""
+        return None
+
+    @property
+    def weights(self) -> Optional[List[float]]:
+        """Class weights for weighted sampling"""
+        class_counts = self.class_counts
+        if class_counts:
+            counts = list(class_counts.values())
+            weights = [1 / i for i in counts]
+            return weights
 
 
 def ctc_collate_fn(data):

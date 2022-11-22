@@ -17,4 +17,6 @@
 ## limitations under the License.
 ##
 _target_: hannah.models.timm.TimmModel
-name: resnet50
+name: mobilenetv3_small_075
+drop_rate: 0.3
+drop_path_rate: 0.2

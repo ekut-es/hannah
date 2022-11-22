@@ -1,10 +1,29 @@
-from copy import deepcopy
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import inspect
+from copy import deepcopy
+from inspect import Parameter as P
 from typing import Optional
+
 from hannah.nas.core.expression import Expression
 from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.parameters.parameters import Parameter
-from inspect import Parameter as P
 
 
 def _create_parametrize_wrapper(params, cls):
@@ -22,7 +41,7 @@ def _create_parametrize_wrapper(params, cls):
             if is_parametrized(arg):
                 name = parameter_list[num].name
                 if parameter_list[num].kind == P.VAR_POSITIONAL:
-                    name = name + f'_{tuple_idx}'
+                    name = name + f"_{tuple_idx}"
                     tuple_idx += 1
                 else:
                     num += 1
@@ -81,8 +100,16 @@ def set_params(self, **kwargs):
     for key, value in kwargs.items():
         assert key in self._PARAMETERS, "{} has no parameter {}".format(self, key)
 
-        if not isinstance(value, dict) and key in self._annotations and not isinstance(value, self._annotations[key]):
-            raise TypeError('Value must be of type {} but is {}'.format(self._annotations[key], type(value)))
+        if (
+            not isinstance(value, dict)
+            and key in self._annotations
+            and not isinstance(value, self._annotations[key])
+        ):
+            raise TypeError(
+                "Value must be of type {} but is {}".format(
+                    self._annotations[key], type(value)
+                )
+            )
         if is_parametrized(value):
             self._PARAMETERS[key] = value
             setattr(self, key, value)  # TODO: Do we want this to work?
@@ -119,7 +146,9 @@ def add_param(self, id, param):
     return param
 
 
-def get_parameters(self, scope: Optional[str] = None, include_empty=False, flatten=False):
+def get_parameters(
+    self, scope: Optional[str] = None, include_empty=False, flatten=False
+):
     params = {}
     visited = []
     queue = []
@@ -130,7 +159,7 @@ def get_parameters(self, scope: Optional[str] = None, include_empty=False, flatt
         visited.append(current.id)
         params[current.id] = current
 
-        if hasattr(current, '_PARAMETERS'):
+        if hasattr(current, "_PARAMETERS"):
             for param in current._PARAMETERS.values():
                 if param.id not in visited:
                     queue.append(param)
@@ -146,7 +175,7 @@ def parameters(self, include_empty=False, flatten=False):
 def set_param_scopes(self):
     for name, param in self._PARAMETERS.items():
         if isinstance(param, Expression):
-            param.id = self.id + '.' + name
+            param.id = self.id + "." + name
             param.set_scope(self.id, name)
             print()
 
@@ -156,7 +185,7 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
     for key, param in parameter.items():
         if not include_empty and not isinstance(param, Parameter):
             continue
-        key_list = key.split('.')
+        key_list = key.split(".")
         if flatten:
             current_param_branch = {}
         else:

@@ -96,6 +96,7 @@
         "onnx",
         "opset",
         "qconfig",
+        "searchpath",
         "qscheme",
         "submitit",
         "tablefmt"

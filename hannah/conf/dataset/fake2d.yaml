@@ -21,4 +21,5 @@
 data_folder: ${hydra:runtime.cwd}/datasets/
 cls: hannah.datasets.vision.FakeDataset
 dataset: fake2d
+resolution: 320
 num_classes: 10

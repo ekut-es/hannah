@@ -19,7 +19,7 @@
 import pytest
 import torch
 
-from hannah.models.factory.rounding import RoundingMode
+from hannah.quantization.rounding import RoundingMode
 
 
 @pytest.mark.parametrize(

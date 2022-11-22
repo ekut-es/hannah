@@ -19,5 +19,5 @@
 
 
 _target_: pytorch_lightning.profiler.AdvancedProfiler
-output_filename: null
+filename: null
 line_count_restriction: 20

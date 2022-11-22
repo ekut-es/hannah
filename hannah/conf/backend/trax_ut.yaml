@@ -20,8 +20,7 @@
 
 _target_: hannah.callbacks.backends.TRaxUltraTrailBackend
 
-teda_dir: ${oc.env:TEDA_HOME,/local/frischkn/neural_networks/teda}
-backend_dir: "${backend.teda_dir}/rtl/tc-resnet8-accelerator"
+backend_dir: ${oc.env:BACKEND_DIR,/path/to/teda/bottles/ultra_trail/src/ultra_trail}
 
 standalone: True
 rtl_simulation: False

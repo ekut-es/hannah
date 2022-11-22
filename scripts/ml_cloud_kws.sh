@@ -66,14 +66,11 @@ echo "Moving singularity image to local scratch"
 cp §WORK/ml_cloud.sif  $SCRATCH
 
 
-echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
-echo "skipped"
-
 
 echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/tmp/cache
-singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train dataset.data_folder=$SCRATCH/datasets module.num_workers=4 output_dir=$WORK/trained_models
+singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train dataset.data_folder=$SCRATCH/datasets module.num_workers=8 output_dir=$WORK/trained_models
 date
 
 echo "DONE!"

@@ -19,15 +19,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
 from hannah.nas.performance_prediction.features.dataset import NASGraphDataset
-from hannah.nas.performance_prediction.gcn.predictor import GCNPredictor, get_input_feature_size, prepare_dataloader
+from hannah.nas.performance_prediction.gcn.predictor import (
+    GCNPredictor,
+    get_input_feature_size,
+    prepare_dataloader,
+)
 
 plt.style.use("seaborn")
 
 
-
 # dataset = NASGraphDataset(cfg_space, edge_file, prop_file)
-dataset = NASGraphDataset("/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data")
+dataset = NASGraphDataset(
+    "/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data"
+)
 
 train_dataloader, test_dataloader = prepare_dataloader(
     dataset, batch_size=250, train_test_split=0.7

@@ -16,17 +16,30 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-data_folder: ${hydra:runtime.cwd}/datasets/
+defaults:
+    - augmentation:
+        - rand_augment
+        - mixup
+    - _self_
+
 cls: hannah.datasets.vision.KvasirCapsuleDataset
+data_folder: ${hydra:runtime.cwd}/datasets/
 dataset: kvasir_capsule
 val_percent: 0.1
-train_percent: 0.9
-resolution: 224
+sampler: random
+weighted_loss: false
+anomaly: false
 
-train_val_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_0.csv
-test_split : ${dataset.data_folder}/kvasir_capsule/official_splits/split_1.csv
+split: official
+normalize:
+    mean:
+        - 0.5
+        - 0.5
+        - 0.5
+    std:
+        - 0.5
+        - 0.5
+        - 0.5
 
-augmentations:
-    rand_augment:
-        N: 8
-        M: 10
+
+resolution: [224,224]
