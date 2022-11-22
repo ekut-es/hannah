@@ -81,20 +81,23 @@ class LazyTorchModule(nn.Module):
 
 @parametrize
 class DynamicDepthModule(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, input_shape, id, depth) -> None:
         super().__init__()
-        self.depth = self.add_param('depth', IntScalarParameter(1, 5))
+        self.depth = self.add_param(f'{id}.depth', depth)
         self.modules = []
         self.relu = nn.ReLU()
-        previous = (1, 3, 16, 16)
-        for d in RangeIterator(self.depth, instance=False):
-            in_channels = 3 if d-1 == 0 else self._PARAMETERS[f'conv{d-2}_out_channels']
+        self.id = id
+        self.depth = depth
 
-            layer = conv2d(f'conv{d}',
+        previous = input_shape
+        for d in RangeIterator(self.depth, instance=False):
+            in_channels = 3 if d-1 == 0 else self._PARAMETERS[f'{self.id}.conv{d-2}.out_channels']
+
+            layer = conv2d(f'{self.id}.conv{d}',
                            inputs=[previous],
                            in_channels=in_channels,
-                           out_channels=self.add_param(f'conv{d-1}_out_channels', IntScalarParameter(4, 128 , 4)),
-                           kernel_size=self.add_param(f'conv{d-1}_kernel_size', CategoricalParameter([1, 3, 5, 7])),
+                           out_channels=self.add_param(f'{self.id}.conv{d-1}.out_channels', IntScalarParameter(4, 128 , 4)),
+                           kernel_size=self.add_param(f'{self.id}.conv{d-1}.kernel_size', CategoricalParameter([1, 3, 5, 7])),
                            padding='same')
             self.modules.append(layer)
             previous = layer
@@ -106,6 +109,23 @@ class DynamicDepthModule(nn.Module):
             out = self.modules[d-1].instantiate()(out)
             out = self.relu(out)
 
+        return out
+
+
+@parametrize
+class BranchyModule(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        input_shape = (1, 3, 16, 16)
+
+        # self.add_param necessary for the modules to be retrievable by .parameters()
+        self.main_branch = self.add_param("block", DynamicDepthModule(input_shape, 'block', depth=IntScalarParameter(1, 5)))
+        self.residual = self.add_param("residual", DynamicDepthModule(input_shape, 'residual', depth=IntScalarParameter(1, 1)))
+
+    def forward(self, x):
+        out = self.main_branch(x)
+        res = self.residual(x)
+        out = torch.add(out, res)
         return out
 
 
@@ -125,7 +145,15 @@ def test_lazy_torch_module():
 
 
 def test_dynamic_depth():
-    mod = DynamicDepthModule()
+    mod = DynamicDepthModule((1, 3, 16, 16), "block", IntScalarParameter(1, 5))
+
+    x = torch.ones(1, 3, 16, 16)
+    out = mod(x)
+    assert out.shape == (1, 4, 16, 16)
+
+
+def test_branchy():
+    mod = BranchyModule()
 
     x = torch.ones(1, 3, 16, 16)
     out = mod(x)
@@ -135,3 +163,4 @@ def test_dynamic_depth():
 if __name__ == '__main__':
     test_lazy_torch_module()
     test_dynamic_depth()
+    test_branchy()
