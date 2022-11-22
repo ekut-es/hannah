@@ -26,7 +26,8 @@ import torch.nn as nn
 import torch.nn.functional as nnf
 from torch.nn import init
 
-from ...factory import qat
+from hannah.nn import qat
+
 from ..utilities import (
     adjust_weight_if_needed,
     conv1d_get_padding,
