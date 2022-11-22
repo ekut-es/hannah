@@ -152,7 +152,7 @@ run_ml_cloud:
     - popd
   rules:
     - if: $CI_DEPLOY_FREEZE == null && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_JOB_MANUAL == true && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    #- if: $CI_JOB_MANUAL == true && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   dependencies: []
   resource_group: cluster
 
