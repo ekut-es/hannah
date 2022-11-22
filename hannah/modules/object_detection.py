@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 
 from .classifier import ClassifierModule
@@ -161,9 +179,6 @@ class ObjectDetectionModule(ClassifierModule):
         if self.augmentation.pct != 0 and self.augmentation.val_pct != 0:
             self.augmentation.setEvalAttribs()
 
-        # if self.device.type == "cuda":
-        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
-
         return dev_loader
 
     def test_dataloader(self):
@@ -176,9 +191,6 @@ class ObjectDetectionModule(ClassifierModule):
             collate_fn=object_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
-        # if self.device.type == "cuda":
-        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
 
         return test_loader
 

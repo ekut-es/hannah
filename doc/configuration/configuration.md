@@ -1,3 +1,22 @@
+<!--
+Copyright (c) 2022 University of Tübingen.
+
+This file is part of hannah.
+See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 # Configuration
 
 Configurations are managed by [hydra](http://hydra.cc). And follow a structured configuration.
@@ -166,9 +185,12 @@ Neural network to train: choices are gds (Old sinc1 with sinc convolutions remov
 
 ### module
 
-Currently only `stream_classifier` is available.
-
 The toplevel module implementing the training and eval loops.
+
+We curently support the following Tasks:
+
+`stream_classifier`: Classification on multichannel 1D data streams
+`image_classifier`: Classification on Image Data
 
 ### optimizer
 
@@ -234,14 +256,7 @@ Default options are:
 
 The default configurations interpolate the following environment variables:
 
-`TEDA_HOME`
-: Location of teda checkout for ultratrail backend
-
-
 `HANNAH_CACHE_DIR`
 : Location of a directory used to cache file loading in some datasets
-
-<!--
-`HANNAH_DATASETS`
+`HANNAH_DATA_FOLDER`
 : Change default location of dataset folders by default we will use subdirectory `datasets` of current working directory
--->

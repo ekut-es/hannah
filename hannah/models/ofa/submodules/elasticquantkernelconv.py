@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import copy
 import math
 from typing import List
@@ -6,7 +24,8 @@ import torch
 import torch.nn as nn
 from torch.nn import init
 
-from ...factory import qat
+from hannah.nn import qat
+
 from ..utilities import (
     adjust_weight_if_needed,
     conv1d_get_padding,
@@ -196,7 +215,7 @@ class _ElasticConvBnNd(
     @property
     def full_scale_factor(self):
         """
-            does the same as scale_factor but uses the whole kernel. Used for dsc
+        does the same as scale_factor but uses the whole kernel. Used for dsc
         """
         if self.fuse_bn:
             running_std = torch.sqrt(
@@ -236,7 +255,7 @@ class _ElasticConvBnNd(
 
     def get_full_kernel_bias(self):
         """
-            Gets the full kernel and bias. Used for dsc
+        Gets the full kernel and bias. Used for dsc
         """
         scale_factor = self.full_scale_factor
         weight = self.get_full_width_kernel()
@@ -258,7 +277,7 @@ class _ElasticConvBnNd(
 
     def _get_params(self) -> QuadDataHelper:
         """
-            unifies the param procedure for _forward and _dsc
+        unifies the param procedure for _forward and _dsc
         """
         bias_shape = [1] * len(self.weight.shape)
         bias_shape[1] = -1
@@ -290,9 +309,9 @@ class _ElasticConvBnNd(
             zero_bias,
         )
 
-    def _after_forward_function(self, conv, quad_params : QuadDataHelper):
+    def _after_forward_function(self, conv, quad_params: QuadDataHelper):
         """
-            unifies the after forward procedure for _forward and _dsc
+        unifies the after forward procedure for _forward and _dsc
         """
         scale_factor = quad_params.scale_factor
         bias_shape = quad_params.bias_shape
@@ -357,14 +376,16 @@ class _ElasticConvBnNd(
             padding=padding,
             dilation=dilation,
             quant_weight=scaled_weight,
-            quant_bias=zero_bias
+            quant_bias=zero_bias,
         )
 
-        conv_output = self._after_forward_function(dsc_sequence_output, quad_params=tmp_quad_helper)
+        conv_output = self._after_forward_function(
+            dsc_sequence_output, quad_params=tmp_quad_helper
+        )
         return conv_output
 
     def _forward(self, input):
-        tmp_quad_helper : QuadDataHelper = self._get_params()
+        tmp_quad_helper: QuadDataHelper = self._get_params()
         grouping = tmp_quad_helper.grouping
         scaled_weight = tmp_quad_helper.scaled_weight
         zero_bias = tmp_quad_helper.zero_bias
@@ -590,7 +611,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
                     padding=self.padding,
                     dilation=self.dilation,
                     quant_weight_function=self.weight_fake_quant,
-                    quant_bias_function=self.bias_fake_quant
+                    quant_bias_function=self.bias_fake_quant,
                 )
             )
         return y
@@ -607,12 +628,16 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         padding = conv1d_get_padding(kernel_size, dilation)
 
         if dsc_on:
-            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+            dsc_sequence: nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.Conv1d,
-                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
-                in_channels=self.in_channels, out_channels=self.out_channels,
+                full_kernel=self.get_full_width_kernel(),
+                full_bias=self.bias,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
                 grouping=grouping,
-                stride=self.stride, padding=padding, dilation=dilation,
+                stride=self.stride,
+                padding=padding,
+                dilation=dilation,
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
             )
@@ -631,13 +656,15 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
             )
-            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
             new_conv.weight.data = kernel
             if bias is not None:
                 new_conv.bias = bias
 
             self.reset_in_and_out_channel_to_previous()
-        # print("\nassembled a basic conv from elastic kernel!")
+            # print("\nassembled a basic conv from elastic kernel!")
             return new_conv
 
 
@@ -717,18 +744,18 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         else:
             full_kernel, full_bias = self.get_full_width_kernel(), self.bias
             y = self.activation_post_process(
-                            self.do_dsc(
-                                input=input,
-                                full_kernel=full_kernel,
-                                full_bias=full_bias,
-                                grouping=grouping,
-                                stride=self.stride,
-                                padding=self.padding,
-                                dilation=self.dilation,
-                                quant_weight_function=self.weight_fake_quant,
-                                quant_bias_function=self.bias_fake_quant
-                            )
-                        )
+                self.do_dsc(
+                    input=input,
+                    full_kernel=full_kernel,
+                    full_bias=full_bias,
+                    grouping=grouping,
+                    stride=self.stride,
+                    padding=self.padding,
+                    dilation=self.dilation,
+                    quant_weight_function=self.weight_fake_quant,
+                    quant_bias_function=self.bias_fake_quant,
+                )
+            )
         # self.reset_in_and_out_channel_to_previous()
         return y
 
@@ -743,12 +770,16 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         self.set_in_and_out_channel(kernel)
 
         if dsc_on:
-            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+            dsc_sequence: nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvReLU1d,
-                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
-                in_channels=self.in_channels, out_channels=self.out_channels,
+                full_kernel=self.get_full_width_kernel(),
+                full_bias=self.bias,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
                 grouping=grouping,
-                stride=self.stride, padding=padding, dilation=dilation,
+                stride=self.stride,
+                padding=padding,
+                dilation=dilation,
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
             )
@@ -767,13 +798,15 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
             )
-            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
             new_conv.weight.data = kernel
             if bias is not None:
                 new_conv.bias = bias
 
             self.reset_in_and_out_channel_to_previous()
-        # print("\nassembled a basic conv from elastic kernel!")
+            # print("\nassembled a basic conv from elastic kernel!")
             return new_conv
 
 
@@ -831,17 +864,21 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
 
         if dsc_on:
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
-            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+            dsc_sequence: nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvReLU1d,
-                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
-                in_channels=self.in_channels, out_channels=self.out_channels,
+                full_kernel=self.get_full_width_kernel(),
+                full_bias=self.bias,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
                 grouping=grouping,
-                stride=self.stride, padding=self.padding, dilation=self.dilation,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
                 bn_eps=self.bn[self.target_kernel_index].eps,
                 bn_momentum=self.bn[self.target_kernel_index].momentum,
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
-                bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked)
+                bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked),
             )
             self.reset_in_and_out_channel_to_previous()
             return dsc_sequence
@@ -860,12 +897,16 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
             )
-            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
             new_conv.weight.data = kernel
             new_conv.bias = bias
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
 
-            new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked)
+            new_conv = self.set_bn_parameter(
+                new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked
+            )
             # print("\nassembled a basic conv from elastic kernel!")
             self.reset_in_and_out_channel_to_previous()
             return new_conv
@@ -931,17 +972,21 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
 
         if dsc_on:
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
-            dsc_sequence : nn.Sequential = self.prepare_dsc_for_validation_model(
+            dsc_sequence: nn.Sequential = self.prepare_dsc_for_validation_model(
                 conv_class=qat.ConvBnReLU1d,
-                full_kernel=self.get_full_width_kernel(), full_bias=self.bias,
-                in_channels=self.in_channels, out_channels=self.out_channels,
+                full_kernel=self.get_full_width_kernel(),
+                full_bias=self.bias,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
                 grouping=grouping,
-                stride=self.stride, padding=self.padding, dilation=self.dilation,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
                 bn_eps=self.bn[self.target_kernel_index].eps,
                 bn_momentum=self.bn[self.target_kernel_index].momentum,
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
-                bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked)
+                bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked),
             )
             self.reset_in_and_out_channel_to_previous()
             return dsc_sequence
@@ -961,12 +1006,16 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
                 qconfig=self.qconfig,
                 out_quant=self.out_quant,
             )
-            kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
             new_conv.weight.data = kernel
             new_conv.bias = bias
             tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
 
-            new_conv = self.set_bn_parameter(new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked)
+            new_conv = self.set_bn_parameter(
+                new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked
+            )
             self.reset_in_and_out_channel_to_previous()
             # print("\nassembled a basic conv from elastic kernel!")
             return new_conv

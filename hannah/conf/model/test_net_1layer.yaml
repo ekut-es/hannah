@@ -1,0 +1,43 @@
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+_target_: hannah.models.factory.factory.create_cnn
+name: test_net_1layer
+norm:
+  target: bn
+act:
+  target: relu
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 8
+    bw_w: 6
+    bw_f: 8
+    power_of_2: false  # Use power of two quantization for weights
+    noise_prob: 0.7   # Probability of quantizing a value during training
+conv:
+  - target: forward
+    stride: 1
+    blocks:
+      - target: conv1d
+        kernel_size: 3
+        padding: false
+        act: false
+        norm: true
+        bias: false
+        out_channels: 16

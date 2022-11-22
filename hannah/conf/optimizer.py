@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,7 +51,7 @@ cs.store(group="optimizer", name="adam", node=AdamConf())
 
 @dataclass
 class RAdamConf:
-    _target_: str = "hannah.torch_extensions.optim.RAdam.RAdam"
+    _target_: str = "hannah.optim.RAdam.RAdam"
     lr: Any = 0.001
     betas: Any = (0.9, 0.999)
     eps: Any = 1e-08
@@ -137,7 +155,7 @@ cs.store(group="optimizer", name="sgd", node=SGDConf())
 
 @dataclass
 class MADGRADConf:
-    _target_: str = "hannah.torch_extensions.optim.madgrad.MADGRAD"
+    _target_: str = "hannah.optim.madgrad.MADGRAD"
     lr: Any = 0.1  # _RequiredParameter
     momentum: Any = 0.9
     eps: Any = 1e-6

@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import csv
 import hashlib
 import json
@@ -16,15 +34,14 @@ from chainmap import ChainMap
 from joblib import Memory
 from torchvision.datasets.utils import list_files
 
-from ..utils import extract_from_download_cache, list_all_files
+from ..utils.utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
 from .DatasetSplit import DatasetSplit
 from .Downsample import Downsample
 from .NoiseDataset import NoiseDataset
+from .utils import cachify
 
 msglogger = logging.getLogger()
-
-CACHE_DIR = os.getenv("HANNAH_CACHE_DIR", None)
 
 
 def snr_factor(snr, psig, pnoise):
@@ -37,7 +54,9 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
         torchaudio.set_audio_backend("sox_io")
         try:
             data, samplingrate = torchaudio.load(file_name)
-        except RuntimeError:
+        except Exception as e:
+            if isinstance(e, KeyboardInterrupt):
+                raise e
             msglogger.warning(
                 "Could not load %s with default backend trying sndfile", str(file_name)
             )
@@ -52,12 +71,7 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
     return data
 
 
-if CACHE_DIR:
-    CACHE_SIZE = os.getenv("HANNAH_CACHE_SIZE", None)
-    cache = Memory(location=CACHE_DIR, bytes_limit=CACHE_SIZE, verbose=0)
-    load_audio = cache.cache(_load_audio)
-else:
-    load_audio = _load_audio
+load_audio = cachify(_load_audio)
 
 
 class SpeechDataset(AbstractDataset):

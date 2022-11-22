@@ -1,3 +1,22 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 # import logging
 import logging
 
@@ -203,9 +222,9 @@ def adjust_weight_if_needed(module, kernel=None, groups=None):
     Adjust the weight if the adjustment is needded. This means, if the kernel does not have the size of
     (out_channel, in_channel / group, kernel).
 
-    :param: kernel the kernel that should be checked and adjusted if needed. If None module.weight.data will be used
-    :param: grouping value of the conv, if None module.groups will be used
-    :param: module the conv
+    :param kernel: the kernel that should be checked and adjusted if needed. If None module.weight.data will be used
+    :param grouping: value of the conv, if None module.groups will be used
+    :param module: the conv
 
     :throws: RuntimeError if there is no last_grouping_param for comporing current group value to past group value
 
@@ -216,7 +235,7 @@ def adjust_weight_if_needed(module, kernel=None, groups=None):
     if groups is None:
         groups = module.groups
 
-    if not hasattr(module, 'last_grouping_param'):
+    if not hasattr(module, "last_grouping_param"):
         raise RuntimeError
 
     in_channels = kernel.size(1)
@@ -225,13 +244,15 @@ def adjust_weight_if_needed(module, kernel=None, groups=None):
 
     grouping_changed = groups != module.last_grouping_param
     if grouping_changed and groups > 1:
-        weight_adjustment_needed = is_weight_adjusting_needed(kernel, in_channels, groups)
+        weight_adjustment_needed = is_weight_adjusting_needed(
+            kernel, in_channels, groups
+        )
         if weight_adjustment_needed:
             is_adjusted = True
             kernel = adjust_weights_for_grouping(kernel, groups)
         else:
             target = get_target_weight(kernel, in_channels, groups)
-            if hasattr(module, 'id'):
+            if hasattr(module, "id"):
                 logging.debug(f"ID: {module.id}")
 
     return (kernel, is_adjusted)
@@ -239,12 +260,12 @@ def adjust_weight_if_needed(module, kernel=None, groups=None):
 
 def is_weight_adjusting_needed(weights, input_channels, groups):
     """
-        Checks if a weight adjustment is needed
-        Requirement: weight.shape[1] must be input_channels/groups
-        true: weight adjustment is needed
-        :param: weights - the weights that needs to be checked
-        :param: input_channels - Input Channels of the Convolution Module
-        :param: groups - Grouping Param of the Convolution Module
+    Checks if a weight adjustment is needed
+    Requirement: weight.shape[1] must be input_channels/groups
+    true: weight adjustment is needed
+    :param weights: the weights that needs to be checked
+    :param input_channels: Input Channels of the Convolution Module
+    :param groups: Grouping Param of the Convolution Module
     """
     current_weight_dimension = weights.shape[1]
     target_weight_dimension = input_channels // groups
@@ -253,41 +274,55 @@ def is_weight_adjusting_needed(weights, input_channels, groups):
 
 def get_target_weight(weights, input_channels, groups):
     """
-        Gives the targeted weight shape (out_channel, in_channel // groups, kernel)
-        :param: weights - the weights that needs to be checked
-        :param: input_channels - Input Channels of the Convolution Module
-        :param: groups - Grouping Param of the Convolution Module
+    Gives the targeted weight shape (out_channel, in_channel // groups, kernel)
+    :param weights: the weights that needs to be checked
+    :param input_channels: Input Channels of the Convolution Module
+    :param groups: Grouping Param of the Convolution Module
     """
     target_shape = list(weights.shape)
     target_shape[1] = input_channels // groups
     return target_shape
 
 
-def prepare_kernel_for_depthwise_separable_convolution(model, kernel, bias, in_channels):
+def prepare_kernel_for_depthwise_separable_convolution(
+    model, kernel, bias, in_channels
+):
     """
-        Prepares the kernel for depthwise separable convolution (step 1 of DSC).
-        This means setting groups = inchannels and outchannels = k * inchannels.
-        :param: model: the convolution model, that uses dsc. Used for creating the Channelfilters
-        :param: kernel: Kernel for DSC
-        :param: bias: Bias for DSC
-        :param: in_channels: Input Channels of the Kernel and Model
-        :returns: (kernel, bias) Tuple
+    Prepares the kernel for depthwise separable convolution (step 1 of DSC).
+    This means setting groups = inchannels and outchannels = k * inchannels.
+    :param: model: the convolution model, that uses dsc. Used for creating the Channelfilters
+    :param: kernel: Kernel for DSC
+    :param: bias: Bias for DSC
+    :param: in_channels: Input Channels of the Kernel and Model
+    :returns: (kernel, bias) Tuple
     """
     # Create Filters for Depthwise Separable Convolution of input and output channels
-    depthwise_output_filter = create_channel_filter(model, kernel, current_channel=kernel.size(0), reduced_target_channel_size=in_channels, is_output_filter=True)
-    depthwise_input_filter = create_channel_filter(model, kernel, current_channel=kernel.size(1), reduced_target_channel_size=in_channels, is_output_filter=False)
+    depthwise_output_filter = create_channel_filter(
+        model,
+        kernel,
+        current_channel=kernel.size(0),
+        reduced_target_channel_size=in_channels,
+        is_output_filter=True,
+    )
+    depthwise_input_filter = create_channel_filter(
+        model,
+        kernel,
+        current_channel=kernel.size(1),
+        reduced_target_channel_size=in_channels,
+        is_output_filter=False,
+    )
 
     # outchannel is adapted
-    new_kernel = filter_primary_module_weights(kernel, depthwise_input_filter, depthwise_output_filter)
+    new_kernel = filter_primary_module_weights(
+        kernel, depthwise_input_filter, depthwise_output_filter
+    )
     # grouping = in_channel_count
     new_kernel = adjust_weights_for_grouping(new_kernel, in_channels)
 
     if bias is None:
         return new_kernel, None
     else:
-        new_bias = filter_single_dimensional_weights(
-            bias, depthwise_output_filter
-        )
+        new_bias = filter_single_dimensional_weights(bias, depthwise_output_filter)
     return new_kernel, new_bias
 
 
@@ -309,10 +344,10 @@ def prepare_kernel_for_pointwise_convolution(kernel, grouping):
 
 def adjust_weights_for_grouping(weights, input_divided_by):
     """
-        Adjusts the Weights for the Forward of the Convulution
-        Shape(outchannels, inchannels / group, kW)
-        weight – filters of shape (out_channels , in_channels / groups , kW)
-        input_divided_by
+    Adjusts the Weights for the Forward of the Convulution
+    Shape(outchannels, inchannels / group, kW)
+    weight – filters of shape (out_channels , in_channels / groups , kW)
+    input_divided_by
     """
     channels_per_group = weights.shape[1] // input_divided_by
 
@@ -333,15 +368,17 @@ def adjust_weights_for_grouping(weights, input_divided_by):
 
 def get_kernel_for_dsc(kernel):
     """
-        Part of DSC (Step 2, pointwise convolution)
-        kernel with output_channel, input_channel / groups, kernel will be set to (_,_,1)
+    Part of DSC (Step 2, pointwise convolution)
+    kernel with output_channel, input_channel / groups, kernel will be set to (_,_,1)
     """
     return kernel[:, :, 0:1]
 
 
 # copied and adapted from elasticchannelhelper.py
 # set the channel filter list based on the channel priorities and the reduced_target_channel count
-def get_channel_filter(current_channel_size, reduced_target_channel_size, channel_priority_list):
+def get_channel_filter(
+    current_channel_size, reduced_target_channel_size, channel_priority_list
+):
     # get the amount of channels to be removed from the max and current channel counts
     channel_reduction_amount: int = current_channel_size - reduced_target_channel_size
     # start with an empty filter, where every channel passes through, then remove channels by priority
@@ -357,17 +394,27 @@ def get_channel_filter(current_channel_size, reduced_target_channel_size, channe
     return channel_pass_filter
 
 
-def create_channel_filter(module: nn.Module, kernel, current_channel, reduced_target_channel_size, is_output_filter : bool = True):
+def create_channel_filter(
+    module: nn.Module,
+    kernel,
+    current_channel,
+    reduced_target_channel_size,
+    is_output_filter: bool = True,
+):
     # create one channel filter
     channel_index = 1 if is_output_filter else 0
-    channel_filter_priorities = compute_channel_priorities(module, kernel, channel_index)
-    return get_channel_filter(current_channel, reduced_target_channel_size, channel_filter_priorities)
+    channel_filter_priorities = compute_channel_priorities(
+        module, kernel, channel_index
+    )
+    return get_channel_filter(
+        current_channel, reduced_target_channel_size, channel_filter_priorities
+    )
 
 
 # copied and adapted from elasticchannelhelper.py
 # compute channel priorities based on the l1 norm of the weights of whichever
 # target module follows this elastic channel section
-def compute_channel_priorities(module : nn.Module, kernel, channel_index : int = 0):
+def compute_channel_priorities(module: nn.Module, kernel, channel_index: int = 0):
     channel_norms = []
 
     if kernel is None:

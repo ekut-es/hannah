@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import copy
 import io
 import logging
@@ -14,16 +32,13 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from PIL import Image
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.loggers import (
-    LightningLoggerBase,
-    LoggerCollection,
-    TensorBoardLogger,
-)
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.loggers import LightningLoggerBase, TensorBoardLogger
+from pytorch_lightning.trainer.supporters import CombinedLoader
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from torchmetrics import MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
-from ..utils import fullname
+from ..utils.utils import fullname
 from .metrics import plot_confusion_matrix
 
 msglogger: logging.Logger = logging.getLogger(__name__)
@@ -42,7 +57,9 @@ class ClassifierModule(LightningModule, ABC):
         frequency_masking: int = 0,
         scheduler: Optional[DictConfig] = None,
         normalizer: Optional[DictConfig] = None,
+        unlabeled_data: Optional[DictConfig] = None,
         export_onnx: bool = True,
+        export_relay: bool = False,
         gpus=None,
         shuffle_all_dataloaders: bool = False,
         **kwargs,
@@ -54,10 +71,19 @@ class ClassifierModule(LightningModule, ABC):
         self.train_set = None
         self.test_set = None
         self.dev_set = None
+
+        self.train_set_unlabeled = None
+        self.test_set_unlabeled = None
+        self.dev_set_unlabeled = None
+
         self.logged_samples = 0
         self.export_onnx = export_onnx
         self.gpus = gpus
         self.shuffle_all_dataloaders = shuffle_all_dataloaders
+
+        self.train_set = None
+        self.test_set = None
+        self.val_set = None
 
         self.val_metrics: MetricCollection = MetricCollection({})
         self.test_metrics: MetricCollection = MetricCollection({})
@@ -76,16 +102,65 @@ class ClassifierModule(LightningModule, ABC):
     def get_class_names(self) -> Any:
         pass
 
+    def train_dataloader(self):
+        return self._get_dataloader(
+            self.train_set, self.train_set_unlabeled, shuffle=True
+        )
+
+    def test_dataloader(self):
+        return self._get_dataloader(self.test_set, self.test_set_unlabeled)
+
+    def val_dataloader(self):
+        return self._get_dataloader(self.dev_set, self.dev_set_unlabeled)
+
+    def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
+        batch_size = self.hparams["batch_size"]
+        dataset_conf = self.hparams.dataset
+        sampler = None
+        if shuffle:
+            sampler_type = dataset_conf.get("sampler", "random")
+            if sampler_type == "weighted":
+                sampler = self.get_balancing_sampler(dataset)
+            else:
+                sampler = data.RandomSampler(dataset)
+
+        loader = data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            drop_last=True,
+            num_workers=self.hparams["num_workers"],
+            sampler=sampler,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+        self.batches_per_epoch = len(loader)
+
+        if unlabeled_data:
+            loader_unlabeled = data.DataLoader(
+                unlabeled_data,
+                batch_size=batch_size,
+                drop_last=True,
+                num_workers=self.hparams["num_workers"],
+                sampler=data.RandomSampler(unlabeled_data),
+                multiprocessing_context="fork"
+                if self.hparams["num_workers"] > 0
+                else None,
+            )
+            return CombinedLoader({"labeled": loader, "unlabeled": loader_unlabeled})
+
+        return loader
+
     def on_train_start(self) -> None:
         super().on_train_start()
 
-        input_array = self.example_input_array.clone().to(self.device)
+        if hasattr(self, "example_input_array"):
+            input_array = self.example_input_array.clone().to(self.device)
 
-        for logger in self._logger_iterator():
-            if hasattr(logger, "log_graph"):
-                logger.log_graph(self, input_array)
+            for logger in self._logger_iterator():
+                if hasattr(logger, "log_graph"):
+                    logger.log_graph(self, input_array)
+                    pass
 
-    def configure_optimizers(self) -> Dict[str, Any]:
+    def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
 
         retval = {}
@@ -125,7 +200,7 @@ class ClassifierModule(LightningModule, ABC):
                         logger.experiment.add_histogram(
                             name, params, self.current_epoch
                         )
-                    except ValueError:
+                    except (ValueError, NotImplementedError):
                         logging.critical("Could not add histogram for param %s", name)
 
         for name, module in self.named_modules():
@@ -140,7 +215,7 @@ class ClassifierModule(LightningModule, ABC):
                                 module.running_var,
                                 self.current_epoch,
                             )
-                        except ValueError:
+                        except (ValueError, NotImplementedError):
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )
@@ -154,7 +229,7 @@ class ClassifierModule(LightningModule, ABC):
                                 module.scale_factor,
                                 self.current_epoch,
                             )
-                        except ValueError:
+                        except (ValueError, NotImplementedError):
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )
@@ -168,7 +243,7 @@ class ClassifierModule(LightningModule, ABC):
                                 module.scaled_weight,
                                 self.current_epoch,
                             )
-                        except ValueError:
+                        except (ValueError, NotImplementedError):
                             logging.critical(
                                 "Could not add histogram for param %s", name
                             )
@@ -180,15 +255,11 @@ class ClassifierModule(LightningModule, ABC):
 
         return loggers
 
-    @staticmethod
-    def get_balancing_sampler(dataset) -> Any:
-        distribution = dataset.class_counts
-        weights = 1.0 / torch.tensor(
-            [distribution[i] for i in range(len(distribution))], dtype=torch.float
-        )
-
-        sampler_weights = weights[dataset.get_label_list()]
-
+    def get_balancing_sampler(self, dataset):
+        num_sampels = list(dataset.class_counts.values())
+        weights = [0 if i is None else 1 / i for i in num_sampels]
+        target_list = dataset.get_label_list
+        sampler_weights = [weights[i] for i in target_list]
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler
 
@@ -238,6 +309,9 @@ class ClassifierModule(LightningModule, ABC):
         val_metrics = {}
         for name, metric in self.val_metrics.items():
             val_metrics[name] = metric.compute().item()
+
+        if not val_metrics:
+            return
 
         tabulated_metrics = tabulate.tabulate(
             val_metrics.items(), headers=["Metric", "Value"], tablefmt="github"
@@ -297,3 +371,10 @@ class ClassifierModule(LightningModule, ABC):
                         im,
                         global_step=self.current_epoch,
                     )
+
+    def _log_batch_images(self, name: str, batch_idx: int, data: torch.tensor):
+        loggers = self._logger_iterator()
+        for logger in loggers:
+            if hasattr(logger.experiment, "add_image"):
+                images = torchvision.utils.make_grid(data, normalize=True)
+                logger.experiment.add_image(f"{name}_{batch_idx}", images)

@@ -1,3 +1,21 @@
+<!--
+Copyright (c) 2022 University of Tübingen.
+
+This file is part of hannah.
+See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
 # HANNAH - Hardware Accelerator and Neural network searcH
 
 # Getting Started
@@ -29,7 +47,7 @@ Install a python 3.8 or python 3.9 version using [pyenv](https://github.com/pyen
 
 ### Install poetry
 
-    curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+    curl -sSL https://install.python-poetry.org/ | python3
 
 For alternative installation methods see:  https://python-poetry.org/docs/#installation
 
@@ -37,17 +55,12 @@ For alternative installation methods see:  https://python-poetry.org/docs/#insta
 
     ~/.local/bin/poetry
 
-#### Mac OS
-Install poetry from pip
-
-    pip3 install poetry
 
 ## Software installation
 
 In the root directory of the project run:
 
     git submodule update --init --recursive
-    poetry run pip install --upgrade pip
     poetry install
 
 This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.
@@ -198,3 +211,16 @@ To enable precommit hooks run the following command in a `poetry shell`.
 
 Try to follow [pep8](https://pep8.org/#naming-conventions) naming conventions and the rest of pep8 to the
 best of your abilities.
+
+## Resolving merge conflicts in `poetry.lock`
+
+If you have changed `poetry.lock` this can result in merge conflicts.
+
+The easiest way to resolve them is:
+
+```
+git checkout --theirs poetry.lock
+poetry lock --no-update
+```
+
+Try to avoid running `poetry update` on feature branches.

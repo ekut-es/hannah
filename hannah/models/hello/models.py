@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -45,7 +63,7 @@ class DSCNNSpeechModel(nn.Module):
         n_labels = config["n_labels"]
         n_maps = config["n_feature_maps"]
 
-        dropout_prob = config["dropout_prob"]
+        self.dropout_prob = config["dropout_prob"]
 
         x = Variable(torch.zeros(1, 1, height, width))
 
@@ -82,7 +100,7 @@ class DSCNNSpeechModel(nn.Module):
             batch_norm = nn.BatchNorm2d(n_maps)
             self.convs.append(batch_norm)
 
-            dropout = nn.Dropout(config["dropout_prob"])
+            dropout = nn.Dropout(self.dropout_prob)
             self.convs.append(dropout)
 
             count += 1

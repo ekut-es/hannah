@@ -32,9 +32,9 @@ repos:
     rev: 'v0.8.8'
     hooks:
         - id: licenseheaders
-          args: ["-t", ".copyright.tmpl", "-n", "hannah", "-u", "https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah", "-o", "University of Tübingen", "-cy", "-f"]
+          args: ["-x", '*.yaml', "-t", ".copyright.tmpl", "-n", "hannah", "-u", "https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah", "-o", "University of Tübingen", "-cy", "-f"]
   - repo: https://github.com/psf/black
-    rev: 22.6.0
+    rev: 22.10.0
     hooks:
     -   id: black
   - repo: https://github.com/pycqa/isort
@@ -43,6 +43,6 @@ repos:
       - id: isort
         name: isort (python
   - repo: https://github.com/pycqa/flake8
-    rev: 4.0.1
+    rev: 5.0.4
     hooks:
       - id: flake8

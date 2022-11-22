@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from typing import Any, Optional, TypeVar, Union
 
 import torch
@@ -29,7 +47,7 @@ class FixedPointNormalizer(nn.Module):
             if not override_max:
                 self.normalize_max = self.high_border
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
         normalize_factor = 2.0**self.bits
         x = x * normalize_factor / self.normalize_max
         x = x.round()

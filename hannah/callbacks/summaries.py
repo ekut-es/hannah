@@ -1,10 +1,28 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 from collections import OrderedDict
 
 import pandas as pd
 import torch
 from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from tabulate import tabulate
 
 from hannah.models.ofa.submodules.elasticBase import ElasticBase1d
@@ -14,7 +32,6 @@ from ..models.ofa import OFAModel
 from ..models.ofa.submodules.elastickernelconv import ConvBn1d, ConvBnReLu1d, ConvRelu1d
 from ..models.ofa.type_utils import elastic_conv_type, elastic_Linear_type
 from ..models.sinc import SincNet
-from ..torch_extensions.nn import SNNActivationLayer, SNNLayers
 
 msglogger = logging.getLogger(__name__)
 
@@ -90,10 +107,6 @@ def walk_model(model, dummy_input):
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
             qat.Linear: get_fc,
-            SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
-            SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
-            SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
-            SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
         }
         if type(module) in classes.keys():
             return classes[type(module)](module, volume_ofm, output)
@@ -105,40 +118,15 @@ def walk_model(model, dummy_input):
             module.in_channels / module.groups * prod(module.kernel_size)
         )
 
-    def get_1DSpiking_macs(module, output):
-        neuron_macs = {"eLIF": 4, "LIF": 5, "eALIF": 5, "ALIF": 6}
-        if module.flatten_output is False:
-            return module.channels * output.shape[2] * neuron_macs[module.type]
-        elif module.flatten_output is True:
-            return module.channels * output.shape[1] * neuron_macs[module.type]
-
     def get_conv_attrs(module):
         attrs = "k=" + "(" + (", ").join(["%d" % v for v in module.kernel_size]) + ")"
         attrs += ", s=" + "(" + (", ").join(["%d" % v for v in module.stride]) + ")"
         attrs += ", g=(%d)" % module.groups
-        attrs += ", dsc=(%s)" % str(module.in_channels == module.out_channels == module.groups)
+        attrs += ", dsc=(%s)" % str(
+            module.in_channels == module.out_channels == module.groups
+        )
         attrs += ", d=" + "(" + ", ".join(["%d" % v for v in module.dilation]) + ")"
         return attrs
-
-    def get_spike_attrs(module):
-        attrs = ""
-        if module.type in ["LIF", "ALIF"]:
-            if len(module.alpha.shape) == 0:
-                attrs += "alpha=" + str(module.alpha.item()) + " "
-        if len(module.beta.shape) == 0:
-            attrs += "beta=" + str(module.beta.item()) + " "
-        if module.type in ["ALIF", "eALIF"]:
-            if len(module.gamma.shape) == 0 and len(module.rho.shape) == 0:
-                attrs += "gamma=" + str(module.gamma.item()) + " "
-                attrs += "rho=" + str(module.rho.item()) + " "
-        return attrs
-
-    def get_1DSpikeLayer(module, volume_ofm, output):
-        neuron_memory = {"eLIF": 3, "LIF": 4, "eALIF": 6, "ALIF": 7}
-        weights = module.channels * neuron_memory[module.type]
-        macs = get_1DSpiking_macs(module, output)
-        attrs = get_spike_attrs(module)
-        return weights, macs, attrs
 
     def get_elastic_conv(module, volume_ofm, output):
         tmp = module.assemble_basic_module()
@@ -183,7 +171,8 @@ def walk_model(model, dummy_input):
         if module != model:
             hooks += [module.register_forward_hook(collect)]
 
-    _ = model(dummy_input)
+    with torch.no_grad():
+        _ = model(dummy_input)
 
     for hook in hooks:
         hook.remove()
@@ -239,6 +228,12 @@ class MacSummaryCallback(Callback):
 
         return res
 
+    def predict(self, pl_module):
+
+        res = self.estimate(pl_module)
+
+        return res
+
     @rank_zero_only
     def on_train_start(self, trainer, pl_module):
         pl_module.eval()
@@ -267,6 +262,14 @@ class MacSummaryCallback(Callback):
             pl_module.log(k, float(v), rank_zero_only=True)
 
     def estimate(self, pl_module):
+        """Generate Summary Metrics for neural network
+
+        Args:
+            pl_module (pytorch_lightning.LightningModule): pytorch lightning module to summarize
+
+        Returns:
+            dict[str, float]: Dict of MetricName => Metric Value
+        """
         pl_module.eval()
         res = {}
         try:

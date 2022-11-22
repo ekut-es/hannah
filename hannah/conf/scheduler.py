@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from dataclasses import dataclass
 from typing import Any, List
 
@@ -96,22 +114,22 @@ class CosineAnnealingWarmRestartsConf:
     last_epoch: Any = -1
 
 
-cs.store(group="scheduler", name="cosine_warm", node="CosineAnnealingWarmRestartsConf")
+cs.store(group="scheduler", name="cosine_warm", node=CosineAnnealingWarmRestartsConf())
 
 
 @dataclass
 class OneCycleLRConf:
     "Config for one cycle lr total steps are configured from module"
     _target_: str = "torch.optim.lr_scheduler.OneCycleLR"
-    max_lr: Any = 0.1
-    pct_start: Any = 0.3
+    max_lr: float = "${optimizer.lr}"
+    pct_start: float = 0.3
     anneal_strategy: str = "cos"
     cycle_momentum: Any = True
-    base_momentum: Any = 0.85
-    max_momentum: Any = 0.95
-    div_factor: Any = 25.0
-    final_div_factor: Any = 10000.0
-    last_epoch: Any = -1
+    base_momentum: float = 0.85
+    max_momentum: float = 0.95
+    div_factor: float = 25.0
+    final_div_factor: float = 10000.0
+    last_epoch: int = -1
 
 
 cs.store(group="scheduler", name="1cycle", node=OneCycleLRConf())

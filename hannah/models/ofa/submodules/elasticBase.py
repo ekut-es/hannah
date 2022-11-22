@@ -1,16 +1,35 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import copy
 import logging
 from pyclbr import Function
 from typing import List
 
-import torch
 import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as nnf
 
 from hannah.models.factory import qat
 
 from ..utilities import (
+    adjust_weights_for_grouping,
     conv1d_get_padding,
     filter_primary_module_weights,
     filter_single_dimensional_weights,
@@ -18,14 +37,12 @@ from ..utilities import (
     prepare_kernel_for_depthwise_separable_convolution,
     prepare_kernel_for_pointwise_convolution,
     sub_filter_start_end,
-    adjust_weights_for_grouping
 )
 
 
 # It's a wrapper for a convolutional layer that allows for the number of input and
 # output channels to be changed
 class _Elastic:
-
     def __init__(self, in_channel_filter, out_channel_filter, out_channel_sizes=None):
         self.in_channel_filter: int = in_channel_filter
         self.out_channel_filter: int = out_channel_filter
@@ -39,7 +56,9 @@ class _Elastic:
         return self.out_channel_sizes
 
     # return a safe copy of a conv1d equivalent to this module in the current state
-    def assemble_basic_module(self) -> nn.Module:  # Module, so that Sequentials are possible, like DSC
+    def assemble_basic_module(
+        self,
+    ) -> nn.Module:  # Module, so that Sequentials are possible, like DSC
         return copy.deepcopy(self.get_basic_module())
 
     def set_out_channel_filter(self, out_channel_filter):
@@ -58,7 +77,6 @@ class _Elastic:
 
 # It's a 1D convolutional layer that can change its kernel size and dilation size
 class ElasticBase1d(nn.Conv1d, _Elastic):
-
     def __init__(
         self,
         in_channels: int,
@@ -102,8 +120,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         # dynamic width changes the in and out_channels
         # hence we save then here
-        self.initial_in_channels : int = in_channels
-        self.initial_out_channels : int = out_channels
+        self.initial_in_channels: int = in_channels
+        self.initial_out_channels: int = out_channels
 
         # sort available grouping sizes from largest to smallest (descending order)
         groups.sort(reverse=False)
@@ -196,7 +214,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
         self.update_padding()
 
-    def set_bn_parameter(self, conv : nn.Conv1d, tmp_bn, num_tracked):
+    def set_bn_parameter(self, conv: nn.Conv1d, tmp_bn, num_tracked):
         """
         Caller for BatchNorm Parameters
         This unifies the call in the different methods, especially in dsc / not dsc forward
@@ -212,7 +230,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
     def prepare_dsc_for_validation_model(
         self,
-        conv_class : nn.Module,
+        conv_class: nn.Module,
         full_kernel,
         full_bias,
         in_channels,
@@ -226,7 +244,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         out_quant=None,
         bn_eps=None,
         bn_momentum=None,
-        bn_caller : tuple = None,
+        bn_caller: tuple = None,
     ):
         """
         This method creates the necessary validation models for DSC.
@@ -245,37 +263,34 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         uses_batch_norm = bn_eps is not None and bn_momentum is not None
 
         # depthwise
-        filtered_kernel_depth, bias = prepare_kernel_for_depthwise_separable_convolution(
-             self,
-             kernel=full_kernel,
-             bias=full_bias,
-             in_channels=in_channels
+        (
+            filtered_kernel_depth,
+            bias,
+        ) = prepare_kernel_for_depthwise_separable_convolution(
+            self, kernel=full_kernel, bias=full_bias, in_channels=in_channels
         )
         in_channel_depth = in_channels
 
-        param_depthwise_conv : dict = {
+        param_depthwise_conv: dict = {
             "in_channels": in_channel_depth,
             "out_channels": filtered_kernel_depth.size(0),
             "kernel_size": filtered_kernel_depth.size(2),
             "bias": bias,
             "groups": in_channel_depth,
-            "padding": padding
+            "padding": padding,
         }
 
         # is either quant Conv1d or normal Conv1d
-        depthwise_separable = nn.Conv1d(
-                **param_depthwise_conv
-        )
+        depthwise_separable = nn.Conv1d(**param_depthwise_conv)
         depthwise_separable.weight.data = filtered_kernel_depth
 
         # pointwise  convolution
         kernel, bias = self.get_kernel()
         filtered_kernel_point = prepare_kernel_for_pointwise_convolution(
-            kernel=kernel,
-            grouping=grouping
+            kernel=kernel, grouping=grouping
         )
 
-        param_point_conv : dict = {
+        param_point_conv: dict = {
             "in_channels": in_channels,
             "out_channels": out_channels,
             "kernel_size": filtered_kernel_point.size(2),
@@ -293,9 +308,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             param_point_conv["momentum"] = bn_momentum
 
         # create a convolution model, from the kwargs params above
-        pointwise = conv_class(
-                **param_point_conv
-        )
+        pointwise = conv_class(**param_point_conv)
         pointwise.weight.data = filtered_kernel_point
 
         if bn_caller:
@@ -318,22 +331,22 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         dilation,
         quant_weight=None,
         quant_bias=None,
-        quant_weight_function : Function = None,  # for quantization
-        quant_bias_function : Function = None,  # for quantization
+        quant_weight_function: Function = None,  # for quantization
+        quant_bias_function: Function = None,  # for quantization
     ):
 
         """
-            This  method will perform the DSC(=Depthwise Separable Convolution).
-            This  method can also handle quantized models.
-            DSC is done in two steps:
-            1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
-            2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
+        This  method will perform the DSC(=Depthwise Separable Convolution).
+        This  method can also handle quantized models.
+        DSC is done in two steps:
+        1. Depthwise Separable: Set Group = In_Channels, Output = k*In_Channels
+        2. Pointwise Convolution, with Grouping = Grouping-Param und Out_Channel = Out_Channel-Param
 
-            The Params above are used for quantized models
-            :param: quant_weight: quantized weights
-            :param: quant_bias: quantized zero_bias
-            :param: quant_weight_function: fake_quant function for weight
-            :param: quant_bias_function: fake_quant function for bias
+        The Params above are used for quantized models
+        :param: quant_weight: quantized weights
+        :param: quant_bias: quantized zero_bias
+        :param: quant_weight_function: fake_quant function for weight
+        :param: quant_bias_function: fake_quant function for bias
         """
         use_fake_weight = quant_weight_function is not None
         use_fake_bias = quant_bias_function is not None and full_bias is not None
@@ -342,18 +355,17 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         in_channels = self.in_channel_filter.count(True)
 
         filtered_kernel, bias = prepare_kernel_for_depthwise_separable_convolution(
-             self,
-             kernel=full_kernel,
-             bias=full_bias,
-             in_channels=in_channels
+            self, kernel=full_kernel, bias=full_bias, in_channels=in_channels
         )
         # params for depthwise separable convolution
-        param_depthwise_conv : dict = {
+        param_depthwise_conv: dict = {
             "input": input,
-            "weight": filtered_kernel if use_fake_weight is False else quant_weight_function(filtered_kernel),
+            "weight": filtered_kernel
+            if use_fake_weight is False
+            else quant_weight_function(filtered_kernel),
             "bias": bias if use_fake_bias is False else quant_bias_function(bias),
             "groups": in_channels,
-            "padding": padding
+            "padding": padding,
         }
         # do depthwise
         res_depthwise = nnf.conv1d(
@@ -369,26 +381,25 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         else:
             kernel, bias = self.get_kernel()
             filtered_kernel = prepare_kernel_for_pointwise_convolution(
-                kernel=kernel,
-                grouping=grouping
+                kernel=kernel, grouping=grouping
             )
 
         # pointwise convolution
-        param_point_conv : dict = {
+        param_point_conv: dict = {
             "input": res_depthwise,
-            "weight": filtered_kernel if use_fake_weight is False else quant_weight_function(filtered_kernel),
+            "weight": filtered_kernel
+            if use_fake_weight is False
+            else quant_weight_function(filtered_kernel),
             "bias": bias if use_fake_bias is False else quant_bias_function(bias),
             "groups": grouping,
             "stride": stride,
             "dilation": dilation,
         }
 
-        res_pointwise = nnf.conv1d(
-            **param_point_conv
-        )
+        res_pointwise = nnf.conv1d(**param_point_conv)
         return res_pointwise
 
-    def set_in_and_out_channel(self, kernel, filtered : bool = True):
+    def set_in_and_out_channel(self, kernel, filtered: bool = True):
         """
         This method uses the kernel for setting the input and outputchannel
         if dynamic width is activated (channelfilters), the amount of channels is reduced,
@@ -423,7 +434,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         the min/max range. If the requested kernel size is not an available kernel
         size, default to the max kernel size
 
-        :param new_kernel_size: the size of the kernel you want to use
+        :param new_kernel_size (int): the size of the kernel you want to use
         """
         # previous_kernel_size = self.kernel_sizes[self.target_kernel_index]
         if (
@@ -473,8 +484,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             return False
 
     def pick_kernel_index(self, target_kernel_index: int):
-        if (target_kernel_index < 0) or (
-            target_kernel_index >= len(self.kernel_sizes)):
+        if (target_kernel_index < 0) or (target_kernel_index >= len(self.kernel_sizes)):
             logging.warn(
                 f"selected kernel index {target_kernel_index} is out of range: 0 .. {len(self.kernel_sizes)}. Setting to last index."
             )
@@ -512,8 +522,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             kernel_center = current_kernel[:, :, start:end]
             # apply the kernel transformation to the next kernel. the n-th transformation
             # is applied to the n-th kernel, yielding the (n+1)-th kernel
-            next_kernel = self.kernel_transforms[current_kernel_index](
-                kernel_center)
+            next_kernel = self.kernel_transforms[current_kernel_index](kernel_center)
             # the kernel has now advanced through the available sizes by one
             current_kernel = next_kernel
             current_kernel_index += 1
@@ -635,9 +644,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         return self.dilation_sizes[self.target_dilation_index]
 
     def pick_group_index(self, target_group_index: int):
-        if (target_group_index < 0) or (
-            target_group_index >= len(self.group_sizes)
-        ):
+        if (target_group_index < 0) or (target_group_index >= len(self.group_sizes)):
             logging.warn(
                 f"selected group index {target_group_index} is out of range: 0 .. {len(self.group_sizes)}. Setting to last index."
             )
@@ -645,9 +652,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         self.set_group_size(self.group_sizes[target_group_index])
 
     def pick_dsc_index(self, target_dsc_index: int):
-        if (target_dsc_index < 0) or (
-            target_dsc_index >= len(self.dscs)
-        ):
+        if (target_dsc_index < 0) or (target_dsc_index >= len(self.dscs)):
             logging.warn(
                 f"selected dsc index {target_dsc_index} is out of range: 0 .. {len(self.dscs)}. Setting to last index."
             )
@@ -669,10 +674,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         return self.dscs[self.target_dsc_index]
 
     def set_group_size(self, new_group_size):
-        if (
-            new_group_size < self.min_group_size
-            or new_group_size > self.max_group_size
-        ):
+        if new_group_size < self.min_group_size or new_group_size > self.max_group_size:
             logging.warn(
                 f"requested elastic group size ({new_group_size}) outside of min/max range: ({self.max_group_size}, {self.min_group_size}). clamping."
             )
@@ -696,10 +698,7 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
             )
 
     def set_dsc(self, new_dsc):
-        if (
-            new_dsc < self.min_dsc
-            or new_dsc > self.max_dsc
-        ):
+        if new_dsc < self.min_dsc or new_dsc > self.max_dsc:
             logging.warn(
                 f"requested elastic dsc ({new_dsc}) outside of min/max range: ({self.max_dsc}, {self.min_dsc}). clamping."
             )
@@ -756,6 +755,5 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         pass
 
     def extra_repr(self):
-        # TODO(jerryzh): extend
         pass
         # return super(ElasticBase1d, self).extra_repr()

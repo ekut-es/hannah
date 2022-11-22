@@ -1,27 +1,39 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import os
 import shutil
-from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Type, Union
 
-import numpy as np
 import pandas as pd
 import tabulate
 import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.distributed import rank_zero_info, rank_zero_only
+from pytorch_lightning.utilities.cloud_io import load as pl_load
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
-
-import hydra
 
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
-from .callbacks.pruning import PruningAmountScheduler
-from .callbacks.summaries import MacSummaryCallback
-from .logo import print_logo
 from .utils import (
     auto_select_gpus,
     clear_outputs,
@@ -33,7 +45,7 @@ msglogger: logging.Logger = logging.getLogger(__name__)
 
 
 @rank_zero_only
-def handleDataset(config=DictConfig):
+def handle_dataset(config=DictConfig):
     lit_module = instantiate(
         config.module,
         dataset=config.dataset,
@@ -78,9 +90,11 @@ def train(
             model=config.model,
             optimizer=config.optimizer,
             features=config.get("features", None),
+            augmentation=config.get("augmentation", None),
             scheduler=config.get("scheduler", None),
             normalizer=config.get("normalizer", None),
             gpus=config.trainer.get("gpus", None),
+            unlabeled_data=config.get("unlabeled_data"),
             _recursive_=False,
         )
 
@@ -123,6 +137,12 @@ def train(
             _convert_="partial",
         )
 
+        if config.get("input_file", None):
+            msglogger.info("Loading initial weights from model %s", config.input_file)
+            lit_module.setup("train")
+            input_ckpt = pl_load(config.input_file)
+            lit_module.load_state_dict(input_ckpt["state_dict"], strict=False)
+
         if config["auto_lr"]:
             # run lr finder (counts as one epoch)
             lr_finder = lit_trainer.lr_find(lit_module)
@@ -142,7 +162,6 @@ def train(
         ckpt_path = None
         if config.get("resume", False):
             expected_ckpt_path = Path(".") / "checkpoints" / "last.ckpt"
-            # breakpoint()
             if expected_ckpt_path.exists():
                 logging.info(
                     "Resuming training from checkpoint: %s", str(expected_ckpt_path)
@@ -177,8 +196,8 @@ def train(
             if checkpoint_callback and checkpoint_callback.best_model_path:
                 shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
 
-        test_output.append(opt_callback.test_result())
-        results.append(opt_callback.result())
+            test_output.append(opt_callback.test_result())
+            results.append(opt_callback.result())
 
     @rank_zero_only
     def summarize_test(test_output) -> None:
@@ -214,24 +233,3 @@ def nas(config: DictConfig) -> None:
     print(OmegaConf.to_yaml(config))
     nas_trainer = instantiate(config.nas, parent_config=config, _recursive_=False)
     nas_trainer.run()
-
-
-@hydra.main(config_name="config", config_path="conf", version_base="1.2")
-def main(config: DictConfig):
-    logging.captureWarnings(True)
-    print_logo()
-    try:
-        log_execution_env_state()
-        if config.get("dataset_creation", None) is not None:
-            handleDataset(config)
-        if config.get("nas", None) is not None:
-            return nas(config)
-        else:
-            return train(config)
-    except Exception as e:
-        logging.exception("Exception Message: %s", str(e))
-        raise e
-
-
-if __name__ == "__main__":
-    main()
