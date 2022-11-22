@@ -40,6 +40,7 @@ def test_elastic_conv1d_quant():
         kernel_sizes,
         dilation_sizes=dilation_sizes,
         groups=[1],
+        dscs=[1],
     )
     loss_func = nn.MSELoss()
     optimizer = torch.optim.SGD(conv.parameters(), lr=0.1)
