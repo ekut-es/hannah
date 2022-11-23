@@ -24,6 +24,9 @@ class Lazy:
             return self._id
         else:
             raise AttributeError("Lazy objects have to be initialized to have an id.")
+    @id.setter
+    def id(self, id):
+        self._id = id
 
     @property
     def shape(self):
