@@ -104,6 +104,7 @@ class NASGraphDataset(DGLDataset):
             self.graphs.append(dgl_graph)
 
         self.labels = torch.FloatTensor(self.labels)
+        print(df.columns)
 
     def normalize_labels(self):
         std = self.labels.std()
@@ -202,8 +203,8 @@ def main(config):
     dataset = NASGraphDataset(
         "/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data"
     )
-    for item in dataset:
-        print(item)
+    # for item in dataset:
+    #     print(item)
 
 
 if __name__ == "__main__":

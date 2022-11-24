@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+from collections import defaultdict
 import copy
 import logging
 import os
@@ -59,72 +60,81 @@ def run_training(num, global_num, config): # num is the number of jobs global_nu
 
     os.makedirs(str(num), exist_ok=True)
 
+
+    results = defaultdict(list)
+
+
     try:
         os.chdir(str(num))
         config = OmegaConf.create(config)
         logger = TensorBoardLogger(".")
 
-        seed = config.get("seed", 1234)
-        if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
-            seed = seed[0]
-        seed_everything(seed, workers=True)
+        seeds = config.get("seed", 1234)
+        if isinstance(seeds, int):
+            seeds = [seeds]
 
-        if config.trainer.gpus is not None:
-            if isinstance(config.trainer.gpus, int):
-                num_gpus = config.trainer.gpus
-                gpu = num % num_gpus
-            elif len(config.trainer.gpus) == 0:
-                num_gpus = torch.cuda.device_count()
-                gpu = num % num_gpus
-            else:
-                gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
 
-            if gpu >= torch.cuda.device_count():
-                logger.warning(
-                    "GPU %d is not available on this device using GPU %d instead",
-                    gpu,
-                    gpu % torch.cuda.device_count(),
+        for seed in seeds:
+            seed_everything(seed, workers=True)
+            if config.trainer.gpus is not None:
+                if isinstance(config.trainer.gpus, int):
+                    num_gpus = config.trainer.gpus
+                    gpu = num % num_gpus
+                elif len(config.trainer.gpus) == 0:
+                    num_gpus = torch.cuda.device_count()
+                    gpu = num % num_gpus
+                else:
+                    gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
+
+                if gpu >= torch.cuda.device_count():
+                    logger.warning(
+                        "GPU %d is not available on this device using GPU %d instead",
+                        gpu,
+                        gpu % torch.cuda.device_count(),
+                    )
+                    gpu = gpu % torch.cuda.device_count()
+
+                config.trainer.gpus = [gpu]
+
+            callbacks = common_callbacks(config)
+            opt_monitor = config.get("monitor", ["val_error"])
+            opt_callback = HydraOptCallback(monitor=opt_monitor)
+            callbacks.append(opt_callback)
+
+            checkpoint_callback = instantiate(config.checkpoint)
+            callbacks.append(checkpoint_callback)
+            try:
+                trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
+                model = instantiate(
+                    config.module,
+                    dataset=config.dataset,
+                    model=config.model,
+                    optimizer=config.optimizer,
+                    features=config.features,
+                    scheduler=config.get("scheduler", None),
+                    normalizer=config.get("normalizer", None),
+                    _recursive_=False,
                 )
-                gpu = gpu % torch.cuda.device_count()
 
-            config.trainer.gpus = [gpu]
+                trainer.fit(model)
+                ckpt_path = "best"
+                if trainer.fast_dev_run:
+                    logging.warning(
+                        "Trainer is in fast dev run mode, switching off loading of best model for test"
+                    )
+                    ckpt_path = None
 
-        callbacks = common_callbacks(config)
-        opt_monitor = config.get("monitor", ["val_error"])
-        opt_callback = HydraOptCallback(monitor=opt_monitor)
-        callbacks.append(opt_callback)
-
-        checkpoint_callback = instantiate(config.checkpoint)
-        callbacks.append(checkpoint_callback)
-        try:
-            trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
-            model = instantiate(
-                config.module,
-                dataset=config.dataset,
-                model=config.model,
-                optimizer=config.optimizer,
-                features=config.features,
-                scheduler=config.get("scheduler", None),
-                normalizer=config.get("normalizer", None),
-                _recursive_=False,
-            )
-
-            trainer.fit(model)
-            ckpt_path = "best"
-            if trainer.fast_dev_run:
-                logging.warning(
-                    "Trainer is in fast dev run mode, switching off loading of best model for test"
-                )
-                ckpt_path = None
-
-            reset_seed()
-            trainer.validate(ckpt_path=ckpt_path, verbose=False)
-        except Exception as e:
-            msglogger.critical("Training failed with exception")
-            msglogger.critical(str(e))
-            res = {}
-            for monitor in opt_monitor:
-                res[monitor] = float("inf")
+                reset_seed()
+                trainer.validate(ckpt_path=ckpt_path, verbose=False)
+                current_result = opt_callback.result(dict=True)#
+                for k, v in current_result.items():
+                    results[k].append(v)
+            except Exception as e:
+                msglogger.critical("Training failed with exception")
+                msglogger.critical(str(e))
+                res = {}
+                for monitor in opt_monitor:
+                    res[monitor] = float("inf")
 
         nx_model = model_to_graph(model.model, model.example_feature_array)
         from networkx.readwrite import json_graph
@@ -136,10 +146,13 @@ def run_training(num, global_num, config): # num is the number of jobs global_nu
             import json
 
             json.dump(
-                {"graph": json_data, "metrics": opt_callback.result(dict=True)}, res_file
+                {"graph": json_data, "metrics": results}, res_file
             )
 
-        return opt_callback.result(dict=True)
+        average_results = {}
+        for k, v in results.items():
+            average_results[k] = sum(v) / len(v)
+        return average_results
     finally:
         os.chdir("..")
 
