@@ -372,10 +372,9 @@ class ClassifierModule(LightningModule, ABC):
                         global_step=self.current_epoch,
                     )
 
-    def _log_batch_images(self, name, batch_idx, augmented_data):
+    def _log_batch_images(self, name: str, batch_idx: int, data: torch.tensor):
         loggers = self._logger_iterator()
         for logger in loggers:
             if hasattr(logger.experiment, "add_image"):
-                for aug_num, aug_img in enumerate(augmented_data):
-                    images = torchvision.utils.make_grid(aug_img, normalize=True)
-                    logger.experiment.add_image(f"{name}_{batch_idx}_{aug_num}", images)
+                images = torchvision.utils.make_grid(data, normalize=True)
+                logger.experiment.add_image(f"{name}_{batch_idx}", images)

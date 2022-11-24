@@ -23,6 +23,7 @@ import tarfile
 from collections import Counter, namedtuple
 from typing import Dict, List
 
+import albumentations as A
 import cv2
 import numpy as np
 import pandas as pd
@@ -32,7 +33,6 @@ from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
 from timm.data.mixup import Mixup
 
-import albumentations as A
 from hannah.modules.augmentation import rand_augment
 from hannah.modules.augmentation.batch_augmentation import BatchAugmentationPipeline
 
@@ -41,37 +41,17 @@ from ..base import AbstractDataset
 logger = logging.getLogger(__name__)
 
 
-class AugmentationMixin:
-    def get_mixup_fn(self):
-        mixup = None
-
-        augmentation_config = self.config.get("augmentation", None)
-        if augmentation_config is not None:
-            mixup_config = augmentation_config.get("mixup", None)
-            if mixup_config is not None:
-                mixup_config = Mixup(**mixup_config)
-
-        return mixup
-
-    def get_batch_augment_fn(self):
-
-        batch_augment = None
-
-        augmentation_config = self.config.get("augmentation", None)
-        if augmentation_config is not None:
-            batch_augment_config = self.config.get("batch_augment", None)
-            if batch_augment_config is not None:
-
-                batch_augment = BatchAugmentationPipeline(
-                    transforms=batch_augment_config.get("batch_transforms", [])
-                )
-
-        return batch_augment
-
-
-class VisionDatasetBase(AbstractDataset, AugmentationMixin):
+class VisionDatasetBase(AbstractDataset):
     def __init__(self, config):
         self.config = config
+
+    @property
+    def std(self):
+        pass
+
+    @property
+    def mean(self):
+        pass
 
 
 class TorchvisionDatasetBase(VisionDatasetBase):
@@ -88,7 +68,7 @@ class TorchvisionDatasetBase(VisionDatasetBase):
 
     def __getitem__(self, index):
         data, target = self.dataset[index]
-        data = np.array(data)
+        data = np.array(data) / 255
         if self.transform:
             data = self.transform(image=data)["image"]
         return data, target
@@ -115,19 +95,14 @@ class ImageDatasetBase(AbstractDataset):
         self.X = X
         self.y = y
         self.classes = classes
-        self.transform = (
-            transform if transform else A.Compose([A.Normalize(), ToTensorV2()])
-        )
+        self.transform = transform if transform else A.Compose([ToTensorV2()])
         self.label_to_index = {k: v for v, k in enumerate(classes)}
 
     def __getitem__(self, index):
         image = cv2.imread(str(self.X[index]))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
         label = self.y[index]
-        if self.transform:
-            data = self.transform(image=image)["image"]
-        else:
-            data = image
+        data = self.transform(image=image)["image"]
         target = self.label_to_index[label]
         return {"data": data, "labels": target}
 

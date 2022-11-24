@@ -16,3 +16,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+
+"""class AnomalyScore(CatMetric):
+    def __init__(self, percentile, nan_strategy="warn", **kwargs):
+        super().__init__(nan_strategy=nan_strategy, **kwargs)
+        self.percentile = percentile
+
+    def compute(self):
+        anomaly_score = None
+        train_losses = super().compute()
+        if train_losses:
+            normalized_train_errors = torch.stack(train_losses) / (
+                torch.max(torch.stack(train_losses), dim=0).values
+            )
+            anomaly_score = np.percentile(
+                normalized_train_errors.cpu().numpy(), self.percentile
+            )
+        return anomaly_score"""

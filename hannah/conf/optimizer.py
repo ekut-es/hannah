@@ -51,7 +51,7 @@ cs.store(group="optimizer", name="adam", node=AdamConf())
 
 @dataclass
 class RAdamConf:
-    _target_: str = "hannah.torch_extensions.optim.RAdam.RAdam"
+    _target_: str = "hannah.optim.RAdam.RAdam"
     lr: Any = 0.001
     betas: Any = (0.9, 0.999)
     eps: Any = 1e-08
@@ -155,7 +155,7 @@ cs.store(group="optimizer", name="sgd", node=SGDConf())
 
 @dataclass
 class MADGRADConf:
-    _target_: str = "hannah.torch_extensions.optim.madgrad.MADGRAD"
+    _target_: str = "hannah.optim.madgrad.MADGRAD"
     lr: Any = 0.1  # _RequiredParameter
     momentum: Any = 0.9
     eps: Any = 1e-6

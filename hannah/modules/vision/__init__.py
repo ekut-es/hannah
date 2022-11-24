@@ -16,6 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .LayerFactory import *
-from .SNNLayers import *
-from .SNNutils import *
+from .anomaly_detection import AnomalyDetectionModule
+from .image_classifier import ImageClassifierModule
+
+__all__ = [
+    "AnomalyDetectionModule",
+    "ImageClassifierModule",
+]

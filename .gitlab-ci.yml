@@ -150,10 +150,9 @@ run_ml_cloud:
     - pushd scripts/ci
     - ./flow.sh
     - popd
-    - echo "Test comment" > report.md
-    - cml send-comment report.md
-  only:
-    - main
+  rules:
+    - if: $CI_DEPLOY_FREEZE == null && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    #- if: $CI_JOB_MANUAL == true && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   dependencies: []
   resource_group: cluster
 

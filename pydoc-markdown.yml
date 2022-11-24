@@ -29,6 +29,9 @@ renderer:
     - title: Home
       name: index
       source: README.md
+    - title: Fallacies and Pitfalls
+      name: fallacies
+      source: doc/fallacies.md
     - title: Configuration
       name: configuration
       children:
@@ -47,6 +50,12 @@ renderer:
       - title: Pruning
         name: compression/pruning
         source: doc/compression/pruning.md
+      - title: Clustering
+        name: compression/clustering
+        source: doc/compression/clustering.md
+      - title: Tensor Decompositions
+        name: compression/decomposition
+        source: doc/compression/decomposition.md
       - title: Knowledge Distillation
         name: compresseion/knowledge_distillation
         source: doc/compression/knowledge_distillation.md

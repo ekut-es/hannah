@@ -123,22 +123,6 @@ class AbstractDataset(Dataset, ABC):
         """Returns channel-wise means for dataset if applicable"""
         return None
 
-    def get_mixup_fn(
-        self,
-    ) -> Optional[
-        Callable[[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]
-    ]:
-        """Returns an optional dataset specific mixup function"""
-        return None
-
-    def get_batch_augment_fn(
-        self,
-    ) -> Optional[
-        Callable[[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]
-    ]:
-        """Returns an optional dataset specific batch augment function"""
-        return None
-
     @property
     def weights(self) -> Optional[List[float]]:
         """Class weights for weighted sampling"""
