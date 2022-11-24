@@ -19,6 +19,7 @@
 import logging
 import os
 import pathlib
+import re
 import tarfile
 from collections import Counter, namedtuple
 from typing import Dict, List
@@ -83,13 +84,14 @@ class TorchvisionDatasetBase(VisionDatasetBase):
 
 
 class ImageDatasetBase(AbstractDataset):
-    def __init__(self, X, y, classes, transform=None):
+    def __init__(self, X, y, classes, bbox=None, transform=None):
         """Initialize vision dataset
 
         Args:
             X (List[str]): List of paths to image files
             y (List[str]): Class id of corresponding image
             classes (List[str]): List of class names, names are ordered by numeric class id
+            bbox (list[Dict]): Dict with filename as keys, bbox coordinates as values
             transform (Callable[image,image], optional): Optional transformation/augmentation of input images. Defaults to None.
         """
         self.X = X
@@ -97,14 +99,33 @@ class ImageDatasetBase(AbstractDataset):
         self.classes = classes
         self.transform = transform if transform else A.Compose([ToTensorV2()])
         self.label_to_index = {k: v for v, k in enumerate(classes)}
+        self.bbox = bbox
 
     def __getitem__(self, index):
         image = cv2.imread(str(self.X[index]))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
         label = self.y[index]
+
+        single_bbox = [
+            {
+                "x1": [],
+                "y1": [],
+                "x2": [],
+                "y2": [],
+                "x3": [],
+                "y3": [],
+                "x4": [],
+                "y4": [],
+            }
+        ]
+        if (
+            self.bbox and label == "Anomaly" and index < len(self.bbox)
+        ):  # self.bbox only contains bboxes of anomalies
+            single_bbox = [self.bbox[index]]
+
         data = self.transform(image=image)["image"]
         target = self.label_to_index[label]
-        return {"data": data, "labels": target}
+        return {"data": data, "labels": target, "bbox": single_bbox}
 
     def __len__(self):
         assert len(self.X) == len(self.y)

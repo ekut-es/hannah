@@ -60,7 +60,7 @@ class ImageClassifierModule(VisionBaseModule):
         if batch_idx == 0:
             self._log_batch_images("input", batch_idx, x)
 
-        augmented_data, x = self.augment(x, labels, batch_idx)
+        augmented_data, x = self.augment(x, labels, boxes, batch_idx)
 
         prediction_result = self.forward(augmented_data)
 

@@ -19,6 +19,7 @@
 import logging
 from typing import Sequence
 
+import kornia
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -39,6 +40,7 @@ from torchmetrics import (
 from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
+from ..augmentation.transforms.kornia_transforms import A
 from ..base import ClassifierModule
 from ..metrics import Error
 
@@ -144,8 +146,8 @@ class VisionBaseModule(ClassifierModule):
 
     def _decode_batch(self, batch):
         if isinstance(batch, Sequence):
-            assert len(batch) == 2
-            ret = {"data": batch[0], "labels": batch[1]}
+            assert len(batch) == 3
+            ret = {"data": batch[0], "labels": batch[1], "bbox": batch[2]}
         else:
             ret = batch
 
@@ -167,8 +169,14 @@ class VisionBaseModule(ClassifierModule):
         self._log_weight_distribution()
         self.train()
 
-    def augment(self, images, labels, batch_idx):
-        augmented_data = images
+    def augment(self, images, labels, boxes, batch_idx):
+        # augmented_data = images
+
+        # augmented_data = kornia.geometry.transform.crop_and_resize(images, boxes=None, size=(2,2))
+        # augmented_data = torchvision.utils.draw_segmentation_masks(images, colors="black", alpha=1) # use for bb
+        # breakpoint()
+        augmented_data = A.RandomGaussianNoise(p=0.4, keepdim=True)(images)
+
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)
 

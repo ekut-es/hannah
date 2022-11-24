@@ -78,7 +78,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                 largest_train_error
             )
             anomaly_score = np.percentile(
-                self.normalized_train_errors.cpu().numpy(), 85
+                self.normalized_train_errors.cpu().numpy(), 90
             )
             largest_train_error = largest_train_error.detach().cpu().numpy()
         return anomaly_score, largest_train_error
@@ -116,7 +116,6 @@ class AnomalyDetectionModule(VisionBaseModule):
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
-
         batch_labeled = batch["labeled"]
         batch_unlabeled = batch["unlabeled"]
         normal_labeled_idx = (batch_labeled["labels"] == 0).nonzero(as_tuple=True)[0]
@@ -129,6 +128,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         batch_normal_labeled = self._decode_batch(batch_normal_labeled)
         batch_unlabeled = self._decode_batch(batch_unlabeled)
 
+        boxes = batch.get("bbox", None)
         loss = torch.tensor([0.0], device=self.device)
         for batch in [batch_unlabeled, batch_normal_labeled]:
             x = batch["data"]
@@ -138,7 +138,7 @@ class AnomalyDetectionModule(VisionBaseModule):
             if batch_idx == 0:
                 self._log_batch_images("input", batch_idx, x)
 
-            augmented_data, x = self.augment(x, labels, batch_idx)
+            augmented_data, x = self.augment(x, labels, boxes, batch_idx)
 
             prediction_result = self.forward(augmented_data)
 

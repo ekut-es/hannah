@@ -16,13 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
 import logging
 import os
 import pathlib
+import re
 import tarfile
 from collections import Counter, namedtuple
 from typing import Dict, List
 
+import albumentations as A
 import cv2
 import pandas as pd
 import requests
@@ -30,7 +33,6 @@ import torchvision
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
 
-import albumentations as A
 from hannah.modules.augmentation import rand_augment
 
 from .base import ImageDatasetBase
@@ -40,9 +42,10 @@ logger = logging.getLogger(__name__)
 
 class KvasirCapsuleDataset(ImageDatasetBase):
     DOWNLOAD_URL = "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/labelled_images/?zip="
-    METADATA_URL = (
+    METADATA_JSON_URL = (
         "https://files.osf.io/v1/resources/dv2ag/providers/googledrive/metadata.json"
     )
+    METADATA_CSV_URL = "https://osf.io/download/kzc8w/"
 
     @classmethod
     def prepare(cls, config):
@@ -83,16 +86,25 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                 f.write(s1.content)
 
         # download metadata
-        metadata_path = os.path.join(
+        metadata_json_path = os.path.join(
             config.data_folder, "kvasir_capsule", "metadata.json"
         )
-        if not os.path.exists(metadata_path):
-            metadata_request = requests.get(cls.METADATA_URL)
-            with open(metadata_path, "wb") as f:
+        if not os.path.exists(metadata_json_path):
+            metadata_request = requests.get(cls.METADATA_JSON_URL)
+            with open(metadata_json_path, "wb") as f:
+                f.write(metadata_request.content)
+
+        metadata_csv_path = os.path.join(
+            config.data_folder, "kvasir_capsule", "metadata.csv"
+        )
+        if not os.path.exists(metadata_csv_path):
+            metadata_request = requests.get(cls.METADATA_CSV_URL)
+            with open(metadata_csv_path, "wb") as f:
                 f.write(metadata_request.content)
 
     @classmethod
     def splits(cls, config):
+
         data_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
@@ -122,6 +134,27 @@ class KvasirCapsuleDataset(ImageDatasetBase):
             "Blood - hematin": "Blood - hematin",
         }
 
+        metadata_path = os.path.join(
+            config.data_folder, "kvasir_capsule", "metadata.csv"
+        )
+        metadata = (
+            pd.read_csv(metadata_path, sep=";").dropna(axis=0).astype(pd.StringDtype())
+        )
+
+        def process_bbox(paths):
+            bbox = list()
+            for path in paths:
+                X_filename = re.search(r"([^\/]+).$", path)[0]  # get filename of jpg
+                if (metadata["filename"] == X_filename).any():
+                    row = metadata[
+                        metadata["filename"].str.match(X_filename)
+                    ]  # row of interest
+                    single_bbox = row[
+                        ["x1", "y1", "x2", "y2", "x3", "y3", "x4", "y4"]
+                    ].to_dict("records")
+                    bbox.extend(single_bbox)
+            return bbox
+
         if config.split == "official":
 
             def process_official_split(df: pd.DataFrame):
@@ -143,6 +176,9 @@ class KvasirCapsuleDataset(ImageDatasetBase):
 
             split0_paths, split0_labels = process_official_split(split0)
             split1_paths, split1_labels = process_official_split(split1)
+
+            split0_bbox = process_bbox(split0_paths)
+            split1_bbox = process_bbox(split1_paths)
 
             train_images = split0_paths
             train_labels = split0_labels
@@ -211,15 +247,18 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                 train_images,
                 train_labels,
                 classes,
+                split0_bbox,
             ),
             cls(
                 val_images,
                 val_labels,
                 classes,
+                split0_bbox,
             ),
             cls(
                 test_images,
                 test_labels,
                 classes,
+                split1_bbox,
             ),
         )
