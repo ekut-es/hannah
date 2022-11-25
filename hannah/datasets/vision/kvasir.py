@@ -27,6 +27,7 @@ from typing import Dict, List
 
 import albumentations as A
 import cv2
+import numpy as np
 import pandas as pd
 import requests
 import torchvision
@@ -142,7 +143,7 @@ class KvasirCapsuleDataset(ImageDatasetBase):
         )
 
         def process_bbox(paths):
-            bbox = list()
+            bbox = {}
             for path in paths:
                 X_filename = re.search(r"([^\/]+).$", path)[0]  # get filename of jpg
                 if (metadata["filename"] == X_filename).any():
@@ -151,8 +152,10 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                     ]  # row of interest
                     single_bbox = row[
                         ["x1", "y1", "x2", "y2", "x3", "y3", "x4", "y4"]
-                    ].to_dict("records")
-                    bbox.extend(single_bbox)
+                    ].to_numpy(
+                        dtype=np.float32
+                    )  # .to_dict("index")
+                    bbox[X_filename] = single_bbox
             return bbox
 
         if config.split == "official":

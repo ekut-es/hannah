@@ -92,7 +92,7 @@ class ImageDatasetBase(AbstractDataset):
             X (List[str]): List of paths to image files
             y (List[str]): Class id of corresponding image
             classes (List[str]): List of class names, names are ordered by numeric class id
-            bbox (list[Dict]): Dict with filename as keys, bbox coordinates as values
+            bbox (Dict[str]): Dict with filename as keys, bbox coordinates as values
             transform (Callable[image,image], optional): Optional transformation/augmentation of input images. Defaults to None.
         """
         self.X = X
@@ -107,11 +107,10 @@ class ImageDatasetBase(AbstractDataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
         label = self.y[index]
 
-        single_bbox = torch.zeros((8), dtype=torch.float32)
-        if self.bbox and label == "Anomaly" and index < len(self.bbox):
-            bbox_str = list(self.bbox[index].values())
-            bbox_float = [float(x) for x in bbox_str]
-            single_bbox = torch.FloatTensor(bbox_float)
+        single_bbox = torch.zeros((1, 8), dtype=torch.float32)
+        X_filename = re.search(r"([^\/]+).$", str(self.X[index]))[0]
+        if self.bbox and X_filename in self.bbox:
+            single_bbox = torch.from_numpy(self.bbox[X_filename])
 
         data = self.transform(image=image)["image"]
         target = self.label_to_index[label]
