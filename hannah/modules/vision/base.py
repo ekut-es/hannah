@@ -171,7 +171,8 @@ class VisionBaseModule(ClassifierModule):
 
     def augment(self, images, labels, boxes, batch_idx):
         # augmented_data = images
-
+        # if boxes:
+        #    breakpoint()
         # augmented_data = kornia.geometry.transform.crop_and_resize(images, boxes=None, size=(2,2))
         # augmented_data = torchvision.utils.draw_segmentation_masks(images, colors="black", alpha=1) # use for bb
         # breakpoint()

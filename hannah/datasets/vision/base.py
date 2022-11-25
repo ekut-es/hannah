@@ -29,6 +29,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import requests
+import torch
 import torchvision
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
@@ -106,22 +107,11 @@ class ImageDatasetBase(AbstractDataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
         label = self.y[index]
 
-        single_bbox = [
-            {
-                "x1": [],
-                "y1": [],
-                "x2": [],
-                "y2": [],
-                "x3": [],
-                "y3": [],
-                "x4": [],
-                "y4": [],
-            }
-        ]
-        if (
-            self.bbox and label == "Anomaly" and index < len(self.bbox)
-        ):  # self.bbox only contains bboxes of anomalies
-            single_bbox = [self.bbox[index]]
+        single_bbox = torch.zeros((8), dtype=torch.float32)
+        if self.bbox and label == "Anomaly" and index < len(self.bbox):
+            bbox_str = list(self.bbox[index].values())
+            bbox_float = [float(x) for x in bbox_str]
+            single_bbox = torch.FloatTensor(bbox_float)
 
         data = self.transform(image=image)["image"]
         target = self.label_to_index[label]
