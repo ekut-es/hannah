@@ -140,7 +140,7 @@ class KvasirCapsuleDataset(ImageDatasetBase):
         )
         metadata = (
             pd.read_csv(metadata_path, sep=";").dropna(axis=0).astype(pd.StringDtype())
-        )
+        ).drop_duplicates(subset="filename")
 
         def process_bbox(paths):
             bbox = {}
@@ -152,9 +152,7 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                     ]  # row of interest
                     single_bbox = row[
                         ["x1", "y1", "x2", "y2", "x3", "y3", "x4", "y4"]
-                    ].to_numpy(
-                        dtype=np.float32
-                    )  # .to_dict("index")
+                    ].to_numpy(dtype=np.float32)
                     bbox[X_filename] = single_bbox
             return bbox
 
