@@ -32,6 +32,7 @@ from sklearn.gaussian_process.kernels import (
     WhiteKernel,
 )
 from torch.utils.data.sampler import SubsetRandomSampler
+from tqdm import tqdm
 
 from .model import GCN, GCNEmbedding
 
@@ -74,7 +75,7 @@ class Predictor:
         """
         assert self.model, "You must specify a model (e.g. use GCNPredictor())"
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        for epoch in range(num_epochs):
+        for epoch in tqdm(range(num_epochs)):
             for batched_graph, labels in dataloader:
                 pred = self.model(
                     batched_graph, batched_graph.ndata[self.fea_name].float()
@@ -479,7 +480,7 @@ class XGBPredictor(Predictor):
 
         embeddings = []
         labels = []
-        for batched_graph, batched_labels in dataloader:
+        for batched_graph, batched_labels in tqdm(dataloader):
             graphs = dgl.unbatch(batched_graph)
             for g, l in zip(graphs, batched_labels):
                 embeddings.append(self.get_embedding(g))

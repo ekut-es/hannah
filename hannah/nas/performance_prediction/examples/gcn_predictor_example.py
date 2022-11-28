@@ -19,6 +19,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from hannah.nas.performance_prediction.features.dataset import NASGraphDataset
 from hannah.nas.performance_prediction.gcn.predictor import GCNPredictor, get_input_feature_size, prepare_dataloader
 
@@ -27,7 +28,11 @@ plt.style.use("seaborn")
 
 
 # dataset = NASGraphDataset(cfg_space, edge_file, prop_file)
-dataset = NASGraphDataset("/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data")
+#/home/elia/Desktop/MA/performance_data/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data
+#/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data
+
+path_to_json_models= "/home/elia/Desktop/MA/performance_data/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data"
+dataset = NASGraphDataset(path_to_json_models)
 
 train_dataloader, test_dataloader = prepare_dataloader(
     dataset, batch_size=250, train_test_split=0.7
@@ -44,7 +49,8 @@ predictor.train(
 pred_eval = pd.DataFrame(columns=["pred", "real"])
 total_loss = 0
 num_tests = 0
-for batched_graph, labels in test_dataloader:
+#for epoch in tqdm(range(int(epochs)),desc='Training Epochs'):
+for batched_graph, labels in tqdm(test_dataloader,desc='Training Epochs'):
     pred = predictor.predict(batched_graph).squeeze()
     for p, l in zip(pred, labels):
         pred_eval = pred_eval.append(

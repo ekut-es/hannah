@@ -48,7 +48,9 @@ prop_file = wd + data_name + "/graph_defs/graph_properties.csv"
 
 # dataset = NASGraphDataset(cfg_space, edge_file, prop_file)
 #dataset = NASGraphDataset(cfg_space, prop_file)
-dataset = NASGraphDataset("/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data")
+# dataset = NASGraphDataset("/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data")
+path_to_json_models= "/home/elia/Desktop/MA/performance_data/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data"
+dataset = NASGraphDataset(path_to_json_models)
 
 train_dataloader, test_dataloader = prepare_dataloader(
     dataset, batch_size=250, train_test_split=0.7
