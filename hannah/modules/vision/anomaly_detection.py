@@ -129,6 +129,8 @@ class AnomalyDetectionModule(VisionBaseModule):
         batch_unlabeled = self._decode_batch(batch_unlabeled)
 
         boxes = batch.get("bbox", None)
+        batch_labeled = self._decode_batch(batch_labeled)
+
         loss = torch.tensor([0.0], device=self.device)
         for batch in [batch_unlabeled, batch_normal_labeled]:
             x = batch["data"]
