@@ -1,5 +1,5 @@
 from hannah.nas.expressions.shapes import identity_shape
-from copy import deepcopy
+from copy import deepcopy, copy
 
 
 class Lazy:
@@ -16,7 +16,7 @@ class Lazy:
         self.args = args
         self.kwargs = kwargs
 
-        return deepcopy(self)
+        return copy(self)
 
     @property
     def id(self):
@@ -30,11 +30,11 @@ class Lazy:
 
     @property
     def shape(self):
-        if hasattr(self, '_output_shape'):
-            return self._output_shape
-        else:
-            self._output_shape = self.shape_func(*[inp.shape if hasattr(inp, 'shape') else inp for inp in self.inputs], kwargs=self.kwargs)
-            return self._output_shape
+        # if hasattr(self, '_output_shape'):
+        #     return self._output_shape
+        # else:
+        self._output_shape = self.shape_func(*[inp.shape if hasattr(inp, 'shape') else inp for inp in self.inputs], kwargs=self.kwargs)
+        return self._output_shape
 
     def __repr__(self) -> str:
         if hasattr(self, '_id'):
