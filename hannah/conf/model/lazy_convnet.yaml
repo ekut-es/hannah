@@ -1,0 +1,2 @@
+_target_: hannah.models.convnet.create_cnn
+name: lazy_convnet
