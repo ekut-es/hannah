@@ -376,5 +376,6 @@ class ClassifierModule(LightningModule, ABC):
         loggers = self._logger_iterator()
         for logger in loggers:
             if hasattr(logger.experiment, "add_image"):
-                images = torchvision.utils.make_grid(data, normalize=True)
-                logger.experiment.add_image(f"{name}_{batch_idx}", images)
+                if torch.numel(data) > 0:
+                    images = torchvision.utils.make_grid(data, normalize=True)
+                    logger.experiment.add_image(f"{name}_{batch_idx}", images)

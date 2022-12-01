@@ -171,21 +171,39 @@ class VisionBaseModule(ClassifierModule):
 
     def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
+        boxes_reshaped = torch.zeros((images.size()[0], 4, 2))
         if boxes is not None:
-            boxes_reshaped = torch.zeros((boxes.size()[0], 4, 2))
             for i in range(boxes.size()[0]):
                 boxes_reshaped[i, 0:4, 0] = boxes[i][0, 0:8:2]  # x values
                 boxes_reshaped[i, 0:4, 1] = boxes[i][0, 1:8:2]  # y values
             masks = kornia.geometry.bbox.bbox_to_mask(boxes_reshaped, 336, 336).to(
                 device=self.device
             )  # mask tensor in Bx4x2 format
-        seq = A.PatchSequential(
-            A.RandomErasing(p=1, scale=(0.7, 0.7)),
-            patchwise_apply=False,
-            grid_size=(8, 8),
-        )
-        augmented_data = seq(augmented_data)
-        # augmented_data = A.RandomGaussianNoise(p=0.5, keepdim=True)(images)
+
+            # ToDo: add inclusion of bounding box in augmentation
+            seq = A.PatchSequential(
+                A.AugmentationSequential(A.RandomErasing(p=0.75, scale=(0.7, 0.7))),
+                patchwise_apply=False,
+                grid_size=(8, 8),
+            )
+            augmented_data = seq(augmented_data)
+
+        elif (
+            torch.numel(images) > 0
+        ):  # to circumvent error when tensor is empty (depends on batch size)
+            seq = A.PatchSequential(
+                A.AugmentationSequential(A.RandomErasing(p=0.75, scale=(0.7, 0.7))),
+                patchwise_apply=False,
+                grid_size=(8, 8),
+            )
+            augmented_data = seq(augmented_data)
+
+        """aug = A.AugmentationSequential(A.RandomHorizontalFlip(p=0.5),
+                A.RandomVerticalFlip(p=0.5),
+                A.RandomMotionBlur(3, 35., 0.5),
+                A.RandomGaussianNoise(p=0.35, keepdim=True))
+        augmented_data = aug(images)"""
+        # augmented_data = A.RandomGaussianNoise(p=0.4, keepdim=True)(augmented_data)
 
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)
