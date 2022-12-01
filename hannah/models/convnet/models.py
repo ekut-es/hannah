@@ -11,12 +11,6 @@ from hannah.nas.expressions.choice import SymbolicAttr, Choice
 conv2d = Lazy(nn.Conv2d, shape_func=conv2d_shape)
 linear = Lazy(nn.Linear)
 
-# class Exit:
-#     def __init__(self, layers, choice) -> None:
-#         self.layers = layers
-#         self.choice = choice
-
-
 
 def padding_expression(kernel_size, stride, dilation = 1):
     """Symbolically calculate padding such that for a given kernel_size, stride and dilation
@@ -63,15 +57,14 @@ class ConvReluBlock(nn.Module):
 
         previous = input_shape
         for d in RangeIterator(self.depth, instance=False):
-            index = d - 1
-            in_channels = self.input_shape[1] if d-1 == 0 else self._PARAMETERS[f'{self.id}.conv{index-1}.out_channels']
-            out_channels = self.add_param(f'{self.id}.conv{index}.out_channels', IntScalarParameter(4, 128 , 4))
-            kernel_size = self.add_param(f'{self.id}.conv{index}.kernel_size', CategoricalParameter([1, 3, 5, 7]))
-            stride = self.add_param(f'{self.id}.conv{index}.stride', CategoricalParameter([1, 2]))
+            in_channels = self.input_shape[1] if d == 0 else self._PARAMETERS[f'{self.id}.conv{d-1}.out_channels']
+            out_channels = self.add_param(f'{self.id}.conv{d}.out_channels', IntScalarParameter(4, 128 , 4))
+            kernel_size = self.add_param(f'{self.id}.conv{d}.kernel_size', CategoricalParameter([1, 3, 5, 7]))
+            stride = self.add_param(f'{self.id}.conv{d}.stride', CategoricalParameter([1, 2]))
 
             strides.append(stride)
 
-            layer = conv2d(f'{self.id}.conv{index}',
+            layer = conv2d(f'{self.id}.conv{d}',
                            inputs=[previous],
                            in_channels=in_channels,
                            out_channels=out_channels,
@@ -83,67 +76,58 @@ class ConvReluBlock(nn.Module):
 
         self.cond(stride_product(strides) <= self.input_shape[2])
 
-    def exmple_input(self):
-        return torch.ones(self.input_shape)
-
     def initialize(self):
-        self.torch_modules = torch.nn.ModuleDict()
+        self.torch_modules = nn.ModuleList()
         for d in RangeIterator(self.depth, instance=False):
-            self.torch_modules[self.modules[d-1].id.replace(".", "_")] = self.modules[d-1].instantiate()
+            self.torch_modules.append(self.modules[d].instantiate())
 
     def forward(self, x):
         out = x
         for d in RangeIterator(self.depth, instance=True):
-            out = self.modules[d-1].instantiate()(out)
+            out = self.torch_modules[d].to(x)(out)
             out = self.relu(out)
         return out
 
 
 @parametrize
 class ConvNet(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, input_shape, labels) -> None:
         super().__init__()
-        self.input_shape = (1, 3, 32, 32)  # FIXME:
-        self.depth = IntScalarParameter(1, 3)
+        self.input_shape = input_shape # (128, 3, 32, 32)  # FIXME:
+        self.labels = labels
+        self.depth = IntScalarParameter(3, 3)
         self.conv_block = self.add_param("convs", ConvReluBlock(self.input_shape, 'convs', self.depth))
 
-        # FIXME: Dynamically define last layer
-        # Choice expression?
         last = Choice(self.conv_block.modules, self.depth - 1)
         in_features = last.get('kwargs')['out_channels'] * last.get('shape')[2] * last.get('shape')[3]
 
         # Alternatively to the following, one can create a parametrized class "Classifier" which
         # wraps the linear layer.
-        self.linear = self.add_param('linear',
-                                     linear("linear",
-                                     inputs=[last],
-                                     in_features=in_features,
-                                     out_features=10))
-
-    def example_input(self):
-        return torch.ones(self.input_shape)
+        self._linear = self.add_param('linear',
+                                      linear("linear",
+                                      inputs=[last],
+                                      in_features=in_features,
+                                      out_features=self.labels))
 
     def initialize(self):
-        self.torch_modules = torch.nn.ModuleDict()
         self.conv_block.initialize()
-        # self.torch_modules.update(self.conv_block.torch_modules)
-        self.torch_modules['linear'] = self.linear.instantiate()
+        self.linear = self._linear.instantiate()
 
     def forward(self, x):
         out = self.conv_block(x)
-        # print(out.shape)
         out = out.view(out.shape[0], -1)
-        out = self.linear.instantiate()(out)
+        out = self.linear.to(x)(out)
         return out
 
+
+def create_cnn(name, input_shape, labels):
+    return ConvNet(input_shape, labels)
 
 
 if __name__ == '__main__':
     net = ConvNet()
-    net.parametrization()['convs']['conv0']['out_channels'].set_current(4)
-    net.parametrization()['convs']['conv1']['out_channels'].set_current(8)
-    net.parametrization()['convs']['conv2']['out_channels'].set_current(16)
-    x = torch.ones((1, 3, 32, 32))
+    x = torch.randn((3, 3, 32, 32))
+    net.sample()
     net.initialize()
     out = net(x)
     print()
