@@ -116,7 +116,10 @@ class IntScalarParameter(Parameter):
         return (self.evaluate_field("min"), self.evaluate_field("max"))
 
     def sample(self):
-        self.current_value = self.rng.integers(*self.get_bounds())
+        min, max = self.get_bounds()
+        values = np.arange(min, max + 1 , self.step_size)
+        # self.current_value = self.rng.integers(min, max+1)
+        self.current_value = self.rng.choice(values)
         return self.current_value
 
     def instantiate(self):
