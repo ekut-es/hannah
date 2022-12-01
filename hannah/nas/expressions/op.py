@@ -39,7 +39,7 @@ class Op(Expression):
     def _evaluate_operand(self, current_lhs):
         if is_parametrized(current_lhs):
             current_lhs = current_lhs.current_value
-        elif isinstance(current_lhs, Op):
+        elif isinstance(current_lhs, Expression):
             current_lhs = current_lhs.evaluate()
         elif isinstance(current_lhs, Placeholder):
             current_lhs = current_lhs.value
