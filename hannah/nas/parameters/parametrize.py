@@ -59,7 +59,7 @@ def _create_parametrize_wrapper(params, cls):
         cls.instantiate = instantiate
         cls.check = check
         cls.set_params = set_params
-        cls.parameters = parameters
+        cls.parametrization = parametrization
         cls.get_parameters = get_parameters
         cls.set_param_scopes = set_param_scopes
         cls.cond = cond
@@ -87,7 +87,7 @@ def parametrize(cls=None):
 
 
 def sample(self):
-    for _key, param in self._PARAMETERS.items():
+    for _key, param in self.parametrization(flatten=True).items():
         param.sample()
 
 
@@ -168,7 +168,7 @@ def get_parameters(
     return params
 
 
-def parameters(self, include_empty=False, flatten=False):
+def parametrization(self, include_empty=False, flatten=False):
     return self.get_parameters(include_empty=include_empty, flatten=flatten)
 
 
