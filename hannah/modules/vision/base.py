@@ -172,6 +172,7 @@ class VisionBaseModule(ClassifierModule):
     def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
         boxes_reshaped = torch.zeros((images.size()[0], 4, 2))
+
         if boxes is not None:
             for i in range(boxes.size()[0]):
                 boxes_reshaped[i, 0:4, 0] = boxes[i][0, 0:8:2]  # x values
@@ -198,12 +199,8 @@ class VisionBaseModule(ClassifierModule):
             )
             augmented_data = seq(augmented_data)
 
-        """aug = A.AugmentationSequential(A.RandomHorizontalFlip(p=0.5),
-                A.RandomVerticalFlip(p=0.5),
-                A.RandomMotionBlur(3, 35., 0.5),
-                A.RandomGaussianNoise(p=0.35, keepdim=True))
-        augmented_data = aug(images)"""
-        # augmented_data = A.RandomGaussianNoise(p=0.4, keepdim=True)(augmented_data)
+        # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.4, 'keepdim': True}})
+        # augmented_data = seq.forward(augmented_data)
 
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)

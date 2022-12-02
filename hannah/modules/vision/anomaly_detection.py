@@ -55,7 +55,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         if prediction_result.decoded is not None:
             decoded = prediction_result.decoded
             if anomaly == "anomaly":
-                decoder_loss = 1 / (F.mse_loss(decoded, x))
+                decoder_loss = 0.4 * (1 / (F.mse_loss(decoded, x)))
             else:
                 decoder_loss = F.mse_loss(decoded, x)
             # print(f"{step_name}_decoder_loss", decoder_loss)
