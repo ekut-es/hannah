@@ -140,33 +140,44 @@ class KvasirCapsuleDataset(ImageDatasetBase):
         )
         metadata = (
             pd.read_csv(metadata_path, sep=";").dropna(axis=0).astype(pd.StringDtype())
-        ).drop_duplicates(subset="filename")
-        # metadata_duplicates = metadata[metadata['filename'].duplicated() == True]
+        )
+        duplicates_num = len(metadata) - len(
+            metadata.drop_duplicates(subset="filename")
+        )
 
         def process_bbox(paths):
             bbox = {}
             for path in paths:
                 X_filename = re.search(r"([^\/]+).$", path)[0]  # get filename of jpg
                 if (metadata["filename"] == X_filename).any():
-                    row = metadata[
+                    rows = metadata[
                         metadata["filename"].str.match(X_filename)
                     ]  # row of interest
-                    x_min = np.min(
-                        row[["x1", "x2", "x3", "x4"]].to_numpy(dtype=np.float32)
-                    )
-                    y_min = np.min(
-                        row[["y1", "y2", "y3", "y4"]].to_numpy(dtype=np.float32)
-                    )
-                    x_max = np.max(
-                        row[["x1", "x2", "x3", "x4"]].to_numpy(dtype=np.float32)
-                    )
-                    y_max = np.max(
-                        row[["y1", "y2", "y3", "y4"]].to_numpy(dtype=np.float32)
-                    )
-                    width = x_max - x_min
-                    height = y_max - y_min
-                    single_bbox = np.array([x_min, y_min, width, height])  # COCO format
-                    bbox[X_filename] = single_bbox
+                    for index, row in rows.iterrows():
+                        x_min = np.min(
+                            row[["x1", "x2", "x3", "x4"]].to_numpy(dtype=np.float32)
+                        )
+                        y_min = np.min(
+                            row[["y1", "y2", "y3", "y4"]].to_numpy(dtype=np.float32)
+                        )
+                        x_max = np.max(
+                            row[["x1", "x2", "x3", "x4"]].to_numpy(dtype=np.float32)
+                        )
+                        y_max = np.max(
+                            row[["y1", "y2", "y3", "y4"]].to_numpy(dtype=np.float32)
+                        )
+                        width = x_max - x_min
+                        height = y_max - y_min
+                        single_bbox = np.array(
+                            [x_min, y_min, width, height]
+                        )  # COCO format
+
+                        if len(rows.index) > 1 and X_filename in bbox:
+                            bbox[X_filename] = np.array([bbox[X_filename], single_bbox])
+                        else:
+                            bbox[X_filename] = single_bbox
+                        bbox[X_filename] = single_bbox
+
             return bbox
 
         if config.split == "official":

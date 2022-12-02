@@ -111,7 +111,6 @@ class ImageDatasetBase(AbstractDataset):
         X_filename = re.search(r"([^\/]+).$", str(self.X[index]))[0]
         if self.bbox and X_filename in self.bbox:
             single_bbox = torch.from_numpy(self.bbox[X_filename])
-
         data = self.transform(image=image)["image"]
         target = self.label_to_index[label]
         return {"data": data, "labels": target, "bbox": single_bbox}
