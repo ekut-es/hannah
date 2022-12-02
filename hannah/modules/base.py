@@ -35,7 +35,7 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import LightningLoggerBase, TensorBoardLogger
 from pytorch_lightning.trainer.supporters import CombinedLoader
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from torchmetrics import MetricCollection
+from torchmetrics import AUROC, MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils.utils import fullname
