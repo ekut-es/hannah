@@ -328,12 +328,14 @@ class OFANasTrainer(NASTrainerBase):
         epochs_width_step=10,
         epochs_dilation_step=10,
         epochs_grouping_step=10,
+        epochs_dsc_step=10,
         epochs_tuning_step=0,
         elastic_kernels_allowed=False,
         elastic_depth_allowed=False,
         elastic_width_allowed=False,
         elastic_dilation_allowed=False,
         elastic_grouping_allowed=False,
+        elastic_dsc_allowed=False,
         evaluate=True,
         random_evaluate=True,
         random_eval_number=100,
@@ -350,12 +352,13 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_width_step = epochs_width_step
         self.epochs_dilation_step = epochs_dilation_step
         self.epochs_grouping_step = epochs_grouping_step
-        self.epochs_tuning_step = epochs_tuning_step
+        self.epochs_dsc_step = epochs_dsc_step
         self.elastic_kernels_allowed = elastic_kernels_allowed
         self.elastic_depth_allowed = elastic_depth_allowed
         self.elastic_width_allowed = elastic_width_allowed
         self.elastic_dilation_allowed = elastic_dilation_allowed
         self.elastic_grouping_allowed = elastic_grouping_allowed
+        self.elastic_dsc_allowed = elastic_dsc_allowed
 
         self.evaluate = evaluate
         self.random_evaluate = random_evaluate
@@ -402,17 +405,21 @@ class OFANasTrainer(NASTrainerBase):
         self.width_step_count = ofa_model.ofa_steps_width
         self.dilation_step_count = ofa_model.ofa_steps_dilation
         self.grouping_step_count = ofa_model.ofa_steps_grouping
+        self.dsc_step_count = ofa_model.ofa_steps_dsc
         ofa_model.elastic_kernels_allowed = self.elastic_kernels_allowed
         ofa_model.elastic_depth_allowed = self.elastic_depth_allowed
         ofa_model.elastic_width_allowed = self.elastic_width_allowed
         ofa_model.elastic_dilation_allowed = self.elastic_dilation_allowed
         ofa_model.elastic_grouping_allowed = self.elastic_grouping_allowed
+        ofa_model.elastic_dsc_allowed = self.elastic_dsc_allowed
         ofa_model.full_config = self.config["model"]
 
         logging.info("Kernel Steps: %d", self.kernel_step_count)
         logging.info("Depth Steps: %d", self.depth_step_count)
         logging.info("Width Steps: %d", self.width_step_count)
         logging.info("Grouping Steps: %d", self.grouping_step_count)
+        logging.info("DSC Steps: %d", self.dsc_step_count)
+        # logging.info("dsc: %d", self.grouping_step_count)
 
         self.submodel_metrics_csv = ""
         self.random_metrics_csv = ""
@@ -437,12 +444,17 @@ class OFANasTrainer(NASTrainerBase):
             self.submodel_metrics_csv += "grouping, "
             self.random_metrics_csv += "group_steps, "
 
+        if self.elastic_dsc_allowed:
+            self.submodel_metrics_csv += "dsc, "
+            self.random_metrics_csv += "dsc, "
+
         if (
             self.elastic_width_allowed
             | self.elastic_kernels_allowed
             | self.elastic_dilation_allowed
             | self.elastic_depth_allowed
             | self.elastic_grouping_allowed
+            | self.elastic_dsc_allowed
         ):
             self.submodel_metrics_csv += (
                 "acc, total_macs, total_weights, torch_params\n"
@@ -452,7 +464,7 @@ class OFANasTrainer(NASTrainerBase):
         # self.random_metrics_csv = "width_steps, depth, kernel_steps, acc, total_macs, total_weights, torch_params\n"
 
         logging.info("Once for all Model:\n %s", str(ofa_model))
-
+        # TODO Warmup DSC on or off?
         self.warmup(model, ofa_model)
         ofa_model.reset_shrinking()
 
@@ -465,6 +477,9 @@ class OFANasTrainer(NASTrainerBase):
         self.train_elastic_width(model, ofa_model)
         ofa_model.reset_shrinking()
         self.train_elastic_grouping(model, ofa_model)
+        ofa_model.reset_shrinking()
+        self.train_elastic_dsc(model, ofa_model)
+        ofa_model.reset_shrinking()
 
         if self.evaluate:
             self.eval_model(model, ofa_model)
@@ -616,6 +631,29 @@ class OFANasTrainer(NASTrainerBase):
                     ckpt_path = "best"
                     self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
             msglogger.info("OFA completed grouping matrices.")
+
+    def train_elastic_dsc(self, model, ofa_model):
+        """
+        > The function trains the model for a number of epochs, then adds a dsc
+        step (turns Depthwise Separable Convolution on and off), and trains the model for a number of epochs, and repeats this process
+        until the number of dsc steps is reached
+
+        :param model: the model to be trained
+        :param ofa_model: the model that will be trained
+        """
+        if self.elastic_dsc_allowed is True:
+            # train elastic groups
+            for current_dsc_step in range(1, self.dsc_step_count):
+                # add a group step
+                ofa_model.progressive_shrinking_add_dsc()
+                if self.epochs_dsc_step > 0:
+                    self.rebuild_trainer(
+                        f"dsc_{current_dsc_step}", self.epochs_dsc_step
+                    )
+                    self.trainer.fit(model)
+                    ckpt_path = "best"
+                    self.trainer.validate(ckpt_path=ckpt_path, verbose=True)
+            msglogger.info("OFA completed dsc matrices.")
 
     def eval_elastic_width(
         self,
@@ -874,6 +912,56 @@ class OFANasTrainer(NASTrainerBase):
 
         return metrics_csv
 
+    def eval_elastic_dsc(
+        self,
+        method_stack,
+        method_index,
+        lightning_model,
+        model,
+        trainer_path,
+        loginfo_output,
+        metrics_output,
+        metrics_csv,
+    ):
+        """
+        > This function evaluates the model with a different dsc  for each
+        layer
+
+        :param method_stack: The list of methods to be called
+        :param method_index: The index of the method in the method stack
+        :param lightning_model: the lightning model to be trained
+        :param model: the model to be evaluated
+        :param trainer_path: The path to the trainer
+        :param loginfo_output: This is the string that will be printed to the
+        console
+        :param metrics_output: a string that will be written to the metrics csv file
+        :param metrics_csv: a string that contains the csv data for the metrics
+        :return: The metrics_csv is being returned.
+        """
+        model.reset_all_dsc()
+        method = method_stack[method_index]
+        for current_dsc_step in range(self.dsc_step_count):
+            if current_dsc_step > 0:
+                # iteration 0 is the full model with no stepping
+                model.step_down_all_dsc()
+
+            trainer_path_tmp = trainer_path + f"DSC {current_dsc_step}, "
+            loginfo_output_tmp = loginfo_output + f"DSC {current_dsc_step}, "
+            metrics_output_tmp = metrics_output + f"{current_dsc_step}, "
+
+            metrics_csv = method(
+                method_stack,
+                method_index + 1,
+                lightning_model,
+                model,
+                trainer_path_tmp,
+                loginfo_output_tmp,
+                metrics_output_tmp,
+                metrics_csv,
+            )
+
+        return metrics_csv
+
     def eval_single_model(
         self,
         method_stack,
@@ -954,6 +1042,9 @@ class OFANasTrainer(NASTrainerBase):
         if self.elastic_grouping_allowed:
             eval_methods.append(self.eval_elastic_grouping)
 
+        if self.elastic_dsc_allowed:
+            eval_methods.append(self.eval_elastic_dsc)
+
         if len(eval_methods) > 0:
             eval_methods.append(self.eval_single_model)
             self.submodel_metrics_csv = eval_methods[0](
@@ -981,11 +1072,13 @@ class OFANasTrainer(NASTrainerBase):
         prev_max_width = model.sampling_max_width_step
         prev_max_dilation = model.sampling_max_dilation_step
         prev_max_grouping = model.sampling_max_grouping_step
+        prev_max_dsc = model.sampling_max_dsc_step
         model.sampling_max_kernel_step = model.ofa_steps_kernel - 1
         model.sampling_max_dilation_step = model.ofa_steps_dilation - 1
         model.sampling_max_depth_step = model.ofa_steps_depth - 1
         model.sampling_max_width_step = model.ofa_steps_width - 1
         model.sampling_max_grouping_step = model.ofa_steps_grouping - 1
+        model.sampling_max_dsc_step = model.ofa_steps_dsc - 1
         assert model.eval_mode is True
         for i in range(random_eval_number):
             model.reset_validation_model()
@@ -1019,6 +1112,12 @@ class OFANasTrainer(NASTrainerBase):
                 metrics_output += f" {selected_groups_string}, "
                 trainer_path += f"Gs {selected_groups_string}, "
 
+            if self.elastic_dsc_allowed:
+                selected_dscs = random_state["dsc_steps"]
+                selected_dscs_string = str(selected_dscs).replace(",", ";")
+                metrics_output += f" {selected_dscs_string}, "
+                trainer_path += f"DSCs {selected_dscs_string}, "
+
             if self.elastic_depth_allowed:
                 selected_depth = random_state["depth_step"]
                 trainer_path += f"D {selected_depth}, "
@@ -1043,6 +1142,7 @@ class OFANasTrainer(NASTrainerBase):
         model.sampling_max_depth_step = prev_max_depth
         model.sampling_max_width_step = prev_max_width
         model.sampling_max_grouping_step = prev_max_grouping
+        model.sampling_max_dsc_step = prev_max_dsc
 
     def rebuild_trainer(
         self, step_name: str, epochs: int = 1, tensorboard: bool = True
