@@ -60,7 +60,7 @@ class TorchvisionDatasetBase(VisionDatasetBase):
     def __init__(self, config, dataset, transform=None):
         super().__init__(config)
         self.dataset = dataset
-        self.transform = transform
+        self.transform = transform if transform else A.Compose([ToTensorV2()])
 
     @property
     def class_counts(self):
