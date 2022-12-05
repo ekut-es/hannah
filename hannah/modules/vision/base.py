@@ -146,8 +146,8 @@ class VisionBaseModule(ClassifierModule):
 
     def _decode_batch(self, batch):
         if isinstance(batch, Sequence):
-            assert len(batch) == 3
-            ret = {"data": batch[0], "labels": batch[1], "bbox": batch[2]}
+            assert len(batch) == 2
+            ret = {"data": batch[0], "labels": batch[1], "bbox": []}
         else:
             ret = batch
 
