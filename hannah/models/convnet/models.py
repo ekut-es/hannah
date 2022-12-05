@@ -44,7 +44,7 @@ def stride_product(expressions: list):
 
 @parametrize
 class ConvReluBlock(nn.Module):
-    def __init__(self, input_shape, id, depth) -> None:
+    def __init__(self, params, input_shape, id, depth) -> None:
         super().__init__()
         self.input_shape = input_shape
         self.depth = self.add_param(f'{id}.depth', depth)
@@ -52,15 +52,18 @@ class ConvReluBlock(nn.Module):
         self.relu = nn.ReLU()
         self.id = id
         self.depth = depth
+        self.params = params
 
         strides = []
 
         previous = input_shape
         for d in RangeIterator(self.depth, instance=False):
             in_channels = self.input_shape[1] if d == 0 else self._PARAMETERS[f'{self.id}.conv{d-1}.out_channels']
-            out_channels = self.add_param(f'{self.id}.conv{d}.out_channels', IntScalarParameter(4, 128 , 4))
-            kernel_size = self.add_param(f'{self.id}.conv{d}.kernel_size', CategoricalParameter([1, 3, 5, 7]))
-            stride = self.add_param(f'{self.id}.conv{d}.stride', CategoricalParameter([1, 2]))
+            out_channels = self.add_param(f'{self.id}.conv{d}.out_channels', IntScalarParameter(self.params.conv.out_channels.min,
+                                                                                                self.params.conv.out_channels.max,
+                                                                                                self.params.conv.out_channels.step))
+            kernel_size = self.add_param(f'{self.id}.conv{d}.kernel_size', CategoricalParameter(self.params.conv.kernel_size.choices))
+            stride = self.add_param(f'{self.id}.conv{d}.stride', CategoricalParameter(self.params.conv.stride.choices))
 
             strides.append(stride)
 
@@ -91,12 +94,12 @@ class ConvReluBlock(nn.Module):
 
 @parametrize
 class ConvNet(nn.Module):
-    def __init__(self, input_shape, labels) -> None:
+    def __init__(self, name, params, input_shape, labels) -> None:
         super().__init__()
-        self.input_shape = input_shape # (128, 3, 32, 32)  # FIXME:
+        self.input_shape = input_shape
         self.labels = labels
-        self.depth = IntScalarParameter(3, 3)
-        self.conv_block = self.add_param("convs", ConvReluBlock(self.input_shape, 'convs', self.depth))
+        self.depth = IntScalarParameter(params.depth.min, params.depth.max)
+        self.conv_block = self.add_param("convs", ConvReluBlock(params, self.input_shape, 'convs', self.depth))
 
         last = Choice(self.conv_block.modules, self.depth - 1)
         in_features = last.get('kwargs')['out_channels'] * last.get('shape')[2] * last.get('shape')[3]
@@ -119,9 +122,16 @@ class ConvNet(nn.Module):
         out = self.linear.to(x)(out)
         return out
 
+    def get_hparams(self):
+        params = {}
+        for key, param in self.parametrization(flatten=True).items():
+                params[key] = param.current_value.item()
+
+        return params
+
 
 def create_cnn(name, input_shape, labels):
-    return ConvNet(input_shape, labels)
+    return ConvNet(name, input_shape, labels)
 
 
 if __name__ == '__main__':
