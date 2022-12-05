@@ -217,43 +217,6 @@ def make_parameter(t: torch.Tensor) -> nn.Parameter:
         return None
 
 
-# TODO not in usage, can be cleaned after evaluation
-def getGroups(
-    max_group,
-    with_max_group_member: bool = True,
-    addOneForNoGrouping: bool = True,
-    divide_by: int = 2,
-):
-    tmp = [x for x in range(max_group) if x % divide_by == 0 and x != 0]
-    if with_max_group_member:
-        tmp.append(max_group)
-    if addOneForNoGrouping and not (1 in tmp):
-        tmp.append(1)
-        tmp.sort(reverse=False)
-
-    return tmp
-
-
-# MR can be deleted if not needed anymore
-def gather_information(module):
-    """
-    Collects information about the module regarding kernel adjustment with grouping
-    """
-    weight_adjustment_needed = is_weight_adjusting_needed(
-        module.weight, module.in_channels, module.groups
-    )
-    target = get_target_weight(module.weight, module.in_channels, module.groups)
-    if weight_adjustment_needed:
-        if hasattr(module, "id"):
-            logging.debug(f"ID: {module.id}")
-        logging.info(
-            f"WARNING XKA_G ModuleName={module.__class__}  g={module.groups} ic={module.in_channels}, oc={module.out_channels}, last_g={module.last_grouping_param}"
-        )
-        logging.info(
-            f"WARNING XKA_G Weight Change is needed  {list(module.weight.shape)} target:{target}"
-        )
-
-
 def adjust_weight_if_needed(module, kernel=None, groups=None):
     """
     Adjust the weight if the adjustment is needded. This means, if the kernel does not have the size of
@@ -280,29 +243,17 @@ def adjust_weight_if_needed(module, kernel=None, groups=None):
     is_adjusted = False
 
     grouping_changed = groups != module.last_grouping_param
-    logging.debug(
-        f"Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}"
-    )
     if grouping_changed and groups > 1:
         weight_adjustment_needed = is_weight_adjusting_needed(
             kernel, in_channels, groups
         )
         if weight_adjustment_needed:
             is_adjusted = True
-            logging.debug(
-                f"NOW Shape:{kernel.shape} Groups:{groups} Group_First: {module.last_grouping_param} groups_changed:{grouping_changed} ic={module.in_channels}, oc={module.out_channels}"
-            )
             kernel = adjust_weights_for_grouping(kernel, groups)
         else:
             target = get_target_weight(kernel, in_channels, groups)
             if hasattr(module, "id"):
                 logging.debug(f"ID: {module.id}")
-            logging.debug(
-                f"XKA ModuleName={module.__class__}  g={groups} ic={module.in_channels}, oc={module.out_channels}"
-            )
-            logging.debug(
-                f"XKA Grouping changed BUT no weight change is needed - hurray! {list(kernel.shape)} target:{target}"
-            )
 
     return (kernel, is_adjusted)
 
@@ -333,6 +284,64 @@ def get_target_weight(weights, input_channels, groups):
     return target_shape
 
 
+def prepare_kernel_for_depthwise_separable_convolution(
+    model, kernel, bias, in_channels
+):
+    """
+    Prepares the kernel for depthwise separable convolution (step 1 of DSC).
+    This means setting groups = inchannels and outchannels = k * inchannels.
+    :param: model: the convolution model, that uses dsc. Used for creating the Channelfilters
+    :param: kernel: Kernel for DSC
+    :param: bias: Bias for DSC
+    :param: in_channels: Input Channels of the Kernel and Model
+    :returns: (kernel, bias) Tuple
+    """
+    # Create Filters for Depthwise Separable Convolution of input and output channels
+    depthwise_output_filter = create_channel_filter(
+        model,
+        kernel,
+        current_channel=kernel.size(0),
+        reduced_target_channel_size=in_channels,
+        is_output_filter=True,
+    )
+    depthwise_input_filter = create_channel_filter(
+        model,
+        kernel,
+        current_channel=kernel.size(1),
+        reduced_target_channel_size=in_channels,
+        is_output_filter=False,
+    )
+
+    # outchannel is adapted
+    new_kernel = filter_primary_module_weights(
+        kernel, depthwise_input_filter, depthwise_output_filter
+    )
+    # grouping = in_channel_count
+    new_kernel = adjust_weights_for_grouping(new_kernel, in_channels)
+
+    if bias is None:
+        return new_kernel, None
+    else:
+        new_bias = filter_single_dimensional_weights(bias, depthwise_output_filter)
+    return new_kernel, new_bias
+
+
+def prepare_kernel_for_pointwise_convolution(kernel, grouping):
+    """
+    Prepares the kernel for pointwise convolution (step 2 of DSC).
+    This means setting the kernel window to 1x1.
+    So a kernel with output_channel, input_channel / groups, kernel will be set to (_,_,1)
+    """
+    # use 1x1 kernel
+    new_kernel = kernel
+    if grouping > 1:
+        new_kernel = adjust_weights_for_grouping(kernel, grouping)
+
+    new_kernel = get_kernel_for_dsc(new_kernel)
+
+    return new_kernel
+
+
 def adjust_weights_for_grouping(weights, input_divided_by):
     """
     Adjusts the Weights for the Forward of the Convulution
@@ -355,3 +364,88 @@ def adjust_weights_for_grouping(weights, input_divided_by):
     full_kernel = torch.concat(result_weights)
 
     return full_kernel
+
+
+def get_kernel_for_dsc(kernel):
+    """
+    Part of DSC (Step 2, pointwise convolution)
+    kernel with output_channel, input_channel / groups, kernel will be set to (_,_,1)
+    """
+    return kernel[:, :, 0:1]
+
+
+# copied and adapted from elasticchannelhelper.py
+# set the channel filter list based on the channel priorities and the reduced_target_channel count
+def get_channel_filter(
+    current_channel_size, reduced_target_channel_size, channel_priority_list
+):
+    # get the amount of channels to be removed from the max and current channel counts
+    channel_reduction_amount: int = current_channel_size - reduced_target_channel_size
+    # start with an empty filter, where every channel passes through, then remove channels by priority
+    channel_pass_filter = [True] * current_channel_size
+
+    # filter the least important n channels, specified by the reduction amount
+    for i in range(channel_reduction_amount):
+        # priority list of channels contains channel indices from least important to most important
+        # the first n channel indices specified in this list will be filtered out
+        filtered_channel_index = channel_priority_list[i]
+        channel_pass_filter[filtered_channel_index] = False
+
+    return channel_pass_filter
+
+
+def create_channel_filter(
+    module: nn.Module,
+    kernel,
+    current_channel,
+    reduced_target_channel_size,
+    is_output_filter: bool = True,
+):
+    # create one channel filter
+    channel_index = 1 if is_output_filter else 0
+    channel_filter_priorities = compute_channel_priorities(
+        module, kernel, channel_index
+    )
+    return get_channel_filter(
+        current_channel, reduced_target_channel_size, channel_filter_priorities
+    )
+
+
+# copied and adapted from elasticchannelhelper.py
+# compute channel priorities based on the l1 norm of the weights of whichever
+# target module follows this elastic channel section
+def compute_channel_priorities(module: nn.Module, kernel, channel_index: int = 0):
+    channel_norms = []
+
+    if kernel is None:
+        logging.warning(
+            f"Unable to compute channel priorities! Kernel is None: {kernel}"
+        )
+        return None
+    # this will also include the elastic kernel convolutions
+    # for elastic kernel convolutions, the priorities will then also be
+    # computed on the base module (full kernel)
+    if isinstance(module, nn.Conv1d):
+        weights = kernel
+        norms_per_kernel_index = torch.linalg.norm(weights, ord=1, dim=channel_index)
+        channel_norms = torch.linalg.norm(norms_per_kernel_index, ord=1, dim=1)
+    # the channel priorities for linears need to also be computable:
+    # especially for the exit connections, a linear may follow after an elastic width
+    elif isinstance(module, nn.Linear):
+        weights = kernel
+        channel_norms = torch.linalg.norm(weights, ord=1, dim=0)
+    else:
+        # the channel priorities will keep their previous / default value in
+        # this case. Reduction will probably occur by channel order
+        logging.warning(
+            f"Unable to compute channel priorities! Unsupported target module after elastic channels: {type(module)}"
+        )
+
+    # contains the indices of the channels, sorted from channel with smallest
+    # norm to channel with largest norm
+    # the least important channel index is at the beginning of the list,
+    # the most important channel index is at the end
+    # np -> torch.argsort()
+    channels_by_priority = torch.argsort(channel_norms)
+
+    return channels_by_priority

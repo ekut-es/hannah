@@ -37,6 +37,7 @@ conv:
         act: false
         norm: true
         quant: false
+        dsc:  [false]
         out_channels: 16
   - target: residual1d
     stride: 2
@@ -52,9 +53,14 @@ conv:
             - 9
             - 3
             - 1
+        grouping_sizes:
+            - 1
+            - 2
+            - 4
         act: true
         norm: true
         quant: false
+        dsc:  [false, true]
         out_channels:
           - 24
           - 16
@@ -71,9 +77,12 @@ conv:
             - 1
         grouping_sizes:
             - 1
+            - 2
+            - 4
         act: false
         norm: false
         quant: false
+        dsc:  [false, true]
         out_channels:
           - 24
           - 16
@@ -94,9 +103,12 @@ conv:
             - 1
         grouping_sizes:
             - 1
+            - 2
+            - 4
         act: true
         norm: true
         quant: false
+        dsc:  [false, true]
         out_channels:
           - 32
           - 24
@@ -113,9 +125,12 @@ conv:
             - 1
         grouping_sizes:
             - 1
+            - 2
+            - 4
         act: false
         norm: false
         quant: false
+        dsc:  [false, true]
         out_channels:
           - 32
           - 24
@@ -136,9 +151,12 @@ conv:
             - 1
         grouping_sizes:
             - 1
+            - 2
+            - 4
         act: true
         norm: true
         quant: false
+        dsc:  [false, true]
         out_channels:
           - 48
           - 32
@@ -155,9 +173,12 @@ conv:
             - 1
         grouping_sizes:
             - 1
+            - 2
+            - 4
         act: false
         norm: false
         quant: false
+        dsc:  [false, true]
         out_channels:
           - 48
           - 32
@@ -178,9 +199,12 @@ conv:
             - 1
         grouping_sizes:
             - 1
+            - 2
+            - 4
         act: true
         norm: true
         quant: false
+        dsc:  [false, true]
         out_channels:
           - 64
           - 48
@@ -197,9 +221,12 @@ conv:
             - 1
         grouping_sizes:
             - 1
+            - 2
+            - 4
         act: false
         norm: false
         quant: false
+        dsc:  [false, true]
         out_channels:
           - 64
           - 48

@@ -48,6 +48,7 @@ class OFAGroupTestCase(unittest.TestCase):
             kernel_sizes,
             dilation_sizes=dilation_sizes,
             groups=group_sizes,
+            dscs=[0, 1, 2, 3],
         )
         loss_func = nn.MSELoss()
         optimizer = torch.optim.SGD(conv.parameters(), lr=0.1)
