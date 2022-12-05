@@ -171,7 +171,6 @@ class VisionBaseModule(ClassifierModule):
 
     def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
-        boxes_reshaped = torch.zeros((images.size()[0], 4, 2))
         if (
             torch.numel(images) > 0
         ):  # to circumvent error when tensor is empty (depends on batch size)

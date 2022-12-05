@@ -30,6 +30,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import requests
+import torch
 import torchvision
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
@@ -152,8 +153,10 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                 if (metadata["filename"] == X_filename).any():
                     rows = metadata[
                         metadata["filename"].str.match(X_filename)
-                    ]  # row of interest
+                    ]  # rows of interest
+                    counter = 0
                     for index, row in rows.iterrows():
+                        counter += 1
                         x_min = np.min(
                             row[["x1", "x2", "x3", "x4"]].to_numpy(dtype=np.float32)
                         )
@@ -173,11 +176,10 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                         )  # COCO format
 
                         if len(rows.index) > 1 and X_filename in bbox:
-                            bbox[X_filename] = np.array([bbox[X_filename], single_bbox])
-                        else:
+                            single_bbox = [bbox[X_filename], single_bbox]
                             bbox[X_filename] = single_bbox
-                        bbox[X_filename] = single_bbox
-
+                        else:
+                            bbox[X_filename] = [single_bbox]
             return bbox
 
         if config.split == "official":

@@ -27,6 +27,7 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
+from pytorch_lightning.trainer.supporters import CombinedLoader
 from sklearn.metrics import auc, roc_curve
 from torchmetrics import (
     Accuracy,
@@ -37,6 +38,7 @@ from torchmetrics import (
     Recall,
 )
 
+from hannah.datasets.collate import vision_collate_fn
 from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
@@ -132,21 +134,26 @@ class AnomalyDetectionModule(VisionBaseModule):
 
         anomaly_labeled_idx = (batch_labeled["labels"] == 1).nonzero(as_tuple=True)[0]
         labels_anomaly = batch_labeled["labels"][anomaly_labeled_idx]
+        print(batch_labeled)
         batch_anomaly_labeled = {
             "data": torch.index_select(batch_labeled["data"], 0, anomaly_labeled_idx),
             "labels": labels_anomaly,
-            "bbox": torch.index_select(batch_labeled["bbox"], 0, anomaly_labeled_idx),
+            "bbox": torch.index_select(
+                torch.stack(*batch_labeled["bbox"]),
+                0,
+                anomaly_labeled_idx,
+            ),
         }
-
+        # breakpoint()
         batch_normal_labeled = self._decode_batch(batch_normal_labeled)
-        batch_anomaly_labeled = self._decode_batch(batch_anomaly_labeled)
+        # batch_anomaly_labeled = self._decode_batch(batch_anomaly_labeled)
         batch_unlabeled = self._decode_batch(batch_unlabeled)
 
         boxes = batch.get("bbox", None)
 
         loss = torch.tensor([0.0], device=self.device)
 
-        for batch in [batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled]:
+        for batch in [batch_unlabeled, batch_normal_labeled]:
             x = batch["data"]
             labels = batch.get("labels", None)
             boxes = batch.get("bbox", None)
@@ -175,6 +182,8 @@ class AnomalyDetectionModule(VisionBaseModule):
                 )
 
             self.train_losses.append(current_loss)
+
+            # ToDo store prediction results of labeled data
 
             loss += current_loss
         return loss
@@ -218,3 +227,44 @@ class AnomalyDetectionModule(VisionBaseModule):
     def on_train_epoch_end(self):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
+
+    def on_train_end(self):
+        # ToDo initialize linear classifier and train
+        pass
+
+    def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
+        batch_size = self.hparams["batch_size"]
+        dataset_conf = self.hparams.dataset
+        sampler = None
+        if shuffle:
+            sampler_type = dataset_conf.get("sampler", "random")
+            if sampler_type == "weighted":
+                sampler = self.get_balancing_sampler(dataset)
+            else:
+                sampler = data.RandomSampler(dataset)
+
+        loader = data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            drop_last=True,
+            num_workers=self.hparams["num_workers"],
+            sampler=sampler,
+            collate_fn=vision_collate_fn,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+        self.batches_per_epoch = len(loader)
+
+        if unlabeled_data:
+            loader_unlabeled = data.DataLoader(
+                unlabeled_data,
+                batch_size=batch_size,
+                drop_last=True,
+                num_workers=self.hparams["num_workers"],
+                sampler=data.RandomSampler(unlabeled_data),
+                multiprocessing_context="fork"
+                if self.hparams["num_workers"] > 0
+                else None,
+            )
+            return CombinedLoader({"labeled": loader, "unlabeled": loader_unlabeled})
+
+        return loader

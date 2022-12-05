@@ -31,7 +31,7 @@ import torch
 import torch.utils.data as data
 from hydra.utils import get_class, instantiate
 
-from hannah.datasets.Kitti import object_collate_fn
+from hannah.datasets.collate import object_collate_fn
 from hannah.modules.augmentation.augmentation import Augmentation
 from hannah.modules.augmentation.bordersearch import (
     Bordersearch,
