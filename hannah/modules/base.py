@@ -22,7 +22,7 @@ import logging
 import math
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar, Union
 
 import tabulate
 import torch
@@ -36,6 +36,7 @@ from pytorch_lightning.loggers import LightningLoggerBase, TensorBoardLogger
 from pytorch_lightning.trainer.supporters import CombinedLoader
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from torchmetrics import MetricCollection
+import torch.nn as nn
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils.utils import fullname
@@ -48,7 +49,7 @@ class ClassifierModule(LightningModule, ABC):
     def __init__(
         self,
         dataset: DictConfig,
-        model: DictConfig,
+        model: Union[DictConfig, nn.Module],
         optimizer: DictConfig,
         features: DictConfig,
         num_workers: int = 0,
@@ -66,7 +67,12 @@ class ClassifierModule(LightningModule, ABC):
     ) -> None:
         super().__init__()
 
-        self.save_hyperparameters()
+        ignore=None
+        if not isinstance(model, DictConfig):
+            self.model = model
+            ignore = ["model"]
+
+        self.save_hyperparameters(ignore=ignore)
         self.initialized = False
         self.train_set = None
         self.test_set = None
