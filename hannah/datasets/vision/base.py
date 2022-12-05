@@ -74,8 +74,7 @@ class TorchvisionDatasetBase(VisionDatasetBase):
         return data, target
 
     def size(self):
-        dim = self[0][0].size()
-
+        dim = self[0][0].shape
         return list(dim)
 
     def __len__(self):
