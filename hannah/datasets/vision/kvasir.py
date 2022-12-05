@@ -22,7 +22,7 @@ import os
 import pathlib
 import re
 import tarfile
-from collections import Counter, namedtuple
+from collections import Counter, defaultdict, namedtuple
 from typing import Dict, List
 
 import albumentations as A
@@ -142,21 +142,17 @@ class KvasirCapsuleDataset(ImageDatasetBase):
         metadata = (
             pd.read_csv(metadata_path, sep=";").dropna(axis=0).astype(pd.StringDtype())
         )
-        duplicates_num = len(metadata) - len(
-            metadata.drop_duplicates(subset="filename")
-        )
 
         def process_bbox(paths):
-            bbox = {}
+            bbox = defaultdict(list)
             for path in paths:
                 X_filename = re.search(r"([^\/]+).$", path)[0]  # get filename of jpg
                 if (metadata["filename"] == X_filename).any():
                     rows = metadata[
                         metadata["filename"].str.match(X_filename)
                     ]  # rows of interest
-                    counter = 0
+
                     for index, row in rows.iterrows():
-                        counter += 1
                         x_min = np.min(
                             row[["x1", "x2", "x3", "x4"]].to_numpy(dtype=np.float32)
                         )
@@ -171,15 +167,11 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                         )
                         width = x_max - x_min
                         height = y_max - y_min
-                        single_bbox = np.array(
-                            [x_min, y_min, width, height]
+                        single_bbox = torch.from_numpy(
+                            np.array([x_min, y_min, width, height])
                         )  # COCO format
 
-                        if len(rows.index) > 1 and X_filename in bbox:
-                            single_bbox = [bbox[X_filename], single_bbox]
-                            bbox[X_filename] = single_bbox
-                        else:
-                            bbox[X_filename] = [single_bbox]
+                        bbox[X_filename].append(single_bbox)
             return bbox
 
         if config.split == "official":

@@ -107,13 +107,13 @@ class ImageDatasetBase(AbstractDataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
         label = self.y[index]
 
-        single_bbox = [torch.zeros(4)]
+        bbox = []
         X_filename = re.search(r"([^\/]+).$", str(self.X[index]))[0]
         if self.bbox and X_filename in self.bbox:
-            single_bbox = self.bbox[X_filename]
+            bbox = self.bbox[X_filename]
         data = self.transform(image=image)["image"]
         target = self.label_to_index[label]
-        return {"data": data, "labels": target, "bbox": single_bbox}
+        return {"data": data, "labels": target, "bbox": bbox}
 
     def __len__(self):
         assert len(self.X) == len(self.y)

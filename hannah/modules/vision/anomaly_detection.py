@@ -129,34 +129,33 @@ class AnomalyDetectionModule(VisionBaseModule):
         batch_normal_labeled = {
             "data": torch.index_select(batch_labeled["data"], 0, normal_labeled_idx),
             "labels": labels_normal,
-            "bbox": None,
+            "bbox": [],
         }
 
         anomaly_labeled_idx = (batch_labeled["labels"] == 1).nonzero(as_tuple=True)[0]
         labels_anomaly = batch_labeled["labels"][anomaly_labeled_idx]
-        print(batch_labeled)
         batch_anomaly_labeled = {
             "data": torch.index_select(batch_labeled["data"], 0, anomaly_labeled_idx),
             "labels": labels_anomaly,
-            "bbox": torch.index_select(
-                torch.stack(*batch_labeled["bbox"]),
-                0,
-                anomaly_labeled_idx,
-            ),
+            "bbox": []
+            # torch.index_select(
+            #    batch_labeled["bbox"],
+            #    0,
+            #    anomaly_labeled_idx,
+            # ),
         }
-        # breakpoint()
         batch_normal_labeled = self._decode_batch(batch_normal_labeled)
         # batch_anomaly_labeled = self._decode_batch(batch_anomaly_labeled)
         batch_unlabeled = self._decode_batch(batch_unlabeled)
 
-        boxes = batch.get("bbox", None)
+        boxes = batch.get("bbox", [])
 
         loss = torch.tensor([0.0], device=self.device)
 
         for batch in [batch_unlabeled, batch_normal_labeled]:
             x = batch["data"]
             labels = batch.get("labels", None)
-            boxes = batch.get("bbox", None)
+            boxes = batch.get("bbox", [])
 
             if batch_idx == 0:
                 self._log_batch_images("input", batch_idx, x)

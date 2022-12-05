@@ -81,12 +81,6 @@ def vision_collate_fn(batch):
     elem_type = type(elem)
     if isinstance(elem, torch.Tensor):
         out = None
-        if torch.utils.data.get_worker_info() is not None:
-            # If we're in a background process, concatenate directly into a
-            # shared memory tensor to avoid an extra copy
-            numel = sum(x.numel() for x in batch)
-            storage = elem.storage()._new_shared(numel, device=elem.device)
-            out = elem.new(storage).resize_(len(batch), *list(elem.size()))
         return torch.stack(batch, 0, out=out)
     elif (
         elem_type.__module__ == "numpy"
@@ -118,20 +112,7 @@ def vision_collate_fn(batch):
     elif isinstance(elem, tuple) and hasattr(elem, "_fields"):  # namedtuple
         return elem_type(*(vision_collate_fn(samples) for samples in zip(*batch)))
     elif isinstance(elem, collections.abc.Sequence):
-        # check to make sure that the elements in batch have consistent size
-        it = iter(batch)
-        elem_size = len(next(it))
-
-        if isinstance(elem, tuple):
-            return [
-                vision_collate_fn(samples) for samples in batch
-            ]  # Backwards compatibility.
-        else:
-            try:
-                return elem_type([vision_collate_fn(samples) for samples in batch])
-            except TypeError:
-                # The sequence type may not support `__init__(iterable)` (e.g., `range`).
-                return [vision_collate_fn(samples) for samples in batch]
+        return batch
 
     raise TypeError(default_collate_err_msg_format.format(elem_type))
 
