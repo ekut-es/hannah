@@ -23,7 +23,7 @@ import re
 import torch
 
 string_classes = (str, bytes)
-default_collate_err_msg_format = (
+vision_collate_err_msg_format = (
     "default_collate: batch must contain tensors, numpy arrays, numbers, "
     "dicts or lists; found {}"
 )
@@ -36,7 +36,7 @@ def vision_collate_fn(batch):
     into a tensor with an additional outer dimension - batch size. The exact output type can be
     a :class:`torch.Tensor`, a `Sequence` of :class:`torch.Tensor`, a
     Collection of :class:`torch.Tensor`, or left unchanged, depending on the input type.
-    This is used as the default function for collation when
+    This is used as the default function for collation for vision tasks
     `batch_size` or `batch_sampler` is defined in :class:`~torch.utils.data.DataLoader`.
 
     Here is the general input type (based on the type of the element within the batch) to output type mapping:
@@ -47,36 +47,41 @@ def vision_collate_fn(batch):
         * `int` -> :class:`torch.Tensor`
         * `str` -> `str` (unchanged)
         * `bytes` -> `bytes` (unchanged)
-        * `Mapping[K, V_i]` -> `Mapping[K, default_collate([V_1, V_2, ...])]`
-        * `NamedTuple[V1_i, V2_i, ...]` -> `NamedTuple[default_collate([V1_1, V1_2, ...]),
-          default_collate([V2_1, V2_2, ...]), ...]`
-        * `Sequence[V1_i, V2_i, ...]` -> `Sequence[default_collate([V1_1, V1_2, ...]),
-          default_collate([V2_1, V2_2, ...]), ...]`
+        * `Mapping[K, V_i]` -> `Mapping[K, vision_collate([V_1, V_2, ...])]`
+        * `NamedTuple[V1_i, V2_i, ...]` -> `NamedTuple[vision_collate([V1_1, V1_2, ...]),
+          vision_collate([V2_1, V2_2, ...]), ...]`
+        * `Sequence[V1_i, V2_i, ...]` -> `Sequence[vision_collate([V1_1, V1_2, ...]),
+          vision_collate([V2_1, V2_2, ...]), ...]`
 
     Args:
         batch: a single batch to be collated
 
     Examples:
         >>> # Example with a batch of `int`s:
-        >>> default_collate([0, 1, 2, 3])
+        >>> vision_collate([0, 1, 2, 3])
         tensor([0, 1, 2, 3])
         >>> # Example with a batch of `str`s:
-        >>> default_collate(['a', 'b', 'c'])
+        >>> vision_collate(['a', 'b', 'c'])
         ['a', 'b', 'c']
         >>> # Example with `Map` inside the batch:
-        >>> default_collate([{'A': 0, 'B': 1}, {'A': 100, 'B': 100}])
+        >>> vision_collate([{'A': 0, 'B': 1}, {'A': 100, 'B': 100}])
         {'A': tensor([  0, 100]), 'B': tensor([  1, 100])}
         >>> # Example with `NamedTuple` inside the batch:
         >>> Point = namedtuple('Point', ['x', 'y'])
-        >>> default_collate([Point(0, 0), Point(1, 1)])
+        >>> vision_collate([Point(0, 0), Point(1, 1)])
         Point(x=tensor([0, 1]), y=tensor([0, 1]))
         >>> # Example with `Tuple` inside the batch:
-        >>> default_collate([(0, 1), (2, 3)])
+        >>> vision_collate([(0, 1), (2, 3)])
         [tensor([0, 2]), tensor([1, 3])]
         >>> # Example with `List` inside the batch:
-        >>> default_collate([[0, 1], [2, 3]])
+        >>> vision_collate([[0, 1], [2, 3]])
         [tensor([0, 2]), tensor([1, 3])]
     """
+
+    print("===============")
+    print(batch)
+    print("")
+
     elem = batch[0]
     elem_type = type(elem)
     if isinstance(elem, torch.Tensor):
@@ -90,9 +95,9 @@ def vision_collate_fn(batch):
         if elem_type.__name__ == "ndarray" or elem_type.__name__ == "memmap":
             # array of string classes and object
             if np_str_obj_array_pattern.search(elem.dtype.str) is not None:
-                raise TypeError(default_collate_err_msg_format.format(elem.dtype))
+                raise TypeError(vision_collate_err_msg_format.format(elem.dtype))
 
-            return vision_collate_fn([torch.as_tensor(b) for b in batch])
+            return torch.stack([torch.as_tensor(b) for b in batch])
         elif elem.shape == ():  # scalars
             return torch.as_tensor(batch)
     elif isinstance(elem, float):
@@ -111,10 +116,13 @@ def vision_collate_fn(batch):
             return {key: vision_collate_fn([d[key] for d in batch]) for key in elem}
     elif isinstance(elem, tuple) and hasattr(elem, "_fields"):  # namedtuple
         return elem_type(*(vision_collate_fn(samples) for samples in zip(*batch)))
+    elif isinstance(elem, tuple):
+        transposed = zip(*batch)
+        return elem_type((vision_collate_fn(samples) for samples in transposed))
     elif isinstance(elem, collections.abc.Sequence):
         return batch
 
-    raise TypeError(default_collate_err_msg_format.format(elem_type))
+    raise TypeError(vision_collate_err_msg_format.format(elem_type))
 
 
 def ctc_collate_fn(data):
@@ -167,5 +175,6 @@ def ctc_collate_fn(data):
     )
 
 
+# FIXME: replace by datasets
 def object_collate_fn(data):
     return tuple(zip(*data))
