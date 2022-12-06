@@ -25,7 +25,7 @@ from hannah.models.ofa.submodules.elastickernelconv import ElasticConv1d
 
 
 # FIXME: should be fixable by initializing seeds
-@flaky
+@flaky(10, 3)
 def test_elastic_conv1d_quant():
     kernel_sizes = [1, 3, 5]
     input_length = 30
