@@ -29,7 +29,7 @@ class ParametrizedTest:
         self.a = a
         self.b = b
         self.c = c
-
+        self.id = "parametrized_test"
 
 @parametrize
 class NestedParametrizedTest:
@@ -38,7 +38,7 @@ class NestedParametrizedTest:
 
 
 def test_parametrization():
-    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20))
+    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, name='a'))
     assert isinstance(parametrized_test.a, IntScalarParameter)
     assert parametrized_test.b is None
     assert parametrized_test.c == "test"
@@ -52,16 +52,16 @@ def test_parametrization():
 
 def test_sample():
     rng = default_rng(seed=321)
-    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng))
+    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, name='a', rng=rng))
     parametrized_test.sample()
-    assert parametrized_test.a.current_value == 13
-    assert parametrized_test.a.instantiate() == 13
+    assert parametrized_test.a.current_value == 14
+    assert parametrized_test.a.instantiate() == 14
 
 
 def test_sample_float():
     rng = default_rng(seed=321)
     parametrized_test = ParametrizedTest(
-        a=FloatScalarParameter(min=0.1, max=3, rng=rng)
+        a=FloatScalarParameter(min=0.1, max=3, name='a', rng=rng)
     )
     parametrized_test.sample()
     assert parametrized_test.a.current_value == 2.010423416621207
@@ -71,7 +71,7 @@ def test_sample_float():
 def test_sample_nested():
     rng = default_rng(seed=321)
     parametrized_test = NestedParametrizedTest(
-        t=ParametrizedTest(a=IntScalarParameter(min=10, max=11, rng=rng))
+        t=ParametrizedTest(a=IntScalarParameter(min=10, max=11, name='a', rng=rng))
     )
     parametrized_test.sample()
 
@@ -125,7 +125,7 @@ def test_instantiate():
     parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng))
     parametrized_test.sample()
     instance = parametrized_test.instantiate()
-    assert instance.a == 13
+    assert instance.a == 14
 
     parametrized_test.set_params(a=16)
     instance = parametrized_test.instantiate()

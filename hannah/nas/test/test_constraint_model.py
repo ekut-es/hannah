@@ -94,7 +94,7 @@ def test_constraint_model_parameters():
     cm = ConstraintModel()
     cm.build_model(graph)
 
-    params = graph.parameters(flatten=True)
+    params = graph.parametrization(flatten=True)
 
     for i in range(1):
         cm.solver.push()

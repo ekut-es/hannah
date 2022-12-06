@@ -84,7 +84,7 @@ def test_parameter_extraction():
     out = block(input, stride=IntScalarParameter(min=1, max=2))
     out = block(out)
     # flattened_graph = flatten(out)
-    params = out.parameters(include_empty=True, flatten=True)
+    params = out.parametrization(include_empty=True, flatten=True)
 
     assert isinstance(out, DataFlowGraph)
     assert 'block.0.conv_relu.1.Conv2d.0.stride' in params and isinstance(params['block.0.conv_relu.1.Conv2d.0.stride'], IntScalarParameter)
