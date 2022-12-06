@@ -21,6 +21,7 @@ from collections import Counter
 from pathlib import Path
 
 import omegaconf
+import torch
 from hydra import compose, initialize
 from hydra.utils import get_class
 

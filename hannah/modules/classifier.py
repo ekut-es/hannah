@@ -43,7 +43,7 @@ from torchmetrics import (
     Recall,
 )
 
-from hannah.datasets.base import ctc_collate_fn
+from hannah.datasets.collate import ctc_collate_fn
 
 from ..datasets import SpeechDataset
 from ..models.factory.qat import QAT_MODULE_MAPPINGS

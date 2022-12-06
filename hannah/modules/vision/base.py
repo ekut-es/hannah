@@ -19,6 +19,7 @@
 import logging
 from typing import Sequence
 
+import kornia
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -39,6 +40,7 @@ from torchmetrics import (
 from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
+from ..augmentation.transforms.kornia_transforms import A
 from ..base import ClassifierModule
 from ..metrics import Error
 
@@ -146,7 +148,7 @@ class VisionBaseModule(ClassifierModule):
     def _decode_batch(self, batch):
         if isinstance(batch, Sequence):
             assert len(batch) == 2
-            ret = {"data": batch[0], "labels": batch[1]}
+            ret = {"data": batch[0], "labels": batch[1], "bbox": []}
         else:
             ret = batch
 
@@ -168,8 +170,21 @@ class VisionBaseModule(ClassifierModule):
         self._log_weight_distribution()
         self.train()
 
-    def augment(self, images, labels, batch_idx):
+    def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
+        if (
+            torch.numel(images) > 0
+        ):  # to circumvent error when tensor is empty (depends on batch size)
+            seq = A.PatchSequential(
+                A.AugmentationSequential(A.RandomErasing(p=0.75, scale=(0.7, 0.7))),
+                patchwise_apply=False,
+                grid_size=(8, 8),
+            )
+            augmented_data = seq(augmented_data)
+
+        # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.4, 'keepdim': True}})
+        # augmented_data = seq.forward(augmented_data)
+
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)
 

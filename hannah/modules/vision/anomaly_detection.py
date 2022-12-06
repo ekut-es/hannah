@@ -27,6 +27,7 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
+from pytorch_lightning.trainer.supporters import CombinedLoader
 from sklearn.metrics import auc, roc_curve
 from torchmetrics import (
     Accuracy,
@@ -37,6 +38,7 @@ from torchmetrics import (
     Recall,
 )
 
+from hannah.datasets.collate import vision_collate_fn
 from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
@@ -50,11 +52,14 @@ msglogger = logging.getLogger(__name__)
 
 
 class AnomalyDetectionModule(VisionBaseModule):
-    def compute_loss(self, prediction_result, x, step_name, batch_idx, loss):
+    def compute_loss(self, prediction_result, x, step_name, anomaly, batch_idx, loss):
 
         if prediction_result.decoded is not None:
             decoded = prediction_result.decoded
-            decoder_loss = F.mse_loss(decoded, x)
+            if anomaly == "anomaly":
+                decoder_loss = 0.4 * (1 / (F.mse_loss(decoded, x)))
+            else:
+                decoder_loss = F.mse_loss(decoded, x)
             # print(f"{step_name}_decoder_loss", decoder_loss)
             self.log(f"{step_name}_decoder_loss", decoder_loss)
             loss += decoder_loss
@@ -78,7 +83,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                 largest_train_error
             )
             anomaly_score = np.percentile(
-                self.normalized_train_errors.cpu().numpy(), 85
+                self.normalized_train_errors.cpu().numpy(), 90
             )
             largest_train_error = largest_train_error.detach().cpu().numpy()
         return anomaly_score, largest_train_error
@@ -96,7 +101,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         prediction_result = self.forward(x)
 
         loss = torch.tensor([0.0], device=self.device)
-        loss = self.compute_loss(prediction_result, x, step_name, batch_idx, loss)
+        loss = self.compute_loss(prediction_result, x, step_name, "", batch_idx, loss)
 
         preds = None
         anomaly_score, largest_train_error = self.compute_anomaly_score()
@@ -116,43 +121,70 @@ class AnomalyDetectionModule(VisionBaseModule):
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
-
         batch_labeled = batch["labeled"]
         batch_unlabeled = batch["unlabeled"]
+
         normal_labeled_idx = (batch_labeled["labels"] == 0).nonzero(as_tuple=True)[0]
         labels_normal = batch_labeled["labels"][normal_labeled_idx]
         batch_normal_labeled = {
             "data": torch.index_select(batch_labeled["data"], 0, normal_labeled_idx),
             "labels": labels_normal,
+            "bbox": [],
         }
 
+        anomaly_labeled_idx = (batch_labeled["labels"] == 1).nonzero(as_tuple=True)[0]
+        labels_anomaly = batch_labeled["labels"][anomaly_labeled_idx]
+        batch_anomaly_labeled = {
+            "data": torch.index_select(batch_labeled["data"], 0, anomaly_labeled_idx),
+            "labels": labels_anomaly,
+            "bbox": []
+            # torch.index_select(
+            #    batch_labeled["bbox"],
+            #    0,
+            #    anomaly_labeled_idx,
+            # ),
+        }
         batch_normal_labeled = self._decode_batch(batch_normal_labeled)
+        # batch_anomaly_labeled = self._decode_batch(batch_anomaly_labeled)
         batch_unlabeled = self._decode_batch(batch_unlabeled)
 
+        boxes = batch.get("bbox", [])
+
         loss = torch.tensor([0.0], device=self.device)
+
         for batch in [batch_unlabeled, batch_normal_labeled]:
             x = batch["data"]
             labels = batch.get("labels", None)
-            boxes = batch.get("bbox", None)
+            boxes = batch.get("bbox", [])
 
             if batch_idx == 0:
                 self._log_batch_images("input", batch_idx, x)
 
-            augmented_data, x = self.augment(x, labels, batch_idx)
-
-            prediction_result = self.forward(augmented_data)
-
             current_loss = torch.tensor([0.0], device=self.device)
-            current_loss = self.compute_loss(
-                prediction_result, x, "train", batch_idx, current_loss
-            )
+            if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
+                augmented_data, x = self.augment(x, labels, boxes, batch_idx)
+                prediction_result = self.forward(augmented_data)
+                current_loss = self.compute_loss(
+                    prediction_result, x, "train", "anomaly", batch_idx, current_loss
+                )
+
+            elif (
+                torch.is_tensor(labels) and torch.numel(labels) == 0
+            ):  # case that no anomalies are in the batch, prevent loss to be nan
+                pass
+
+            else:  # normal
+                augmented_data, x = self.augment(x, labels, boxes, batch_idx)
+                prediction_result = self.forward(augmented_data)
+                current_loss = self.compute_loss(
+                    prediction_result, x, "train", "", batch_idx, current_loss
+                )
 
             self.train_losses.append(current_loss)
 
+            # ToDo store prediction results of labeled data
+
             loss += current_loss
-
-        # self.anomaly_score.update(loss)
-
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -178,7 +210,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         plt.title("Normalized train reconstruction errors")
         plt.savefig(wd_dir + "/normalized_train_errors.png")
         test = (
-            torch.tensor(self.test_losses, device="cuda:0")
+            torch.tensor(self.test_losses, device=self.device)
             / torch.max(torch.stack(self.train_losses), dim=0).values
         )
         plt.hist(test.detach().cpu().numpy(), bins=100)
@@ -194,3 +226,44 @@ class AnomalyDetectionModule(VisionBaseModule):
     def on_train_epoch_end(self):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
+
+    def on_train_end(self):
+        # ToDo initialize linear classifier and train
+        pass
+
+    def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
+        batch_size = self.hparams["batch_size"]
+        dataset_conf = self.hparams.dataset
+        sampler = None
+        if shuffle:
+            sampler_type = dataset_conf.get("sampler", "random")
+            if sampler_type == "weighted":
+                sampler = self.get_balancing_sampler(dataset)
+            else:
+                sampler = data.RandomSampler(dataset)
+
+        loader = data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            drop_last=True,
+            num_workers=self.hparams["num_workers"],
+            sampler=sampler,
+            collate_fn=vision_collate_fn,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+        self.batches_per_epoch = len(loader)
+
+        if unlabeled_data:
+            loader_unlabeled = data.DataLoader(
+                unlabeled_data,
+                batch_size=batch_size,
+                drop_last=True,
+                num_workers=self.hparams["num_workers"],
+                sampler=data.RandomSampler(unlabeled_data),
+                multiprocessing_context="fork"
+                if self.hparams["num_workers"] > 0
+                else None,
+            )
+            return CombinedLoader({"labeled": loader, "unlabeled": loader_unlabeled})
+
+        return loader

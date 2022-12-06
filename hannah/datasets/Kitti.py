@@ -529,7 +529,3 @@ class KittiCOCO(COCO):
                     return False
 
         return False
-
-
-def object_collate_fn(data):
-    return tuple(zip(*data))

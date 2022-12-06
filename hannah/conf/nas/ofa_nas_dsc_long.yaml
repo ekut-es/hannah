@@ -17,22 +17,21 @@
 ## limitations under the License.
 ##
 _target_: hannah.nas.OFANasTrainer
-#epochs_warmup: 35
-#epochs_kernel_step: 35
-#epochs_depth_step: 35
-#epochs_width_step: 35
-#epochs_dilation_step: 35
 epochs_warmup: 35
 epochs_kernel_step: 35
 epochs_depth_step: 35
 epochs_width_step: 35
 epochs_dilation_step: 35
 epochs_grouping_step: 35
+epochs_dsc_step: 35
 elastic_kernels_allowed: True
 elastic_depth_allowed: True
 elastic_dilation_allowed: False
-elastic_width_allowed: True
+# with width enabled, the epochs must be 65 for good results
+elastic_width_allowed: False
 elastic_grouping_allowed: True
+#depthwise_separable_convolution
+elastic_dsc_allowed: True
 evaluate: True
 random_evaluate: True
 random_eval_number: 100
