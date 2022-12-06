@@ -19,37 +19,25 @@
 import logging
 
 import hydra
-
-# from clearml import Task
 from omegaconf import DictConfig
 
 from .. import conf  # noqa
 from ..logo import print_logo
-from ..utils import log_execution_env_state
 
 
-@hydra.main(config_name="config", version_base="1.2")
+@hydra.main(config_name="config", config_path="../conf", version_base="1.2")
 def main(config: DictConfig):
-    """
 
-    Args:
-      config: DictConfig:
-      config: DictConfig:
-      config: DictConfig:
-
-    Returns:
-
-    """
-
-    # task = Task.init(project_name="Audio Search", task_name=config.experiment_id)
+    print_logo()
+    # Lazily Imported to get quicker tab completion
+    from ..train import handle_dataset, nas, train
+    from ..utils.utils import log_execution_env_state
 
     logging.captureWarnings(True)
-    print_logo()
-
-    from ..train import nas, train
-
     try:
         log_execution_env_state()
+        if config.get("dataset_creation", None) is not None:
+            handle_dataset(config)
         if config.get("nas", None) is not None:
             return nas(config)
         else:

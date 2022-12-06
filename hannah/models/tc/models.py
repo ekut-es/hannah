@@ -32,6 +32,15 @@ from ..utils import next_power_of2
 
 
 def create_act(act, clipping_value):
+    """
+
+    Args:
+      act:
+      clipping_value:
+
+    Returns:
+
+    """
     if act == "relu":
         return nn.ReLU()
     else:
@@ -39,6 +48,8 @@ def create_act(act, clipping_value):
 
 
 class ApproximateGlobalAveragePooling1D(nn.Module):
+    """ """
+
     def __init__(self, size):
         super().__init__()
 
@@ -46,6 +57,14 @@ class ApproximateGlobalAveragePooling1D(nn.Module):
         self.divisor = next_power_of2(size)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = torch.sum(x, dim=2, keepdim=True)
         x = x / self.divisor
 
@@ -53,6 +72,8 @@ class ApproximateGlobalAveragePooling1D(nn.Module):
 
 
 class TCResidualBlock(nn.Module):
+    """ """
+
     def __init__(
         self,
         input_channels,
@@ -187,6 +208,14 @@ class TCResidualBlock(nn.Module):
         self.act = create_act(act, clipping_value)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         y = self.convs(x)
         if self.stride > 1:
             x = self.downsample(x)
@@ -197,6 +226,8 @@ class TCResidualBlock(nn.Module):
 
 
 class TCResNetModel(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
 
@@ -355,6 +386,14 @@ class TCResNetModel(nn.Module):
             self.fc = nn.Linear(shape[1], n_labels, bias=False)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         for layer in self.layers:
             x = layer(x)
         self.feat = x
@@ -371,6 +410,8 @@ class TCResNetModel(nn.Module):
 
 
 class ExitWrapperBlock(nn.Module):
+    """ """
+
     def __init__(
         self,
         wrapped_block: nn.Module,
@@ -388,6 +429,14 @@ class ExitWrapperBlock(nn.Module):
         self.exit_result = torch.Tensor()
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.wrapped_block(x)
 
         x_exit = self.exit_branch(x)
@@ -398,6 +447,8 @@ class ExitWrapperBlock(nn.Module):
 
 
 class BranchyTCResNetModel(TCResNetModel):
+    """ """
+
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
 
@@ -433,7 +484,7 @@ class BranchyTCResNetModel(TCResNetModel):
         msglogger.info("Breaks: {}".format(my_pwlf.fit_breaks))
         msglogger.info("Beta: {}".format(my_pwlf.beta))
 
-        y_pred = my_pwlf.predict(x)
+        # y_pred = my_pwlf.predict(x)
 
         # plt.plot(x, y, 'r')
         # plt.plot(x, y_pred, 'b')
@@ -488,15 +539,17 @@ class BranchyTCResNetModel(TCResNetModel):
         self.y = []
 
     def on_val(self):
+        """ """
         self.reset_stats()
         self.x = []
         self.y = []
 
     def on_val_end(self):
+        """ """
         self.print_stats()
 
-        x = np.concatenate(self.x)
-        y = np.concatenate(self.y)
+        # x = np.concatenate(self.x)
+        # y = np.concatenate(self.y)
 
         msglogger.info("Piecewise Parameters")
         msglogger.info("Slopes: {}".format(self.piecewise_func.slopes))
@@ -505,23 +558,36 @@ class BranchyTCResNetModel(TCResNetModel):
         msglogger.info("Beta: {}".format(self.piecewise_func.beta))
 
     def on_test(self):
+        """ """
         self.reset_stats()
         self.test = True
 
     def on_test_end(self):
+        """ """
         self.print_stats()
         self.test = False
 
     def reset_stats(self):
+        """ """
         self.exits_taken = [0] * (self.exit_count + 1)
 
     def print_stats(self):
+        """ """
         msglogger.info("")
         msglogger.info("Early exit statistics")
         for num, taken in enumerate(self.exits_taken):
             msglogger.info("Exit {} taken: {}".format(num, taken))
 
     def _estimate_losses_real(self, thresholded_result, estimated_labels):
+        """
+
+        Args:
+          thresholded_result:
+          estimated_labels:
+
+        Returns:
+
+        """
         estimated_losses = torch.nn.functional.cross_entropy(
             thresholded_result, estimated_labels, reduce=False
         )
@@ -529,6 +595,15 @@ class BranchyTCResNetModel(TCResNetModel):
         return estimated_losses
 
     def _estimate_losses_taylor(self, thresholded_result, estimated_labels):
+        """
+
+        Args:
+          thresholded_result:
+          estimated_labels:
+
+        Returns:
+
+        """
         expected_result = torch.zeros(
             thresholded_result.shape, device=thresholded_result.device
         )
@@ -547,6 +622,15 @@ class BranchyTCResNetModel(TCResNetModel):
         return torch.log(estimated_losses)
 
     def _estimate_losses_taylor_approximate(self, thresholded_result, estimated_labels):
+        """
+
+        Args:
+          thresholded_result:
+          estimated_labels:
+
+        Returns:
+
+        """
         expected_result = torch.zeros(
             thresholded_result.shape, device=thresholded_result.device
         )
@@ -565,6 +649,15 @@ class BranchyTCResNetModel(TCResNetModel):
         return torch.log(estimated_losses)
 
     def _estimate_losses_sum(self, thresholded_result, estimated_labels):
+        """
+
+        Args:
+          thresholded_result:
+          estimated_labels:
+
+        Returns:
+
+        """
         expected_result = torch.zeros(
             thresholded_result.shape, device=thresholded_result.device
         )
@@ -578,6 +671,14 @@ class BranchyTCResNetModel(TCResNetModel):
         return estimated_losses
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = super().forward(x)
         if self.training:
             results = []
@@ -593,7 +694,7 @@ class BranchyTCResNetModel(TCResNetModel):
         exit_number = 0
 
         zeros = torch.zeros(x.shape, device=x.device)
-        ones = torch.ones(x.shape, device=x.device)
+        # ones = torch.ones(x.shape, device=x.device)
 
         current_mask = torch.ones(x.shape, device=x.device)
         global_result = torch.zeros(x.shape, device=x.device)
@@ -608,17 +709,17 @@ class BranchyTCResNetModel(TCResNetModel):
                 estimated_labels = result.argmax(dim=1)
                 thresholded_result = torch.clamp(result, -32.0, 31.9999389611)
 
-                estimated_losses_real = self._estimate_losses_real(
-                    thresholded_result, estimated_labels
-                )
-                estimated_losses_taylor = self._estimate_losses_taylor(
-                    thresholded_result, estimated_labels
-                )
-                estimated_losses_taylor_approximate = (
-                    self._estimate_losses_taylor_approximate(
-                        thresholded_result, estimated_labels
-                    )
-                )
+                # estimated_losses_real = self._estimate_losses_real(
+                #     thresholded_result, estimated_labels
+                # )
+                # estimated_losses_taylor = self._estimate_losses_taylor(
+                #     thresholded_result, estimated_labels
+                # )
+                # estimated_losses_taylor_approximate = (
+                #     self._estimate_losses_taylor_approximate(
+                #         thresholded_result, estimated_labels
+                #     )
+                # )
                 estimated_losses_sum = self._estimate_losses_sum(
                     thresholded_result, estimated_labels
                 )
@@ -657,11 +758,21 @@ class BranchyTCResNetModel(TCResNetModel):
         return global_result
 
     def get_loss_function(self):
+        """ """
         multipliers = list(self.earlyexit_lossweights)
         multipliers.append(1.0 - sum(multipliers))
         criterion = nn.CrossEntropyLoss()
 
         def loss_function(scores, labels):
+            """
+
+            Args:
+              scores:
+              labels:
+
+            Returns:
+
+            """
             if isinstance(scores, list):
                 loss = torch.zeros([1], device=scores[0].device)
                 for multiplier, current_scores in zip(multipliers, scores):

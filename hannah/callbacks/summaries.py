@@ -22,7 +22,7 @@ from collections import OrderedDict
 import pandas as pd
 import torch
 from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from tabulate import tabulate
 
 from hannah.models.ofa.submodules.elasticBase import ElasticBase1d
@@ -32,13 +32,20 @@ from ..models.ofa import OFAModel
 from ..models.ofa.submodules.elastickernelconv import ConvBn1d, ConvBnReLu1d, ConvRelu1d
 from ..models.ofa.type_utils import elastic_conv_type, elastic_Linear_type
 from ..models.sinc import SincNet
-from ..torch_extensions.nn import SNNActivationLayer, SNNLayers
 
 msglogger = logging.getLogger(__name__)
 
 
 def walk_model(model, dummy_input):
-    """Adapted from IntelLabs Distiller"""
+    """Adapted from IntelLabs Distiller
+
+    Args:
+      model:
+      dummy_input:
+
+    Returns:
+
+    """
 
     data = {
         "Name": [],
@@ -53,17 +60,43 @@ def walk_model(model, dummy_input):
     }
 
     def prod(seq):
+        """
+
+        Args:
+          seq:
+
+        Returns:
+
+        """
         result = 1.0
         for number in seq:
             result *= number
         return int(result)
 
     def get_name_by_module(m):
+        """
+
+        Args:
+          m:
+
+        Returns:
+
+        """
         for module_name, mod in model.named_modules():
             if m == mod:
                 return module_name
 
     def collect(module, input, output):
+        """
+
+        Args:
+          module:
+          input:
+          output:
+
+        Returns:
+
+        """
         # if len(list(module.children())) != 0:
         #    return
         try:
@@ -91,6 +124,16 @@ def walk_model(model, dummy_input):
             msglogger.error(str(e))
 
     def get_extra(module, volume_ofm, output):
+        """
+
+        Args:
+          module:
+          volume_ofm:
+          output:
+
+        Returns:
+
+        """
         classes = {
             elastic_conv_type: get_elastic_conv,
             elastic_Linear_type: get_elastic_linear,
@@ -108,10 +151,6 @@ def walk_model(model, dummy_input):
             SincNet: get_sinc_conv,
             torch.nn.Linear: get_fc,
             qat.Linear: get_fc,
-            SNNActivationLayer.Spiking1DeLIFLayer: get_1DSpikeLayer,
-            SNNActivationLayer.Spiking1DLIFLayer: get_1DSpikeLayer,
-            SNNActivationLayer.Spiking1DeALIFLayer: get_1DSpikeLayer,
-            SNNActivationLayer.Spiking1DALIFLayer: get_1DSpikeLayer,
         }
         if type(module) in classes.keys():
             return classes[type(module)](module, volume_ofm, output)
@@ -119,54 +158,76 @@ def walk_model(model, dummy_input):
             return get_generic(module)
 
     def get_conv_macs(module, volume_ofm):
+        """
+
+        Args:
+          module:
+          volume_ofm:
+
+        Returns:
+
+        """
         return volume_ofm * (
             module.in_channels / module.groups * prod(module.kernel_size)
         )
 
-    def get_1DSpiking_macs(module, output):
-        neuron_macs = {"eLIF": 4, "LIF": 5, "eALIF": 5, "ALIF": 6}
-        if module.flatten_output is False:
-            return module.channels * output.shape[2] * neuron_macs[module.type]
-        elif module.flatten_output is True:
-            return module.channels * output.shape[1] * neuron_macs[module.type]
-
     def get_conv_attrs(module):
+        """
+
+        Args:
+          module:
+
+        Returns:
+
+        """
         attrs = "k=" + "(" + (", ").join(["%d" % v for v in module.kernel_size]) + ")"
         attrs += ", s=" + "(" + (", ").join(["%d" % v for v in module.stride]) + ")"
         attrs += ", g=(%d)" % module.groups
-        # attrs += ", g=" + "(" + ", ".join(["%d" % v for v in groups]) + ")"
+        attrs += ", dsc=(%s)" % str(
+            module.in_channels == module.out_channels == module.groups
+        )
         attrs += ", d=" + "(" + ", ".join(["%d" % v for v in module.dilation]) + ")"
         return attrs
 
-    def get_spike_attrs(module):
-        attrs = ""
-        if module.type in ["LIF", "ALIF"]:
-            if len(module.alpha.shape) == 0:
-                attrs += "alpha=" + str(module.alpha.item()) + " "
-        if len(module.beta.shape) == 0:
-            attrs += "beta=" + str(module.beta.item()) + " "
-        if module.type in ["ALIF", "eALIF"]:
-            if len(module.gamma.shape) == 0 and len(module.rho.shape) == 0:
-                attrs += "gamma=" + str(module.gamma.item()) + " "
-                attrs += "rho=" + str(module.rho.item()) + " "
-        return attrs
-
-    def get_1DSpikeLayer(module, volume_ofm, output):
-        neuron_memory = {"eLIF": 3, "LIF": 4, "eALIF": 6, "ALIF": 7}
-        weights = module.channels * neuron_memory[module.type]
-        macs = get_1DSpiking_macs(module, output)
-        attrs = get_spike_attrs(module)
-        return weights, macs, attrs
-
     def get_elastic_conv(module, volume_ofm, output):
+        """
+
+        Args:
+          module:
+          volume_ofm:
+          output:
+
+        Returns:
+
+        """
         tmp = module.assemble_basic_module()
         return get_conv(tmp, volume_ofm, output)
 
     def get_elastic_linear(module, volume_ofm, output):
+        """
+
+        Args:
+          module:
+          volume_ofm:
+          output:
+
+        Returns:
+
+        """
         tmp = module.assemble_basic_module()
         return get_fc(tmp, volume_ofm, output)
 
     def get_conv(module, volume_ofm, output):
+        """
+
+        Args:
+          module:
+          volume_ofm:
+          output:
+
+        Returns:
+
+        """
         weights = (
             module.out_channels
             * module.in_channels
@@ -178,17 +239,45 @@ def walk_model(model, dummy_input):
         return weights, macs, attrs
 
     def get_sinc_conv(module, volume_ofm, output):
+        """
+
+        Args:
+          module:
+          volume_ofm:
+          output:
+
+        Returns:
+
+        """
         weights = 2 * module.out_channels * module.in_channels / module.groups
         macs = get_conv_macs(module, volume_ofm)
         attrs = get_conv_attrs(module)
         return weights, macs, attrs
 
     def get_fc(module, volume_ofm, output):
+        """
+
+        Args:
+          module:
+          volume_ofm:
+          output:
+
+        Returns:
+
+        """
         weights = macs = module.in_features * module.out_features
         attrs = ""
         return weights, macs, attrs
 
     def get_generic(module):
+        """
+
+        Args:
+          module:
+
+        Returns:
+
+        """
         if isinstance(module, torch.nn.Dropout):
             return
         weights = macs = 0
@@ -212,7 +301,18 @@ def walk_model(model, dummy_input):
 
 
 class MacSummaryCallback(Callback):
+    """ """
+
     def _do_summary(self, pl_module, print_log=True):
+        """
+
+        Args:
+          pl_module:
+          print_log:  (Default value = True)
+
+        Returns:
+
+        """
         dummy_input = pl_module.example_feature_array
         dummy_input = dummy_input.to(pl_module.device)
 
@@ -259,6 +359,14 @@ class MacSummaryCallback(Callback):
         return res
 
     def predict(self, pl_module):
+        """
+
+        Args:
+          pl_module:
+
+        Returns:
+
+        """
 
         res = self.estimate(pl_module)
 
@@ -266,6 +374,15 @@ class MacSummaryCallback(Callback):
 
     @rank_zero_only
     def on_train_start(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         pl_module.eval()
         try:
             self._do_summary(pl_module)
@@ -276,11 +393,29 @@ class MacSummaryCallback(Callback):
 
     @rank_zero_only
     def on_test_end(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         pl_module.eval()
         self._do_summary(pl_module)
 
     @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         res = {}
         try:
             res = self._do_summary(pl_module, print_log=False)
@@ -295,10 +430,11 @@ class MacSummaryCallback(Callback):
         """Generate Summary Metrics for neural network
 
         Args:
-            pl_module (pytorch_lightning.LightningModule): pytorch lightning module to summarize
+          pl_module(pytorch_lightning.LightningModule): pytorch lightning module to summarize
 
         Returns:
-            dict[str, float]: Dict of MetricName => Metric Value
+          dict[str, float]: Dict of MetricName => Metric Value
+
         """
         pl_module.eval()
         res = {}

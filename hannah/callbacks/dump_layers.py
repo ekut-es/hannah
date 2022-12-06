@@ -23,18 +23,43 @@ import os
 import torch.nn as nn
 from pytorch_lightning import Callback
 
+import hannah.models.factory.qat as qat
+
 logger = logging.getLogger(__name__)
 
 
 class TestDumperCallback(Callback):
+    """ """
+
     def __init__(self, output_dir="."):
         self.output_dir = output_dir
 
     def on_test_start(self, pl_trainer, pl_model):
+        """
+
+        Args:
+          pl_trainer:
+          pl_model:
+
+        Returns:
+
+        """
         logger.info("Activating layer dumping")
 
         def dump_layers(model, output_dir):
+            """
+
+            Args:
+              model:
+              output_dir:
+
+            Returns:
+
+            """
+
             class DumpForwardHook:
+                """ """
+
                 def __init__(self, module, output_dir):
                     self.module = module
                     self.output_dir = output_dir
@@ -71,7 +96,14 @@ class TestDumperCallback(Callback):
                         )
                     )
 
-                if type(module) in [nn.Conv1d]:
+                if type(module) in [
+                    nn.Conv1d,
+                    qat.Conv1d,
+                    qat.ConvBn1d,
+                    qat.ConvBnReLU1d,
+                    qat.ConvReLU1d,
+                    qat.Linear,
+                ]:
                     module.register_forward_hook(
                         DumpForwardHook(
                             module, output_dir + "/test_data/layers/" + module_name

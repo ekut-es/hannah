@@ -17,4 +17,12 @@
 # limitations under the License.
 #
 def next_power_of2(x):
+    """
+
+    Args:
+      x:
+
+    Returns:
+
+    """
     return 1 << (x - 1).bit_length()

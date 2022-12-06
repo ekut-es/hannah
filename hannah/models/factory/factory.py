@@ -26,7 +26,7 @@ interface.
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
 from hydra.utils import instantiate
@@ -44,12 +44,16 @@ from .reduction import ReductionBlockAdd, ReductionBlockConcat
 
 @dataclass
 class NormConfig:
+    """ """
+
     # Currently only bn is supported
     target: str = MISSING
 
 
 @dataclass
 class BNConfig(NormConfig):
+    """ """
+
     target: str = "bn"
     eps: float = 1e-05
     momentum: float = 0.1
@@ -58,17 +62,23 @@ class BNConfig(NormConfig):
 
 @dataclass
 class ActConfig:
+    """ """
+
     target: str = "relu"
 
 
 @dataclass
 class ELUConfig(ActConfig):
+    """ """
+
     target: str = "elu"
     alpha: float = 1.0
 
 
 @dataclass
 class HardtanhConfig(ActConfig):
+    """ """
+
     target: str = "hardtanh"
     min_val: float = -1.0
     max_val: float = 1.0
@@ -76,7 +86,8 @@ class HardtanhConfig(ActConfig):
 
 @dataclass
 class MinorBlockConfig:
-    # breakpoint()
+    """ """
+
     target: str = "conv1d"
     "target Operation"
     parallel: bool = False
@@ -108,6 +119,8 @@ class MinorBlockConfig:
 
 @dataclass
 class MajorBlockConfig:
+    """ """
+
     target: str = "residual"
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
@@ -117,6 +130,8 @@ class MajorBlockConfig:
 
 @dataclass
 class LinearConfig:
+    """ """
+
     outputs: int = 128
     norm: Any = False  # Union[bool, NormConfig]
     act: Any = False  # Union[bool, ActConfig]
@@ -126,6 +141,8 @@ class LinearConfig:
 
 @dataclass
 class NetworkConfig:
+    """ """
+
     _target_: str = "hannah.models.factory.create_cnn"
     name: str = MISSING
     norm: Optional[NormConfig] = BNConfig()
@@ -137,6 +154,8 @@ class NetworkConfig:
 
 
 class NetworkFactory:
+    """ """
+
     def __init__(
         self,
     ) -> None:
@@ -145,6 +164,15 @@ class NetworkFactory:
         self.default_qconfig = None
 
     def act(self, config: ActConfig) -> nn.Module:
+        """
+
+        Args:
+          config: ActConfig:
+          config: ActConfig:
+
+        Returns:
+
+        """
         if config.target == "relu":
             act_module = nn.ReLU()
         elif config.target == "elu":
@@ -173,6 +201,38 @@ class NetworkFactory:
         act: Union[ActConfig, bool] = False,
         bias: bool = False,
     ) -> None:
+        """
+
+        Args:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          out_channels: int:
+          kernel_size: Union[int:
+          Tuple[int]]: (Default value = 1)
+          stride: Union[int:
+          padding: Union[int:
+          Tuple[int]:
+          bool]: (Default value = False)
+          dilation: int:  (Default value = 0)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          bias: bool:  (Default value = False)
+          input_shape: Tuple[int:
+          out_channels: int:
+          kernel_size: Union[int:
+          stride: Union[int:
+          padding: Union[int:
+          dilation: int:  (Default value = 0)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          bias: bool:  (Default value = False)
+
+        Returns:
+
+        """
         in_channels = input_shape[1]
 
         if isinstance(kernel_size, int):
@@ -317,6 +377,37 @@ class NetworkFactory:
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
     ):
+        """
+
+        Args:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          out_channels: int:
+          kernel_size: int:
+          dilation: int:  (Default value = 1)
+          stride: int:  (Default value = 1)
+          padding: Union[int:
+          bool]: (Default value = False)
+          bias: (Default value = False)
+          upsampling: float:  (Default value = 1.0)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          input_shape: Tuple[int:
+          out_channels: int:
+          kernel_size: int:
+          dilation: int:  (Default value = 1)
+          stride: int:  (Default value = 1)
+          padding: Union[int:
+          upsampling: float:  (Default value = 1.0)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+
+        Returns:
+
+        """
 
         up_channels = int(out_channels * upsampling)
 
@@ -357,6 +448,38 @@ class NetworkFactory:
         act: Union[ActConfig, bool] = False,
         out_quant: bool = True,
     ) -> None:
+        """
+
+        Args:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          out_channels: int:
+          kernel_size: int:
+          stride: int:  (Default value = 1)
+          bias: bool:  (Default value = False)
+          padding: Union[int:
+          bool]: (Default value = False)
+          dilation: int:  (Default value = 1)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          out_quant: bool:  (Default value = True)
+          input_shape: Tuple[int:
+          out_channels: int:
+          kernel_size: int:
+          stride: int:  (Default value = 1)
+          bias: bool:  (Default value = False)
+          padding: Union[int:
+          dilation: int:  (Default value = 1)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          out_quant: bool:  (Default value = True)
+
+        Returns:
+
+        """
 
         in_channels = input_shape[1]
 
@@ -488,6 +611,17 @@ class NetworkFactory:
         return output_shape, layers
 
     def minor(self, input_shape, config: MinorBlockConfig, major_stride=None):
+        """
+
+        Args:
+          input_shape:
+          config: MinorBlockConfig:
+          major_stride: (Default value = None)
+          config: MinorBlockConfig:
+
+        Returns:
+
+        """
         assert config.out_channels % config.groups == 0
         assert input_shape[1] % config.groups == 0
 
@@ -554,8 +688,7 @@ class NetworkFactory:
             )
         else:
             raise Exception(f"Unknown minor block config {config}")
-        """ Depthwise separable convolution can be splitted into dephtwise convolution first
-        followed by pointwise convolution.
+        """ Depthwise separable convolution can be splitted into dephtwise convolution first followed by pointwise convolution.
         if config.target == "conv1d":
             #breakpoint()
             depthwise_conv = self.conv1d(
@@ -593,6 +726,21 @@ class NetworkFactory:
         block_configs: List[MinorBlockConfig],
         major_stride: Optional[Any],
     ) -> List[Tuple[Tuple[int, int, int], Sequential]]:
+        """
+
+        Args:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          block_configs: List[MinorBlockConfig]:
+          major_stride: Optional[Any]:
+          input_shape: Tuple[int:
+          block_configs: List[MinorBlockConfig]:
+          major_stride: Optional[Any]:
+
+        Returns:
+
+        """
         block_input_shape = input_shape
         result_chain = []
         for block_config in block_configs:
@@ -612,6 +760,24 @@ class NetworkFactory:
         *input_chains: List[Tuple[Tuple[int, int, int], Sequential]],
         reduction_quant: bool = False,
     ) -> Tuple[Tuple[int, int, int], Union[ReductionBlockConcat, Sequential]]:
+        """
+
+        Args:
+          reduction: str:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          *input_chains: List[Tuple[Tuple[int:
+          Sequential]]:
+          reduction_quant: bool:  (Default value = False)
+          reduction: str:
+          input_shape: Tuple[int:
+          *input_chains: List[Tuple[Tuple[int:
+          reduction_quant: bool:  (Default value = False)
+
+        Returns:
+
+        """
         output_shapes = []
         for chain in input_chains:
             output_shapes.append(chain[-1][0] if len(chain) > 0 else input_shape)
@@ -692,6 +858,15 @@ class NetworkFactory:
         If parallel is set to [True, False, True, False]
 
         Input: ------->|---> parallel: False --->  parallel: False ---> | --> output
+
+        Args:
+          input_shape: Tuple[int]:
+          config: MajorBlockConfig:
+          input_shape: Tuple[int]:
+          config: MajorBlockConfig:
+
+        Returns:
+
         """
 
         main_configs = []
@@ -699,7 +874,7 @@ class NetworkFactory:
         for block_config in config.blocks:
             main_configs.append(block_config)
 
-        main_configs[-1].out_quant = False
+        main_configs[-1].out_quant = True
 
         main_chain = self._build_chain(input_shape, main_configs, config.stride)
         output_shape = main_chain[-1][0]
@@ -715,10 +890,19 @@ class NetworkFactory:
         Input: ------->|                                                +--->
                        |---> parallel: False --->  parallel: False ---> |
 
-        If the major block does change the ouptut dimensions compared to the input
+        If the major block does change the output dimensions compared to the input
         and one of the branches does not contain any layers, we infer
         1x1 conv of maximum group size (gcd (input_channels, output_channels)) to do the
         downsampling.
+
+        Args:
+          input_shape: Tuple[int]:
+          config: MajorBlockConfig:
+          input_shape: Tuple[int]:
+          config: MajorBlockConfig:
+
+        Returns:
+
         """
 
         main_configs = []
@@ -762,7 +946,7 @@ class NetworkFactory:
             input_shape,
             main_chain,
             residual_chain,
-            reduction_quant=False if config.last else True,
+            reduction_quant=True,
         )
 
         return output_shape, major_block
@@ -778,6 +962,15 @@ class NetworkFactory:
 
         If there are no parallel branches in the network. The major block is
         a standard feed forward layer.
+
+        Args:
+          in_channels: int:
+          config: MajorBlockConfig:
+          in_channels: int:
+          config: MajorBlockConfig:
+
+        Returns:
+
         """
 
         out_channels = config.out_channels
@@ -795,12 +988,31 @@ class NetworkFactory:
                                               |--> parallel: True ---->|
 
         If there are no parallel blocks the block is a standard feed forward network.
+
+        Args:
+          in_channels: int:
+          config: MajorBlockConfig:
+          in_channels: int:
+          config: MajorBlockConfig:
+
+        Returns:
+
         """
         out_channels = config.out_channels
         block = None
         return out_channels, block
 
     def major(self, input_shape, config: MajorBlockConfig):
+        """
+
+        Args:
+          input_shape:
+          config: MajorBlockConfig:
+          config: MajorBlockConfig:
+
+        Returns:
+
+        """
         if config.target == "residual":
             out_shape, layers = self.residual(input_shape, config)
         elif config.target == "input":
@@ -815,6 +1027,16 @@ class NetworkFactory:
         return out_shape, layers
 
     def linear(self, input_shape, config: LinearConfig):
+        """
+
+        Args:
+          input_shape:
+          config: LinearConfig:
+          config: LinearConfig:
+
+        Returns:
+
+        """
 
         act = config.act
         if act is True:
@@ -851,6 +1073,7 @@ class NetworkFactory:
         return out_shape, layers
 
     def identity(self) -> Identity:
+        """ """
         qconfig = self.default_qconfig
 
         if not qconfig:
@@ -861,6 +1084,18 @@ class NetworkFactory:
         return identity
 
     def network(self, input_shape, labels: int, network_config: NetworkConfig):
+        """
+
+        Args:
+          input_shape:
+          labels: int:
+          network_config: NetworkConfig:
+          labels: int:
+          network_config: NetworkConfig:
+
+        Returns:
+
+        """
         self.default_norm = network_config.norm
         self.default_act = network_config.act
         self.default_qconfig = (
@@ -917,9 +1152,39 @@ class NetworkFactory:
     def _calc_spatial_dim(
         self, in_dim: int, kernel_size: int, stride: int, padding: int, dilation: int
     ) -> int:
+        """
+
+        Args:
+          in_dim: int:
+          kernel_size: int:
+          stride: int:
+          padding: int:
+          dilation: int:
+          in_dim: int:
+          kernel_size: int:
+          stride: int:
+          padding: int:
+          dilation: int:
+
+        Returns:
+
+        """
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:
+        """
+
+        Args:
+          kernel_size: int:
+          stride: int:
+          _dilation: int:
+          kernel_size: int:
+          stride: int:
+          _dilation: int:
+
+        Returns:
+
+        """
         padding = (((kernel_size - 1) * _dilation) + 1) // 2
         return padding
 
@@ -928,13 +1193,42 @@ def create_cnn(
     input_shape: Sequence[int],
     labels: int,
     name: str,
-    conv: List[MajorBlockConfig] = [],
-    linear: List[LinearConfig] = [],
-    norm: Optional[NormConfig] = BNConfig(),
-    act: Optional[ActConfig] = ActConfig(),
+    conv: Optional[List[MajorBlockConfig]] = None,
+    linear: Optional[List[LinearConfig]] = None,
+    norm: Optional[NormConfig] = None,
+    act: Optional[ActConfig] = None,
     qconfig: Any = None,
     dropout: float = 0.5,
 ):
+    """
+
+    Args:
+      input_shape: Sequence[int]:
+      labels: int:
+      name: str:
+      conv: Optional[List[MajorBlockConfig]]:  (Default value = None)
+      linear: Optional[List[LinearConfig]]:  (Default value = None)
+      norm: Optional[NormConfig]:  (Default value = None)
+      act: Optional[ActConfig]:  (Default value = None)
+      qconfig: Any:  (Default value = None)
+      dropout: float:  (Default value = 0.5)
+      input_shape: Sequence[int]:
+      labels: int:
+      name: str:
+      conv: Optional[List[MajorBlockConfig]]:  (Default value = None)
+      linear: Optional[List[LinearConfig]]:  (Default value = None)
+      norm: Optional[NormConfig]:  (Default value = None)
+      act: Optional[ActConfig]:  (Default value = None)
+      qconfig: Any:  (Default value = None)
+      dropout: float:  (Default value = 0.5)
+
+    Returns:
+
+    """
+    if conv is None:
+        conv = []
+    if linear is None:
+        linear = []
     factory = NetworkFactory()
     schema = OmegaConf.structured(NetworkConfig)
 

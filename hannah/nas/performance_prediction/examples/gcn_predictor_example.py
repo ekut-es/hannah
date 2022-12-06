@@ -19,33 +19,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from features.dataset import NASGraphDataset
-from gcn.predictor import GCNPredictor, get_input_feature_size, prepare_dataloader
-from search_space.space import NetworkSpace
+
+from hannah.nas.performance_prediction.features.dataset import NASGraphDataset
+from hannah.nas.performance_prediction.gcn.predictor import (
+    GCNPredictor,
+    get_input_feature_size,
+    prepare_dataloader,
+)
 
 plt.style.use("seaborn")
 
 
-wd = "/home/moritz/Dokumente/Hiwi/code/nas/subgraph_generator"
-
-# name of the configuration space
-net = "test_net"
-
-# where to find the data
-data_name = "/data/test_net_tuned_jetsontx2"
-
-cfg_space = NetworkSpace()
-cfg_space.from_yaml(wd + "/configs/" + net + ".yaml")
-
-# Used to construct the graph structure ( unnecessary because graph also constructed
-# during graph_conversion)
-# edge_file = wd + data_name + '/graph_defs/graph_edges.csv'
-
-# properties, i.e. cost/latency
-prop_file = wd + data_name + "/graph_defs/graph_properties.csv"
-
 # dataset = NASGraphDataset(cfg_space, edge_file, prop_file)
-dataset = NASGraphDataset(cfg_space, prop_file)
+dataset = NASGraphDataset(
+    "/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data"
+)
 
 train_dataloader, test_dataloader = prepare_dataloader(
     dataset, batch_size=250, train_test_split=0.7

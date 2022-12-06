@@ -34,15 +34,14 @@ from chainmap import ChainMap
 from joblib import Memory
 from torchvision.datasets.utils import list_files
 
-from ..utils import extract_from_download_cache, list_all_files
+from ..utils.utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
 from .DatasetSplit import DatasetSplit
 from .Downsample import Downsample
 from .NoiseDataset import NoiseDataset
+from .utils import cachify
 
 msglogger = logging.getLogger()
-
-CACHE_DIR = os.getenv("HANNAH_CACHE_DIR", None)
 
 
 def snr_factor(snr, psig, pnoise):
@@ -72,12 +71,7 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
     return data
 
 
-if CACHE_DIR:
-    CACHE_SIZE = os.getenv("HANNAH_CACHE_SIZE", None)
-    cache = Memory(location=CACHE_DIR, bytes_limit=CACHE_SIZE, verbose=0)
-    load_audio = cache.cache(_load_audio)
-else:
-    load_audio = _load_audio
+load_audio = cachify(_load_audio)
 
 
 class SpeechDataset(AbstractDataset):

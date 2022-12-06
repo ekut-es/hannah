@@ -26,6 +26,20 @@ import torch.nn as nn
 
 
 def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7):
+    """
+
+    Args:
+      box1:
+      box2:
+      x1y1x2y2: (Default value = True)
+      GIoU: (Default value = False)
+      DIoU: (Default value = False)
+      CIoU: (Default value = False)
+      eps: (Default value = 1e-7)
+
+    Returns:
+
+    """
     # Returns the IoU of box1 to box2. box1 is 4, box2 is nx4
     box2 = box2.T
 
@@ -80,6 +94,14 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
 
 
 def is_parallel(model):
+    """
+
+    Args:
+      model:
+
+    Returns:
+
+    """
     return type(model) in (
         nn.parallel.DataParallel,
         nn.parallel.DistributedDataParallel,
@@ -94,6 +116,19 @@ def smooth_BCE(
 
 
 class BCEBlurWithLogitsLoss(nn.Module):
+    """
+
+    Args:
+      eps: (Default value = 0.1)
+      ): # https://github.com/ultralytics/yolov3/issues/238#issuecomment-598028441# return positive:
+      negative label smoothing BCE targetsreturn 1.0 - 0.5 * eps:
+      0.5 * epsclass BCEBlurWithLogitsLoss(nn.Module:
+      ):  # https://github.com/ultralytics/yolov3/issues/238#issuecomment-598028441# return positive:
+
+    Returns:
+
+    """
+
     # BCEwithLogitLoss() with reduced missing label effects.
     def __init__(self, alpha=0.05):
         super(BCEBlurWithLogitsLoss, self).__init__()
@@ -103,6 +138,15 @@ class BCEBlurWithLogitsLoss(nn.Module):
         self.alpha = alpha
 
     def forward(self, pred, true):
+        """
+
+        Args:
+          pred:
+          true:
+
+        Returns:
+
+        """
         loss = self.loss_fcn(pred, true)
         pred = torch.sigmoid(pred)  # prob from logits
         dx = pred - true  # reduce only missing label effects
@@ -113,6 +157,8 @@ class BCEBlurWithLogitsLoss(nn.Module):
 
 
 class FocalLoss(nn.Module):
+    """ """
+
     # Wraps focal loss around existing loss_fcn(), i.e. criteria = FocalLoss(nn.BCEWithLogitsLoss(), gamma=1.5)
     def __init__(self, loss_fcn, gamma=1.5, alpha=0.25):
         super(FocalLoss, self).__init__()
@@ -123,6 +169,15 @@ class FocalLoss(nn.Module):
         self.loss_fcn.reduction = "none"  # required to apply FL to each element
 
     def forward(self, pred, true):
+        """
+
+        Args:
+          pred:
+          true:
+
+        Returns:
+
+        """
         loss = self.loss_fcn(pred, true)
         # p_t = torch.exp(-loss)
         # loss *= self.alpha * (1.000001 - p_t) ** self.gamma  # non-zero power for gradient stability
@@ -143,6 +198,8 @@ class FocalLoss(nn.Module):
 
 
 class QFocalLoss(nn.Module):
+    """ """
+
     # Wraps Quality focal loss around existing loss_fcn(), i.e. criteria = FocalLoss(nn.BCEWithLogitsLoss(), gamma=1.5)
     def __init__(self, loss_fcn, gamma=1.5, alpha=0.25):
         super(QFocalLoss, self).__init__()
@@ -153,6 +210,15 @@ class QFocalLoss(nn.Module):
         self.loss_fcn.reduction = "none"  # required to apply FL to each element
 
     def forward(self, pred, true):
+        """
+
+        Args:
+          pred:
+          true:
+
+        Returns:
+
+        """
         loss = self.loss_fcn(pred, true)
 
         pred_prob = torch.sigmoid(pred)  # prob from logits
@@ -169,6 +235,8 @@ class QFocalLoss(nn.Module):
 
 
 class ComputeLoss:
+    """ """
+
     # Compute losses
     def __init__(self, model, autobalance=False):
         super(ComputeLoss, self).__init__()
@@ -272,6 +340,15 @@ class ComputeLoss:
         return loss * bs, torch.cat((lbox, lobj, lcls, loss)).detach()
 
     def build_targets(self, p, targets):
+        """
+
+        Args:
+          p:
+          targets:
+
+        Returns:
+
+        """
         # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
         na, nt = self.na, targets.shape[0]  # number of anchors, targets
         tcls, tbox, indices, anch = [], [], [], []

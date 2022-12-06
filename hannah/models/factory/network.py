@@ -20,6 +20,8 @@ import torch.nn as nn
 
 
 class ConvNet(nn.Module):
+    """ """
+
     def __init__(self, convolutions, pooling, linear, dropout, qconfig=None):
         super().__init__()
         self.convolutions = convolutions
@@ -32,6 +34,14 @@ class ConvNet(nn.Module):
             self.activation_post_process = self.qconfig.activation()
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         if hasattr(self, "activation_post_process"):
             x = self.activation_post_process(x)
         x = self.convolutions(x)

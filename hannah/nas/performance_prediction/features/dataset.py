@@ -37,24 +37,24 @@ from hannah.nas.graph_conversion import model_to_graph
 
 
 class NASGraphDataset(DGLDataset):
-    def __init__(self, result_file_path):
-        self.result_file_path = result_file_path
+    def __init__(self, result_folder: str):
+        self.result_folder = Path(result_folder)
         super().__init__(name="nasgraph")
 
     def process(self):
         self.nx_graphs = []
         self.graphs = []
         self.labels = []
-        result_path = Path(self.result_file_path)
-        assert result_path.exists()
-        with result_path.open("r") as result_file:
-            data = json.load(result_file)
+        assert self.result_folder.exists()
 
         data_dict = {}
         ct = 0
-        for i, d in enumerate(data):
+        for i, data_path in enumerate(self.result_folder.glob("model_*.json")):
             if i % 500 == 0:
                 print("Processing graph {}".format(i))
+
+            d = json.load(data_path.open())
+
             graph = nx.json_graph.node_link_graph(d["graph"])
             self.nx_graphs.append(graph)
             for j, n in enumerate(graph.nodes):
@@ -199,8 +199,10 @@ def unnest(df, explode, axis):
 @hydra.main(config_path="../../../conf", config_name="config")
 def main(config):
     dataset = NASGraphDataset(
-        "/local/gerum/speech_recognition/characterize/nas_kws2/conv_net_trax/n1sdp/"
+        "/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data"
     )
+    for item in dataset:
+        print(item)
 
 
 if __name__ == "__main__":

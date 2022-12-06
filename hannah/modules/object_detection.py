@@ -31,7 +31,7 @@ import torch
 import torch.utils.data as data
 from hydra.utils import get_class, instantiate
 
-from hannah.datasets.Kitti import object_collate_fn
+from hannah.datasets.collate import object_collate_fn
 from hannah.modules.augmentation.augmentation import Augmentation
 from hannah.modules.augmentation.bordersearch import (
     Bordersearch,
@@ -179,9 +179,6 @@ class ObjectDetectionModule(ClassifierModule):
         if self.augmentation.pct != 0 and self.augmentation.val_pct != 0:
             self.augmentation.setEvalAttribs()
 
-        # if self.device.type == "cuda":
-        #    dev_loader = AsynchronousLoader(dev_loader, device=self.device)
-
         return dev_loader
 
     def test_dataloader(self):
@@ -194,9 +191,6 @@ class ObjectDetectionModule(ClassifierModule):
             collate_fn=object_collate_fn,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
-
-        # if self.device.type == "cuda":
-        #    test_loader = AsynchronousLoader(test_loader, device=self.device)
 
         return test_loader
 

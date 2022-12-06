@@ -36,6 +36,14 @@ class LSTMModel(nn.Module):
         self.fc = nn.Linear(config["hidden_size"], config["n_labels"])
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = x.permute(0, 2, 1)
         _, (ht, _) = self.lstm(x)
         x = self.dropout(ht[-1])

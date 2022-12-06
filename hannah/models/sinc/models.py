@@ -28,6 +28,8 @@ from ..utils import next_power_of2
 
 
 class GDSConv(nn.Module):
+    """ """
+
     def __init__(
         self,
         in_channels,
@@ -58,6 +60,14 @@ class GDSConv(nn.Module):
         # pointwise convolutions with 1*c/g filters
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.layer1(x)
         x = self.layer2(x)
 
@@ -65,6 +75,8 @@ class GDSConv(nn.Module):
 
 
 class GDSConvBlock(nn.Module):
+    """ """
+
     def __init__(
         self,
         in_channels,
@@ -96,12 +108,22 @@ class GDSConvBlock(nn.Module):
         )
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.layer(x)
 
         return x
 
 
 class SincNet(nn.Module):
+    """ """
+
     def __init__(self, config):
         super(SincNet, self).__init__()
         self.height = config["height"]
@@ -153,6 +175,14 @@ class SincNet(nn.Module):
         self.fc = nn.Linear(self.dsconv_N_filt[self.dsconv_num - 1], self.n_labels)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
 
         batch = x.shape[0]
         for i in range(self.dsconv_num):

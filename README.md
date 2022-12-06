@@ -55,17 +55,12 @@ For alternative installation methods see:  https://python-poetry.org/docs/#insta
 
     ~/.local/bin/poetry
 
-#### Mac OS
-Install poetry from pip
-
-    pip3 install poetry
 
 ## Software installation
 
 In the root directory of the project run:
 
     git submodule update --init --recursive
-    poetry run pip install --upgrade pip
     poetry install
 
 This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.
@@ -225,5 +220,7 @@ The easiest way to resolve them is:
 
 ```
 git checkout --theirs poetry.lock
-poetry update
+poetry lock --no-update
 ```
+
+Try to avoid running `poetry update` on feature branches.
