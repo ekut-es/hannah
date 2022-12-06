@@ -66,7 +66,7 @@ class Parameter(Expression):
     def evaluate(self):
         return self.instantiate()
 
-    def parameters(self):
+    def parametrization(self):
         return self
 
     def new(self):
