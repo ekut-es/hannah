@@ -38,11 +38,15 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
+from hannah.models.convnet.models import ConvNet
+
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.summaries import MacSummaryCallback
 from ..utils import clear_outputs, common_callbacks, fullname
 from .aging_evolution import AgingEvolution
 from .graph_conversion import model_to_graph
+
+from hannah.nas.core.parametrized import is_parametrized
 
 msglogger = logging.getLogger(__name__)
 
@@ -110,7 +114,6 @@ def run_training(
                 normalizer=config.get("normalizer", None),
                 _recursive_=False,
             )
-
             trainer.fit(model)
             ckpt_path = "best"
             if trainer.fast_dev_run:
@@ -170,14 +173,56 @@ class NASTrainerBase(ABC):
 class RandomNASTrainer(NASTrainerBase):
     def __init__(self, budget=2000, *args, **kwargs):
         super().__init__(*args, budget=budget, **kwargs)
+        from hannah.models.convnet import ConvNet
 
     def fit(self, module: LightningModule):
-        # Presample Population
+            trainer = instantiate(self.config.trainer)
+            trainer.fit(module)
 
-        # Sample Population
+    def run(self):
+        from hydra.utils import instantiate, get_class
 
-        pass
 
+        # Prepare dataset
+        get_class(self.config.dataset.cls).prepare(self.config.dataset)
+
+        # Instantiate Dataset
+        train_set, val_set, test_set = get_class(self.config.dataset.cls).splits(
+            self.config.dataset
+        )
+
+        # self.search_space.prepare([1] + train_set.size())
+        for i in range(self.budget):
+            example_input_array = torch.rand([1] + train_set.size())
+
+            # instantiate search space
+            model = ConvNet(name='cnn', params=self.config.model.params, input_shape=example_input_array.shape, labels=10)
+
+            # sample from search space
+            # model is still a Parametrized nn.Module with Lazy layer stubs
+            # model.forward(x) will throw error
+            model.sample()
+
+            # initialize model: Lazy layers are instantiated to real torch.nn layers
+            # forward works now
+            model.initialize()
+
+
+            module = instantiate(
+                self.config.module,
+                model=model,
+                dataset=self.config.dataset,
+                optimizer=self.config.optimizer,
+                features=self.config.features,
+                normalizer=self.config.get("normalizer", None),
+                scheduler=self.config.scheduler,
+                example_input_array=example_input_array,
+                num_classes=len(train_set.class_names),
+                _recursive_=False,
+            )
+
+
+            self.fit(module)
 
 class AgingEvolutionNASTrainer(NASTrainerBase):
     def __init__(

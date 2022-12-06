@@ -111,18 +111,19 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.example_feature_array = self.normalizer(self.example_feature_array)
 
         # Instantiate Model
-        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            self.model = instantiate(
-                self.hparams.model,
-                input_shape=self.example_feature_array.shape,
-                labels=self.num_classes,
-                _recursive_=False,
-            )
-        else:
-            self.hparams.model.width = self.example_feature_array.size(2)
-            self.hparams.model.height = self.example_feature_array.size(1)
-            self.hparams.model.n_labels = self.num_classes
-            self.model = get_model(self.hparams.model)
+        if hasattr(self.hparams, "model"):
+            if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+                self.model = instantiate(
+                    self.hparams.model,
+                    input_shape=self.example_feature_array.shape,
+                    labels=self.num_classes,
+                    _recursive_=False,
+                )
+            else:
+                self.hparams.model.width = self.example_feature_array.size(2)
+                self.hparams.model.height = self.example_feature_array.size(1)
+                self.hparams.model.n_labels = self.num_classes
+                self.model = get_model(self.hparams.model)
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
@@ -194,12 +195,13 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
-        x, x_len, y, y_len = batch
-
+        if len(batch) == 4:
+            x, x_length, y, y_length = batch
+        elif len(batch) == 2:
+            x, y = batch
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
-
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
@@ -218,10 +220,14 @@ class BaseStreamClassifierModule(ClassifierModule):
     def validation_step(self, batch, batch_idx):
 
         # dataloader provides these four entries per batch
-        x, x_length, y, y_length = batch
+        if len(batch) == 4:
+            x, x_length, y, y_length = batch
+        elif len(batch) == 2:
+            x, y = batch
 
         # INFERENCE
         output = self(x)
+        # print(output)
         y = y.view(-1)
         loss = self.criterion(output, y)
 

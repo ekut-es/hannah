@@ -40,7 +40,7 @@ class Parametrized(Protocol[T]):
     def check(self, value) -> bool:
         ...
 
-    def parameters(self) -> ParameterTree:
+    def parametrization(self) -> ParameterTree:
         ...
 
 
