@@ -209,6 +209,7 @@ run_sca:
   script:
     - set -e
     - poetry run pre-commit install
+    - poetry run pyre || true
     - poetry run pre-commit run -a
   tags:
     - docker
