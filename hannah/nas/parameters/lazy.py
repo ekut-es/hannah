@@ -30,9 +30,6 @@ class Lazy:
 
     @property
     def shape(self):
-        # if hasattr(self, '_output_shape'):
-        #     return self._output_shape
-        # else:
         self._output_shape = self.shape_func(*[inp.shape if hasattr(inp, 'shape') else inp for inp in self.inputs], kwargs=self.kwargs)
         return self._output_shape
 
