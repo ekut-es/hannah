@@ -368,6 +368,7 @@ class TRaxUltraTrailBackend(Callback):
         self.use_acc_statistic_model = use_acc_statistic_model
         self.use_acc_analytical_model = use_acc_analytical_model
         self.use_acc_teda_data = use_acc_teda_data
+        self.enable_file_generation = True
 
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
@@ -435,9 +436,6 @@ class TRaxUltraTrailBackend(Callback):
             )
 
         # execute backend
-        enable_file_generation = (
-            True if self.rtl_simulation or self.postsyn_simulation else False
-        )
         backend = UltraTrailBackend(
             bw_w=self.bw_w,
             bw_b=self.bw_b,
@@ -448,7 +446,7 @@ class TRaxUltraTrailBackend(Callback):
             mac_mode=mac_mode,
             macro_type=self.macro_type,
             classes=classes,
-            enable_file_generation=enable_file_generation,
+            enable_file_generation=self.enable_file_generation,
         )
 
         backend.set_model(
@@ -495,6 +493,7 @@ class TRaxUltraTrailBackend(Callback):
         output = pl_module.model(input)
         self.xs.append(input)
         self.ys.append(output.squeeze())
+        self.enable_file_generation = False
         return self._run(pl_module)
 
     def on_test_epoch_end(self, trainer, pl_module):
