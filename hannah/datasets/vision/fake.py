@@ -24,6 +24,9 @@ from .base import TorchvisionDatasetBase
 
 logger = logging.getLogger(__name__)
 
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+
 
 class FakeDataset(TorchvisionDatasetBase):
 
@@ -35,7 +38,9 @@ class FakeDataset(TorchvisionDatasetBase):
 
     @classmethod
     def splits(cls, config):
-        transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+        transform = (
+            None  # torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+        )
 
         test_data = torchvision.datasets.FakeData(
             size=128,

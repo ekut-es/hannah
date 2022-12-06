@@ -62,7 +62,7 @@ class TorchvisionDatasetBase(VisionDatasetBase):
     def __init__(self, config, dataset, transform=None):
         super().__init__(config)
         self.dataset = dataset
-        self.transform = transform
+        self.transform = transform if transform else A.Compose([ToTensorV2()])
 
     @property
     def class_counts(self):
@@ -70,9 +70,8 @@ class TorchvisionDatasetBase(VisionDatasetBase):
 
     def __getitem__(self, index):
         data, target = self.dataset[index]
-        data = np.array(data) / 255
-        if self.transform:
-            data = self.transform(image=data)["image"]
+        data = np.array(data).astype(np.float32) / 255
+        data = self.transform(image=data)["image"]
         return data, target
 
     def size(self):
