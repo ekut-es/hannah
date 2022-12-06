@@ -37,6 +37,8 @@ from .elasticBatchnorm import ElasticWidthBatchnorm1d
 # This can be previous linears/convs, the skip layer of a previous residual block,
 # and batchnorms placed in-between
 class ElasticChannelHelper(nn.Module):
+    """ """
+
     def __init__(
         self,
         channel_counts: List[int],
@@ -72,6 +74,7 @@ class ElasticChannelHelper(nn.Module):
     # compute channel priorities based on the l1 norm of the weights of whichever
     # target module follows this elastic channel section
     def compute_channel_priorities(self):
+        """ """
         target = self.target
         channel_norms = []
 
@@ -102,6 +105,7 @@ class ElasticChannelHelper(nn.Module):
 
     # set the channel filter list based on the channel priorities and the current channel count
     def set_channel_filter(self):
+        """ """
         # get the amount of channels to be removed from the max and current channel counts
         channel_reduction_amount: int = self.max_channels - self.current_channels
         # start with an empty filter, where every channel passes through, then remove channels by priority
@@ -131,6 +135,16 @@ class ElasticChannelHelper(nn.Module):
     # if is_target is set to true, the module is a target module (filter its input).
     # false -> source module -> filter its output
     def apply_filter_to_module(self, module, is_target: bool):
+        """
+
+        Args:
+          module:
+          is_target: bool:
+          is_target: bool:
+
+        Returns:
+
+        """
         if isinstance(
             module,
             elastic_forward_type,
@@ -169,6 +183,7 @@ class ElasticChannelHelper(nn.Module):
 
     # step down channel count by one channel step
     def step_down_channels(self):
+        """ """
         if self.channel_step + 1 in range(len(self.channel_counts)):
             # if there is still channel steps available, step forward by one. Set new active channel count.
             self.channel_step += 1
@@ -181,6 +196,15 @@ class ElasticChannelHelper(nn.Module):
             return False
 
     def set_channel_step(self, step: int):
+        """
+
+        Args:
+          step: int:
+          step: int:
+
+        Returns:
+
+        """
         if step not in range(len(self.channel_counts)):
             logging.warn(
                 f"Elastic channel helper step target {step} out of range for length {len(self.channel_counts)}. Defaulting to 0."
@@ -194,10 +218,20 @@ class ElasticChannelHelper(nn.Module):
         self.set_channel_filter()
 
     def reset_channel_step(self):
+        """ """
         self.set_channel_step(0)
 
     # set the primary target from an input module. For iterable inputs, extract additional secondary targets
     def set_primary_target(self, target: nn.Module):
+        """
+
+        Args:
+          target: nn.Module:
+          target: nn.Module:
+
+        Returns:
+
+        """
         if hasattr(target, "__iter__"):
             # first, flatten the target, if it is iterable
             target = flatten_module_list(target)
@@ -226,11 +260,29 @@ class ElasticChannelHelper(nn.Module):
 
     # check if a module is valid as a primary target (to compute channel priorities from)
     def is_valid_primary_target(self, module: nn.Module) -> bool:
+        """
+
+        Args:
+          module: nn.Module:
+          module: nn.Module:
+
+        Returns:
+
+        """
         # legacy function
         return ElasticChannelHelper.is_primary_target(module)
 
     # check if a module is valid as a primary target (to compute channel priorities from)
     def is_primary_target(module: nn.Module) -> bool:
+        """
+
+        Args:
+          module: nn.Module:
+          module: nn.Module:
+
+        Returns:
+
+        """
         return isinstance(
             module,
             elastic_forward_type,
@@ -239,6 +291,15 @@ class ElasticChannelHelper(nn.Module):
     # add additional target(s) which must also have their inputs adjusted when
     # stepping down channels
     def add_secondary_targets(self, target: nn.Module):
+        """
+
+        Args:
+          target: nn.Module:
+          target: nn.Module:
+
+        Returns:
+
+        """
         if hasattr(target, "__iter__"):
             # if the input target is iterable, check every item
             target_flat = flatten_module_list(target)
@@ -259,6 +320,15 @@ class ElasticChannelHelper(nn.Module):
     # TODO: logic for adding secondary items to target/source is pretty much a copy - could be cleaned up
     # check a module, add it as a secondary target if its weights would need modification when channel width changes
     def add_secondary_target_item(self, target: nn.Module):
+        """
+
+        Args:
+          target: nn.Module:
+          target: nn.Module:
+
+        Returns:
+
+        """
         if self.is_valid_primary_target(target):
             self.additional_targets.append(target)
         elif isinstance(target, ElasticWidthBatchnorm1d):
@@ -280,6 +350,15 @@ class ElasticChannelHelper(nn.Module):
 
     # add additional source(s) which must have their outputs adjusted if the channel width changes
     def add_sources(self, source: nn.Module):
+        """
+
+        Args:
+          source: nn.Module:
+          source: nn.Module:
+
+        Returns:
+
+        """
         if hasattr(source, "__iter__"):
             # if the input source is iterable, check every item
             source_flat = flatten_module_list(source)
@@ -295,6 +374,15 @@ class ElasticChannelHelper(nn.Module):
 
     # add additional source(s) which must have their outputs adjusted if the channel width changes
     def add_targets(self, target: nn.Module):
+        """
+
+        Args:
+          target: nn.Module:
+          target: nn.Module:
+
+        Returns:
+
+        """
         if hasattr(target, "__iter__"):
             # if the input source is iterable, check every item
             target_flat = flatten_module_list(target)
@@ -311,6 +399,15 @@ class ElasticChannelHelper(nn.Module):
 
     # check a module, add it as a source if its weights would need modification when channel width changes
     def add_source_item(self, source: nn.Module):
+        """
+
+        Args:
+          source: nn.Module:
+          source: nn.Module:
+
+        Returns:
+
+        """
         if self.is_valid_primary_target(source):
             # modules which are valid primary targets (Convs, Linears) are also valid sources
             self.sources.append(source)
@@ -326,6 +423,15 @@ class ElasticChannelHelper(nn.Module):
             )
 
     def discover_target(self, new_target: nn.Module):
+        """
+
+        Args:
+          new_target: nn.Module:
+          new_target: nn.Module:
+
+        Returns:
+
+        """
         # if no target is set yet, take this module as the primary target
         if self.is_valid_primary_target(new_target) and self.target is None:
             self.set_primary_target(new_target)
@@ -333,4 +439,5 @@ class ElasticChannelHelper(nn.Module):
             self.add_secondary_targets(new_target)
 
     def get_available_width_steps(self):
+        """ """
         return len(self.channel_counts)

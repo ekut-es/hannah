@@ -55,30 +55,33 @@ def create(
     validate_on_extracted=True,
     qconfig=None,
 ) -> nn.Module:
-    """
-    The function creates a ofa Model with the given name,
+    """The function creates a ofa Model with the given name,
     labels, input shape, convolutional layers, and other parameters
 
-    :param name: The name of the model
-    :type name: str
-    :param labels: The number of classes in the dataset
-    :type labels: int
-    :param input_shape: the shape of the input tensor
-    :param conv: a list of MajorBlockConfig objects
-    :param min_depth: The minimum depth of the model, defaults to 1
-    :type min_depth: int (optional)
-    :param norm_before_act: If True, the normalization is performed before the
+    Args:
+      name(str): The name of the model
+      labels(int): The number of classes in the dataset
+      input_shape: the shape of the input tensor
+      conv: a list of MajorBlockConfig objects (Default value = [])
+      min_depth(int (optional)): The minimum depth of the model, defaults to 1
+      norm_before_act: If True, the normalization is performed before the
     activation function, defaults to True (optional)
-    :param skew_sampling_distribution: If True, the model will use a skewed sampling
+      skew_sampling_distribution(bool (optional)): If True, the model will use a skewed sampling
     distribution to sample the number of minor blocks in each major block, defaults
     to False
-    :type skew_sampling_distribution: bool (optional)
-    :param dropout: float, default 0.5
-    :type dropout: int
-    :param validate_on_extracted: If True, the model will be validated on the
+      dropout(int): float, default 0.5
+      validate_on_extracted: If True, the model will be validated on the
     extracted data, defaults to True (optional)
-    :param qconfig: the quantization configuration to use
-    :return: A model object.
+      qconfig: the quantization configuration to use (Default value = None)
+      name: str:
+      labels: int:
+      min_depth: int:  (Default value = 1)
+      skew_sampling_distribution: bool:  (Default value = False)
+      dropout: int:  (Default value = 0.5)
+
+    Returns:
+      A model object.
+
     """
 
     # if no orders for the norm operator are specified, fall back to default
@@ -192,6 +195,19 @@ def create_minor_block_sequence(
     qconfig=None,
     # sources: List[nn.Module] = [nn.ModuleList([])],
 ):
+    """
+
+    Args:
+      blocks:
+      in_channels:
+      stride:  (Default value = 1)
+      norm_before_act:  (Default value = True)
+      qconfig:  (Default value = None)
+      # sources: List[nn.Module]:  (Default value = [nn.ModuleList([])])
+
+    Returns:
+
+    """
     next_in_channels = in_channels
     minor_block_sequence = nn.ModuleList([])
     is_first_minor_block = True
@@ -232,6 +248,19 @@ def create_minor_block(
     sources: List[nn.ModuleList] = [nn.ModuleList([])],
     qconfig=None,
 ) -> Tuple[nn.Module, int]:
+    """
+
+    Args:
+      block_config:
+      in_channels: int:
+      stride: int:  (Default value = 1)
+      norm_before_act:  (Default value = True)
+      sources: List[nn.ModuleList]:  (Default value = [nn.ModuleList([])])
+      qconfig:  (Default value = None)
+
+    Returns:
+
+    """
     new_block = None
     # the output channel count is usually stored in block_config.out_channels
     # use it as the default value if available, otherwise it must be set by the specific code handling the target type
@@ -333,6 +362,20 @@ def create_residual_block_1d(
     quant_skip=None,
     # sources: List[nn.ModuleList] = [nn.ModuleList([])],
 ) -> ResBlock1d:
+    """
+
+    Args:
+      blocks:
+      in_channels:
+      stride:  (Default value = 1)
+      norm_before_act:  (Default value = None)
+      qconfig:  (Default value = None)
+      quant_skip:  (Default value = None)
+      # sources: List[nn.ModuleList]:  (Default value = [nn.ModuleList([])])
+
+    Returns:
+
+    """
     minor_blocks = create_minor_block_sequence(
         blocks,
         in_channels,
@@ -358,6 +401,8 @@ def create_residual_block_1d(
 
 
 class OFAModel(nn.Module):
+    """ """
+
     def __init__(
         self,
         conv_layers: nn.ModuleList([]),
@@ -462,6 +507,17 @@ class OFAModel(nn.Module):
         self.full_config = None
 
     def extract_conv(self, conv, general_config, parallel=True, bp=False):
+        """
+
+        Args:
+          conv:
+          general_config:
+          parallel:  (Default value = True)
+          bp:  (Default value = False)
+
+        Returns:
+
+        """
         deletkeys = ["dilation_sizes", "kernel_sizes", "quant"]
         for key in deletkeys:
             if general_config.get(key) is not None:
@@ -488,7 +544,16 @@ class OFAModel(nn.Module):
         return general_config
 
     def extract_config(self, conv, general_config, bp=False):
-        """set all conv attributes in config"""
+        """set all conv attributes in config
+
+        Args:
+          conv:
+          general_config:
+          bp:  (Default value = False)
+
+        Returns:
+
+        """
         if isinstance(conv, ResBlockBase):
             general_config["target"] = "residual"
             if general_config.get("quant_skip") is not None:
@@ -527,6 +592,14 @@ class OFAModel(nn.Module):
         return general_config
 
     def print_config(self, filename):
+        """
+
+        Args:
+          filename:
+
+        Returns:
+
+        """
         cfg = copy.copy(self.full_config)
         cfg = OmegaConf.to_container(cfg)
 
@@ -561,6 +634,14 @@ class OFAModel(nn.Module):
             f.write(d)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         self.last_input = x
         self.current_step = self.current_step + 1
 
@@ -592,6 +673,7 @@ class OFAModel(nn.Module):
         return result
 
     def perform_sequence_discovery(self):
+        """ """
         logging.info("Performing model sequence discovery.")
         # establisch outer channel Helper
         for i in range(len(self.conv_layers) - 1):
@@ -635,6 +717,14 @@ class OFAModel(nn.Module):
         self.elastic_channel_helpers = flatten_module_list(self.elastic_channel_helpers)
 
     def get_post_conv(self, post_block):
+        """
+
+        Args:
+          post_block:
+
+        Returns:
+
+        """
         post_conv = None
         if isinstance(post_block, ResBlock1d):
             post_conv = post_block.get_input_layer()
@@ -645,6 +735,14 @@ class OFAModel(nn.Module):
         return post_conv
 
     def get_pre_conv(self, pre_block):
+        """
+
+        Args:
+          pre_block:
+
+        Returns:
+
+        """
         pre_conv = None
         if isinstance(pre_block, ResBlock1d):
             pre_conv = pre_block.get_output_layer()
@@ -656,6 +754,7 @@ class OFAModel(nn.Module):
 
     # pick a random subnetwork, return the settings used
     def sample_subnetwork(self):
+        """ """
         state = {
             "depth_step": 0,
             "kernel_steps": [],
@@ -723,6 +822,14 @@ class OFAModel(nn.Module):
     # get a step, with distribution biased towards taking less steps, if skew distribution is enabled.
     # currently a sort-of pseudo-geometric distribution, may be replaced with better RNG
     def get_random_step(self, upper_bound: int) -> int:
+        """
+
+        Args:
+          upper_bound: int:
+
+        Returns:
+
+        """
         if upper_bound <= 0:
             logging.warn("requested impossible random step <= 0. defaulting to 0.")
             return 0
@@ -743,6 +850,7 @@ class OFAModel(nn.Module):
 
     # return max available step values
     def get_max_submodel_steps(self):
+        """ """
         max_depth_step = self.sampling_max_depth_step
         kernel_steps = []
         width_steps = []
@@ -779,18 +887,35 @@ class OFAModel(nn.Module):
     # accept a state dict like the one returned in get_max_submodel_steps, return extracted submodel.
     # also sets main model state to this submodel.
     def get_submodel(self, state: dict):
+        """
+
+        Args:
+          state: dict:
+
+        Returns:
+
+        """
         if not self.set_submodel(state):
             return None
         else:
             return self.extract_elastic_depth_sequence(self.active_depth)
 
     def on_warmup_end(self):
+        """ """
         for element in self.elastic_kernel_convs:
             if hasattr(element, "on_warmup_end"):
                 element.on_warmup_end()
 
     # accept a state dict like the one returned in get_max_submodel_steps, sets model state.
     def set_submodel(self, state: dict):
+        """
+
+        Args:
+          state: dict:
+
+        Returns:
+
+        """
         try:
             depth_step = state["depth_step"]
             kernel_steps = state["kernel_steps"]
@@ -843,13 +968,16 @@ class OFAModel(nn.Module):
         return True
 
     def build_validation_model(self):
+        """ """
         self.validation_model = self.extract_elastic_depth_sequence(self.active_depth)
         return self.validation_model
 
     def reset_validation_model(self):
+        """ """
         self.validation_model = None
 
     def get_validation_model_weight_count(self):
+        """ """
         val_not_exist = self.validation_model is None
 
         if val_not_exist:
@@ -868,6 +996,16 @@ class OFAModel(nn.Module):
     def extract_elastic_depth_sequence(
         self, target_depth, quantized=False, clone_mode=False
     ):
+        """
+
+        Args:
+          target_depth:
+          quantized:  (Default value = False)
+          clone_mode:  (Default value = False)
+
+        Returns:
+
+        """
         if target_depth < self.min_depth or target_depth > self.max_depth:
             raise Exception(
                 f"attempted to extract submodel for depth {target_depth} where min: {self.min_depth} and max: {self.max_depth}"
@@ -893,10 +1031,27 @@ class OFAModel(nn.Module):
 
     # return extracted module for a given progressive shrinking depth step
     def extract_module_from_depth_step(self, depth_step) -> nn.Module:
+        """
+
+        Args:
+          depth_step:
+
+        Returns:
+
+        """
         torch_module = self.extract_elastic_depth_sequence(self.max_depth - depth_step)
         return torch_module
 
     def get_elastic_depth_output(self, target_depth=None, quantized=False):
+        """
+
+        Args:
+          target_depth:  (Default value = None)
+          quantized:  (Default value = False)
+
+        Returns:
+
+        """
         if target_depth is None:
             target_depth = self.max_depth
         if self.last_input is None:
@@ -909,6 +1064,7 @@ class OFAModel(nn.Module):
 
     # step all input widths within the model down by one, if possible
     def step_down_all_channels(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_channels",
@@ -916,14 +1072,17 @@ class OFAModel(nn.Module):
         )
 
     def reset_active_depth(self):
+        """ """
         self.active_depth = self.max_depth
 
     # resume: return to the elastic values from before a reset
     def resume_active_elastic_values(self):
+        """ """
         self.resume_kernel_sizes_from_step()
 
     # set the output channel count value based on the current active depth
     def update_output_channel_count(self):
+        """ """
         # the new out channel count is given by the last minor block of the last active major block
         last_active_major_block = self.block_config[: self.active_depth][-1].blocks[-1]
         self.out_channels = last_active_major_block.out_channels
@@ -946,10 +1105,19 @@ class OFAModel(nn.Module):
 
     # return the linear layer which processes the output for the current elastic depth
     def get_output_linear_layer(self, target_depth):
+        """
+
+        Args:
+          target_depth:
+
+        Returns:
+
+        """
         return self.linears[target_depth - self.min_depth]
 
     # step all elastic kernels within the model down by one, if possible
     def step_down_all_kernels(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_kernel_size",
@@ -958,6 +1126,7 @@ class OFAModel(nn.Module):
 
     # reset all kernel sizes to their max value
     def reset_all_kernel_sizes(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_kernel_size",
@@ -966,6 +1135,7 @@ class OFAModel(nn.Module):
 
     # reset all kernel sizes to their max value
     def reset_all_dilation_sizes(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_dilation_size",
@@ -974,6 +1144,7 @@ class OFAModel(nn.Module):
 
     # reset all group sizes to their max value
     def reset_all_group_sizes(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_group_size",
@@ -981,6 +1152,7 @@ class OFAModel(nn.Module):
         )
 
     def reset_all_dsc(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_dscs",
@@ -989,6 +1161,7 @@ class OFAModel(nn.Module):
 
     # step all elastic kernels within the model down by one, if possible
     def step_down_all_dilations(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_dilation_size",
@@ -997,6 +1170,7 @@ class OFAModel(nn.Module):
 
     # step all elastic groups within the model down by one, if possible
     def step_down_all_groups(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_group_size",  # In ChannelHelper implementieren
@@ -1004,6 +1178,7 @@ class OFAModel(nn.Module):
         )
 
     def step_down_all_dsc(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="step_down_dsc",  # In ChannelHelper implementieren
@@ -1012,12 +1187,21 @@ class OFAModel(nn.Module):
 
     # go to a specific kernel step
     def go_to_kernel_step(self, step: int):
+        """
+
+        Args:
+          step: int:
+
+        Returns:
+
+        """
         self.current_kernel_step = step
         self.resume_kernel_sizes_from_step()
 
     # go back to the kernel sizes specified by the current step
     # call after reset_all_kernel_sizes to resume
     def resume_kernel_sizes_from_step(self):
+        """ """
         # save the current step, resetting may also reset the value for some future implementations
         step = self.current_kernel_step
         # reset kernel sizes to start from a known point
@@ -1032,6 +1216,7 @@ class OFAModel(nn.Module):
 
     # reset all kernel sizes to their max value
     def reset_all_widths(self):
+        """ """
         return call_function_from_deep_nested(
             input=self.conv_layers,
             function="reset_channel_step",
@@ -1039,6 +1224,7 @@ class OFAModel(nn.Module):
         )
 
     def progressive_shrinking_add_kernel(self):
+        """ """
         self.sampling_max_kernel_step += 1
         if self.sampling_max_kernel_step >= self.ofa_steps_kernel:
             self.sampling_max_kernel_step -= 1
@@ -1047,6 +1233,7 @@ class OFAModel(nn.Module):
             )
 
     def progressive_shrinking_add_dilation(self):
+        """ """
         self.sampling_max_dilation_step += 1
         if self.sampling_max_dilation_step >= self.ofa_steps_dilation:
             self.sampling_max_dilation_step -= 1
@@ -1055,6 +1242,7 @@ class OFAModel(nn.Module):
             )
 
     def progressive_shrinking_add_depth(self):
+        """ """
         self.sampling_max_depth_step += 1
         if self.sampling_max_depth_step >= self.ofa_steps_depth:
             self.sampling_max_depth_step -= 1
@@ -1063,6 +1251,7 @@ class OFAModel(nn.Module):
             )
 
     def progressive_shrinking_add_group(self):
+        """ """
         self.sampling_max_grouping_step += 1
         if self.sampling_max_grouping_step >= self.ofa_steps_grouping:
             self.sampling_max_grouping_step -= 1
@@ -1071,6 +1260,7 @@ class OFAModel(nn.Module):
             )
 
     def progressive_shrinking_add_dsc(self):
+        """ """
         self.sampling_max_dsc_step += 1
         if self.sampling_max_dsc_step >= self.ofa_steps_dsc:
             self.sampling_max_dsc_step -= 1
@@ -1079,6 +1269,7 @@ class OFAModel(nn.Module):
             )
 
     def progressive_shrinking_compute_channel_priorities(self):
+        """ """
         call_function_from_deep_nested(
             input=self.conv_layers,
             function="compute_channel_priorities",
@@ -1086,6 +1277,7 @@ class OFAModel(nn.Module):
         )
 
     def progressive_shrinking_add_width(self):
+        """ """
         self.sampling_max_width_step += 1
         if self.sampling_max_width_step >= self.ofa_steps_width:
             self.sampling_max_width_step -= 1
@@ -1094,6 +1286,7 @@ class OFAModel(nn.Module):
             )
 
     def progressive_shrinking_disable_sampling(self):
+        """ """
         self.sampling_max_kernel_step = 0
         self.sampling_max_depth_step = 0
         self.sampling_max_width_step = 0
@@ -1101,6 +1294,7 @@ class OFAModel(nn.Module):
         self.sampling_max_dsc_step = 0
 
     def reset_shrinking(self):
+        """ """
         self.reset_validation_model()
         self.reset_all_widths()
         self.reset_all_kernel_sizes()
@@ -1111,6 +1305,14 @@ class OFAModel(nn.Module):
 
 
 def rebuild_extracted_blocks(blocks):
+    """
+
+    Args:
+      blocks:
+
+    Returns:
+
+    """
     out_modules = nn.ModuleList([])
 
     if blocks is None:

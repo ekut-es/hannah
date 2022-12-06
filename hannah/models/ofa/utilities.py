@@ -26,11 +26,29 @@ import torch.nn as nn
 
 # Conv1d with automatic padding for the set kernel size
 def conv1d_auto_padding(conv1d: nn.Conv1d):
+    """
+
+    Args:
+      conv1d: nn.Conv1d:
+      conv1d: nn.Conv1d:
+
+    Returns:
+
+    """
     conv1d.padding = conv1d_get_padding(conv1d.kernel_size[0])
     return conv1d
 
 
 def conv1d_get_padding(kernel_size, dilation=1):
+    """
+
+    Args:
+      kernel_size:
+      dilation: (Default value = 1)
+
+    Returns:
+
+    """
     # check type of kernel_size
     if isinstance(kernel_size, tuple):
         kernel_size = kernel_size[0]
@@ -47,6 +65,15 @@ def conv1d_get_padding(kernel_size, dilation=1):
 
 # from ofa/utils/common_tools
 def sub_filter_start_end(kernel_size, sub_kernel_size):
+    """
+
+    Args:
+      kernel_size:
+      sub_kernel_size:
+
+    Returns:
+
+    """
     center = kernel_size // 2
     dev = sub_kernel_size // 2
     start, end = center - dev, center + dev + 1
@@ -57,6 +84,15 @@ def sub_filter_start_end(kernel_size, sub_kernel_size):
 # flatten nested iterable modules, usually over a ModuleList. nn.Sequential is
 # also an iterable module and a valid input.
 def flatten_module_list(modules: nn.Module) -> nn.Module:
+    """
+
+    Args:
+      modules: nn.Module:
+      modules: nn.Module:
+
+    Returns:
+
+    """
     if not hasattr(modules, "__iter__"):
         if isinstance(modules, nn.Module):
             # if the input is non-iterable and is already a module, it can be returned as a list of one element
@@ -86,6 +122,14 @@ def flatten_module_list(modules: nn.Module) -> nn.Module:
 
 # return a single module from an input moduleList
 def module_list_to_module(module_list):
+    """
+
+    Args:
+      module_list:
+
+    Returns:
+
+    """
     # if the input is a Sequential module it will be iterable, but can be returned as is.
     if isinstance(module_list, nn.Sequential):
         return module_list
@@ -110,6 +154,17 @@ def module_list_to_module(module_list):
 # for modules: both ModuleList and Sequential are iterable, so this should be
 # able to descend into any module substructures
 def call_function_from_deep_nested(input, function, type_selection: type = None):
+    """
+
+    Args:
+      input:
+      function:
+      type_selection: type:  (Default value = None)
+      type_selection: type:  (Default value = None)
+
+    Returns:
+
+    """
     if input is None:
         return False
     # print(".")
@@ -144,6 +199,16 @@ def call_function_from_deep_nested(input, function, type_selection: type = None)
 # recurse like call_function_from_deep_nested;
 # return a list of every found object of <type>
 def get_instances_from_deep_nested(input, type_selection: type = None):
+    """
+
+    Args:
+      input:
+      type_selection: type:  (Default value = None)
+      type_selection: type:  (Default value = None)
+
+    Returns:
+
+    """
     results = []
     if input is None:
         return results
@@ -168,6 +233,16 @@ def get_instances_from_deep_nested(input, type_selection: type = None):
 
 
 def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter):
+    """
+
+    Args:
+      weights:
+      in_channel_filter:
+      out_channel_filter:
+
+    Returns:
+
+    """
     # out_channel count will be length in dim 0
     out_channel_count = len(weights)
     # in_channel count will be length in second dim
@@ -185,6 +260,15 @@ def filter_primary_module_weights(weights, in_channel_filter, out_channel_filter
 
 
 def filter_single_dimensional_weights(weights, channel_filter):
+    """
+
+    Args:
+      weights:
+      channel_filter:
+
+    Returns:
+
+    """
     if weights is None:
         return None
     if all(channel_filter):
@@ -206,6 +290,15 @@ def filter_single_dimensional_weights(weights, channel_filter):
 
 
 def make_parameter(t: torch.Tensor) -> nn.Parameter:
+    """
+
+    Args:
+      t: torch.Tensor:
+      t: torch.Tensor:
+
+    Returns:
+
+    """
     if t is None:
         return t
     if isinstance(t, nn.Parameter):
@@ -218,17 +311,19 @@ def make_parameter(t: torch.Tensor) -> nn.Parameter:
 
 
 def adjust_weight_if_needed(module, kernel=None, groups=None):
-    """
-    Adjust the weight if the adjustment is needded. This means, if the kernel does not have the size of
+    """Adjust the weight if the adjustment is needded. This means, if the kernel does not have the size of
     (out_channel, in_channel / group, kernel).
 
-    :param kernel: the kernel that should be checked and adjusted if needed. If None module.weight.data will be used
-    :param grouping: value of the conv, if None module.groups will be used
-    :param module: the conv
-
+    Args:
+      kernel: the kernel that should be checked and adjusted if needed. If None module.weight.data will be used (Default value = None)
+      grouping: value of the conv, if None module.groups will be used
+      module: the conv
     :throws: RuntimeError if there is no last_grouping_param for comporing current group value to past group value
-
     returns (kernel, is adjusted) (adjusted if needed) otherwise throws a RuntimeError
+      groups: (Default value = None)
+
+    Returns:
+
     """
     if kernel is None:
         kernel = module.weigth.data
@@ -259,13 +354,17 @@ def adjust_weight_if_needed(module, kernel=None, groups=None):
 
 
 def is_weight_adjusting_needed(weights, input_channels, groups):
-    """
-    Checks if a weight adjustment is needed
+    """Checks if a weight adjustment is needed
     Requirement: weight.shape[1] must be input_channels/groups
     true: weight adjustment is needed
-    :param weights: the weights that needs to be checked
-    :param input_channels: Input Channels of the Convolution Module
-    :param groups: Grouping Param of the Convolution Module
+
+    Args:
+      weights: the weights that needs to be checked
+      input_channels: Input Channels of the Convolution Module
+      groups: Grouping Param of the Convolution Module
+
+    Returns:
+
     """
     current_weight_dimension = weights.shape[1]
     target_weight_dimension = input_channels // groups
@@ -273,11 +372,15 @@ def is_weight_adjusting_needed(weights, input_channels, groups):
 
 
 def get_target_weight(weights, input_channels, groups):
-    """
-    Gives the targeted weight shape (out_channel, in_channel // groups, kernel)
-    :param weights: the weights that needs to be checked
-    :param input_channels: Input Channels of the Convolution Module
-    :param groups: Grouping Param of the Convolution Module
+    """Gives the targeted weight shape (out_channel, in_channel // groups, kernel)
+
+    Args:
+      weights: the weights that needs to be checked
+      input_channels: Input Channels of the Convolution Module
+      groups: Grouping Param of the Convolution Module
+
+    Returns:
+
     """
     target_shape = list(weights.shape)
     target_shape[1] = input_channels // groups
@@ -287,14 +390,18 @@ def get_target_weight(weights, input_channels, groups):
 def prepare_kernel_for_depthwise_separable_convolution(
     model, kernel, bias, in_channels
 ):
-    """
-    Prepares the kernel for depthwise separable convolution (step 1 of DSC).
+    """Prepares the kernel for depthwise separable convolution (step 1 of DSC).
     This means setting groups = inchannels and outchannels = k * inchannels.
-    :param: model: the convolution model, that uses dsc. Used for creating the Channelfilters
-    :param: kernel: Kernel for DSC
-    :param: bias: Bias for DSC
-    :param: in_channels: Input Channels of the Kernel and Model
-    :returns: (kernel, bias) Tuple
+
+    Args:
+      model:
+      kernel:
+      bias:
+      in_channels:
+
+    Returns:
+      : kernel, bias) Tuple
+
     """
     # Create Filters for Depthwise Separable Convolution of input and output channels
     depthwise_output_filter = create_channel_filter(
@@ -327,10 +434,16 @@ def prepare_kernel_for_depthwise_separable_convolution(
 
 
 def prepare_kernel_for_pointwise_convolution(kernel, grouping):
-    """
-    Prepares the kernel for pointwise convolution (step 2 of DSC).
+    """Prepares the kernel for pointwise convolution (step 2 of DSC).
     This means setting the kernel window to 1x1.
     So a kernel with output_channel, input_channel / groups, kernel will be set to (_,_,1)
+
+    Args:
+      kernel:
+      grouping:
+
+    Returns:
+
     """
     # use 1x1 kernel
     new_kernel = kernel
@@ -343,11 +456,17 @@ def prepare_kernel_for_pointwise_convolution(kernel, grouping):
 
 
 def adjust_weights_for_grouping(weights, input_divided_by):
-    """
-    Adjusts the Weights for the Forward of the Convulution
+    """Adjusts the Weights for the Forward of the Convulution
     Shape(outchannels, inchannels / group, kW)
     weight – filters of shape (out_channels , in_channels / groups , kW)
     input_divided_by
+
+    Args:
+      weights:
+      input_divided_by:
+
+    Returns:
+
     """
     channels_per_group = weights.shape[1] // input_divided_by
 
@@ -367,9 +486,14 @@ def adjust_weights_for_grouping(weights, input_divided_by):
 
 
 def get_kernel_for_dsc(kernel):
-    """
-    Part of DSC (Step 2, pointwise convolution)
+    """Part of DSC (Step 2, pointwise convolution)
     kernel with output_channel, input_channel / groups, kernel will be set to (_,_,1)
+
+    Args:
+      kernel:
+
+    Returns:
+
     """
     return kernel[:, :, 0:1]
 
@@ -379,6 +503,16 @@ def get_kernel_for_dsc(kernel):
 def get_channel_filter(
     current_channel_size, reduced_target_channel_size, channel_priority_list
 ):
+    """
+
+    Args:
+      current_channel_size:
+      reduced_target_channel_size:
+      channel_priority_list:
+
+    Returns:
+
+    """
     # get the amount of channels to be removed from the max and current channel counts
     channel_reduction_amount: int = current_channel_size - reduced_target_channel_size
     # start with an empty filter, where every channel passes through, then remove channels by priority
@@ -401,6 +535,20 @@ def create_channel_filter(
     reduced_target_channel_size,
     is_output_filter: bool = True,
 ):
+    """
+
+    Args:
+      module: nn.Module:
+      kernel:
+      current_channel:
+      reduced_target_channel_size:
+      is_output_filter: bool:  (Default value = True)
+      module: nn.Module:
+      is_output_filter: bool:  (Default value = True)
+
+    Returns:
+
+    """
     # create one channel filter
     channel_index = 1 if is_output_filter else 0
     channel_filter_priorities = compute_channel_priorities(
@@ -415,6 +563,18 @@ def create_channel_filter(
 # compute channel priorities based on the l1 norm of the weights of whichever
 # target module follows this elastic channel section
 def compute_channel_priorities(module: nn.Module, kernel, channel_index: int = 0):
+    """
+
+    Args:
+      module: nn.Module:
+      kernel:
+      channel_index: int:  (Default value = 0)
+      module: nn.Module:
+      channel_index: int:  (Default value = 0)
+
+    Returns:
+
+    """
     channel_norms = []
 
     if kernel is None:

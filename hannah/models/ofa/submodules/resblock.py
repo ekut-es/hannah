@@ -31,6 +31,8 @@ from .elasticquantkernelconv import ElasticQuantConvBnReLu1d
 
 
 class ResBlockBase(nn.Module):
+    """ """
+
     def __init__(
         self,
         in_channels,
@@ -50,6 +52,14 @@ class ResBlockBase(nn.Module):
         self.skip = nn.Identity()
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         residual = x
         # do not use self.apply_skip for this: a skip connection may still be
         # added to support elastic width
@@ -72,11 +82,14 @@ class ResBlockBase(nn.Module):
         return x
 
     def get_nested_modules(self):
+        """ """
         return nn.ModuleList([self.blocks, self.skip, self.act])
 
 
 # residual block with a 1d skip connection
 class ResBlock1d(ResBlockBase):
+    """ """
+
     def __init__(
         self,
         in_channels,
@@ -147,24 +160,35 @@ class ResBlock1d(ResBlockBase):
         # the skip connection is required! it will be needed if the width is modified later
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         output = super().forward(x)
         if self.qconfig is not None:
             return self.activation_post_process(output)
         return output
 
     def get_input_layer(self):
+        """ """
         input = nn.ModuleList()
         input.append(flatten_module_list(self.skip)[0])
         input.append(flatten_module_list(self.blocks)[0])
         return input
 
     def get_output_layer(self):
+        """ """
         output = nn.ModuleList()
         output.append(flatten_module_list(self.skip)[-1])
         output.append(flatten_module_list(self.blocks)[-1])
         return output
 
     def create_internal_channelhelper(self):
+        """ """
         output = nn.ModuleList()
 
         for idx in range(len(self.blocks) - 1):

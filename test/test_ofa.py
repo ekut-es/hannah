@@ -43,7 +43,7 @@ def test_elastic_conv1d_quant():
         dscs=[1],
     )
     loss_func = nn.MSELoss()
-    optimizer = torch.optim.SGD(conv.parameters(), lr=0.1)
+    optimizer = torch.optim.SGD(conv.parameters(), lr=0.01)
 
     res = conv(input)
     orig_loss = loss_func(res, output)
