@@ -38,27 +38,20 @@ class FakeDataset(TorchvisionDatasetBase):
 
     @classmethod
     def splits(cls, config):
-        transform = (
-            None  # torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-        )
-
         test_data = torchvision.datasets.FakeData(
             size=128,
             image_size=(3, cls.resolution, cls.resolution),
             num_classes=config.num_classes,
-            transform=transform,
         )
         val_data = torchvision.datasets.FakeData(
             size=128,
             image_size=(3, cls.resolution, cls.resolution),
             num_classes=config.num_classes,
-            transform=transform,
         )
         train_data = torchvision.datasets.FakeData(
             size=512,
             image_size=(3, cls.resolution, cls.resolution),
             num_classes=config.num_classes,
-            transform=transform,
         )
 
         return cls(config, train_data), cls(config, val_data), cls(config, test_data)
