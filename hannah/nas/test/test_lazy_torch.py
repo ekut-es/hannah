@@ -2,6 +2,7 @@ from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.parameters.lazy import Lazy
 from hannah.nas.parameters.parametrize import parametrize
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
+from hannah.nas.parameters.iterators import RangeIterator
 from hannah.nas.expressions.shapes import conv2d_shape
 from hannah.nas.expressions.conditions import GECondition
 
@@ -11,22 +12,6 @@ import torch
 conv2d = Lazy(nn.Conv2d, shape_func=conv2d_shape)
 relu = Lazy(nn.ReLU)
 linear = Lazy(nn.Linear)
-
-
-class RangeIterator:
-    def __init__(self, parameter, instance=False) -> None:
-        self.parameter = parameter
-        self.instance = instance
-        self.counter = parameter.min - 1
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.counter += 1
-        if self.counter <= (self.parameter.current_value if self.instance else self.parameter.max):
-            return self.counter
-        raise StopIteration
 
 
 @parametrize
