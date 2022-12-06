@@ -70,7 +70,7 @@ test_python_38:
 
 test_tvm:
   stage: test
-  image: python:3.10
+  image: ubuntu:22.04
   script:
     - set -e
     - apt-get install -y llvm-dev libclang-dev
