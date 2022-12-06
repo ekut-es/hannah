@@ -322,7 +322,9 @@ class BaseStreamClassifierModule(ClassifierModule):
                     if hasattr(logger.experiment, "add_audio"):
                         logger.experiment.add_audio(
                             f"sample{self.logged_samples}_{class_names[prediction[num]]}_{class_names[y[num]]}",
-                            x[num],
+                            x[num].permute(
+                                1, 0
+                            ),  # Need to permute for tensorboard #FIXME: test with other loggers
                             self.current_epoch,
                             self.test_set.samplingrate,
                         )
