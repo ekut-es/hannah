@@ -10,14 +10,20 @@
             "name": "hannah.nas",
             "type": "python",
             "request": "launch",
-            "module": "hannah.nas",
+            "module": "hannah.tools.train",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "module.batch_size=8",
-                "trainer.max_epochs=2",
-                "nas.budget=5",
-                "module.num_workers=8"
+                "nas=random_nas",
+                "model=lazy_convnet",
+                "module=image_classifier",
+                "dataset=cifar10",
+                "features=identity",
+                "module.batch_size=32",
+                "trainer.max_epochs=15",
+                "nas.budget=3",
+                "module.num_workers=8",
+                "~normalizer"
             ]
         },
         {
@@ -33,9 +39,23 @@
             "name": "standard",
             "type": "python",
             "request": "launch",
-            "module": "hannah.train",
+            "module": "hannah.tools.train",
             "args": [
                 "trainer.limit_train_batches=1.0",
+                "trainer.max_epochs=2",
+                "model=conv-net-trax",
+                "normalizer=fixedpoint",
+                "compression=pruning_only"
+            ]
+        },
+
+        {
+            "name": "AgingEvolution",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.tools.train",
+            "args": [
+                "nas=aging_evolution_nas",
                 "trainer.max_epochs=2",
                 "model=conv-net-trax",
                 "normalizer=fixedpoint",
@@ -77,8 +97,6 @@
                 "backend.macro_type=RTL",
                 "backend.backend_dir=/local/wernerju/tc-resnet8-accelerator",
                 "backend.teda_dir=/local/wernerju/teda"
-            ]
-        }
             ]
         },
         {
