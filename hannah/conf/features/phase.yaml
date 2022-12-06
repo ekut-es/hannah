@@ -1,0 +1,6 @@
+
+
+_target_: hannah.features.PhaseSpectrogram
+n_fft: 8
+win_length: 8
+hop_length: 8

@@ -1,0 +1,18 @@
+
+
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.directional.BeamformingDataset
+dataset: directional_beamforming
+
+test_pct: 0.1
+dev_pct: 0.1
+
+input_length: 32000
+samplingrate: 16000
+
+mics: ["left", "right", ]
+
+num_variants: 25
+
+clear_download: False
+download_folder: ${dataset.data_folder}/downloads
