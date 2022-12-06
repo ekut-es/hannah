@@ -185,7 +185,10 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
     for key, param in parameter.items():
         if not include_empty and not isinstance(param, Parameter):
             continue
-        key_list = key.split(".")
+        if key is None:
+            key_list = [param.name]
+        else:
+            key_list = key.split(".")
         if flatten:
             current_param_branch = {}
         else:
