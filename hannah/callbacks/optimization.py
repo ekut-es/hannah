@@ -29,7 +29,7 @@ monitor_type = Union[Iterable[Mapping[str, Any]], Mapping[str, Any], Iterable[st
 
 logger = logging.getLogger(__name__)
 
-monitor_type = Union[Iterable[Mapping[str, any]], Mapping[str, any], Iterable[str], str]
+monitor_type = Union[Iterable[Mapping[str, Any]], Mapping[str, Any], Iterable[str], str]
 
 
 class HydraOptCallback(Callback):
