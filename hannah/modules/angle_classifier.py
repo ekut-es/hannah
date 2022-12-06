@@ -24,36 +24,20 @@ from abc import abstractmethod
 from typing import Dict, Optional, Union
 
 import numpy as np
-import tabulate
 import torch
 import torch.utils.data as data
-import torchvision
 from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
 from sklearn.metrics import auc
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
-from torchmetrics import (
-    AUC,
-    AUROC,
-    ROC,
-    Accuracy,
-    ConfusionMatrix,
-    F1Score,
-    Metric,
-    MetricCollection,
-    Precision,
-    Recall,
-)
+from torchmetrics import Metric, MetricCollection
 
 from hannah.datasets.base import ctc_collate_fn
 
-from ..datasets import SpeechDataset
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import set_deterministic
-from .base import ClassifierModule
 from .config_utils import get_loss_function, get_model
-from .metrics import Error
 
 msglogger = logging.getLogger(__name__)
 
