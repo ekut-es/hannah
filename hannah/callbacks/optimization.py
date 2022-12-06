@@ -33,6 +33,8 @@ monitor_type = Union[Iterable[Mapping[str, any]], Mapping[str, any], Iterable[st
 
 
 class HydraOptCallback(Callback):
+    """ """
+
     def __init__(self, monitor: monitor_type = ["val_loss"]):
         self.values = {}
         self.val_values = {}
@@ -49,6 +51,14 @@ class HydraOptCallback(Callback):
             )
 
     def _extract_monitor(self, monitor):
+        """
+
+        Args:
+          monitor:
+
+        Returns:
+
+        """
         if isinstance(monitor, Mapping):
             self._add_monitor_mapping(monitor)
         elif isinstance(monitor, Iterable):
@@ -63,6 +73,14 @@ class HydraOptCallback(Callback):
             self.directions.append(1)
 
     def _add_monitor_mapping(self, monitor):
+        """
+
+        Args:
+          monitor:
+
+        Returns:
+
+        """
         self.monitor.append(monitor["metric"])
         if "direction" in monitor:
             direction = monitor["direction"]
@@ -75,6 +93,15 @@ class HydraOptCallback(Callback):
             self.directions.append(-1.0)
 
     def on_test_end(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
@@ -93,6 +120,15 @@ class HydraOptCallback(Callback):
                 self.values[monitor] = callback_metrics[monitor] * direction
 
     def on_validation_end(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
@@ -114,12 +150,22 @@ class HydraOptCallback(Callback):
                     pass
 
     def test_result(self):
+        """ """
         return self.test_values
 
     def val_result(self):
+        """ """
         return self.val_values
 
     def result(self, dict=False):
+        """
+
+        Args:
+          dict:  (Default value = False)
+
+        Returns:
+
+        """
 
         return_values = {}
         for key, value in self.values.items():

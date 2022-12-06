@@ -24,6 +24,15 @@ from torch.autograd import Variable
 
 
 def truncated_normal(tensor, std_dev=0.01):
+    """
+
+    Args:
+      tensor:
+      std_dev: (Default value = 0.01)
+
+    Returns:
+
+    """
     tensor.zero_()
     tensor.normal_(std=std_dev)
     while torch.sum(torch.abs(tensor) > 2 * std_dev) > 0:
@@ -33,6 +42,8 @@ def truncated_normal(tensor, std_dev=0.01):
 
 
 class SpeechResModel(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
         n_labels = config["n_labels"]
@@ -66,6 +77,14 @@ class SpeechResModel(nn.Module):
         self.output = nn.Linear(n_maps, n_labels)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = x.unsqueeze(1)
         for i in range(self.n_layers + 1):
             y = F.relu(getattr(self, "conv{}".format(i))(x))
@@ -86,6 +105,8 @@ class SpeechResModel(nn.Module):
 
 
 class SpeechModel(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
         n_labels = config["n_labels"]
@@ -152,6 +173,14 @@ class SpeechModel(nn.Module):
         self.dropout = nn.Dropout(dropout_prob)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = F.relu(self.conv1(x.unsqueeze(1)))  # shape: (batch, channels, i1, o1)
         x = self.dropout(x)
         x = self.pool1(x)

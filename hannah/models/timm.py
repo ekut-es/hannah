@@ -33,12 +33,22 @@ logger = logging.getLogger(__name__)
 
 
 class DefaultAnomalyDetector(nn.Module):
+    """ """
+
     def __init__(self, latent_shape):
         self.pooling = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten()
         self.linear = nn.LazyLinear(1)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.pooling(x)
         x = self.flatten(x)
         x = self.linear(x)
@@ -48,15 +58,26 @@ class DefaultAnomalyDetector(nn.Module):
 
 
 class DefaultClassifierHead(nn.Module):
+    """ """
+
     def __init__(self, latent_shape, num_classes):
         super().__init__()
 
-
-        self.pooling = nn.AdaptiveAvgPool2d((1, 1)) if len(latent_shape) == 4 else nn.Identity()
+        self.pooling = (
+            nn.AdaptiveAvgPool2d((1, 1)) if len(latent_shape) == 4 else nn.Identity()
+        )
         self.flatten = nn.Flatten()
         self.linear = nn.LazyLinear(num_classes)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          x (torch.Tensor):
+
+        Returns:
+          Resulting torch.Tensor after applying classification
+        """
         x = self.pooling(x)
         x = self.flatten(x)
         x = self.linear(x)
@@ -64,6 +85,8 @@ class DefaultClassifierHead(nn.Module):
 
 
 class DefaultProjectionHead(nn.Module):
+    """Default projection head for semi supervised classification learning"""
+
     def __init__(self, latent_shape, hidden_dim, output_dim):
         super().__init__()
 
@@ -74,7 +97,15 @@ class DefaultProjectionHead(nn.Module):
         self.relu = nn.LeakyReLU()
         self.linear2 = nn.LazyLinear(output_dim)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward function for default Projection Head
+
+        Args:
+          x: Input tensor
+
+        Returns:
+            output tensor
+        """
         x = self.pooling(x)
         x = self.flatten(x)
         x = self.linear1(x)
@@ -89,8 +120,8 @@ class DefaultDecoderHead(nn.Module):
         """Default Decoder Head for autoencoders using TransposedConv2D
 
         Args:
-            latent_shape (Tuple): Shape (CxHxW) of the latent representation of the autoencoder
-            input_shape (Tuple): Shape (CxHxW) of the reconstructed image
+        latent_shape(Tuple): Shape (CxHxW) of the latent representation of the autoencoder
+        input_shape(Tuple): Shape (CxHxW) of the reconstructed image
         """
         super().__init__()
 
@@ -147,6 +178,14 @@ class DefaultDecoderHead(nn.Module):
         self.layers = nn.Sequential(*upscale)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         return self.layers(x)
 
 
@@ -154,6 +193,8 @@ ModelResult = namedtuple("ModelResult", ["latent", "decoded", "projection", "log
 
 
 class TimmModel(nn.Module):
+    """ """
+
     def __init__(
         self,
         name: str,
@@ -212,6 +253,15 @@ class TimmModel(nn.Module):
         self,
         x: torch.Tensor,
     ) -> torch.Tensor:
+        """
+
+        Args:
+          x: torch.Tensor:
+          x: torch.Tensor:
+
+        Returns:
+
+        """
 
         latent = self.encoder(x)
 

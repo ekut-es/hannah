@@ -29,6 +29,8 @@ from .loss import ComputeLoss
 
 
 class FasterRCNN(torch.nn.Module):
+    """ """
+
     def __init__(
         self,
         name="faster-rcnn-resnet50",
@@ -49,9 +51,29 @@ class FasterRCNN(torch.nn.Module):
         self.model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
     def forward(self, x, y=None):
+        """
+
+        Args:
+          x:
+          y: (Default value = None)
+
+        Returns:
+
+        """
         return self.model(x, y)
 
     def transformOutput(self, cocoGt, output, x, y):
+        """
+
+        Args:
+          cocoGt:
+          output:
+          x:
+          y:
+
+        Returns:
+
+        """
         retval = []
 
         for boxes, labels, scores, x_elem, y_img in zip(
@@ -80,6 +102,8 @@ class FasterRCNN(torch.nn.Module):
 
 
 class UltralyticsYolo(torch.nn.Module):
+    """ """
+
     def __init__(
         self,
         name="yolov5s",
@@ -110,6 +134,15 @@ class UltralyticsYolo(torch.nn.Module):
             param.requires_grad = True
 
     def _transformAnns(self, x, y):
+        """
+
+        Args:
+          x:
+          y:
+
+        Returns:
+
+        """
         retval = []
 
         for x_elem, y_elem in zip(x, y):
@@ -139,6 +172,15 @@ class UltralyticsYolo(torch.nn.Module):
         return retval
 
     def forward(self, x, y=None):
+        """
+
+        Args:
+          x:
+          y: (Default value = None)
+
+        Returns:
+
+        """
         if isinstance(x, (tuple, list)):
             retval = list()
             for x_elem in x:
@@ -172,10 +214,29 @@ class UltralyticsYolo(torch.nn.Module):
             return self.model(x)
 
     def train(self, mode=True):
+        """
+
+        Args:
+          mode: (Default value = True)
+
+        Returns:
+
+        """
         super().train(mode)
         self.model.nms(not mode)
 
     def transformOutput(self, cocoGt, output, x, y):
+        """
+
+        Args:
+          cocoGt:
+          output:
+          x:
+          y:
+
+        Returns:
+
+        """
         retval = []
 
         for out, x_elem, y_img in zip(output, x, y):

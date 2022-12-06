@@ -141,6 +141,8 @@ class ElasticChannelHelper(nn.Module):
           module:
           is_target: bool:
           is_target: bool:
+          is_target: bool:
+          is_target: bool:
 
         Returns:
 
@@ -201,6 +203,8 @@ class ElasticChannelHelper(nn.Module):
         Args:
           step: int:
           step: int:
+          step: int:
+          step: int:
 
         Returns:
 
@@ -226,6 +230,8 @@ class ElasticChannelHelper(nn.Module):
         """
 
         Args:
+          target: nn.Module:
+          target: nn.Module:
           target: nn.Module:
           target: nn.Module:
 
@@ -265,6 +271,8 @@ class ElasticChannelHelper(nn.Module):
         Args:
           module: nn.Module:
           module: nn.Module:
+          module: nn.Module:
+          module: nn.Module:
 
         Returns:
 
@@ -277,6 +285,8 @@ class ElasticChannelHelper(nn.Module):
         """
 
         Args:
+          module: nn.Module:
+          module: nn.Module:
           module: nn.Module:
           module: nn.Module:
 
@@ -294,6 +304,8 @@ class ElasticChannelHelper(nn.Module):
         """
 
         Args:
+          target: nn.Module:
+          target: nn.Module:
           target: nn.Module:
           target: nn.Module:
 
@@ -323,6 +335,8 @@ class ElasticChannelHelper(nn.Module):
         """
 
         Args:
+          target: nn.Module:
+          target: nn.Module:
           target: nn.Module:
           target: nn.Module:
 
@@ -355,6 +369,8 @@ class ElasticChannelHelper(nn.Module):
         Args:
           source: nn.Module:
           source: nn.Module:
+          source: nn.Module:
+          source: nn.Module:
 
         Returns:
 
@@ -377,6 +393,8 @@ class ElasticChannelHelper(nn.Module):
         """
 
         Args:
+          target: nn.Module:
+          target: nn.Module:
           target: nn.Module:
           target: nn.Module:
 
@@ -404,6 +422,8 @@ class ElasticChannelHelper(nn.Module):
         Args:
           source: nn.Module:
           source: nn.Module:
+          source: nn.Module:
+          source: nn.Module:
 
         Returns:
 
@@ -426,6 +446,8 @@ class ElasticChannelHelper(nn.Module):
         """
 
         Args:
+          new_target: nn.Module:
+          new_target: nn.Module:
           new_target: nn.Module:
           new_target: nn.Module:
 

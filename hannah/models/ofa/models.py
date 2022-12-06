@@ -63,10 +63,10 @@ def create(
       labels(int): The number of classes in the dataset
       input_shape: the shape of the input tensor
       conv: a list of MajorBlockConfig objects (Default value = [])
-      min_depth(int (optional)): The minimum depth of the model, defaults to 1
+      min_depth(int (optional): The minimum depth of the model, defaults to 1
       norm_before_act: If True, the normalization is performed before the
     activation function, defaults to True (optional)
-      skew_sampling_distribution(bool (optional)): If True, the model will use a skewed sampling
+      skew_sampling_distribution(bool (optional): If True, the model will use a skewed sampling
     distribution to sample the number of minor blocks in each major block, defaults
     to False
       dropout(int): float, default 0.5
@@ -78,9 +78,19 @@ def create(
       min_depth: int:  (Default value = 1)
       skew_sampling_distribution: bool:  (Default value = False)
       dropout: int:  (Default value = 0.5)
+      name: str:
+      labels: int:
+      min_depth: int:  (Default value = 1)
+      skew_sampling_distribution: bool:  (Default value = False)
+      dropout: int:  (Default value = 0.5)
+      name: str:
+      labels: int:
+      min_depth: int:  (Default value = 1)
+      skew_sampling_distribution: bool:  (Default value = False)
+      dropout: int:  (Default value = 0.5)
 
     Returns:
-      A model object.
+      : A model object.
 
     """
 
@@ -200,9 +210,11 @@ def create_minor_block_sequence(
     Args:
       blocks:
       in_channels:
-      stride:  (Default value = 1)
-      norm_before_act:  (Default value = True)
-      qconfig:  (Default value = None)
+      stride: (Default value = 1)
+      norm_before_act: (Default value = True)
+      qconfig: (Default value = None)
+      # sources: List[nn.Module]:  (Default value = [nn.ModuleList([])])
+      # sources: List[nn.Module]:  (Default value = [nn.ModuleList([])])
       # sources: List[nn.Module]:  (Default value = [nn.ModuleList([])])
 
     Returns:
@@ -254,9 +266,15 @@ def create_minor_block(
       block_config:
       in_channels: int:
       stride: int:  (Default value = 1)
-      norm_before_act:  (Default value = True)
+      norm_before_act: (Default value = True)
       sources: List[nn.ModuleList]:  (Default value = [nn.ModuleList([])])
-      qconfig:  (Default value = None)
+      qconfig: (Default value = None)
+      in_channels: int:
+      stride: int:  (Default value = 1)
+      sources: List[nn.ModuleList]:  (Default value = [nn.ModuleList([])])
+      in_channels: int:
+      stride: int:  (Default value = 1)
+      sources: List[nn.ModuleList]:  (Default value = [nn.ModuleList([])])
 
     Returns:
 
@@ -367,10 +385,12 @@ def create_residual_block_1d(
     Args:
       blocks:
       in_channels:
-      stride:  (Default value = 1)
-      norm_before_act:  (Default value = None)
-      qconfig:  (Default value = None)
-      quant_skip:  (Default value = None)
+      stride: (Default value = 1)
+      norm_before_act: (Default value = None)
+      qconfig: (Default value = None)
+      quant_skip: (Default value = None)
+      # sources: List[nn.ModuleList]:  (Default value = [nn.ModuleList([])])
+      # sources: List[nn.ModuleList]:  (Default value = [nn.ModuleList([])])
       # sources: List[nn.ModuleList]:  (Default value = [nn.ModuleList([])])
 
     Returns:
@@ -512,8 +532,8 @@ class OFAModel(nn.Module):
         Args:
           conv:
           general_config:
-          parallel:  (Default value = True)
-          bp:  (Default value = False)
+          parallel: (Default value = True)
+          bp: (Default value = False)
 
         Returns:
 
@@ -549,7 +569,7 @@ class OFAModel(nn.Module):
         Args:
           conv:
           general_config:
-          bp:  (Default value = False)
+          bp: (Default value = False)
 
         Returns:
 
@@ -826,6 +846,8 @@ class OFAModel(nn.Module):
 
         Args:
           upper_bound: int:
+          upper_bound: int:
+          upper_bound: int:
 
         Returns:
 
@@ -891,6 +913,8 @@ class OFAModel(nn.Module):
 
         Args:
           state: dict:
+          state: dict:
+          state: dict:
 
         Returns:
 
@@ -911,6 +935,8 @@ class OFAModel(nn.Module):
         """
 
         Args:
+          state: dict:
+          state: dict:
           state: dict:
 
         Returns:
@@ -1000,8 +1026,8 @@ class OFAModel(nn.Module):
 
         Args:
           target_depth:
-          quantized:  (Default value = False)
-          clone_mode:  (Default value = False)
+          quantized: (Default value = False)
+          clone_mode: (Default value = False)
 
         Returns:
 
@@ -1046,8 +1072,8 @@ class OFAModel(nn.Module):
         """
 
         Args:
-          target_depth:  (Default value = None)
-          quantized:  (Default value = False)
+          target_depth: (Default value = None)
+          quantized: (Default value = False)
 
         Returns:
 
@@ -1190,6 +1216,8 @@ class OFAModel(nn.Module):
         """
 
         Args:
+          step: int:
+          step: int:
           step: int:
 
         Returns:

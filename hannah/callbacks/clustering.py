@@ -31,6 +31,16 @@ logger = logging.getLogger(__name__)
 
 
 def clustering(params, inertia, cluster):
+    """
+
+    Args:
+      params:
+      inertia:
+      cluster:
+
+    Returns:
+
+    """
     sparse_matrix = csr_matrix(params)
     kmeans = MiniBatchKMeans(n_clusters=cluster, init="k-means++", random_state=1234)
     kmeans.fit(sparse_matrix.reshape(-1, 1))
@@ -40,10 +50,21 @@ def clustering(params, inertia, cluster):
 
 
 class kMeans(Callback):
+    """ """
+
     def __init__(self, cluster):
         self.cluster = cluster
 
     def on_fit_end(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         with torch.no_grad():
             for module in pl_module.modules():
                 if hasattr(module, "scaled_weight"):
@@ -61,6 +82,14 @@ class kMeans(Callback):
                         module.bias = torch.nn.Parameter(bias)
 
         def replace_modules(module):
+            """
+
+            Args:
+              module:
+
+            Returns:
+
+            """
             for name, child in module.named_children():
                 replace_modules(child)
 
@@ -113,6 +142,14 @@ class kMeans(Callback):
 
                 # Returns center that is closest to given value x
                 def replace_values_by_centers(x):
+                    """
+
+                    Args:
+                      x:
+
+                    Returns:
+
+                    """
                     if x == 0.0:  # required if pruning is used
                         return x
                     else:
@@ -126,6 +163,15 @@ class kMeans(Callback):
         logger.critical("Clustering error: %f", float(inertia))
 
     def on_epoch_end(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         inertia = 0
         device = pl_module.device
         for module in pl_module.modules():
@@ -138,6 +184,14 @@ class kMeans(Callback):
                     continue
 
                 def replace_values_by_centers(x):
+                    """
+
+                    Args:
+                      x:
+
+                    Returns:
+
+                    """
                     if x == 0.0:
                         return x
                     else:

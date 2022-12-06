@@ -73,6 +73,10 @@ class _Elastic:
           so that Sequentials are possible:
           like DSCreturn copy.deepcopy(self.get_basic_module():
           out_channel_filter:
+          ) -> nn.Module: # Module:
+          like DSCreturn copy.deepcopy(self.get_basic_module():
+          ) -> nn.Module: # Module:
+          like DSCreturn copy.deepcopy(self.get_basic_module():
           ) -> nn.Module:  # Module:
           like DSCreturn copy.deepcopy(self.get_basic_module())set_out_channel_filter(self:
 
@@ -251,6 +255,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
           tmp_bn:
           num_tracked:
           conv: nn.Conv1d:
+          conv: nn.Conv1d:
+          conv: nn.Conv1d:
 
         Returns:
 
@@ -300,6 +306,10 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
           out_quant: (Default value = None)
           bn_eps: (Default value = None)
           bn_momentum: (Default value = None)
+          bn_caller: tuple:  (Default value = None)
+          conv_class: nn.Module:
+          bn_caller: tuple:  (Default value = None)
+          conv_class: nn.Module:
           bn_caller: tuple:  (Default value = None)
           conv_class: nn.Module:
           bn_caller: tuple:  (Default value = None)
@@ -408,6 +418,10 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
           # for quantization:
           quant_weight_function: Function:  (Default value = None)
           # for quantizationquant_bias_function: Function:  (Default value = None)
+          quant_weight_function: Function:  (Default value = None)
+          # for quantizationquant_bias_function: Function:  (Default value = None)
+          quant_weight_function: Function:  (Default value = None)
+          # for quantizationquant_bias_function: Function:  (Default value = None)
 
         Returns:
 
@@ -477,6 +491,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
 
         Args:
           kernel:
+          filtered: bool:  (Default value = True)
+          filtered: bool:  (Default value = True)
           filtered: bool:  (Default value = True)
           filtered: bool:  (Default value = True)
 
@@ -564,6 +580,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
 
         Args:
+          target_kernel_index: int:
+          target_kernel_index: int:
           target_kernel_index: int:
           target_kernel_index: int:
 
@@ -729,6 +747,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         Args:
           target_dilation_index: int:
           target_dilation_index: int:
+          target_dilation_index: int:
+          target_dilation_index: int:
 
         Returns:
 
@@ -765,6 +785,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         Args:
           target_group_index: int:
           target_group_index: int:
+          target_group_index: int:
+          target_group_index: int:
 
         Returns:
 
@@ -780,6 +802,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
 
         Args:
+          target_dsc_index: int:
+          target_dsc_index: int:
           target_dsc_index: int:
           target_dsc_index: int:
 
@@ -920,6 +944,8 @@ class ElasticBase1d(nn.Conv1d, _Elastic):
         """
 
         Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
           input: torch.Tensor:
           input: torch.Tensor:
 

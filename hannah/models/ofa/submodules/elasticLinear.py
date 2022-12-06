@@ -45,6 +45,8 @@ class ElasticWidthLinear(nn.Linear, _Elastic):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
@@ -153,6 +155,8 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
         """
 
         Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
           input: torch.Tensor:
           input: torch.Tensor:
 

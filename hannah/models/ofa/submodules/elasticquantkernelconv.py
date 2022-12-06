@@ -316,6 +316,8 @@ class _ElasticConvBnNd(
           conv:
           quad_params: QuadDataHelper:
           quad_params: QuadDataHelper:
+          quad_params: QuadDataHelper:
+          quad_params: QuadDataHelper:
 
         Returns:
 
@@ -640,6 +642,8 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
@@ -791,6 +795,8 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
@@ -929,6 +935,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
@@ -1043,6 +1051,8 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         """
 
         Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
           input: torch.Tensor:
           input: torch.Tensor:
 

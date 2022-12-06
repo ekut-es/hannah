@@ -31,6 +31,8 @@ def conv1d_auto_padding(conv1d: nn.Conv1d):
     Args:
       conv1d: nn.Conv1d:
       conv1d: nn.Conv1d:
+      conv1d: nn.Conv1d:
+      conv1d: nn.Conv1d:
 
     Returns:
 
@@ -87,6 +89,8 @@ def flatten_module_list(modules: nn.Module) -> nn.Module:
     """
 
     Args:
+      modules: nn.Module:
+      modules: nn.Module:
       modules: nn.Module:
       modules: nn.Module:
 
@@ -161,6 +165,8 @@ def call_function_from_deep_nested(input, function, type_selection: type = None)
       function:
       type_selection: type:  (Default value = None)
       type_selection: type:  (Default value = None)
+      type_selection: type:  (Default value = None)
+      type_selection: type:  (Default value = None)
 
     Returns:
 
@@ -203,6 +209,8 @@ def get_instances_from_deep_nested(input, type_selection: type = None):
 
     Args:
       input:
+      type_selection: type:  (Default value = None)
+      type_selection: type:  (Default value = None)
       type_selection: type:  (Default value = None)
       type_selection: type:  (Default value = None)
 
@@ -293,6 +301,8 @@ def make_parameter(t: torch.Tensor) -> nn.Parameter:
     """
 
     Args:
+      t: torch.Tensor:
+      t: torch.Tensor:
       t: torch.Tensor:
       t: torch.Tensor:
 
@@ -545,6 +555,10 @@ def create_channel_filter(
       is_output_filter: bool:  (Default value = True)
       module: nn.Module:
       is_output_filter: bool:  (Default value = True)
+      module: nn.Module:
+      is_output_filter: bool:  (Default value = True)
+      module: nn.Module:
+      is_output_filter: bool:  (Default value = True)
 
     Returns:
 
@@ -568,6 +582,10 @@ def compute_channel_priorities(module: nn.Module, kernel, channel_index: int = 0
     Args:
       module: nn.Module:
       kernel:
+      channel_index: int:  (Default value = 0)
+      module: nn.Module:
+      channel_index: int:  (Default value = 0)
+      module: nn.Module:
       channel_index: int:  (Default value = 0)
       module: nn.Module:
       channel_index: int:  (Default value = 0)

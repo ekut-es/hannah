@@ -29,14 +29,37 @@ logger = logging.getLogger(__name__)
 
 
 class TestDumperCallback(Callback):
+    """ """
+
     def __init__(self, output_dir="."):
         self.output_dir = output_dir
 
     def on_test_start(self, pl_trainer, pl_model):
+        """
+
+        Args:
+          pl_trainer:
+          pl_model:
+
+        Returns:
+
+        """
         logger.info("Activating layer dumping")
 
         def dump_layers(model, output_dir):
+            """
+
+            Args:
+              model:
+              output_dir:
+
+            Returns:
+
+            """
+
             class DumpForwardHook:
+                """ """
+
                 def __init__(self, module, output_dir):
                     self.module = module
                     self.output_dir = output_dir

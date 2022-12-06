@@ -74,6 +74,8 @@ class ElasticConv1d(ElasticBase1d):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
@@ -225,6 +227,8 @@ class ElasticConvReLu1d(ElasticBase1d):
         """
 
         Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
           input: torch.Tensor:
           input: torch.Tensor:
 
@@ -382,6 +386,8 @@ class ElasticConvBn1d(ElasticConv1d):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
@@ -507,6 +513,8 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
@@ -618,6 +626,8 @@ class ConvRelu1d(nn.Conv1d):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
@@ -658,6 +668,8 @@ class ConvBn1d(nn.Conv1d):
         """
 
         Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
           input: torch.Tensor:
           input: torch.Tensor:
 
@@ -701,6 +713,8 @@ class ConvBnReLu1d(ConvBn1d):
         """
 
         Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
           input: torch.Tensor:
           input: torch.Tensor:
 

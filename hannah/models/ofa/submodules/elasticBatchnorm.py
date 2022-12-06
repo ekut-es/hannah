@@ -57,6 +57,8 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         Args:
           input: torch.Tensor:
           input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
 
         Returns:
 
