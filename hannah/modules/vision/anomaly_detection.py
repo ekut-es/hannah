@@ -182,8 +182,6 @@ class AnomalyDetectionModule(VisionBaseModule):
 
             self.train_losses.append(current_loss)
 
-            # ToDo store prediction results of labeled data
-
             loss += current_loss
         return loss
 
@@ -226,10 +224,6 @@ class AnomalyDetectionModule(VisionBaseModule):
     def on_train_epoch_end(self):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
-
-    def on_train_end(self):
-        # ToDo initialize linear classifier and train
-        pass
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
