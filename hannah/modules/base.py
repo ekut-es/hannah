@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -26,6 +26,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar, Union
 
 import tabulate
 import torch
+import torch.nn as nn
 import torch.utils.data as data
 import torchvision
 from hydra.utils import instantiate
@@ -35,8 +36,7 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import LightningLoggerBase, TensorBoardLogger
 from pytorch_lightning.trainer.supporters import CombinedLoader
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from torchmetrics import MetricCollection
-import torch.nn as nn
+from torchmetrics import AUROC, MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils.utils import fullname
@@ -67,7 +67,7 @@ class ClassifierModule(LightningModule, ABC):
     ) -> None:
         super().__init__()
 
-        ignore=None
+        ignore = None
         if not isinstance(model, DictConfig):
             self.model = model
             ignore = ["model"]
