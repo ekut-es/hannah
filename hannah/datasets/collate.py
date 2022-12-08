@@ -78,10 +78,6 @@ def vision_collate_fn(batch):
         [tensor([0, 2]), tensor([1, 3])]
     """
 
-    print("===============")
-    print(batch)
-    print("")
-
     elem = batch[0]
     elem_type = type(elem)
     if isinstance(elem, torch.Tensor):

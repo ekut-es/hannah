@@ -330,6 +330,13 @@ class ClassifierModule(LightningModule, ABC):
         self._plot_confusion_matrix()
         self._plot_roc()
 
+    def _AUROC(self, preds, target):
+        auroc = AUROC(task="binary")
+        auroc_score = auroc(preds, target)
+        for logger in self._logger_iterator():
+            if isinstance(logger, TensorBoardLogger) and hasattr(self, "test_metrics"):
+                logger.log_metrics({"AUROC": auroc_score})
+
     def _plot_roc(self) -> None:
         if hasattr(self, "test_roc"):
             # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()

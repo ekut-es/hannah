@@ -106,8 +106,8 @@ class VisionBaseModule(ClassifierModule):
         # setup lists for reconstruction errors to compute anomaly threshold
         self.train_losses = list()
         self.normalized_train_errors = None
-        self.predictions = list()
-        self.labels = list()
+        self.predictions = torch.tensor([], device=self.device)
+        self.labels = torch.tensor([], device=self.device)
         self.test_losses = list()
 
         # Setup Metrics
