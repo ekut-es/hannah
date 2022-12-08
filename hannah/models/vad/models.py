@@ -21,6 +21,8 @@ import torch.nn.functional as F
 
 
 class BottleneckVad(nn.Module):
+    """ """
+
     def __init__(
         self,
         conv1_features,
@@ -46,6 +48,14 @@ class BottleneckVad(nn.Module):
         self.fc1 = nn.Linear(fc_size, 2)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = x.unsqueeze(1)
         if self.batch_norm:
             x = self.norm1(x)
@@ -63,6 +73,14 @@ class BottleneckVad(nn.Module):
         return x
 
     def num_flat_features(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         size = x.size()[1:]
         num_features = 1
         for s in size:
@@ -71,6 +89,8 @@ class BottleneckVad(nn.Module):
 
 
 class SmallVad(nn.Module):
+    """ """
+
     def __init__(self, conv1_features, conv1_size, fc_size, stride, batch_norm):
         super().__init__()
         self.batch_norm = batch_norm
@@ -79,6 +99,14 @@ class SmallVad(nn.Module):
         self.fc1 = nn.Linear(fc_size, 2)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = x.unsqueeze(1)
         if self.batch_norm:
             x = self.norm1(x)
@@ -88,6 +116,14 @@ class SmallVad(nn.Module):
         return x
 
     def num_flat_features(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         size = x.size()[1:]
         num_features = 1
         for s in size:
@@ -96,6 +132,8 @@ class SmallVad(nn.Module):
 
 
 class SimpleVad(nn.Module):
+    """ """
+
     def __init__(
         self,
         conv1_features,
@@ -123,6 +161,14 @@ class SimpleVad(nn.Module):
         self.fc1 = nn.Linear(fc_size, 2)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = x.unsqueeze(1)
         if self.batch_norm:
             x = self.norm1(x)
@@ -138,6 +184,14 @@ class SimpleVad(nn.Module):
         return x
 
     def num_flat_features(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         size = x.size()[1:]
         num_features = 1
         for s in size:
@@ -146,6 +200,8 @@ class SimpleVad(nn.Module):
 
 
 class BottleneckVadModel(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
 
@@ -172,11 +228,21 @@ class BottleneckVadModel(nn.Module):
         )
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.net.forward(x)
         return x
 
 
 class SimpleVadModel(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
 
@@ -203,11 +269,21 @@ class SimpleVadModel(nn.Module):
         )
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.net.forward(x)
         return x
 
 
 class SmallVadModel(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
 
@@ -220,5 +296,13 @@ class SmallVadModel(nn.Module):
         self.net = SmallVad(conv1_features, conv1_size, fc_size, stride, batch_norm)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.net.forward(x)
         return x

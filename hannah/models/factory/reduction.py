@@ -31,6 +31,15 @@ class ReductionBlockAdd(nn.Module):
         self.act = nn.ReLU()
 
     def forward(self, x: Tensor) -> Tensor:
+        """
+
+        Args:
+          x: Tensor:
+          x: Tensor:
+
+        Returns:
+
+        """
         chain_outputs = [f(x) for f in self.chains]
         result = chain_outputs[0]
         for y in chain_outputs[1:]:
@@ -48,5 +57,14 @@ class ReductionBlockConcat(nn.Module):
         self.chains = chains
 
     def forward(self, x: Tensor) -> Tensor:
+        """
+
+        Args:
+          x: Tensor:
+          x: Tensor:
+
+        Returns:
+
+        """
         chain_outputs = [f(x) for f in self.chains]
         return torch.cat(chain_outputs, 1)

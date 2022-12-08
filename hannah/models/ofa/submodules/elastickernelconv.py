@@ -35,6 +35,8 @@ from .elasticLinear import ElasticPermissiveReLU
 
 
 class ElasticConv1d(ElasticBase1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -67,6 +69,17 @@ class ElasticConv1d(ElasticBase1d):
         # So wäre es statisch und nicht wirklich sinnvoll
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
         # First get the correct count of in and outchannels
@@ -115,6 +128,7 @@ class ElasticConv1d(ElasticBase1d):
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
 
@@ -177,6 +191,8 @@ class ElasticConv1d(ElasticBase1d):
 
 
 class ElasticConvReLu1d(ElasticBase1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -208,6 +224,17 @@ class ElasticConvReLu1d(ElasticBase1d):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         # get the kernel for the current index
         kernel, bias = self.get_kernel()
@@ -258,6 +285,7 @@ class ElasticConvReLu1d(ElasticBase1d):
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         self.set_in_and_out_channel(kernel)
 
@@ -319,6 +347,8 @@ class ElasticConvReLu1d(ElasticBase1d):
 
 
 class ElasticConvBn1d(ElasticConv1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -351,6 +381,17 @@ class ElasticConvBn1d(ElasticConv1d):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
         dilation = self.get_dilation_size()
         # get padding for the size of the kernel
@@ -362,6 +403,7 @@ class ElasticConvBn1d(ElasticConv1d):
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         self.set_in_and_out_channel(kernel)
 
@@ -429,6 +471,8 @@ class ElasticConvBn1d(ElasticConv1d):
 
 
 class ElasticConvBnReLu1d(ElasticConvBn1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -464,10 +508,22 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
         self.from_skipping = from_skipping
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         return self.relu(super(ElasticConvBnReLu1d, self).forward(input))
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         self.set_in_and_out_channel(kernel)
 
@@ -536,6 +592,8 @@ class ElasticConvBnReLu1d(ElasticConvBn1d):
 
 
 class ConvRelu1d(nn.Conv1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -563,10 +621,23 @@ class ConvRelu1d(nn.Conv1d):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         return self.relu(super(ConvRelu1d, self).forward(input))
 
 
 class ConvBn1d(nn.Conv1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -594,10 +665,23 @@ class ConvBn1d(nn.Conv1d):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         return self.bn(super(ConvBn1d, self).forward(input))
 
 
 class ConvBnReLu1d(ConvBn1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -626,4 +710,15 @@ class ConvBnReLu1d(ConvBn1d):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         return self.relu(super(ConvBnReLu1d, self).forward(input))

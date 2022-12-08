@@ -24,6 +24,11 @@ class DummyActivation(nn.Identity):
 
     This can be used to mark requantization of activations for convolutional layers without
     activation functions.
+
+    Args:
+
+    Returns:
+
     """
 
     pass

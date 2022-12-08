@@ -43,6 +43,14 @@ from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
 
 def symbolic_batch_dim(model):
+    """
+
+    Args:
+      model:
+
+    Returns:
+
+    """
     sym_batch_dim = "N"
 
     inputs = model.graph.input
@@ -61,12 +69,37 @@ class InferenceBackendBase(Callback):
         self.validation_epoch = 0
 
     def run_batch(self, inputs=None):
+        """
+
+        Args:
+          inputs:  (Default value = None)
+
+        Returns:
+
+        """
         raise NotImplementedError("run_batch is an abstract method")
 
     def prepare(self, module):
+        """
+
+        Args:
+          module:
+
+        Returns:
+
+        """
         raise NotImplementedError("prepare is an abstract method")
 
     def on_validation_epoch_start(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         if self.val_batches > 0:
             if self.validation_epoch % self.val_frequency == 0:
                 self.prepare(pl_module)
@@ -74,6 +107,19 @@ class InferenceBackendBase(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+          outputs:
+          batch:
+          batch_idx:
+          dataloader_idx:
+
+        Returns:
+
+        """
         if batch_idx < self.val_batches:
             if self.validation_epoch % self.val_frequency == 0:
                 result = self.run_batch(inputs=batch[0])
@@ -88,14 +134,45 @@ class InferenceBackendBase(Callback):
                 logging.info("val_backend_mse: %f", mse)
 
     def on_validation_epoch_end(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         self.validation_epoch += 1
 
     def on_test_epoch_start(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         self.prepare(pl_module)
 
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+          outputs:
+          batch:
+          batch_idx:
+          dataloader_idx:
+
+        Returns:
+
+        """
         if batch_idx < self.test_batches:
             result = self.run_batch(inputs=batch[0])
             target = pl_module(batch[0].to(pl_module.device))
@@ -118,10 +195,26 @@ class TorchMobileBackend(InferenceBackendBase):
         self.script_module = None
 
     def prepare(self, model):
+        """
+
+        Args:
+          model:
+
+        Returns:
+
+        """
         logging.info("Preparing model for target")
         self.script_module = model.to_torchscript(method="trace")
 
     def run_batch(self, inputs=None):
+        """
+
+        Args:
+          inputs:  (Default value = None)
+
+        Returns:
+
+        """
         if inputs is None:
             logging.critical("Backend batch is empty")
             return None
@@ -148,6 +241,14 @@ class OnnxTFBackend(InferenceBackendBase):
             )
 
     def prepare(self, model):
+        """
+
+        Args:
+          model:
+
+        Returns:
+
+        """
         with TemporaryDirectory() as tmp_dir:
             tmp_dir = Path(tmp_dir)
 
@@ -160,6 +261,14 @@ class OnnxTFBackend(InferenceBackendBase):
             self.tf_model = tf_backend.prepare(onnx_model)
 
     def run_batch(self, inputs):
+        """
+
+        Args:
+          inputs:
+
+        Returns:
+
+        """
         logging.info("running tf backend on batch")
 
         result = self.tf_model.run(inputs=inputs)
@@ -185,6 +294,14 @@ class OnnxruntimeBackend(InferenceBackendBase):
             )
 
     def prepare(self, model):
+        """
+
+        Args:
+          model:
+
+        Returns:
+
+        """
         with TemporaryDirectory() as tmp_dir:
             tmp_dir = Path(tmp_dir)
 
@@ -197,6 +314,14 @@ class OnnxruntimeBackend(InferenceBackendBase):
             self.onnxrt_model = onnxrt_backend.prepare(onnx_model)
 
     def run_batch(self, inputs=None):
+        """
+
+        Args:
+          inputs:  (Default value = None)
+
+        Returns:
+
+        """
         logging.info("running onnxruntime backend on batch")
 
         result = self.onnxrt_model.run(inputs=[input.numpy() for input in inputs])
@@ -243,10 +368,24 @@ class TRaxUltraTrailBackend(Callback):
         self.use_acc_statistic_model = use_acc_statistic_model
         self.use_acc_analytical_model = use_acc_analytical_model
         self.use_acc_teda_data = use_acc_teda_data
+        self.enable_file_generation = True
 
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+          outputs:
+          batch:
+          batch_idx:
+          dataloader_idx:
+
+        Returns:
+
+        """
         if len(self.xs) < self.num_inferences:
             x = pl_module._extract_features(batch[0].to(pl_module.device))
             x = pl_module.normalizer(x)
@@ -260,6 +399,14 @@ class TRaxUltraTrailBackend(Callback):
             self.ys.extend(y)
 
     def _run(self, pl_module):
+        """
+
+        Args:
+          pl_module:
+
+        Returns:
+
+        """
         # load backend package
         sys.path.append(self.backend_dir)
         from backend.backend import UltraTrailBackend  # pytype: disable=import-error
@@ -289,9 +436,6 @@ class TRaxUltraTrailBackend(Callback):
             )
 
         # execute backend
-        enable_file_generation = (
-            True if self.rtl_simulation or self.postsyn_simulation else False
-        )
         backend = UltraTrailBackend(
             bw_w=self.bw_w,
             bw_b=self.bw_b,
@@ -302,7 +446,7 @@ class TRaxUltraTrailBackend(Callback):
             mac_mode=mac_mode,
             macro_type=self.macro_type,
             classes=classes,
-            enable_file_generation=enable_file_generation,
+            enable_file_generation=self.enable_file_generation,
         )
 
         backend.set_model(
@@ -336,14 +480,32 @@ class TRaxUltraTrailBackend(Callback):
         return res
 
     def estimate(self, pl_module):
+        """
+
+        Args:
+          pl_module:
+
+        Returns:
+
+        """
         input = pl_module.example_feature_array
         pl_module.eval()
         output = pl_module.model(input)
         self.xs.append(input)
         self.ys.append(output.squeeze())
+        self.enable_file_generation = False
         return self._run(pl_module)
 
     def on_test_epoch_end(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         logging.info("Preparing ultratrail")
         res = self._run(pl_module)
 

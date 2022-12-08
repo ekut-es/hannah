@@ -1,0 +1,3 @@
+_target_: hannah.modules.DirectAngleClassifierModule
+num_workers: 0
+batch_size: 128

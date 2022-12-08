@@ -114,6 +114,10 @@ secondary = true
 #secondary = false
 
 
+
+[tool.poetry.group.dev.dependencies]
+pyre-check = "^0.9.17"
+
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"

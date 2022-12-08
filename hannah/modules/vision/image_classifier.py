@@ -68,8 +68,13 @@ class ImageClassifierModule(VisionBaseModule):
 
         loss = torch.tensor([0.0], device=self.device)
         preds = None
-        if labels is not None and prediction_result.logits.numel() > 0:
+
+        if hasattr(prediction_result, 'logits'):
             logits = prediction_result.logits
+        else:
+            logits = prediction_result
+
+        if labels is not None and logits.numel() > 0:
 
             classifier_loss = F.cross_entropy(logits, labels, weight=self.loss_weights)
 
@@ -81,7 +86,8 @@ class ImageClassifierModule(VisionBaseModule):
 
             self.log_dict(self.metrics[f"{step_name}_metrics"])
 
-        if prediction_result.decoded.numel() > 0:
+
+        if hasattr(prediction_result, 'decoded') and prediction_result.decoded.numel() > 0:
             decoded = prediction_result.decoded
             decoder_loss = F.mse_loss(decoded, x)
             self.log(f"{step_name}_decoder_loss", decoder_loss)

@@ -23,6 +23,8 @@ from torch.autograd import Variable
 
 
 class DSConv2d(nn.Module):
+    """ """
+
     def __init__(self, n_maps_in, n_maps_out, shape, strides=1, dropout_prob=0.5):
         super().__init__()
 
@@ -42,6 +44,14 @@ class DSConv2d(nn.Module):
         self.dropout2 = nn.Dropout(dropout_prob)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.conv1(x)
         x = F.relu(x)
         x = self.batch_norm1(x)
@@ -55,6 +65,8 @@ class DSConv2d(nn.Module):
 
 
 class DSCNNSpeechModel(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
 
@@ -128,6 +140,14 @@ class DSCNNSpeechModel(nn.Module):
         x = self.output(x)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         layer = 0
         x = x.unsqueeze(1)
 
@@ -148,6 +168,8 @@ class DSCNNSpeechModel(nn.Module):
 
 
 class DNNSpeechModel(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
         n_labels = config["n_labels"]
@@ -188,6 +210,14 @@ class DNNSpeechModel(nn.Module):
             sum += param.view(-1).size(0)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = x.view(x.size(0), -1)
         for layer in self.dense:
             x = layer(x)
