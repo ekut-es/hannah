@@ -198,6 +198,8 @@ class AnomalyDetectionModule(VisionBaseModule):
         if y is not None and preds is not None:
             with set_deterministic(False):
                 self.test_confusion(preds, y)
+            self.predictions = torch.cat((self.predictions.to(preds.device), preds), 0)
+            self.labels = torch.cat((self.labels.to(y.device), y), 0)
 
     def on_test_end(self):
         wd_dir = os.getcwd()
@@ -207,6 +209,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         plt.axvline(score, linestyle="dashed")
         plt.title("Normalized train reconstruction errors")
         plt.savefig(wd_dir + "/normalized_train_errors.png")
+
         test = (
             torch.tensor(self.test_losses, device=self.device)
             / torch.max(torch.stack(self.train_losses), dim=0).values
@@ -214,7 +217,9 @@ class AnomalyDetectionModule(VisionBaseModule):
         plt.hist(test.detach().cpu().numpy(), bins=100)
         plt.title("Normalized test reconstruction errors")
         plt.savefig(wd_dir + "/normalized_test_errors.png")
+
         self._plot_confusion_matrix()
+        self._AUROC(self.predictions, self.labels)
         print("Anomaly score", score)
         print(
             "Largest train error",

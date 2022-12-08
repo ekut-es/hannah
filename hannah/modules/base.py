@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -22,10 +22,11 @@ import logging
 import math
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar, Union
 
 import tabulate
 import torch
+import torch.nn as nn
 import torch.utils.data as data
 import torchvision
 from hydra.utils import instantiate
@@ -48,7 +49,7 @@ class ClassifierModule(LightningModule, ABC):
     def __init__(
         self,
         dataset: DictConfig,
-        model: DictConfig,
+        model: Union[DictConfig, nn.Module],
         optimizer: DictConfig,
         features: DictConfig,
         num_workers: int = 0,
@@ -66,7 +67,12 @@ class ClassifierModule(LightningModule, ABC):
     ) -> None:
         super().__init__()
 
-        self.save_hyperparameters()
+        ignore = None
+        if not isinstance(model, DictConfig):
+            self.model = model
+            ignore = ["model"]
+
+        self.save_hyperparameters(ignore=ignore)
         self.initialized = False
         self.train_set = None
         self.test_set = None
@@ -329,6 +335,13 @@ class ClassifierModule(LightningModule, ABC):
 
         self._plot_confusion_matrix()
         self._plot_roc()
+
+    def _AUROC(self, preds, target):
+        auroc = AUROC(task="binary")
+        auroc_score = auroc(preds, target)
+        for logger in self._logger_iterator():
+            if isinstance(logger, TensorBoardLogger) and hasattr(self, "test_metrics"):
+                logger.log_metrics({"AUROC": auroc_score})
 
     def _plot_roc(self) -> None:
         if hasattr(self, "test_roc"):

@@ -1,0 +1,40 @@
+defaults:
+    - dataset: directional
+    - model: tc-res8
+    - scheduler: 1cycle
+    - optimizer: adamw
+    - features: phase
+    - normalizer: null
+    - module: direct_angle_classifier
+    - compress: null
+    - trainer: default
+    - checkpoint: default
+    - backend: null
+    - early_stopping: null
+    - profiler: null
+
+type: train
+experiment_id: dd_direct_angle.phase
+output_dir: trained_models
+auto_lr: false
+seed: [1234]
+
+module:
+  num_workers: 4
+  batch_size: 64
+
+trainer:
+  max_epochs: 100
+
+model:
+  n_labels: 1
+
+hydra:
+    run:
+      dir: ${output_dir}/${experiment_id}/${model.name}/
+    sweep:
+      dir: ${output_dir}/${experiment_id}/${model.name}/${hydra.job.name}
+
+#TODO:
+dump_test: false
+input_file: ''

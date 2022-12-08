@@ -24,12 +24,23 @@ from pytorch_lightning.callbacks import Callback
 
 
 class SVD(Callback):
+    """ """
+
     def __init__(self, rank_compression, compress_after):
         self.rank_compression = rank_compression
         self.compress_after = compress_after
         super().__init__()
 
     def on_epoch_start(self, trainer, pl_module):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         # Train - apply SVD - restructure - retrain
         if trainer.current_epoch == self.compress_after / 2:
             with torch.no_grad():

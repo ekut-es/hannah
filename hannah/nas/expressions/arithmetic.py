@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from math import floor
+from math import floor, ceil
 
 from .op import BinaryOp, UnaryOp
 
@@ -81,3 +81,10 @@ class Floor(UnaryOp):
 
     def concrete_impl(self, operand):
         return floor(operand)
+
+class Ceil(UnaryOp):
+    def __init__(self, operand) -> None:
+        super().__init__(operand)
+
+    def concrete_impl(self, operand):
+        return ceil(operand)

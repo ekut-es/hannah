@@ -27,6 +27,8 @@ from ..utilities import filter_single_dimensional_weights, make_parameter
 
 
 class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
+    """ """
+
     def __init__(
         self,
         num_features,
@@ -51,6 +53,15 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
             "ElasticWidthBatchnorm with tracked running stats currently not fully implemented!"
         )
         # num_batches_tracked and exponential averaging are currently not implemented.
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
         """
         running_mean = filter_single_dimensional_weights(
             self.running_mean, self.channel_filter
@@ -76,6 +87,7 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         )
 
     def get_basic_batchnorm1d(self):
+        """ """
         # filter_single_dimensional_weights checks for None-input, no need to do it here.
         running_mean = filter_single_dimensional_weights(
             self.running_mean, self.channel_filter
@@ -104,4 +116,5 @@ class ElasticWidthBatchnorm1d(nn.BatchNorm1d):
         return new_bn
 
     def assemble_basic_module(self) -> nn.BatchNorm1d:
+        """ """
         return copy.deepcopy(self.get_basic_batchnorm1d())

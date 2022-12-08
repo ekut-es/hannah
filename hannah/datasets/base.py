@@ -109,7 +109,7 @@ class AbstractDataset(Dataset, ABC):
         pass  # pytype: disable=bad-return-type
 
     def size(self) -> List[int]:
-        """Returns dimension of output output without batch dimension"""
+        """Returns dimension of output without batch dimension"""
 
         return [self.channels, self.input_length]
 

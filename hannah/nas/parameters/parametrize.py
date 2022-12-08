@@ -59,10 +59,11 @@ def _create_parametrize_wrapper(params, cls):
         cls.instantiate = instantiate
         cls.check = check
         cls.set_params = set_params
-        cls.parameters = parameters
+        cls.parametrization = parametrization
         cls.get_parameters = get_parameters
         cls.set_param_scopes = set_param_scopes
         cls.cond = cond
+        cls.add_param = add_param
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
@@ -86,7 +87,7 @@ def parametrize(cls=None):
 
 
 def sample(self):
-    for _key, param in self._PARAMETERS.items():
+    for _key, param in self.parametrization(flatten=True).items():
         param.sample()
 
 
@@ -116,7 +117,7 @@ def set_params(self, **kwargs):
             self._PARAMETERS[key].set_current(value)
 
 
-def check(self, value):
+def check(self, value=None):
     for con in self._conditions:
         if not con.evaluate():
             raise Exception("Condition not satisfied: {}".format(con))
@@ -136,6 +137,13 @@ def instantiate(self):
         instance._PARAMETERS[key] = instantiated_value
         setattr(instance, key, instantiated_value)
     return instance
+
+
+def add_param(self, id, param):
+    assert id not in self._PARAMETERS, f"Parameter with the ID {id} already registered."
+    param.id = id
+    self._PARAMETERS[id] = param
+    return param
 
 
 def get_parameters(
@@ -160,7 +168,7 @@ def get_parameters(
     return params
 
 
-def parameters(self, include_empty=False, flatten=False):
+def parametrization(self, include_empty=False, flatten=False):
     return self.get_parameters(include_empty=include_empty, flatten=flatten)
 
 
@@ -177,7 +185,10 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
     for key, param in parameter.items():
         if not include_empty and not isinstance(param, Parameter):
             continue
-        key_list = key.split(".")
+        if key is None:
+            key_list = [param.name]
+        else:
+            key_list = key.split(".")
         if flatten:
             current_param_branch = {}
         else:

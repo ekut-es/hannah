@@ -16,7 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+from .angle_classifier import (
+    CartesianClassifierModule,
+    DirectAngleClassifierModule,
+    SINCOSClassifierModule,
+)
 from .classifier import (
     CrossValidationStreamClassifierModule,
     SpeechClassifierModule,
@@ -33,4 +37,7 @@ __all__ = [
     "ImageClassifierModule",
     "AnomalyDetectionModule",
     "ObjectDetectionModule",
+    "CartesianClassifierModule",
+    "DirectAngleClassifierModule",
+    "SINCOSClassifierModule",
 ]

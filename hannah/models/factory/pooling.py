@@ -35,6 +35,14 @@ class ApproximateGlobalAveragePooling1D(nn.Module):
             self.activation_post_process = qconfig.activation()
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = torch.sum(x, dim=2, keepdim=True)
         x = x / self.divisor
 
@@ -57,6 +65,14 @@ class ApproximateGlobalAveragePooling2D(nn.Module):
             self.activation_post_process = qconfig.activation()
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = torch.sum(x, dim=[2, 3], keepdim=True)
         x = x / self.divisor
 

@@ -81,13 +81,14 @@ class VisionBaseModule(ClassifierModule):
         if self.train_set.class_names:
             self.num_classes = len(self.train_set.class_names)
 
-        msglogger.info("Setting up model %s", self.hparams.model.name)
-        self.model = instantiate(
-            self.hparams.model,
-            input_shape=self.example_input_array.shape,
-            labels=self.num_classes,
-            _recursive_=False,
-        )
+        if hasattr(self.hparams, "model"):
+            msglogger.info("Setting up model %s", self.hparams.model.name)
+            self.model = instantiate(
+                self.hparams.model,
+                input_shape=self.example_input_array.shape,
+                labels=self.num_classes,
+                _recursive_=False,
+            )
 
         if self.hparams.dataset.get("weighted_loss", False) is True:
             loss_weights = torch.tensor(self.train_set.weights)
@@ -106,8 +107,8 @@ class VisionBaseModule(ClassifierModule):
         # setup lists for reconstruction errors to compute anomaly threshold
         self.train_losses = list()
         self.normalized_train_errors = None
-        self.predictions = list()
-        self.labels = list()
+        self.predictions = torch.tensor([], device=self.device)
+        self.labels = torch.tensor([], device=self.device)
         self.test_losses = list()
 
         # Setup Metrics

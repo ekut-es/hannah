@@ -37,9 +37,7 @@ from .elasticLinear import ElasticPermissiveReLU
 
 
 class QuadDataHelper:
-    """
-    Data Container so that _forward and _dsc has the same data.
-    """
+    """Data Container so that _forward and _dsc has the same data."""
 
     bias_shape = None
     kernelsize = None
@@ -163,14 +161,17 @@ class _ElasticConvBnNd(
             self.freeze_bn_stats()
 
     def on_warmup_end(self):
+        """ """
         for i in range(len(self.kernel_sizes) - 1):
             self.bn.append(copy.deepcopy(self.bn[0]))
 
     def reset_running_stats(self):
+        """ """
         for idx in range(len(self.bn)):
             self.bn[idx].reset_running_stats()
 
     def reset_bn_parameters(self):
+        """ """
         for idx in range(len(self.bn)):
             self.bn[idx].reset_running_stats()
             init.uniform_(self.bn[idx].weight)
@@ -182,15 +183,18 @@ class _ElasticConvBnNd(
             init.uniform_(self.bias, -bound, bound)
 
     def reset_parameters(self):
+        """ """
         super(_ElasticConvBnNd, self).reset_parameters()
 
     def update_bn_stats(self):
+        """ """
         self.freeze_bn = False
         for idx in range(len(self.bn) - 1):
             self.bn[idx].training = True
         return self
 
     def freeze_bn_stats(self):
+        """ """
         self.freeze_bn = True
         for idx in range(len(self.bn) - 1):
             self.bn[idx].training = False
@@ -198,6 +202,7 @@ class _ElasticConvBnNd(
 
     @property
     def scale_factor(self):
+        """ """
         if self.fuse_bn:
             running_std = torch.sqrt(
                 self.bn[self.target_kernel_index].running_var
@@ -214,9 +219,7 @@ class _ElasticConvBnNd(
 
     @property
     def full_scale_factor(self):
-        """
-        does the same as scale_factor but uses the whole kernel. Used for dsc
-        """
+        """does the same as scale_factor but uses the whole kernel. Used for dsc"""
         if self.fuse_bn:
             running_std = torch.sqrt(
                 self.bn[self.target_kernel_index].running_var
@@ -233,6 +236,7 @@ class _ElasticConvBnNd(
 
     @property
     def scaled_weight(self):
+        """ """
         scale_factor = self.scale_factor
         weight, bias = self.get_kernel()
         weight_shape = [1] * len(weight.shape)
@@ -254,9 +258,7 @@ class _ElasticConvBnNd(
         return scaled_weight
 
     def get_full_kernel_bias(self):
-        """
-        Gets the full kernel and bias. Used for dsc
-        """
+        """Gets the full kernel and bias. Used for dsc"""
         scale_factor = self.full_scale_factor
         weight = self.get_full_width_kernel()
         weight_shape = [1] * len(weight.shape)
@@ -276,9 +278,7 @@ class _ElasticConvBnNd(
         return scaled_weight, full_bias
 
     def _get_params(self) -> QuadDataHelper:
-        """
-        unifies the param procedure for _forward and _dsc
-        """
+        """unifies the param procedure for _forward and _dsc"""
         bias_shape = [1] * len(self.weight.shape)
         bias_shape[1] = -1
         kernelsize = self.kernel_sizes[self.target_kernel_index]
@@ -310,8 +310,17 @@ class _ElasticConvBnNd(
         )
 
     def _after_forward_function(self, conv, quad_params: QuadDataHelper):
-        """
-        unifies the after forward procedure for _forward and _dsc
+        """unifies the after forward procedure for _forward and _dsc
+
+        Args:
+          conv:
+          quad_params: QuadDataHelper:
+          quad_params: QuadDataHelper:
+          quad_params: QuadDataHelper:
+          quad_params: QuadDataHelper:
+
+        Returns:
+
         """
         scale_factor = quad_params.scale_factor
         bias_shape = quad_params.bias_shape
@@ -353,9 +362,14 @@ class _ElasticConvBnNd(
         return conv
 
     def _dsc(self, input):
-        """
-        this method is used for dsc.
+        """this method is used for dsc.
         it is called as an alternative of _forward
+
+        Args:
+          input:
+
+        Returns:
+
         """
 
         tmp_quad_helper = self._get_params()
@@ -385,6 +399,14 @@ class _ElasticConvBnNd(
         return conv_output
 
     def _forward(self, input):
+        """
+
+        Args:
+          input:
+
+        Returns:
+
+        """
         tmp_quad_helper: QuadDataHelper = self._get_params()
         grouping = tmp_quad_helper.grouping
         scaled_weight = tmp_quad_helper.scaled_weight
@@ -396,10 +418,19 @@ class _ElasticConvBnNd(
         return conv
 
     def extra_repr(self):
+        """ """
         # TODO(jerryzh): extend
         return super(_ElasticConvBnNd, self).extra_repr()
 
     def forward(self, input):
+        """
+
+        Args:
+          input:
+
+        Returns:
+
+        """
         dsc_on = self.get_dsc()
 
         if not dsc_on:
@@ -409,10 +440,15 @@ class _ElasticConvBnNd(
         return y
 
     def train(self, mode=True):
-        """
-        Batchnorm's training behavior is using the self.training flag. Prevent
+        """Batchnorm's training behavior is using the self.training flag. Prevent
         changing it if BN is frozen. This makes sure that calling `model.train()`
         on a model with a frozen BN will behave properly.
+
+        Args:
+          mode: (Default value = True)
+
+        Returns:
+
         """
         self.training = mode
         if not self.freeze_bn:
@@ -452,6 +488,20 @@ class _ElasticConvBnNd(
         unexpected_keys,
         error_msgs,
     ):
+        """
+
+        Args:
+          state_dict:
+          prefix:
+          local_metadata:
+          strict:
+          missing_keys:
+          unexpected_keys:
+          error_msgs:
+
+        Returns:
+
+        """
         version = local_metadata.get("version", None)
         if version is None or version == 1:
             # BN related parameters and buffers were moved into the BN module for v2
@@ -491,9 +541,15 @@ class _ElasticConvBnNd(
 
     @classmethod
     def from_float(cls, mod):
-        r"""Create a qat module from a float module or qparams_dict
+        """Create a qat module from a float module or qparams_dict
         Args: `mod` a float module, either produced by torch.quantization utilities
         or directly from user
+
+        Args:
+          mod:
+
+        Returns:
+
         """
         assert type(mod) == cls._FLOAT_MODULE, (
             "qat."
@@ -531,6 +587,7 @@ class _ElasticConvBnNd(
 
 
 class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
+    """ """
 
     _FLOAT_MODULE = nn.Conv1d
 
@@ -580,6 +637,17 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # get the kernel for the current index
         weight, bias = self.get_kernel()
         grouping = self.get_group_size()
@@ -618,6 +686,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         self.set_in_and_out_channel(kernel)
 
@@ -669,6 +738,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
 
 
 class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
+    """ """
 
     _FLOAT_MODULE = nn.Conv1d
 
@@ -720,6 +790,17 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # get the kernel for the current index
         weight, bias = self.get_kernel()
         grouping = self.get_group_size()
@@ -761,6 +842,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
@@ -811,6 +893,8 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
 
 
 class ElasticQuantConvBn1d(_ElasticConvBnNd):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -846,6 +930,17 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # get padding for the size of the kernel
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
@@ -857,6 +952,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         grouping = self.get_group_size()
         dsc_on = self.get_dsc()
@@ -913,6 +1009,8 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
 
 
 class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -950,6 +1048,17 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
@@ -964,6 +1073,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
 
     # return a normal conv1d equivalent to this module in the current state
     def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         self.set_in_and_out_channel(kernel)
 

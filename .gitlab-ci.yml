@@ -70,7 +70,7 @@ test_python_38:
 
 test_tvm:
   stage: test
-  image: python:3.10
+  image: ubuntu:22.04
   script:
     - set -e
     - apt-get install -y llvm-dev libclang-dev
@@ -209,6 +209,7 @@ run_sca:
   script:
     - set -e
     - poetry run pre-commit install
+    - poetry run pyre || true
     - poetry run pre-commit run -a
   tags:
     - docker

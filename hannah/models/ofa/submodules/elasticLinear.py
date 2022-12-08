@@ -33,11 +33,24 @@ from .elasticBase import _Elastic
 
 
 class ElasticWidthLinear(nn.Linear, _Elastic):
+    """ """
+
     def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
         nn.Linear.__init__(self, in_features, out_features, bias=bias)
         _Elastic.__init__(self, [True] * in_features, [True] * out_features)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         if all(self.in_channel_filter) and all(self.out_channel_filter):
             # if no channel filtering is required, simply use the full linear
             return nnf.linear(input, self.weight, self.bias)
@@ -54,6 +67,7 @@ class ElasticWidthLinear(nn.Linear, _Elastic):
             return nnf.linear(input, new_weight, new_bias)
 
     def get_basic_module(self):
+        """ """
         weight = self.weight
         bias = self.bias
         # weight and bias of this linear will be overwritten
@@ -80,6 +94,8 @@ class ElasticWidthLinear(nn.Linear, _Elastic):
 
 
 class ElasticQuantWidthLinear(nn.Linear, _Elastic):
+    """ """
+
     def __init__(
         self,
         in_features: int,
@@ -107,6 +123,7 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
 
     @property
     def filtered_weight(self):
+        """ """
         if all(self.in_channel_filter) and all(self.out_channel_filter):
             return self.weight
         else:
@@ -117,14 +134,17 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
 
     @property
     def filtered_bias(self):
+        """ """
         return filter_single_dimensional_weights(self.bias, self.out_channel_filter)
 
     @property
     def scaled_weight(self):
+        """ """
         return self.weight_fake_quant(self.filtered_weight)
 
     @property
     def scaled_bias(self):
+        """ """
         return (
             self.bias_fake_quant(self.filtered_bias)
             if self.bias is not None
@@ -132,11 +152,23 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
         )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         return self.activation_post_process(
             nnf.linear(input, self.scaled_weight, self.scaled_bias)
         )
 
     def get_basic_module(self):
+        """ """
         weight = self.weight
         bias = self.bias
         # weight and bias of this linear will be overwritten
@@ -166,10 +198,16 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
 
     @classmethod
     def from_float(cls, mod):
-        r"""Create a qat module from a float module or qparams_dict
+        """Create a qat module from a float module or qparams_dict
 
         Args: `mod` a float module, either produced by torch.quantization utilities
         or directly from user
+
+        Args:
+          mod:
+
+        Returns:
+
         """
         assert type(mod) == cls._FLOAT_MODULE, (
             " qat."
@@ -197,11 +235,22 @@ class ElasticQuantWidthLinear(nn.Linear, _Elastic):
 
 # just a ReLu, which can forward a SequenceDiscovery
 class ElasticPermissiveReLU(nn.ReLU):
+    """ """
+
     def __init__(self):
         super().__init__()
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         return super().forward(x)
 
     def assemble_basic_module(self):
+        """ """
         return nn.ReLU()
