@@ -80,7 +80,7 @@ test_tvm:
   tags:
     - docker
   interruptible: true
-  allow_failure: true
+  allow_failure: false
   only:
     - main
     - /.*tvm.*/
