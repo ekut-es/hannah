@@ -76,7 +76,7 @@ test_tvm:
     - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
     - poetry run external/hannah-tvm/scripts/install_full.sh
     - poetry install -E tvm -E vision
-    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
+    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test
   tags:
     - docker
   interruptible: true
