@@ -69,11 +69,11 @@ test_python_38:
       - .cache/
 
 test_tvm:
-  stage: test
+  stage: build
   image: ubuntu:22.04
   script:
     - set -e
-    - apt-get install -y llvm-dev libclang-dev
+    - apt-get install -y llvm-dev libclang-dev g++
     - poetry run external/hannah-tvm/scripts/install_full.sh
     - poetry install -E tvm -E vision
     - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
