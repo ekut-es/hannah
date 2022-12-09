@@ -69,7 +69,7 @@ test_python_38:
       - .cache/
 
 test_tvm:
-  stage: build
+  stage: test
   image: ubuntu:22.04
   script:
     - set -e
