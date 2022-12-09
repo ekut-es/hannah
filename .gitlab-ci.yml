@@ -79,7 +79,6 @@ test_tvm:
     - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
   tags:
     - docker
-    - nfs
   interruptible: true
   allow_failure: true
   only:
