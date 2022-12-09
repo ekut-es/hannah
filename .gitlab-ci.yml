@@ -34,9 +34,8 @@ cache:
   key: "$CI_JOB_NAME"
 
 before_script:
-  - rm -rf .cache .poetry
   - apt update
-  - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential
+  - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3
 
 
   # Install poetry using recommended method
