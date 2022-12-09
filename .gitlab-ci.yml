@@ -35,7 +35,7 @@ cache:
 
 before_script:
   - apt update
-  - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python python3
+  - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential
 
 
   # Install poetry using recommended method
@@ -73,7 +73,7 @@ test_tvm:
   image: ubuntu:22.04
   script:
     - set -e
-    - apt-get install -y llvm-dev libclang-dev g++
+    - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
     - poetry run external/hannah-tvm/scripts/install_full.sh
     - poetry install -E tvm -E vision
     - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
