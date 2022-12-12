@@ -29,20 +29,20 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
+    - name: Checkout 🛎️
       uses: actions/checkout@master
 
 
-    - name: Setup Python
+    - name: Setup Python 🔧
       uses: actions/setup-python@v4
 
-    - name: Setup Poetry
+    - name: Setup Poetry 🔧
       uses: abatilo/actions-poetry@v2
 
-    - name: Install Dependencies
+    - name: Install Dependencies 🔧
       run: poetry install
 
-    - name: Build
+    - name: Build 🔧
       run: poetry run pydoc-markdown --build --site-dir _build
 
     - name: Deploy 🚀
