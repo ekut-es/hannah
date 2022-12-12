@@ -34,11 +34,10 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Setup Python 🔧
-      uses: actions/setup-python@v4
-
     - name: Setup Poetry 🔧
       uses: abatilo/actions-poetry@v2
+      env:
+        PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
 
     - name: Install Dependencies 🔧
       run: poetry install
