@@ -34,13 +34,12 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Setup Poetry 🔧
-      uses: abatilo/actions-poetry@v2
-      env:
-        PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
 
     - name: Install Dependencies 🔧
-      run: poetry install
+      run: |
+        pip install poetry
+        keyring --disable -b keyring.backends.SecretService.Keyring
+        poetry install
 
     - name: Build 🔧
       run: poetry run pydoc-markdown --build --site-dir _build
