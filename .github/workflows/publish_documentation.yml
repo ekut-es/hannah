@@ -36,13 +36,10 @@ jobs:
 
 
     - name: Install Dependencies 🔧
-      run: |
-        pip install poetry
-        keyring --disable -b keyring.backends.SecretService.Keyring
-        poetry install
+      run: pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
 
     - name: Build 🔧
-      run: poetry run pydoc-markdown --build --site-dir _build
+      run: pydoc-markdown --build --site-dir _build
 
     - name: Deploy 🚀
       uses: JamesIves/github-pages-deploy-action@v4
