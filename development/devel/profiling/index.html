@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../../img/favicon.ico" />
+    <title>Profiling - HANNAH</title>
+    <link rel="stylesheet" href="../../../css/theme.css" />
+    <link rel="stylesheet" href="../../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Profiling";
+        var mkdocs_page_input_path = "development/devel/profiling.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="../../../js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="../../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../../.." class="icon icon-home"> HANNAH
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../../fallacies/">Fallacies and Pitfalls</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Configuration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../configuration/configuration/overview/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../configuration/configuration/multi_gpu/">Multi-GPU support</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Compression</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/quantization/">Quantization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/pruning/">Pruning</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/clustering/">Clustering</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Optimization</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Deployment</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/torchmobile/">Torch Mobile</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/trax-Ultratrail/">T-Rax Ultratrail</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/tvm/">TVM</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Evaluation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../evaluation/eval/">Evaluation</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../overview/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="./">Profiling</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#pytorch-autograd-profiler">pytorch autograd profiler:</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#simple-profiler">Simple Profiler:</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#advanced-profiler">Advanced Profiler</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">API Documentation</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../..">HANNAH</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../.." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+          <li>Development &raquo;</li>
+      <li>Profiling</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!--
+Copyright (c) 2022 University of Tübingen.
+
+This file is part of hannah.
+See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<h1 id="profiling-tools">Profiling Tools</h1>
+<p>To debug training inefficiencies we support the following profiling tools:</p>
+<h2 id="pytorch-autograd-profiler">pytorch autograd profiler:</h2>
+<pre><code> hannah-train profiler=simple trainer.max_epochs=1 profiler=pytorch
+</code></pre>
+<p>By default profiles are logged to the trainings output directory and can be visualized using tensorboard. For the example run use:</p>
+<pre><code> tensorboard --logdir trained_models/test/tc-res8
+</code></pre>
+<h2 id="simple-profiler">Simple Profiler:</h2>
+<pre><code> hannah-train profiler=simple trainer.max_epochs=1 profiler=simple
+</code></pre>
+<p>Generates a summary of the durations of the individual training steps:</p>
+<pre><code> Action                                 |  Mean duration (s)    |Num calls          |  Total time (s)   |  Percentage %     |
+ ------------------------------------------------------------------------------------------------------------------------------------
+ Total                                  |  -                |_                  |  29.42            |  100 %            |
+ ------------------------------------------------------------------------------------------------------------------------------------
+ run_training_epoch                     |  21.692           |1                  |  21.692           |  73.733           |
+ run_training_batch                     |  0.030893         |288                |  8.8971           |  30.241           |
+ optimizer_step_and_closure_0           |  0.030348         |288                |  8.7402           |  29.708           |
+ get_train_batch                        |  0.022253         |288                |  6.4087           |  21.783           |
+ evaluation_step_and_end                |  0.021021         |277                |  5.8228           |  19.792           |
+ validation_step                        |  0.020913         |277                |  5.7929           |  19.69            |
+ training_step_and_backward             |  0.019199         |288                |  5.5292           |  18.794           |
+ model_forward                          |  0.010312         |288                |  2.9697           |  10.094           |
+ training_step                          |  0.010076         |288                |  2.9017           |  9.8631           |
+ model_backward                         |  0.0076062        |288                |  2.1906           |  7.4458           |
+ on_validation_epoch_end                |  0.091247         |2                  |  0.18249          |  0.6203           |
+ on_train_batch_end                     |  0.0003854        |288                |  0.111            |  0.37728          |
+ on_train_start                         |  0.09102          |1                  |  0.09102          |  0.30938          |
+ on_train_epoch_end                     |  0.055033         |1                  |  0.055033         |  0.18706          |
+ cache_result                           |  1.6399e-05       |2290               |  0.037554         |  0.12765          |
+ on_validation_batch_end                |  9.3069e-05       |277                |  0.02578          |  0.087628         |
+ on_validation_end                      |  0.008392         |2                  |  0.016784         |  0.05705          |
+ on_train_end                           |  0.0075968        |1                  |  0.0075968        |  0.025822         |
+ on_batch_start                         |  2.4213e-05       |288                |  0.0069733        |  0.023702         |
+ on_after_backward                      |  1.5198e-05       |288                |  0.004377         |  0.014877         |
+ on_before_zero_grad                    |  1.4302e-05       |288                |  0.0041189        |  0.014            |
+ on_train_batch_start                   |  1.264e-05        |288                |  0.0036403        |  0.012374         |
+ on_batch_end                           |  1.1853e-05       |288                |  0.0034136        |  0.011603         |
+ training_step_end                      |  9.123e-06        |288                |  0.0026274        |  0.0089307        |
+ on_validation_batch_start              |  8.5754e-06       |277                |  0.0023754        |  0.008074         |
+ validation_step_end                    |  7.5117e-06       |277                |  0.0020807        |  0.0070725        |
+ on_validation_start                    |  0.00019774       |2                  |  0.00039547       |  0.0013442        |
+ on_epoch_start                         |  0.00021634       |1                  |  0.00021634       |  0.00073533       |
+ on_epoch_end                           |  1.4326e-05       |3                  |  4.2978e-05       |  0.00014608       |
+ on_validation_epoch_start              |  1.0761e-05       |2                  |  2.1523e-05       |  7.3157e-05       |
+ on_fit_start                           |  2.0443e-05       |1                  |  2.0443e-05       |  6.9486e-05       |
+ on_train_epoch_start                   |  1.2379e-05       |1                  |  1.2379e-05       |  4.2077e-05       |
+ on_before_accelerator_backend_setup    |  1.1862e-05       |1                  |  1.1862e-05       |  4.0319e-05       |
+</code></pre>
+<h2 id="advanced-profiler">Advanced Profiler</h2>
+<pre><code>hannah-train profiler=simple trainer.max_epochs=1 profiler=advanced
+</code></pre>
+<p>Creates python level performance summaries for the individual Training steps:</p>
+<pre><code> Profile stats for: optimizer_step_and_closure_0
+ 8064 function calls in 8.897 seconds
+
+ Ordered by: cumulative time
+ List reduced from 25 to 20 due to restriction &lt;20&gt;
+
+ ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+ 288    0.001    0.000    8.897    0.031 accelerator.py:265(optimizer_step)
+ 288    0.000    0.000    8.896    0.031 accelerator.py:282(run_optimizer_step)
+ 288    0.000    0.000    8.896    0.031 training_type_plugin.py:159(optimizer_step)
+ 288    0.000    0.000    8.896    0.031 grad_mode.py:12(decorate_context)
+ 288    0.000    0.000    8.894    0.031 adamw.py:54(step)
+ 288    0.000    0.000    8.893    0.031 training_loop.py:648(train_step_and_backward_closure)
+ 288    0.000    0.000    8.893    0.031 training_loop.py:737(training_step_and_backward)
+ 288    0.000    0.000    8.892    0.031 contextlib.py:108(__enter__)
+ 288    0.000    0.000    8.892    0.031 {built-in method builtins.next}
+ 288    0.000    0.000    8.892    0.031 profilers.py:62(profile)
+ 288    0.000    0.000    8.892    0.031 profilers.py:250(start)
+ 288    8.892    0.031    8.892    0.031 {method 'enable' of '_lsprof.Profiler' objects}
+ 288    0.000    0.000    0.001    0.000 grad_mode.py:65(__enter__)
+ 288    0.000    0.000    0.000    0.000 accelerator.py:104(lightning_module)
+ 288    0.000    0.000    0.000    0.000 contextlib.py:238(helper)
+ 288    0.000    0.000    0.000    0.000 training_type_plugin.py:91(lightning_module)
+ 288    0.000    0.000    0.000    0.000 grad_mode.py:104(__enter__)
+ 288    0.000    0.000    0.000    0.000 contextlib.py:82(__init__)
+ 576    0.000    0.000    0.000    0.000 {built-in method torch._C.is_grad_enabled}
+ 288    0.000    0.000    0.000    0.000 base.py:82(unwrap_lightning_module)
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../debugging/" class="btn btn-neutral float-left" title="Debugging"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../api/" class="btn btn-neutral float-right" title="API Documentation">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../debugging/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../api/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '../../..';</script>
+    <script src="../../../js/theme_extra.js" defer></script>
+    <script src="../../../js/theme.js" defer></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+      <script src="../../../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

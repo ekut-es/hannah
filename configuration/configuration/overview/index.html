@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../../img/favicon.ico" />
+    <title>Overview - HANNAH</title>
+    <link rel="stylesheet" href="../../../css/theme.css" />
+    <link rel="stylesheet" href="../../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Overview";
+        var mkdocs_page_input_path = "configuration/configuration/overview.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="../../../js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="../../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../../.." class="icon icon-home"> HANNAH
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../../fallacies/">Fallacies and Pitfalls</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Configuration</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="./">Overview</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#configuration-structure">Configuration Structure</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../multi_gpu/">Multi-GPU support</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Compression</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/quantization/">Quantization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/pruning/">Pruning</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/clustering/">Clustering</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Optimization</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Deployment</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/torchmobile/">Torch Mobile</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/trax-Ultratrail/">T-Rax Ultratrail</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/tvm/">TVM</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Evaluation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../evaluation/eval/">Evaluation</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../development/devel/overview/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../development/devel/debugging/">Debugging</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../development/devel/profiling/">Profiling</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../development/devel/api/">API Documentation</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../..">HANNAH</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../.." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+          <li>Configuration &raquo;</li>
+      <li>Overview</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!--
+Copyright (c) 2022 University of Tübingen.
+
+This file is part of hannah.
+See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<h1 id="configuration">Configuration</h1>
+<p>Configurations are managed by <a href="http://hydra.cc">hydra</a>. And follow a structured configuration.</p>
+<p>The currently used configuration can be shown with:</p>
+<pre><code>hannah-train  -c job
+</code></pre>
+<p>The default configuration is located under <code>speech_recognition/conf/</code>.</p>
+<h2 id="configuration-structure">Configuration Structure</h2>
+<p>There are two main locations for configuration:</p>
+<ul>
+<li>Framework configuration files are located under <code>hannah/conf</code> configuration files located in this directory should be useful for more than one project.</li>
+<li>Project specific configuration files are located in <code>configs/&lt;project_name&gt;</code> these usually contain a project specific configuration file and one or more configured experiments in the subfolder <code>experiment</code></li>
+<li>make use of composition using defaults lists as much as possible</li>
+</ul>
+<h1 id="guideline-for-writing-configuration-files">Guideline for writing configuration files</h1>
+<ul>
+<li>Consider avoiding project specific main configuration files, and try to configure your project using experiments only.</li>
+<li>Use composition defaults list composition as much as possible.</li>
+</ul>
+<h2 id="configuration-groups">Configuration Groups</h2>
+<p>We currently have the following configuration groups:</p>
+<h3 id="backend">backend</h3>
+<p>Configures the app to run a subset of validation and test on configured backend</p>
+<p>Choices are: <code>null</code> (no backend, default),  <code>torchmobile</code> (translates model to backend)</p>
+<h3 id="checkpoint">checkpoint</h3>
+<p>Choices are: <code>null</code> (no checkpoint), <code>all</code> (default, creates checkpoints for all training epoch) <code>best</code> (checkpoint, best 5 values, default)</p>
+<h3 id="compression">compression</h3>
+<p>Configuration for model compression.</p>
+<h3 id="dataset">dataset</h3>
+<p>Choices are: <code>kws</code> (For Google Keyword Spotting), <code>snips</code> (For hey snips dataset), <code>vad</code> (For Voice Activity Detection)</p>
+<p>Common configuration options for datasets are:</p>
+<dl>
+<dt>data_folder</dt>
+<dd>base folder for data (actual data will usually be stored in $data_folder/dataset_name)</dd>
+<dt>cls</dt>
+<dd>speech_recognition.dataset.SpeechCommandsDataset</dd>
+<dt>dataset</dt>
+<dd>name of the dataset</dd>
+<dt>group_speakers_by_id</dt>
+<dd>true group the data by user id before splitting if available</dd>
+<dt>use_default_split</dt>
+<dd>false if the dataset has a predefined split, use it (ignores *_pct, and group by id parameters)</dd>
+<dt>test_pct</dt>
+<dd>Percentage of dataset used for test</dd>
+<dt>dev_pct</dt>
+<dd>Percentage of dataset used for validation</dd>
+<dt>train_pct</dt>
+<dd>Percentage of dataset used for training</dd>
+<dt>wanted_words</dt>
+<dd>Wanted words for keyword datasets</dd>
+<dt>input_length</dt>
+<dd>Length of input in number of samples</dd>
+<dt>samplingrate</dt>
+<dd>Sampling rate of data in Hz</dd>
+<dt>clear_download</dt>
+<dd>"Remove downloaded archive after dataset has been extracted</dd>
+<dt>variants</dt>
+<dd>Variant of dataset to use for multilanguage datasets</dd>
+<dt>timeshift_ms</dt>
+<dd>"Timeshift the input data by +- given ms"</dd>
+<dt>extract</dt>
+<dd>loudest</dd>
+<dt>silence_prob</dt>
+<dd>% dataset samples that are silence</dd>
+<dt>unknown_prob</dt>
+<dd>% dataset samples that are unknown</dd>
+<dt>test_snr</dt>
+<dd>SNR used for test</dd>
+<dt>train_snr_high</dt>
+<dd>minimal SNR for training data</dd>
+<dt>train_snr_low</dt>
+<dd>maximal SNR for test data</dd>
+<dt>noise_dataset</dt>
+<dd>["TUT", "FSDKaggle", "FSDnoisy"] Downloads all the specified datasets. Use TUT + one other</dd>
+<dt>data_split</dt>
+<dd>initial split after downloading the datasets(Possibilities: "vad", "vad_speech", "vad_balanced", "getrennt")</dd>
+<dt>downsample</dt>
+<dd>samplerate DESTRUCTIVE! change the samplerate of the real files to the target samplerate.  Use better parameter samplingrate</dd>
+</dl>
+<h4 id="variants">variants</h4>
+<p>variants for <code>kws</code>
+- v1, v2</p>
+<p>variants for <code>snips</code>
+- snips</p>
+<p>variants for <code>vad</code>
+- UWNU
+- Mozilla has the following language options:
+    - en: Englisch
+    - de: Detusch
+    - fr: Französisch
+    - it: Italienisch
+    - es: Spanisch
+    - kab: Kabylisch
+    - ca: Katalanisch
+    - nl: Niderländisch
+    - eo: Esperanto
+    - fa: Persisch
+    - eu: Baskisch
+    - rw: Kinyarwanda
+    - ru: Russisch
+    - pt: Portugiesisch
+    - pl: Polnisch</p>
+<h3 id="features">features</h3>
+<p>Feature extractor to use, choices are: melspec, mfcc, raw, sinc, spectrogram .</p>
+<p>All feature extractors apart from <code>sinc</code> (Sinc Convolutions) currently use
+torchaudio feature extractors and use the same input parameters.</p>
+<p>Sinc Convolutions have the following parameters:</p>
+<h3 id="normalizer">normalizer</h3>
+<p>Choices: <code>null</code> (default), fixedpoint (normalize feature values to [-1.0, 1.0])</p>
+<p>Feature Normalizer run between feature extraction and the neural network model.</p>
+<h3 id="model">model</h3>
+<p>Neural network to train: choices are gds (Old sinc1 with sinc convolutions removed), lstm, tc-res8, branchy-tc-res8</p>
+<h3 id="module">module</h3>
+<p>The toplevel module implementing the training and eval loops.</p>
+<p>We curently support the following Tasks:</p>
+<p><code>stream_classifier</code>: Classification on multichannel 1D data streams
+<code>image_classifier</code>: Classification on Image Data</p>
+<h3 id="optimizer">optimizer</h3>
+<p>Choices are: adadelta, adam, adamax, adamw, asgd, lbfgs, rmsprop, rprop, sgd, sparse_adam</p>
+<p>Directly instantiate the corresponding pytorch classes and take the same options.</p>
+<h3 id="profiler">profiler</h3>
+<p>Choices are: <code>null</code>, advanced, simple</p>
+<p>Run profiling for different phases.</p>
+<h3 id="scheduler">scheduler</h3>
+<p>Choices are: <code>null</code>, 1cycle, cosine, cosine_warm, cyclic, exponential, multistep, plateau, step</p>
+<p>Learning rate scheduler to use for scheduling, default is null.</p>
+<h3 id="trainer">trainer</h3>
+<p>Choices: default, dds</p>
+<p>Capsules the options to the lightning trainer. Currently it sets the following defaults:</p>
+<p>Default options are:</p>
+<dl>
+<dt><code>gpus</code></dt>
+<dd>1</dd>
+<dt><code>auto_select_gpus</code></dt>
+<dd>True</dd>
+<dt><code>limit_train_batches</code></dt>
+<dd>1.0</dd>
+<dt><code>limit_val_batches</code></dt>
+<dd>1.0</dd>
+<dt><code>limit_test_batches</code></dt>
+<dd>1.0</dd>
+<dt><code>max_epochs</code></dt>
+<dd>80</dd>
+<dt><code>default_root_dir</code></dt>
+<dd>.</dd>
+<dt><code>fast_dev_run</code></dt>
+<dd>false</dd>
+<dt><code>overfit_batches</code></dt>
+<dd>0.0</dd>
+<dt><code>benchmark</code></dt>
+<dd>True</dd>
+<dt><code>deterministic</code></dt>
+<dd>True</dd>
+</dl>
+<h2 id="environment-variables">Environment Variables</h2>
+<p>The default configurations interpolate the following environment variables:</p>
+<dl>
+<dt><code>HANNAH_CACHE_DIR</code></dt>
+<dd>
+<dl>
+<dt>Location of a directory used to cache file loading in some datasets</dt>
+<dt><code>HANNAH_DATA_FOLDER</code></dt>
+<dd>Change default location of dataset folders by default we will use subdirectory <code>datasets</code> of current working directory</dd>
+</dl>
+</dd>
+</dl>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../../fallacies/" class="btn btn-neutral float-left" title="Fallacies and Pitfalls"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../multi_gpu/" class="btn btn-neutral float-right" title="Multi-GPU support">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../../fallacies/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../multi_gpu/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '../../..';</script>
+    <script src="../../../js/theme_extra.js" defer></script>
+    <script src="../../../js/theme.js" defer></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+      <script src="../../../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
