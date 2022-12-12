@@ -84,7 +84,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-GPUS=2
-BATCH_SIZE=16
+GPUS=1
+BATCH_SIZE=6
 
-hannah-train experiment_id=${EXPERIMENT}_${RESOLUTION}_${SPLIT} module.num_workers=8 module.batch_size=${BATCH_SIZE} trainer=sharded trainer.gpus=${GPUS} dataset.split=${SPLIT} dataset.resolution=$RESOLUTION model=${MODEL}
+# trainer=sharded
+
+hannah-train experiment_id=${EXPERIMENT}_${RESOLUTION}_${SPLIT} module.num_workers=8 module.batch_size=${BATCH_SIZE} trainer.gpus=${GPUS} dataset.split=${SPLIT} dataset.resolution=$RESOLUTION model=${MODEL}
