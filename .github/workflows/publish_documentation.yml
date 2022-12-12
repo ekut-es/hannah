@@ -20,7 +20,7 @@ name: Build and Deploy Documentation
 on:
   push:
     branches:
-      - master
+      - main
 
 permissions:
   contents: write
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout 🛎️
-      uses: actions/checkout@master
+      uses: actions/checkout@main
 
 
     - name: Setup Python 🔧
