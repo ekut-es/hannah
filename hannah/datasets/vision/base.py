@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -49,11 +49,13 @@ class VisionDatasetBase(AbstractDataset):
 
     @property
     def std(self):
-        pass
+        logger.warning("Using default std dev for dataset")
+        return (0.5,) * self.size()[0]
 
     @property
     def mean(self):
-        pass
+        logger.warning("Using default means for dataset")
+        return (0.5,) * self.size()[0]
 
 
 class TorchvisionDatasetBase(VisionDatasetBase):
@@ -76,7 +78,7 @@ class TorchvisionDatasetBase(VisionDatasetBase):
 
     def size(self):
         dim = self[0][0].shape
-        return list(dim)
+        return tuple(dim)
 
     def __len__(self):
         return len(self.dataset)
