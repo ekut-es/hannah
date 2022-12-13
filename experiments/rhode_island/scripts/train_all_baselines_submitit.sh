@@ -1,6 +1,6 @@
 #!/bin/bash
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2022 Hannah contributors.
 ##
 ## This file is part of hannah.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -18,10 +18,12 @@
 ## limitations under the License.
 ##
 
-VERSION=2.5.2
-wget https://github.com/singularityware/singularity/releases/download/$VERSION/singularity-$VERSION.tar.gz
-tar xvf singularity-$VERSION.tar.gz
-cd singularity-$VERSION
-./configure --prefix=/usr/local
-make
-sudo make install
+EXPERIMENT="baseline"
+MODEL="timm_resnet18,timm_resnet50,timm_resnet152,timm_efficientnet_lite1,timm_mobilenetv3_small_100,timm_mobilenetv3_small_075,timm_mobilenetv3_large_100"
+
+export HANNAH_DATA_FOLDER=/mnt/qb/datasets/STAGING/bringmann/datasets/
+
+hannah-train experiment_id=$EXPERIMENT model=$MODEL hydra/launcher=ml_cloud_4gpu \
+    hydra.sweep.dir='${output_dir}/${experiment_id}/' hydra.sweep.subdir='${model.name}' \
+    module.num_workers=8 module.batch_size=16 trainer.gpus=4 trainer=sharded \
+    -m

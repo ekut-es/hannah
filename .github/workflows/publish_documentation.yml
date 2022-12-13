@@ -1,6 +1,5 @@
-#!/bin/bash
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2022 Hannah contributors.
 ##
 ## This file is part of hannah.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -17,12 +16,32 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
+name: Build and Deploy Documentation
+on:
+  push:
+    branches:
+      - main
 
-export SINGULARITY_TMPDIR=/local/data/tmp/singularity_tmp
-export SINGULARITY_CACHEDIR=/local/data/tmp/singularity_cache
+permissions:
+  contents: write
 
-mkdir -p $SINGULARITY_TMPDIR
-mkdir -p $SINGULARITY_CACHEDIR
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout 🛎️
+      uses: actions/checkout@main
+      with:
+        submodules: recursive
 
-rm -rf Speech-Recognition.simg
-sudo -E /usr/local/bin/singularity build Speech-Recognition.simg Speech-Recognition.recipe
+
+    - name: Install Dependencies 🔧
+      run: pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
+
+    - name: Build 🔧
+      run: pydoc-markdown --build --site-dir _build
+
+    - name: Deploy 🚀
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        folder: build/docs/_build
