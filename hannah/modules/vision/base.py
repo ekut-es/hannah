@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -39,8 +39,8 @@ from torchmetrics import (
 
 from hannah.utils.utils import set_deterministic
 
-# from ..augmentation.batch_augmentation import BatchAugmentationPipeline
-# from ..augmentation.transforms.kornia_transforms import A
+from ..augmentation.batch_augmentation import BatchAugmentationPipeline
+from ..augmentation.transforms.kornia_transforms import A
 from ..base import ClassifierModule
 from ..metrics import Error
 
@@ -110,6 +110,7 @@ class VisionBaseModule(ClassifierModule):
         self.predictions = torch.tensor([], device=self.device)
         self.labels = torch.tensor([], device=self.device)
         self.test_losses = list()
+        self.encodings = dict()
 
         # Setup Metrics
         metrics = {}
@@ -172,7 +173,7 @@ class VisionBaseModule(ClassifierModule):
 
     def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
-        """if (
+        if (
             torch.numel(images) > 0
         ):  # to circumvent error when tensor is empty (depends on batch size)
             seq = A.PatchSequential(
@@ -181,8 +182,6 @@ class VisionBaseModule(ClassifierModule):
                 grid_size=(8, 8),
             )
             augmented_data = seq(augmented_data)
-            seq2 = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.2, 'keepdim': True}})
-            augmented_data = seq2.forward(augmented_data)"""
 
         # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.4, 'keepdim': True}})
         # augmented_data = seq.forward(augmented_data)
