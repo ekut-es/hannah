@@ -185,7 +185,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         x = batch["data"]
         prediction_result = self.forward(x)
         y = batch.get("labels", None)
-        loss = F.cross_entropy(prediction_result.logits, y, weight=self.loss_weights)
+        loss = F.cross_entropy(prediction_result.logits, y)
         self.log("test_classifier_loss", loss)
         preds = torch.argmax(prediction_result.logits, dim=1)
         self.metrics["test_metrics"](preds, y)
@@ -232,15 +232,13 @@ class AnomalyDetectionModule(VisionBaseModule):
 
     def on_train_end(self):
 
-        optimizer = torch.optim.SGD(
-            self.model.classifier.parameters(), lr=0.01, momentum=0.9
-        )
+        optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
         for epoch in range(10):
             print("Training epoch of linear classifier: ", epoch)
             counter = 0
             for batch in self.train_dataloader():
                 counter += 1
-                if counter % 10 == 0:
+                if counter % 5 == 0:
                     labeled_batch = batch["labeled"]
                     x = labeled_batch["data"]
                     labels = labeled_batch.get("labels", None).to(device=self.device)
@@ -251,7 +249,7 @@ class AnomalyDetectionModule(VisionBaseModule):
 
                     optimizer.zero_grad()
                     logits = self.model.classifier(prediction_result.latent)
-                    loss = F.cross_entropy(logits, labels, weight=self.loss_weights)
+                    loss = F.cross_entropy(logits, labels)
                     preds = torch.argmax(logits, dim=1)
                     loss.backward()
                     optimizer.step()
