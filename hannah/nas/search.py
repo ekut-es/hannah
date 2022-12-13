@@ -176,8 +176,26 @@ class RandomNASTrainer(NASTrainerBase):
         from hannah.models.convnet import ConvNet
 
     def fit(self, module: LightningModule):
-            trainer = instantiate(self.config.trainer)
-            trainer.fit(module)
+        callbacks = common_callbacks(self.config)
+        opt_monitor = self.config.get("monitor", ["val_error"])
+        opt_callback = HydraOptCallback(monitor=opt_monitor)
+        callbacks.append(opt_callback)
+
+        trainer = instantiate(self.config.trainer, callbacks=callbacks)
+        trainer.fit(module)
+
+        from networkx.readwrite import json_graph
+        nx_model = model_to_graph(module.model, module.example_feature_array)
+        json_data = json_graph.node_link_data(nx_model)
+        if not os.path.exists("../performance_data"):
+            os.mkdir("../performance_data")
+        with open(f"../performance_data/model_{self.global_num}.json", "w") as res_file:
+            import json
+
+            json.dump(
+                {"graph": json_data, "metrics": opt_callback.result(dict=True)},
+                res_file,
+            )
 
     def run(self):
         from hydra.utils import instantiate, get_class
@@ -193,6 +211,7 @@ class RandomNASTrainer(NASTrainerBase):
 
         # self.search_space.prepare([1] + train_set.size())
         for i in range(self.budget):
+            self.global_num = i
             example_input_array = torch.rand([1] + train_set.size())
 
             # instantiate search space
@@ -206,8 +225,6 @@ class RandomNASTrainer(NASTrainerBase):
             # initialize model: Lazy layers are instantiated to real torch.nn layers
             # forward works now
             model.initialize()
-
-
             module = instantiate(
                 self.config.module,
                 model=model,
@@ -220,7 +237,6 @@ class RandomNASTrainer(NASTrainerBase):
                 num_classes=len(train_set.class_names),
                 _recursive_=False,
             )
-
 
             self.fit(module)
 
