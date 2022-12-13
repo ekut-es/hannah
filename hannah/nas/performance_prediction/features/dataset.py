@@ -145,6 +145,8 @@ def to_dgl_graph(nx_graph, features):
 
     g = dgl.graph(data=(src, dst))
     g.ndata["features"] = torch.Tensor(features)
+
+    # Self-loops allow the network to include the node's own representation in the aggregation
     g = dgl.add_self_loop(g)
 
     return g
@@ -199,7 +201,7 @@ def unnest(df, explode, axis):
 @hydra.main(config_path="../../../conf", config_name="config")
 def main(config):
     dataset = NASGraphDataset(
-        "/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data"
+        "/home/moritz/projects/hannah/experiments/trained_models/debug_random_nas/performance_data"
     )
     for item in dataset:
         print(item)

@@ -49,7 +49,7 @@ class ConvReluBlock(nn.Module):
         self.input_shape = input_shape
         self.depth = self.add_param(f'{id}.depth', depth)
         self.modules = []
-        self.relu = nn.ReLU()
+        self.relus = nn.ModuleList()
         self.id = id
         self.depth = depth
         self.params = params
@@ -75,6 +75,7 @@ class ConvReluBlock(nn.Module):
                            stride=stride,
                            padding=padding_expression(kernel_size, stride))
             self.modules.append(layer)
+            self.relus.append(nn.ReLU())
             previous = layer
 
         self.cond(stride_product(strides) <= self.input_shape[2])
@@ -87,8 +88,8 @@ class ConvReluBlock(nn.Module):
     def forward(self, x):
         out = x
         for d in RangeIterator(self.depth, instance=True):
-            out = self.torch_modules[d].to(x)(out)
-            out = self.relu(out)
+            out = self.torch_modules[d](out)
+            out = self.relus[d](out)
         return out
 
 
@@ -119,7 +120,7 @@ class ConvNet(nn.Module):
     def forward(self, x):
         out = self.conv_block(x)
         out = out.view(out.shape[0], -1)
-        out = self.linear.to(x)(out)
+        out = self.linear(out)
         return out
 
     def get_hparams(self):
