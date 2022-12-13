@@ -26,6 +26,8 @@ import networkx as nx
 import numpy as np
 import torch.fx
 
+from hannah.nas.utils import to_int
+
 from hannah.models.factory import pooling, qat, qconfig
 
 
@@ -168,13 +170,13 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
     def add_nodes_conv(self, target, mod, args, output):
         attrs = {}
 
-        attrs["in_channels"] = mod.in_channels
-        attrs["out_channels"] = mod.out_channels
-        attrs["kernel_size"] = mod.kernel_size
-        attrs["stride"] = mod.stride
-        attrs["dilation"] = mod.dilation
-        attrs["groups"] = mod.groups
-        attrs["padding"] = mod.padding
+        attrs["in_channels"] = to_int(mod.in_channels)
+        attrs["out_channels"] = to_int(mod.out_channels)
+        attrs["kernel_size"] = to_int(mod.kernel_size)
+        attrs["stride"] = to_int(mod.stride)
+        attrs["dilation"] = to_int(mod.dilation)
+        attrs["groups"] = to_int(mod.groups)
+        attrs["padding"] = to_int(mod.padding)
 
         weight_quant_attrs = self.extract_quant_attrs(
             getattr(mod, "weight_fake_quant", None)
@@ -261,8 +263,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
     def add_nodes_linear(self, target, mod, args, output):
         attrs = {}
 
-        attrs["in_features"] = mod.in_features
-        attrs["out_features"] = mod.out_features
+        attrs["in_features"] = to_int(mod.in_features)
+        attrs["out_features"] = to_int(mod.out_features)
 
         weight_quant_attrs = self.extract_quant_attrs(
             getattr(mod, "weight_fake_quant", None)
