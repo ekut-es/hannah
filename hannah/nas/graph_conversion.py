@@ -90,6 +90,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             torch.nn.ReLU: self.add_nodes_relu,
             torch.nn.modules.dropout.Dropout: self.add_nodes_dropout,
             torch.nn.modules.flatten.Flatten: self.add_nodes_flatten,
+            torch.nn.Conv2d: self.add_nodes_conv,
+            torch.nn.Linear: self.add_nodes_linear,
             "add": self.add_nodes_add,
         }
         self.layer_encodings = [
@@ -407,27 +409,36 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
+    def add_edge(self, target, args):
+        input_names = [arg.name for arg in args if isinstance(arg, NamedTensor)]
+        for input_name in input_names:
+            self.nx_graph.add_edge(input_name, target)
+
     def call_function(self, target, args: Tuple, kwargs: Dict) -> Any:
         self.func_num += 1
-        arg_tensors = [arg.tensor for arg in args]
+        arg_tensors = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
         output_tensor = super().call_function(target, arg_tensors, kwargs)
         target_name = target.__name__ + str(self.func_num)
         if target.__name__ in self.conversions:
             output = self.conversions[target.__name__](
                 target_name, None, args, output_tensor
             )
+        else:
+            output = output_tensor
 
         return output
 
     def call_method(self, target, args: Tuple, kwargs: Dict) -> Any:
 
-        args = [arg.tensor for arg in args]
-        return super().call_method(target, args, kwargs)
+        arg_tensors = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
+        output_tensor = super().call_method(target, arg_tensors, kwargs)
+        self.add_edge(target, args)
+        return NamedTensor(target, output_tensor)
 
     def call_module(self, target, args: Tuple, kwargs: Dict) -> Any:
         # print(target, args, kwargs)
 
-        tensor_args = [arg.tensor for arg in args]
+        tensor_args = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
         output_tensor = super().call_module(target, tensor_args, kwargs)
         submod = self.fetch_attr(target)
         if type(submod) in self.conversions:
