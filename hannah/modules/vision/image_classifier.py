@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -46,6 +46,7 @@ from hannah.utils.utils import set_deterministic
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from ..metrics import Error
 from .base import VisionBaseModule
+from .loss import SemiSupervisedLoss
 
 msglogger = logging.getLogger(__name__)
 
@@ -53,6 +54,8 @@ msglogger = logging.getLogger(__name__)
 class ImageClassifierModule(VisionBaseModule):
     def common_step(self, step_name, batch, batch_idx):
         # print("step_name", step_name)
+        ss_loss = SemiSupervisedLoss()
+
         batch = self._decode_batch(batch)
 
         x = batch["data"]
@@ -69,14 +72,15 @@ class ImageClassifierModule(VisionBaseModule):
         loss = torch.tensor([0.0], device=self.device)
         preds = None
 
-        if hasattr(prediction_result, 'logits'):
+        if hasattr(prediction_result, "logits"):
             logits = prediction_result.logits
         else:
             logits = prediction_result
 
         if labels is not None and logits.numel() > 0:
-
-            classifier_loss = F.cross_entropy(logits, labels, weight=self.loss_weights)
+            classifier_loss = ss_loss.forward(
+                logits=logits, labels=labels, weight=self.loss_weights
+            )
 
             self.log(f"{step_name}_classifier_loss", classifier_loss)
             loss += classifier_loss
@@ -86,10 +90,12 @@ class ImageClassifierModule(VisionBaseModule):
 
             self.log_dict(self.metrics[f"{step_name}_metrics"])
 
-
-        if hasattr(prediction_result, 'decoded') and prediction_result.decoded.numel() > 0:
+        if (
+            hasattr(prediction_result, "decoded")
+            and prediction_result.decoded.numel() > 0
+        ):
             decoded = prediction_result.decoded
-            decoder_loss = F.mse_loss(decoded, x)
+            decoder_loss = ss_loss.forward(true_data=x, decoded=decoded)
             self.log(f"{step_name}_decoder_loss", decoder_loss)
             loss += decoder_loss
 
