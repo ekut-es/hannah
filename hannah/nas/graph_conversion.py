@@ -26,6 +26,8 @@ import networkx as nx
 import numpy as np
 import torch.fx
 
+from hannah.nas.utils import to_int
+
 from hannah.models.factory import pooling, qat, qconfig
 
 
@@ -90,6 +92,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             torch.nn.ReLU: self.add_nodes_relu,
             torch.nn.modules.dropout.Dropout: self.add_nodes_dropout,
             torch.nn.modules.flatten.Flatten: self.add_nodes_flatten,
+            torch.nn.Conv2d: self.add_nodes_conv,
+            torch.nn.Linear: self.add_nodes_linear,
             "add": self.add_nodes_add,
         }
         self.layer_encodings = [
@@ -166,13 +170,13 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
     def add_nodes_conv(self, target, mod, args, output):
         attrs = {}
 
-        attrs["in_channels"] = mod.in_channels
-        attrs["out_channels"] = mod.out_channels
-        attrs["kernel_size"] = mod.kernel_size
-        attrs["stride"] = mod.stride
-        attrs["dilation"] = mod.dilation
-        attrs["groups"] = mod.groups
-        attrs["padding"] = mod.padding
+        attrs["in_channels"] = to_int(mod.in_channels)
+        attrs["out_channels"] = to_int(mod.out_channels)
+        attrs["kernel_size"] = to_int(mod.kernel_size)
+        attrs["stride"] = to_int(mod.stride)
+        attrs["dilation"] = to_int(mod.dilation)
+        attrs["groups"] = to_int(mod.groups)
+        attrs["padding"] = to_int(mod.padding)
 
         weight_quant_attrs = self.extract_quant_attrs(
             getattr(mod, "weight_fake_quant", None)
@@ -259,8 +263,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
     def add_nodes_linear(self, target, mod, args, output):
         attrs = {}
 
-        attrs["in_features"] = mod.in_features
-        attrs["out_features"] = mod.out_features
+        attrs["in_features"] = to_int(mod.in_features)
+        attrs["out_features"] = to_int(mod.out_features)
 
         weight_quant_attrs = self.extract_quant_attrs(
             getattr(mod, "weight_fake_quant", None)
@@ -407,27 +411,36 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
+    def add_edge(self, target, args):
+        input_names = [arg.name for arg in args if isinstance(arg, NamedTensor)]
+        for input_name in input_names:
+            self.nx_graph.add_edge(input_name, target)
+
     def call_function(self, target, args: Tuple, kwargs: Dict) -> Any:
         self.func_num += 1
-        arg_tensors = [arg.tensor for arg in args]
+        arg_tensors = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
         output_tensor = super().call_function(target, arg_tensors, kwargs)
         target_name = target.__name__ + str(self.func_num)
         if target.__name__ in self.conversions:
             output = self.conversions[target.__name__](
                 target_name, None, args, output_tensor
             )
+        else:
+            output = output_tensor
 
         return output
 
     def call_method(self, target, args: Tuple, kwargs: Dict) -> Any:
 
-        args = [arg.tensor for arg in args]
-        return super().call_method(target, args, kwargs)
+        arg_tensors = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
+        output_tensor = super().call_method(target, arg_tensors, kwargs)
+        self.add_edge(target, args)
+        return NamedTensor(target, output_tensor)
 
     def call_module(self, target, args: Tuple, kwargs: Dict) -> Any:
         # print(target, args, kwargs)
 
-        tensor_args = [arg.tensor for arg in args]
+        tensor_args = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
         output_tensor = super().call_module(target, tensor_args, kwargs)
         submod = self.fetch_attr(target)
         if type(submod) in self.conversions:

@@ -39,3 +39,22 @@ def is_pareto(costs, maximise=False):
             is_efficient[i] = 1
 
     return is_efficient
+
+
+def to_int(x):
+    if isinstance(x, tuple):
+        res = []
+        for i in x:
+            res.append(to_int(i))
+        res = tuple(res)
+    elif isinstance(x, list):
+        res = []
+        for i in x:
+            res.append(to_int(x[i]))
+    else:
+        try:
+            res = int(x)
+        except Exception:
+            print(f"Conversion to int failed for {x}")
+    return res
+
