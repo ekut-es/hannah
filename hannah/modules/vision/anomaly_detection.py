@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
 import logging
 import os
 from typing import Sequence
@@ -28,21 +29,10 @@ import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
 from pytorch_lightning.trainer.supporters import CombinedLoader
-from sklearn.metrics import auc, roc_curve
-from torchmetrics import (
-    Accuracy,
-    ConfusionMatrix,
-    F1Score,
-    MetricCollection,
-    Precision,
-    Recall,
-)
 
 from hannah.datasets.collate import vision_collate_fn
 from hannah.utils.utils import set_deterministic
 
-from ..augmentation.batch_augmentation import BatchAugmentationPipeline
-from ..metrics import Error
 from .base import VisionBaseModule
 from .loss import SemiSupervisedLoss
 
@@ -103,7 +93,6 @@ class AnomalyDetectionModule(VisionBaseModule):
                 preds = torch.empty(
                     size=labels.size(), device=labels.device, dtype=labels.dtype
                 ).fill_(0)
-
             self.metrics[f"{step_name}_metrics"](preds, labels)
             self.log_dict(self.metrics[f"{step_name}_metrics"])
 
@@ -152,6 +141,8 @@ class AnomalyDetectionModule(VisionBaseModule):
             current_loss = torch.tensor([0.0], device=self.device)
             if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
                 augmented_data, x = self.augment(x, labels, boxes, batch_idx)
+                augmented_data = augmented_data.to(self.device)
+                x = x.to(self.device)
                 prediction_result = self.forward(augmented_data)
                 if prediction_result.decoded is not None:
                     decoded = prediction_result.decoded
@@ -172,6 +163,8 @@ class AnomalyDetectionModule(VisionBaseModule):
 
             else:  # normal
                 augmented_data, x = self.augment(x, labels, boxes, batch_idx)
+                augmented_data = augmented_data.to(self.device)
+                x = x.to(self.device)
                 prediction_result = self.forward(augmented_data)
 
                 if prediction_result.decoded is not None:
@@ -195,12 +188,22 @@ class AnomalyDetectionModule(VisionBaseModule):
         self.common_step("val", batch, batch_idx)
 
     def test_step(self, batch, batch_idx):
-        loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
-
+        # loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
+        loss = torch.tensor([0.0], device=self.device)
+        batch = self._decode_batch(batch)
+        x = batch["data"]
+        prediction_result = self.forward(x)
         y = batch.get("labels", None)
-        if ~torch.isnan(loss):
-            self.test_losses.extend(loss)
+        loss = F.cross_entropy(prediction_result.logits, y)
+        self.log("test_classifier_loss", loss)
+        preds = torch.argmax(prediction_result.logits, dim=1)
+        self.metrics["test_metrics"](preds, y)
+        self.log_dict(self.metrics["test_metrics"])
+        # breakpoint()
+        # if ~torch.isnan(loss):
+        #    self.test_losses.extend(loss)
         # preds = step_results.preds
+
         if y is not None and preds is not None:
             with set_deterministic(False):
                 self.test_confusion(preds, y)
@@ -235,6 +238,34 @@ class AnomalyDetectionModule(VisionBaseModule):
     def on_train_epoch_end(self):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
+
+    def on_train_end(self):
+
+        optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
+        for epoch in range(10):
+            print("Training epoch of linear classifier: ", epoch)
+            counter = 0
+            for batch in self.train_dataloader():
+                counter += 1
+                if counter % 5 == 0:
+                    labeled_batch = batch["labeled"]
+                    x = labeled_batch["data"]
+                    labels = labeled_batch.get("labels", None).to(device=self.device)
+                    boxes = labeled_batch.get("bbox", [])
+                    augmented_data, x = self.augment(x, labels, boxes, 1)
+                    augmented_data = augmented_data.to(device=self.device)
+                    prediction_result = self.forward(augmented_data)
+
+                    optimizer.zero_grad()
+                    logits = self.model.classifier(prediction_result.latent)
+                    loss = F.cross_entropy(logits, labels)
+                    preds = torch.argmax(logits, dim=1)
+                    loss.backward()
+                    optimizer.step()
+                    counter = 0
+                else:
+                    pass
+                # TODO: Add logging
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
