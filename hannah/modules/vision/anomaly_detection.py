@@ -115,15 +115,12 @@ class AnomalyDetectionModule(VisionBaseModule):
         batch_anomaly_labeled = {
             "data": torch.index_select(batch_labeled["data"], 0, anomaly_labeled_idx),
             "labels": labels_anomaly,
-            "bbox": []
-            # torch.index_select(
-            #    batch_labeled["bbox"],
-            #    0,
-            #    anomaly_labeled_idx,
-            # ),
+            "bbox": [
+                batch_labeled.get("bbox")[i] for i in anomaly_labeled_idx.tolist()
+            ],
         }
         batch_normal_labeled = self._decode_batch(batch_normal_labeled)
-        # batch_anomaly_labeled = self._decode_batch(batch_anomaly_labeled)
+        batch_anomaly_labeled = self._decode_batch(batch_anomaly_labeled)
         batch_unlabeled = self._decode_batch(batch_unlabeled)
 
         boxes = batch.get("bbox", [])
