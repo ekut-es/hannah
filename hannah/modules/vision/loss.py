@@ -36,14 +36,17 @@ class SemiSupervisedLoss(nn.Module):
 
     def forward(
         self,
-        true_data,
+        true_data=None,
         labels=None,
         logits=None,
         decoded=None,
         boxes=None,
+        weight=None,
     ):
+        loss = torch.tensor([0.0])
+
         if labels is not None and logits.numel() > 0:  # all labeled + classifier
-            loss = F.cross_entropy(logits, labels, weight=self.loss_weights)
+            loss = F.cross_entropy(logits, labels, weight=weight)
 
         elif decoded is not None:  # Autoencoder
             loss = F.mse_loss(decoded, true_data) ** self.exponent

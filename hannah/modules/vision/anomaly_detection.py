@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -42,11 +42,9 @@ from hannah.datasets.collate import vision_collate_fn
 from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
-from ..base import ClassifierModule
 from ..metrics import Error
 from .base import VisionBaseModule
-
-# from .anomaly_score import AnomalyScore
+from .loss import SemiSupervisedLoss
 
 msglogger = logging.getLogger(__name__)
 
