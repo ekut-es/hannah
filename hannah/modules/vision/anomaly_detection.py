@@ -62,7 +62,6 @@ class AnomalyDetectionModule(VisionBaseModule):
         batch = self._decode_batch(batch)
         x = batch["data"]
         labels = batch.get("labels", None)
-        boxes = batch.get("bbox", None)
 
         if batch_idx == 0:
             self._log_batch_images("input", batch_idx, x)
@@ -70,9 +69,17 @@ class AnomalyDetectionModule(VisionBaseModule):
         prediction_result = self.forward(x)
 
         loss = torch.tensor([0.0], device=self.device)
-        if prediction_result.decoded is not None:
+        preds = None
+
+        if step_name == "test":
+            loss = ss_loss.forward(logits=prediction_result.logits, labels=labels)
+            self.log(f"{step_name}_classifier_loss", loss)
+            preds = torch.argmax(prediction_result.logits, dim=1)
+            self.metrics["test_metrics"](preds, labels)
+            self.log_dict(self.metrics["test_metrics"])
+
+        elif prediction_result.decoded is not None:
             decoded = prediction_result.decoded
-            ss_loss = SemiSupervisedLoss()
             current_loss = ss_loss.forward(true_data=x, decoded=decoded)
             self.log(f"{step_name}_decoder_loss", current_loss)
             loss += current_loss
@@ -80,54 +87,19 @@ class AnomalyDetectionModule(VisionBaseModule):
             if batch_idx == 0:
                 self._log_batch_images("decoded", batch_idx, decoded)
 
-        self.log("train_loss", loss)
-
-        preds = None
-        anomaly_score, largest_train_error = self.compute_anomaly_score()
-        if anomaly_score:
-            if (loss.cpu().numpy() / largest_train_error) > anomaly_score:
-                preds = torch.empty(
-                    size=labels.size(), device=labels.device, dtype=labels.dtype
-                ).fill_(1)
-            else:
-                preds = torch.empty(
-                    size=labels.size(), device=labels.device, dtype=labels.dtype
-                ).fill_(0)
-            self.metrics[f"{step_name}_metrics"](preds, labels)
-            self.log_dict(self.metrics[f"{step_name}_metrics"])
-
+        self.log(f"{step_name}_loss", loss)
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
-        batch_labeled = batch["labeled"]
-        batch_unlabeled = batch["unlabeled"]
-
-        normal_labeled_idx = (batch_labeled["labels"] == 0).nonzero(as_tuple=True)[0]
-        labels_normal = batch_labeled["labels"][normal_labeled_idx]
-        batch_normal_labeled = {
-            "data": torch.index_select(batch_labeled["data"], 0, normal_labeled_idx),
-            "labels": labels_normal,
-            "bbox": [],
-        }
-
-        anomaly_labeled_idx = (batch_labeled["labels"] == 1).nonzero(as_tuple=True)[0]
-        labels_anomaly = batch_labeled["labels"][anomaly_labeled_idx]
-        batch_anomaly_labeled = {
-            "data": torch.index_select(batch_labeled["data"], 0, anomaly_labeled_idx),
-            "labels": labels_anomaly,
-            "bbox": [
-                batch_labeled.get("bbox")[i] for i in anomaly_labeled_idx.tolist()
-            ],
-        }
-        batch_normal_labeled = self._decode_batch(batch_normal_labeled)
-        batch_anomaly_labeled = self._decode_batch(batch_anomaly_labeled)
-        batch_unlabeled = self._decode_batch(batch_unlabeled)
-
-        boxes = batch.get("bbox", [])
-
+        (
+            batch_unlabeled,
+            batch_normal_labeled,
+            batch_anomaly_labeled,
+        ) = self.identify_batches(self, batch)
         loss = torch.tensor([0.0], device=self.device)
 
         for batch in [batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled]:
+            batch = self._decode_batch(batch)
             x = batch["data"]
             labels = batch.get("labels", None)
             boxes = batch.get("bbox", [])
@@ -135,38 +107,21 @@ class AnomalyDetectionModule(VisionBaseModule):
             if batch_idx == 0:
                 self._log_batch_images("input", batch_idx, x)
 
-            current_loss = torch.tensor([0.0], device=self.device)
-            if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
-                augmented_data, x = self.augment(x, labels, boxes, batch_idx)
-                augmented_data = augmented_data.to(self.device)
-                x = x.to(self.device)
-                prediction_result = self.forward(augmented_data)
-                if prediction_result.decoded is not None:
-                    decoded = prediction_result.decoded
-                    ss_loss = SemiSupervisedLoss(kind="anomaly")
-                    current_loss = ss_loss.forward(true_data=x, decoded=decoded)
-                    self.log("train_decoder_loss", current_loss)
-                    loss += current_loss
-
-                    if batch_idx == 0:
-                        self._log_batch_images("decoded", batch_idx, decoded)
-
-                self.log("train_loss", loss)
-
-            elif (
+            if (
                 torch.is_tensor(labels) and torch.numel(labels) == 0
             ):  # case that no anomalies are in the batch, prevent loss to be nan
                 pass
 
-            else:  # normal
+            else:
+                current_loss = torch.tensor([0.0], device=self.device)
                 augmented_data, x = self.augment(x, labels, boxes, batch_idx)
-                augmented_data = augmented_data.to(self.device)
-                x = x.to(self.device)
                 prediction_result = self.forward(augmented_data)
-
                 if prediction_result.decoded is not None:
                     decoded = prediction_result.decoded
-                    ss_loss = SemiSupervisedLoss(kind="normal")
+                    if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
+                        ss_loss = SemiSupervisedLoss(kind="anomaly")
+                    else:
+                        ss_loss = SemiSupervisedLoss(kind="normal")
                     current_loss = ss_loss.forward(true_data=x, decoded=decoded)
                     self.log("train_decoder_loss", current_loss)
                     loss += current_loss
@@ -182,21 +137,28 @@ class AnomalyDetectionModule(VisionBaseModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.common_step("val", batch, batch_idx)
+        loss, prediction_result, batch, preds = self.common_step(
+            "val", batch, batch_idx
+        )
+        labels = batch.get("labels", None)
+
+        anomaly_score, largest_train_error = self.compute_anomaly_score()
+        if anomaly_score:
+            if (loss.cpu().numpy() / largest_train_error) > anomaly_score:
+                preds = torch.empty(
+                    size=labels.size(), device=labels.device, dtype=labels.dtype
+                ).fill_(1)
+            else:
+                preds = torch.empty(
+                    size=labels.size(), device=labels.device, dtype=labels.dtype
+                ).fill_(0)
+            self.metrics["val_metrics"](preds, labels)
+            self.log_dict(self.metrics["val_metrics"])
 
     def test_step(self, batch, batch_idx):
-        # loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
-        loss = torch.tensor([0.0], device=self.device)
-        batch = self._decode_batch(batch)
-        x = batch["data"]
-        prediction_result = self.forward(x)
+        loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
         y = batch.get("labels", None)
-        loss = F.cross_entropy(prediction_result.logits, y)
-        self.log("test_classifier_loss", loss)
-        preds = torch.argmax(prediction_result.logits, dim=1)
-        self.metrics["test_metrics"](preds, y)
-        self.log_dict(self.metrics["test_metrics"])
-        # breakpoint()
+
         # if ~torch.isnan(loss):
         #    self.test_losses.extend(loss)
         # preds = step_results.preds
@@ -300,3 +262,26 @@ class AnomalyDetectionModule(VisionBaseModule):
             return CombinedLoader({"labeled": loader, "unlabeled": loader_unlabeled})
 
         return loader
+
+    def identify_batches(self, batch):
+        batch_labeled = batch["labeled"]
+        batch_unlabeled = batch["unlabeled"]
+
+        normal_labeled_idx = (batch_labeled["labels"] == 0).nonzero(as_tuple=True)[0]
+        labels_normal = batch_labeled["labels"][normal_labeled_idx]
+        batch_normal_labeled = {
+            "data": torch.index_select(batch_labeled["data"], 0, normal_labeled_idx),
+            "labels": labels_normal,
+            "bbox": [],
+        }
+
+        anomaly_labeled_idx = (batch_labeled["labels"] == 1).nonzero(as_tuple=True)[0]
+        labels_anomaly = batch_labeled["labels"][anomaly_labeled_idx]
+        batch_anomaly_labeled = {
+            "data": torch.index_select(batch_labeled["data"], 0, anomaly_labeled_idx),
+            "labels": labels_anomaly,
+            "bbox": [
+                batch_labeled.get("bbox")[i] for i in anomaly_labeled_idx.tolist()
+            ],
+        }
+        return batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled
