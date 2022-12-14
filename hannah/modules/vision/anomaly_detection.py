@@ -50,25 +50,6 @@ msglogger = logging.getLogger(__name__)
 
 
 class AnomalyDetectionModule(VisionBaseModule):
-    def compute_loss(self, prediction_result, x, step_name, anomaly, batch_idx, loss):
-
-        if prediction_result.decoded is not None:
-            decoded = prediction_result.decoded
-            if anomaly == "anomaly":
-                decoder_loss = 0.4 * (1 / (F.mse_loss(decoded, x)))
-            else:
-                decoder_loss = F.mse_loss(decoded, x)
-            # print(f"{step_name}_decoder_loss", decoder_loss)
-            self.log(f"{step_name}_decoder_loss", decoder_loss)
-            loss += decoder_loss
-
-            if batch_idx == 0:
-                self._log_batch_images("decoded", batch_idx, decoded)
-
-        self.log(f"{step_name}_loss", loss)
-
-        return loss
-
     def compute_anomaly_score(self):
 
         anomaly_score = None
@@ -87,7 +68,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         return anomaly_score, largest_train_error
 
     def common_step(self, step_name, batch, batch_idx):
-
+        ss_loss = SemiSupervisedLoss()
         batch = self._decode_batch(batch)
         x = batch["data"]
         labels = batch.get("labels", None)
@@ -99,7 +80,17 @@ class AnomalyDetectionModule(VisionBaseModule):
         prediction_result = self.forward(x)
 
         loss = torch.tensor([0.0], device=self.device)
-        loss = self.compute_loss(prediction_result, x, step_name, "", batch_idx, loss)
+        if prediction_result.decoded is not None:
+            decoded = prediction_result.decoded
+            ss_loss = SemiSupervisedLoss()
+            current_loss = ss_loss.forward(true_data=x, decoded=decoded)
+            self.log(f"{step_name}_decoder_loss", current_loss)
+            loss += current_loss
+
+            if batch_idx == 0:
+                self._log_batch_images("decoded", batch_idx, decoded)
+
+        self.log("train_loss", loss)
 
         preds = None
         anomaly_score, largest_train_error = self.compute_anomaly_score()
@@ -150,7 +141,7 @@ class AnomalyDetectionModule(VisionBaseModule):
 
         loss = torch.tensor([0.0], device=self.device)
 
-        for batch in [batch_unlabeled, batch_normal_labeled]:
+        for batch in [batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled]:
             x = batch["data"]
             labels = batch.get("labels", None)
             boxes = batch.get("bbox", [])
@@ -162,9 +153,17 @@ class AnomalyDetectionModule(VisionBaseModule):
             if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
                 augmented_data, x = self.augment(x, labels, boxes, batch_idx)
                 prediction_result = self.forward(augmented_data)
-                current_loss = self.compute_loss(
-                    prediction_result, x, "train", "anomaly", batch_idx, current_loss
-                )
+                if prediction_result.decoded is not None:
+                    decoded = prediction_result.decoded
+                    ss_loss = SemiSupervisedLoss(kind="anomaly")
+                    current_loss = ss_loss.forward(true_data=x, decoded=decoded)
+                    self.log("train_decoder_loss", current_loss)
+                    loss += current_loss
+
+                    if batch_idx == 0:
+                        self._log_batch_images("decoded", batch_idx, decoded)
+
+                self.log("train_loss", loss)
 
             elif (
                 torch.is_tensor(labels) and torch.numel(labels) == 0
@@ -174,13 +173,20 @@ class AnomalyDetectionModule(VisionBaseModule):
             else:  # normal
                 augmented_data, x = self.augment(x, labels, boxes, batch_idx)
                 prediction_result = self.forward(augmented_data)
-                current_loss = self.compute_loss(
-                    prediction_result, x, "train", "", batch_idx, current_loss
-                )
+
+                if prediction_result.decoded is not None:
+                    decoded = prediction_result.decoded
+                    ss_loss = SemiSupervisedLoss(kind="normal")
+                    current_loss = ss_loss.forward(true_data=x, decoded=decoded)
+                    self.log("train_decoder_loss", current_loss)
+                    loss += current_loss
+
+                    if batch_idx == 0:
+                        self._log_batch_images("decoded", batch_idx, decoded)
+
+                self.log("train_loss", loss)
 
             self.train_losses.append(current_loss)
-
-            # ToDo store prediction results of labeled data
 
             loss += current_loss
         return loss
@@ -229,10 +235,6 @@ class AnomalyDetectionModule(VisionBaseModule):
     def on_train_epoch_end(self):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
-
-    def on_train_end(self):
-        # ToDo initialize linear classifier and train
-        pass
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
