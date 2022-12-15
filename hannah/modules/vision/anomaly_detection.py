@@ -138,34 +138,30 @@ class AnomalyDetectionModule(VisionBaseModule):
                     else:
                         ss_loss = SemiSupervisedLoss(kind="normal")
                     current_loss = ss_loss.forward(true_data=x, decoded=decoded)
-                    self.log("train_decoder_loss", current_loss)
-                    loss += current_loss
-
+                    self.train_losses.append(current_loss)
                     if batch_idx == 0:
                         self._log_batch_images("decoded", batch_idx, decoded)
-                elif self.hparams.anomaly_detection_loss.loss == "classifier":
+
+                elif (
+                    self.hparams.anomaly_detection_loss.loss == "classifier"
+                    and labels is not None
+                    and prediction_result.logits.numel() > 0
+                ):
                     ss_loss = SemiSupervisedLoss(kind="normal")
-                    if hasattr(prediction_result, "logits"):
-                        logits = prediction_result.logits
-                    else:
-                        logits = prediction_result
+                    logits = prediction_result.logits
+                    current_loss = ss_loss.forward(
+                        logits=logits, labels=labels, weight=self.loss_weights
+                    )
+                    preds = torch.argmax(logits, dim=1)
+                    self.metrics["train_metrics"](preds, labels)
+                    self.log_dict(self.metrics["train_metrics"])
 
-                    if labels is not None and logits.numel() > 0:
-                        classifier_loss = ss_loss.forward(
-                            logits=logits, labels=labels, weight=self.loss_weights
-                        )
-
-                        self.log("train_classifier_loss", classifier_loss)
-                        loss += classifier_loss
-
-                        preds = torch.argmax(logits, dim=1)
-                        self.metrics["train_metrics"](preds, labels)
-
-                        self.log_dict(self.metrics["train_metrics"])
-
+                self.log(
+                    "train_" + f"{self.hparams.anomaly_detection_loss.loss}_loss",
+                    current_loss,
+                )
+                loss += current_loss
                 self.log("train_loss", loss)
-
-            self.train_losses.append(current_loss)
 
             loss += current_loss
         return loss
@@ -187,7 +183,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                         size=labels.size(), device=labels.device, dtype=labels.dtype
                     ).fill_(0)
                 self.metrics["val_metrics"](preds, labels)
-                self.log_dict(self.metrics["val_metrics"])
+                self.log_dict(self.metricsf["val_metrics"])
 
     def test_step(self, batch, batch_idx):
         loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
