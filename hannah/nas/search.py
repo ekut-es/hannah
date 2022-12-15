@@ -193,7 +193,7 @@ class RandomNASTrainer(NASTrainerBase):
             import json
 
             json.dump(
-                {"graph": json_data, "metrics": opt_callback.result(dict=True), "curves": opt_callback.curves(dict=True)},
+                {"graph": json_data, "hparams": {"batch_size": int(self.config.module.batch_size)}, "metrics": opt_callback.result(dict=True), "curves": opt_callback.curves(dict=True)},
                 res_file,
             )
 
