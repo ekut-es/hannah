@@ -1,1 +1,1 @@
-loss: mse
+loss: 'decoder'

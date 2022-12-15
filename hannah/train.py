@@ -95,7 +95,7 @@ def train(
             normalizer=config.get("normalizer", None),
             gpus=config.trainer.get("gpus", None),
             unlabeled_data=config.get("unlabeled_data"),
-            anomaly_detection_loss=config.get("anomaly_detection_loss"),
+            anomaly_detection_loss=config.get("anomaly_detection", None),
             _recursive_=False,
         )
 

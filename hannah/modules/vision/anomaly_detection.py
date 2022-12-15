@@ -71,14 +71,20 @@ class AnomalyDetectionModule(VisionBaseModule):
         loss = torch.tensor([0.0], device=self.device)
         preds = None
 
-        if step_name == "test":
+        if (
+            self.hparams.anomaly_detection_loss.loss == "classifier"
+            or step_name == "test"
+        ):
             loss = ss_loss.forward(logits=prediction_result.logits, labels=labels)
             self.log(f"{step_name}_classifier_loss", loss)
             preds = torch.argmax(prediction_result.logits, dim=1)
-            self.metrics["test_metrics"](preds, labels)
-            self.log_dict(self.metrics["test_metrics"])
+            self.metrics[f"{step_name}_metrics"](preds, labels)
+            self.log_dict(self.metrics[f"{step_name}_metrics"])
 
-        elif prediction_result.decoded is not None:
+        elif (
+            self.hparams.anomaly_detection_loss.loss == "decoder"
+            and prediction_result.decoded is not None
+        ):
             decoded = prediction_result.decoded
             current_loss = ss_loss.forward(true_data=x, decoded=decoded)
             self.log(f"{step_name}_decoder_loss", current_loss)
@@ -95,7 +101,8 @@ class AnomalyDetectionModule(VisionBaseModule):
             batch_unlabeled,
             batch_normal_labeled,
             batch_anomaly_labeled,
-        ) = self.identify_batches(self, batch)
+        ) = self.identify_batches(batch)
+
         loss = torch.tensor([0.0], device=self.device)
 
         for batch in [batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled]:
@@ -116,7 +123,15 @@ class AnomalyDetectionModule(VisionBaseModule):
                 current_loss = torch.tensor([0.0], device=self.device)
                 augmented_data, x = self.augment(x, labels, boxes, batch_idx)
                 prediction_result = self.forward(augmented_data)
-                if prediction_result.decoded is not None:
+                if not self.hparams.anomaly_detection_loss:
+                    raise ValueError(
+                        "Please specify the desired loss function for training with the anomaly detection module"
+                    )
+
+                elif (
+                    self.hparams.anomaly_detection_loss.loss == "decoder"
+                    and prediction_result.decoded is not None
+                ):
                     decoded = prediction_result.decoded
                     if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
                         ss_loss = SemiSupervisedLoss(kind="anomaly")
@@ -128,6 +143,25 @@ class AnomalyDetectionModule(VisionBaseModule):
 
                     if batch_idx == 0:
                         self._log_batch_images("decoded", batch_idx, decoded)
+                elif self.hparams.anomaly_detection_loss.loss == "classifier":
+                    ss_loss = SemiSupervisedLoss(kind="normal")
+                    if hasattr(prediction_result, "logits"):
+                        logits = prediction_result.logits
+                    else:
+                        logits = prediction_result
+
+                    if labels is not None and logits.numel() > 0:
+                        classifier_loss = ss_loss.forward(
+                            logits=logits, labels=labels, weight=self.loss_weights
+                        )
+
+                        self.log("train_classifier_loss", classifier_loss)
+                        loss += classifier_loss
+
+                        preds = torch.argmax(logits, dim=1)
+                        self.metrics["train_metrics"](preds, labels)
+
+                        self.log_dict(self.metrics["train_metrics"])
 
                 self.log("train_loss", loss)
 
@@ -141,19 +175,19 @@ class AnomalyDetectionModule(VisionBaseModule):
             "val", batch, batch_idx
         )
         labels = batch.get("labels", None)
-
-        anomaly_score, largest_train_error = self.compute_anomaly_score()
-        if anomaly_score:
-            if (loss.cpu().numpy() / largest_train_error) > anomaly_score:
-                preds = torch.empty(
-                    size=labels.size(), device=labels.device, dtype=labels.dtype
-                ).fill_(1)
-            else:
-                preds = torch.empty(
-                    size=labels.size(), device=labels.device, dtype=labels.dtype
-                ).fill_(0)
-            self.metrics["val_metrics"](preds, labels)
-            self.log_dict(self.metrics["val_metrics"])
+        if self.hparams.anomaly_detection_loss.loss == "decoder":
+            anomaly_score, largest_train_error = self.compute_anomaly_score()
+            if anomaly_score:
+                if (loss.cpu().numpy() / largest_train_error) > anomaly_score:
+                    preds = torch.empty(
+                        size=labels.size(), device=labels.device, dtype=labels.dtype
+                    ).fill_(1)
+                else:
+                    preds = torch.empty(
+                        size=labels.size(), device=labels.device, dtype=labels.dtype
+                    ).fill_(0)
+                self.metrics["val_metrics"](preds, labels)
+                self.log_dict(self.metrics["val_metrics"])
 
     def test_step(self, batch, batch_idx):
         loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
@@ -199,31 +233,32 @@ class AnomalyDetectionModule(VisionBaseModule):
         super().on_train_epoch_end()
 
     def on_train_end(self):
-        optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
-        for epoch in range(10):
-            print("Training epoch of linear classifier: ", epoch)
-            counter = 0
-            for batch in self.train_dataloader():
-                counter += 1
-                if counter % 5000 == 0:
-                    labeled_batch = batch["labeled"]
-                    x = labeled_batch["data"]
-                    labels = labeled_batch.get("labels", None).to(device=self.device)
-                    boxes = labeled_batch.get("bbox", [])
-                    augmented_data, x = self.augment(x, labels, boxes, 1)
-                    augmented_data = augmented_data.to(device=self.device)
-                    prediction_result = self.forward(augmented_data)
+        if self.hparams.anomaly_detection_loss.loss == "decoder":
+            optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
+            for epoch in range(1):
+                print("Training epoch of linear classifier: ", epoch)
+                counter = 0
+                for batch in self.train_dataloader():
+                    counter += 1
+                    if counter % 5000 == 0:
+                        labeled_batch = batch["labeled"]
+                        x = labeled_batch["data"]
+                        labels = labeled_batch.get("labels", None).to(
+                            device=self.device
+                        )
+                        boxes = labeled_batch.get("bbox", [])
+                        augmented_data, x = self.augment(x, labels, boxes, 1)
+                        augmented_data = augmented_data.to(device=self.device)
+                        prediction_result = self.forward(augmented_data)
 
-                    optimizer.zero_grad()
-                    logits = self.model.classifier(prediction_result.latent)
-                    loss = F.cross_entropy(logits, labels)
-                    preds = torch.argmax(logits, dim=1)
-                    loss.backward()
-                    optimizer.step()
-                    counter = 0
-                else:
-                    pass
-                # TODO: Add logging
+                        optimizer.zero_grad()
+                        logits = self.model.classifier(prediction_result.latent)
+                        loss = F.cross_entropy(logits, labels)
+                        preds = torch.argmax(logits, dim=1)
+                        loss.backward()
+                        optimizer.step()
+                        counter = 0
+                    # TODO: Add logging
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
