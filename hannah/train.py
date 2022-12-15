@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -95,6 +95,7 @@ def train(
             normalizer=config.get("normalizer", None),
             gpus=config.trainer.get("gpus", None),
             unlabeled_data=config.get("unlabeled_data"),
+            anomaly_detection_loss=config.get("anomaly_detection_loss"),
             _recursive_=False,
         )
 
