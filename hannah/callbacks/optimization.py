@@ -39,9 +39,10 @@ class HydraOptCallback(Callback):
         self.values = {}
         self.val_values = {}
         self.test_values = {}
+        self.train_values = {}
         self.monitor: List[str] = []
         self.directions: List[int] = []
-        self._curves = defaultdict(list)
+        self._curves = defaultdict(dict)
 
         self._extract_monitor(monitor)
 
@@ -93,7 +94,7 @@ class HydraOptCallback(Callback):
         else:
             self.directions.append(-1.0)
 
-    def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+    def on_train_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule",  outputs: 'STEP_OUTPUT', batch: Any, batch_idx: int) -> None:
         callback_metrics =  trainer.callback_metrics
 
         for k, v in callback_metrics.items():
@@ -104,12 +105,13 @@ class HydraOptCallback(Callback):
                     else:
                         continue
                 value = float(value)
-                self.test_values[k] = value
+                self.train_values[k] = value
 
         for monitor, direction in zip(self.monitor, self.directions):
             if monitor in callback_metrics:
                 monitor_val = callback_metrics[monitor] * direction
-                self._curves[monitor].append(monitor_val)
+                if monitor.startswith("train"):
+                    self._curves[monitor][trainer.global_step] = monitor_val
 
     def on_test_end(self, trainer, pl_module):
         """
@@ -165,7 +167,7 @@ class HydraOptCallback(Callback):
                         or directed_monitor_val < self.values[monitor]
                     ):
                         self.values[monitor] = directed_monitor_val
-                    self._curves[monitor].append(monitor_val)
+                    self._curves[monitor][trainer.global_step] = directed_monitor_val
                 except Exception:
                     pass
 
@@ -212,14 +214,14 @@ class HydraOptCallback(Callback):
         """
 
         return_values = defaultdict(list)
-        for key, value_list in self._curves.items():
-            for value in value_list:
+        for key, value_dict in self._curves.items():
+            for step, value in value_dict.items():
                 if isinstance(value, Tensor):
                     value = float(value.cpu())
                 else:
                     value = float(value)
 
-                return_values[key].append(value)
+                return_values[key].append((step, value))
 
         if len(return_values) == 1 and dict is False:
             return list(return_values.values())[0]
