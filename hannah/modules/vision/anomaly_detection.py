@@ -178,13 +178,13 @@ class AnomalyDetectionModule(VisionBaseModule):
         plt.title("Normalized train reconstruction errors")
         plt.savefig(wd_dir + "/normalized_train_errors.png")
 
-        test = (
+        """test = (
             torch.tensor(self.test_losses, device=self.device)
             / torch.max(torch.stack(self.train_losses), dim=0).values
         )
         plt.hist(test.detach().cpu().numpy(), bins=100)
         plt.title("Normalized test reconstruction errors")
-        plt.savefig(wd_dir + "/normalized_test_errors.png")
+        plt.savefig(wd_dir + "/normalized_test_errors.png")"""
 
         self._plot_confusion_matrix()
         self._AUROC(self.predictions, self.labels)
