@@ -215,7 +215,7 @@ class RandomNASTrainer(NASTrainerBase):
             example_input_array = torch.rand([1] + train_set.size())
 
             # instantiate search space
-            model = ConvNet(name='cnn', params=self.config.model.params, input_shape=example_input_array.shape, labels=10)
+            model = instantiate(self.config.model)
 
             # sample from search space
             # model is still a Parametrized nn.Module with Lazy layer stubs
