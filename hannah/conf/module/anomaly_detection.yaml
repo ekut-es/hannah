@@ -2,3 +2,4 @@ _target_: hannah.modules.AnomalyDetectionModule
 num_workers: 0
 batch_size: 128
 shuffle_all_dataloaders: False
+train_val_loss: 'classifier'  # other option: 'decoder'
