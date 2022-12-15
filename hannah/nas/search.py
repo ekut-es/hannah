@@ -177,7 +177,7 @@ class RandomNASTrainer(NASTrainerBase):
 
     def fit(self, module: LightningModule):
         callbacks = common_callbacks(self.config)
-        opt_monitor = self.config.get("monitor", ["val_error"])
+        opt_monitor = self.config.get("monitor", ["val_error", "train_classifier_loss"])
         opt_callback = HydraOptCallback(monitor=opt_monitor)
         callbacks.append(opt_callback)
 
@@ -193,7 +193,7 @@ class RandomNASTrainer(NASTrainerBase):
             import json
 
             json.dump(
-                {"graph": json_data, "metrics": opt_callback.result(dict=True)},
+                {"graph": json_data, "hparams": {"batch_size": int(self.config.module.batch_size)}, "metrics": opt_callback.result(dict=True), "curves": opt_callback.curves(dict=True)},
                 res_file,
             )
 
