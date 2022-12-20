@@ -114,7 +114,8 @@ test_python_310:
       - .cache/
 
 build_docs:
-  stage: deploy
+  stage: test
+  image: ubuntu:22.04
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
@@ -131,8 +132,7 @@ build_docs:
   script:
     - pydoc-markdown --build --site-dir /afs/wsi/home/gerum/public_html/hannah
   tags:
-    - afs
-    - native
+    - docker
   only:
     - main
 
