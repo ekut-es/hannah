@@ -235,6 +235,33 @@ model : LightningModule
 <h1 id="hannahmodulesvision">hannah.modules.vision</h1>
 <p><a id="hannah.modules.vision.anomaly_detection"></a></p>
 <h1 id="hannahmodulesvisionanomaly_detection">hannah.modules.vision.anomaly_detection</h1>
+<p><a id="hannah.modules.vision.anomaly_detection.AnomalyDetectionModule"></a></p>
+<h2 id="anomalydetectionmodule-objects">AnomalyDetectionModule Objects</h2>
+<pre><code class="language-python">class AnomalyDetectionModule(VisionBaseModule)
+</code></pre>
+<p><a id="hannah.modules.vision.anomaly_detection.AnomalyDetectionModule.on_test_end"></a></p>
+<h4 id="on_test_end">on_test_end</h4>
+<pre><code class="language-python">def on_test_end()
+</code></pre>
+<p>wd_dir = os.getcwd()
+score, largest_train_error = self.compute_anomaly_score()
+train_errors = self.normalized_train_errors
+plt.hist(train_errors.detach().cpu().numpy(), bins=100)
+plt.axvline(score, linestyle="dashed")
+plt.title("Normalized train reconstruction errors")
+plt.savefig(wd_dir + "/normalized_train_errors.png")</p>
+<p>test = (
+    torch.tensor(self.test_losses, device=self.device)
+    / torch.max(torch.stack(self.train_losses), dim=0).values
+)
+plt.hist(test.detach().cpu().numpy(), bins=100)
+plt.title("Normalized test reconstruction errors")
+plt.savefig(wd_dir + "/normalized_test_errors.png")
+print("Anomaly score", score)
+print(
+    "Largest train error",
+    torch.max(torch.stack(self.train_losses), dim=0).values,
+)</p>
 <p><a id="hannah.modules.vision.base"></a></p>
 <h1 id="hannahmodulesvisionbase">hannah.modules.vision.base</h1>
 <p><a id="hannah.modules.vision.image_classifier"></a></p>
@@ -524,7 +551,7 @@ Example usage::</p>
 <li><code>parameters_to_prune</code> - (Default value = None)</li>
 </ul>
 <p><a id="hannah.callbacks.pruning.FilteredPruning.on_test_end"></a></p>
-<h4 id="on_test_end">on_test_end</h4>
+<h4 id="on_test_end_1">on_test_end</h4>
 <pre><code class="language-python">def on_test_end(trainer, pl_module) -&gt; None
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -537,7 +564,7 @@ Example usage::</p>
 <pre><code class="language-python">class HydraOptCallback(Callback)
 </code></pre>
 <p><a id="hannah.callbacks.optimization.HydraOptCallback.on_test_end"></a></p>
-<h4 id="on_test_end_1">on_test_end</h4>
+<h4 id="on_test_end_2">on_test_end</h4>
 <pre><code class="language-python">def on_test_end(trainer, pl_module)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -801,7 +828,7 @@ def on_train_start(trainer, pl_module)
 <p>trainer:
   pl_module:</p>
 <p><a id="hannah.callbacks.summaries.MacSummaryCallback.on_test_end"></a></p>
-<h4 id="on_test_end_2">on_test_end</h4>
+<h4 id="on_test_end_3">on_test_end</h4>
 <pre><code class="language-python">@rank_zero_only
 def on_test_end(trainer, pl_module)
 </code></pre>
@@ -1095,27 +1122,6 @@ def mean() -&gt; Optional[Tuple[int, ...]]
 def weights() -&gt; Optional[List[float]]
 </code></pre>
 <p>Class weights for weighted sampling</p>
-<p><a id="hannah.datasets.base.ctc_collate_fn"></a></p>
-<h4 id="ctc_collate_fn_1">ctc_collate_fn</h4>
-<pre><code class="language-python">def ctc_collate_fn(data)
-</code></pre>
-<p>Creates mini-batch tensors from the list of tuples (src_seq, trg_seq).
-We should build a custom collate_fn rather than using default collate_fn,
-because merging sequences (including padding) is not supported in default.
-Sequences are padded to the maximum length of mini-batch sequences (dynamic padding).</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>data</code> - list of tuple (src_seq, src_length, trg_seq, trg_length).</li>
-<li>src_seq: torch tensor of shape (x,?); variable length.</li>
-<li>src length: torch tenso of shape 1x1</li>
-<li>trg_seq: torch tensor of shape (?); variable length.</li>
-<li>trg_length: torch_tensor of shape (1x1)</li>
-<li><code>Returns</code> - tuple of four torch tensors</li>
-<li><code>src_seqs</code> - torch tensor of shape (batch_size, x, padded_length).</li>
-<li><code>src_lengths</code> - torch_tensor of shape (batch_size); valid length for each padded source sequence.</li>
-<li><code>trg_seqs</code> - torch tensor of shape (batch_size, x, padded_length).</li>
-<li><code>trg_lengths</code> - torch tensor of shape (batch_size); valid length for each padded target sequence.</li>
-</ul>
 <p><a id="hannah.datasets.emergency"></a></p>
 <h1 id="hannahdatasetsemergency">hannah.datasets.emergency</h1>
 <p><a id="hannah.datasets.emergency.EmergencySirenDataset"></a></p>
@@ -3674,7 +3680,7 @@ labels, input shape, convolutional layers, and other parameters</p>
 <pre><code class="language-python">def on_test()
 </code></pre>
 <p><a id="hannah.models.tc.models.BranchyTCResNetModel.on_test_end"></a></p>
-<h4 id="on_test_end_3">on_test_end</h4>
+<h4 id="on_test_end_4">on_test_end</h4>
 <pre><code class="language-python">def on_test_end()
 </code></pre>
 <p><a id="hannah.models.tc.models.BranchyTCResNetModel.reset_stats"></a></p>
@@ -5081,6 +5087,8 @@ stack</li>
 <h1 id="hannahnasops">hannah.nas.ops</h1>
 <p><a id="hannah.nas.graph_conversion"></a></p>
 <h1 id="hannahnasgraph_conversion">hannah.nas.graph_conversion</h1>
+<p><a id="hannah.test_linear_classifier"></a></p>
+<h1 id="hannahtest_linear_classifier">hannah.test_linear_classifier</h1>
               
             </div>
           </div><footer>
