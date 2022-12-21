@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -33,7 +33,7 @@ from sklearn.metrics import auc
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 from torchmetrics import Metric, MetricCollection
 
-from hannah.datasets.base import ctc_collate_fn
+from hannah.datasets.collate import ctc_collate_fn
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils import set_deterministic

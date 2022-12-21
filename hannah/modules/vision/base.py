@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2022 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -110,6 +110,7 @@ class VisionBaseModule(ClassifierModule):
         self.predictions = torch.tensor([], device=self.device)
         self.labels = torch.tensor([], device=self.device)
         self.test_losses = list()
+        self.encodings = dict()
 
         # Setup Metrics
         metrics = {}
@@ -172,7 +173,7 @@ class VisionBaseModule(ClassifierModule):
 
     def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
-        if (
+        """if (
             torch.numel(images) > 0
         ):  # to circumvent error when tensor is empty (depends on batch size)
             seq = A.PatchSequential(
@@ -180,10 +181,11 @@ class VisionBaseModule(ClassifierModule):
                 patchwise_apply=False,
                 grid_size=(8, 8),
             )
-            augmented_data = seq(augmented_data)
+            augmented_data = seq(augmented_data)"""
 
-        # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.4, 'keepdim': True}})
+        # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.35, 'keepdim': True}})
         # augmented_data = seq.forward(augmented_data)
+        augmented_data = A.RandomGaussianNoise(p=0.3, keepdim=True)(augmented_data)
 
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)
