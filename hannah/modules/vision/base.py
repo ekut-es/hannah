@@ -112,6 +112,7 @@ class VisionBaseModule(ClassifierModule):
         self.predictions = torch.tensor([], device=self.device)
         self.labels = torch.tensor([], device=self.device)
         self.test_losses = list()
+        self.encodings = dict()
 
         # Setup Metrics
         metrics = {}
@@ -174,19 +175,19 @@ class VisionBaseModule(ClassifierModule):
 
     def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
-        if (
+        """if (
             torch.numel(images) > 0
         ):  # to circumvent error when tensor is empty (depends on batch size)
-            # seq = A.PatchSequential(
-            #     A.AugmentationSequential(A.RandomErasing(p=0.75, scale=(0.7, 0.7))),
-            #     patchwise_apply=False,
-            #     grid_size=(8, 8),
-            # )
-            # augmented_data = seq(augmented_data)
+            seq = A.PatchSequential(
+                A.AugmentationSequential(A.RandomErasing(p=0.75, scale=(0.7, 0.7))),
+                patchwise_apply=False,
+                grid_size=(8, 8),
+            )
+            augmented_data = seq(augmented_data)"""
 
-            # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.4, 'keepdim': True}})
-            seq = A.AugmentationSequential(A.RandomGaussianNoise(mean=0.0, std=0.1))
-            augmented_data = seq.forward(augmented_data)
+        # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.35, 'keepdim': True}})
+        # augmented_data = seq.forward(augmented_data)
+        augmented_data = A.RandomGaussianNoise(p=0.3, keepdim=True)(augmented_data)
 
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)

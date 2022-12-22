@@ -38,3 +38,6 @@ trainer:
 
 scheduler:
   max_lr: 0.001
+
+module:
+  train_val_loss: decoder
