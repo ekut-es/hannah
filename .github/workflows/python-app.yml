@@ -29,7 +29,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install poetry
-        poetry install
+        poetry install -E vision
     - name: Test
       run: |
         poetry run pytest hannah test
