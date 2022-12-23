@@ -27,7 +27,9 @@ from search_space import space
 
 # import pandas as pd
 
-
+"""
+TAKE A LOOK ON THESES IMPL.
+"""
 def to_one_hot(val, options):
     vec = np.zeros(len(options))
     options = np.array(options)

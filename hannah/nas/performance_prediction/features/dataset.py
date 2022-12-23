@@ -32,12 +32,19 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from sklearn.preprocessing import MinMaxScaler
 from pathlib import Path
+from tqdm import tqdm
 
 import hannah.conf
 from hannah.nas.graph_conversion import model_to_graph
 
-
+"""
+how to change this method when we have multi seeds --> multi val_error
+sol: extend the row of the data frame 
+problem: same arch with different validation errors
+use the average of the metric val or the min or max of the val  
+"""
 class NASGraphDataset(DGLDataset):
+
     def __init__(self, result_folder : str):
         self.result_folder = Path(result_folder)
         super().__init__(name="nasgraph")
@@ -57,6 +64,7 @@ class NASGraphDataset(DGLDataset):
             d = json.load(data_path.open())            
 
             graph = nx.json_graph.node_link_graph(d["graph"])
+            graph.graph["id"] = i
             self.nx_graphs.append(graph)
             for j, n in enumerate(graph.nodes):
                 node = graph.nodes[n]
@@ -97,7 +105,9 @@ class NASGraphDataset(DGLDataset):
         #         if not div:
         #             div = 1
         #         df[col] = (df[col]-df[col].min())/ div
-        for i, g in enumerate(self.nx_graphs):
+        for g in tqdm(self.nx_graphs):
+            # hier die finale embedding 
+            i = g.graph["id"]
             dgl_graph = to_dgl_graph(
                 g, df[df["graph"] == i].drop(columns="node").to_numpy()
             )
