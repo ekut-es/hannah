@@ -131,7 +131,9 @@ class AnomalyDetectionModule(VisionBaseModule):
                 ):
                     decoded = prediction_result.decoded
                     if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
-                        ss_loss = SemiSupervisedLoss(kind="anomaly")
+                        ss_loss = SemiSupervisedLoss(
+                            kind="normal"
+                        )  # change back to anomaly
                     else:
                         ss_loss = SemiSupervisedLoss(kind="normal")
                     current_loss = ss_loss.forward(true_data=x, decoded=decoded)
@@ -180,7 +182,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                         size=labels.size(), device=labels.device, dtype=labels.dtype
                     ).fill_(0)
                 self.metrics["val_metrics"](preds, labels)
-                self.log_dict(self.metricsf["val_metrics"])
+                self.log_dict(self.metrics["val_metrics"])
 
     def test_step(self, batch, batch_idx):
         loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
@@ -233,7 +235,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                 counter = 0
                 for batch in self.train_dataloader():
                     counter += 1
-                    if counter % 5 == 0:
+                    if counter % 10 == 0:
                         labeled_batch = batch["labeled"]
                         x = labeled_batch["data"]
                         labels = labeled_batch.get("labels", None).to(
