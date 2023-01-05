@@ -17,16 +17,26 @@
 # limitations under the License.
 #
 
+import logging
+from joblib import Parallel, delayed
+import numpy as np
+from omegaconf import OmegaConf
 import torch
 import os
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from pathlib import Path
 from hydra.utils import instantiate, get_class
+import yaml
 from hannah.callbacks.optimization import HydraOptCallback
+from hannah.nas.search.model_trainer.parallel_model_trainer import ParallelModelTrainer
+from hannah.nas.search.sampler.aging_evolution import AgingEvolution
+from hannah.nas.search.utils import WorklistItem
 from hannah.utils.utils import common_callbacks
 from hannah.nas.graph_conversion import model_to_graph
 
+msglogger = logging.getLogger(__name__)
 
 class NASBase(ABC):
     def __init__(self,
@@ -52,6 +62,9 @@ class NASBase(ABC):
     @abstractmethod
     def after_search(self):
         pass
+
+    def add_model_trainer(self, trainer):
+        self.model_trainer = trainer
 
 
 class DirectNAS(NASBase):
@@ -149,6 +162,136 @@ class DirectNAS(NASBase):
                              "curves": self.result_handler.curves(dict=True)},
                 res_file,
             )
+
+class AgingEvolutionNAS(DirectNAS):
+    def __init__(self,
+                 budget=2000,
+                 parametrization=None,
+                 bounds=None,
+                 random_state=None,
+                 population_size=100,
+                 presample=True,
+                 n_jobs=10,
+                 *args, **kwargs) -> None:
+        super().__init__(budget, *args, **kwargs)
+        self.random_state = np.random.RandomState()
+        self.optimizer = AgingEvolution(parametrization=parametrization,
+                                        bounds=bounds,
+                                        population_size=population_size,
+                                        random_state=self.random_state)
+        self.presample = presample
+        self.worklist = []
+        self.model_trainer = ParallelModelTrainer()
+        self.n_jobs=n_jobs
+
+    def sample(self):
+        parameters = self.optimizer.next_parameters()
+        return parameters
+
+    def build_search_space(self):
+        pass
+
+    def build_model(self, parameters):
+        config = OmegaConf.merge(self.config, parameters.flatten())
+        try:
+            # setup the model
+            model = instantiate(
+                config.module,
+                dataset=config.dataset,
+                model=config.model,
+                optimizer=config.optimizer,
+                features=config.features,
+                scheduler=config.get("scheduler", None),
+                normalizer=config.get("normalizer", None),
+                _recursive_=False,
+            )
+            model.setup("train")
+        except AssertionError as e:
+            msglogger.critical(
+                "Instantiation failed. Probably #input/output channels are not divisible by #groups!"
+            )
+            msglogger.critical(str(e))
+        else:
+            estimated_metrics = {}
+            # estimated_metrics = self.predictor.estimate(model)
+
+            satisfied_bounds = []
+            for k, v in estimated_metrics.items():
+                if k in self.bounds:
+                    distance = v / self.bounds[k]
+                    msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
+                    satisfied_bounds.append(distance <= 1.2)
+
+            worklist_item = WorklistItem(parameters, estimated_metrics)
+
+            if self.presample:
+                if all(satisfied_bounds):
+                    self.worklist.append(worklist_item)
+            else:
+                self.worklist.append(worklist_item)
+
+    def search(self):
+        print("Begin Search")
+        with Parallel(n_jobs=self.n_jobs) as executor:
+            while len(self.optimizer.history) < self.budget:
+                self.worklist = []
+                # Mutate current population
+                while len(self.worklist) < self.n_jobs:
+                    parameters = self.sample()
+                    self.build_model(parameters)
+
+                # validate population
+                configs = [
+                    OmegaConf.merge(self.config, item.parameters.flatten())
+                    for item in self.worklist
+                ]
+
+                results = executor(
+                    [
+                        delayed(self.model_trainer.run_training)(
+                            num,
+                            len(self.optimizer.history) + num,
+                            OmegaConf.to_container(config, resolve=True),
+                        )
+                        for num, config in enumerate(configs)
+                    ]
+                )
+
+                for num, (config, result) in enumerate(zip(configs, results)):
+                    nas_result_path = Path("results")
+                    if not nas_result_path.exists():
+                        nas_result_path.mkdir(parents=True, exist_ok=True)
+                    config_file_name = f"config_{len(self.optimizer.history)+num}.yaml"
+                    config_path = nas_result_path / config_file_name
+                    with config_path.open("w") as config_file:
+                        config_file.write(OmegaConf.to_yaml(config))
+
+                    result_path = nas_result_path / "results.yaml"
+                    result_history = []
+                    if result_path.exists():
+                        with result_path.open("r") as result_file:
+                            result_history = yaml.safe_load(result_file)
+                        if not isinstance(result_history, list):
+                            result_history = []
+
+                    result_history.append(
+                        {"config": str(config_file_name), "metrics": result}
+                    )
+
+                    with result_path.open("w") as result_file:
+                        yaml.safe_dump(result_history, result_file)
+
+                for result, item in zip(results, self.worklist):
+                    parameters = item.parameters
+                    metrics = {**item.results, **result}
+                    for k, v in metrics.items():
+                        metrics[k] = float(v)
+
+                    self.optimizer.tell_result(parameters, metrics)
+
+
+
+
 
 
 class WeightSharingNAS(NASBase):
