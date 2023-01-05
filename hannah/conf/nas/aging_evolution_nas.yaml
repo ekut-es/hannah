@@ -16,10 +16,10 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-defaults:
-  - predictor: gcn
+# defaults:
+#   - predictor: gcn
 
-_target_: hannah.nas.search.AgingEvolutionNASTrainer
+_target_: hannah.nas.search.search.AgingEvolutionNAS
 parametrization: {}
 bounds: {}
 budget: 10000
