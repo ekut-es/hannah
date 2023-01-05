@@ -25,8 +25,8 @@ from typing import Any, Dict, List, Union
 import numpy as np
 import yaml
 
-from .parametrization import SearchSpace
-from .utils import is_pareto
+from ...parametrization import SearchSpace
+from ...utils import is_pareto
 
 
 @dataclass()
