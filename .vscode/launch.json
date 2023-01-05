@@ -78,12 +78,15 @@
             "type": "python",
             "request": "launch",
             "module": "hannah.tools.train",
+            "justMyCode": false,
             "args": [
                 "nas=aging_evolution_nas",
+                "nas.n_jobs=1",
                 "trainer.max_epochs=2",
                 "model=conv-net-trax",
                 "normalizer=fixedpoint",
-                "compression=pruning_only"
+                // "compression=pruning_only",
+                "module.batch_size=12",
             ]
         },
         {
