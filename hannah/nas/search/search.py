@@ -30,9 +30,9 @@ from pathlib import Path
 from hydra.utils import instantiate, get_class
 import yaml
 from hannah.callbacks.optimization import HydraOptCallback
-from hannah.nas.search.model_trainer.parallel_model_trainer import ParallelModelTrainer
+from hannah.nas.search.model_trainer.simple_model_trainer import SimpleModelTrainer
 from hannah.nas.search.sampler.aging_evolution import AgingEvolution
-from hannah.nas.search.utils import WorklistItem
+from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
 from hannah.nas.graph_conversion import model_to_graph
 
@@ -181,7 +181,7 @@ class AgingEvolutionNAS(DirectNAS):
                                         random_state=self.random_state)
         self.presample = presample
         self.worklist = []
-        self.model_trainer = ParallelModelTrainer()
+        self.model_trainer = SimpleModelTrainer()
         self.n_jobs=n_jobs
 
     def sample(self):
@@ -189,22 +189,11 @@ class AgingEvolutionNAS(DirectNAS):
         return parameters
 
     def build_search_space(self):
-        pass
+        self.search_space = self.config.model
 
     def build_model(self, parameters):
-        config = OmegaConf.merge(self.config, parameters.flatten())
         try:
-            # setup the model
-            model = instantiate(
-                config.module,
-                dataset=config.dataset,
-                model=config.model,
-                optimizer=config.optimizer,
-                features=config.features,
-                scheduler=config.get("scheduler", None),
-                normalizer=config.get("normalizer", None),
-                _recursive_=False,
-            )
+            model = self.model_trainer.build_model(self.search_space, self.config, parameters)
             model.setup("train")
         except AssertionError as e:
             msglogger.critical(
@@ -230,56 +219,37 @@ class AgingEvolutionNAS(DirectNAS):
             else:
                 self.worklist.append(worklist_item)
 
+            return model
+
+    def before_search(self):
+        self.build_search_space()
+
     def search(self):
-        print("Begin Search")
         with Parallel(n_jobs=self.n_jobs) as executor:
             while len(self.optimizer.history) < self.budget:
                 self.worklist = []
                 # Mutate current population
+                models = []
                 while len(self.worklist) < self.n_jobs:
                     parameters = self.sample()
-                    self.build_model(parameters)
+                    models.append(self.build_model(parameters))
 
                 # validate population
-                configs = [
-                    OmegaConf.merge(self.config, item.parameters.flatten())
-                    for item in self.worklist
-                ]
+                configs = [OmegaConf.merge(self.config, item.parameters.flatten()) for item in self.worklist]
 
                 results = executor(
                     [
                         delayed(self.model_trainer.run_training)(
+                            model,
                             num,
                             len(self.optimizer.history) + num,
                             OmegaConf.to_container(config, resolve=True),
                         )
-                        for num, config in enumerate(configs)
+                        for num, (config, model) in enumerate(zip(configs, models))
                     ]
                 )
 
-                for num, (config, result) in enumerate(zip(configs, results)):
-                    nas_result_path = Path("results")
-                    if not nas_result_path.exists():
-                        nas_result_path.mkdir(parents=True, exist_ok=True)
-                    config_file_name = f"config_{len(self.optimizer.history)+num}.yaml"
-                    config_path = nas_result_path / config_file_name
-                    with config_path.open("w") as config_file:
-                        config_file.write(OmegaConf.to_yaml(config))
-
-                    result_path = nas_result_path / "results.yaml"
-                    result_history = []
-                    if result_path.exists():
-                        with result_path.open("r") as result_file:
-                            result_history = yaml.safe_load(result_file)
-                        if not isinstance(result_history, list):
-                            result_history = []
-
-                    result_history.append(
-                        {"config": str(config_file_name), "metrics": result}
-                    )
-
-                    with result_path.open("w") as result_file:
-                        yaml.safe_dump(result_history, result_file)
+                save_config_to_file(self.optimizer.history, configs, results)
 
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
@@ -288,10 +258,6 @@ class AgingEvolutionNAS(DirectNAS):
                         metrics[k] = float(v)
 
                     self.optimizer.tell_result(parameters, metrics)
-
-
-
-
 
 
 class WeightSharingNAS(NASBase):
