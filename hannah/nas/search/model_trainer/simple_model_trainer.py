@@ -11,12 +11,10 @@ from hannah.nas.graph_conversion import model_to_graph
 from hydra.utils import instantiate
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from hannah.nas.search.utils import save_graph_to_file
+from hannah.nas.search.utils import save_graph_to_file, setup_callbacks
 
 from hannah.utils.utils import common_callbacks
 msglogger = logging.getLogger(__name__)
-
-
 
 
 class SimpleModelTrainer:
@@ -24,24 +22,14 @@ class SimpleModelTrainer:
         pass
 
     def build_model(self, model, config, parameters):
-        if isinstance(model, DictConfig):
-            config = OmegaConf.merge(config, parameters.flatten())
 
-            # setup the model
-            model = instantiate(
-                config.module,
-                dataset=config.dataset,
-                model=model,
-                optimizer=config.optimizer,
-                features=config.features,
-                scheduler=config.get("scheduler", None),
-                normalizer=config.get("normalizer", None),
-                _recursive_=False,
-            )
-        elif isinstance(model, nn.Module):
-            model_instance = deepcopy(model)
-            model_instance.initialize()
-            model = model_instance
+        model_instance = deepcopy(model)
+
+        for k, p in model_instance.parametrization(flatten=True).items():
+            p.set_current(parameters[k])
+
+        model_instance.initialize()
+        model = model_instance
 
         return model
 
@@ -59,20 +47,10 @@ class SimpleModelTrainer:
 
             self.setup_seed(config)
             self.setup_gpus(num, config, logger)
-            callbacks, opt_monitor, opt_callback = self.setup_callbacks(config)
+            callbacks, opt_monitor, opt_callback = setup_callbacks(config)
             try:
                 trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
                 module = model
-                # module = instantiate(
-                #     config.module,
-                #     dataset=config.dataset,
-                #     model=model,
-                #     optimizer=config.optimizer,
-                #     features=config.features,
-                #     scheduler=config.get("scheduler", None),
-                #     normalizer=config.get("normalizer", None),
-                #     _recursive_=False,
-                # )
                 trainer.fit(module)
                 ckpt_path = "best"
                 if trainer.fast_dev_run:
@@ -104,16 +82,6 @@ class SimpleModelTrainer:
         if isinstance(seed, list) or isinstance(seed, omegaconf.ListConfig):
             seed = seed[0]
         seed_everything(seed, workers=True)
-
-    def setup_callbacks(self, config):
-        callbacks = common_callbacks(config)
-        opt_monitor = config.get("monitor", ["val_error"])
-        opt_callback = HydraOptCallback(monitor=opt_monitor)
-        callbacks.append(opt_callback)
-
-        checkpoint_callback = instantiate(config.checkpoint)
-        callbacks.append(checkpoint_callback)
-        return callbacks,opt_monitor,opt_callback
 
     def setup_gpus(self, num, config, logger):
         if config.trainer.gpus is not None:
