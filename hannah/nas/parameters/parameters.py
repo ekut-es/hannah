@@ -126,7 +126,7 @@ class IntScalarParameter(Parameter):
         return self.current_value
 
     def check(self, value):
-        if not isinstance(value, int):
+        if not isinstance(value, (int, np.int64)):
             raise ValueError(
                 "Value {} must be of type int but is type {}".format(value, type(value))
             )
