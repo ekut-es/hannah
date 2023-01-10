@@ -45,6 +45,8 @@ class NASBase(ABC):
         self.budget = budget
         self.config = parent_config
         self.callbacks = []
+        self.sampler = None
+        self.model_trainer = None
 
     def run(self):
         self.before_search()
@@ -66,10 +68,15 @@ class NASBase(ABC):
     def add_model_trainer(self, trainer):
         self.model_trainer = trainer
 
+    def add_sampler(self, sampler):
+        self.sampler = sampler
+
 
 class DirectNAS(NASBase):
     def __init__(self,
                  budget=2000,
+                 sampler=None,
+                 model_trainer=None,
                  *args,
                  **kwargs) -> None:
         super().__init__(*args, budget=budget, **kwargs)
@@ -78,17 +85,21 @@ class DirectNAS(NASBase):
         # setup logging
         self.initialize_dataset()
         self.search_space = self.build_search_space()
+        parameters = self.search_space.parametrization(flatten=True)
+        self.sampler = instantiate(self.config.nas.sampler, parameters=parameters)
+        self.model_trainer = instantiate(self.config.nas.model_trainer)
 
     def search(self):
         for i in range(self.budget):
             self.global_num = i
             self.setup_model_logging()
             parameters = self.sample()
-            model = self.build_model(parameters)
+            model = self.model_trainer.build_model(self.search_space, self.config, parameters)
             lightning_module = self.initialize_lightning_module(model)
             self.train_model(lightning_module)
 
             self.log_results(lightning_module)
+
     def after_search(self):
         self.extract_best_model()
 
@@ -137,7 +148,8 @@ class DirectNAS(NASBase):
 
     def sample(self):
         # FIXME: Decoupled sampling
-        self.search_space.sample()
+        parameters = self.sampler.sample()
+        return parameters
 
     def setup_model_logging(self):
         self.callbacks = common_callbacks(self.config)
@@ -175,10 +187,9 @@ class AgingEvolutionNAS(DirectNAS):
                  *args, **kwargs) -> None:
         super().__init__(budget, *args, **kwargs)
         self.random_state = np.random.RandomState()
-        self.optimizer = AgingEvolution(parametrization=parametrization,
-                                        bounds=bounds,
-                                        population_size=population_size,
-                                        random_state=self.random_state)
+        self.parametrization = parametrization
+        self.bounds = bounds
+        self.population_size = population_size
         self.presample = presample
         self.worklist = []
         self.model_trainer = SimpleModelTrainer()
@@ -223,6 +234,10 @@ class AgingEvolutionNAS(DirectNAS):
 
     def before_search(self):
         self.build_search_space()
+        self.optimizer = AgingEvolution(parametrization=self.search_space,
+                                        bounds=self.bounds,
+                                        population_size=self.population_size,
+                                        random_state=self.random_state)
 
     def search(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
