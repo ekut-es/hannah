@@ -5,8 +5,11 @@ from typing import Any, Dict
 
 from omegaconf import OmegaConf
 import yaml
+from hannah.callbacks.optimization import HydraOptCallback
 
 from hannah.nas.graph_conversion import model_to_graph
+from hydra.utils import instantiate
+from hannah.utils.utils import common_callbacks
 
 
 @dataclass
@@ -54,3 +57,13 @@ def save_graph_to_file(global_num, opt_callback, model):
                 {"graph": json_data, "metrics": opt_callback.result(dict=True)},
                 res_file,
             )
+
+def setup_callbacks(config):
+    callbacks = common_callbacks(config)
+    opt_monitor = config.get("monitor", ["val_error"])
+    opt_callback = HydraOptCallback(monitor=opt_monitor)
+    callbacks.append(opt_callback)
+
+    checkpoint_callback = instantiate(config.checkpoint)
+    callbacks.append(checkpoint_callback)
+    return callbacks,opt_monitor,opt_callback
