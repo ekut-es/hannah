@@ -16,6 +16,10 @@
 ## limitations under the License.
 ##
 
+defaults:
+  - sampler: random
+  - model_trainer: simple
 
 _target_: hannah.nas.search.search.DirectNAS
 budget: 2000
+
