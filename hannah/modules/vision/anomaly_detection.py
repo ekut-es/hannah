@@ -232,13 +232,13 @@ class AnomalyDetectionModule(VisionBaseModule):
 
     def on_train_end(self):
         if self.hparams.train_val_loss == "decoder":
-            torch.save(
-                self.model.state_dict(),
-                "/local/wernerju/hannah/experiments/kvasir_ssl/autoencoder_allmse_20epo_state_dict",
-            )
+            # torch.save(
+            #    self.model.state_dict(),
+            #    "/local/wernerju/hannah/experiments/kvasir_ssl/autoencoder_allmse_10epo_state_dict",
+            # )
             optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
             print("Starting training of linear classifier.")
-            for epoch in trange(10):
+            for epoch in trange(20):
                 losses = []
                 counter = 0
                 for batch in self.train_dataloader():
