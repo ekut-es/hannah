@@ -21,7 +21,6 @@ from typing import Any, List
 
 import torch
 import torch.nn as nn
-import torchvision
 
 from .transforms.registry import registry
 
@@ -37,7 +36,7 @@ class BatchAugmentationPipeline(nn.Module):
             transforms (dict): configuration of transforms
         """
         super().__init__()
-        logger.info("Available transforms:")
+        # logger.info("Available transforms:")
         # for transform in registry.transforms.keys():
         #    logger.info("  - %s", str(transform))
 

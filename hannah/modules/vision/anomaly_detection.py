@@ -27,8 +27,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
-import torchvision.utils
-import tqdm
 from hydra.utils import get_class, instantiate
 from pytorch_lightning.trainer.supporters import CombinedLoader
 from tqdm import trange

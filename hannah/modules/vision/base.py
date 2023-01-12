@@ -19,13 +19,9 @@
 import logging
 from typing import Sequence
 
-import kornia
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.utils.data as data
-import torchvision.utils
 from hydra.utils import get_class, instantiate
 from sklearn.metrics import auc, roc_curve
 from torchmetrics import (
@@ -40,7 +36,6 @@ from torchmetrics import (
 from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
-from ..augmentation.transforms.kornia_transforms import A
 from ..base import ClassifierModule
 from ..metrics import Error
 
