@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -18,6 +18,8 @@
 #
 
 import logging
+
+import torchvision
 
 try:
     import kornia.augmentation as A
@@ -58,3 +60,6 @@ if A:
     registry.register(A.RandomRotation)
     registry.register(A.RandomVerticalFlip)
     registry.register(A.RandomThinPlateSpline)
+
+# Normalization
+registry.register(torchvision.transforms.Normalize)

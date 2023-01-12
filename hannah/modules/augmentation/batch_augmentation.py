@@ -21,6 +21,7 @@ from typing import Any, List
 
 import torch
 import torch.nn as nn
+import torchvision
 
 from .transforms.registry import registry
 
@@ -37,15 +38,15 @@ class BatchAugmentationPipeline(nn.Module):
         """
         super().__init__()
         logger.info("Available transforms:")
-        for transform in registry.transforms.keys():
-            logger.info("  - %s", str(transform))
+        # for transform in registry.transforms.keys():
+        #    logger.info("  - %s", str(transform))
 
         transform_instances: List[nn.Module] = []
         for name, args in transforms.items():
             transform = registry.instantiate(name, **args)
             transform_instances.append(transform)
         self.transforms = nn.Sequential(*transform_instances)
-        print(self.transforms)
+        # print(self.transforms)
 
     @torch.no_grad()
     def forward(self, x) -> torch.Tensor:
