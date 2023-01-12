@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -182,10 +182,9 @@ class VisionBaseModule(ClassifierModule):
                 grid_size=(8, 8),
             )
             augmented_data = seq(augmented_data)"""
-
         # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.35, 'keepdim': True}})
         # augmented_data = seq.forward(augmented_data)
-        augmented_data = A.RandomGaussianNoise(p=0.3, keepdim=True)(augmented_data)
+        augmented_data = A.RandomGaussianNoise(p=0.2, keepdim=True)(augmented_data)
 
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)

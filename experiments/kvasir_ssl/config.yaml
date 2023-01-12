@@ -41,3 +41,4 @@ scheduler:
 
 module:
   train_val_loss: decoder
+  batch_size: 4

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -19,6 +19,7 @@
 import json
 import logging
 import os
+import statistics
 from typing import Sequence
 
 import matplotlib.pyplot as plt
@@ -27,8 +28,10 @@ import torch
 import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
+import tqdm
 from hydra.utils import get_class, instantiate
 from pytorch_lightning.trainer.supporters import CombinedLoader
+from tqdm import trange
 
 from hannah.datasets.collate import vision_collate_fn
 from hannah.utils.utils import set_deterministic
@@ -131,7 +134,9 @@ class AnomalyDetectionModule(VisionBaseModule):
                 ):
                     decoded = prediction_result.decoded
                     if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
-                        ss_loss = SemiSupervisedLoss(kind="anomaly")
+                        ss_loss = SemiSupervisedLoss(
+                            kind="normal"
+                        )  # change back to anomaly
                     else:
                         ss_loss = SemiSupervisedLoss(kind="normal")
                     current_loss = ss_loss.forward(true_data=x, decoded=decoded)
@@ -180,7 +185,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                         size=labels.size(), device=labels.device, dtype=labels.dtype
                     ).fill_(0)
                 self.metrics["val_metrics"](preds, labels)
-                self.log_dict(self.metricsf["val_metrics"])
+                self.log_dict(self.metrics["val_metrics"])
 
     def test_step(self, batch, batch_idx):
         loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
@@ -228,8 +233,9 @@ class AnomalyDetectionModule(VisionBaseModule):
     def on_train_end(self):
         if self.hparams.train_val_loss == "decoder":
             optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
-            for epoch in range(10):
-                print("Training epoch of linear classifier: ", epoch)
+            print("Starting training of linear classifier.")
+            for epoch in trange(20):
+                losses = []
                 counter = 0
                 for batch in self.train_dataloader():
                     counter += 1
@@ -246,12 +252,16 @@ class AnomalyDetectionModule(VisionBaseModule):
 
                         optimizer.zero_grad()
                         logits = self.model.classifier(prediction_result.latent)
-                        loss = F.cross_entropy(logits, labels)
+                        current_loss = F.cross_entropy(logits, labels)
                         preds = torch.argmax(logits, dim=1)
-                        loss.backward()
+                        current_loss.backward()
                         optimizer.step()
                         counter = 0
-                    # TODO: Add logging
+                        losses.append(current_loss)
+                self.logger.log_metrics(
+                    {"linear_classifier_train_loss": statistics.fmean(losses)},
+                    step=epoch,
+                )
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
