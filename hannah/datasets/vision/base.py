@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -53,6 +53,10 @@ class VisionDatasetBase(AbstractDataset):
 
     @property
     def mean(self):
+        pass
+
+    @property
+    def resolution(self):
         pass
 
 

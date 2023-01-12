@@ -180,6 +180,7 @@ class VisionBaseModule(ClassifierModule):
 
         mean = self.hparams.dataset.normalize.mean
         std = self.hparams.dataset.normalize.std
+
         seq = BatchAugmentationPipeline(
             {
                 "RandomGaussianNoise": {"p": 0.2, "keepdim": True},
