@@ -25,6 +25,10 @@ from typing import Any, Dict, List, Union
 import numpy as np
 import yaml
 
+from hannah.nas.parameters.parameters import CategoricalParameter, FloatScalarParameter, IntScalarParameter
+from hannah.nas.parameters.parametrize import set_parametrization
+from hannah.nas.search.sampler.mutator import ParameterMutator
+
 from ...parametrization import SearchSpace
 from ...utils import is_pareto
 
@@ -63,20 +67,21 @@ class AgingEvolution:
 
     def __init__(
         self,
-        parametrization,
+        parametrization: dict,
         bounds,
-        population_size=100,
-        sample_size=10,
-        eps=0.1,
+        population_size: int = 100,
+        sample_size: int = 10,
+        eps: float = 0.1,
         random_state=None,
         output_folder=".",
     ):
-        self.parametrization = SearchSpace(parametrization, random_state)
+        self.parametrization = parametrization
         self.bounds = bounds
 
         self.population_size = population_size
         self.sample_size = sample_size
         self.eps = eps
+        self.mutator = ParameterMutator(0.1)
 
         self.random_state = (
             random_state if random_state is not None else np.random.RandomState()
@@ -99,15 +104,21 @@ class AgingEvolution:
     def ask(self):
         return self.next_parameters()
 
+    def get_random(self):
+        random_parameters = {}
+        for k, v in self.parametrization.items():
+            random_parameters[k] = v.sample()
+        return random_parameters
+
     def next_parameters(self):
         "Returns a list of current tasks"
 
         parametrization = {}
 
         if len(self.history) < self.population_size:
-            parametrization = self.parametrization.get_random()
+            parametrization = self.get_random()
         elif self.random_state.uniform() < self.eps:
-            parametrization = self.parametrization.get_random()
+            parametrization = self.get_random()
         else:
             sample = self.random_state.choice(self.population, size=self.sample_size)
             fitness_function = self.get_fitness_function()
@@ -115,8 +126,9 @@ class AgingEvolution:
             fitness = [fitness_function(x.result) for x in sample]
 
             parent = sample[np.argmin(fitness)]
+            parent_parametrization = set_parametrization(parent, self.parametrization)
 
-            parametrization = self.parametrization.mutate(parent.parameters)
+            parametrization = self.mutator.mutate(parent_parametrization)
 
         return parametrization
 
