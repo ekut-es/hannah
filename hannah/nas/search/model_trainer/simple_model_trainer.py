@@ -21,7 +21,7 @@ class SimpleModelTrainer:
     def __init__(self) -> None:
         pass
 
-    def build_model(self, model, config, parameters):
+    def build_model(self, model, parameters):
 
         model_instance = deepcopy(model)
 
