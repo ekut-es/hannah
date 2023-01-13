@@ -81,12 +81,19 @@
             "justMyCode": false,
             "args": [
                 "nas=aging_evolution_nas",
+                "model=lazy_convnet",
+                "module=image_classifier",
+                "dataset=cifar10",
+                "features=identity",
+                "module.batch_size=128",
+                "trainer.max_epochs=1",
+                "trainer.overfit_batches=20",
                 "nas.n_jobs=1",
-                "trainer.max_epochs=2",
-                "model=conv-net-trax",
-                "normalizer=fixedpoint",
-                // "compression=pruning_only",
-                "module.batch_size=12",
+                "nas.budget=5",
+                "module.num_workers=8",
+                "experiment_id=performance_pred",
+                // "~nas.predictor",
+                "~normalizer"
             ]
         },
         {
