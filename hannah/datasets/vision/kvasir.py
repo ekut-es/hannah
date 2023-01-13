@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -113,10 +113,6 @@ class KvasirCapsuleDataset(ImageDatasetBase):
         split_root = os.path.join(
             config.data_folder, "kvasir_capsule", "official_splits"
         )
-
-        resolution = config.resolution
-        if isinstance(resolution, int):
-            resolution = (resolution, resolution)
 
         label_to_folder = {
             "Angiectasia": "Angiectasia",

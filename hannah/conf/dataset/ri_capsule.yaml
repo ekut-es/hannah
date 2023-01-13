@@ -32,5 +32,3 @@ sampler: random
 weighted_loss: false
 
 split: official
-
-resolution: [224,224]

@@ -49,17 +49,14 @@ class VisionDatasetBase(AbstractDataset):
 
     @property
     def std(self):
-        logger.warning("Using default std dev for dataset")
         return (0.5, 0.5, 0.5)
 
     @property
     def mean(self):
-        logger.warning("Using default means for dataset")
         return (0.5, 0.5, 0.5)
 
     @property
     def resolution(self):
-        logger.warning("Using default resolution for dataset")
         return [224, 224]
 
 
