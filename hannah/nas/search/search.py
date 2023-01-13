@@ -41,12 +41,16 @@ msglogger = logging.getLogger(__name__)
 class NASBase(ABC):
     def __init__(self,
                  budget=2000,
+                 sampler=None,
+                 model_trainer=None,
+                 predictor=None,
                  parent_config=None) -> None:
         self.budget = budget
         self.config = parent_config
         self.callbacks = []
-        self.sampler = None
-        self.model_trainer = None
+        self.sampler = sampler
+        self.model_trainer = model_trainer
+        self.predictor = predictor
 
     def run(self):
         self.before_search()
@@ -75,8 +79,6 @@ class NASBase(ABC):
 class DirectNAS(NASBase):
     def __init__(self,
                  budget=2000,
-                 sampler=None,
-                 model_trainer=None,
                  *args,
                  **kwargs) -> None:
         super().__init__(*args, budget=budget, **kwargs)
@@ -104,11 +106,12 @@ class DirectNAS(NASBase):
         self.extract_best_model()
 
     def build_model(self, parameters):
-        # FIXME: use parameters
-        model = deepcopy(self.search_space)
-        model.initialize()
-        model = self.initialize_lightning_module(model)
-        return model
+        try:
+            model = self.model_trainer.build_model(self.search_space, parameters)
+            module = self.initialize_lightning_module(model)
+        except AssertionError as e:
+                 msglogger.critical(f"Instantiation failed: {e}")
+        return module
 
     def build_search_space(self):
         search_space = instantiate(self.config.model, _recursive_=True)
@@ -132,12 +135,8 @@ class DirectNAS(NASBase):
 
     def initialize_dataset(self):
         get_class(self.config.dataset.cls).prepare(self.config.dataset)
-
         # Instantiate Dataset
-        train_set, val_set, test_set = get_class(self.config.dataset.cls).splits(
-            self.config.dataset
-        )
-
+        train_set, val_set, test_set = get_class(self.config.dataset.cls).splits(self.config.dataset)
         self.train_set = train_set
         self.val_set = val_set
         self.test_set = test_set
@@ -148,7 +147,6 @@ class DirectNAS(NASBase):
         trainer.fit(model)
 
     def sample(self):
-        # FIXME: Decoupled sampling
         parameters = self.sampler.sample()
         return parameters
 
@@ -193,68 +191,64 @@ class AgingEvolutionNAS(DirectNAS):
         self.population_size = population_size
         self.presample = presample
         self.worklist = []
-        self.model_trainer = SimpleModelTrainer()
         self.n_jobs=n_jobs
 
     def sample(self):
-        parameters = self.optimizer.next_parameters()
+        parameters = self.sampler.next_parameters()
         return parameters
 
-    def build_model(self, parameters):
-        try:
-            model = self.model_trainer.build_model(self.search_space, parameters)
-            module = self.initialize_lightning_module(model)
-        except AssertionError as e:
-            msglogger.critical(
-                "Instantiation failed. Probably #input/output channels are not divisible by #groups!"
-            )
-            msglogger.critical(str(e))
+    def append_to_worklist(self, parameters, estimated_metrics={}, satisfied_bounds=[]):
+        worklist_item = WorklistItem(parameters, estimated_metrics)
+
+        if self.presample:
+            if all(satisfied_bounds):
+                self.worklist.append(worklist_item)
+        else:
+            self.worklist.append(worklist_item)
+
+    # FIXME: Integrate better intro current code
+    def estimate_metrics(self, model):
+        if self.predictor:
+            estimated_metrics = self.predictor.estimate(model)
         else:
             estimated_metrics = {}
-            # estimated_metrics = self.predictor.estimate(model)
 
-            satisfied_bounds = []
-            for k, v in estimated_metrics.items():
-                if k in self.bounds:
-                    distance = v / self.bounds[k]
-                    msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
-                    satisfied_bounds.append(distance <= 1.2)
+        satisfied_bounds = []
+        for k, v in estimated_metrics.items():
+            if k in self.bounds:
+                distance = v / self.bounds[k]
+                msglogger.info(f"{k}: {float(v):.8f} ({float(distance):.2f})")
+                satisfied_bounds.append(distance <= 1.2)
 
-            worklist_item = WorklistItem(parameters, estimated_metrics)
-
-            if self.presample:
-                if all(satisfied_bounds):
-                    self.worklist.append(worklist_item)
-            else:
-                self.worklist.append(worklist_item)
-
-            return module
+        return estimated_metrics, satisfied_bounds
 
     def before_search(self):
         self.initialize_dataset()
         self.search_space = self.build_search_space()
         parametrization = self.search_space.parametrization(flatten=True)
-        self.optimizer = AgingEvolution(parametrization=parametrization,
+        self.sampler = AgingEvolution(parametrization=parametrization,
                                         bounds=self.bounds,
                                         population_size=self.population_size,
                                         random_state=self.random_state)
 
     def search(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
-            while len(self.optimizer.history) < self.budget:
+            while len(self.sampler.history) < self.budget:
                 self.worklist = []
                 # Mutate current population
                 models = []
                 while len(self.worklist) < self.n_jobs:
                     parameters = self.sample()
-                    models.append(self.build_model(parameters))
-
+                    model = self.build_model(parameters)
+                    models.append(model)
+                    estimated_metrics, satisfied_bounds = self.estimate_metrics(model)
+                    self.append_to_worklist(parameters, estimated_metrics, satisfied_bounds)
                 results = executor(
                     [
                         delayed(self.model_trainer.run_training)(
                             model,
                             num,
-                            len(self.optimizer.history) + num,
+                            len(self.sampler.history) + num,
                             OmegaConf.to_container(self.config, resolve=True),
                         )
                         for num, model in enumerate(models)
@@ -269,7 +263,8 @@ class AgingEvolutionNAS(DirectNAS):
                     for k, v in metrics.items():
                         metrics[k] = float(v)
 
-                    self.optimizer.tell_result(parameters, metrics)
+                    self.sampler.tell_result(parameters, metrics)
+        print()
 
 
 class WeightSharingNAS(NASBase):
