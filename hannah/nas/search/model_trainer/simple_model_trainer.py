@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from hannah.callbacks.optimization import HydraOptCallback
 from hannah.nas.graph_conversion import model_to_graph
+from hannah.nas.parameters.parametrize import set_parametrization
 from hydra.utils import instantiate
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
@@ -22,12 +23,8 @@ class SimpleModelTrainer:
         pass
 
     def build_model(self, model, parameters):
-
         model_instance = deepcopy(model)
-
-        for k, p in model_instance.parametrization(flatten=True).items():
-            p.set_current(parameters[k])
-
+        set_parametrization(parameters, model_instance.parametrization)
         model_instance.initialize()
         model = model_instance
 
