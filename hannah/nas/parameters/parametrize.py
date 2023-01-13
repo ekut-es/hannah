@@ -213,3 +213,9 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
             else:
                 current_param_branch = current_param_branch[index]
     return hierarchical_params
+
+def set_parametrization(parameters, parametrization):
+    for k, v in parametrization.items():
+        if k in parameters:
+            parametrization[k].set_current(parameters[k])
+    return parametrization
