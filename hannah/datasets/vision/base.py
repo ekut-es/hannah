@@ -60,7 +60,7 @@ class VisionDatasetBase(AbstractDataset):
     @property
     def resolution(self):
         logger.warning("Using default resolution for dataset")
-        return 320
+        return [224, 224]
 
 
 class TorchvisionDatasetBase(VisionDatasetBase):

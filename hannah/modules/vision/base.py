@@ -180,6 +180,7 @@ class VisionBaseModule(ClassifierModule):
 
         mean = self.train_set.mean
         std = self.train_set.std
+
         seq = BatchAugmentationPipeline(
             {
                 "RandomGaussianNoise": {"p": 0.2, "keepdim": True},
