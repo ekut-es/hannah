@@ -23,9 +23,12 @@ from copy import deepcopy
 from typing import Optional, Union
 
 import numpy as np
+from omegaconf import DictConfig
 
 from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
+
+from hydra.utils import instantiate
 
 
 class Parameter(Expression):
@@ -102,7 +105,7 @@ class IntScalarParameter(Parameter):
     def evaluate_field(self, field_str):
         field = getattr(self, field_str)
         if isinstance(field, Parameter):
-            return self.min.instantiate()
+            return field.instantiate()
         elif isinstance(field, int):
             return field
         else:
