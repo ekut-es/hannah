@@ -107,13 +107,14 @@ class DirectNAS(NASBase):
         # FIXME: use parameters
         model = deepcopy(self.search_space)
         model.initialize()
+        model = self.initialize_lightning_module(model)
         return model
 
     def build_search_space(self):
-        search_space = instantiate(self.config.model)
+        search_space = instantiate(self.config.model, _recursive_=True)
         return search_space
 
-
+    # FIXME: Fully move to model trainer?
     def initialize_lightning_module(self, model):
         module = instantiate(
                 self.config.module,
@@ -199,13 +200,10 @@ class AgingEvolutionNAS(DirectNAS):
         parameters = self.optimizer.next_parameters()
         return parameters
 
-    def build_search_space(self):
-        self.search_space = self.config.model
-
     def build_model(self, parameters):
         try:
-            model = self.model_trainer.build_model(self.search_space, self.config, parameters)
-            model.setup("train")
+            model = self.model_trainer.build_model(self.search_space, parameters)
+            module = self.initialize_lightning_module(model)
         except AssertionError as e:
             msglogger.critical(
                 "Instantiation failed. Probably #input/output channels are not divisible by #groups!"
@@ -230,11 +228,13 @@ class AgingEvolutionNAS(DirectNAS):
             else:
                 self.worklist.append(worklist_item)
 
-            return model
+            return module
 
     def before_search(self):
-        self.build_search_space()
-        self.optimizer = AgingEvolution(parametrization=self.search_space,
+        self.initialize_dataset()
+        self.search_space = self.build_search_space()
+        parametrization = self.search_space.parametrization(flatten=True)
+        self.optimizer = AgingEvolution(parametrization=parametrization,
                                         bounds=self.bounds,
                                         population_size=self.population_size,
                                         random_state=self.random_state)
@@ -249,22 +249,19 @@ class AgingEvolutionNAS(DirectNAS):
                     parameters = self.sample()
                     models.append(self.build_model(parameters))
 
-                # validate population
-                configs = [OmegaConf.merge(self.config, item.parameters.flatten()) for item in self.worklist]
-
                 results = executor(
                     [
                         delayed(self.model_trainer.run_training)(
                             model,
                             num,
                             len(self.optimizer.history) + num,
-                            OmegaConf.to_container(config, resolve=True),
+                            OmegaConf.to_container(self.config, resolve=True),
                         )
-                        for num, (config, model) in enumerate(zip(configs, models))
+                        for num, model in enumerate(models)
                     ]
                 )
 
-                save_config_to_file(self.optimizer.history, configs, results)
+                # save_config_to_file(self.optimizer.history, configs, results)
 
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
