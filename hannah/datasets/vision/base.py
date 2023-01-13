@@ -49,15 +49,18 @@ class VisionDatasetBase(AbstractDataset):
 
     @property
     def std(self):
-        pass
+        logger.warning("Using default std dev for dataset")
+        return (0.5, 0.5, 0.5)
 
     @property
     def mean(self):
-        pass
+        logger.warning("Using default means for dataset")
+        return (0.5, 0.5, 0.5)
 
     @property
     def resolution(self):
-        pass
+        logger.warning("Using default resolution for dataset")
+        return 320
 
 
 class TorchvisionDatasetBase(VisionDatasetBase):
@@ -86,7 +89,7 @@ class TorchvisionDatasetBase(VisionDatasetBase):
         return len(self.dataset)
 
 
-class ImageDatasetBase(AbstractDataset):
+class ImageDatasetBase(VisionDatasetBase):
     def __init__(self, X, y, classes, bbox=None, transform=None):
         """Initialize vision dataset
 
