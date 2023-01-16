@@ -1,1 +1,1 @@
-_target_: hannah.nas.search.sampler.random.RandomSampler
+_target_: hannah.nas.search.sampler.random_sampler.RandomSampler
