@@ -91,7 +91,7 @@
                 "nas.n_jobs=1",
                 "nas.budget=5",
                 "module.num_workers=8",
-                "experiment_id=performance_pred",
+                "experiment_id=aging_evolution_debug",
                 // "~nas.predictor",
                 "~normalizer"
             ]
