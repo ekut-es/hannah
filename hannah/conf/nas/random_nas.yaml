@@ -22,4 +22,4 @@ defaults:
 
 _target_: hannah.nas.search.search.DirectNAS
 budget: 2000
-
+n_jobs: 2
