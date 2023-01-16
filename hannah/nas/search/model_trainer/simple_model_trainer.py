@@ -24,7 +24,7 @@ class SimpleModelTrainer:
 
     def build_model(self, model, parameters):
         model_instance = deepcopy(model)
-        set_parametrization(parameters, model_instance.parametrization)
+        set_parametrization(parameters, model_instance.parametrization(flatten=True))
         model_instance.initialize()
         model = model_instance
 
