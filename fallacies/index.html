@@ -49,6 +49,8 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#changing-onecyclelr-learningrate">Changing OneCycleLR learningrate</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#no-secretstorage-or-dbus-running">No SecretStorage or DBUS running</a>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -149,6 +151,16 @@ limitations under the License.
 <h2 id="changing-onecyclelr-learningrate">Changing OneCycleLR learningrate</h2>
 <p>By default the <code>OneCycleLR</code> learning rate scheduler will ignore the setting for <code>òptimizer.lr</code> and instead will
 use the setting <code>scheduler.max_lr</code> to calculate each steps learning rate. To avoid problems when sweeping the the learning rate, in hannah the default setting for <code>scheduler.max_lr</code> is using the same as <code>optimizer.lr</code> but this can be overridden in project specific configuration files.</p>
+<h2 id="no-secretstorage-or-dbus-running">No SecretStorage or DBUS running</h2>
+<p>During <code>poetry install</code> the system will try to unlock secret storage / keyring. If this fails you will see a Error Message like:</p>
+<pre><code>[org.freedesktop.DBus.Error.UnknownMethod] ('Object does not exist on path "/org/freedesktop/secrets/collection/login"')
+</code></pre>
+<p>You can disable this error message by one of the following means:</p>
+<ul>
+<li>Install and Configure a local DBus and Keyring support. <a href="https://unix.stackexchange.com/questions/120612/why-cant-i-run-gnome-apps-over-remote-ssh-session/188877#188877">This</a> might work.</li>
+<li>Setting the default backend for keyring: <code>export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring</code></li>
+<li>Disabling keyring for the whole system: <code>keyring --disable -b keyring.backends.SecretService.Keyring</code></li>
+</ul>
               
             </div>
           </div><footer>
