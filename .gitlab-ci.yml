@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2022 Hannah contributors.
 ##
 ## This file is part of hannah.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -51,6 +51,25 @@ before_script:
   # Show limits
   - ulimit -a
 
+test_prebuilt_docker:
+  stage: test
+  image: cgerum/hannah:latest
+  before_script:
+    - export POETRY_HOME=/root/.local
+    - export PATH=${POETRY_HOME}/bin:${PATH}
+    - poetry install -E vision
+    - ulimit -a
+  script:
+    - set -e
+    - poetry run python3 -m pytest  -v --cov=hannah test hannah
+  tags:
+    - docker
+  interruptible: true
+  only:
+    - merge_requests
+  dependencies: []
+
+
 test_python_38:
   stage: test
   image: python:3.8
@@ -61,8 +80,7 @@ test_python_38:
     - docker
   interruptible: true
   only:
-    - master
-    - merge_requests
+    - main
   dependencies: []
   cache:
     paths:
@@ -84,7 +102,6 @@ test_tvm:
   only:
     - main
     - /.*tvm.*/
-    - merge_requests
   cache:
     paths:
       - .cache/
@@ -107,14 +124,19 @@ test_python_310:
   interruptible: true
   artifacts:
     reports:
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
   dependencies: []
   cache:
     paths:
       - .cache/
+  only:
+    - main
 
 build_docs:
-  stage: deploy
+  stage: test
+  image: ubuntu:22.04
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
@@ -131,8 +153,7 @@ build_docs:
   script:
     - pydoc-markdown --build --site-dir /afs/wsi/home/gerum/public_html/hannah
   tags:
-    - afs
-    - native
+    - docker
   only:
     - main
 
@@ -204,8 +225,13 @@ run_ml_cloud_lidar:
 
 
 run_sca:
-  stage: build
-  image: python:3.9
+  stage: test
+  image: cgerum/hannah:latest
+  before_script:
+    - export POETRY_HOME=/root/.local
+    - export PATH=${POETRY_HOME}/bin:${PATH}
+    - poetry install -E vision
+    - ulimit -a
   script:
     - set -e
     - poetry run pre-commit install
@@ -215,9 +241,6 @@ run_sca:
     - docker
   interruptible: true
   allow_failure: true
-  cache:
-    paths:
-      - .cache/
 
 # ml_cloud_update_env:
 #   stage: deploy
