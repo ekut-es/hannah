@@ -22,3 +22,15 @@ limitations under the License.
 
 By default the `OneCycleLR` learning rate scheduler will ignore the setting for `òptimizer.lr` and instead will
 use the setting `scheduler.max_lr` to calculate each steps learning rate. To avoid problems when sweeping the the learning rate, in hannah the default setting for `scheduler.max_lr` is using the same as `optimizer.lr` but this can be overridden in project specific configuration files.
+
+## No SecretStorage or DBUS running
+
+During `poetry install` the system will try to unlock secret storage / keyring. If this fails you will see a Error Message like:
+
+    [org.freedesktop.DBus.Error.UnknownMethod] ('Object does not exist on path "/org/freedesktop/secrets/collection/login"')
+
+You can disable this error message by one of the following means:
+
+- Install and Configure a local DBus and Keyring support. [This](https://unix.stackexchange.com/questions/120612/why-cant-i-run-gnome-apps-over-remote-ssh-session/188877#188877) might work.
+- Setting the default backend for keyring: `export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring`
+- Disabling keyring for the whole system: `keyring --disable -b keyring.backends.SecretService.Keyring`
