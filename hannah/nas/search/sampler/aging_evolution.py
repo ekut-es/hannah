@@ -31,6 +31,7 @@ from hannah.nas.search.sampler.mutator import ParameterMutator
 
 from ...parametrization import SearchSpace
 from ...utils import is_pareto
+from .base_sampler import Sampler
 
 
 @dataclass()
@@ -62,32 +63,32 @@ class FitnessFunction:
         return np.sqrt(result)
 
 
-class AgingEvolution:
+class AgingEvolutionSampler(Sampler):
     """Aging Evolution based multi objective optimization"""
 
     def __init__(
         self,
-        parametrization: dict,
         bounds,
+        parametrization: dict,
         population_size: int = 100,
+        random_state = None,
         sample_size: int = 10,
         eps: float = 0.1,
-        random_state=None,
         output_folder=".",
     ):
-        self.parametrization = parametrization
         self.bounds = bounds
-
-        self.population_size = population_size
-        self.sample_size = sample_size
-        self.eps = eps
-        self.mutator = ParameterMutator(0.1)
+        self.parametrization = parametrization
 
         self.random_state = (
             random_state if random_state is not None else np.random.RandomState()
         )
         if random_state is None:
             self.random_state = np.random.RandomState()
+
+        self.population_size = population_size
+        self.sample_size = sample_size
+        self.eps = eps
+        self.mutator = ParameterMutator(0.1)
 
         self.history = []
         self.population = []
