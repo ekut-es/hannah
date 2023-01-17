@@ -99,8 +99,9 @@ class DirectNAS(NASBase):
                         model = self.build_model(parameters)
                         models.append(model)
                         estimated_metrics, satisfied_bounds = self.estimate_metrics(model)
+                        self.append_to_worklist(parameters, estimated_metrics, satisfied_bounds)
                         current_num = len(self.tasklist) - 1
-                        self.tasklist.append(delayed(self.model_trainer.run_training(model, current_num, len(self.sampler.history) + current_num, self.config)))
+                        self.tasklist.append(delayed(self.model_trainer.run_training)(model, current_num, len(self.sampler.history) + current_num, self.config))
                     except Exception as e:
                         print(str(e))
 
@@ -162,6 +163,15 @@ class DirectNAS(NASBase):
         parameters = self.sampler.next_parameters()
         return parameters
 
+    def append_to_worklist(self, parameters, estimated_metrics={}, satisfied_bounds=[]):
+        worklist_item = WorklistItem(parameters, estimated_metrics)
+
+        if self.presample:
+            if all(satisfied_bounds):
+                self.worklist.append(worklist_item)
+        else:
+            self.worklist.append(worklist_item)
+
         # FIXME: Integrate better intro current code
     def estimate_metrics(self, model):
         if self.predictor:
@@ -212,50 +222,6 @@ class AgingEvolutionNAS(DirectNAS):
         self.presample = presample
         self.worklist = []
         self.n_jobs=n_jobs
-
-    def append_to_worklist(self, parameters, estimated_metrics={}, satisfied_bounds=[]):
-        worklist_item = WorklistItem(parameters, estimated_metrics)
-
-        if self.presample:
-            if all(satisfied_bounds):
-                self.worklist.append(worklist_item)
-        else:
-            self.worklist.append(worklist_item)
-
-    def search(self):
-        with Parallel(n_jobs=self.n_jobs) as executor:
-            while len(self.sampler.history) < self.budget:
-                self.worklist = []
-                # Mutate current population
-                models = []
-                while len(self.worklist) < self.n_jobs:
-                    parameters = self.sample()
-                    model = self.build_model(parameters)
-                    models.append(model)
-                    estimated_metrics, satisfied_bounds = self.estimate_metrics(model)
-                    self.append_to_worklist(parameters, estimated_metrics, satisfied_bounds)
-                results = executor(
-                    [
-                        delayed(self.model_trainer.run_training)(
-                            model,
-                            num,
-                            len(self.sampler.history) + num,
-                            OmegaConf.to_container(self.config, resolve=True),
-                        )
-                        for num, model in enumerate(models)
-                    ]
-                )
-
-                # save_config_to_file(self.optimizer.history, configs, results)
-
-                for result, item in zip(results, self.worklist):
-                    parameters = item.parameters
-                    metrics = {**item.results, **result}
-                    for k, v in metrics.items():
-                        metrics[k] = float(v)
-
-                    self.sampler.tell_result(parameters, metrics)
-        print()
 
 
 class WeightSharingNAS(NASBase):
