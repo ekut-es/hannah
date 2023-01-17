@@ -125,8 +125,6 @@ class InferenceBackendBase(Callback):
                 result = self.run_batch(inputs=batch[0])
                 target = pl_module.forward(batch[0].to(pl_module.device))
 
-                return
-
                 mse = torch.nn.functional.mse_loss(
                     result.to(pl_module.device),
                     target.to(pl_module.device),
@@ -178,8 +176,6 @@ class InferenceBackendBase(Callback):
         if batch_idx < self.test_batches:
             result = self.run_batch(inputs=batch[0])
             target = pl_module(batch[0].to(pl_module.device))
-
-            return
 
             mse = torch.nn.functional.mse_loss(
                 result.to(pl_module.device),
