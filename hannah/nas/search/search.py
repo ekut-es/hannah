@@ -112,15 +112,6 @@ class DirectNAS(NASBase):
                         metrics[k] = float(v)
 
                     self.sampler.tell_result(parameters, metrics)
-        # for i in range(self.budget):
-        #     self.global_num = i
-        #     self.setup_model_logging()
-        #     parameters = self.sample()
-        #     model = self.model_trainer.build_model(self.search_space, parameters)
-        #     lightning_module = self.initialize_lightning_module(model)
-        #     self.train_model(lightning_module)
-
-        #     self.log_results(lightning_module)
 
     def after_search(self):
         pass
