@@ -232,12 +232,12 @@ class AnomalyDetectionModule(VisionBaseModule):
         if self.hparams.train_val_loss == "decoder":
             optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
             print("Starting training of linear classifier.")
-            for epoch in trange(20):
+            for epoch in trange(30):
                 losses = []
                 counter = 0
                 for batch in self.train_dataloader():
                     counter += 1
-                    if counter % 5 == 0:
+                    if counter % 1 == 0:
                         labeled_batch = batch["labeled"]
                         x = labeled_batch["data"]
                         labels = labeled_batch.get("labels", None).to(

@@ -45,6 +45,9 @@ if K:
     registry.register(K.RandomPosterize)
     registry.register(K.RandomSharpness)
     registry.register(K.RandomSolarize)
+    registry.register(K.PatchSequential)
+    registry.register(K.AugmentationSequential)
+    registry.register(K.Normalize)
 
     # Color Transformations
     registry.register(K.CenterCrop)
@@ -60,6 +63,3 @@ if K:
     registry.register(K.RandomRotation)
     registry.register(K.RandomVerticalFlip)
     registry.register(K.RandomThinPlateSpline)
-
-# Normalization
-registry.register(torchvision.transforms.Normalize)

@@ -19,6 +19,7 @@
 import logging
 from typing import Sequence
 
+import kornia
 import matplotlib.pyplot as plt
 import torch
 import torch.utils.data as data
@@ -168,19 +169,9 @@ class VisionBaseModule(ClassifierModule):
 
     def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
-        """if (
-            torch.numel(images) > 0
-        ):  # to circumvent error when tensor is empty (depends on batch size)
-            seq = A.PatchSequential(
-                A.AugmentationSequential(A.RandomErasing(p=0.75, scale=(0.7, 0.7))),
-                patchwise_apply=False,
-                grid_size=(8, 8),
-            )
-            augmented_data = seq(augmented_data)"""
 
         mean = self.train_set.mean
         std = self.train_set.std
-
         seq = BatchAugmentationPipeline(
             {
                 "RandomGaussianNoise": {"p": 0.2, "keepdim": True},
