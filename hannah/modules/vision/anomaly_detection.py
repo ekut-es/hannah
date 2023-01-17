@@ -228,7 +228,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
 
-    def on_train_end(self):
+    """def on_train_end(self):
         if self.hparams.train_val_loss == "decoder":
             optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
             print("Starting training of linear classifier.")
@@ -259,7 +259,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                 self.logger.log_metrics(
                     {"linear_classifier_train_loss": statistics.fmean(losses)},
                     step=epoch,
-                )
+                )"""
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]

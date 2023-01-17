@@ -172,6 +172,20 @@ class VisionBaseModule(ClassifierModule):
 
         mean = self.train_set.mean
         std = self.train_set.std
+
+        if boxes and (torch.numel(images) > 0):
+            boxes_kornia = list()
+            box_index = []
+            for i in range(len(boxes)):
+                if boxes[i]:  # not empty list
+                    box = kornia.geometry.bbox.bbox_generator(
+                        boxes[i][0][0], boxes[i][0][1], boxes[i][0][2], boxes[i][0][3]
+                    )  # convert COCO to kornia format
+                    boxes_kornia.append(box)
+                    box_index.append(i)
+            if not len(box_index) == 0:
+                boxes_kornia = torch.cat(boxes_kornia)
+
         seq = BatchAugmentationPipeline(
             {
                 "RandomGaussianNoise": {"p": 0.2, "keepdim": True},
