@@ -35,8 +35,6 @@ import torchvision
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
 
-from hannah.modules.augmentation import rand_augment
-
 from .base import ImageDatasetBase
 
 logger = logging.getLogger(__name__)

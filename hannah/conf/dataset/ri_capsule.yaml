@@ -16,12 +16,6 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-defaults:
-    - augmentation:
-        - rand_augment
-    - _self_
-
-
 cls: hannah.datasets.vision.RICapsuleDataset
 data_folder: ${hydra:runtime.cwd}/datasets/
 download_folder: MISSING
