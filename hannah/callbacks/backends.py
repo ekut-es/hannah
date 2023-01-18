@@ -124,7 +124,6 @@ class InferenceBackendBase(Callback):
             if self.validation_epoch % self.val_frequency == 0:
                 result = self.run_batch(inputs=batch[0])
                 target = pl_module.forward(batch[0].to(pl_module.device))
-
                 mse = torch.nn.functional.mse_loss(
                     result.to(pl_module.device),
                     target.to(pl_module.device),
