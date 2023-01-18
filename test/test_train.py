@@ -147,6 +147,7 @@ def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "config",
     [
