@@ -34,6 +34,7 @@ from tqdm import trange
 from hannah.datasets.collate import vision_collate_fn
 from hannah.utils.utils import set_deterministic
 
+from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from .base import VisionBaseModule
 from .loss import SemiSupervisedLoss
 
@@ -67,7 +68,15 @@ class AnomalyDetectionModule(VisionBaseModule):
         if batch_idx == 0:
             self._log_batch_images("input", batch_idx, x)
 
-        prediction_result = self.forward(x)
+        mean = self.train_set.mean
+        std = self.train_set.std
+        seq = BatchAugmentationPipeline(
+            {
+                "Normalize": {"mean": mean, "std": std},
+            }
+        )
+        normalized_data = seq.forward(x)
+        prediction_result = self.forward(normalized_data)
 
         loss = torch.tensor([0.0], device=self.device)
         preds = None
@@ -232,12 +241,12 @@ class AnomalyDetectionModule(VisionBaseModule):
         if self.hparams.train_val_loss == "decoder":
             optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
             print("Starting training of linear classifier.")
-            for epoch in trange(30):
+            for epoch in trange(20):
                 losses = []
                 counter = 0
                 for batch in self.train_dataloader():
                     counter += 1
-                    if counter % 1 == 0:
+                    if counter % 5 == 0:
                         labeled_batch = batch["labeled"]
                         x = labeled_batch["data"]
                         labels = labeled_batch.get("labels", None).to(
