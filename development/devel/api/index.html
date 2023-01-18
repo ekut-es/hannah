@@ -307,19 +307,6 @@ def forward(x) -&gt; torch.Tensor
 <h1 id="hannahmodulesaugmentationtransforms">hannah.modules.augmentation.transforms</h1>
 <p><a id="hannah.modules.augmentation.transforms.kornia_transforms"></a></p>
 <h1 id="hannahmodulesaugmentationtransformskornia_transforms">hannah.modules.augmentation.transforms.kornia_transforms</h1>
-<p><a id="hannah.modules.augmentation.rand_augment"></a></p>
-<h1 id="hannahmodulesaugmentationrand_augment">hannah.modules.augmentation.rand_augment</h1>
-<p><a id="hannah.modules.augmentation.rand_augment.RandAugment"></a></p>
-<h2 id="randaugment-objects">RandAugment Objects</h2>
-<pre><code class="language-python">class RandAugment(torch.nn.Module)
-</code></pre>
-<p><a id="hannah.modules.augmentation.rand_augment.RandAugment.forward"></a></p>
-<h4 id="forward_1">forward</h4>
-<pre><code class="language-python">def forward(img: Tensor) -&gt; Tensor
-</code></pre>
-<p>img (PIL Image or Tensor): Image to be transformed.</p>
-<p><strong>Returns</strong>:</p>
-<p>PIL Image or Tensor: Transformed image.</p>
 <p><a id="hannah.modules.augmentation.bordersearch"></a></p>
 <h1 id="hannahmodulesaugmentationbordersearch">hannah.modules.augmentation.bordersearch</h1>
 <p><a id="hannah.modules.augmentation"></a></p>
@@ -408,7 +395,7 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <pre><code class="language-python">class GDSConv(nn.Module)
 </code></pre>
 <p><a id="hannah.models.sinc.models.GDSConv.forward"></a></p>
-<h4 id="forward_2">forward</h4>
+<h4 id="forward_1">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -418,7 +405,7 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <pre><code class="language-python">class GDSConvBlock(nn.Module)
 </code></pre>
 <p><a id="hannah.models.sinc.models.GDSConvBlock.forward"></a></p>
-<h4 id="forward_3">forward</h4>
+<h4 id="forward_2">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -428,7 +415,7 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <pre><code class="language-python">class SincNet(nn.Module)
 </code></pre>
 <p><a id="hannah.models.sinc.models.SincNet.forward"></a></p>
-<h4 id="forward_4">forward</h4>
+<h4 id="forward_3">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -442,7 +429,7 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <pre><code class="language-python">class Mlp(nn.Module)
 </code></pre>
 <p><a id="hannah.models._vendor.focalnet.Mlp.forward"></a></p>
-<h4 id="forward_5">forward</h4>
+<h4 id="forward_4">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -452,7 +439,7 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <pre><code class="language-python">class FocalModulation(nn.Module)
 </code></pre>
 <p><a id="hannah.models._vendor.focalnet.FocalModulation.forward"></a></p>
-<h4 id="forward_6">forward</h4>
+<h4 id="forward_5">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -491,7 +478,7 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <li><code>use_postln(bool)</code> - Whether use layernorm after modulation</li>
 </ul>
 <p><a id="hannah.models._vendor.focalnet.FocalNetBlock.forward"></a></p>
-<h4 id="forward_7">forward</h4>
+<h4 id="forward_6">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -530,7 +517,7 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <li><code>use_postln(bool)</code> - Whether use layernorm after modulation</li>
 </ul>
 <p><a id="hannah.models._vendor.focalnet.BasicLayer.forward"></a></p>
-<h4 id="forward_8">forward</h4>
+<h4 id="forward_7">forward</h4>
 <pre><code class="language-python">def forward(x, H, W)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -559,7 +546,7 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <li><code>norm_layer(nn.Module)</code> - Normalization layer. Default: None</li>
 </ul>
 <p><a id="hannah.models._vendor.focalnet.PatchEmbed.forward"></a></p>
-<h4 id="forward_9">forward</h4>
+<h4 id="forward_8">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -609,7 +596,7 @@ def no_weight_decay_keywords()
 <p><strong>Arguments</strong>:</p>
 <p>x:</p>
 <p><a id="hannah.models._vendor.focalnet.FocalNet.forward"></a></p>
-<h4 id="forward_10">forward</h4>
+<h4 id="forward_9">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -791,7 +778,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class DefaultAnomalyDetector(nn.Module)
 </code></pre>
 <p><a id="hannah.models.timm.DefaultAnomalyDetector.forward"></a></p>
-<h4 id="forward_11">forward</h4>
+<h4 id="forward_10">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -801,7 +788,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class DefaultClassifierHead(nn.Module)
 </code></pre>
 <p><a id="hannah.models.timm.DefaultClassifierHead.forward"></a></p>
-<h4 id="forward_12">forward</h4>
+<h4 id="forward_11">forward</h4>
 <pre><code class="language-python">def forward(x: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -814,7 +801,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 </code></pre>
 <p>Default projection head for semi supervised classification learning</p>
 <p><a id="hannah.models.timm.DefaultProjectionHead.forward"></a></p>
-<h4 id="forward_13">forward</h4>
+<h4 id="forward_12">forward</h4>
 <pre><code class="language-python">def forward(x: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p>Forward function for default Projection Head</p>
@@ -839,7 +826,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <li><code>input_shape(Tuple)</code> - Shape (CxHxW) of the reconstructed image</li>
 </ul>
 <p><a id="hannah.models.timm.DefaultDecoderHead.forward"></a></p>
-<h4 id="forward_14">forward</h4>
+<h4 id="forward_13">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -849,7 +836,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class TimmModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.timm.TimmModel.forward"></a></p>
-<h4 id="forward_15">forward</h4>
+<h4 id="forward_14">forward</h4>
 <pre><code class="language-python">def forward(x: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -864,7 +851,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class FasterRCNN(torch.nn.Module)
 </code></pre>
 <p><a id="hannah.models.objectdetection.models.FasterRCNN.forward"></a></p>
-<h4 id="forward_16">forward</h4>
+<h4 id="forward_15">forward</h4>
 <pre><code class="language-python">def forward(x, y=None)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -884,7 +871,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class UltralyticsYolo(torch.nn.Module)
 </code></pre>
 <p><a id="hannah.models.objectdetection.models.UltralyticsYolo.forward"></a></p>
-<h4 id="forward_17">forward</h4>
+<h4 id="forward_16">forward</h4>
 <pre><code class="language-python">def forward(x, y=None)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -946,7 +933,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <li><code>)</code> - # https://github.com/ultralytics/yolov3/issues/238#issuecomment-598028441# return positive:</li>
 </ul>
 <p><a id="hannah.models.objectdetection.loss.BCEBlurWithLogitsLoss.forward"></a></p>
-<h4 id="forward_18">forward</h4>
+<h4 id="forward_17">forward</h4>
 <pre><code class="language-python">def forward(pred, true)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -957,7 +944,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class FocalLoss(nn.Module)
 </code></pre>
 <p><a id="hannah.models.objectdetection.loss.FocalLoss.forward"></a></p>
-<h4 id="forward_19">forward</h4>
+<h4 id="forward_18">forward</h4>
 <pre><code class="language-python">def forward(pred, true)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -968,7 +955,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class QFocalLoss(nn.Module)
 </code></pre>
 <p><a id="hannah.models.objectdetection.loss.QFocalLoss.forward"></a></p>
-<h4 id="forward_20">forward</h4>
+<h4 id="forward_19">forward</h4>
 <pre><code class="language-python">def forward(pred, true)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1001,7 +988,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class SpeechResModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.honk.model.SpeechResModel.forward"></a></p>
-<h4 id="forward_21">forward</h4>
+<h4 id="forward_20">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1011,7 +998,7 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <pre><code class="language-python">class SpeechModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.honk.model.SpeechModel.forward"></a></p>
-<h4 id="forward_22">forward</h4>
+<h4 id="forward_21">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1258,7 +1245,7 @@ class NetworkConfig()
 - <code>major_stride</code> - (Default value = None)
 - <code>config</code> - MinorBlockConfig:</p>
 <p><a id="hannah.models.factory.factory.NetworkFactory.forward"></a></p>
-<h4 id="forward_23">forward</h4>
+<h4 id="forward_22">forward</h4>
 <pre><code class="language-python">def forward(input_shape: Tuple[int], config: MajorBlockConfig)
 </code></pre>
 <p>Create a forward neural network block without parallelism</p>
@@ -1413,7 +1400,7 @@ activation functions.</p>
 </code></pre>
 <p>Reduction block that sums over its inputs</p>
 <p><a id="hannah.models.factory.reduction.ReductionBlockAdd.forward"></a></p>
-<h4 id="forward_24">forward</h4>
+<h4 id="forward_23">forward</h4>
 <pre><code class="language-python">def forward(x: Tensor) -&gt; Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1427,7 +1414,7 @@ activation functions.</p>
 </code></pre>
 <p>Reduction block that concatenates its inputs</p>
 <p><a id="hannah.models.factory.reduction.ReductionBlockConcat.forward"></a></p>
-<h4 id="forward_25">forward</h4>
+<h4 id="forward_24">forward</h4>
 <pre><code class="language-python">def forward(x: Tensor) -&gt; Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1442,7 +1429,7 @@ activation functions.</p>
 <pre><code class="language-python">class ConvNet(nn.Module)
 </code></pre>
 <p><a id="hannah.models.factory.network.ConvNet.forward"></a></p>
-<h4 id="forward_26">forward</h4>
+<h4 id="forward_25">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1455,7 +1442,7 @@ activation functions.</p>
 </code></pre>
 <p>A global average pooling layer, that divides by the next power of 2 instead of true number of elements</p>
 <p><a id="hannah.models.factory.pooling.ApproximateGlobalAveragePooling1D.forward"></a></p>
-<h4 id="forward_27">forward</h4>
+<h4 id="forward_26">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1466,7 +1453,7 @@ activation functions.</p>
 </code></pre>
 <p>A global average pooling layer, that divides by the next power of 2 instead of true number of elements</p>
 <p><a id="hannah.models.factory.pooling.ApproximateGlobalAveragePooling2D.forward"></a></p>
-<h4 id="forward_28">forward</h4>
+<h4 id="forward_27">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1486,7 +1473,7 @@ activation functions.</p>
 <pre><code class="language-python">class BottleneckVad(nn.Module)
 </code></pre>
 <p><a id="hannah.models.vad.models.BottleneckVad.forward"></a></p>
-<h4 id="forward_29">forward</h4>
+<h4 id="forward_28">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1502,7 +1489,7 @@ activation functions.</p>
 <pre><code class="language-python">class SmallVad(nn.Module)
 </code></pre>
 <p><a id="hannah.models.vad.models.SmallVad.forward"></a></p>
-<h4 id="forward_30">forward</h4>
+<h4 id="forward_29">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1518,7 +1505,7 @@ activation functions.</p>
 <pre><code class="language-python">class SimpleVad(nn.Module)
 </code></pre>
 <p><a id="hannah.models.vad.models.SimpleVad.forward"></a></p>
-<h4 id="forward_31">forward</h4>
+<h4 id="forward_30">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1534,7 +1521,7 @@ activation functions.</p>
 <pre><code class="language-python">class BottleneckVadModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.vad.models.BottleneckVadModel.forward"></a></p>
-<h4 id="forward_32">forward</h4>
+<h4 id="forward_31">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1544,7 +1531,7 @@ activation functions.</p>
 <pre><code class="language-python">class SimpleVadModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.vad.models.SimpleVadModel.forward"></a></p>
-<h4 id="forward_33">forward</h4>
+<h4 id="forward_32">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1554,7 +1541,7 @@ activation functions.</p>
 <pre><code class="language-python">class SmallVadModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.vad.models.SmallVadModel.forward"></a></p>
-<h4 id="forward_34">forward</h4>
+<h4 id="forward_33">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1569,7 +1556,7 @@ activation functions.</p>
 </code></pre>
 <p>A convolution with the option to be causal and use xavier initialization</p>
 <p><a id="hannah.models.wavenet.models.Conv.forward"></a></p>
-<h4 id="forward_35">forward</h4>
+<h4 id="forward_34">forward</h4>
 <pre><code class="language-python">def forward(signal)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1579,7 +1566,7 @@ activation functions.</p>
 <pre><code class="language-python">class WaveNet(nn.Module)
 </code></pre>
 <p><a id="hannah.models.wavenet.models.WaveNet.forward"></a></p>
-<h4 id="forward_36">forward</h4>
+<h4 id="forward_35">forward</h4>
 <pre><code class="language-python">def forward(input_data)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1594,7 +1581,7 @@ activation functions.</p>
 </code></pre>
 <p>Simple LSTM model.</p>
 <p><a id="hannah.models.lstm.models.LSTMModel.forward"></a></p>
-<h4 id="forward_37">forward</h4>
+<h4 id="forward_36">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1615,7 +1602,7 @@ activation functions.</p>
 <pre><code class="language-python">class ApproximateGlobalAveragePooling1D(nn.Module)
 </code></pre>
 <p><a id="hannah.models.tc.models.ApproximateGlobalAveragePooling1D.forward"></a></p>
-<h4 id="forward_38">forward</h4>
+<h4 id="forward_37">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1625,7 +1612,7 @@ activation functions.</p>
 <pre><code class="language-python">class TCResidualBlock(nn.Module)
 </code></pre>
 <p><a id="hannah.models.tc.models.TCResidualBlock.forward"></a></p>
-<h4 id="forward_39">forward</h4>
+<h4 id="forward_38">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1635,7 +1622,7 @@ activation functions.</p>
 <pre><code class="language-python">class TCResNetModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.tc.models.TCResNetModel.forward"></a></p>
-<h4 id="forward_40">forward</h4>
+<h4 id="forward_39">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1645,7 +1632,7 @@ activation functions.</p>
 <pre><code class="language-python">class ExitWrapperBlock(nn.Module)
 </code></pre>
 <p><a id="hannah.models.tc.models.ExitWrapperBlock.forward"></a></p>
-<h4 id="forward_41">forward</h4>
+<h4 id="forward_40">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1679,7 +1666,7 @@ activation functions.</p>
 <pre><code class="language-python">def print_stats()
 </code></pre>
 <p><a id="hannah.models.tc.models.BranchyTCResNetModel.forward"></a></p>
-<h4 id="forward_42">forward</h4>
+<h4 id="forward_41">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1724,7 +1711,7 @@ dilation : Union[int, Expression], optional
 <pre><code class="language-python">class DSConv2d(nn.Module)
 </code></pre>
 <p><a id="hannah.models.hello.models.DSConv2d.forward"></a></p>
-<h4 id="forward_43">forward</h4>
+<h4 id="forward_42">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1734,7 +1721,7 @@ dilation : Union[int, Expression], optional
 <pre><code class="language-python">class DSCNNSpeechModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.hello.models.DSCNNSpeechModel.forward"></a></p>
-<h4 id="forward_44">forward</h4>
+<h4 id="forward_43">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1744,7 +1731,7 @@ dilation : Union[int, Expression], optional
 <pre><code class="language-python">class DNNSpeechModel(nn.Module)
 </code></pre>
 <p><a id="hannah.models.hello.models.DNNSpeechModel.forward"></a></p>
-<h4 id="forward_45">forward</h4>
+<h4 id="forward_44">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -1893,7 +1880,7 @@ labels, input shape, convolutional layers, and other parameters</p>
 <p><strong>Arguments</strong>:</p>
 <p>filename:</p>
 <p><a id="hannah.models.ofa.models.OFAModel.forward"></a></p>
-<h4 id="forward_46">forward</h4>
+<h4 id="forward_45">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2116,7 +2103,7 @@ labels, input shape, convolutional layers, and other parameters</p>
 <pre><code class="language-python">class ElasticWidthLinear(nn.Linear, _Elastic)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticLinear.ElasticWidthLinear.forward"></a></p>
-<h4 id="forward_47">forward</h4>
+<h4 id="forward_46">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2155,7 +2142,7 @@ def scaled_weight()
 def scaled_bias()
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticLinear.ElasticQuantWidthLinear.forward"></a></p>
-<h4 id="forward_48">forward</h4>
+<h4 id="forward_47">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2184,7 +2171,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticPermissiveReLU(nn.ReLU)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticLinear.ElasticPermissiveReLU.forward"></a></p>
-<h4 id="forward_49">forward</h4>
+<h4 id="forward_48">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2200,7 +2187,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticConv1d(ElasticBase1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elastickernelconv.ElasticConv1d.forward"></a></p>
-<h4 id="forward_50">forward</h4>
+<h4 id="forward_49">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2219,7 +2206,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticConvReLu1d(ElasticBase1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elastickernelconv.ElasticConvReLu1d.forward"></a></p>
-<h4 id="forward_51">forward</h4>
+<h4 id="forward_50">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2238,7 +2225,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticConvBn1d(ElasticConv1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elastickernelconv.ElasticConvBn1d.forward"></a></p>
-<h4 id="forward_52">forward</h4>
+<h4 id="forward_51">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2257,7 +2244,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticConvBnReLu1d(ElasticConvBn1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elastickernelconv.ElasticConvBnReLu1d.forward"></a></p>
-<h4 id="forward_53">forward</h4>
+<h4 id="forward_52">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2276,7 +2263,7 @@ or directly from user</p>
 <pre><code class="language-python">class ConvRelu1d(nn.Conv1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elastickernelconv.ConvRelu1d.forward"></a></p>
-<h4 id="forward_54">forward</h4>
+<h4 id="forward_53">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2291,7 +2278,7 @@ or directly from user</p>
 <pre><code class="language-python">class ConvBn1d(nn.Conv1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elastickernelconv.ConvBn1d.forward"></a></p>
-<h4 id="forward_55">forward</h4>
+<h4 id="forward_54">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2306,7 +2293,7 @@ or directly from user</p>
 <pre><code class="language-python">class ConvBnReLu1d(ConvBn1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elastickernelconv.ConvBnReLu1d.forward"></a></p>
-<h4 id="forward_56">forward</h4>
+<h4 id="forward_55">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2323,7 +2310,7 @@ or directly from user</p>
 <pre><code class="language-python">class ResBlockBase(nn.Module)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.resblock.ResBlockBase.forward"></a></p>
-<h4 id="forward_57">forward</h4>
+<h4 id="forward_56">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2337,7 +2324,7 @@ or directly from user</p>
 <pre><code class="language-python">class ResBlock1d(ResBlockBase)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.resblock.ResBlock1d.forward"></a></p>
-<h4 id="forward_58">forward</h4>
+<h4 id="forward_57">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2415,7 +2402,7 @@ def scaled_weight()
 <pre><code class="language-python">def extra_repr()
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticquantkernelconv._ElasticConvBnNd.forward"></a></p>
-<h4 id="forward_59">forward</h4>
+<h4 id="forward_58">forward</h4>
 <pre><code class="language-python">def forward(input)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2446,7 +2433,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticquantkernelconv.ElasticQuantConv1d.forward"></a></p>
-<h4 id="forward_60">forward</h4>
+<h4 id="forward_59">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2465,7 +2452,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticquantkernelconv.ElasticQuantConvReLu1d.forward"></a></p>
-<h4 id="forward_61">forward</h4>
+<h4 id="forward_60">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2484,7 +2471,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticQuantConvBn1d(_ElasticConvBnNd)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticquantkernelconv.ElasticQuantConvBn1d.forward"></a></p>
-<h4 id="forward_62">forward</h4>
+<h4 id="forward_61">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2503,7 +2490,7 @@ or directly from user</p>
 <pre><code class="language-python">class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticquantkernelconv.ElasticQuantConvBnReLu1d.forward"></a></p>
-<h4 id="forward_63">forward</h4>
+<h4 id="forward_62">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -2992,7 +2979,7 @@ Args:</p>
 <p>weights:
   input_divided_by:</p>
 <p><a id="hannah.models.ofa.submodules.elasticBase.ElasticBase1d.forward"></a></p>
-<h4 id="forward_64">forward</h4>
+<h4 id="forward_63">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -3013,7 +3000,7 @@ Args:</p>
 <pre><code class="language-python">class ElasticWidthBatchnorm1d(nn.BatchNorm1d)
 </code></pre>
 <p><a id="hannah.models.ofa.submodules.elasticBatchnorm.ElasticWidthBatchnorm1d.forward"></a></p>
-<h4 id="forward_65">forward</h4>
+<h4 id="forward_64">forward</h4>
 <pre><code class="language-python">def forward(input: torch.Tensor) -&gt; torch.Tensor
 </code></pre>
 <p>if self.track_running_stats:
@@ -3293,7 +3280,7 @@ kernel with output_channel, input_channel / groups, kernel will be set to (<em>,
 <pre><code class="language-python">class InvertedResidual(nn.Module)
 </code></pre>
 <p><a id="hannah.models.ekut.models.InvertedResidual.forward"></a></p>
-<h4 id="forward_66">forward</h4>
+<h4 id="forward_65">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -3304,7 +3291,7 @@ kernel with output_channel, input_channel / groups, kernel will be set to (<em>,
 </code></pre>
 <p>Speech Recognition on RAW Data using Wolfgang Fuhls Networks</p>
 <p><a id="hannah.models.ekut.models.RawSpeechModel.forward"></a></p>
-<h4 id="forward_67">forward</h4>
+<h4 id="forward_66">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -3314,7 +3301,7 @@ kernel with output_channel, input_channel / groups, kernel will be set to (<em>,
 <pre><code class="language-python">class RawSpeechModelInvertedResidual(nn.Module)
 </code></pre>
 <p><a id="hannah.models.ekut.models.RawSpeechModelInvertedResidual.forward"></a></p>
-<h4 id="forward_68">forward</h4>
+<h4 id="forward_67">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
@@ -4976,6 +4963,12 @@ def std() -&gt; Optional[Tuple[int, ...]]
 def mean() -&gt; Optional[Tuple[int, ...]]
 </code></pre>
 <p>Returns channel-wise means for dataset if applicable</p>
+<p><a id="hannah.datasets.base.AbstractDataset.resolution"></a></p>
+<h4 id="resolution">resolution</h4>
+<pre><code class="language-python">@property
+def resolution() -&gt; Optional[Tuple[int, ...]]
+</code></pre>
+<p>Returns resolution for dataset if applicable</p>
 <p><a id="hannah.datasets.base.AbstractDataset.weights"></a></p>
 <h4 id="weights">weights</h4>
 <pre><code class="language-python">@property
@@ -5007,7 +5000,7 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 <p>Wrapper around torchvision classification datasets</p>
 <p><a id="hannah.datasets.vision.base.ImageDatasetBase"></a></p>
 <h2 id="imagedatasetbase-objects">ImageDatasetBase Objects</h2>
-<pre><code class="language-python">class ImageDatasetBase(AbstractDataset)
+<pre><code class="language-python">class ImageDatasetBase(VisionDatasetBase)
 </code></pre>
 <p><a id="hannah.datasets.vision.base.ImageDatasetBase.__init__"></a></p>
 <h4 id="__init___6">__init__</h4>

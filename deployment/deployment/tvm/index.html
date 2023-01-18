@@ -84,6 +84,20 @@
                   <li class="toctree-l1 current"><a class="reference internal current" href="./">TVM</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#board-configuration">Board Configuration</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#microtvm-connected-boards-or-simulators">MicroTVM connected boards or simulators</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#automate-connected-remote-boards">Automate connected Remote Boards</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#tuner">Tuner</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#tuner-configuration">Tuner Configuration</a>
+    </li>
+        </ul>
     </li>
     </ul>
                   </li>
@@ -129,7 +143,7 @@
             <div class="section" itemprop="articleBody">
               
                 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
 See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -156,7 +170,33 @@ limitations under the License.
 <dd>1 (number of batches used for test)</dd>
 <dt>val_frequency</dt>
 <dd>10 (run backend every n validation epochs)</dd>
+<dt>board</dt>
+<dd>Target board configuration</dd>
+<dt>tuner</dt>
+<dd>optional tuner configuration</dd>
 </dl>
+<h3 id="board-configuration">Board Configuration</h3>
+<h4 id="microtvm-connected-boards-or-simulators">MicroTVM connected boards or simulators</h4>
+<h4 id="automate-connected-remote-boards">Automate connected Remote Boards</h4>
+<h3 id="tuner">Tuner</h3>
+<p>Autotuning is configure using the configuration group <code>backend/tuner</code>.</p>
+<p>There are 3 predefined tuner configurations:</p>
+<ol>
+<li><code>àutotvm</code></li>
+</ol>
+<p>Uses the standard configuration for autotuning on the target board, it is generallly
+the recommended setting for 8-bit quantized models on CPU like devices. As it allows the
+targets to use hand defined tuning templates, which generally include tvm tuning templates.</p>
+<ol>
+<li><code>auto_scheduler</code></li>
+</ol>
+<p>Uses the standard tvm auto_scheduler. This scheduler does not support tensorization and is therefore not recommended on targets that support tensorized instructions. This is mostly the case for tensorized instructions on the target boards.</p>
+<ol>
+<li><code>baseline</code></li>
+</ol>
+<p>This does not use any tuning but uses the predefined schedules directly.</p>
+<p>All tuner configurations are parametrizable using the following tuner configurations:</p>
+<h3 id="tuner-configuration">Tuner Configuration</h3>
               
             </div>
           </div><footer>
