@@ -17,8 +17,6 @@
 # limitations under the License.
 #
 import logging
-import os
-import pathlib
 import re
 import tarfile
 from collections import Counter, namedtuple
@@ -33,10 +31,6 @@ import torch
 import torchvision
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
-from timm.data.mixup import Mixup
-
-from hannah.modules.augmentation import rand_augment
-from hannah.modules.augmentation.batch_augmentation import BatchAugmentationPipeline
 
 from ..base import AbstractDataset
 

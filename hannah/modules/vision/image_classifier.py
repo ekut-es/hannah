@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -24,12 +24,6 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
-
-try:
-    from timm.data.mixup import Mixup
-except ModuleNotFoundError:
-    logging.critical("Could not import Mixup from timm.data.mixup")
-    Mixup = None
 from pytorch_lightning.trainer.supporters import CombinedLoader
 from torchmetrics import (
     Accuracy,
