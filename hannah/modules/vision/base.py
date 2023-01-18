@@ -21,11 +21,8 @@ from typing import Sequence
 
 import kornia
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.utils.data as data
-import torchvision.utils
 from hydra.utils import get_class, instantiate
 from sklearn.metrics import auc, roc_curve
 from torchmetrics import (
@@ -40,7 +37,6 @@ from torchmetrics import (
 from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
-from ..augmentation.transforms.kornia_transforms import A
 from ..base import ClassifierModule
 from ..metrics import Error
 
@@ -173,18 +169,30 @@ class VisionBaseModule(ClassifierModule):
 
     def augment(self, images, labels, boxes, batch_idx):
         augmented_data = images
-        """if (
-            torch.numel(images) > 0
-        ):  # to circumvent error when tensor is empty (depends on batch size)
-            seq = A.PatchSequential(
-                A.AugmentationSequential(A.RandomErasing(p=0.75, scale=(0.7, 0.7))),
-                patchwise_apply=False,
-                grid_size=(8, 8),
-            )
-            augmented_data = seq(augmented_data)"""
-        # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.35, 'keepdim': True}})
-        # augmented_data = seq.forward(augmented_data)
-        augmented_data = A.RandomGaussianNoise(p=0.2, keepdim=True)(augmented_data)
+
+        mean = self.train_set.mean
+        std = self.train_set.std
+
+        if boxes and (torch.numel(images) > 0):
+            boxes_kornia = list()
+            box_index = []
+            for i in range(len(boxes)):
+                if boxes[i]:  # not empty list
+                    box = kornia.geometry.bbox.bbox_generator(
+                        boxes[i][0][0], boxes[i][0][1], boxes[i][0][2], boxes[i][0][3]
+                    )  # convert COCO to kornia format
+                    boxes_kornia.append(box)
+                    box_index.append(i)
+            if not len(box_index) == 0:
+                boxes_kornia = torch.cat(boxes_kornia)
+
+        seq = BatchAugmentationPipeline(
+            {
+                "RandomGaussianNoise": {"p": 0.2, "keepdim": True},
+                "Normalize": {"mean": mean, "std": std},
+            }
+        )
+        augmented_data = seq.forward(augmented_data)
 
         if batch_idx == 0:
             self._log_batch_images("augmented", batch_idx, augmented_data)

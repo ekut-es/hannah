@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -121,6 +121,11 @@ class AbstractDataset(Dataset, ABC):
     @property
     def mean(self) -> Optional[Tuple[int, ...]]:
         """Returns channel-wise means for dataset if applicable"""
+        return None
+
+    @property
+    def resolution(self) -> Optional[Tuple[int, ...]]:
+        """Returns resolution for dataset if applicable"""
         return None
 
     @property

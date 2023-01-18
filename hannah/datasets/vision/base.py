@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -17,8 +17,6 @@
 # limitations under the License.
 #
 import logging
-import os
-import pathlib
 import re
 import tarfile
 from collections import Counter, namedtuple
@@ -33,10 +31,6 @@ import torch
 import torchvision
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
-from timm.data.mixup import Mixup
-
-from hannah.modules.augmentation import rand_augment
-from hannah.modules.augmentation.batch_augmentation import BatchAugmentationPipeline
 
 from ..base import AbstractDataset
 
@@ -49,11 +43,15 @@ class VisionDatasetBase(AbstractDataset):
 
     @property
     def std(self):
-        pass
+        return (0.5, 0.5, 0.5)
 
     @property
     def mean(self):
-        pass
+        return (0.5, 0.5, 0.5)
+
+    @property
+    def resolution(self):
+        return [224, 224]
 
 
 class TorchvisionDatasetBase(VisionDatasetBase):
@@ -82,7 +80,7 @@ class TorchvisionDatasetBase(VisionDatasetBase):
         return len(self.dataset)
 
 
-class ImageDatasetBase(AbstractDataset):
+class ImageDatasetBase(VisionDatasetBase):
     def __init__(self, X, y, classes, bbox=None, transform=None):
         """Initialize vision dataset
 
