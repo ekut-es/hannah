@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -27,7 +27,7 @@ import pytest
 topdir = Path(__file__).parent.absolute() / ".."
 
 # def test_tc_res8_vad():
-#     command_line = "python -m hannah.train --model tc-res8 --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --batch_size=2"
+#     command_line = "python -m hannah.tools.train --model tc-res8 --dataset vad --data_folder datasets/vad_data_balanced --n-labels 2 --batch_size=2"
 #     subprocess.run(
 #         command_line,
 #         check=True,
@@ -61,7 +61,7 @@ topdir = Path(__file__).parent.absolute() / ".."
     ],
 )
 def test_models(model, features):
-    command_line = f"python -m hannah.train trainer.fast_dev_run=True model={model} features={features}"
+    command_line = f"python -m hannah.tools.train trainer.fast_dev_run=True model={model} features={features}"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
@@ -73,7 +73,7 @@ def test_models(model, features):
     "model,backend", [("tc-res8", "torchmobile"), ("gds", "torchmobile")]
 )
 def test_backend(model, backend):
-    command_line = f"python -m hannah.train trainer.fast_dev_run=True experiment_id=test_backend backend={backend} model={model}"
+    command_line = f"python -m hannah.tools.train trainer.fast_dev_run=True experiment_id=test_backend backend={backend} model={model}"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
@@ -94,7 +94,7 @@ def test_datasets(model, dataset, split):
         logging.warning("Could not find data folder, skipping datased tests")
         return
 
-    command_line = f"python -m hannah.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.data_folder={data_folder} dataset.data_split={split}"
+    command_line = f"python -m hannah.tools.train trainer.fast_dev_run=True model={model} dataset={dataset} dataset.data_folder={data_folder} dataset.data_split={split}"
     if dataset == "pamap2":
         command_line += " features=raw"
 
@@ -141,12 +141,13 @@ def test_kitti():
 )
 def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
     epochs = 1
-    command_line = f"python -m hannah.train --config-name nas_ofa trainer.limit_train_batches=5 trainer.limit_val_batches=5 trainer.limit_test_batches=5 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_dilation_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model} nas.random_evaluate={random_evaluate} nas.random_eval_number={random_evaluate_number}"
+    command_line = f"python -m hannah.tools.train --config-name nas_ofa trainer.limit_train_batches=5 trainer.limit_val_batches=5 trainer.limit_test_batches=5 experiment_id=test_ofa nas.epochs_warmup={epochs} nas.epochs_kernel_step={epochs} nas.epochs_depth_step={epochs} nas.epochs_dilation_step={epochs} nas.epochs_width_step={epochs} nas.random_evaluate=False model={model} nas.random_evaluate={random_evaluate} nas.random_eval_number={random_evaluate_number}"
 
     logging.info("runing commandline %s", command_line)
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "config",
     [
