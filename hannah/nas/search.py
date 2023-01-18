@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -418,6 +418,7 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_dilation_step = epochs_dilation_step
         self.epochs_grouping_step = epochs_grouping_step
         self.epochs_dsc_step = epochs_dsc_step
+        self.epochs_tuning_step = epochs_tuning_step
         self.elastic_kernels_allowed = elastic_kernels_allowed
         self.elastic_depth_allowed = elastic_depth_allowed
         self.elastic_width_allowed = elastic_width_allowed
