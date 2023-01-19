@@ -1,8 +1,8 @@
 ##
-## Copyright (c) 2022 Hannah contributors.
+## Copyright (c) 2023 Hannah contributors.
 ##
 ## This file is part of hannah.
-## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+## See https://github.com/ekut-es/hannah for further info.
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ test_python_38:
   image: python:3.8
   script:
     - set -e
-    - poetry run python3 -m pytest  -v --cov=hannah test hannah
+    - poetry run python3 -m pytest  -v --cov=hannah test hannah --integration
   tags:
     - docker
   interruptible: true
@@ -94,14 +94,13 @@ test_tvm:
     - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
     - poetry run external/hannah-tvm/scripts/install_full.sh
     - poetry install -E tvm -E vision
-    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test
+    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test --integration
   tags:
     - docker
   interruptible: true
   allow_failure: false
   only:
     - main
-    - /.*tvm.*/
   cache:
     paths:
       - .cache/
