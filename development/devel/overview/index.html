@@ -99,6 +99,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#logging-console-messages">Logging / Console Messages</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#testing-ci">Testing / CI</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
@@ -133,10 +135,10 @@
             <div class="section" itemprop="articleBody">
               
                 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -174,6 +176,9 @@ dedicated logger for your module e.g.:</p>
 logger.info()
 logger.debug()
 </code></pre>
+<h2 id="testing-ci">Testing / CI</h2>
+<p>Try to provide unit tests for new features, unit tests should be written using <a href="https://docs.pytest.org">pytest</a>. Unit test should be designed to run pretty fast and are run for each push.</p>
+<p>Tests marked with <code>`@pytest.mark.integration</code> are only triggered when <code>--integration</code> is given on the pytest commandline. These tests are only run on pushs to the main branch.</p>
               
             </div>
           </div><footer>
