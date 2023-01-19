@@ -1,0 +1,12 @@
+datasets/
+dataset/
+tmp/
+build/
+.git/
+ml_cloud/
+trained_models/
+zephyrproject
+dataset_*
+pulp-llvm/
+tvm-s4e/
+teda/
