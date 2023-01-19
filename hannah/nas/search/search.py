@@ -74,10 +74,12 @@ class NASBase(ABC):
 
 class DirectNAS(NASBase):
     def __init__(self,
-                 budget=2000,
+                 presample=True,
                  *args,
                  **kwargs) -> None:
-        super().__init__(*args, budget=budget, **kwargs)
+        super().__init__(*args, **kwargs)
+        self.presample = presample
+
 
     def before_search(self):
         self.initialize_dataset()
@@ -211,17 +213,6 @@ class DirectNAS(NASBase):
                              "curves": self.result_handler.curves(dict=True)},
                 res_file,
             )
-
-class AgingEvolutionNAS(DirectNAS):
-    def __init__(self,
-                 budget=2000,
-                 n_jobs=10,
-                 presample=True,
-                 *args, **kwargs) -> None:
-        super().__init__(budget, *args, **kwargs)
-        self.presample = presample
-        self.worklist = []
-        self.n_jobs=n_jobs
 
 
 class WeightSharingNAS(NASBase):
