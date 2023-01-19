@@ -31,20 +31,7 @@ from hannah.nas.search.sampler.mutator import ParameterMutator
 
 from ...parametrization import SearchSpace
 from ...utils import is_pareto
-from .base_sampler import Sampler
-
-
-@dataclass()
-class EvolutionResult:
-    index: int
-    parameters: Dict[str, Any]
-    result: Dict[str, float]
-
-    def costs(self):
-        return np.asarray(
-            [float(self.result[k]) for k in sorted(self.result.keys())],
-            dtype=np.float32,
-        )
+from .base_sampler import Sampler, SearchResult
 
 
 class FitnessFunction:
@@ -76,6 +63,7 @@ class AgingEvolutionSampler(Sampler):
         eps: float = 0.1,
         output_folder=".",
     ):
+        super().__init__(output_folder=output_folder)
         self.bounds = bounds
         self.parametrization = parametrization
 
@@ -93,7 +81,6 @@ class AgingEvolutionSampler(Sampler):
         self.history = []
         self.population = []
         self._pareto_points = []
-        self.output_folder = Path(output_folder)
         if (self.output_folder / "history.yml").exists():
             self.load()
 
@@ -133,13 +120,10 @@ class AgingEvolutionSampler(Sampler):
 
         return parametrization
 
-    def tell(self, parameters, metrics):
-        return self.tell_result(parameters, metrics)
-
     def tell_result(self, parameters, metrics):
         "Tell the result of a task"
 
-        result = EvolutionResult(len(self.history), parameters, metrics)
+        result = SearchResult(len(self.history), parameters, metrics)
 
         self.history.append(result)
         self.population.append(result)
@@ -147,7 +131,6 @@ class AgingEvolutionSampler(Sampler):
             self.population.pop(0)
 
         self.save()
-
         return None
 
     @property
@@ -157,7 +140,7 @@ class AgingEvolutionSampler(Sampler):
         return self._pareto_points
 
     def _update_pareto_front(
-        self, result: Union[EvolutionResult, List[EvolutionResult]]
+        self, result: Union[SearchResult, List[SearchResult]]
     ) -> None:
         if isinstance(result, list):
             self._pareto_points.extend(result)
@@ -177,26 +160,12 @@ class AgingEvolutionSampler(Sampler):
 
         self._pareto_points = new_points
 
-    def save(self):
-        history_file = self.output_folder / "history.yml"
-        history_file_tmp = history_file.with_suffix(".tmp")
-
-        with history_file_tmp.open("w") as history_data:
-            yaml.dump(self.history, history_data)
-        shutil.move(history_file_tmp, history_file)
 
     def load(self):
-        history_file = self.output_folder / "history.yml"
-
-        self.history = []
+        super().load()
         self.population = []
-
-        with history_file.open("r") as history_data:
-            self.history = yaml.unsafe_load(history_data)
 
         if len(self.history) > self.population_size:
             self.population = self.history[len(self.history) - self.population_size :]
         else:
             self.population = self.history
-
-        logging.info("Loaded %d points from history", len(self.history))

@@ -1,10 +1,15 @@
 import numpy as np
-from .base_sampler import Sampler
+from .base_sampler import Sampler, SearchResult
 
 class RandomSampler(Sampler):
-    def __init__(self, parametrization) -> None:
+    def __init__(self,
+                 parametrization,
+                ) -> None:
         super().__init__()
         self.parametrization = parametrization
+
+        if (self.output_folder / "history.yml").exists():
+            self.load()
 
     def next_parameters(self):
         parameter_values = {}
