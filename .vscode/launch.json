@@ -45,7 +45,8 @@
                 "trainer.overfit_batches=20",
                 "nas.budget=5",
                 "module.num_workers=8",
-                "experiment_id=performance_pred",
+                "nas.n_jobs=1",
+                "experiment_id=random_nas_debug",
                 // "~nas.predictor",
                 "~normalizer"
             ]
