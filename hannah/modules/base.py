@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -41,6 +41,12 @@ from torchmetrics import AUROC, MetricCollection
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils.utils import fullname
 from .metrics import plot_confusion_matrix
+
+try:
+    from hannah_tvm.backend import export_relay
+except ModuleNotFoundError:
+    export_relay = None
+
 
 msglogger: logging.Logger = logging.getLogger(__name__)
 
@@ -84,6 +90,7 @@ class ClassifierModule(LightningModule, ABC):
 
         self.logged_samples = 0
         self.export_onnx = export_onnx
+        self.export_relay = export_relay
         self.gpus = gpus
         self.shuffle_all_dataloaders = shuffle_all_dataloaders
 
@@ -274,10 +281,20 @@ class ClassifierModule(LightningModule, ABC):
         output_dir = "."
         quantized_model = copy.deepcopy(self.model)
         quantized_model.cpu()
+
+        if self.export_relay and export_relay:
+            logging.info("Exporting relay model ...")
+            export_relay(quantized_model, self.example_feature_array.cpu())
+        elif self.export_relay:
+            raise Exception(
+                "Could not export relay due to missing hannah_tvm please install with `poetry install -E tvm`"
+            )
+
         if hasattr(self.model, "qconfig") and self.model.qconfig:
             quantized_model = torch.quantization.convert(
                 quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
+
         if self.export_onnx:
             logging.info("saving onnx...")
             try:

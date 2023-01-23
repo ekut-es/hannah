@@ -27,8 +27,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
-import torchvision.utils
-import tqdm
 from hydra.utils import get_class, instantiate
 from pytorch_lightning.trainer.supporters import CombinedLoader
 from tqdm import trange
@@ -36,6 +34,7 @@ from tqdm import trange
 from hannah.datasets.collate import vision_collate_fn
 from hannah.utils.utils import set_deterministic
 
+from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from .base import VisionBaseModule
 from .loss import SemiSupervisedLoss
 
@@ -69,7 +68,15 @@ class AnomalyDetectionModule(VisionBaseModule):
         if batch_idx == 0:
             self._log_batch_images("input", batch_idx, x)
 
-        prediction_result = self.forward(x)
+        mean = self.train_set.mean
+        std = self.train_set.std
+        seq = BatchAugmentationPipeline(
+            {
+                "Normalize": {"mean": mean, "std": std},
+            }
+        )
+        normalized_data = seq.forward(x)
+        prediction_result = self.forward(normalized_data)
 
         loss = torch.tensor([0.0], device=self.device)
         preds = None

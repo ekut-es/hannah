@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,14 +39,13 @@ from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from hannah.models.convnet.models import ConvNet
+from hannah.nas.core.parametrized import is_parametrized
 
 from ...callbacks.optimization import HydraOptCallback
 from ...callbacks.summaries import MacSummaryCallback
 from ...utils import clear_outputs, common_callbacks, fullname
 from .optimizer.aging_evolution import AgingEvolution
 from ..graph_conversion import model_to_graph
-
-from hannah.nas.core.parametrized import is_parametrized
 
 msglogger = logging.getLogger(__name__)
 
@@ -136,7 +135,7 @@ def run_training(
 
         json_data = json_graph.node_link_data(nx_model)
         if not os.path.exists("../performance_data"):
-            os.mkdir("../performance_data")
+            os.makedirs("../performance_data", exist_ok=True)
         with open(f"../performance_data/model_{global_num}.json", "w") as res_file:
             import json
 
@@ -184,21 +183,26 @@ class RandomNASTrainer(NASTrainerBase):
         trainer.fit(module)
 
         from networkx.readwrite import json_graph
+
         nx_model = model_to_graph(module.model, module.example_feature_array)
         json_data = json_graph.node_link_data(nx_model)
         if not os.path.exists("../performance_data"):
-            os.mkdir("../performance_data")
+            os.makedirs("../performance_data", exist_ok=True)
         with open(f"../performance_data/model_{self.global_num}.json", "w") as res_file:
             import json
 
             json.dump(
-                {"graph": json_data, "hparams": {"batch_size": int(self.config.module.batch_size)}, "metrics": opt_callback.result(dict=True), "curves": opt_callback.curves(dict=True)},
+                {
+                    "graph": json_data,
+                    "hparams": {"batch_size": int(self.config.module.batch_size)},
+                    "metrics": opt_callback.result(dict=True),
+                    "curves": opt_callback.curves(dict=True),
+                },
                 res_file,
             )
 
     def run(self):
-        from hydra.utils import instantiate, get_class
-
+        from hydra.utils import get_class, instantiate
 
         # Prepare dataset
         get_class(self.config.dataset.cls).prepare(self.config.dataset)
@@ -238,6 +242,7 @@ class RandomNASTrainer(NASTrainerBase):
             )
 
             self.fit(module)
+
 
 class AgingEvolutionNASTrainer(NASTrainerBase):
     def __init__(
@@ -413,6 +418,7 @@ class OFANasTrainer(NASTrainerBase):
         self.epochs_dilation_step = epochs_dilation_step
         self.epochs_grouping_step = epochs_grouping_step
         self.epochs_dsc_step = epochs_dsc_step
+        self.epochs_tuning_step = epochs_tuning_step
         self.elastic_kernels_allowed = elastic_kernels_allowed
         self.elastic_depth_allowed = elastic_depth_allowed
         self.elastic_width_allowed = elastic_width_allowed
