@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import torch
 import torch.onnx
 from pytorch_lightning import Callback
 
@@ -123,6 +124,9 @@ class InferenceBackendBase(Callback):
         if batch_idx < self.val_batches:
             if self.validation_epoch % self.val_frequency == 0:
                 result = self.run_batch(inputs=batch[0])
+                if not isinstance(result, torch.Tensor):
+                    logging.warning("Could not calculate MSE on target device")
+                    return
                 target = pl_module.forward(batch[0].to(pl_module.device))
                 mse = torch.nn.functional.mse_loss(
                     result.to(pl_module.device),
