@@ -36,6 +36,7 @@ topdir = Path(__file__).parent.absolute() / ".."
 #     )
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "model,features",
     [
@@ -64,6 +65,7 @@ def test_models(model, features):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(
     platform.processor() == "ppc64le",
     reason="currently needs cpu based fft wich is not available on ppc",
@@ -76,6 +78,7 @@ def test_backend(model, backend):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "model,dataset,split",
     [
@@ -100,6 +103,7 @@ def test_datasets(model, dataset, split):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "model", ["timm_resnet50", "timm_efficientnet_lite1", "timm_focalnet_base_srf"]
 )
@@ -108,6 +112,7 @@ def test_2d(model):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "model", ["timm_resnet50", "timm_efficientnet_lite1", "timm_resnet18"]
 )
@@ -116,6 +121,7 @@ def test_cifar_2d(model):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.integration
 @pytest.mark.skip(reason="Faster rcnn needs to much memory for builder")
 def test_kitti():
     data_folder = os.getenv(
@@ -129,6 +135,7 @@ def test_kitti():
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "model,epochs,random_evaluate,random_evaluate_number",
     [
@@ -146,6 +153,7 @@ def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "config",
     [
