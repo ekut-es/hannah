@@ -217,5 +217,17 @@ class DirectNAS(NASBase):
 
 class WeightSharingNAS(NASBase):
     def __init__(self,
-                 budget=2000) -> None:
-        super().__init__(budget)
+                 *args,
+                 **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def before_search(self):
+        self.model_trainer = instantiate(self.config.nas.model_trainer, parent_config=self.config, _recursive_=False)
+        model = self.model_trainer.build_model()
+        self.model_trainer.run_training(model)
+
+    def search(self):
+        print("TODO: Implement search")
+
+    def after_search(self):
+        pass
