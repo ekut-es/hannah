@@ -51,3 +51,4 @@ tmp/
 type_info.json
 *.log
 .pytest_cache
+experiments/datasets/*
