@@ -99,6 +99,26 @@
             ]
         },
         {
+            "name": "ProgressiveShrinking",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.tools.train",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/experiments/",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "model=ofa",
+                "module.batch_size=128",
+                "trainer.max_epochs=3",
+                // "trainer.overfit_batches=20",
+                "nas.n_jobs=1",
+                "nas.budget=5",
+                "module.num_workers=8",
+                "experiment_id=progressive_shrinking_debug",
+            ]
+        },
+        {
             "name": "svd",
             "type": "python",
             "request": "launch",
