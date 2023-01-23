@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../img/favicon.ico" />
-    <title>Fallacies and Pitfalls - HANNAH</title>
+    <title>Publications - HANNAH</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Fallacies and Pitfalls";
-        var mkdocs_page_input_path = "fallacies.md";
+        var mkdocs_page_name = "Publications";
+        var mkdocs_page_input_path = "publications.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -44,18 +44,14 @@
                 <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
                 </li>
               </ul>
-              <ul class="current">
-                <li class="toctree-l1 current"><a class="reference internal current" href="./">Fallacies and Pitfalls</a>
-    <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#changing-onecyclelr-learningrate">Changing OneCycleLR learningrate</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#no-secretstorage-or-dbus-running">No SecretStorage or DBUS running</a>
-    </li>
-    </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../fallacies/">Fallacies and Pitfalls</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../publications/">Publications</a>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Publications</a>
+    <ul class="current">
+    </ul>
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Configuration</span></p>
@@ -124,7 +120,7 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
-      <li>Fallacies and Pitfalls</li>
+      <li>Publications</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -134,10 +130,10 @@
             <div class="section" itemprop="articleBody">
               
                 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -151,26 +147,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-<h1 id="fallacies-and-pitfalls">Fallacies and Pitfalls</h1>
-<h2 id="changing-onecyclelr-learningrate">Changing OneCycleLR learningrate</h2>
-<p>By default the <code>OneCycleLR</code> learning rate scheduler will ignore the setting for <code>òptimizer.lr</code> and instead will
-use the setting <code>scheduler.max_lr</code> to calculate each steps learning rate. To avoid problems when sweeping the the learning rate, in hannah the default setting for <code>scheduler.max_lr</code> is using the same as <code>optimizer.lr</code> but this can be overridden in project specific configuration files.</p>
-<h2 id="no-secretstorage-or-dbus-running">No SecretStorage or DBUS running</h2>
-<p>During <code>poetry install</code> the system will try to unlock secret storage / keyring. If this fails you will see a Error Message like:</p>
-<pre><code>[org.freedesktop.DBus.Error.UnknownMethod] ('Object does not exist on path "/org/freedesktop/secrets/collection/login"')
-</code></pre>
-<p>You can disable this error message by one of the following means:</p>
-<ul>
-<li>Install and Configure a local DBus and Keyring support. <a href="https://unix.stackexchange.com/questions/120612/why-cant-i-run-gnome-apps-over-remote-ssh-session/188877#188877">This</a> might work.</li>
-<li>Setting the default backend for keyring: <code>export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring</code></li>
-<li>Disabling keyring for the whole system: <code>keyring --disable -b keyring.backends.SecretService.Keyring</code></li>
-</ul>
+<h1 id="related-publications">Related Publications</h1>
+<p>Hardware Accelerator and Neural Network Co-Optimization for Ultra-Low-Power Audio Processing Devices
+by Christoph Gerum, Adrian Frischknecht, Paul Palomero Bernardo, Tobias Hald, Konstantin Lübeck, and Oliver Bringmann
+In 2022 25th Euromicro Conference on Digital System Design (DSD), pages 1-8, 2022.
+Keywords: Machine Learning, Neural Networks, AutoML, Neural Architecture Search</p>
+<p>Behavior of Keyword Spotting Networks Under Noisy Conditions
+by Anwesh Mohanty, Adrian Frischknecht, Christoph Gerum, and Oliver Bringmann
+In International Conference on Artificial Neural Networks (ICANN), 2021.
+Keywords: Keyword spotting, High noise conditions, Adaptive batch normalization, Sinc convolution network, Temporal convolution ResNet.</p>
+<p>Dynamic Range and Complexity Optimization of Mixed-Signal Machine Learning Systems
+by Naci Pekcokguler, Dominique Morche, Adrian Frischknecht, Christoph Gerum, Andreas Burg, and Catherine Dehollain
+In 2021 IEEE International Symposium on Circuits and Systems (ISCAS), pages 1-5, 2021.
+Keywords: keyword spotting, analog feature extraction, machine learning classiﬁer, dynamic range reduction, system complexity optimization</p>
+<p>Automated HW/SW Co-Design for Edge AI: State, Challenges and Steps Ahead
+by Oliver Bringmann, Wolfgang Ecker, Ingo Feldner, Adrian Frischknecht, Christoph Gerum, Timo Hämäläinen, Muhammad Abdullah Hanif, Michael J. Klaiber, Daniel Mueller-Gritschneder, Paul Palomero Bernardo, Sebastian Prebeck, and Muhammad Shafique
+In Proceedings of the 2021 International Conference on Hardware/Software Codesign and System Synthesis, pages 11–20. Association for Computing Machinery, 2021.</p>
+<p>UltraTrail: A Configurable Ultra-Low Power TC-ResNet AI Accelerator for Efficient Keyword Spotting
+by Paul Palomero Bernardo, Christoph Gerum, Adrian Frischknecht, Konstantin Lübeck, and Oliver Bringmann
+In 2020 IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD), pages 1-12, 2020.</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href=".." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../publications/" class="btn btn-neutral float-right" title="Publications">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../fallacies/" class="btn btn-neutral float-left" title="Fallacies and Pitfalls"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../configuration/configuration/overview/" class="btn btn-neutral float-right" title="Overview">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -193,10 +194,10 @@ use the setting <code>scheduler.max_lr</code> to calculate each steps learning r
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../fallacies/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../publications/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../configuration/configuration/overview/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
