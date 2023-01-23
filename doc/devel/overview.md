@@ -1,8 +1,8 @@
 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,3 +49,10 @@ dedicated logger for your module e.g.:
     ...
     logger.info()
     logger.debug()
+
+
+## Testing / CI
+
+Try to provide unit tests for new features, unit tests should be written using [pytest](https://docs.pytest.org). Unit test should be designed to run pretty fast and are run for each push.
+
+Tests marked with ``@pytest.mark.integration` are only triggered when `--integration` is given on the pytest commandline. These tests are only run on pushs to the main branch.

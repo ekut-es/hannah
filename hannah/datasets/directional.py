@@ -1,19 +1,39 @@
-import os
-from .base import DatasetType, AbstractDataset
-from .speech import load_audio
-import torch
-import numpy as np
+#
+# Copyright (c) 2023 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import math
-import yaml
+import os
 import random
 from collections import defaultdict
-from ..utils import list_all_files, extract_from_download_cache
+
+import numpy as np
+import torch
+import yaml
+
+from ..utils import extract_from_download_cache, list_all_files
+from .base import AbstractDataset, DatasetType
+from .speech import load_audio
 
 random.seed(2022)
 
 
 class DirectionalDataset(AbstractDataset):
-    """ Directional Dataset """
+    """Directional Dataset"""
 
     def __init__(self, data, set_type, config):
         super().__init__()
@@ -34,10 +54,6 @@ class DirectionalDataset(AbstractDataset):
     @property
     def class_names(self):
         return list()
-
-    @classmethod
-    def download(cls, config):
-        pass
 
     def __len__(self) -> int:
         return len(self.audio_labels)
@@ -63,13 +79,13 @@ class DirectionalDataset(AbstractDataset):
             cached_files = list_all_files(downloadfolder_tmp, ".tar.gz")
 
         extract_from_download_cache(
-                "directional.tar.gz",
-                "https://atreus.informatik.uni-tuebingen.de/seafile/f/0bb98014608541ef9fee/?dl=1",
-                cached_files,
-                os.path.join(downloadfolder_tmp, "directional"),
-                target_folder,
-                clear_download=clear_download,
-            )
+            "directional.tar.gz",
+            "https://es-cloud.cs.uni-tuebingen.de/f/0bb98014608541ef9fee/?dl=1",
+            cached_files,
+            os.path.join(downloadfolder_tmp, "directional"),
+            target_folder,
+            clear_download=clear_download,
+        )
 
     def get_data_with_label(self, index):
         label = self.audio_labels[index]
@@ -125,10 +141,14 @@ class DirectionalDataset(AbstractDataset):
 
             label = x, y
 
-            if i < num_samples * dev_pct and (siren_id not in test_sirens.union(train_sirens)):
+            if i < num_samples * dev_pct and (
+                siren_id not in test_sirens.union(train_sirens)
+            ):
                 dev_files[subpath] = label
                 dev_sirens.add(siren_id)
-            elif i < num_samples * (dev_pct + test_pct) and (siren_id not in dev_sirens.union(train_sirens)):
+            elif i < num_samples * (dev_pct + test_pct) and (
+                siren_id not in dev_sirens.union(train_sirens)
+            ):
                 test_files[subpath] = label
                 test_sirens.add(siren_id)
             else:
@@ -145,14 +165,22 @@ class DirectionalDataset(AbstractDataset):
 
 
 class CompassDataset(DirectionalDataset):
-
     @property
     def class_names(self):
         return self.class_labels()
 
     @classmethod
     def class_labels(cls):
-        return ["n", "ne", "e", "se", "s", "sw", "w", "nw", ]
+        return [
+            "n",
+            "ne",
+            "e",
+            "se",
+            "s",
+            "sw",
+            "w",
+            "nw",
+        ]
 
     def class_counts(self):
         classcounter = defaultdict(int)
@@ -167,11 +195,17 @@ class CompassDataset(DirectionalDataset):
         sin = math.sin(angle)
         cos = math.cos(angle)
 
-        angles = [i*2*math.pi/len(self.class_labels()) for i in range(len(self.class_labels()))]
+        angles = [
+            i * 2 * math.pi / len(self.class_labels())
+            for i in range(len(self.class_labels()))
+        ]
 
         sins_coss = [(math.sin(angle), math.cos(angle)) for angle in angles]
 
-        dists = [(label, math.dist((sin, cos), sin_cos)) for label, sin_cos in zip(self.class_labels(), sins_coss)]
+        dists = [
+            (label, math.dist((sin, cos), sin_cos))
+            for label, sin_cos in zip(self.class_labels(), sins_coss)
+        ]
 
         label, _ = min(dists, key=lambda x: x[1])
 
@@ -243,10 +277,14 @@ class BeamformingDataset(DirectionalDataset):
 
                 conf_tuple = (subpath, variant)
 
-                if i < num_samples * dev_pct and (siren_id not in test_sirens.union(train_sirens)):
+                if i < num_samples * dev_pct and (
+                    siren_id not in test_sirens.union(train_sirens)
+                ):
                     dev_files[conf_tuple] = label
                     dev_sirens.add(siren_id)
-                elif i < num_samples * (dev_pct + test_pct) and (siren_id not in dev_sirens.union(train_sirens)):
+                elif i < num_samples * (dev_pct + test_pct) and (
+                    siren_id not in dev_sirens.union(train_sirens)
+                ):
                     test_files[conf_tuple] = label
                     test_sirens.add(siren_id)
                 else:
@@ -263,10 +301,15 @@ class BeamformingDataset(DirectionalDataset):
 
     @classmethod
     def class_labels(cls):
-        return ["+", "-", ]
+        return [
+            "+",
+            "-",
+        ]
 
     def get_bin(self, siren, mic1, mic2):
-        diff = math.dist((mic1["x"], mic1["y"]), (siren["x"], siren["y"])) - math.dist((mic2["x"], mic2["y"]), (siren["x"], siren["y"]))
+        diff = math.dist((mic1["x"], mic1["y"]), (siren["x"], siren["y"])) - math.dist(
+            (mic2["x"], mic2["y"]), (siren["x"], siren["y"])
+        )
 
         return "+" if diff > 0 else "-"
 
@@ -300,7 +343,7 @@ class BeamformingDataset(DirectionalDataset):
             path = os.path.join(folder, channel_name + ".wav")
             audio = load_audio(path, sr=self.samplingrate)
             samples = np.squeeze(audio)
-            samples = samples[:self.input_length]
+            samples = samples[: self.input_length]
             channels += [samples]
 
         num_bins = len(self.class_labels())
@@ -311,7 +354,9 @@ class BeamformingDataset(DirectionalDataset):
 
         new_channel = new_channel[num_bins:]
 
-        new_channel = np.concatenate((new_channel, np.zeros(bin_length - len(new_channel) % bin_length)))
+        new_channel = np.concatenate(
+            (new_channel, np.zeros(bin_length - len(new_channel) % bin_length))
+        )
 
         new_channel_split = np.split(new_channel, num_bins)
 
@@ -321,7 +366,7 @@ class BeamformingDataset(DirectionalDataset):
 
         new_channel = new_channel.flatten()
 
-        new_channel = new_channel[:self.input_length]
+        new_channel = new_channel[: self.input_length]
 
         channels += [new_channel * channels[0]]  # Lock-In Amp like idea
 
