@@ -80,6 +80,7 @@
             "request": "launch",
             "module": "hannah.tools.train",
             "justMyCode": false,
+            "cwd": "${workspaceFolder}/experiments/",
             "args": [
                 "nas=aging_evolution_nas",
                 "model=lazy_convnet",
