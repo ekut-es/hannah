@@ -129,7 +129,8 @@ class DirectNAS(NASBase):
         return module
 
     def build_search_space(self):
-        search_space = instantiate(self.config.model, _recursive_=True)
+        # FIXME: In the future, get num_labels also from dataset
+        search_space = instantiate(self.config.model, input_shape=self.example_input_array.shape, _recursive_=True)
         return search_space
 
     # FIXME: Fully move to model trainer?
@@ -142,7 +143,6 @@ class DirectNAS(NASBase):
                 features=self.config.features,
                 normalizer=self.config.get("normalizer", None),
                 scheduler=self.config.scheduler,
-                example_input_array=self.example_input_array,
                 num_classes=len(self.train_set.class_names),
                 _recursive_=False,
             )
