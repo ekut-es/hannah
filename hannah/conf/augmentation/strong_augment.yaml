@@ -16,18 +16,26 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-batch_augment:
+strong_augment:
+  pipeline: strong
   transforms:
+    ColorJiggle:
+      p: 0.5
+      brightness: 0.5
+      contrast: 0.5
+      saturation: 0.1
+      hue: 0.0
+    RandomPosterize:
+      p: 0.5
+      bits: [4, 8]
+    RandomAffine:
+      p: 0.5
+      degrees: 30
+      translate: 0.2
+      shear: 0.2
+    RandomSharpness:
+      p: 0.5
+      sharpness: 0.5
     RandomGaussianNoise:
       p: 0.5
-    RandomPosterize:
-      p: 0.3
-    RandomSharpness:
-      p: 0.3
-    RandomRotation:
-      degrees: 180
-      p: 1.0
-    RandomVerticalFlip:
-      p: 0.5
-    RandomHorizontalFlip:
-      p: 0.5
+      std: 0.05
