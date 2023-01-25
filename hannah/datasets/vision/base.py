@@ -111,6 +111,10 @@ class ImageDatasetBase(VisionDatasetBase):
         target = self.label_to_index[label]
         return {"data": data, "labels": target, "bbox": bbox}
 
+    def size(self):
+        dim = self[0]['data'].shape
+        return list(dim)
+
     def __len__(self):
         assert len(self.X) == len(self.y)
         return len(self.X)
