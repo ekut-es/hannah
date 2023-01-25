@@ -134,7 +134,7 @@ class ImageDatasetBase(VisionDatasetBase):
 
     @property
     def num_classes(self):
-        return len(self.class_counts)
+        return len(self.classes)
 
     # retuns a list of class index for every sample
     @property
