@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,6 +69,7 @@ class ClassifierModule(LightningModule, ABC):
         export_relay: bool = False,
         gpus=None,
         shuffle_all_dataloaders: bool = False,
+        augmentation: Optional[DictConfig] = None,
         **kwargs,
     ) -> None:
         super().__init__()

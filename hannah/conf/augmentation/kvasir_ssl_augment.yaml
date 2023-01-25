@@ -17,7 +17,14 @@
 ## limitations under the License.
 ##
 batch_augment:
+  pipeline: null
   transforms:
+    RandomGaussianNoise:
+      p: 0.5
+    RandomPosterize:
+      p: 0.3
+    RandomSharpness:
+      p: 0.3
     RandomRotation:
       degrees: 180
       p: 1.0

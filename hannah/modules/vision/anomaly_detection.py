@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -104,15 +104,18 @@ class AnomalyDetectionModule(VisionBaseModule):
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
-        (
-            batch_unlabeled,
-            batch_normal_labeled,
-            batch_anomaly_labeled,
-        ) = self.identify_batches(batch)
+        batch_list = [batch]
+        if isinstance(batch, dict) and "unlabeled" in batch:
+            (
+                batch_unlabeled,
+                batch_normal_labeled,
+                batch_anomaly_labeled,
+            ) = self.identify_batches(batch)
+            batch_list = [batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled]
 
         loss = torch.tensor([0.0], device=self.device)
 
-        for batch in [batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled]:
+        for batch in batch_list:
             batch = self._decode_batch(batch)
             x = batch["data"]
             labels = batch.get("labels", None)
