@@ -240,39 +240,6 @@ class AnomalyDetectionModule(VisionBaseModule):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
 
-    def on_train_end(self):
-        if self.hparams.train_val_loss == "decoder":
-            optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
-            print("Starting training of linear classifier.")
-            for epoch in trange(20):
-                losses = []
-                counter = 0
-                for batch in self.train_dataloader():
-                    counter += 1
-                    if counter % 5 == 0:
-                        labeled_batch = batch["labeled"]
-                        x = labeled_batch["data"]
-                        labels = labeled_batch.get("labels", None).to(
-                            device=self.device
-                        )
-                        boxes = labeled_batch.get("bbox", [])
-                        augmented_data, x = self.augment(x, labels, boxes, 1)
-                        augmented_data = augmented_data.to(device=self.device)
-                        prediction_result = self.forward(augmented_data)
-
-                        optimizer.zero_grad()
-                        logits = self.model.classifier(prediction_result.latent)
-                        current_loss = F.cross_entropy(logits, labels)
-                        preds = torch.argmax(logits, dim=1)
-                        current_loss.backward()
-                        optimizer.step()
-                        counter = 0
-                        losses.append(current_loss)
-                self.logger.log_metrics(
-                    {"linear_classifier_train_loss": statistics.fmean(losses)},
-                    step=epoch,
-                )
-
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
