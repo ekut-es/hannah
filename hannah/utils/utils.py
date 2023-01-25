@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ from torchvision.datasets.utils import (
 
 from ..callbacks.clustering import kMeans
 from ..callbacks.dump_layers import TestDumperCallback
+from ..callbacks.fine_tuning import LinearClassifierTraining
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.pruning import PruningAmountScheduler
 from ..callbacks.summaries import MacSummaryCallback
@@ -271,6 +272,15 @@ def common_callbacks(config: DictConfig) -> list:
                 cluster=config.compression.clustering.amount,
             )
             callbacks.append(kmeans)
+
+    if config.get("fine_tuning", None):
+        if config.fine_tuning.get("_target_", LinearClassifierTraining):
+            callbacks.append(
+                LinearClassifierTraining(
+                    epochs=config.fine_tuning.epochs,
+                    learning_rate=config.fine_tuning.learning_rate,
+                )
+            )
 
     return callbacks
 

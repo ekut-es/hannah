@@ -1,0 +1,3 @@
+_target_: hannah.callbacks.fine_tuning.LinearClassifierTraining
+epochs: 20
+learning_rate: 0.001
