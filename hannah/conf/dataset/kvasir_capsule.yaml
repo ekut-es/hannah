@@ -23,5 +23,4 @@ val_percent: 0.1
 sampler: random
 weighted_loss: false
 anomaly: false
-
 split: official

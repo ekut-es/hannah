@@ -16,18 +16,12 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-batch_augment:
+weak_augment:
+  pipeline: weak
   transforms:
-    RandomGaussianNoise:
-      p: 0.5
-    RandomPosterize:
-      p: 0.3
-    RandomSharpness:
-      p: 0.3
-    RandomRotation:
-      degrees: 180
-      p: 1.0
-    RandomVerticalFlip:
-      p: 0.5
     RandomHorizontalFlip:
       p: 0.5
+    RandomAffine:
+      p: 0.5
+      degrees: 0
+      translate: 0.125

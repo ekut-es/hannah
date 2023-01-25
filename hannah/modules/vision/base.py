@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
 # limitations under the License.
 #
 import logging
-from typing import Sequence
+from collections import defaultdict
+from typing import Optional, Sequence
 
 import kornia
+import kornia.augmentation as K
 import matplotlib.pyplot as plt
 import torch
 import torch.utils.data as data
@@ -108,6 +110,16 @@ class VisionBaseModule(ClassifierModule):
         self.test_losses = list()
         self.encodings = dict()
 
+        self.input_normalizer = BatchAugmentationPipeline(
+            {"Normalize": {"mean": self.train_set.mean, "std": self.train_set.std}}
+        )
+
+        # Setup Augmentations
+        self.default_augmentation = None
+        self.augmentations = None
+
+        self.setup_augmentations(self.hparams.augmentation)
+
         # Setup Metrics
         metrics = {}
         if self.num_classes > 0:
@@ -167,12 +179,7 @@ class VisionBaseModule(ClassifierModule):
         self._log_weight_distribution()
         self.train()
 
-    def augment(self, images, labels, boxes, batch_idx):
-        augmented_data = images
-
-        mean = self.train_set.mean
-        std = self.train_set.std
-
+    def augment(self, images, labels, boxes, batch_idx, pipeline: Optional[str] = None):
         if boxes and (torch.numel(images) > 0):
             boxes_kornia = list()
             box_index = []
@@ -186,15 +193,39 @@ class VisionBaseModule(ClassifierModule):
             if not len(box_index) == 0:
                 boxes_kornia = torch.cat(boxes_kornia)
 
-        seq = BatchAugmentationPipeline(
-            {
-                "RandomGaussianNoise": {"p": 0.2, "keepdim": True},
-                "Normalize": {"mean": mean, "std": std},
-            }
-        )
-        augmented_data = seq.forward(augmented_data)
+        augmented_data = self.default_augmentation(images)
+        if pipeline in self.augmentations:
+            augmented_data = self.augmentations[pipeline].forward(augmented_data)
+
+        elif pipeline is not None:
+            msglogger.critical(
+                "Could not find augmentations for `%s`, only default augmentations will be applied ",
+                pipeline,
+            )
+
+        augmented_norm_data = self.input_normalizer.forward(augmented_data)
 
         if batch_idx == 0:
-            self._log_batch_images("augmented", batch_idx, augmented_data)
+            pipeline_name = pipeline if pipeline is not None else "default"
+            self._log_batch_images(
+                f"augmented_{pipeline_name}", batch_idx, augmented_norm_data
+            )
 
-        return augmented_data, images
+        return augmented_norm_data, images
+
+    def setup_augmentations(self, pipeline_configs):
+        default_augment = []
+        augmentations = defaultdict(list)
+
+        for pipeline_id, pipeline_config in pipeline_configs.items():
+            pipeline_name = pipeline_config.get("pipeline", None)
+            pipeline_transforms = BatchAugmentationPipeline(pipeline_config.transforms)
+
+            if pipeline_name:
+                augmentations[pipeline_name].append(pipeline_transforms)
+            else:
+                default_augment.append(pipeline_transforms)
+
+        self.default_augmentation = torch.nn.Sequential(*default_augment)
+        augmentations = {k: torch.nn.Sequential(*v) for k, v in augmentations.items()}
+        self.augmentations = torch.nn.ModuleDict(augmentations)

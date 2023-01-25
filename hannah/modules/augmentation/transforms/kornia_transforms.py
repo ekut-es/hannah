@@ -23,6 +23,7 @@ import torchvision
 
 try:
     import kornia.augmentation as K
+    import kornia.geometry.transform
 except ModuleNotFoundError:
     logging.warning(
         "Could not import kornia augmentations if needed install with -E vision"
@@ -45,8 +46,6 @@ if K:
     registry.register(K.RandomPosterize)
     registry.register(K.RandomSharpness)
     registry.register(K.RandomSolarize)
-    registry.register(K.PatchSequential)
-    registry.register(K.AugmentationSequential)
     registry.register(K.Normalize)
 
     # Color Transformations
