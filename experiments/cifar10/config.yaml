@@ -13,3 +13,6 @@ defaults:
 monitor:
   metric: val_f1_micro
   direction: maximize
+
+trainer:
+  max_epochs: 50
