@@ -85,7 +85,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 GPUS=1
-BATCH_SIZE=6
+BATCH_SIZE=16
 
 # trainer=sharded
 
