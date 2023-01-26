@@ -94,6 +94,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             torch.nn.modules.flatten.Flatten: self.add_nodes_flatten,
             torch.nn.Conv2d: self.add_nodes_conv,
             torch.nn.Linear: self.add_nodes_linear,
+            torch.nn.BatchNorm2d: self.add_nodes_batch_norm,
             "add": self.add_nodes_add,
         }
         self.layer_encodings = [
@@ -159,6 +160,23 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             output={"quant": quant_attrs, "shape": output.shape},
             inputs=input_attrs,
             type="relu",
+        )
+
+        input_names = [arg.name for arg in args]
+        for input_name in input_names:
+            self.nx_graph.add_edge(input_name, target)
+
+        return NamedTensor(target, output, quantization=quant_attrs)
+
+    def add_nodes_batch_norm(self, target, mod, args, output):
+        quant_attrs = args[0].quantization
+        input_attrs = self.extract_input_attrs(args)
+        self.nx_graph.add_node(
+            target,
+            attrs={},
+            output={"quant": quant_attrs, "shape": output.shape},
+            inputs=input_attrs,
+            type="batch_norm",
         )
 
         input_names = [arg.name for arg in args]
