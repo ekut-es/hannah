@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from hannah.nas.expressions.shapes import conv2d_shape
+from hannah.nas.expressions.shapes import conv2d_shape, identity_shape
 from hannah.nas.parameters.lazy import Lazy
 from hannah.nas.parameters.parametrize import parametrize
 from hannah.nas.parameters.iterators import RangeIterator
@@ -10,6 +10,8 @@ from hannah.nas.expressions.choice import SymbolicAttr, Choice
 
 conv2d = Lazy(nn.Conv2d, shape_func=conv2d_shape)
 linear = Lazy(nn.Linear)
+batch_norm = Lazy(nn.BatchNorm2d, shape_func=identity_shape)
+relu = Lazy(nn.ReLU)
 
 
 def padding_expression(kernel_size, stride, dilation = 1):
@@ -43,13 +45,45 @@ def stride_product(expressions: list):
 
 
 @parametrize
+class ConvReluBn(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, id, inputs) -> None:
+        super().__init__()
+        self.id = id
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+
+        self.conv = conv2d(self.id + ".conv",
+                           inputs=inputs,
+                           in_channels=in_channels,
+                           out_channels=out_channels,
+                           kernel_size=kernel_size,
+                           stride=stride,
+                           padding=padding_expression(kernel_size, stride))
+
+        self.shape = self.conv.shape
+        self.bn = batch_norm(self.id + ".bn", num_features=out_channels)
+        self.relu = relu(self.id + ".relu")
+    def initialize(self):
+        self.tconv = self.conv.instantiate()
+        self.tbn = self.bn.instantiate()
+        self.trelu = self.relu.instantiate()
+
+    def forward(self, x):
+        out = self.tconv(x)
+        out = self.tbn(out)
+        out = self.trelu(out)
+        return out
+
+
+@parametrize
 class ConvReluBlock(nn.Module):
     def __init__(self, params, input_shape, id, depth) -> None:
         super().__init__()
         self.input_shape = input_shape
         self.depth = self.add_param(f'{id}.depth', depth)
-        self.modules = []
-        self.relus = nn.ModuleList()
+        self.mods = nn.ModuleList()
         self.id = id
         self.depth = depth
         self.params = params
@@ -67,29 +101,20 @@ class ConvReluBlock(nn.Module):
 
             strides.append(stride)
 
-            layer = conv2d(f'{self.id}.conv{d}',
-                           inputs=[previous],
-                           in_channels=in_channels,
-                           out_channels=out_channels,
-                           kernel_size=kernel_size,
-                           stride=stride,
-                           padding=padding_expression(kernel_size, stride))
-            self.modules.append(layer)
-            self.relus.append(nn.ReLU())
+            layer = ConvReluBn(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, id=f'{self.id}.{d}', inputs=[previous])
+            self.mods.append(layer)
             previous = layer
 
         self.cond(stride_product(strides) <= self.input_shape[2])
 
     def initialize(self):
-        self.torch_modules = nn.ModuleList()
         for d in RangeIterator(self.depth, instance=False):
-            self.torch_modules.append(self.modules[d].instantiate())
+            self.mods[d].initialize()
 
     def forward(self, x):
         out = x
         for d in RangeIterator(self.depth, instance=True):
-            out = self.torch_modules[d](out)
-            out = self.relus[d](out)
+            out = self.mods[d](out)
         return out
 
 
@@ -102,8 +127,8 @@ class ConvNet(nn.Module):
         self.depth = IntScalarParameter(params.depth.min, params.depth.max)
         self.conv_block = self.add_param("convs", ConvReluBlock(params, self.input_shape, 'convs', self.depth))
 
-        last = Choice(self.conv_block.modules, self.depth - 1)
-        in_features = last.get('kwargs')['out_channels'] * last.get('shape')[2] * last.get('shape')[3]
+        last = Choice(self.conv_block.mods, self.depth - 1)
+        in_features = last.get('out_channels') * last.get('shape')[2] * last.get('shape')[3]
 
         # Alternatively to the following, one can create a parametrized class "Classifier" which
         # wraps the linear layer.
