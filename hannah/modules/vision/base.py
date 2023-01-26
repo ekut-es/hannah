@@ -115,8 +115,8 @@ class VisionBaseModule(ClassifierModule):
         )
 
         # Setup Augmentations
-        self.default_augmentation = None
-        self.augmentations = None
+        self.default_augmentation = torch.nn.Identity()
+        self.augmentations = {}
 
         self.setup_augmentations(self.hparams.augmentation)
 
@@ -216,6 +216,13 @@ class VisionBaseModule(ClassifierModule):
     def setup_augmentations(self, pipeline_configs):
         default_augment = []
         augmentations = defaultdict(list)
+
+        if pipeline_configs is None:
+            msglogger.warning(
+                "No data augmentations have been defined, make sure that this is intentional"
+            )
+            self.default_augmentation = torch.nn.Identity()
+            return
 
         for pipeline_id, pipeline_config in pipeline_configs.items():
             pipeline_name = pipeline_config.get("pipeline", None)
