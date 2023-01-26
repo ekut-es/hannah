@@ -17,6 +17,7 @@
 ## limitations under the License.
 ##
 batch_augment:
+  pipeline: null
   transforms:
     RandomGaussianNoise:
       p: 0.5

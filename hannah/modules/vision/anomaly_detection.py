@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 import json
 import logging
 import os
+import statistics
 from typing import Sequence
 
 import matplotlib.pyplot as plt
@@ -26,13 +27,14 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
-import torchvision.utils
 from hydra.utils import get_class, instantiate
 from pytorch_lightning.trainer.supporters import CombinedLoader
+from tqdm import trange
 
 from hannah.datasets.collate import vision_collate_fn
 from hannah.utils.utils import set_deterministic
 
+from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from .base import VisionBaseModule
 from .loss import SemiSupervisedLoss
 
@@ -66,7 +68,15 @@ class AnomalyDetectionModule(VisionBaseModule):
         if batch_idx == 0:
             self._log_batch_images("input", batch_idx, x)
 
-        prediction_result = self.forward(x)
+        mean = self.train_set.mean
+        std = self.train_set.std
+        seq = BatchAugmentationPipeline(
+            {
+                "Normalize": {"mean": mean, "std": std},
+            }
+        )
+        normalized_data = seq.forward(x)
+        prediction_result = self.forward(normalized_data)
 
         loss = torch.tensor([0.0], device=self.device)
         preds = None
@@ -94,15 +104,18 @@ class AnomalyDetectionModule(VisionBaseModule):
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
-        (
-            batch_unlabeled,
-            batch_normal_labeled,
-            batch_anomaly_labeled,
-        ) = self.identify_batches(batch)
+        batch_list = [batch]
+        if isinstance(batch, dict) and "unlabeled" in batch:
+            (
+                batch_unlabeled,
+                batch_normal_labeled,
+                batch_anomaly_labeled,
+            ) = self.identify_batches(batch)
+            batch_list = [batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled]
 
         loss = torch.tensor([0.0], device=self.device)
 
-        for batch in [batch_unlabeled, batch_normal_labeled, batch_anomaly_labeled]:
+        for batch in batch_list:
             batch = self._decode_batch(batch)
             x = batch["data"]
             labels = batch.get("labels", None)
@@ -131,7 +144,9 @@ class AnomalyDetectionModule(VisionBaseModule):
                 ):
                     decoded = prediction_result.decoded
                     if torch.is_tensor(labels) and torch.sum(labels) > 0:  # anomaly
-                        ss_loss = SemiSupervisedLoss(kind="anomaly")
+                        ss_loss = SemiSupervisedLoss(
+                            kind="normal"
+                        )  # change back to anomaly
                     else:
                         ss_loss = SemiSupervisedLoss(kind="normal")
                     current_loss = ss_loss.forward(true_data=x, decoded=decoded)
@@ -180,7 +195,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                         size=labels.size(), device=labels.device, dtype=labels.dtype
                     ).fill_(0)
                 self.metrics["val_metrics"](preds, labels)
-                self.log_dict(self.metricsf["val_metrics"])
+                self.log_dict(self.metrics["val_metrics"])
 
     def test_step(self, batch, batch_idx):
         loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)
@@ -224,34 +239,6 @@ class AnomalyDetectionModule(VisionBaseModule):
     def on_train_epoch_end(self):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
-
-    def on_train_end(self):
-        if self.hparams.train_val_loss == "decoder":
-            optimizer = torch.optim.AdamW(self.model.classifier.parameters(), lr=0.001)
-            for epoch in range(10):
-                print("Training epoch of linear classifier: ", epoch)
-                counter = 0
-                for batch in self.train_dataloader():
-                    counter += 1
-                    if counter % 5 == 0:
-                        labeled_batch = batch["labeled"]
-                        x = labeled_batch["data"]
-                        labels = labeled_batch.get("labels", None).to(
-                            device=self.device
-                        )
-                        boxes = labeled_batch.get("bbox", [])
-                        augmented_data, x = self.augment(x, labels, boxes, 1)
-                        augmented_data = augmented_data.to(device=self.device)
-                        prediction_result = self.forward(augmented_data)
-
-                        optimizer.zero_grad()
-                        logits = self.model.classifier(prediction_result.latent)
-                        loss = F.cross_entropy(logits, labels)
-                        preds = torch.argmax(logits, dim=1)
-                        loss.backward()
-                        optimizer.step()
-                        counter = 0
-                    # TODO: Add logging
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,15 +17,14 @@
 # limitations under the License.
 #
 import logging
-from typing import Sequence
+from collections import defaultdict
+from typing import Optional, Sequence
 
 import kornia
+import kornia.augmentation as K
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.utils.data as data
-import torchvision.utils
 from hydra.utils import get_class, instantiate
 from sklearn.metrics import auc, roc_curve
 from torchmetrics import (
@@ -40,9 +39,6 @@ from torchmetrics import (
 from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
-from ..augmentation.transforms.kornia_transforms import (  # FIXME: A should be albumentations
-    A,
-)
 from ..base import ClassifierModule
 from ..metrics import Error
 
@@ -114,6 +110,16 @@ class VisionBaseModule(ClassifierModule):
         self.test_losses = list()
         self.encodings = dict()
 
+        self.input_normalizer = BatchAugmentationPipeline(
+            {"Normalize": {"mean": self.train_set.mean, "std": self.train_set.std}}
+        )
+
+        # Setup Augmentations
+        self.default_augmentation = None
+        self.augmentations = None
+
+        self.setup_augmentations(self.hparams.augmentation)
+
         # Setup Metrics
         metrics = {}
         if self.num_classes > 0:
@@ -173,23 +179,53 @@ class VisionBaseModule(ClassifierModule):
         self._log_weight_distribution()
         self.train()
 
-    def augment(self, images, labels, boxes, batch_idx):
-        augmented_data = images
-        """if (
-            torch.numel(images) > 0
-        ):  # to circumvent error when tensor is empty (depends on batch size)
-            seq = A.PatchSequential(
-                A.AugmentationSequential(A.RandomErasing(p=0.75, scale=(0.7, 0.7))),
-                patchwise_apply=False,
-                grid_size=(8, 8),
-            )
-            augmented_data = seq(augmented_data)"""
+    def augment(self, images, labels, boxes, batch_idx, pipeline: Optional[str] = None):
+        if boxes and (torch.numel(images) > 0):
+            boxes_kornia = list()
+            box_index = []
+            for i in range(len(boxes)):
+                if boxes[i]:  # not empty list
+                    box = kornia.geometry.bbox.bbox_generator(
+                        boxes[i][0][0], boxes[i][0][1], boxes[i][0][2], boxes[i][0][3]
+                    )  # convert COCO to kornia format
+                    boxes_kornia.append(box)
+                    box_index.append(i)
+            if not len(box_index) == 0:
+                boxes_kornia = torch.cat(boxes_kornia)
 
-        # seq = BatchAugmentationPipeline({'RandomGaussianNoise': {'p': 0.35, 'keepdim': True}})
-        # augmented_data = seq.forward(augmented_data)
-        augmented_data = A.RandomGaussianNoise(p=0.3, keepdim=True)(augmented_data)
+        augmented_data = self.default_augmentation(images)
+        if pipeline in self.augmentations:
+            augmented_data = self.augmentations[pipeline].forward(augmented_data)
+
+        elif pipeline is not None:
+            msglogger.critical(
+                "Could not find augmentations for `%s`, only default augmentations will be applied ",
+                pipeline,
+            )
+
+        augmented_norm_data = self.input_normalizer.forward(augmented_data)
 
         if batch_idx == 0:
-            self._log_batch_images("augmented", batch_idx, augmented_data)
+            pipeline_name = pipeline if pipeline is not None else "default"
+            self._log_batch_images(
+                f"augmented_{pipeline_name}", batch_idx, augmented_norm_data
+            )
 
-        return augmented_data, images
+        return augmented_norm_data, images
+
+    def setup_augmentations(self, pipeline_configs):
+        default_augment = []
+        augmentations = defaultdict(list)
+
+        for pipeline_id, pipeline_config in pipeline_configs.items():
+            pipeline_name = pipeline_config.get("pipeline", None)
+            pipeline_transforms = BatchAugmentationPipeline(pipeline_config.transforms)
+
+            if pipeline_name:
+                augmentations[pipeline_name].append(pipeline_transforms)
+            else:
+                default_augment.append(pipeline_transforms)
+
+        self.default_augmentation = torch.nn.Sequential(*default_augment)
+        augmentations = {k: torch.nn.Sequential(*v) for k, v in augmentations.items()}
+        self.augmentations = torch.nn.ModuleDict(augmentations)

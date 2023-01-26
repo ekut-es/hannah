@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ class EmergencySirenDataset(AbstractDataset):
 
         extract_from_download_cache(
             "siren_detection.tar.gz",
-            "https://atreus.informatik.uni-tuebingen.de/seafile/f/239614bc48604cb1bf1c/?dl=1",
+            "https://es-cloud.cs.uni-tuebingen.de/f/239614bc48604cb1bf1c/?dl=1",
             cached_files,
             os.path.join(downloadfolder_tmp, "siren_detection"),
             target_folder,

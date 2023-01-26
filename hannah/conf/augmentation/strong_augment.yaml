@@ -16,21 +16,26 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-rand_augment:
-    N: 1
-    M: 1
-    probs:
-        Identity : 0.5
-        ShearX: 0.5
-        ShearY: 0.5
-        TranslateX: 0.5
-        TranslateY : 0.5
-        Rotate : 0.5
-        Brightness : 0.0
-        Color : 0.5
-        Contrast : 0.0
-        Sharpness : 0.5
-        Posterize : 0.0
-        Solarize : 0.0
-        AutoContrast : 0.0
-        Equalize : 0.1
+strong_augment:
+  pipeline: strong
+  transforms:
+    ColorJiggle:
+      p: 0.5
+      brightness: 0.5
+      contrast: 0.5
+      saturation: 0.1
+      hue: 0.0
+    RandomPosterize:
+      p: 0.5
+      bits: [4, 8]
+    RandomAffine:
+      p: 0.5
+      degrees: 30
+      translate: 0.2
+      shear: 0.2
+    RandomSharpness:
+      p: 0.5
+      sharpness: 0.5
+    RandomGaussianNoise:
+      p: 0.5
+      std: 0.05

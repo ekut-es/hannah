@@ -55,4 +55,3 @@ hyp:
   flipud: 0.00987  # image flip up-down (probability)
   fliplr: 0.395  # image flip left-right (probability)
   mosaic: 1.0  # image mosaic (probability)
-  mixup: 0.262  # image mixup (probability)

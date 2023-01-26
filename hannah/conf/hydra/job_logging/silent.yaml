@@ -16,6 +16,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
+
 version: 1
 formatters:
   simple:
@@ -47,5 +48,7 @@ loggers:
   automate:
     level: WARNING
   numba:
+    level: WARNING
+  te_compiler:
     level: WARNING
 disable_existing_loggers: false

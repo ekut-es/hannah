@@ -1,5 +1,6 @@
+#!/bin/bash
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2022 Hannah contributors.
 ##
 ## This file is part of hannah.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -16,18 +17,10 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-batch_augment:
-  transforms:
-    RandomGaussianNoise:
-      p: 0.5
-    RandomPosterize:
-      p: 0.3
-    RandomSharpness:
-      p: 0.3
-    RandomRotation:
-      degrees: 180
-      p: 1.0
-    RandomVerticalFlip:
-      p: 0.5
-    RandomHorizontalFlip:
-      p: 0.5
+export TAG=0.1.0
+
+docker build -t "cgerum/hannah:{$TAG}" .
+docker push "cgerum/hannah:${TAG}"
+
+docker tag "cgerum/hannah:${TAG}" cgerum/hannah:latest
+docker push "cgerum/hannah:latest"

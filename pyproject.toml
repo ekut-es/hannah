@@ -117,6 +117,7 @@ secondary = true
 
 [tool.poetry.group.dev.dependencies]
 pyre-check = "^0.9.17"
+pytest-xdist = "^3.1.0"
 
 [build-system]
 requires = ["poetry>=0.12"]
