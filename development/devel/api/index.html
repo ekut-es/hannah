@@ -178,294 +178,6 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <h1 id="hannahoptim">hannah.optim</h1>
 <p><a id="hannah.nas.ops"></a></p>
 <h1 id="hannahnasops">hannah.nas.ops</h1>
-<p><a id="hannah.nas.search"></a></p>
-<h1 id="hannahnassearch">hannah.nas.search</h1>
-<p><a id="hannah.nas.search.OFANasTrainer"></a></p>
-<h2 id="ofanastrainer-objects">OFANasTrainer Objects</h2>
-<pre><code class="language-python">class OFANasTrainer(NASTrainerBase)
-</code></pre>
-<p><a id="hannah.nas.search.OFANasTrainer.warmup"></a></p>
-<h4 id="warmup">warmup</h4>
-<pre><code class="language-python">def warmup(model, ofa_model)
-</code></pre>
-<blockquote>
-<p>The function rebuilds the trainer with the warmup epochs, fits the model,</p>
-</blockquote>
-<p>validates the model, and then calls the on_warmup_end() function to
-change some internal variables</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>model</code>: the model to be trained</li>
-<li><code>ofa_model</code>: the model that we want to train</li>
-</ul>
-<p><a id="hannah.nas.search.OFANasTrainer.train_elastic_width"></a></p>
-<h4 id="train_elastic_width">train_elastic_width</h4>
-<pre><code class="language-python">def train_elastic_width(model, ofa_model)
-</code></pre>
-<blockquote>
-<p>The function trains the model for a number of epochs, then adds a width</p>
-</blockquote>
-<p>step, then trains the model for a number of epochs, then adds a width step,
-and so on</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>model</code>: the model to train</li>
-<li><code>ofa_model</code>: the model that will be trained</li>
-</ul>
-<p><a id="hannah.nas.search.OFANasTrainer.train_elastic_depth"></a></p>
-<h4 id="train_elastic_depth">train_elastic_depth</h4>
-<pre><code class="language-python">def train_elastic_depth(model, ofa_model)
-</code></pre>
-<blockquote>
-<p>The function trains the model for a number of epochs, then progressively</p>
-</blockquote>
-<p>shrinks the depth of the model, and trains the model for a number of epochs
-again</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>model</code>: the model to train</li>
-<li><code>ofa_model</code>: the model to be trained</li>
-</ul>
-<p><a id="hannah.nas.search.OFANasTrainer.train_elastic_kernel"></a></p>
-<h4 id="train_elastic_kernel">train_elastic_kernel</h4>
-<pre><code class="language-python">def train_elastic_kernel(model, ofa_model)
-</code></pre>
-<blockquote>
-<p>The function trains the elastic kernels by progressively shrinking the</p>
-</blockquote>
-<p>model and training the model for a number of epochs and repeats this process
-until the number of kernel steps is reached</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>model</code>: the model to train</li>
-<li><code>ofa_model</code>: the model that will be trained</li>
-</ul>
-<p><a id="hannah.nas.search.OFANasTrainer.train_elastic_dilation"></a></p>
-<h4 id="train_elastic_dilation">train_elastic_dilation</h4>
-<pre><code class="language-python">def train_elastic_dilation(model, ofa_model)
-</code></pre>
-<blockquote>
-<p>The function trains the model for a number of epochs, then adds a dilation</p>
-</blockquote>
-<p>step, and trains the model for a number of epochs, and repeats this process
-until the number of dilation steps is reached</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>model</code>: the model to be trained</li>
-<li><code>ofa_model</code>: the model that will be trained</li>
-</ul>
-<p><a id="hannah.nas.search.OFANasTrainer.train_elastic_grouping"></a></p>
-<h4 id="train_elastic_grouping">train_elastic_grouping</h4>
-<pre><code class="language-python">def train_elastic_grouping(model, ofa_model)
-</code></pre>
-<blockquote>
-<p>The function trains the model for a number of epochs, then adds a group</p>
-</blockquote>
-<p>step, and trains the model for a number of epochs, and repeats this process
-until the number of group steps is reached</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>model</code>: the model to be trained</li>
-<li><code>ofa_model</code>: the model that will be trained</li>
-</ul>
-<p><a id="hannah.nas.search.OFANasTrainer.train_elastic_dsc"></a></p>
-<h4 id="train_elastic_dsc">train_elastic_dsc</h4>
-<pre><code class="language-python">def train_elastic_dsc(model, ofa_model)
-</code></pre>
-<blockquote>
-<p>The function trains the model for a number of epochs, then adds a dsc</p>
-</blockquote>
-<p>step (turns Depthwise Separable Convolution on and off), and trains the model for a number of epochs, and repeats this process
-until the number of dsc steps is reached</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>model</code>: the model to be trained</li>
-<li><code>ofa_model</code>: the model that will be trained</li>
-</ul>
-<p><a id="hannah.nas.search.OFANasTrainer.eval_elastic_width"></a></p>
-<h4 id="eval_elastic_width">eval_elastic_width</h4>
-<pre><code class="language-python">def eval_elastic_width(method_stack, method_index, lightning_model, model,
-                       trainer_path, loginfo_output, metrics_output,
-                       metrics_csv)
-</code></pre>
-<blockquote>
-<p>This function steps down the width of the model, and then calls the next</p>
-</blockquote>
-<p>method in the stack</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>method_stack</code>: a list of methods that will be called in order</li>
-<li><code>method_index</code>: The index of the current method in the method stack</li>
-<li><code>lightning_model</code>: the lightning model to be trained</li>
-<li><code>model</code>: the model to be trained</li>
-<li><code>trainer_path</code>: The path to the trainer</li>
-<li><code>loginfo_output</code>: This is the string that will be printed to the
-console</li>
-<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
-<li><code>metrics_csv</code>: a string that contains the metrics for the current model</li>
-</ul>
-<p><strong>Returns</strong>:</p>
-<p>The metrics_csv is being returned.</p>
-<p><a id="hannah.nas.search.OFANasTrainer.eval_elastic_kernel"></a></p>
-<h4 id="eval_elastic_kernel">eval_elastic_kernel</h4>
-<pre><code class="language-python">def eval_elastic_kernel(method_stack, method_index, lightning_model, model,
-                        trainer_path, loginfo_output, metrics_output,
-                        metrics_csv)
-</code></pre>
-<blockquote>
-<p>This function steps down the kernel size of the model, and then calls the</p>
-</blockquote>
-<p>next method in the stack</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>method_stack</code>: The list of methods to be called</li>
-<li><code>method_index</code>: The index of the current method in the method stack</li>
-<li><code>lightning_model</code>: the lightning model to be trained</li>
-<li><code>model</code>: the model to be trained</li>
-<li><code>trainer_path</code>: The path to the trainer</li>
-<li><code>loginfo_output</code>: This is the string that will be printed to the
-console</li>
-<li><code>metrics_output</code>: This is the string that will be printed to the
-console</li>
-<li><code>metrics_csv</code>: a string that contains the metrics for the current model</li>
-</ul>
-<p><strong>Returns</strong>:</p>
-<p>The metrics_csv is being returned.</p>
-<p><a id="hannah.nas.search.OFANasTrainer.eval_elastic_dilation"></a></p>
-<h4 id="eval_elastic_dilation">eval_elastic_dilation</h4>
-<pre><code class="language-python">def eval_elastic_dilation(method_stack, method_index, lightning_model, model,
-                          trainer_path, loginfo_output, metrics_output,
-                          metrics_csv)
-</code></pre>
-<blockquote>
-<p>This function evaluates the model with a different dilation size for each</p>
-</blockquote>
-<p>layer</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>method_stack</code>: The list of methods to be called</li>
-<li><code>method_index</code>: The index of the method in the method stack</li>
-<li><code>lightning_model</code>: the lightning model to be trained</li>
-<li><code>model</code>: the model to be evaluated</li>
-<li><code>trainer_path</code>: The path to the trainer</li>
-<li><code>loginfo_output</code>: This is the string that will be printed to the
-console</li>
-<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
-<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
-</ul>
-<p><strong>Returns</strong>:</p>
-<p>The metrics_csv is being returned.</p>
-<p><a id="hannah.nas.search.OFANasTrainer.eval_elastic_depth"></a></p>
-<h4 id="eval_elastic_depth">eval_elastic_depth</h4>
-<pre><code class="language-python">def eval_elastic_depth(method_stack, method_index, lightning_model, model,
-                       trainer_path, loginfo_output, metrics_output,
-                       metrics_csv)
-</code></pre>
-<blockquote>
-<p>This function will run the next method in the stack for each depth step,</p>
-</blockquote>
-<p>and then return the metrics_csv</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>method_stack</code>: The list of methods to be called</li>
-<li><code>method_index</code>: The index of the current method in the method stack</li>
-<li><code>lightning_model</code>: the lightning model to be trained</li>
-<li><code>model</code>: The model to be trained</li>
-<li><code>trainer_path</code>: The path to the trainer, which is used to save the
-model</li>
-<li><code>loginfo_output</code>: This is the string that will be printed to the
-console</li>
-<li><code>metrics_output</code>: This is the string that will be printed to the
-console</li>
-<li><code>metrics_csv</code>: This is the CSV file that we're writing to</li>
-</ul>
-<p><strong>Returns</strong>:</p>
-<p>The metrics_csv is being returned.</p>
-<p><a id="hannah.nas.search.OFANasTrainer.eval_elastic_grouping"></a></p>
-<h4 id="eval_elastic_grouping">eval_elastic_grouping</h4>
-<pre><code class="language-python">def eval_elastic_grouping(method_stack, method_index, lightning_model, model,
-                          trainer_path, loginfo_output, metrics_output,
-                          metrics_csv)
-</code></pre>
-<blockquote>
-<p>This function evaluates the model with a different group size for each</p>
-</blockquote>
-<p>layer</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>method_stack</code>: The list of methods to be called</li>
-<li><code>method_index</code>: The index of the method in the method stack</li>
-<li><code>lightning_model</code>: the lightning model to be trained</li>
-<li><code>model</code>: the model to be evaluated</li>
-<li><code>trainer_path</code>: The path to the trainer</li>
-<li><code>loginfo_output</code>: This is the string that will be printed to the
-console</li>
-<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
-<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
-</ul>
-<p><strong>Returns</strong>:</p>
-<p>The metrics_csv is being returned.</p>
-<p><a id="hannah.nas.search.OFANasTrainer.eval_elastic_dsc"></a></p>
-<h4 id="eval_elastic_dsc">eval_elastic_dsc</h4>
-<pre><code class="language-python">def eval_elastic_dsc(method_stack, method_index, lightning_model, model,
-                     trainer_path, loginfo_output, metrics_output,
-                     metrics_csv)
-</code></pre>
-<blockquote>
-<p>This function evaluates the model with a different dsc  for each</p>
-</blockquote>
-<p>layer</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>method_stack</code>: The list of methods to be called</li>
-<li><code>method_index</code>: The index of the method in the method stack</li>
-<li><code>lightning_model</code>: the lightning model to be trained</li>
-<li><code>model</code>: the model to be evaluated</li>
-<li><code>trainer_path</code>: The path to the trainer</li>
-<li><code>loginfo_output</code>: This is the string that will be printed to the
-console</li>
-<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
-<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
-</ul>
-<p><strong>Returns</strong>:</p>
-<p>The metrics_csv is being returned.</p>
-<p><a id="hannah.nas.search.OFANasTrainer.eval_single_model"></a></p>
-<h4 id="eval_single_model">eval_single_model</h4>
-<pre><code class="language-python">def eval_single_model(method_stack, method_index, lightning_model, model,
-                      trainer_path, loginfo_output, metrics_output,
-                      metrics_csv)
-</code></pre>
-<blockquote>
-<p>This function takes in a model, a trainer, and a bunch of other stuff,</p>
-</blockquote>
-<p>evaluates the model and tracks the results in der in the given strings and
-returns a string of metrics</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>method_stack</code>: The list of methods that we're evaluating</li>
-<li><code>method_index</code>: The index of the method in the method stack</li>
-<li><code>lightning_model</code>: the lightning model that we want to evaluate</li>
-<li><code>model</code>: The model to be evaluated</li>
-<li><code>trainer_path</code>: the path to the trainer object</li>
-<li><code>loginfo_output</code>: This is the string that will be printed to the
-console when the model is being evaluated</li>
-<li><code>metrics_output</code>: This is the string that will be written to the
-metrics file. It contains the method name, the method index, and the method
-stack</li>
-<li><code>metrics_csv</code>: a string that will be written to a csv file</li>
-</ul>
-<p><strong>Returns</strong>:</p>
-<p>The metrics_csv is being returned.</p>
-<p><a id="hannah.nas.search.OFANasTrainer.eval_model"></a></p>
-<h4 id="eval_model">eval_model</h4>
-<pre><code class="language-python">def eval_model(lightning_model, model)
-</code></pre>
-<p>First the method stack for the evaluation ist build and then it is according to this evaluated</p>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>lightning_model</code>: the lightning model</li>
-<li><code>model</code>: the model to be evaluated</li>
-</ul>
 <p><a id="hannah.nas.parametrization"></a></p>
 <h1 id="hannahnasparametrization">hannah.nas.parametrization</h1>
 <p><a id="hannah.nas.eval.extract"></a></p>
@@ -491,23 +203,6 @@ stack</li>
 <li><code>base_dir</code> <em>str</em> - base directory paths in data mapping are interpreted relative to base directory</li>
 <li><code>force</code> <em>bool</em> - force reconstructing of cached results ("data.pkl")</li>
 </ul>
-<p><a id="hannah.nas.aging_evolution"></a></p>
-<h1 id="hannahnasaging_evolution">hannah.nas.aging_evolution</h1>
-<p><a id="hannah.nas.aging_evolution.AgingEvolution"></a></p>
-<h2 id="agingevolution-objects">AgingEvolution Objects</h2>
-<pre><code class="language-python">class AgingEvolution()
-</code></pre>
-<p>Aging Evolution based multi objective optimization</p>
-<p><a id="hannah.nas.aging_evolution.AgingEvolution.next_parameters"></a></p>
-<h4 id="next_parameters">next_parameters</h4>
-<pre><code class="language-python">def next_parameters()
-</code></pre>
-<p>Returns a list of current tasks</p>
-<p><a id="hannah.nas.aging_evolution.AgingEvolution.tell_result"></a></p>
-<h4 id="tell_result">tell_result</h4>
-<pre><code class="language-python">def tell_result(parameters, metrics)
-</code></pre>
-<p>Tell the result of a task</p>
 <p><a id="hannah.nas.spaces.darts.darts_space"></a></p>
 <h1 id="hannahnasspacesdartsdarts_space">hannah.nas.spaces.darts.darts_space</h1>
 <p><a id="hannah.nas.spaces.mobilenet.mobilenet"></a></p>
@@ -940,6 +635,622 @@ the respective axis sizes</p>
 <p>tensor : Tensor</p>
 <p><a id="hannah.nas.__main__"></a></p>
 <h1 id="hannahnas__main__">hannah.nas.__main__</h1>
+<p><a id="hannah.nas.search.search"></a></p>
+<h1 id="hannahnassearchsearch">hannah.nas.search.search</h1>
+<p><a id="hannah.nas.search.search_old"></a></p>
+<h1 id="hannahnassearchsearch_old">hannah.nas.search.search_old</h1>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer"></a></p>
+<h2 id="ofanastrainer-objects">OFANasTrainer Objects</h2>
+<pre><code class="language-python">class OFANasTrainer(NASTrainerBase)
+</code></pre>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.warmup"></a></p>
+<h4 id="warmup">warmup</h4>
+<pre><code class="language-python">def warmup(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function rebuilds the trainer with the warmup epochs, fits the model,</p>
+</blockquote>
+<p>validates the model, and then calls the on_warmup_end() function to
+change some internal variables</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to be trained</li>
+<li><code>ofa_model</code>: the model that we want to train</li>
+</ul>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.train_elastic_width"></a></p>
+<h4 id="train_elastic_width">train_elastic_width</h4>
+<pre><code class="language-python">def train_elastic_width(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then adds a width</p>
+</blockquote>
+<p>step, then trains the model for a number of epochs, then adds a width step,
+and so on</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to train</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.train_elastic_depth"></a></p>
+<h4 id="train_elastic_depth">train_elastic_depth</h4>
+<pre><code class="language-python">def train_elastic_depth(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then progressively</p>
+</blockquote>
+<p>shrinks the depth of the model, and trains the model for a number of epochs
+again</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to train</li>
+<li><code>ofa_model</code>: the model to be trained</li>
+</ul>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.train_elastic_kernel"></a></p>
+<h4 id="train_elastic_kernel">train_elastic_kernel</h4>
+<pre><code class="language-python">def train_elastic_kernel(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the elastic kernels by progressively shrinking the</p>
+</blockquote>
+<p>model and training the model for a number of epochs and repeats this process
+until the number of kernel steps is reached</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to train</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.train_elastic_dilation"></a></p>
+<h4 id="train_elastic_dilation">train_elastic_dilation</h4>
+<pre><code class="language-python">def train_elastic_dilation(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then adds a dilation</p>
+</blockquote>
+<p>step, and trains the model for a number of epochs, and repeats this process
+until the number of dilation steps is reached</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to be trained</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.train_elastic_grouping"></a></p>
+<h4 id="train_elastic_grouping">train_elastic_grouping</h4>
+<pre><code class="language-python">def train_elastic_grouping(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then adds a group</p>
+</blockquote>
+<p>step, and trains the model for a number of epochs, and repeats this process
+until the number of group steps is reached</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to be trained</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.train_elastic_dsc"></a></p>
+<h4 id="train_elastic_dsc">train_elastic_dsc</h4>
+<pre><code class="language-python">def train_elastic_dsc(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then adds a dsc</p>
+</blockquote>
+<p>step (turns Depthwise Separable Convolution on and off), and trains the model for a number of epochs, and repeats this process
+until the number of dsc steps is reached</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to be trained</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.eval_elastic_width"></a></p>
+<h4 id="eval_elastic_width">eval_elastic_width</h4>
+<pre><code class="language-python">def eval_elastic_width(method_stack, method_index, lightning_model, model,
+                       trainer_path, loginfo_output, metrics_output,
+                       metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function steps down the width of the model, and then calls the next</p>
+</blockquote>
+<p>method in the stack</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: a list of methods that will be called in order</li>
+<li><code>method_index</code>: The index of the current method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be trained</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
+<li><code>metrics_csv</code>: a string that contains the metrics for the current model</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.eval_elastic_kernel"></a></p>
+<h4 id="eval_elastic_kernel">eval_elastic_kernel</h4>
+<pre><code class="language-python">def eval_elastic_kernel(method_stack, method_index, lightning_model, model,
+                        trainer_path, loginfo_output, metrics_output,
+                        metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function steps down the kernel size of the model, and then calls the</p>
+</blockquote>
+<p>next method in the stack</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the current method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be trained</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_csv</code>: a string that contains the metrics for the current model</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.eval_elastic_dilation"></a></p>
+<h4 id="eval_elastic_dilation">eval_elastic_dilation</h4>
+<pre><code class="language-python">def eval_elastic_dilation(method_stack, method_index, lightning_model, model,
+                          trainer_path, loginfo_output, metrics_output,
+                          metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function evaluates the model with a different dilation size for each</p>
+</blockquote>
+<p>layer</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be evaluated</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
+<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.eval_elastic_depth"></a></p>
+<h4 id="eval_elastic_depth">eval_elastic_depth</h4>
+<pre><code class="language-python">def eval_elastic_depth(method_stack, method_index, lightning_model, model,
+                       trainer_path, loginfo_output, metrics_output,
+                       metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function will run the next method in the stack for each depth step,</p>
+</blockquote>
+<p>and then return the metrics_csv</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the current method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: The model to be trained</li>
+<li><code>trainer_path</code>: The path to the trainer, which is used to save the
+model</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_csv</code>: This is the CSV file that we're writing to</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.eval_elastic_grouping"></a></p>
+<h4 id="eval_elastic_grouping">eval_elastic_grouping</h4>
+<pre><code class="language-python">def eval_elastic_grouping(method_stack, method_index, lightning_model, model,
+                          trainer_path, loginfo_output, metrics_output,
+                          metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function evaluates the model with a different group size for each</p>
+</blockquote>
+<p>layer</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be evaluated</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
+<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.eval_elastic_dsc"></a></p>
+<h4 id="eval_elastic_dsc">eval_elastic_dsc</h4>
+<pre><code class="language-python">def eval_elastic_dsc(method_stack, method_index, lightning_model, model,
+                     trainer_path, loginfo_output, metrics_output,
+                     metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function evaluates the model with a different dsc  for each</p>
+</blockquote>
+<p>layer</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be evaluated</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
+<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.eval_single_model"></a></p>
+<h4 id="eval_single_model">eval_single_model</h4>
+<pre><code class="language-python">def eval_single_model(method_stack, method_index, lightning_model, model,
+                      trainer_path, loginfo_output, metrics_output,
+                      metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function takes in a model, a trainer, and a bunch of other stuff,</p>
+</blockquote>
+<p>evaluates the model and tracks the results in der in the given strings and
+returns a string of metrics</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods that we're evaluating</li>
+<li><code>method_index</code>: The index of the method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model that we want to evaluate</li>
+<li><code>model</code>: The model to be evaluated</li>
+<li><code>trainer_path</code>: the path to the trainer object</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console when the model is being evaluated</li>
+<li><code>metrics_output</code>: This is the string that will be written to the
+metrics file. It contains the method name, the method index, and the method
+stack</li>
+<li><code>metrics_csv</code>: a string that will be written to a csv file</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.search_old.OFANasTrainer.eval_model"></a></p>
+<h4 id="eval_model">eval_model</h4>
+<pre><code class="language-python">def eval_model(lightning_model, model)
+</code></pre>
+<p>First the method stack for the evaluation ist build and then it is according to this evaluated</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>lightning_model</code>: the lightning model</li>
+<li><code>model</code>: the model to be evaluated</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking"></a></p>
+<h1 id="hannahnassearchmodel_trainerprogressive_shrinking">hannah.nas.search.model_trainer.progressive_shrinking</h1>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer"></a></p>
+<h2 id="progressiveshrinkingmodeltrainer-objects">ProgressiveShrinkingModelTrainer Objects</h2>
+<pre><code class="language-python">class ProgressiveShrinkingModelTrainer()
+</code></pre>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.warmup"></a></p>
+<h4 id="warmup_1">warmup</h4>
+<pre><code class="language-python">def warmup(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function rebuilds the trainer with the warmup epochs, fits the model,</p>
+</blockquote>
+<p>validates the model, and then calls the on_warmup_end() function to
+change some internal variables</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to be trained</li>
+<li><code>ofa_model</code>: the model that we want to train</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.train_elastic_width"></a></p>
+<h4 id="train_elastic_width_1">train_elastic_width</h4>
+<pre><code class="language-python">def train_elastic_width(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then adds a width</p>
+</blockquote>
+<p>step, then trains the model for a number of epochs, then adds a width step,
+and so on</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to train</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.train_elastic_depth"></a></p>
+<h4 id="train_elastic_depth_1">train_elastic_depth</h4>
+<pre><code class="language-python">def train_elastic_depth(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then progressively</p>
+</blockquote>
+<p>shrinks the depth of the model, and trains the model for a number of epochs
+again</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to train</li>
+<li><code>ofa_model</code>: the model to be trained</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.train_elastic_kernel"></a></p>
+<h4 id="train_elastic_kernel_1">train_elastic_kernel</h4>
+<pre><code class="language-python">def train_elastic_kernel(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the elastic kernels by progressively shrinking the</p>
+</blockquote>
+<p>model and training the model for a number of epochs and repeats this process
+until the number of kernel steps is reached</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to train</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.train_elastic_dilation"></a></p>
+<h4 id="train_elastic_dilation_1">train_elastic_dilation</h4>
+<pre><code class="language-python">def train_elastic_dilation(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then adds a dilation</p>
+</blockquote>
+<p>step, and trains the model for a number of epochs, and repeats this process
+until the number of dilation steps is reached</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to be trained</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.train_elastic_grouping"></a></p>
+<h4 id="train_elastic_grouping_1">train_elastic_grouping</h4>
+<pre><code class="language-python">def train_elastic_grouping(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then adds a group</p>
+</blockquote>
+<p>step, and trains the model for a number of epochs, and repeats this process
+until the number of group steps is reached</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to be trained</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.train_elastic_dsc"></a></p>
+<h4 id="train_elastic_dsc_1">train_elastic_dsc</h4>
+<pre><code class="language-python">def train_elastic_dsc(model, ofa_model)
+</code></pre>
+<blockquote>
+<p>The function trains the model for a number of epochs, then adds a dsc</p>
+</blockquote>
+<p>step (turns Depthwise Separable Convolution on and off), and trains the model for a number of epochs, and repeats this process
+until the number of dsc steps is reached</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>model</code>: the model to be trained</li>
+<li><code>ofa_model</code>: the model that will be trained</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.eval_elastic_width"></a></p>
+<h4 id="eval_elastic_width_1">eval_elastic_width</h4>
+<pre><code class="language-python">def eval_elastic_width(method_stack, method_index, lightning_model, model,
+                       trainer_path, loginfo_output, metrics_output,
+                       metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function steps down the width of the model, and then calls the next</p>
+</blockquote>
+<p>method in the stack</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: a list of methods that will be called in order</li>
+<li><code>method_index</code>: The index of the current method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be trained</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
+<li><code>metrics_csv</code>: a string that contains the metrics for the current model</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.eval_elastic_kernel"></a></p>
+<h4 id="eval_elastic_kernel_1">eval_elastic_kernel</h4>
+<pre><code class="language-python">def eval_elastic_kernel(method_stack, method_index, lightning_model, model,
+                        trainer_path, loginfo_output, metrics_output,
+                        metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function steps down the kernel size of the model, and then calls the</p>
+</blockquote>
+<p>next method in the stack</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the current method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be trained</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_csv</code>: a string that contains the metrics for the current model</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.eval_elastic_dilation"></a></p>
+<h4 id="eval_elastic_dilation_1">eval_elastic_dilation</h4>
+<pre><code class="language-python">def eval_elastic_dilation(method_stack, method_index, lightning_model, model,
+                          trainer_path, loginfo_output, metrics_output,
+                          metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function evaluates the model with a different dilation size for each</p>
+</blockquote>
+<p>layer</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be evaluated</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
+<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.eval_elastic_depth"></a></p>
+<h4 id="eval_elastic_depth_1">eval_elastic_depth</h4>
+<pre><code class="language-python">def eval_elastic_depth(method_stack, method_index, lightning_model, model,
+                       trainer_path, loginfo_output, metrics_output,
+                       metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function will run the next method in the stack for each depth step,</p>
+</blockquote>
+<p>and then return the metrics_csv</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the current method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: The model to be trained</li>
+<li><code>trainer_path</code>: The path to the trainer, which is used to save the
+model</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_csv</code>: This is the CSV file that we're writing to</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.eval_elastic_grouping"></a></p>
+<h4 id="eval_elastic_grouping_1">eval_elastic_grouping</h4>
+<pre><code class="language-python">def eval_elastic_grouping(method_stack, method_index, lightning_model, model,
+                          trainer_path, loginfo_output, metrics_output,
+                          metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function evaluates the model with a different group size for each</p>
+</blockquote>
+<p>layer</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be evaluated</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
+<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.eval_elastic_dsc"></a></p>
+<h4 id="eval_elastic_dsc_1">eval_elastic_dsc</h4>
+<pre><code class="language-python">def eval_elastic_dsc(method_stack, method_index, lightning_model, model,
+                     trainer_path, loginfo_output, metrics_output,
+                     metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function evaluates the model with a different dsc  for each</p>
+</blockquote>
+<p>layer</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods to be called</li>
+<li><code>method_index</code>: The index of the method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model to be trained</li>
+<li><code>model</code>: the model to be evaluated</li>
+<li><code>trainer_path</code>: The path to the trainer</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console</li>
+<li><code>metrics_output</code>: a string that will be written to the metrics csv file</li>
+<li><code>metrics_csv</code>: a string that contains the csv data for the metrics</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.eval_single_model"></a></p>
+<h4 id="eval_single_model_1">eval_single_model</h4>
+<pre><code class="language-python">def eval_single_model(method_stack, method_index, lightning_model, model,
+                      trainer_path, loginfo_output, metrics_output,
+                      metrics_csv)
+</code></pre>
+<blockquote>
+<p>This function takes in a model, a trainer, and a bunch of other stuff,</p>
+</blockquote>
+<p>evaluates the model and tracks the results in der in the given strings and
+returns a string of metrics</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method_stack</code>: The list of methods that we're evaluating</li>
+<li><code>method_index</code>: The index of the method in the method stack</li>
+<li><code>lightning_model</code>: the lightning model that we want to evaluate</li>
+<li><code>model</code>: The model to be evaluated</li>
+<li><code>trainer_path</code>: the path to the trainer object</li>
+<li><code>loginfo_output</code>: This is the string that will be printed to the
+console when the model is being evaluated</li>
+<li><code>metrics_output</code>: This is the string that will be written to the
+metrics file. It contains the method name, the method index, and the method
+stack</li>
+<li><code>metrics_csv</code>: a string that will be written to a csv file</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>The metrics_csv is being returned.</p>
+<p><a id="hannah.nas.search.model_trainer.progressive_shrinking.ProgressiveShrinkingModelTrainer.eval_model"></a></p>
+<h4 id="eval_model_1">eval_model</h4>
+<pre><code class="language-python">def eval_model(lightning_model, model)
+</code></pre>
+<p>First the method stack for the evaluation ist build and then it is according to this evaluated</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>lightning_model</code>: the lightning model</li>
+<li><code>model</code>: the model to be evaluated</li>
+</ul>
+<p><a id="hannah.nas.search.model_trainer.simple_model_trainer"></a></p>
+<h1 id="hannahnassearchmodel_trainersimple_model_trainer">hannah.nas.search.model_trainer.simple_model_trainer</h1>
+<p><a id="hannah.nas.search.weight_sharing"></a></p>
+<h1 id="hannahnassearchweight_sharing">hannah.nas.search.weight_sharing</h1>
+<p><a id="hannah.nas.search.sampler.aging_evolution"></a></p>
+<h1 id="hannahnassearchsampleraging_evolution">hannah.nas.search.sampler.aging_evolution</h1>
+<p><a id="hannah.nas.search.sampler.aging_evolution.AgingEvolutionSampler"></a></p>
+<h2 id="agingevolutionsampler-objects">AgingEvolutionSampler Objects</h2>
+<pre><code class="language-python">class AgingEvolutionSampler(Sampler)
+</code></pre>
+<p>Aging Evolution based multi objective optimization</p>
+<p><a id="hannah.nas.search.sampler.aging_evolution.AgingEvolutionSampler.next_parameters"></a></p>
+<h4 id="next_parameters">next_parameters</h4>
+<pre><code class="language-python">def next_parameters()
+</code></pre>
+<p>Returns a list of current tasks</p>
+<p><a id="hannah.nas.search.sampler.aging_evolution.AgingEvolutionSampler.tell_result"></a></p>
+<h4 id="tell_result">tell_result</h4>
+<pre><code class="language-python">def tell_result(parameters, metrics)
+</code></pre>
+<p>Tell the result of a task</p>
+<p><a id="hannah.nas.search.sampler.random_sampler"></a></p>
+<h1 id="hannahnassearchsamplerrandom_sampler">hannah.nas.search.sampler.random_sampler</h1>
+<p><a id="hannah.nas.search.sampler.base_sampler"></a></p>
+<h1 id="hannahnassearchsamplerbase_sampler">hannah.nas.search.sampler.base_sampler</h1>
+<p><a id="hannah.nas.search.sampler.base_sampler.Sampler"></a></p>
+<h2 id="sampler-objects">Sampler Objects</h2>
+<pre><code class="language-python">class Sampler(ABC)
+</code></pre>
+<p><a id="hannah.nas.search.sampler.base_sampler.Sampler.tell_result"></a></p>
+<h4 id="tell_result_1">tell_result</h4>
+<pre><code class="language-python">def tell_result(parameters, metrics)
+</code></pre>
+<p>Tell the result of a task</p>
+<p><a id="hannah.nas.search.sampler.mutator"></a></p>
+<h1 id="hannahnassearchsamplermutator">hannah.nas.search.sampler.mutator</h1>
+<p><a id="hannah.nas.search.utils"></a></p>
+<h1 id="hannahnassearchutils">hannah.nas.search.utils</h1>
 <p><a id="hannah.nas.dataflow.dataflow_utils"></a></p>
 <h1 id="hannahnasdataflowdataflow_utils">hannah.nas.dataflow.dataflow_utils</h1>
 <p><a id="hannah.nas.dataflow.tensor_expression"></a></p>
