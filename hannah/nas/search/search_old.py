@@ -41,11 +41,11 @@ from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 from hannah.models.convnet.models import ConvNet
 from hannah.nas.core.parametrized import is_parametrized
 
-from ..callbacks.optimization import HydraOptCallback
-from ..callbacks.summaries import MacSummaryCallback
-from ..utils import clear_outputs, common_callbacks, fullname
-from .aging_evolution import AgingEvolution
-from .graph_conversion import model_to_graph
+from ...callbacks.optimization import HydraOptCallback
+from ...callbacks.summaries import MacSummaryCallback
+from ...utils import clear_outputs, common_callbacks, fullname
+from .optimizer.aging_evolution import AgingEvolution
+from ..graph_conversion import model_to_graph
 
 msglogger = logging.getLogger(__name__)
 

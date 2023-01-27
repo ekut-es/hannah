@@ -111,6 +111,10 @@ class ImageDatasetBase(VisionDatasetBase):
         target = self.label_to_index[label]
         return {"data": data, "labels": target, "bbox": bbox}
 
+    def size(self):
+        dim = self[0]['data'].shape
+        return list(dim)
+
     def __len__(self):
         assert len(self.X) == len(self.y)
         return len(self.X)
@@ -130,7 +134,7 @@ class ImageDatasetBase(VisionDatasetBase):
 
     @property
     def num_classes(self):
-        return len(self.class_counts)
+        return len(self.classes)
 
     # retuns a list of class index for every sample
     @property

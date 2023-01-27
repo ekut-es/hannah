@@ -25,21 +25,13 @@ from typing import Any, Dict, List, Union
 import numpy as np
 import yaml
 
-from .parametrization import SearchSpace
-from .utils import is_pareto
+from hannah.nas.parameters.parameters import CategoricalParameter, FloatScalarParameter, IntScalarParameter
+from hannah.nas.parameters.parametrize import set_parametrization
+from hannah.nas.search.sampler.mutator import ParameterMutator
 
-
-@dataclass()
-class EvolutionResult:
-    index: int
-    parameters: Dict[str, Any]
-    result: Dict[str, float]
-
-    def costs(self):
-        return np.asarray(
-            [float(self.result[k]) for k in sorted(self.result.keys())],
-            dtype=np.float32,
-        )
+from ...parametrization import SearchSpace
+from ...utils import is_pareto
+from .base_sampler import Sampler, SearchResult
 
 
 class FitnessFunction:
@@ -58,25 +50,22 @@ class FitnessFunction:
         return np.sqrt(result)
 
 
-class AgingEvolution:
+class AgingEvolutionSampler(Sampler):
     """Aging Evolution based multi objective optimization"""
 
     def __init__(
         self,
-        parametrization,
         bounds,
-        population_size=100,
-        sample_size=10,
-        eps=0.1,
-        random_state=None,
+        parametrization: dict,
+        population_size: int = 100,
+        random_state = None,
+        sample_size: int = 10,
+        eps: float = 0.1,
         output_folder=".",
     ):
-        self.parametrization = SearchSpace(parametrization, random_state)
+        super().__init__(output_folder=output_folder)
         self.bounds = bounds
-
-        self.population_size = population_size
-        self.sample_size = sample_size
-        self.eps = eps
+        self.parametrization = parametrization
 
         self.random_state = (
             random_state if random_state is not None else np.random.RandomState()
@@ -84,10 +73,14 @@ class AgingEvolution:
         if random_state is None:
             self.random_state = np.random.RandomState()
 
+        self.population_size = population_size
+        self.sample_size = sample_size
+        self.eps = eps
+        self.mutator = ParameterMutator(0.1)
+
         self.history = []
         self.population = []
         self._pareto_points = []
-        self.output_folder = Path(output_folder)
         if (self.output_folder / "history.yml").exists():
             self.load()
 
@@ -99,15 +92,21 @@ class AgingEvolution:
     def ask(self):
         return self.next_parameters()
 
+    def get_random(self):
+        random_parameters = {}
+        for k, v in self.parametrization.items():
+            random_parameters[k] = v.sample()
+        return random_parameters
+
     def next_parameters(self):
         "Returns a list of current tasks"
 
         parametrization = {}
 
         if len(self.history) < self.population_size:
-            parametrization = self.parametrization.get_random()
+            parametrization = self.get_random()
         elif self.random_state.uniform() < self.eps:
-            parametrization = self.parametrization.get_random()
+            parametrization = self.get_random()
         else:
             sample = self.random_state.choice(self.population, size=self.sample_size)
             fitness_function = self.get_fitness_function()
@@ -115,18 +114,16 @@ class AgingEvolution:
             fitness = [fitness_function(x.result) for x in sample]
 
             parent = sample[np.argmin(fitness)]
+            parent_parametrization = set_parametrization(parent, self.parametrization)
 
-            parametrization = self.parametrization.mutate(parent.parameters)
+            parametrization = self.mutator.mutate(parent_parametrization)
 
         return parametrization
-
-    def tell(self, parameters, metrics):
-        return self.tell_result(parameters, metrics)
 
     def tell_result(self, parameters, metrics):
         "Tell the result of a task"
 
-        result = EvolutionResult(len(self.history), parameters, metrics)
+        result = SearchResult(len(self.history), parameters, metrics)
 
         self.history.append(result)
         self.population.append(result)
@@ -134,7 +131,6 @@ class AgingEvolution:
             self.population.pop(0)
 
         self.save()
-
         return None
 
     @property
@@ -144,7 +140,7 @@ class AgingEvolution:
         return self._pareto_points
 
     def _update_pareto_front(
-        self, result: Union[EvolutionResult, List[EvolutionResult]]
+        self, result: Union[SearchResult, List[SearchResult]]
     ) -> None:
         if isinstance(result, list):
             self._pareto_points.extend(result)
@@ -164,26 +160,12 @@ class AgingEvolution:
 
         self._pareto_points = new_points
 
-    def save(self):
-        history_file = self.output_folder / "history.yml"
-        history_file_tmp = history_file.with_suffix(".tmp")
-
-        with history_file_tmp.open("w") as history_data:
-            yaml.dump(self.history, history_data)
-        shutil.move(history_file_tmp, history_file)
 
     def load(self):
-        history_file = self.output_folder / "history.yml"
-
-        self.history = []
+        super().load()
         self.population = []
-
-        with history_file.open("r") as history_data:
-            self.history = yaml.unsafe_load(history_data)
 
         if len(self.history) > self.population_size:
             self.population = self.history[len(self.history) - self.population_size :]
         else:
             self.population = self.history
-
-        logging.info("Loaded %d points from history", len(self.history))

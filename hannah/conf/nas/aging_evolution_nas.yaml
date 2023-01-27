@@ -17,11 +17,10 @@
 ## limitations under the License.
 ##
 defaults:
-  - predictor: gcn
+#   - predictor: gcn
+    - sampler: aging_evolution
+    - model_trainer: simple
 
-_target_: hannah.nas.search.AgingEvolutionNASTrainer
-parametrization: {}
-bounds: {}
-budget: 10000
-population_size: 100
+_target_: hannah.nas.search.search.DirectNAS
+budget: 2000
 n_jobs: 10

@@ -27,6 +27,31 @@
             ]
         },
         {
+            "name": "random_nas",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.tools.train",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/experiments/",
+            "args": [
+                "nas=random_nas",
+                "model=lazy_convnet",
+                "module=image_classifier",
+                "dataset=cifar10",
+                "features=identity",
+                "module.batch_size=128",
+                "trainer.max_epochs=1",
+                "trainer.overfit_batches=20",
+                "nas.budget=5",
+                "module.num_workers=8",
+                "nas.n_jobs=1",
+                "experiment_id=random_nas_debug",
+                // "~nas.predictor",
+                "~normalizer"
+            ]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
@@ -54,12 +79,43 @@
             "type": "python",
             "request": "launch",
             "module": "hannah.tools.train",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/experiments/",
             "args": [
                 "nas=aging_evolution_nas",
-                "trainer.max_epochs=2",
-                "model=conv-net-trax",
-                "normalizer=fixedpoint",
-                "compression=pruning_only"
+                "model=lazy_convnet",
+                "module=image_classifier",
+                "dataset=cifar10",
+                "features=identity",
+                "module.batch_size=128",
+                "trainer.max_epochs=1",
+                "trainer.overfit_batches=20",
+                "nas.n_jobs=1",
+                "nas.budget=5",
+                "module.num_workers=8",
+                "experiment_id=aging_evolution_debug",
+                // "~nas.predictor",
+                "~normalizer"
+            ]
+        },
+        {
+            "name": "ProgressiveShrinking",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.tools.train",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/experiments/",
+            "args": [
+                "--config-name",
+                "nas_ofa",
+                "model=ofa",
+                "module.batch_size=128",
+                "trainer.max_epochs=3",
+                // "trainer.overfit_batches=20",
+                "nas.n_jobs=1",
+                "nas.budget=5",
+                "module.num_workers=8",
+                "experiment_id=progressive_shrinking_debug",
             ]
         },
         {

@@ -16,23 +16,11 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-_target_: hannah.nas.OFANasTrainer
-#epochs_warmup: 35
-#epochs_kernel_step: 35
-#epochs_depth_step: 35
-#epochs_width_step: 35
-#epochs_dilation_step: 35
-epochs_warmup: 5
-epochs_kernel_step: 5
-epochs_depth_step: 5
-epochs_width_step: 5
-epochs_dilation_step: 5
-elastic_kernels_allowed: True
-elastic_depth_allowed: True
-elastic_width_allowed: True
-elastic_dilation_allowed: False
-evaluate: True
-random_evaluate: False
-random_eval_number: 100
-extract_model_config: True
-warmup_model_path: ""
+
+defaults:
+  - model_trainer: progressive_shrinking_legacy
+  - sampler: random
+
+_target_: hannah.nas.search.search.WeightSharingNAS
+budget: 2000
+n_jobs: 2

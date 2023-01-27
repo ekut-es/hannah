@@ -161,6 +161,8 @@ def get_parameters(
 
         if hasattr(current, "_PARAMETERS"):
             for param in current._PARAMETERS.values():
+                if param.id is None:
+                    param.id = current.id + '.' + param.name
                 if param.id not in visited:
                     queue.append(param)
 
@@ -177,8 +179,6 @@ def set_param_scopes(self):
         if isinstance(param, Expression):
             param.id = self.id + "." + name
             param.set_scope(self.id, name)
-            print()
-
 
 def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
     hierarchical_params = {}
@@ -213,3 +213,9 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
             else:
                 current_param_branch = current_param_branch[index]
     return hierarchical_params
+
+def set_parametrization(parameters, parametrization):
+    for k, v in parametrization.items():
+        if k in parameters:
+            parametrization[k].set_current(parameters[k])
+    return parametrization
