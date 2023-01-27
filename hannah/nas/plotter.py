@@ -25,7 +25,7 @@ import numpy as np
 import yaml
 from tabulate import tabulate
 
-from .aging_evolution import EvolutionResult
+from .search.sampler.base_sampler import SearchResult
 from .plot import plot_history, plot_pareto_front
 from .utils import is_pareto
 
@@ -33,8 +33,8 @@ logger = logging.getLogger()
 
 
 def update_pareto_front(
-    result: Union[EvolutionResult, List[EvolutionResult]]
-) -> List[EvolutionResult]:
+    result: Union[SearchResult, List[SearchResult]]
+) -> List[SearchResult]:
 
     if isinstance(result, list):
         pareto_points = result
