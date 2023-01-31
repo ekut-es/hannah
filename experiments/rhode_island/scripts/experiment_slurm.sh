@@ -19,7 +19,7 @@
 ##
 
 
-#SBATCH --job-name=lidar_default
+#SBATCH --job-name=ri_random_nas
 
 #resources:
 
@@ -30,10 +30,10 @@
 #SBATCH --nodes=1
 # requests that the cores are all on one node
 
-#SBATCH --gres=gpu:rtx2080ti:4
+#SBATCH --gres=gpu:rtx2080ti:8
 #the job can use and see 4 GPUs (8 GPUs are available in total on one node)
 
-#SBATCH --time=720
+#SBATCH --time=4320
 # the maximum time the scripts needs to run (720 minutes = 12 hours)
 
 #SBATCH --error=jobs/%j.err
@@ -55,37 +55,11 @@ scontrol show job $SLURM_JOB_ID
 
 
 export HANNAH_DATA_FOLDER=/mnt/qb/datasets/STAGING/bringmann/datasets/
-#export HANNAH_DATA_FOLDER=$PWD/../../datasets/
-export EXPERIMENT=baseline
-export RESOLUTION=320
-export MODEL=timm_resnet152
-export SPLIT=official
 
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -m|--model)
-      MODEL="$2"
-      shift # past argument
-      shift # past value
-      ;;
-    -r|--resolution)
-      RESOLUTION="$2"
-      shift # past argument
-      shift # past value
-      ;;
-    --random)
-      SPLIT=random
-      shift
-      ;;
-    *)
-      echo "Unknown option $1"
-      exit 1
-      ;;
-  esac
-done
-
-GPUS="[0,1,2,3]"
+GPUS=8
+BATCH_SIZE=32
 
 # trainer=sharded
 
-hannah-train experiment_id=${EXPERIMENT}_${SPLIT} module.num_workers=8 trainer.gpus=${GPUS} dataset.split=${SPLIT} model=${MODEL}
+hannah-train  +experiment=$1 model=lazy_convnet trainer.gpus=${gpus} module.batch_size=${BATCH_SIZE}
+module.num_workers=16

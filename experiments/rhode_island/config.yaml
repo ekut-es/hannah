@@ -30,9 +30,11 @@ defaults:
 dataset:
   data_folder: ${oc.env:HANNAH_DATA_FOLDER,${hydra:runtime.cwd}/../../datasets/}
 
+module:
+  batch_size: 32
 
 trainer:
   max_epochs: 15
 
 scheduler:
-  max_lr: 0.005
+  max_lr: 0.001

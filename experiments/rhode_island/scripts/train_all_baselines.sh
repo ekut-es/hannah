@@ -27,5 +27,5 @@ SBATCH=""
 #SBATCH="sbatch --job-name=baseline"
 
 for MODEL in ${MODELS}; do
-  $SBATCH scripts/train_baselines_slurm.sh  -m $MODEL
+    sbatch --job-name=$MODEL  scripts/train_baselines_slurm.sh  -m $MODEL
 done
