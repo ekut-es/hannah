@@ -41,6 +41,9 @@ class LinearClassifierTraining(Callback):
             print("Starting training of linear classifier.")
             for epoch in trange(self.epochs):
                 losses = []
+                correct_preds_total = torch.tensor(
+                    0, device=pl_module.device, dtype=torch.int64
+                )
                 for batch in trainer.train_dataloader:
                     labeled_batch = batch["labeled"]
                     x = labeled_batch["data"]
@@ -55,12 +58,18 @@ class LinearClassifierTraining(Callback):
                     logits = pl_module.model.classifier(prediction_result.latent)
                     current_loss = F.cross_entropy(logits, labels)
                     preds = torch.argmax(logits, dim=1)
+                    correct_preds_batch = (preds == labels).sum()
+                    correct_preds_total += correct_preds_batch
                     current_loss.backward()
                     optimizer.step()
                     losses.append(current_loss)
-
+                accuracy = correct_preds_total / (len(trainer.train_dataloader.dataset))
                 trainer.logger.log_metrics(
                     {"linear_classifier_train_loss": statistics.fmean(losses)},
+                    step=epoch,
+                )
+                trainer.logger.log_metrics(
+                    {"linear_classifier_train_accuracy": accuracy},
                     step=epoch,
                 )
         else:
