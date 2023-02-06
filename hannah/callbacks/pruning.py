@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from typing import Optional
 
 import tabulate
 import torch
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelPruning
 from torch.nn import BatchNorm1d
 
@@ -44,7 +45,7 @@ class PruningAmountScheduler:
 class FilteredPruning(ModelPruning):
     """ """
 
-    def on_before_accelerator_backend_setup(self, trainer, pl_module):
+    def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str):
         """
 
         Args:
@@ -55,17 +56,19 @@ class FilteredPruning(ModelPruning):
 
         """
         # FIXME: calling setup here breaks assumptions about call order and will lead to setup being called twice
-        pl_module.setup("fit")
-        super().on_before_accelerator_backend_setup(trainer, pl_module)
+        pl_module.setup(stage)
+        super().setup(trainer, pl_module, stage)
 
-    def _run_pruning(self, current_epoch):
+    def _run_pruning(self, current_epoch) -> None:
         """
+        Actually run the pruning on the current epoch,
+        deterministic wrapper for pytorch_lightning pruning callback.
 
         Args:
-          current_epoch:
+          current_epoch: number of current epoch
 
         Returns:
-
+            None
         """
         prune = (
             self._apply_pruning(current_epoch)
@@ -76,7 +79,9 @@ class FilteredPruning(ModelPruning):
         if not prune or not amount:
             return
 
-        from utils.utils import set_deterministic
+        from ..utils.utils import (  # noqa Placed here to avoid circular import
+            set_deterministic,
+        )
 
         with set_deterministic(False):
             self.apply_pruning(amount)

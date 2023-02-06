@@ -1,8 +1,8 @@
 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ limitations under the License.
 
 Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
 
-- python (>=3.8 <3.10) and development headers
+- python (>=3.9 <3.11) and development headers
 - libsndfile and development headers
 - libsox and development headers
 - a blas implementation and development headers
@@ -43,7 +43,7 @@ Install dependencies:
 
     sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
 
-Install a python 3.8 or python 3.9 version using [pyenv](https://github.com/pyenv/pyenv).
+Install a python 3.9 or python 3.10 version using [pyenv](https://github.com/pyenv/pyenv).
 
 ### Install poetry
 
@@ -51,7 +51,7 @@ Install a python 3.8 or python 3.9 version using [pyenv](https://github.com/pyen
 
 For alternative installation methods see:  https://python-poetry.org/docs/#installation
 
-**Caution**: this usually install poetry to ~/.local/bin if this folder is not in your path you might need to run poetry as:
+**Caution**: this usually installs poetry to ~/.local/bin if this folder is not in your path you might need to run poetry as:
 
     ~/.local/bin/poetry
 
@@ -61,7 +61,7 @@ For alternative installation methods see:  https://python-poetry.org/docs/#insta
 In the root directory of the project run:
 
     git submodule update --init --recursive
-    poetry install
+    poetry install -E vision
 
 This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.
 
@@ -71,9 +71,37 @@ The environment can be activated using:
 
 ### Optional Dependencies
 
+We support installation of optional dependencies using poetry's `-E` commandline flag
+
+We currently have the following optional dependencies:
+
+#### Vision-Models
+
 Vision models require additional dependencies, these can be installed using:
 
     poetry install -E vision
+
+These dependencies include `kornia` and `albumentations` for image augmentations and `timm` (torch image models)
+for baseline neural network models.
+
+#### Onnx-Runtime Backend
+
+    poetry install -E onnxrt-backend
+
+Backend support for running models on onnx-runtime.
+
+#### Tflite-Backend
+
+    poetry install -E onnx-tf
+
+Onnx based conversion of trained models to tensorflow/tensorflow-lite for external inference backends.
+
+#### DVC based experiment management (experimental)
+
+    poetry install -E dvc
+
+This installs dvc based model, data and experiment management. DVC support is highly experimental and subject to change.
+
 
 ### Installation Tips
 
