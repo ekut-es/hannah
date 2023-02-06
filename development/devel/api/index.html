@@ -4387,6 +4387,30 @@ or directly from user</p>
 </code></pre>
 <p><a id="hannah.visualization"></a></p>
 <h1 id="hannahvisualization">hannah.visualization</h1>
+<p><a id="hannah.ssl"></a></p>
+<h1 id="hannahssl">hannah.ssl</h1>
+<p><a id="hannah.ssl.hard_labeling"></a></p>
+<h1 id="hannahsslhard_labeling">hannah.ssl.hard_labeling</h1>
+<p><a id="hannah.ssl.hard_labeling.HardLabeling"></a></p>
+<h2 id="hardlabeling-objects">HardLabeling Objects</h2>
+<pre><code class="language-python">class HardLabeling(torch.nn.Module)
+</code></pre>
+<p><a id="hannah.ssl.hard_labeling.HardLabeling.forward"></a></p>
+<h4 id="forward_67">forward</h4>
+<pre><code class="language-python">def forward(unlabeled_data: torch.Tensor) -&gt; torch.Tensor
+</code></pre>
+<p>Calculate pseudo label loss from unlabeled data.</p>
+<p><a id="hannah.ssl.hard_labeling.HardLabeling.compute_uncertainty"></a></p>
+<h4 id="compute_uncertainty">compute_uncertainty</h4>
+<pre><code class="language-python">def compute_uncertainty(data: torch.Tensor,
+                        num_forward_passes: int = 10) -&gt; torch.Tensor
+</code></pre>
+<p>Compute Monte Carlo uncertainty using standard deviation.</p>
+<p><a id="hannah.ssl.hard_labeling.HardLabeling.get_dropout_layers"></a></p>
+<h4 id="get_dropout_layers">get_dropout_layers</h4>
+<pre><code class="language-python">def get_dropout_layers()
+</code></pre>
+<p>Returns all model layers of class dropout, dropblock.</p>
 <p><a id="hannah.conf.optimizer"></a></p>
 <h1 id="hannahconfoptimizer">hannah.conf.optimizer</h1>
 <p><a id="hannah.conf.nas"></a></p>
@@ -4666,7 +4690,7 @@ print(
 <li><code>transforms</code> <em>dict</em> - configuration of transforms</li>
 </ul>
 <p><a id="hannah.modules.augmentation.batch_augmentation.BatchAugmentationPipeline.forward"></a></p>
-<h4 id="forward_67">forward</h4>
+<h4 id="forward_68">forward</h4>
 <pre><code class="language-python">@torch.no_grad()
 def forward(x) -&gt; torch.Tensor
 </code></pre>
