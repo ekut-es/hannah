@@ -1,0 +1,20 @@
+  _target_: hannah.models.convnet.ResNet
+  name: lazy_resnet
+  params:
+    num_blocks:
+      min: 3
+      max: 5
+    depth:
+      min: 1
+      max: 3
+    conv:
+      kernel_size:
+        choices: [3, 5, 7]
+      stride:
+        choices: [1, 2]
+      out_channels:
+        min: 16
+        max: 64
+        step: 4
+
+  labels: 10
