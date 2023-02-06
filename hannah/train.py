@@ -95,6 +95,7 @@ def train(
             normalizer=config.get("normalizer", None),
             gpus=config.trainer.get("gpus", None),
             unlabeled_data=config.get("unlabeled_data"),
+            pseudo_labeling=config.get("pseudo_labeling", None),
             _recursive_=False,
         )
 

@@ -154,6 +154,8 @@ class VisionBaseModule(ClassifierModule):
 
         self.metrics = torch.nn.ModuleDict(metrics)
 
+        self.pseudo_label = instantiate(self.hparams.pseudo_labeling, model=self.model)
+
     def _decode_batch(self, batch):
         if isinstance(batch, Sequence):
             assert len(batch) == 2

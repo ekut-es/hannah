@@ -103,6 +103,8 @@ class ClassifierModule(LightningModule, ABC):
         self.test_metrics: MetricCollection = MetricCollection({})
         self.train_metrics: MetricCollection = MetricCollection({})
 
+        self.pseudo_label = None
+
     @abstractmethod
     def prepare_data(self) -> Any:
         # get all the necessary data stuff
