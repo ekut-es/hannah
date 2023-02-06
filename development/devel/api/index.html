@@ -5051,9 +5051,9 @@ https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring</p>
 <h2 id="filteredpruning-objects">FilteredPruning Objects</h2>
 <pre><code class="language-python">class FilteredPruning(ModelPruning)
 </code></pre>
-<p><a id="hannah.callbacks.pruning.FilteredPruning.on_before_accelerator_backend_setup"></a></p>
-<h4 id="on_before_accelerator_backend_setup">on_before_accelerator_backend_setup</h4>
-<pre><code class="language-python">def on_before_accelerator_backend_setup(trainer, pl_module)
+<p><a id="hannah.callbacks.pruning.FilteredPruning.setup"></a></p>
+<h4 id="setup">setup</h4>
+<pre><code class="language-python">def setup(trainer: Trainer, pl_module: LightningModule, stage: str)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
 <p>trainer:

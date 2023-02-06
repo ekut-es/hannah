@@ -130,10 +130,10 @@
             <div class="section" itemprop="articleBody">
               
                 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -152,7 +152,7 @@ limitations under the License.
 <h2 id="installing-dependencies">Installing dependencies</h2>
 <p>Dependencies and virtual environments are managed using <a href="https://python-poetry.org/">poetry</a>.</p>
 <ul>
-<li>python (&gt;=3.8 &lt;3.10) and development headers</li>
+<li>python (&gt;=3.9 &lt;3.11) and development headers</li>
 <li>libsndfile and development headers</li>
 <li>libsox and development headers</li>
 <li>a blas implementation and development headers</li>
@@ -167,27 +167,44 @@ sudo apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox
 <p>Install dependencies:</p>
 <pre><code>sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
 </code></pre>
-<p>Install a python 3.8 or python 3.9 version using <a href="https://github.com/pyenv/pyenv">pyenv</a>.</p>
+<p>Install a python 3.9 or python 3.10 version using <a href="https://github.com/pyenv/pyenv">pyenv</a>.</p>
 <h3 id="install-poetry">Install poetry</h3>
 <pre><code>curl -sSL https://install.python-poetry.org/ | python3
 </code></pre>
 <p>For alternative installation methods see:  https://python-poetry.org/docs/#installation</p>
-<p><strong>Caution</strong>: this usually install poetry to ~/.local/bin if this folder is not in your path you might need to run poetry as:</p>
+<p><strong>Caution</strong>: this usually installs poetry to ~/.local/bin if this folder is not in your path you might need to run poetry as:</p>
 <pre><code>~/.local/bin/poetry
 </code></pre>
 <h2 id="software-installation">Software installation</h2>
 <p>In the root directory of the project run:</p>
 <pre><code>git submodule update --init --recursive
-poetry install
+poetry install -E vision
 </code></pre>
 <p>This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.</p>
 <p>The environment can be activated using:</p>
 <pre><code>poetry shell
 </code></pre>
 <h3 id="optional-dependencies">Optional Dependencies</h3>
+<p>We support installation of optional dependencies using poetry's <code>-E</code> commandline flag</p>
+<p>We currently have the following optional dependencies:</p>
+<h4 id="vision-models">Vision-Models</h4>
 <p>Vision models require additional dependencies, these can be installed using:</p>
 <pre><code>poetry install -E vision
 </code></pre>
+<p>These dependencies include <code>kornia</code> and <code>albumentations</code> for image augmentations and <code>timm</code> (torch image models)
+for baseline neural network models.</p>
+<h4 id="onnx-runtime-backend">Onnx-Runtime Backend</h4>
+<pre><code>poetry install -E onnxrt-backend
+</code></pre>
+<p>Backend support for running models on onnx-runtime.</p>
+<h4 id="tflite-backend">Tflite-Backend</h4>
+<pre><code>poetry install -E onnx-tf
+</code></pre>
+<p>Onnx based conversion of trained models to tensorflow/tensorflow-lite for external inference backends.</p>
+<h4 id="dvc-based-experiment-management-experimental">DVC based experiment management (experimental)</h4>
+<pre><code>poetry install -E dvc
+</code></pre>
+<p>This installs dvc based model, data and experiment management. DVC support is highly experimental and subject to change.</p>
 <h3 id="installation-tips">Installation Tips</h3>
 <p>1.) venv location</p>
 <p>poetry installs the dependencies to a virtual environment in ~/.cache/pypoetry/virtualenvs</p>
@@ -333,5 +350,5 @@ poetry lock --no-update
 
 <!--
 MkDocs version : 1.4.2
-Build Date UTC : 2023-02-06 16:35:27.353872+00:00
+Build Date UTC : 2023-02-06 17:39:19.908609+00:00
 -->
