@@ -1,4 +1,4 @@
-  _target_: hannah.models.convnet.ResNet
+  _target_: hannah.models.resnet.ResNet
   name: lazy_resnet
   params:
     num_blocks:
