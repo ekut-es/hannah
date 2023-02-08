@@ -227,21 +227,3 @@ class ResNet(nn.Module):
                 params[key] = param.current_value.item()
 
         return params
-
-
-if __name__ == '__main__':
-    from pathlib import Path
-    from omegaconf import OmegaConf
-    import yaml
-
-
-    config_path = Path("/home/moritz/projects/hannah/hannah/conf/model/lazy_resnet.yaml")
-    with config_path.open("r") as config_file:
-        config = yaml.unsafe_load(config_file)
-        config = OmegaConf.create(config)
-    net = ResNet("resnet", params=config.params, input_shape=[1, 3, 32, 32], labels=config.labels)
-    x = torch.randn((3, 3, 32, 32))
-    net.sample()
-    net.initialize()
-    out = net(x)
-    print()
