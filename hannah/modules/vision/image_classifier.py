@@ -105,11 +105,11 @@ class ImageClassifierModule(VisionBaseModule):
         if isinstance(batch, dict) and "unlabeled" in batch:
             batch_labeled = batch["labeled"]
             batch_unlabeled = batch["unlabeled"]
-        
+
         loss, _, _, _ = self.common_step("train", batch_labeled, batch_idx)
         if self.pseudo_label is not None and batch_unlabeled is not None:
             loss += self.pseudo_label(batch_unlabeled)
-        elif batch_labeled is not None:
+        elif batch_unlabeled is not None:
             msglogger.critical("Batch contains unlabeled data but no pseudo labeling is configured.")
         return loss
 
