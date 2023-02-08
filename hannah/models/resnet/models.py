@@ -88,7 +88,7 @@ class ResidualBlock(nn.Module):
         self.out_channels = out_channels
         self.in_fmap = in_fmap_size
         self.out_fmap = out_fmap_size
-        self.stride = Int(in_fmap_size / out_fmap_size)
+        self.stride = Int(Ceil(in_fmap_size / out_fmap_size))
         self.conv = conv2d(id=self.id + ".residual_conv",
                            inputs=inputs,
                            in_channels=in_channels,
@@ -178,8 +178,8 @@ class ResNet(nn.Module):
         self.labels = labels
         self.depth = IntScalarParameter(params.depth.min, params.depth.max)
         self.num_blocks = IntScalarParameter(params.num_blocks.min, params.num_blocks.max)
-        self.conv_blocks = []
-        self.residual_blocks = []
+        self.conv_blocks = nn.ModuleList()
+        self.residual_blocks = nn.ModuleList()
 
         next_input = self.input_shape
         for n in RangeIterator(self.num_blocks, instance=False):
