@@ -70,6 +70,7 @@ class ClassifierModule(LightningModule, ABC):
         gpus=None,
         shuffle_all_dataloaders: bool = False,
         augmentation: Optional[DictConfig] = None,
+        pseudo_labeling: Optional[DictConfig] = None,
         **kwargs,
     ) -> None:
         super().__init__()
