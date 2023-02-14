@@ -155,7 +155,7 @@ class DirectNAS(NASBase):
         self.train_set = train_set
         self.val_set = val_set
         self.test_set = test_set
-        self.example_input_array = torch.rand([1] + train_set.size())
+        self.example_input_array = torch.rand([1] + list(train_set.size()))
 
     def train_model(self, model):
         trainer = instantiate(self.config.trainer, callbacks=self.callbacks)
