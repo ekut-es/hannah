@@ -33,7 +33,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from PIL import Image
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.loggers import LightningLoggerBase, TensorBoardLogger
+from pytorch_lightning.loggers import Logger, TensorBoardLogger
 from pytorch_lightning.trainer.supporters import CombinedLoader
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from torchmetrics import AUROC, MetricCollection
@@ -220,52 +220,7 @@ class ClassifierModule(LightningModule, ABC):
                     except (ValueError, NotImplementedError):
                         logging.critical("Could not add histogram for param %s", name)
 
-        for name, module in self.named_modules():
-            loggers = self._logger_iterator()
-
-            if hasattr(module, "running_var") and module.running_var is not None:
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.running_var",
-                                module.running_var,
-                                self.current_epoch,
-                            )
-                        except (ValueError, NotImplementedError):
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
-            if hasattr(module, "scale_factor"):
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.scale_factor",
-                                module.scale_factor,
-                                self.current_epoch,
-                            )
-                        except (ValueError, NotImplementedError):
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
-            if hasattr(module, "scaled_weight"):
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.scaled_weight",
-                                module.scaled_weight,
-                                self.current_epoch,
-                            )
-                        except (ValueError, NotImplementedError):
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
-    def _logger_iterator(self) -> Iterable[LightningLoggerBase]:
+    def _logger_iterator(self) -> Iterable[Logger]:
         loggers = []
         if self.trainer:
             loggers = self.trainer.loggers

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,16 +31,13 @@ import torchvision
 from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
-from sklearn.metrics import auc
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 from torchmetrics import (
-    AUC,
     AUROC,
     ROC,
     Accuracy,
     ConfusionMatrix,
     F1Score,
-    Metric,
     MetricCollection,
     Precision,
     Recall,
@@ -86,7 +83,7 @@ class BaseStreamClassifierModule(ClassifierModule):
             # trainset needed to set values in hparams
             self.train_set, self.dev_set, self.test_set = self.get_split()
 
-            self.num_classes = self.get_num_classes()
+            self.num_classes = int(self.get_num_classes())
 
         # Create example input
         device = self.device
@@ -129,30 +126,36 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.criterion = get_loss_function(self.model, self.hparams)
 
         # Metrics
-        self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
+        self.train_metrics = MetricCollection(
+            {"train_accuracy": Accuracy("multiclass", num_classes=self.num_classes)}
+        )
         self.val_metrics = MetricCollection(
             {
-                "val_accuracy": Accuracy(),
-                "val_error": Error(),
-                "val_recall": Recall(num_classes=self.num_classes),
-                "val_precision": Precision(num_classes=self.num_classes),
-                "val_f1": F1Score(num_classes=self.num_classes),
-                "val_auroc": AUROC(num_classes=self.num_classes),
+                "val_accuracy": Accuracy("multiclass", num_classes=self.num_classes),
+                "val_error": Error("multiclass", num_classes=self.num_classes),
+                "val_recall": Recall("multiclass", num_classes=self.num_classes),
+                "val_precision": Precision("multiclass", num_classes=self.num_classes),
+                "val_f1": F1Score("multiclass", num_classes=self.num_classes),
+                "val_auroc": AUROC("multiclass", num_classes=self.num_classes),
             }
         )
         self.test_metrics = MetricCollection(
             {
-                "test_accuracy": Accuracy(),
-                "test_error": Error(),
-                "test_recall": Recall(num_classes=self.num_classes),
-                "test_precision": Precision(num_classes=self.num_classes),
-                "test_f1": F1Score(num_classes=self.num_classes),
-                "test_auroc": AUROC(num_classes=self.num_classes),
+                "test_accuracy": Accuracy("multiclass", num_classes=self.num_classes),
+                "test_error": Error("multiclass", num_classes=self.num_classes),
+                "test_recall": Recall("multiclass", num_classes=self.num_classes),
+                "test_precision": Precision("multiclass", num_classes=self.num_classes),
+                "test_f1": F1Score("multiclass", num_classes=self.num_classes),
+                "test_auroc": AUROC("multiclass", num_classes=self.num_classes),
             }
         )
 
-        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
-        self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
+        self.test_confusion = ConfusionMatrix(
+            "multiclass", num_classes=self.num_classes
+        )
+        self.test_roc = ROC(
+            "multiclass", num_classes=self.num_classes, compute_on_step=False
+        )
 
         augmentation_passes = []
         if self.hparams.time_masking > 0:
@@ -178,6 +181,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         pass
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
+
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
@@ -191,7 +195,7 @@ class BaseStreamClassifierModule(ClassifierModule):
             except ValueError as e:
                 logging.critical(f"Could not calculate batch metrics: output={output}")
 
-        self.log(f"{prefix}_loss", loss)
+            self.log(f"{prefix}_loss", loss)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
