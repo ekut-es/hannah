@@ -298,6 +298,9 @@ def clear_outputs():
 
 
 def fullname(o) -> Any:
+    """
+    Get the full classname of an object including surrounding packages/modules/namespaces
+    """
     klass = o.__class__
     module = klass.__module__
     if module == "builtins":
