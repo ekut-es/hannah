@@ -27,7 +27,7 @@ default_root_dir: .
 fast_dev_run: false
 overfit_batches: 0.0
 benchmark: False
-deterministic: True
+deterministic: warn
 gradient_clip_val: 0
 auto_scale_batch_size: null
 accumulate_grad_batches: 1

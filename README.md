@@ -24,7 +24,7 @@ limitations under the License.
 
 Dependencies and virtual environments are managed using [poetry](https://python-poetry.org/).
 
-- python (>=3.9 <3.11) and development headers
+- python (>=3.8 <3.12) and development headers
 - libsndfile and development headers
 - libsox and development headers
 - a blas implementation and development headers
