@@ -306,13 +306,14 @@ def fullname(o) -> Any:
 
 
 @contextmanager
-def set_deterministic(mode):
+def set_deterministic(mode, warn_only=False):
     "A contextmanager to set deterministic algorithms"
 
     old_mode = torch.are_deterministic_algorithms_enabled()
+    old_warn_only = torch.is_deterministic_algorithms_warn_only_enabled()
 
     try:
-        torch.use_deterministic_algorithms(mode)
+        torch.use_deterministic_algorithms(mode, warn_only=warn_only)
         yield
     finally:
-        torch.use_deterministic_algorithms(old_mode)
+        torch.use_deterministic_algorithms(old_mode, warn_only=old_warn_only)

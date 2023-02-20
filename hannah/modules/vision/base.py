@@ -36,8 +36,6 @@ from torchmetrics import (
     Recall,
 )
 
-from hannah.utils.utils import set_deterministic
-
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from ..base import ClassifierModule
 from ..metrics import Error

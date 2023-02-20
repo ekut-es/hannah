@@ -32,7 +32,6 @@ from pytorch_lightning.trainer.supporters import CombinedLoader
 from tqdm import trange
 
 from hannah.datasets.collate import vision_collate_fn
-from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from .base import VisionBaseModule
@@ -213,8 +212,7 @@ class AnomalyDetectionModule(VisionBaseModule):
         # preds = step_results.preds
 
         if y is not None and preds is not None:
-            with set_deterministic(False):
-                self.test_confusion(preds, y)
+            self.test_confusion(preds, y)
             self.predictions = torch.cat((self.predictions.to(preds.device), preds), 0)
             self.labels = torch.cat((self.labels.to(y.device), y), 0)
 

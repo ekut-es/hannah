@@ -35,7 +35,6 @@ from torchmetrics import (
 )
 
 from hannah.datasets.collate import vision_collate_fn
-from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from ..metrics import Error
@@ -129,8 +128,7 @@ class ImageClassifierModule(VisionBaseModule):
 
         y = batch.get("labels", None)
         if y is not None and preds is not None:
-            with set_deterministic(False):
-                self.test_confusion(preds, y)
+            self.test_confusion(preds, y)
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
