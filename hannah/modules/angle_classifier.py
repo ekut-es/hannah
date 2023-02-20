@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -123,14 +123,14 @@ class AngleClassifierModule(StreamClassifierModule):
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 metrics(out, y)
-                self.log_dict(metrics)
+                self.log_dict(metrics, batch_size=self.batch_size)
         else:
             try:
                 metrics(output, y)
-                self.log_dict(metrics)
+                self.log_dict(metrics, batch_size=self.batch_size)
             except ValueError:
                 logging.critical("Could not calculate batch metrics: {outputs}")
-        self.log(f"{prefix}_loss", loss)
+        self.log(f"{prefix}_loss", loss, batch_size=self.batch_size)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):

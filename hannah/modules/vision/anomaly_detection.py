@@ -83,10 +83,12 @@ class AnomalyDetectionModule(VisionBaseModule):
 
         if self.hparams.train_val_loss == "classifier" or step_name == "test":
             loss = ss_loss.forward(logits=prediction_result.logits, labels=labels)
-            self.log(f"{step_name}_classifier_loss", loss)
+            self.log(f"{step_name}_classifier_loss", loss, batch_size=self.batch_size)
             preds = torch.argmax(prediction_result.logits, dim=1)
             self.metrics[f"{step_name}_metrics"](preds, labels)
-            self.log_dict(self.metrics[f"{step_name}_metrics"])
+            self.log_dict(
+                self.metrics[f"{step_name}_metrics"], batch_size=self.batch_size
+            )
 
         elif (
             self.hparams.train_val_loss == "decoder"
@@ -94,13 +96,15 @@ class AnomalyDetectionModule(VisionBaseModule):
         ):
             decoded = prediction_result.decoded
             current_loss = ss_loss.forward(true_data=x, decoded=decoded)
-            self.log(f"{step_name}_decoder_loss", current_loss)
+            self.log(
+                f"{step_name}_decoder_loss", current_loss, batch_size=self.batch_size
+            )
             loss += current_loss
 
             if batch_idx == 0:
                 self._log_batch_images("decoded", batch_idx, decoded)
 
-        self.log(f"{step_name}_loss", loss)
+        self.log(f"{step_name}_loss", loss, batch_size=self.batch_size)
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
@@ -166,14 +170,17 @@ class AnomalyDetectionModule(VisionBaseModule):
                     )
                     preds = torch.argmax(logits, dim=1)
                     self.metrics["train_metrics"](preds, labels)
-                    self.log_dict(self.metrics["train_metrics"])
+                    self.log_dict(
+                        self.metrics["train_metrics"], batch_size=self.batch_size
+                    )
 
                 self.log(
                     "train_" + f"{self.hparams.train_val_loss}_loss",
                     current_loss,
+                    batch_size=self.batch_size,
                 )
                 loss += current_loss
-                self.log("train_loss", loss)
+                self.log("train_loss", loss, batch_size=self.batch_size)
 
             loss += current_loss
         return loss
@@ -195,7 +202,7 @@ class AnomalyDetectionModule(VisionBaseModule):
                         size=labels.size(), device=labels.device, dtype=labels.dtype
                     ).fill_(0)
                 self.metrics["val_metrics"](preds, labels)
-                self.log_dict(self.metrics["val_metrics"])
+                self.log_dict(self.metrics["val_metrics"], batch_size=self.batch_size)
 
     def test_step(self, batch, batch_idx):
         loss, step_results, batch, preds = self.common_step("test", batch, batch_idx)

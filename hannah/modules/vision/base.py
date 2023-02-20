@@ -123,30 +123,36 @@ class VisionBaseModule(ClassifierModule):
         # Setup Metrics
         metrics = {}
         if self.num_classes > 0:
-            self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+            self.test_confusion = ConfusionMatrix(
+                "multiclass", num_classes=self.num_classes
+            )
 
             for step_name in ["train", "val", "test"]:
                 step_metrics = MetricCollection(
                     {
-                        f"{step_name}_accuracy": Accuracy(num_classes=self.num_classes),
-                        f"{step_name}_error": Error(num_classes=self.num_classes),
+                        f"{step_name}_accuracy": Accuracy(
+                            "multiclass", num_classes=self.num_classes
+                        ),
+                        f"{step_name}_error": Error(
+                            "multiclass", num_classes=self.num_classes
+                        ),
                         f"{step_name}_precision_micro": Precision(
-                            num_classes=self.num_classes, average="micro"
+                            "multiclass", num_classes=self.num_classes, average="micro"
                         ),
                         f"{step_name}_recall_micro": Recall(
-                            num_classes=self.num_classes, average="micro"
+                            "multiclass", num_classes=self.num_classes, average="micro"
                         ),
                         f"{step_name}_f1_micro": F1Score(
-                            num_classes=self.num_classes, average="micro"
+                            "multiclass", num_classes=self.num_classes, average="micro"
                         ),
                         f"{step_name}_precision_macro": Precision(
-                            num_classes=self.num_classes, average="macro"
+                            "multiclass", num_classes=self.num_classes, average="macro"
                         ),
                         f"{step_name}_recall_macro": Recall(
-                            num_classes=self.num_classes, average="macro"
+                            "multiclass", num_classes=self.num_classes, average="macro"
                         ),
                         f"{step_name}_f1_macro": F1Score(
-                            num_classes=self.num_classes, average="macro"
+                            "multiclass", num_classes=self.num_classes, average="macro"
                         ),
                     }
                 )

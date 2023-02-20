@@ -105,6 +105,7 @@ class ClassifierModule(LightningModule, ABC):
         self.train_metrics: MetricCollection = MetricCollection({})
 
         self.pseudo_label = None
+        self.batch_size = batch_size
 
     @abstractmethod
     def prepare_data(self) -> Any:
@@ -131,7 +132,6 @@ class ClassifierModule(LightningModule, ABC):
         return self._get_dataloader(self.dev_set, self.dev_set_unlabeled)
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
-        batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
         sampler = None
         if shuffle:
@@ -143,7 +143,7 @@ class ClassifierModule(LightningModule, ABC):
 
         loader = data.DataLoader(
             dataset,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             drop_last=True,
             num_workers=self.hparams["num_workers"],
             sampler=sampler,
@@ -154,7 +154,7 @@ class ClassifierModule(LightningModule, ABC):
         if unlabeled_data:
             loader_unlabeled = data.DataLoader(
                 unlabeled_data,
-                batch_size=batch_size,
+                batch_size=self.batch_size,
                 drop_last=True,
                 num_workers=self.hparams["num_workers"],
                 sampler=data.RandomSampler(unlabeled_data),

@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -76,13 +76,19 @@ class ImageClassifierModule(VisionBaseModule):
                 logits=logits, labels=labels, weight=self.loss_weights
             )
 
-            self.log(f"{step_name}_classifier_loss", classifier_loss)
+            self.log(
+                f"{step_name}_classifier_loss",
+                classifier_loss,
+                batch_size=self.batch_size,
+            )
             loss += classifier_loss
 
             preds = torch.argmax(logits, dim=1)
             self.metrics[f"{step_name}_metrics"](preds, labels)
 
-            self.log_dict(self.metrics[f"{step_name}_metrics"])
+            self.log_dict(
+                self.metrics[f"{step_name}_metrics"], batch_size=self.batch_size
+            )
 
         if (
             hasattr(prediction_result, "decoded")
@@ -96,7 +102,7 @@ class ImageClassifierModule(VisionBaseModule):
             if batch_idx == 0:
                 self._log_batch_images("decoded", batch_idx, decoded)
 
-        self.log(f"{step_name}_loss", loss)
+        self.log(f"{step_name}_loss", loss, batch_size=self.batch_size)
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
@@ -110,7 +116,9 @@ class ImageClassifierModule(VisionBaseModule):
         if self.pseudo_label is not None and batch_unlabeled is not None:
             loss += self.pseudo_label(batch_unlabeled)
         elif batch_unlabeled is not None:
-            msglogger.critical("Batch contains unlabeled data but no pseudo labeling is configured.")
+            msglogger.critical(
+                "Batch contains unlabeled data but no pseudo labeling is configured."
+            )
         return loss
 
     def validation_step(self, batch, batch_idx):

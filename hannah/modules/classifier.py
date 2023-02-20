@@ -186,16 +186,16 @@ class BaseStreamClassifierModule(ClassifierModule):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
                 metrics(out, y)
-                self.log_dict(metrics)
+                self.log_dict(metrics, batch_size=self.batch_size)
         else:
             try:
                 output = torch.nn.functional.softmax(output, dim=1)
                 metrics(output, y)
-                self.log_dict(metrics)
+                self.log_dict(metrics, batch_size=self.batch_size)
             except ValueError as e:
                 logging.critical(f"Could not calculate batch metrics: output={output}")
 
-            self.log(f"{prefix}_loss", loss)
+            self.log(f"{prefix}_loss", loss, batch_size=self.batch_size)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
