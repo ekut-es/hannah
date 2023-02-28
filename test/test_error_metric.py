@@ -39,7 +39,8 @@ from hannah.modules.metrics import BinaryError, Error, MulticlassError, Multilab
         ("multiclass", [[0, 0, 1], [0, 0, 1]], [[0, 0, 1], [0, 0, 1]], 3, 0.0),
         ("multiclass", [[0, 0, 1], [0, 0, 1]], [[0, 0, 1], [0, 0, 1]], 3, 0.0),
         ("multilabel", [[0, 0, 1], [0, 0, 1]], [[0, 0, 1], [0, 0, 1]], 3, 0.0),
-        ("multilabel", [[0, 0, 1], [0, 0, 1]], [[0, 0, 1], [0, 0, 1]], 3, 0.0),
+        ("multilabel", [[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], 3, 0.0),
+        ("multilabel", [[0, 1, 1], [0, 1, 1]], [[1, 0, 0], [1, 0, 0]], 3, 1.0),
     ],
 )
 def test_error(task, predictions, labels, n, expect):
