@@ -105,9 +105,9 @@ test_tvm:
     paths:
       - .cache/
 
-test_python_311:
+test_python_310:
   stage: test
-  image: python:3.11
+  image: python:3.10
   script:
     - set -e
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
