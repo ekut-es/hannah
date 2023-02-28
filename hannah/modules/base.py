@@ -215,9 +215,9 @@ class ClassifierModule(LightningModule, ABC):
                 if hasattr(logger.experiment, "add_histogram"):
                     try:
                         logger.experiment.add_histogram(
-                            name, params, self.current_epoch
+                            name, params, global_step=self.current_epoch
                         )
-                    except (ValueError, NotImplementedError, TypeError):
+                    except (ValueError, NotImplementedError):
                         logging.critical("Could not add histogram for param %s", name)
 
     def _logger_iterator(self) -> Iterable[Logger]:

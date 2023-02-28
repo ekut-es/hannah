@@ -127,7 +127,10 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # Metrics
         self.train_metrics = MetricCollection(
-            {"train_accuracy": Accuracy("multiclass", num_classes=self.num_classes)}
+            {
+                "train_accuracy": Accuracy("multiclass", num_classes=self.num_classes),
+                "train_error": Accuracy("multiclass", num_classes=self.num_classes),
+            }
         )
         self.val_metrics = MetricCollection(
             {

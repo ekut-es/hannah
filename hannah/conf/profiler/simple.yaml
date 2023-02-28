@@ -18,4 +18,4 @@
 ##
 
 
-_target_: pytorch_lightning.profiler.SimpleProfiler
+_target_: pytorch_lightning.profilers.SimpleProfiler
