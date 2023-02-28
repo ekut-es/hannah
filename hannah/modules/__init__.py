@@ -26,9 +26,8 @@ from .classifier import (
     SpeechClassifierModule,
     StreamClassifierModule,
 )
-
-# from .object_detection import ObjectDetectionModule
-# from .vision import AnomalyDetectionModule, ImageClassifierModule
+from .object_detection import ObjectDetectionModule
+from .vision import AnomalyDetectionModule, ImageClassifierModule
 
 __all__ = [
     "AnomalyDetectionModule",
