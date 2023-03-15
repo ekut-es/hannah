@@ -7,7 +7,7 @@ import numpy as np
 
 cv2 = pytest.importorskip('cv2')
 
-from hannah.dataset.vision.utils.naneye import read_naney
+from hannah.datasets.vision.utils.naneye import read_naneye
 
 test_img = Path(__file__).parent.resolve() / "data" / "naneye.txt"
 
