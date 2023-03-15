@@ -56,3 +56,18 @@ dedicated logger for your module e.g.:
 Try to provide unit tests for new features, unit tests should be written using [pytest](https://docs.pytest.org). Unit test should be designed to run pretty fast and are run for each push.
 
 Tests marked with ``@pytest.mark.integration` are only triggered when `--integration` is given on the pytest commandline. These tests are only run on pushs to the main branch.
+
+
+
+## Resolving merge conflicts in `poetry.lock`
+
+If you have changed `poetry.lock` this can result in merge conflicts.
+
+The easiest way to resolve them is:
+
+```
+git checkout --theirs poetry.lock
+poetry lock --no-update
+```
+
+Try to avoid running `poetry update` on feature branches.

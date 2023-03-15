@@ -117,23 +117,6 @@ Or move it to a subdirectory of the project directory using:
 
     poetry config virtualenvs.in-project true
 
-2.) On lucille
-
-Put the following in `.config/pip/pip.conf` until
-
-    [global]
-    timeout = 60
-    extra-index-url = https://atreus.informatik.uni-tuebingen.de/~gerum/dist/
-
-And install pytorch manually in your poetry env.
-
-    poetry shell
-    pip install torch==1.8.1 torchvision torchaudio
-
-And you might need to deactivate your conda environment:
-
-    conda deactivate
-
 
 
 ## Installing the datasets
@@ -205,9 +188,7 @@ Training of emergency siren detection dataset is invoked by:
 
 # Parallel Launchers
 
-To launch multiple optimizations in parallel you can use a hydra launcher. The optuna Package must be installed first
-
-    poetry run pip install hydra-optuna-sweeper==1.1.1
+To launch multiple optimizations in parallel you can use a hydra launcher. 
 
 Joblib launcher is installed by default:
 
@@ -230,7 +211,7 @@ All experiments are logged to tensorboard: To visualize the results use:
 
 or a subdirectory of trained models if only one experiment or model is of interest.
 
-# Development
+## Pre commit hooks
 
 This project uses precommit hooks for auto formatting and static code analysis.
 To enable precommit hooks run the following command in a `poetry shell`.
@@ -240,15 +221,3 @@ To enable precommit hooks run the following command in a `poetry shell`.
 Try to follow [pep8](https://pep8.org/#naming-conventions) naming conventions and the rest of pep8 to the
 best of your abilities.
 
-## Resolving merge conflicts in `poetry.lock`
-
-If you have changed `poetry.lock` this can result in merge conflicts.
-
-The easiest way to resolve them is:
-
-```
-git checkout --theirs poetry.lock
-poetry lock --no-update
-```
-
-Try to avoid running `poetry update` on feature branches.
