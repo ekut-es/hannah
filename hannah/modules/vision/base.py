@@ -160,6 +160,12 @@ class VisionBaseModule(ClassifierModule):
 
         self.pseudo_label = instantiate(self.hparams.pseudo_labeling, model=self.model)
 
+        # FIXME
+        msglogger.info("Running dummy forward to initialize lazy modules")
+        self.eval()
+        self(self.example_input_array)
+        self.train()
+
     def _decode_batch(self, batch):
         if isinstance(batch, Sequence):
             assert len(batch) == 2
