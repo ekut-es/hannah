@@ -105,6 +105,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#testing-ci">Testing / CI</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#resolving-merge-conflicts-in-poetrylock">Resolving merge conflicts in poetry.lock</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
@@ -183,6 +185,13 @@ logger.debug()
 <h2 id="testing-ci">Testing / CI</h2>
 <p>Try to provide unit tests for new features, unit tests should be written using <a href="https://docs.pytest.org">pytest</a>. Unit test should be designed to run pretty fast and are run for each push.</p>
 <p>Tests marked with <code>`@pytest.mark.integration</code> are only triggered when <code>--integration</code> is given on the pytest commandline. These tests are only run on pushs to the main branch.</p>
+<h2 id="resolving-merge-conflicts-in-poetrylock">Resolving merge conflicts in <code>poetry.lock</code></h2>
+<p>If you have changed <code>poetry.lock</code> this can result in merge conflicts.</p>
+<p>The easiest way to resolve them is:</p>
+<pre><code>git checkout --theirs poetry.lock
+poetry lock --no-update
+</code></pre>
+<p>Try to avoid running <code>poetry update</code> on feature branches.</p>
               
             </div>
           </div><footer>

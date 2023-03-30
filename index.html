@@ -214,19 +214,6 @@ for baseline neural network models.</p>
 <p>Or move it to a subdirectory of the project directory using:</p>
 <pre><code>poetry config virtualenvs.in-project true
 </code></pre>
-<p>2.) On lucille</p>
-<p>Put the following in <code>.config/pip/pip.conf</code> until</p>
-<pre><code>[global]
-timeout = 60
-extra-index-url = https://atreus.informatik.uni-tuebingen.de/~gerum/dist/
-</code></pre>
-<p>And install pytorch manually in your poetry env.</p>
-<pre><code>poetry shell
-pip install torch==1.8.1 torchvision torchaudio
-</code></pre>
-<p>And you might need to deactivate your conda environment:</p>
-<pre><code>conda deactivate
-</code></pre>
 <h2 id="installing-the-datasets">Installing the datasets</h2>
 <p>Datasets are downloaded automatically to the datasets data folder by default this is a subfolder of the dataset's data folder.</p>
 <p>For the VAD Dataset the following Flag is needed to Download/Override the Dataset</p>
@@ -273,9 +260,7 @@ e.g. for GPU 2 use:</p>
 <pre><code>hannah-train -cn config_siren_detection
 </code></pre>
 <h1 id="parallel-launchers">Parallel Launchers</h1>
-<p>To launch multiple optimizations in parallel you can use a hydra launcher. The optuna Package must be installed first</p>
-<pre><code>poetry run pip install hydra-optuna-sweeper==1.1.1
-</code></pre>
+<p>To launch multiple optimizations in parallel you can use a hydra launcher. </p>
 <p>Joblib launcher is installed by default:</p>
 <p>hannah-train --multirun hydra/sweeper=optuna hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5</p>
 <p>Launches optimizer hyperparameter optimization with 5 parallel jobs.</p>
@@ -288,20 +273,13 @@ e.g. for GPU 2 use:</p>
 <pre><code>tensorboard --logdir trained_models
 </code></pre>
 <p>or a subdirectory of trained models if only one experiment or model is of interest.</p>
-<h1 id="development">Development</h1>
+<h2 id="pre-commit-hooks">Pre commit hooks</h2>
 <p>This project uses precommit hooks for auto formatting and static code analysis.
 To enable precommit hooks run the following command in a <code>poetry shell</code>.</p>
 <pre><code> pre-commit install
 </code></pre>
 <p>Try to follow <a href="https://pep8.org/#naming-conventions">pep8</a> naming conventions and the rest of pep8 to the
 best of your abilities.</p>
-<h2 id="resolving-merge-conflicts-in-poetrylock">Resolving merge conflicts in <code>poetry.lock</code></h2>
-<p>If you have changed <code>poetry.lock</code> this can result in merge conflicts.</p>
-<p>The easiest way to resolve them is:</p>
-<pre><code>git checkout --theirs poetry.lock
-poetry lock --no-update
-</code></pre>
-<p>Try to avoid running <code>poetry update</code> on feature branches.</p>
               
             </div>
           </div><footer>
@@ -350,5 +328,5 @@ poetry lock --no-update
 
 <!--
 MkDocs version : 1.4.2
-Build Date UTC : 2023-02-28 13:44:30.503264+00:00
+Build Date UTC : 2023-03-30 19:15:07.170354+00:00
 -->
