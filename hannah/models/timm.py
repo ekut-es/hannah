@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -199,10 +199,11 @@ class TimmModel(nn.Module):
         self,
         name: str,
         input_shape: Tuple[int, int, int],
-        pretrained: bool = True,
-        decoder: Union[Mapping[str, Any], bool] = True,
+        pretrained: bool = False,
+        decoder: Union[Mapping[str, Any], bool] = False,
         classifier: Union[Mapping[str, Any], bool] = True,
         projector: Union[Mapping[str, Any], bool] = False,
+        stem: str = "default",
         labels: int = 0,
         **kwargs
     ):
@@ -214,6 +215,35 @@ class TimmModel(nn.Module):
         self.encoder = timm.create_model(
             name, num_classes=0, global_pool="", pretrained=pretrained, **kwargs
         )
+
+        _, input_channels, input_x, input_y = dummy_input.shape
+        if stem == "auto":
+            logger.info("""Using default logger for automatic stem creation""")
+            if input_channels != 3 or input_x < 160 or input_y < 160:
+                logger.info("Small input size detected trying to adopt small input size")
+                if hasattr(self.encoder, "conv1"):
+                    input_conv = self.encoder.conv1
+                    out_channels = input_conv.out_channels
+                    new_conv = torch.nn.Conv2d(input_channels, out_channels, 3, 1)
+                    self.encoder.conv1 = new_conv
+                elif hasattr(self.encoder, "conv_stem"):
+                    input_conv = self.encoder.conv_stem
+                    out_channels = input_conv.out_channels
+                    new_conv = torch.nn.Conv2d(input_channels, out_channels, 3, 1)
+                    self.encoder.conv_stem = new_conv
+                else:
+                    logger.critical(
+                        "Selected timm model does not have any known conv attr, cannot adopt input convolution for automatic stem selection"
+                    )
+
+                if hasattr(self.encoder, "maxpool"):
+                    self.encoder.maxpool = torch.nn.Identity()
+        elif stem == "default":
+            logger.info("""Using default stem for pulp model""")
+        else:
+            logger.critical("""%s could not find stem for input element""", stem)
+        
+
 
         with torch.no_grad():
             self.encoder.eval()
