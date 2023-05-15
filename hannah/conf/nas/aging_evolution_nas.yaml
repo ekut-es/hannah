@@ -17,10 +17,18 @@
 ## limitations under the License.
 ##
 defaults:
-#   - predictor: gcn
+    - predictor: gcn
     - sampler: aging_evolution
     - model_trainer: simple
+    - constraint_model: z3
 
 _target_: hannah.nas.search.search.DirectNAS
 budget: 2000
 n_jobs: 10
+presample: False
+total_candidates: 100
+num_selected_candidates: 10
+bounds:
+    val_error: 0.06
+    total_macs: 128000000
+    total_weights: 500000

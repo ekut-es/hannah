@@ -79,7 +79,7 @@ class Predictor:
                 pred = self.model(
                     batched_graph, batched_graph.ndata[self.fea_name].float()
                 ).squeeze()
-                loss = F.mse_loss(pred, labels, reduction="sum")
+                loss = F.mse_loss(pred, labels, reduction="mean")
                 # loss = F.l1_loss(pred, labels, reduction="sum")
                 optimizer.zero_grad()
                 loss.backward()
@@ -122,7 +122,7 @@ class Predictor:
 
 class GCNPredictor(Predictor):
     def __init__(
-        self, input_feature_size, hidden_units=128, readout="mean", fea_name="features"
+        self, input_feature_size, hidden_units=[128], readout="mean", fea_name="features"
     ) -> None:
         """G(raph)CN based network latency/cost predictor. End-to-end from graph to score.
 
@@ -142,7 +142,7 @@ class GCNPredictor(Predictor):
             input_feature_size, hidden_units, num_classes=1, readout=readout
         )
 
-    def train(
+    def train_and_fit(
         self,
         dataloader,
         learning_rate=1e-3,
@@ -325,12 +325,17 @@ class GaussianProcessPredictor(Predictor):
 
         if verbose:
             print("Fit predictor ...")
-
+        # embeddings = self.normalize_embeddings(embeddings)
         self.fit_predictor(embeddings, labels)
         score = self.predictor.score(embeddings, labels)
         if verbose:
             print("Predictor Score: {:.5f}".format(score))
         return score
+
+    def normalize_embeddings(self, embedding):
+        for r in range(len(embedding)):
+            embedding[r] = (embedding[r] - min(embedding[r])) / (max(embedding[r] - min(embedding[r])))
+        return embedding
 
     def get_embedding(self, graph):
         return self.model.get_embedding(graph, graph.ndata[self.fea_name].float())
@@ -376,6 +381,7 @@ class GaussianProcessPredictor(Predictor):
 
             embeddings = torch.vstack(embeddings).detach().numpy()
 
+        # embeddings = self.normalize_embeddings(embeddings)
         preds = self.predictor.predict(embeddings, return_std=return_std)
         if return_std:
             preds_mean, preds_std = preds

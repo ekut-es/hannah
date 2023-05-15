@@ -1,0 +1,4 @@
+_target_: hannah.nas.constraints.constraint_model.ConstraintModel
+method: naive
+fix_strategy: last
+timeout: 300

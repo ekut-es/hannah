@@ -49,7 +49,6 @@ def conv(input, weight, stride):
     return OpType("conv1d", input, weight, stride=stride)
 
 
-@dataflow
 def ut_op(
     weight_bits: int = 8,
     bias_bits: int = 8,
@@ -124,7 +123,14 @@ def ut_op(
         activation, dtype=input_data_type, quantization=input_quantization
     )
 
-    return requantization
+    return DataFlowGraph(inputs=[input, weight], output=requantization)
+
+
+class HardwareOp(DataFlowGraph):
+    ...
+    # performance & energy modelling (e.g., hints)
+    # memory mapping, alignment constraints
+    #
 
 
 @parametrize

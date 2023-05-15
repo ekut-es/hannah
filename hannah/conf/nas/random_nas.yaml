@@ -19,7 +19,16 @@
 defaults:
   - sampler: random
   - model_trainer: simple
+  - constraint_model: z3
+  - predictor: gcn
 
 _target_: hannah.nas.search.search.DirectNAS
 budget: 2000
 n_jobs: 2
+total_candidates: 20
+num_selected_candidates: 5
+
+bounds:
+  val_error: 0.1
+  total_macs: 100000000
+  total_weights: 1000000

@@ -15,4 +15,4 @@ class RandomSampler(Sampler):
         parameter_values = {}
         for key, param in self.parametrization.items():
             parameter_values[key] = param.sample()
-        return parameter_values
+        return parameter_values, []

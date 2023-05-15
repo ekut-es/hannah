@@ -17,7 +17,7 @@ class SymbolicAttr(Expression):
         attr = getattr(self.expr.evaluate(), self.attr)
         if isinstance(attr, dict) and self.key:
             attr = attr[self.key]
-        elif isinstance(attr, (list, tuple)) and self.key and isinstance(self.key, int):
+        elif isinstance(attr, (list, tuple)) and self.key is not None and isinstance(self.key, int):
             attr = attr[self.key]
         if hasattr(attr, 'evaluate'):
             attr = attr.evaluate()
@@ -27,7 +27,10 @@ class SymbolicAttr(Expression):
         return SymbolicAttr(self, key)
 
     def format(self, indent=2, length=80):
-        return f"{self.attr}({self.choices})"
+        if self.key is not None:
+            return f"{self.expr}({self.attr})[{self.key}]"
+        else:
+            return f"{self.expr}({self.attr})"
 
 
 class Choice(Expression):
@@ -51,4 +54,4 @@ class Choice(Expression):
         return SymbolicAttr(self, attr=key)
 
     def format(self, indent=2, length=80):
-        return f"{self.attr}({self.choices})"
+        return f"Choice({self.values})"

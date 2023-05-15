@@ -3,7 +3,7 @@ from hannah.nas.parameters.parameters import CategoricalParameter, FloatScalarPa
 
 
 class ParameterMutator:
-    def __init__(self, mutation_rate=0.1, rng=None) -> None:
+    def __init__(self, mutation_rate=0.05, rng=None) -> None:
         self.mutation_rate = mutation_rate
         if rng is None:
             self.rng = np.random.default_rng(seed=None)
@@ -15,14 +15,16 @@ class ParameterMutator:
             raise Exception("rng should be either np.random.Generator or int (or None)")
 
     def mutate(self, parameters):
+        mutated_keys = []
         num_mutations = int(np.ceil(self.mutation_rate * len(parameters)))
-        mutation_indices = self.rng.choice(range(len(parameters), size=num_mutations, replace=False))
+        mutation_indices = self.rng.choice(range(len(parameters)), size=num_mutations, replace=False)
         parametrization = {}
         for num, (key, param) in enumerate(parameters.items()):
             if num in mutation_indices:
                 parametrization[key] = self.mutate_parameter(param)
+                mutated_keys.append(key)
 
-        return parametrization
+        return parametrization, mutated_keys
 
     def mutate_parameter(self, parameter):
         if isinstance(parameter, CategoricalParameter):
@@ -63,12 +65,16 @@ class ParameterMutator:
         return parameter.rng.choice(parameter.choices)
 
     def increase_choice(self, parameter):
-        index = parameter.choices.index(self.current_value)
+        index = parameter.choices.index(parameter.current_value)
+        if index + 1 >= len(parameter.choices):
+            index = -1
         return parameter.choices[index + 1]
 
     def decrease_choice(self, parameter):
-        index = parameter.choices.index(self.current_value)
-        return parameter.choices[index + 1]
+        index = parameter.choices.index(parameter.current_value)
+        if index - 1 < 0:
+            index = len(parameter.choices)
+        return parameter.choices[index - 1]
 
     def random_int_scalar(self, parameter):
         return parameter.rng.integers(parameter.min, parameter.max+1)
@@ -80,7 +86,7 @@ class ParameterMutator:
             return parameter.rng.integers(parameter.min, parameter.max+1)
 
     def decrease_int_scalar(self, parameter):
-        if parameter.current_value < parameter.max:
+        if parameter.current_value > parameter.min:
             return parameter.current_value - 1
         else:
             return parameter.rng.integers(parameter.min, parameter.max+1)

@@ -47,7 +47,6 @@ def _create_parametrize_wrapper(params, cls):
                     num += 1
                 self._PARAMETERS[name] = arg
                 # self._annotations[name] = parameter_list[num + 1]._annotation
-        print()
         for name, arg in kwargs.items():
             if is_parametrized(arg):
                 self._PARAMETERS[name] = arg
@@ -86,9 +85,14 @@ def parametrize(cls=None):
     return parametrize_function
 
 
-def sample(self):
-    for _key, param in self.parametrization(flatten=True).items():
-        param.sample()
+def sample(self, key=None):
+    if key:
+        for _key, param in self.parametrization(flatten=True).items():
+            if key in _key:
+                param.sample()
+    else:
+        for _key, param in self.parametrization(flatten=True).items():
+            param.sample()
 
 
 def set_current(self, value):

@@ -1,0 +1,23 @@
+# @package _global_
+defaults:
+  - override /nas: aging_evolution_nas
+  - override /model: capsule_net
+  - override /dataset: cifar10
+
+
+nas:
+  budget: 2000
+  n_jobs: 8
+  num_selected_candidates: 8
+
+
+trainer:
+  max_epochs: 15
+
+
+model:
+  labels: 10
+
+seed: [1234]
+
+experiment_id: "ae_nas_cifar10"
