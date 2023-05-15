@@ -303,7 +303,7 @@ def walk_model(model, dummy_input):
 class MacSummaryCallback(Callback):
     """ """
 
-    def _do_summary(self, pl_module, print_log=True):
+    def _do_summary(self, pl_module,  input = None, print_log=True):
         """
 
         Args:
@@ -313,7 +313,9 @@ class MacSummaryCallback(Callback):
         Returns:
 
         """
-        dummy_input = pl_module.example_feature_array
+        dummy_input = input
+        if dummy_input is None:
+            dummy_input = pl_module.example_feature_array
         dummy_input = dummy_input.to(pl_module.device)
 
         total_macs = 0.0
@@ -358,7 +360,7 @@ class MacSummaryCallback(Callback):
 
         return res
 
-    def predict(self, pl_module):
+    def predict(self, pl_module, input=input):
         """
 
         Args:
@@ -368,7 +370,7 @@ class MacSummaryCallback(Callback):
 
         """
 
-        res = self.estimate(pl_module)
+        res = self.estimate(pl_module, input=input)
 
         return res
 
@@ -426,7 +428,7 @@ class MacSummaryCallback(Callback):
         for k, v in res.items():
             pl_module.log(k, float(v), rank_zero_only=True)
 
-    def estimate(self, pl_module):
+    def estimate(self, pl_module, input=None):
         """Generate Summary Metrics for neural network
 
         Args:
@@ -439,7 +441,7 @@ class MacSummaryCallback(Callback):
         pl_module.eval()
         res = {}
         try:
-            res = self._do_summary(pl_module, print_log=False)
+            res = self._do_summary(pl_module, input=input, print_log=False)
         except Exception as e:
             msglogger.critical("_do_summary failed")
             msglogger.critical(str(e))

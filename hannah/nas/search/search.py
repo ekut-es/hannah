@@ -26,9 +26,11 @@ import os
 from abc import ABC, abstractmethod
 from hydra.utils import instantiate, get_class
 from hannah.callbacks.optimization import HydraOptCallback
+from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
 from hannah.nas.graph_conversion import model_to_graph
+import traceback
 
 msglogger = logging.getLogger(__name__)
 
@@ -39,6 +41,7 @@ class NASBase(ABC):
                  sampler=None,
                  model_trainer=None,
                  predictor=None,
+                 constraint_model=None,
                  parent_config=None) -> None:
         self.budget = budget
         self.n_jobs = n_jobs
@@ -47,6 +50,7 @@ class NASBase(ABC):
         self.sampler = sampler
         self.model_trainer = model_trainer
         self.predictor = predictor
+        self.constraint_model =  constraint_model
 
     def run(self):
         self.before_search()
@@ -75,41 +79,68 @@ class NASBase(ABC):
 class DirectNAS(NASBase):
     def __init__(self,
                  presample=True,
+                 bounds=None,
+                 total_candidates=100,
+                 num_selected_candidates=10,
                  *args,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.presample = presample
-
+        self.bounds = bounds
+        self.total_candidates = total_candidates
+        self.num_selected_candidates = num_selected_candidates
 
     def before_search(self):
         self.initialize_dataset()
         self.search_space = self.build_search_space()
         parametrization = self.search_space.parametrization(flatten=True)
         self.sampler = instantiate(self.config.nas.sampler, parametrization=parametrization)
+        self.mac_predictor = MACPredictor()
         self.model_trainer = instantiate(self.config.nas.model_trainer)
+        if 'predictor' in self.config.nas:
+            self.predictor = instantiate(self.config.nas.predictor, _recursive_=False)
+            if os.path.exists('performance_data'):
+                self.predictor.load('performance_data')
+            
+        if self.constraint_model:
+            self.constraint_model = instantiate(self.config.nas.constraint_model)
 
     def search(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
+            self.new_points = []
+
+            # Presample Candidates
+            remaining_candidates = self.total_candidates - len(self.sampler.history)
+            self.candidates = []
+            if remaining_candidates > 0:
+                self.candidates = self.sample_candidates(remaining_candidates, remaining_candidates)
+
+
             while len(self.sampler.history) < self.budget:
                 self.worklist = []
-                models = []
                 self.tasklist = []
-
                 while len(self.worklist) < self.n_jobs:
                     try:
-                        parameters = self.sample()
-                        model = self.build_model(parameters)
-                        models.append(model)
-                        estimated_metrics, satisfied_bounds = self.estimate_metrics(model)
+                        if len(self.candidates) == 0:
+                            if self.predictor:
+                                self.predictor.update(self.new_points, self.example_input_array)
+                                self.new_points = []
+                            self.candidates = self.sample_candidates(self.total_candidates, self.num_selected_candidates)
+
+                        model, parameters, estimated_metrics, satisfied_bounds = self.candidates.pop(0)
                         self.append_to_worklist(parameters, estimated_metrics, satisfied_bounds)
                         current_num = len(self.tasklist) - 1
                         self.tasklist.append(delayed(self.model_trainer.run_training)(model, current_num, len(self.sampler.history) + current_num, self.config))
                     except Exception as e:
                         print(str(e))
+                        print(traceback.format_exc())
 
                 results = executor([task for task in self.tasklist])
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
+                    if self.predictor:
+                        self.new_points.append((self.build_model(parameters), result['val_error']))
+                        print(f"Estimated: {item.results['val_error']} Real: {result['val_error']}")
                     metrics = {**item.results, **result}
                     for k, v in metrics.items():
                         metrics[k] = float(v)
@@ -119,6 +150,21 @@ class DirectNAS(NASBase):
     def after_search(self):
         pass
         # self.extract_best_model()
+
+    def sample_candidates(self, num_total, num_candidates=None, sort_key='val_error'):
+        candidates = []
+        for n in range(num_total):
+            models = []
+            parameters = self.sample()
+            model = self.build_model(parameters)
+            models.append(model)
+            estimated_metrics, satisfied_bounds = self.estimate_metrics(model)
+            candidates.append((model, parameters, estimated_metrics, satisfied_bounds))
+
+        if self.predictor:
+            candidates.sort(key=lambda x: x[2][sort_key])
+            candidates = candidates[:num_candidates]
+        return candidates
 
     def build_model(self, parameters):
         try:
@@ -162,7 +208,18 @@ class DirectNAS(NASBase):
         trainer.fit(model)
 
     def sample(self):
-        parameters = self.sampler.next_parameters()
+        if self.constraint_model:
+            while True:
+                try:
+                    parameters, keys = self.sampler.next_parameters()
+                    fixed_vars = [self.search_space.parametrization(flatten=True)[key] for key in keys]
+                    self.constraint_model.soft_constrain_current_parametrization(self.search_space, parameters, fix_vars=fixed_vars)
+                    parameters = self.constraint_model.get_constrained_params(parameters)
+                    break
+                except:
+                    pass
+        else:
+            parameters, keys = self.sampler.next_parameters()
         return parameters
 
     def append_to_worklist(self, parameters, estimated_metrics={}, satisfied_bounds=[]):
@@ -176,10 +233,9 @@ class DirectNAS(NASBase):
 
         # FIXME: Integrate better intro current code
     def estimate_metrics(self, model):
+        estimated_metrics = self.mac_predictor.predict(model, input = self.example_input_array)
         if self.predictor:
-            estimated_metrics = self.predictor.estimate(model)
-        else:
-            estimated_metrics = {}
+            estimated_metrics.update(self.predictor.predict(model, self.example_input_array))
 
         satisfied_bounds = []
         for k, v in estimated_metrics.items():

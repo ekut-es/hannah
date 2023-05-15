@@ -102,7 +102,7 @@ class AgingEvolutionSampler(Sampler):
         "Returns a list of current tasks"
 
         parametrization = {}
-
+        mutated_keys = []
         if len(self.history) < self.population_size:
             parametrization = self.get_random()
         elif self.random_state.uniform() < self.eps:
@@ -114,11 +114,11 @@ class AgingEvolutionSampler(Sampler):
             fitness = [fitness_function(x.result) for x in sample]
 
             parent = sample[np.argmin(fitness)]
-            parent_parametrization = set_parametrization(parent, self.parametrization)
+            parent_parametrization = set_parametrization(parent.parameters, self.parametrization)
 
-            parametrization = self.mutator.mutate(parent_parametrization)
+            parametrization, mutated_keys = self.mutator.mutate(parent_parametrization)
 
-        return parametrization
+        return parametrization, mutated_keys
 
     def tell_result(self, parameters, metrics):
         "Tell the result of a task"

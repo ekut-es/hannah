@@ -50,7 +50,7 @@ class GTCondition(Condition):
         self.symbol = ">"
 
     def concrete_impl(self, lhs, rhs):
-        return lhs >= rhs
+        return lhs > rhs
 
 
 class GECondition(Condition):

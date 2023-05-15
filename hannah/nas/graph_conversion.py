@@ -95,6 +95,9 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             torch.nn.Conv2d: self.add_nodes_conv,
             torch.nn.Linear: self.add_nodes_linear,
             torch.nn.BatchNorm2d: self.add_nodes_batch_norm,
+            torch.nn.Identity: self.add_nodes_relu,  #FIXME: create respective rule
+            torch.nn.MaxPool2d: self.add_nodes_pooling,
+            torch.nn.AvgPool2d: self.add_nodes_pooling,
             "add": self.add_nodes_add,
         }
         self.layer_encodings = [
@@ -259,7 +262,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
             name = relu_name
 
-        quantization = None
+        # FIXME: quick fix, creates a weird NaN when converted to pd.DataFrame
+        quantization = {"dtype": "float", "bits": 32, "method": "none"}
         activation_post_process = getattr(mod, "activation_post_process", None)
         if activation_post_process:
             if not isinstance(activation_post_process, torch.nn.Identity):

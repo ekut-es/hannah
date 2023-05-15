@@ -16,12 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from z3 import Int, Or, Solver
+from z3 import Int, Or, Solver, Real, Bool, AtMost, AtLeast, Implies, If, And
 
-from hannah.nas.dataflow.dataflow_graph import DataFlowGraph, flatten
-from hannah.nas.dataflow.op_type import OpType
-from hannah.nas.dataflow.tensor import Tensor
-from hannah.nas.expressions.arithmetic import Add, Floor, Mul, Sub, Truediv
+from hannah.nas.expressions.arithmetic import Add, Floor, Floordiv, Mul, Sub, Truediv
+from hannah.nas.expressions.conditions import LECondition, GECondition, LTCondition, GTCondition
+from hannah.nas.expressions.logic import If as expr_if
+from hannah.nas.expressions.logic import And as expr_and
 from hannah.nas.expressions.op import BinaryOp, UnaryOp
 from hannah.nas.expressions.placeholder import (
     Categorical,
@@ -29,258 +29,254 @@ from hannah.nas.expressions.placeholder import (
     IntRange,
     Placeholder,
 )
-from hannah.nas.ops import batched_image_tensor
 from hannah.nas.parameters.parameters import (
     CategoricalParameter,
     IntScalarParameter,
     Parameter,
 )
-from hannah.nas.test.network import residual_block
 
 
 class ConstraintModel:
-    def __init__(self) -> None:
-        self.solver = Solver()
+    def __init__(self, method='naive', fix_strategy='none', timeout=300) -> None:
+        self.method = method
+        self.fix_strategy = fix_strategy # FIXME: Implement
+        self.timeout = timeout  # currently not in use
+        self.solver = []
         self.vars = {}
 
         self.input_dict = {}
         self.output_dict = {}
         self.enter_dict = {}
 
-    def build_model(self, graph):
-        queue = [graph]
-        visited = [graph]
+    def build_model(self, conditions, fixed_vars=[]):
+        for con in conditions:
+            sol = Solver()
+            self.vars[sol] = {}
+            sol.add(self.build_constraint_from_expression(sol, con, fixed_vars))
+            self.solver.append(sol)
 
-        while queue:
-            graph = queue.pop(-1)
 
-            if isinstance(graph, DataFlowGraph):
-                self.process_dataflow(graph)
-
-                if graph.output not in visited:
-                    queue.append(graph.output)
-                    visited.append(graph.output)
-
-            elif isinstance(graph, OpType):
-                self.process_optype(graph)
-
-                for o in graph.operands:
-                    if o not in visited:
-                        queue.append(o)
-                        visited.append(o)
-
-            elif isinstance(graph, Tensor):
-                self.process_tensor(graph)
-
-    def process_dataflow(self, graph):
-        # currently not needed because we use a flattened graph
-        # with only OpTypes and Tensors
-        pass
-
-    def process_optype(self, op: OpType):
-        """Extracts the constraints based on the type of op.
-        New variables are added to self.vars and the constraints
-        are added to the solver.
-
-        Parameters
-        ----------
-        op : OpType
-        """
-        if op.name == "Conv2d":
-            self.extract_conv_constraints(op)
-        elif op.name == "Add":
-            self.extract_add_constraints(op)
-        else:
-            self.extract_passthrough_constraints(op)
-
-    def process_tensor(self, tensor: Tensor):
-        """Goes through all axis and extracts the constraints for
-        the respective axis sizes
-
-        Parameters
-        ----------
-        tensor : Tensor
-        """
-        for name, ax in tensor.tensor_type().axis.items():
-            self.build_constraint_from_expression(ax.size, [])
-
-    def extract_conv_constraints(self, op: OpType):
-        input_tensor = op.operands[0].tensor_type()
-        output_tensor = op.tensor_type()
-
-        for ax_name, ax in output_tensor.axis.items():
-            con = self.build_constraint_from_expression(
-                output_tensor[ax_name].size, [input_tensor[ax_name].size]
-            )
-            var = Int(f"{op.id}.{ax_name}.size")
-            self.vars[str(var)] = var
-            self.solver.add(var == con)
-
-        padding = None
-        kernel_size = []
-        for name, var in self.vars.items():
-            if "padding" in name:
-                padding = var
-            elif "kh" in name or "kw" in name:
-                kernel_size.append(var)
-
-        for ks in kernel_size:
-            self.solver.add(ks / 2 == padding)
-
-    def extract_add_constraints(self, op):
-        output_tensor = op.tensor_type()
-
-        for name, ax in output_tensor.axis.items():
-            ax_out = Int(f"{op.id}.{name}.size")
-
-            for operand in op.operands:
-                input_tensor = operand.tensor_type()
-                for in_name, in_ax in input_tensor.axis.items():
-                    ax_in = Int(f"{operand.id}.{name}.size")
-                    self.solver.add(ax_in == ax_out)
-
-    def extract_passthrough_constraints(self, op):
-        input_tensor = op.operands[0].tensor_type()
-        output_tensor = op.tensor_type()
-
-        for ax_name, ax in output_tensor.axis.items():
-            con = self.build_constraint_from_expression(
-                output_tensor[ax_name].size, [input_tensor[ax_name].size]
-            )
-            var = Int(f"{op.id}.{ax_name}.size")
-            self.solver.add(var == con)
-
-    def extract_parameter(self, expr):
+    def extract_parameter(self, solver, expr, fixed_vars):
         if isinstance(expr, (IntScalarParameter, IntRange)):
-            return self.extract_int_range(expr)
+            return self.extract_int_range(solver, expr, fixed_vars)
         elif isinstance(expr, (CategoricalParameter, Categorical)):
-            return self.extract_categorical(expr)
+            return self.extract_categorical(solver, expr, fixed_vars)
         elif isinstance(expr, DefaultInt):
-            return self.extract_defaultint(expr)
+            return self.extract_defaultint(solver, expr)
         elif isinstance(expr, int):
             var = Int(expr.id)
-            self.solver.add(var == expr)
+            solver.add(var == expr)
             return var
 
-    def extract_int_range(self, expr):
+    def fix_var(self, solver, param):
+        try:
+            self.extract_parameter(solver, param, [param.id])
+        except:
+            pass
+
+    def get_tracker_var(self, solver, expr, key=None):
+        tracker_var = Bool(f'tracker_{expr.id}')
+        if key and key not in expr.id:
+            return None
+        try:
+            var = Int(expr.id)
+            con = (var == int(expr.current_value))
+            solver.add(Implies(tracker_var, con))
+        except Exception:
+            pass
+        return tracker_var
+
+    def get_all_tracker_vars(self, solver, module, key=None, parameters=None):
+        tracker_vars = []
+        if not parameters:
+            parameters = module.parametrization(flatten=True)
+        for n, p in parameters.items():
+            v = self.get_tracker_var(solver, p, key)
+            if v is not None:
+                tracker_vars.append(v)
+        return tracker_vars
+
+    def linear_search(self, solver, trackers):
+        for k in reversed(range(len(trackers))):
+            solver.push()
+            solver.add(AtLeast(*trackers, k))
+            res = solver.check()
+            if res.r != -1:
+                print(f"Can satisfy {k} soft constraints.")
+                return
+            else:
+                solver.pop()
+                # print("Not sat")
+        raise Exception("No satisfiable configuration possible")
+
+    def naive_search(self, solver,  module, key=None, parameters=None):
+        ct = 0
+        if not parameters:
+            parameters = module.parametrization(flatten=True)
+        for n, p in parameters.items():
+            if key and key not in n:
+                continue
+            if n not in self.vars[solver]:
+                continue
+            try:
+                var = Int(n)
+                if hasattr(p, 'current_value'):
+                    val = int(p.current_value)
+                else:
+                    val = int(p)
+                con = (var == val)
+                solver.push()
+                ct += 1
+                solver.add(con)
+            except Exception:
+                pass
+        for i in range(ct):
+            res = solver.check()
+            if res.r == 1:
+                solver.pop()
+                return
+            else:
+                solver.pop()
+
+        raise Exception("No satisfiable configuration possible")
+
+    def soft_constrain_current_parametrization(self, module, parameters=None, key=None, fix_vars=[]):
+        self.solver = []
+        self.build_model(module._conditions)
+        for solver in self.solver:
+            for v in fix_vars:
+                self.fix_var(solver, v)
+            if self.method == 'linear':
+                trackers = self.get_all_tracker_vars(solver, module, key, parameters)
+                self.linear_search(solver, trackers)
+            elif self.method == 'naive':
+                self.naive_search(solver, module, key, parameters)
+
+    def get_constrained_params(self, params: dict):
+        for solver in self.solver:
+            solver.check()
+            mod = solver.model()
+            for name, p in params.items():
+                if name in self.vars[solver]:
+                    try:
+                        params[name] = mod[self.vars[solver][name]].as_long()
+                    except:
+                        pass # FIXME: Investigate
+        return params
+
+
+    def insert_model_values_to_module(self, module):
+        for solver in self.solver:
+            solver.check()
+            mod = solver.model()
+            for name, p in module.parametrization(flatten=True).items():
+                if name in self.vars[solver]:
+                    try:
+                        value = mod[self.vars[solver][name]].as_long()
+                        p.current_value = value
+                    except Exception as e:
+                        print(str(e))
+        return module
+
+
+    def extract_int_range(self, solver, expr, fixed_vars):
         if expr.id:
             var = Int(expr.id)
         else:
             var = Int(f"IntRange({expr.min}, {expr.max})")
             # TODO: unique scope ids for DFG parameters
-        self.vars[str(var)] = var
-        self.solver.add(var >= expr.min)
-        self.solver.add(var <= expr.max)
+        self.vars[solver][str(var)] = var
+        if expr.id in fixed_vars:
+            solver.add(var == expr.current_value)
+            return var
+        solver.add(var >= expr.min)
+        solver.add(var <= expr.max)
         if hasattr(expr, "step_size") and expr.step_size != 1:
-            self.solver.add((var - expr.min) % expr.step_size == 0)
+            solver.add((var - expr.min) % expr.step_size == 0)
 
         return var
 
-    def extract_categorical(self, expr):
+    def extract_categorical(self, solver, expr, fixed_vars):
         var = Int(expr.id)
-        self.vars[expr.id] = var
+        self.vars[solver][expr.id] = var
+        if expr.id in fixed_vars:
+            solver.add(var == int(expr.current_value))
+            return var
         cons = []
         for val in expr.choices:
             cons.append(var == val)
-        self.solver.add(Or(cons))
+        solver.add(Or(cons))
         return var
 
-    def extract_defaultint(self, expr):
+    def extract_defaultint(self, solver, expr):
         if expr.id:
             var = Int(expr.id)
         else:
             var = Int(f"DefaultInt({expr.value})")
-        self.vars[str(var)] = var
-        self.solver.add(var == expr.value)
+        self.vars[solver][str(var)] = var
+        solver.add(var == expr.value)
         return var
 
-    def build_constraint_from_expression(self, expr, inputs):
-        for inp in inputs:
-            if check_for_id(expr, inp):
-                in_var = Int(inp.id)
-                self.vars[inp.id] = in_var
-                return in_var
+    def build_constraint_from_expression(self, solver, expr, fixed_vars=[]):
         if isinstance(expr, Parameter):
-            var = self.extract_parameter(expr)
-            self.vars[str(var)] = var
+            var = self.extract_parameter(solver, expr, fixed_vars)
+            self.vars[solver][str(var)] = var
             return var
         elif isinstance(expr, Placeholder):
-            var = self.extract_parameter(expr)
+            var = self.extract_parameter(solver, expr)
             return var
-        elif isinstance(expr, Add):
-            lhs = self.build_constraint_from_expression(expr.lhs, inputs)
-            rhs = self.build_constraint_from_expression(expr.rhs, inputs)
-            con = lhs + rhs
-            return con
-        elif isinstance(expr, Truediv):
-            lhs = self.build_constraint_from_expression(expr.lhs, inputs)
-            rhs = self.build_constraint_from_expression(expr.rhs, inputs)
-            con = lhs / rhs
-            return con
-        elif isinstance(expr, Mul):
-            lhs = self.build_constraint_from_expression(expr.lhs, inputs)
-            rhs = self.build_constraint_from_expression(expr.rhs, inputs)
-            con = lhs * rhs
-            return con
-        elif isinstance(expr, Sub):
-            lhs = self.build_constraint_from_expression(expr.lhs, inputs)
-            rhs = self.build_constraint_from_expression(expr.rhs, inputs)
-            con = lhs - rhs
-            return con
-        elif isinstance(expr, Floor):
-            con = self.build_constraint_from_expression(expr.operand, inputs)
-            return con
         elif isinstance(expr, int):
             var = Int(f"Literal({expr})")
-            self.solver.add(var == expr)
+            solver.add(var == expr)
             return var
+        elif isinstance(expr, float):
+            if expr.is_integer():
+                var = Int(f"Literal({expr})")
+            else:
+                var = Real(f"Literal({expr})")
+            solver.add(var == expr)
+            return var
+        elif isinstance(expr, Floor):
+                con = self.build_constraint_from_expression(solver, expr.operand, fixed_vars)
+                return con
+        elif isinstance(expr, expr_if):
+            operand = self.build_constraint_from_expression(solver, expr.operand)
+            a = self.build_constraint_from_expression(solver, expr.a)
+            b = self.build_constraint_from_expression(solver, expr.b)
+            con = If(operand, a, b)
+            return con
+        elif isinstance(expr, BinaryOp):
+            lhs = self.build_constraint_from_expression(solver, expr.lhs, fixed_vars)
+            rhs = self.build_constraint_from_expression(solver, expr.rhs, fixed_vars)
+            if isinstance(expr, Add):
+                con = lhs + rhs
+            elif isinstance(expr, Truediv):
+                con = lhs / rhs
+            elif isinstance(expr, Floordiv):
+                con = lhs / rhs
+            elif isinstance(expr, Mul):
+                con = lhs * rhs
+            elif isinstance(expr, Sub):
+                con = lhs - rhs
+            elif isinstance(expr, LECondition):
+                con = lhs <= rhs
+            elif isinstance(expr, LTCondition):
+                con = lhs < rhs
+            elif isinstance(expr, GECondition):
+                con = lhs >= rhs
+            elif isinstance(expr, GTCondition):
+                con = lhs > rhs
+            elif isinstance(expr, expr_and):
+                con = And(lhs, rhs)
+            return con
+        else:
+            raise Exception(f"The expression -> constraint transformation is not defined for: {expr} of type {type(expr)}.")
 
 
 def check_for_id(a, b):
     return hasattr(a, "id") and hasattr(b, "id") and a.id and b.id and a.id == b.id
 
 
-def find_operand_in_expression(operand, expr):
-    queue = [expr]
-    visited = [expr]
-
-    while queue:
-        current = queue.pop(-1)
-        if isinstance(current, UnaryOp):
-            print("Check Unary")
-            if check_for_id(current.operand, operand):
-                print("found")
-            else:
-                queue.append(current.operand)
-                visited.append(current.operand)
-        elif isinstance(current, BinaryOp):
-            print("Check Binary")
-            if check_for_id(operand, current.lhs):
-                print("Found lhs")
-            elif check_for_id(operand, current.rhs):
-                print("Found rhs")
-            else:
-                queue.append(current.lhs)
-                queue.append(current.rhs)
-                visited.append(current.lhs)
-                visited.append(current.rhs)
-
-
 if __name__ == "__main__":
     cm = ConstraintModel()
-    input = batched_image_tensor(
-        shape=(1, 3, 32, 32),
-        dtype=CategoricalParameter(choices=["int6", "int8"]),
-        name="input",
-    )
-    graph = residual_block(
-        input,
-        stride=IntScalarParameter(1, 2),
-        output_channel=IntScalarParameter(4, 512, 4),
-    )
-    graph = flatten(graph)
-    cm = ConstraintModel()
-    cm.build_model(graph)
-    inp = input.tensor_type()
-    blck = input.users[0].tensor_type()
     print()

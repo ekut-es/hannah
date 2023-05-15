@@ -1,20 +1,41 @@
-from copy import deepcopy
+#
+# Copyright (c) 2023 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import os
 import shutil
-from omegaconf import DictConfig, OmegaConf
+import traceback
+from copy import deepcopy
+
 import omegaconf
 import torch
 import torch.nn as nn
+from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.utilities.seed import reset_seed, seed_everything
+
 from hannah.callbacks.optimization import HydraOptCallback
 from hannah.nas.graph_conversion import model_to_graph
 from hannah.nas.parameters.parametrize import set_parametrization
-from hydra.utils import instantiate
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
-from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from hannah.nas.search.utils import save_graph_to_file, setup_callbacks
-
 from hannah.utils.utils import common_callbacks
+
 msglogger = logging.getLogger(__name__)
 
 
@@ -50,7 +71,9 @@ class SimpleModelTrainer:
             print("=========")
             callbacks, opt_monitor, opt_callback = setup_callbacks(config)
             try:
-                trainer = instantiate(config.trainer, callbacks=callbacks, logger=logger)
+                trainer = instantiate(
+                    config.trainer, callbacks=callbacks, logger=logger
+                )
                 module = model
                 trainer.fit(module)
                 ckpt_path = "best"
@@ -65,6 +88,8 @@ class SimpleModelTrainer:
             except Exception as e:
                 msglogger.critical("Training failed with exception")
                 msglogger.critical(str(e))
+                print(traceback.format_exc())
+
                 res = {}
                 for monitor in opt_monitor:
                     res[monitor] = float("inf")
@@ -96,11 +121,11 @@ class SimpleModelTrainer:
                 gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
 
             if gpu >= torch.cuda.device_count():
-                logger.warning(
-                        "GPU %d is not available on this device using GPU %d instead",
-                        gpu,
-                        gpu % torch.cuda.device_count(),
-                    )
+                msglogger.warning(
+                    "GPU %d is not available on this device using GPU %d instead",
+                    gpu,
+                    gpu % torch.cuda.device_count(),
+                )
                 gpu = gpu % torch.cuda.device_count()
 
             config.trainer.gpus = [gpu]
