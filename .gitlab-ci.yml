@@ -143,13 +143,10 @@ build_docs:
     paths:
       - .cache/pip
       - venv
-
   before_script:
     - python -m virtualenv venv
     - source venv/bin/activate
     - pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
-
-  allow_failure: true
   script:
     - pydoc-markdown --build --site-dir /afs/wsi/home/gerum/public_html/hannah
   tags:
