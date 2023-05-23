@@ -145,7 +145,7 @@ build_docs:
       - venv
 
   before_script:
-    - python3 -m virtualenv venv
+    - python -m virtualenv venv
     - source venv/bin/activate
     - pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
 
