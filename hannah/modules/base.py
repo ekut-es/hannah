@@ -240,6 +240,7 @@ class ClassifierModule(LightningModule, ABC):
         output_dir = "."
         quantized_model = copy.deepcopy(self.model)
         quantized_model.cpu()
+        quantized_model.train(False)
 
         if self.export_relay and export_relay:
             logging.info("Exporting relay model ...")
@@ -305,7 +306,6 @@ class ClassifierModule(LightningModule, ABC):
                 logger.log_hyperparams(self.hparams, val_metrics)
 
     def on_test_end(self) -> None:
-
         if self.trainer and self.trainer.fast_dev_run:
             return
 
