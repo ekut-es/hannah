@@ -2696,7 +2696,7 @@ class MajorBlockConfig()
 </code></pre>
 <p><a id="hannah.models.factory.factory.MajorBlockConfig.stride"></a></p>
 <h4 id="stride_1">stride</h4>
-<p>Union[None, int, Tuple[int], Tuple[int, int]]</p>
+<p>Union[None, int, Tuple[int, ...], Tuple[int, ...]]</p>
 <p><a id="hannah.models.factory.factory.MajorBlockConfig.last"></a></p>
 <h4 id="last">last</h4>
 <p>Indicates wether this block is the last reduction block</p>
@@ -2731,12 +2731,12 @@ class NetworkConfig()
 </ul>
 <p><a id="hannah.models.factory.factory.NetworkFactory.conv2d"></a></p>
 <h4 id="conv2d">conv2d</h4>
-<pre><code class="language-python">def conv2d(input_shape: Tuple[int, int, int, int],
+<pre><code class="language-python">def conv2d(input_shape: Tuple[int, ...],
            out_channels: int,
-           kernel_size: Union[int, Tuple[int]],
-           stride: Union[int, Tuple[int]] = 1,
-           padding: Union[int, Tuple[int], bool] = True,
-           dilation: int = 0,
+           kernel_size: Union[int, Tuple[int, ...]],
+           stride: Union[int, Tuple[int, ...]] = 1,
+           padding: Union[int, Tuple[int, ...], bool] = True,
+           dilation: Union[int, Tuple[int, ...]] = 0,
            groups: int = 1,
            norm: Union[BNConfig, bool] = False,
            act: Union[ActConfig, bool] = False,
@@ -2748,11 +2748,11 @@ class NetworkConfig()
   int:
   int]:</li>
 <li><code>out_channels</code> - int:</li>
-<li><code>kernel_size</code> - Union[int:</li>
-<li><code>Tuple[int]]</code> - (Default value = 1)</li>
+<li><code>kernel_size</code> - Union[int:
+  Tuple[int, ...]]: (Default value = 1)</li>
 <li><code>stride</code> - Union[int:</li>
 <li><code>padding</code> - Union[int:
-  Tuple[int]:</li>
+  Tuple[int, ...]:</li>
 <li><code>bool]</code> - (Default value = False)</li>
 <li><code>dilation</code> - int:  (Default value = 0)</li>
 <li><code>groups</code> - int:  (Default value = 1)</li>
@@ -2772,7 +2772,7 @@ class NetworkConfig()
 </ul>
 <p><a id="hannah.models.factory.factory.NetworkFactory.mbconv1d"></a></p>
 <h4 id="mbconv1d">mbconv1d</h4>
-<pre><code class="language-python">def mbconv1d(input_shape: Tuple[int, int, int],
+<pre><code class="language-python">def mbconv1d(input_shape: Tuple[int, ...],
              out_channels: int,
              kernel_size: int,
              dilation: int = 1,
@@ -2813,7 +2813,7 @@ class NetworkConfig()
 </ul>
 <p><a id="hannah.models.factory.factory.NetworkFactory.conv1d"></a></p>
 <h4 id="conv1d">conv1d</h4>
-<pre><code class="language-python">def conv1d(input_shape: Tuple[int, int, int],
+<pre><code class="language-python">def conv1d(input_shape: Tuple[int, ...],
            out_channels: int,
            kernel_size: int,
            stride: int = 1,
@@ -2823,7 +2823,7 @@ class NetworkConfig()
            groups: int = 1,
            norm: Union[BNConfig, bool] = False,
            act: Union[ActConfig, bool] = False,
-           out_quant: bool = True) -&gt; None
+           out_quant: bool = True) -&gt; Tuple[Tuple[int, ...], nn.Module]
 </code></pre>
 <p><strong>Arguments</strong>:</p>
 <ul>
@@ -2864,21 +2864,21 @@ class NetworkConfig()
 - <code>config</code> - MinorBlockConfig:</p>
 <p><a id="hannah.models.factory.factory.NetworkFactory.forward"></a></p>
 <h4 id="forward_20">forward</h4>
-<pre><code class="language-python">def forward(input_shape: Tuple[int], config: MajorBlockConfig)
+<pre><code class="language-python">def forward(input_shape: Tuple[int, ...], config: MajorBlockConfig)
 </code></pre>
 <p>Create a forward neural network block without parallelism</p>
 <p>If parallel is set to [True, False, True, False]</p>
 <p>Input: -------&gt;|---&gt; parallel: False ---&gt;  parallel: False ---&gt; | --&gt; output</p>
 <p><strong>Arguments</strong>:</p>
 <ul>
-<li><code>input_shape</code> - Tuple[int]:</li>
+<li><code>input_shape</code> - Tuple[int, ...]:</li>
 <li><code>config</code> - MajorBlockConfig:</li>
-<li><code>input_shape</code> - Tuple[int]:</li>
+<li><code>input_shape</code> - Tuple[int, ...]:</li>
 <li><code>config</code> - MajorBlockConfig:</li>
 </ul>
 <p><a id="hannah.models.factory.factory.NetworkFactory.residual"></a></p>
 <h4 id="residual">residual</h4>
-<pre><code class="language-python">def residual(input_shape: Tuple[int], config: MajorBlockConfig)
+<pre><code class="language-python">def residual(input_shape: Tuple[int, ...], config: MajorBlockConfig)
 </code></pre>
 <p>Create a neural network block with with residual parallelism</p>
 <p>If parallel is set to [True, False, True, False]
@@ -2891,9 +2891,9 @@ and one of the branches does not contain any layers, we infer
 downsampling.</p>
 <p><strong>Arguments</strong>:</p>
 <ul>
-<li><code>input_shape</code> - Tuple[int]:</li>
+<li><code>input_shape</code> - Tuple[int, ...]:</li>
 <li><code>config</code> - MajorBlockConfig:</li>
-<li><code>input_shape</code> - Tuple[int]:</li>
+<li><code>input_shape</code> - Tuple[int, ...]:</li>
 <li><code>config</code> - MajorBlockConfig:</li>
 </ul>
 <p><a id="hannah.models.factory.factory.NetworkFactory.input"></a></p>
@@ -2956,7 +2956,8 @@ Input:---&gt;|                                                         +---&gt;
 </code></pre>
 <p><a id="hannah.models.factory.factory.NetworkFactory.network"></a></p>
 <h4 id="network">network</h4>
-<pre><code class="language-python">def network(input_shape, labels: int, network_config: NetworkConfig)
+<pre><code class="language-python">def network(input_shape, labels: int, network_config: Union[ListConfig,
+                                                            DictConfig])
 </code></pre>
 <p><strong>Arguments</strong>:</p>
 <p>input_shape:
