@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
 from hydra.utils import instantiate
-from omegaconf import MISSING, OmegaConf
+from omegaconf import MISSING, DictConfig, ListConfig, OmegaConf
 from torch.nn.modules.container import Sequential
 from torch.nn.modules.linear import Identity
 
@@ -94,13 +94,13 @@ class MinorBlockConfig:
     "execute block in parallel with preceding block"
     out_channels: int = 32
     "number of output channels"
-    kernel_size: Any = 3  # Union[int, Tuple[int], Tuple[int, int]]
+    kernel_size: Any = 3  # Union[int, Tuple[int, ...], Tuple[int, ...]]
     "kernel size of this Operation (if applicable)"
-    stride: Any = 1  # Union[None, int, Tuple[int], Tuple[int, int]]
+    stride: Any = 1  # Union[None, int, Tuple[int, ...], Tuple[int, ...]]
     "stride for this operation use"
     padding: bool = True
     "use padding for this operation (padding will always try to keep input dimensions / stride)"
-    dilation: Any = 1  # Union[int, Tuple[int], Tuple[int, int]]
+    dilation: Any = 1  # Union[int, Tuple[int, ...], Tuple[int, ...]]
     "dilation factor to use for this operation"
     groups: int = 1
     "number of groups for this operation"
@@ -124,7 +124,7 @@ class MajorBlockConfig:
     target: str = "residual"
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
-    stride: Optional[int] = None  # Union[None, int, Tuple[int], Tuple[int, int]]
+    stride: Optional[int] = None  # Union[None, int, Tuple[int, ...], Tuple[int, ...]]
     last: bool = False  # Indicates wether this block is the last reduction block
 
 
@@ -173,12 +173,13 @@ class NetworkFactory:
         Returns:
 
         """
+        act_module: nn.Module
         if config.target == "relu":
             act_module = nn.ReLU()
         elif config.target == "elu":
-            act_module = nn.ELU(alpha=config.alpha)
+            act_module = nn.ELU(alpha=config.alpha)  # type: ignore
         elif config.target == "hardtanh":
-            act_module = nn.Hardtanh(min_val=config.min_val, max_val=config.max_val)
+            act_module = nn.Hardtanh(min_val=config.min_val, max_val=config.max_val)  # type: ignore
         elif config.target == "sigmoid":
             act_module = nn.Sigmoid()
         elif config.target == "tanh":
@@ -190,12 +191,12 @@ class NetworkFactory:
 
     def conv2d(
         self,
-        input_shape: Tuple[int, int, int, int],
+        input_shape: Tuple[int, ...],
         out_channels: int,
-        kernel_size: Union[int, Tuple[int]],
-        stride: Union[int, Tuple[int]] = 1,
-        padding: Union[int, Tuple[int], bool] = True,
-        dilation: int = 0,
+        kernel_size: Union[int, Tuple[int, ...]],
+        stride: Union[int, Tuple[int, ...]] = 1,
+        padding: Union[int, Tuple[int, ...], bool] = True,
+        dilation: Union[int, Tuple[int, ...]] = 0,
         groups: int = 1,
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
@@ -209,10 +210,10 @@ class NetworkFactory:
           int]:
           out_channels: int:
           kernel_size: Union[int:
-          Tuple[int]]: (Default value = 1)
+          Tuple[int, ...]]: (Default value = 1)
           stride: Union[int:
           padding: Union[int:
-          Tuple[int]:
+          Tuple[int, ...]:
           bool]: (Default value = False)
           dilation: int:  (Default value = 0)
           groups: int:  (Default value = 1)
@@ -365,7 +366,7 @@ class NetworkFactory:
 
     def mbconv1d(
         self,
-        input_shape: Tuple[int, int, int],
+        input_shape: Tuple[int, ...],
         out_channels: int,
         kernel_size: int,
         dilation: int = 1,
@@ -436,7 +437,7 @@ class NetworkFactory:
 
     def conv1d(
         self,
-        input_shape: Tuple[int, int, int],
+        input_shape: Tuple[int, ...],
         out_channels: int,
         kernel_size: int,
         stride: int = 1,
@@ -447,7 +448,7 @@ class NetworkFactory:
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
         out_quant: bool = True,
-    ) -> None:
+    ) -> Tuple[Tuple[int, ...], nn.Module]:
         """
 
         Args:
@@ -722,10 +723,10 @@ class NetworkFactory:
 
     def _build_chain(
         self,
-        input_shape: Tuple[int, int, int],
+        input_shape: Tuple[int, ...],
         block_configs: List[MinorBlockConfig],
         major_stride: Optional[Any],
-    ) -> List[Tuple[Tuple[int, int, int], Sequential]]:
+    ) -> List[Tuple[Tuple[int, ...], Sequential]]:
         """
 
         Args:
@@ -756,10 +757,10 @@ class NetworkFactory:
     def _build_reduction(
         self,
         reduction: str,
-        input_shape: Tuple[int, int, int],
-        *input_chains: List[Tuple[Tuple[int, int, int], Sequential]],
+        input_shape: Tuple[int, ...],
+        *input_chains: List[Tuple[Tuple[int, ...], Sequential]],
         reduction_quant: bool = False,
-    ) -> Tuple[Tuple[int, int, int], Union[ReductionBlockConcat, Sequential]]:
+    ) -> Tuple[Tuple[int, ...], Union[ReductionBlockConcat, Sequential]]:
         """
 
         Args:
@@ -852,7 +853,7 @@ class NetworkFactory:
         else:
             raise Exception(f"Could not find reduction: {reduction}")
 
-    def forward(self, input_shape: Tuple[int], config: MajorBlockConfig):
+    def forward(self, input_shape: Tuple[int, ...], config: MajorBlockConfig):
         """Create a forward neural network block without parallelism
 
         If parallel is set to [True, False, True, False]
@@ -860,9 +861,9 @@ class NetworkFactory:
         Input: ------->|---> parallel: False --->  parallel: False ---> | --> output
 
         Args:
-          input_shape: Tuple[int]:
+          input_shape: Tuple[int, ...]:
           config: MajorBlockConfig:
-          input_shape: Tuple[int]:
+          input_shape: Tuple[int, ...]:
           config: MajorBlockConfig:
 
         Returns:
@@ -882,7 +883,7 @@ class NetworkFactory:
 
         return output_shape, major_block
 
-    def residual(self, input_shape: Tuple[int], config: MajorBlockConfig):
+    def residual(self, input_shape: Tuple[int, ...], config: MajorBlockConfig):
         """Create a neural network block with with residual parallelism
 
         If parallel is set to [True, False, True, False]
@@ -896,9 +897,9 @@ class NetworkFactory:
         downsampling.
 
         Args:
-          input_shape: Tuple[int]:
+          input_shape: Tuple[int, ...]:
           config: MajorBlockConfig:
-          input_shape: Tuple[int]:
+          input_shape: Tuple[int, ...]:
           config: MajorBlockConfig:
 
         Returns:
@@ -1049,7 +1050,7 @@ class NetworkFactory:
         qconfig = self.default_qconfig
 
         out_shape = (input_shape[0], config.outputs)
-        layers = []
+        layers: list[nn.Module] = []
         if not qconfig:
             layers.append(nn.Linear(input_shape[1], config.outputs, bias=False))
         else:
@@ -1068,9 +1069,9 @@ class NetworkFactory:
         if act:
             layers.append(self.act(act))
 
-        layers = nn.Sequential(*layers)
+        layers_sequential = nn.Sequential(*layers)
 
-        return out_shape, layers
+        return out_shape, layers_sequential
 
     def identity(self) -> Identity:
         """ """
@@ -1083,7 +1084,9 @@ class NetworkFactory:
 
         return identity
 
-    def network(self, input_shape, labels: int, network_config: NetworkConfig):
+    def network(
+        self, input_shape, labels: int, network_config: Union[ListConfig, DictConfig]
+    ):
         """
 
         Args:
@@ -1107,8 +1110,9 @@ class NetworkFactory:
         for block in network_config.conv:
             input_shape, block_model = self.major(input_shape, block)
             conv_layers.append(block_model)
-        conv_layers = nn.Sequential(*conv_layers)
+        conv_layers_sequential = nn.Sequential(*conv_layers)
 
+        global_pooling: nn.Module
         if len(input_shape) == 3:
             if self.default_qconfig:
                 global_pooling = pooling.ApproximateGlobalAveragePooling1D(
@@ -1139,12 +1143,16 @@ class NetworkFactory:
 
         linear_layers.append(last_linear)
 
-        linear_layers = nn.Sequential(*linear_layers)
+        linear_sequential = nn.Sequential(*linear_layers)
 
         dropout = nn.Dropout(network_config.dropout)
 
         model = ConvNet(
-            conv_layers, global_pooling, linear_layers, dropout, self.default_qconfig
+            conv_layers_sequential,
+            global_pooling,
+            linear_sequential,
+            dropout,
+            self.default_qconfig,
         )
 
         return output_shape, model
