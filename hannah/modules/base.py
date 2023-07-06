@@ -169,14 +169,6 @@ class ClassifierModule(LightningModule, ABC):
     def on_train_start(self) -> None:
         super().on_train_start()
 
-        if hasattr(self, "example_input_array"):
-            input_array = self.example_input_array.clone().to(self.device)
-
-            for logger in self._logger_iterator():
-                if hasattr(logger, "log_graph"):
-                    logger.log_graph(self, input_array)
-                    pass
-
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
 

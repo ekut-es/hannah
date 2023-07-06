@@ -273,6 +273,12 @@ def common_callbacks(config: DictConfig) -> list:
             )
             callbacks.append(kmeans)
 
+        if config_compression.get("quantization", None):
+            quantization_callback = hydra.utils.instantiate(
+                config.compression.quantization
+            )
+            callbacks.append(quantization_callback)
+
     if config.get("fine_tuning", None):
         if config.fine_tuning.get("_target_", LinearClassifierTraining):
             callbacks.append(

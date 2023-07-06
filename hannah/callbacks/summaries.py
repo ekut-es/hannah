@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -289,12 +289,12 @@ def walk_model(model, dummy_input):
     for name, module in model.named_modules():
         if module != model:
             hooks += [module.register_forward_hook(collect)]
-
-    with torch.no_grad():
-        _ = model(dummy_input)
-
-    for hook in hooks:
-        hook.remove()
+    try:
+        with torch.no_grad():
+            _ = model(dummy_input)
+    finally:
+        for hook in hooks:
+            hook.remove()
 
     df = pd.DataFrame(data=data)
     return df
@@ -303,7 +303,7 @@ def walk_model(model, dummy_input):
 class MacSummaryCallback(Callback):
     """ """
 
-    def _do_summary(self, pl_module,  input = None, print_log=True):
+    def _do_summary(self, pl_module, input=None, print_log=True):
         """
 
         Args:
@@ -419,11 +419,7 @@ class MacSummaryCallback(Callback):
 
         """
         res = {}
-        try:
-            res = self._do_summary(pl_module, print_log=False)
-        except Exception as e:
-            msglogger.critical("_do_summary failed")
-            msglogger.critical(str(e))
+        res = self._do_summary(pl_module, print_log=False)
 
         for k, v in res.items():
             pl_module.log(k, float(v), rank_zero_only=True)

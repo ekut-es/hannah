@@ -67,4 +67,6 @@ This does not use any tuning but uses the predefined schedules directly.
 
 All tuner configurations are parametrizable using the following tuner configurations:
 
+All autotuning can be deactivated when setting `backend.tune = false`
+
 ### Tuner Configuration

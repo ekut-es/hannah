@@ -220,7 +220,9 @@ class TimmModel(nn.Module):
         if stem == "auto":
             logger.info("""Using default logger for automatic stem creation""")
             if input_channels != 3 or input_x < 160 or input_y < 160:
-                logger.info("Small input size detected trying to adopt small input size")
+                logger.info(
+                    "Small input size detected trying to adopt small input size"
+                )
                 if hasattr(self.encoder, "conv1"):
                     input_conv = self.encoder.conv1
                     out_channels = input_conv.out_channels
@@ -242,8 +244,6 @@ class TimmModel(nn.Module):
             logger.info("""Using default stem for pulp model""")
         else:
             logger.critical("""%s could not find stem for input element""", stem)
-        
-
 
         with torch.no_grad():
             self.encoder.eval()
