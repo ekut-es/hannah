@@ -156,9 +156,7 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.test_confusion = ConfusionMatrix(
             "multiclass", num_classes=self.num_classes
         )
-        self.test_roc = ROC(
-            "multiclass", num_classes=self.num_classes, compute_on_step=False
-        )
+        self.test_roc = ROC("multiclass", num_classes=self.num_classes)
 
         augmentation_passes = []
         if self.hparams.time_masking > 0:
