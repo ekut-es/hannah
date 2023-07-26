@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+import copy
 import logging
 import sys
 from pathlib import Path
@@ -111,6 +113,7 @@ class InferenceBackendBase(Callback):
 
         if self.val_batches > 0:
             if self.validation_epoch % self.val_frequency == 0:
+                pl_module = self.quantize(pl_module)
                 self.prepare(pl_module)
 
     def on_validation_batch_end(
@@ -169,8 +172,38 @@ class InferenceBackendBase(Callback):
         Returns:
 
         """
+        pl_module = self.quantize(pl_module)
         self.prepare(pl_module)
         self.export()
+
+    def quantize(self, pl_module: torch.nn.Module) -> torch.nn.Module:
+        """
+
+        Args:
+          pl_module: torch.nn.Module to quantize
+
+        Returns: quantized  torch.nn.Module
+
+        """
+        qconfig_mapping = getattr(pl_module, "qconfig_mapping", None)
+        if qconfig_mapping is None:
+            logger.info("No qconfig found in module, leaving module unquantized")
+            return pl_module
+
+        pl_module = copy.deepcopy(pl_module)
+        pl_module.cpu()
+
+        logger.info("Quantizing module")
+
+        example_inputs = next(iter(pl_module.train_dataloader()))[0]
+
+        model = torch.ao.quantization.quantize_fx.prepare_fx(
+            pl_module.model, qconfig_mapping, example_inputs
+        )
+        model = torch.ao.quantization.quantize_fx.convert_fx(model)
+        pl_module.model = model
+
+        return pl_module
 
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx

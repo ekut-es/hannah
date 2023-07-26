@@ -33,30 +33,36 @@ class QuantizationCallback(pl.Callback):
     def __init__(self, is_qat: bool = True, qconfig="x86"):
         super().__init__()
 
-        self.qconfig = get_default_qat_qconfig_mapping(qconfig)
+        if is_qat:
+            self.qconfig = get_default_qat_qconfig_mapping(qconfig)
+        else:
+            self.qconfig = get_default_qconfig_mapping(qconfig)
 
         self.is_qat = is_qat
 
-        if not self.is_qat:
+        if self.is_qat:
             logger.critical(
-                "Quantization is currently not supported for non-qat training"
+                "Quantization aware training will most likely not work with current tvm backend."
             )
             logger.critical("Falling back to qat training")
 
     def on_fit_start(self, trainer, pl_module):
-        device = pl_module.device
-        pl_module.cpu()
-        pl_module.eval()
-        pl_module.model = prepare_qat_fx(
-            pl_module.model, self.qconfig, pl_module.example_feature_array
-        )
-        # model is any PyTorch model
-        # pl_module.model.apply(torch.ao.quantization.disable_fake_quant)
-        # pl_module.model.apply(torch.ao.quantization.disable_observer)
-        pl_module.train()
-        pl_module.to(device)
+        if self.is_qat:
+            device = pl_module.device
+            pl_module.cpu()
+            pl_module.eval()
+            pl_module.model = prepare_qat_fx(
+                pl_module.model, self.qconfig, pl_module.example_feature_array
+            )
+            # model is any PyTorch model
+            # pl_module.model.apply(torch.ao.quantization.disable_fake_quant)
+            # pl_module.model.apply(torch.ao.quantization.disable_observer)
+            pl_module.train()
+            pl_module.to(device)
 
-        logger.info("quantized module:\n %s", pl_module.model.print_readable(False))
+            logger.info("quantized module:\n %s", pl_module.model.print_readable(False))
+
+        pl_module.qconfig_mapping = self.qconfig
 
     def on_fit_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
         pass
