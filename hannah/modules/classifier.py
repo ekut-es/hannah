@@ -129,37 +129,91 @@ class BaseStreamClassifierModule(ClassifierModule):
         # Metrics
         self.train_metrics = MetricCollection(
             {
-                "train_accuracy": Accuracy(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "train_error": Accuracy(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
+                "train_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "train_error": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
             }
         )
         self.val_metrics = MetricCollection(
             {
-                "val_accuracy": Accuracy(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "val_error": Error(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "val_recall": Recall(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "val_precision": Precision(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "val_f1": F1Score(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "val_auroc": AUROC(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
+                "val_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_error": Error(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_recall": Recall(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_precision": Precision(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_f1": F1Score(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_auroc": AUROC(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
             }
         )
         self.test_metrics = MetricCollection(
             {
-                "test_accuracy": Accuracy(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "test_error": Error(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "test_recall": Recall(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "test_precision": Precision(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "test_f1": F1Score(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
-                "test_auroc": AUROC(task=self.dataset_type, num_classes=self.num_classes, weight='macro'),
+                "test_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_error": Error(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_recall": Recall(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_precision": Precision(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_f1": F1Score(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_auroc": AUROC(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
             }
         )
 
         self.test_confusion = ConfusionMatrix(
             task=self.dataset_type, num_classes=self.num_classes
         )
-        self.test_roc = ROC(
-            task=self.dataset_type, num_classes=self.num_classes, compute_on_step=False
-        )
+        self.test_roc = ROC(task=self.dataset_type, num_classes=self.num_classes)
 
         augmentation_passes = []
         if self.hparams.time_masking > 0:

@@ -52,11 +52,11 @@ def test_error(task, predictions, labels, n, expect):
         error = Error(task)
         accuracy = Accuracy(task)
     elif task == "multiclass":
-        task_error = BinaryError(num_classes=n)
+        task_error = MulticlassError(num_classes=n)
         error = Error(task, num_classes=n)
         accuracy = Accuracy(task, num_classes=n)
     elif task == "multilabel":
-        task_error = BinaryError(num_labels=n)
+        task_error = MultilabelError(num_labels=n)
         error = Error(task, num_labels=n)
         accuracy = Accuracy(task, num_labels=n)
 
