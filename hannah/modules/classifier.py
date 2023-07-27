@@ -84,6 +84,7 @@ class BaseStreamClassifierModule(ClassifierModule):
             self.train_set, self.dev_set, self.test_set = self.get_split()
 
             self.num_classes = int(self.get_num_classes())
+            self.dataset_type = "binary" if self.num_classes == 2 else "multiclass"
 
         # Create example input
         device = self.device
@@ -128,35 +129,91 @@ class BaseStreamClassifierModule(ClassifierModule):
         # Metrics
         self.train_metrics = MetricCollection(
             {
-                "train_accuracy": Accuracy("multiclass", num_classes=self.num_classes),
-                "train_error": Accuracy("multiclass", num_classes=self.num_classes),
+                "train_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "train_error": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
             }
         )
         self.val_metrics = MetricCollection(
             {
-                "val_accuracy": Accuracy("multiclass", num_classes=self.num_classes),
-                "val_error": Error("multiclass", num_classes=self.num_classes),
-                "val_recall": Recall("multiclass", num_classes=self.num_classes),
-                "val_precision": Precision("multiclass", num_classes=self.num_classes),
-                "val_f1": F1Score("multiclass", num_classes=self.num_classes),
-                "val_auroc": AUROC("multiclass", num_classes=self.num_classes),
+                "val_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_error": Error(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_recall": Recall(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_precision": Precision(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_f1": F1Score(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_auroc": AUROC(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
             }
         )
         self.test_metrics = MetricCollection(
             {
-                "test_accuracy": Accuracy("multiclass", num_classes=self.num_classes),
-                "test_error": Error("multiclass", num_classes=self.num_classes),
-                "test_recall": Recall("multiclass", num_classes=self.num_classes),
-                "test_precision": Precision("multiclass", num_classes=self.num_classes),
-                "test_f1": F1Score("multiclass", num_classes=self.num_classes),
-                "test_auroc": AUROC("multiclass", num_classes=self.num_classes),
+                "test_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_error": Error(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_recall": Recall(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_precision": Precision(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_f1": F1Score(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_auroc": AUROC(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
             }
         )
 
         self.test_confusion = ConfusionMatrix(
-            "multiclass", num_classes=self.num_classes
+            task=self.dataset_type, num_classes=self.num_classes
         )
-        self.test_roc = ROC("multiclass", num_classes=self.num_classes)
+        self.test_roc = ROC(task=self.dataset_type, num_classes=self.num_classes)
 
         augmentation_passes = []
         if self.hparams.time_masking > 0:
@@ -186,11 +243,15 @@ class BaseStreamClassifierModule(ClassifierModule):
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
+                if self.dataset_type == "binary":
+                    out = out.argmax(dim=1)
                 metrics(out, y)
                 self.log_dict(metrics, batch_size=self.batch_size)
         else:
             try:
                 output = torch.nn.functional.softmax(output, dim=1)
+                if self.dataset_type == "binary":
+                    output = output.argmax(dim=1)
                 metrics(output, y)
                 self.log_dict(metrics, batch_size=self.batch_size)
             except ValueError as e:
