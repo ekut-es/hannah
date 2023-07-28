@@ -328,6 +328,8 @@ or directly from user</p>
 <h1 id="hannahnnquantized">hannah.nn.quantized</h1>
 <p><a id="hannah.train"></a></p>
 <h1 id="hannahtrain">hannah.train</h1>
+<p><a id="hannah.quantization.callback"></a></p>
+<h1 id="hannahquantizationcallback">hannah.quantization.callback</h1>
 <p><a id="hannah.quantization.qconfig"></a></p>
 <h1 id="hannahquantizationqconfig">hannah.quantization.qconfig</h1>
 <p><a id="hannah.quantization.rounding"></a></p>
@@ -866,6 +868,19 @@ def <strong>init</strong>(self, percentile, nan_strategy="warn", <strong>kwargs)
 <p><strong>Arguments</strong>:</p>
 <p>trainer:
   pl_module:</p>
+<p><a id="hannah.callbacks.backends.InferenceBackendBase.quantize"></a></p>
+<h4 id="quantize">quantize</h4>
+<pre><code class="language-python">def quantize(pl_module: torch.nn.Module) -&gt; torch.nn.Module
+</code></pre>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li>
+<p><code>pl_module</code> - torch.nn.Module to quantize</p>
+</li>
+<li>
+<p><code>Returns</code> - quantized  torch.nn.Module</p>
+</li>
+</ul>
 <p><a id="hannah.callbacks.backends.InferenceBackendBase.on_test_batch_end"></a></p>
 <h4 id="on_test_batch_end">on_test_batch_end</h4>
 <pre><code class="language-python">def on_test_batch_end(trainer, pl_module, outputs, batch, batch_idx,
@@ -878,6 +893,11 @@ def <strong>init</strong>(self, percentile, nan_strategy="warn", <strong>kwargs)
   batch:
   batch_idx:
   dataloader_idx:</p>
+<p><a id="hannah.callbacks.backends.InferenceBackendBase.export"></a></p>
+<h4 id="export">export</h4>
+<pre><code class="language-python">def export() -&gt; None
+</code></pre>
+<p>Export the model through the target backend</p>
 <p><a id="hannah.callbacks.backends.TorchMobileBackend"></a></p>
 <h2 id="torchmobilebackend-objects">TorchMobileBackend Objects</h2>
 <pre><code class="language-python">class TorchMobileBackend(InferenceBackendBase)
@@ -888,7 +908,10 @@ def <strong>init</strong>(self, percentile, nan_strategy="warn", <strong>kwargs)
 <pre><code class="language-python">def prepare(model)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
-<p>model:</p>
+<ul>
+<li><code>model</code> <em>torch.nn.Module</em> - nn.Module to be exported</li>
+</ul>
+<p>Returns (None)</p>
 <p><a id="hannah.callbacks.backends.TorchMobileBackend.run_batch"></a></p>
 <h4 id="run_batch_1">run_batch</h4>
 <pre><code class="language-python">def run_batch(inputs=None)
@@ -933,6 +956,7 @@ def <strong>init</strong>(self, percentile, nan_strategy="warn", <strong>kwargs)
 <ul>
 <li><code>inputs</code> - (Default value = None)</li>
 </ul>
+<p>Returns</p>
 <p><a id="hannah.callbacks.summaries"></a></p>
 <h1 id="hannahcallbackssummaries">hannah.callbacks.summaries</h1>
 <p><a id="hannah.callbacks.summaries.walk_model"></a></p>
