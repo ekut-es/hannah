@@ -53,8 +53,8 @@ class QuantizationCallback(pl.Callback):
     def __init__(
         self,
         is_qat: bool = True,
-        qconfig_mapping: Union[str, QConfigMapping] = "x86",
-        backend_config: Union[str, BackendConfig] = "x86",
+        qconfig_mapping: Union[str, QConfigMapping] = "fbgemm",
+        backend_config: Union[str, BackendConfig] = "native",
     ):
         super().__init__()
 
