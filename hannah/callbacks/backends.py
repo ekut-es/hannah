@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+import copy
 import logging
 import sys
 from pathlib import Path
@@ -42,6 +44,8 @@ except ModuleNotFoundError:
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 
+logger = logging.getLogger(__name__)
+
 
 def symbolic_batch_dim(model):
     """
@@ -63,11 +67,14 @@ def symbolic_batch_dim(model):
 class InferenceBackendBase(Callback):
     """Base class to run val and test on a backend inference engine"""
 
-    def __init__(self, val_batches=1, test_batches=1, val_frequency=10):
+    def __init__(
+        self, val_batches=1, test_batches=1, val_frequency=10, tune: bool = True
+    ):
         self.test_batches = test_batches
         self.val_batches = val_batches
         self.val_frequency = val_frequency
         self.validation_epoch = 0
+        self.tune = tune
 
     def run_batch(self, inputs=None):
         """
@@ -101,8 +108,12 @@ class InferenceBackendBase(Callback):
         Returns:
 
         """
+        if not self.tune:
+            return
+
         if self.val_batches > 0:
             if self.validation_epoch % self.val_frequency == 0:
+                pl_module = self.quantize(pl_module)
                 self.prepare(pl_module)
 
     def on_validation_batch_end(
@@ -121,6 +132,9 @@ class InferenceBackendBase(Callback):
         Returns:
 
         """
+        if not self.tune:
+            return
+
         if batch_idx < self.val_batches:
             if self.validation_epoch % self.val_frequency == 0:
                 result = self.run_batch(inputs=batch[0])
@@ -158,7 +172,38 @@ class InferenceBackendBase(Callback):
         Returns:
 
         """
+        pl_module = self.quantize(pl_module)
         self.prepare(pl_module)
+        self.export()
+
+    def quantize(self, pl_module: torch.nn.Module) -> torch.nn.Module:
+        """
+
+        Args:
+          pl_module: torch.nn.Module to quantize
+
+        Returns: quantized  torch.nn.Module
+
+        """
+        qconfig_mapping = getattr(pl_module, "qconfig_mapping", None)
+        if qconfig_mapping is None:
+            logger.info("No qconfig found in module, leaving module unquantized")
+            return pl_module
+
+        pl_module = copy.deepcopy(pl_module)
+        pl_module.cpu()
+
+        logger.info("Quantizing module")
+
+        example_inputs = next(iter(pl_module.train_dataloader()))[0]
+
+        model = torch.ao.quantization.quantize_fx.prepare_fx(
+            pl_module.model, qconfig_mapping, example_inputs
+        )
+        model = torch.ao.quantization.quantize_fx.convert_fx(model)
+        pl_module.model = model
+
+        return pl_module
 
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
@@ -176,6 +221,9 @@ class InferenceBackendBase(Callback):
         Returns:
 
         """
+        if not self.tune:
+            return
+
         if batch_idx < self.test_batches:
             result = self.run_batch(inputs=batch[0])
             target = pl_module(batch[0].to(pl_module.device))
@@ -189,6 +237,12 @@ class InferenceBackendBase(Callback):
             pl_module.log("test_backend_mse", mse)
             logging.info("test_backend_mse: %f", mse)
 
+    def export(self) -> None:
+        """
+        Export the model through the target backend
+        """
+        logger.critical("Exporting model is not implemented for this backend")
+
 
 class TorchMobileBackend(InferenceBackendBase):
     """Inference backend for torch mobile"""
@@ -200,12 +254,10 @@ class TorchMobileBackend(InferenceBackendBase):
 
     def prepare(self, model):
         """
-
         Args:
-          model:
+          model (torch.nn.Module): nn.Module to be exported
 
-        Returns:
-
+        Returns (None)
         """
         logging.info("Preparing model for target")
         self.script_module = model.to_torchscript(method="trace")
@@ -323,7 +375,7 @@ class OnnxruntimeBackend(InferenceBackendBase):
         Args:
           inputs:  (Default value = None)
 
-        Returns:
+        Returns
 
         """
         logging.info("running onnxruntime backend on batch")
