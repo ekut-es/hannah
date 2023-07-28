@@ -172,3 +172,10 @@ def test_directional(config):
 
     command_line = f"hannah-train --config-name {config} trainer.fast_dev_run=true module.batch_size=2"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
+
+
+def test_quantization():
+    command_line = (
+        "hannah-train compression=quant model=tc-res8 trainer.fast_dev_run=true"
+    )
+    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
