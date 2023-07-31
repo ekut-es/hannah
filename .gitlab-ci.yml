@@ -141,6 +141,8 @@ build_docs:
       - .cache/pip
       - venv
   before_script:
+    - apt update
+    - apt -y install git mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3
     - python -m virtualenv venv
     - source venv/bin/activate
     - pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
