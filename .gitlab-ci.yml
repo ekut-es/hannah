@@ -147,7 +147,7 @@ build_docs:
     - source venv/bin/activate
     - pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
   script:
-    - pydoc-markdown --build --site-dir /afs/wsi/home/gerum/public_html/hannah
+    - pydoc-markdown --build --site-dir public_html/
   tags:
     - docker
   only:
