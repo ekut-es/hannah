@@ -274,6 +274,6 @@ deploy to github:
 
   only:
     - main
-  script: ./scripts/git-push git@github.com:ekut-es/hannah.git main
+  script: ./scripts/git-push git@github.com:ekut-es/hannah.git $CI_COMMIT_REF_NAME
   tags:
     - docker
