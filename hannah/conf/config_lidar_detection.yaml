@@ -1,0 +1,71 @@
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+
+
+defaults:
+    - base_config
+    - override dataset: scope_lidar
+    - override features: identity
+    - override model: pv_rcnn_plus_plus
+    - override scheduler: 1cycle
+    - override optimizer: adam
+    - override normalizer: null
+    - override module: lidar_detection
+    - _self_
+
+optimizer:
+    amsgrad: False
+    betas: [0.95, 0.99]
+    eps: 1e-08
+    lr: 0.0004
+    weight_decay: 0.001
+
+scheduler:
+    div_factor: 10
+    pct_start: 0.4
+    anneal_strategy: "cos"
+    cycle_momentum: True
+    base_momentum: 0.85
+    max_momentum: 0.95
+    final_div_factor: 10000.0
+    last_epoch: -1
+
+module:
+    num_workers: 8
+    batch_size: 1
+
+trainer:
+    max_epochs: 1
+    deterministic: false
+    gradient_clip_val: 10
+    accumulate_grad_batches: 32
+
+checkpoint:
+    monitor: Car_3D_AP
+    mode: max
+    save_top_k: 1
+
+experiment_id: coop_test_run
+
+monitor:
+  metric: Car_3D_AP
+  direction: maximize
+
+skip_final_eval: true
+

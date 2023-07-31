@@ -28,6 +28,7 @@ from .classifier import (
 )
 from .object_detection import ObjectDetectionModule
 from .vision import AnomalyDetectionModule, ImageClassifierModule
+from .lidar_detection import LidarDetectionModule
 
 __all__ = [
     "AnomalyDetectionModule",
@@ -40,4 +41,5 @@ __all__ = [
     "CartesianClassifierModule",
     "DirectAngleClassifierModule",
     "SINCOSClassifierModule",
+    "LidarDetectionModule",
 ]

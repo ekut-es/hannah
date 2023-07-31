@@ -38,8 +38,8 @@
 
 #SBATCH --gres-flags=enforce-binding
 
-#SBATCH --time=720
-# the maximum time the scripts needs to run (720 minutes = 12 hours)
+#SBATCH --time=4200
+# the maximum time the scripts needs to run (4200 minutes = 70 hours)
 
 #SBATCH --error=jobs/job_%j.err
 # write the error output to job.*jobID*.err
@@ -52,6 +52,14 @@
 
 #SBATCH --mail-user=christoph.gerum@uni-tuebingen.de
 # your mail address
+
+
+
+## Number of parallel jobs per node
+N_JOBS=2
+
+## Number of total trials for hyperparameter optimization
+N_TRIALS=2
 
 
 #Script
@@ -69,13 +77,35 @@ cp /home/bringmann/cgerum05/ml_cloud.sif  $SCRATCH
 
 
 echo "Moving datasets to local scratch ${SCRATCH} ${SLURM_JOB_ID}"
-cp -r $WORK/datasets/KITTI_3D $SCRATCH
+cp -r /mnt/qb/datasets/STAGING/bringmann/datasets/dense_clear_original $SCRATCH
+cp -r /mnt/qb/datasets/STAGING/bringmann/datasets/dense_heavy_fog $SCRATCH
 
+mkdir -p $WORK/optuna_logs
 
 echo "Running training with config $1"
 date
 export HANNAH_CACHE_DIR=$SCRATCH/tmp/cache
-singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train experiment_id=lidar_test_1 +trainer.max_steps=10000 trainer.deterministic=false trainer.gpus=[0] dataset.DATA_PATH=$SCRATCH/KITTI_3D module.num_workers=4 output_dir=$WORK/trained_models
+singularity run --nv -B $SCRATCH -B $WORK -H $PWD $SCRATCH/ml_cloud.sif python3 -m hannah.train \
+        experiment_id=lidar_random_noise_heavy_fog \
+        module.augmentor.augmentations.random_noise.probability='interval(0, 1)' \
+        module.augmentor.augmentations.random_noise.max_points='interval(1, 10000)' \
+        hydra/sweeper=optuna \
+	    hydra.sweeper.study_name='lidar_random_noise_heavy_fog' \
+	    hydra.sweeper.storage=sqlite:///$WORK/optuna_logs/'lidar_random_noise_heavy_fog.sqlite' \
+        hydra.sweeper.n_jobs=$N_JOBS \
+	    hydra.sweeper.n_trials=$N_TRIALS \
+	    hydra.sweeper.sampler.multivariate=true \
+	    hydra/launcher=joblib \
+	    hydra.launcher.n_jobs=$N_JOBS \
+        trainer.max_epochs=20 \
+        trainer.deterministic=false \
+        trainer.gpus=[0] \
+        dataset.DATA_PATH=$SCRATCH/dense_clear_original \
+        dataset.VALIDATION_PATH=$SCRATCH/dense_heavy_fog \
+        module.num_workers=0 \
+        module.batch_size=6\
+        output_dir=$WORK/trained_models \
+        -m
 date
 
 echo "DONE!"

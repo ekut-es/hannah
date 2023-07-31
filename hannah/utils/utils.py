@@ -58,6 +58,7 @@ from ..callbacks.pruning import PruningAmountScheduler
 from ..callbacks.summaries import MacSummaryCallback
 from ..callbacks.svd_compress import SVD
 
+
 try:
     import lsb_release  # pytype: disable=import-error
 

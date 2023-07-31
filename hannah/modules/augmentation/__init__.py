@@ -17,3 +17,4 @@
 # limitations under the License.
 #
 from .augmentation import Augmentation
+from .lidar_augmentor import LidarAugmentor

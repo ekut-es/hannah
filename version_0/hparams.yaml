@@ -1,0 +1,380 @@
+num_workers: 8
+batch_size: 3
+optimizer:
+  _target_: torch.optim.adam.Adam
+  lr: 0.0005
+  betas:
+  - 0.9
+  - 0.999
+  eps: 1.0e-08
+  weight_decay: 0.01
+  amsgrad: false
+augmentor:
+  _target_: hannah.modules.augmentation.LidarAugmentor
+  augmentations:
+    fog:
+      enabled: false
+      metric: dist
+      prob: 1
+      sigma: 50
+      mean: 200
+    rain:
+      enabled: false
+      precipitation_sigma: 5
+      number_drops_sigma: 1
+      prob: 1
+      noise_filter_path: /media/sven/7cbad348-a2fb-46e0-9461-651039557046/noisefilter/
+    snow:
+      enabled: false
+      precipitation_sigma: 5
+      number_drops_sigma: 1
+      prob: 1
+      scale: 1
+      noise_filter_path: /media/sven/7cbad348-a2fb-46e0-9461-651039557046/noisefilter_snow/
+    random_noise:
+      enabled: false
+      sigma: 30000
+      type: uniform
+      ranges:
+      - 0
+      - 70
+      - -40
+      - 40
+      - -3
+      - 1
+      - 0
+      - 255
+    thin_out:
+      enabled: false
+      sigma: 0.001
+    random_translation:
+      enabled: false
+      sigma: 0.0
+    random_scaling:
+      enabled: false
+      sigma: 5
+      max_scale: 2
+    random_rotation:
+      enabled: false
+      sigma: 10
+    random_flip:
+      enabled: false
+      prob: 0.0
+    delete_labels_by_min_points:
+      enabled: false
+      min_points: 10
+    local_scaling:
+      enabled: false
+      max_scale: 2
+      sigma: 0
+    random_intensity_shift:
+      enabled: false
+      sigma: 1
+    universal_weather:
+      enabled: false
+      prob: 1
+      sigma: 1
+      mean: 200
+      ext_a: 1
+      ext_b: 1
+      beta_a: 1
+      beta_b: 1
+      del_a: 1
+      del_b: 1
+      int_a: 1
+      int_b: 1
+      mean_int: 1
+      int_range: 1
+dataset:
+  DATASET: KittiDataset
+  DATA_PATH: /home/sven/projects/hannah/datasets/kitti/
+  VALIDATION_PATH: /home/sven/projects/hannah/datasets/kitti/
+  CLASS_NAMES:
+  - Car
+  POINT_CLOUD_RANGE:
+  - 0
+  - -40
+  - -3
+  - 70.4
+  - 40
+  - 1
+  DATA_SPLIT:
+    train: train
+    test: val
+  INFO_PATH:
+    train:
+    - kitti_infos_train.pkl
+    test:
+    - kitti_infos_val.pkl
+  GET_ITEM_LIST:
+  - points
+  FOV_POINTS_ONLY: true
+  DATA_AUGMENTOR:
+    DISABLE_AUG_LIST:
+    - placeholder
+    AUG_CONFIG_LIST:
+    - NAME: gt_sampling
+      USE_ROAD_PLANE: false
+      DB_INFO_PATH:
+      - kitti_dbinfos_train.pkl
+      PREPARE:
+        filter_by_min_points:
+        - Car:5
+        - Pedestrian:5
+        - Cyclist:5
+        filter_by_difficulty:
+        - -1
+      SAMPLE_GROUPS:
+      - Car:15
+      - Pedestrian:15
+      - Cyclist:15
+      NUM_POINT_FEATURES: 4
+      DATABASE_WITH_FAKELIDAR: false
+      REMOVE_EXTRA_WIDTH:
+      - 0.0
+      - 0.0
+      - 0.0
+      LIMIT_WHOLE_SCENE: false
+    - NAME: random_world_flip
+      ALONG_AXIS_LIST:
+      - x
+    - NAME: random_world_rotation
+      WORLD_ROT_ANGLE: 0.78539816
+    - NAME: random_world_scaling
+      WORLD_SCALE_RANGE:
+      - 0.95
+      - 1.05
+  POINT_FEATURE_ENCODING:
+    encoding_type: absolute_coordinates_encoding
+    used_feature_list:
+    - x
+    - 'y'
+    - z
+    - intensity
+    src_feature_list:
+    - x
+    - 'y'
+    - z
+    - intensity
+  DATA_PROCESSOR:
+  - NAME: mask_points_and_boxes_outside_range
+    REMOVE_OUTSIDE_BOXES: true
+  - NAME: shuffle_points
+    SHUFFLE_ENABLED:
+      train: true
+      test: false
+  - NAME: transform_points_to_voxels
+    VOXEL_SIZE:
+    - 0.05
+    - 0.05
+    - 0.1
+    MAX_POINTS_PER_VOXEL: 5
+    MAX_NUMBER_OF_VOXELS:
+      train: 16000
+      test: 40000
+model:
+  MODEL:
+    NAME: VoxelRCNN
+    VFE:
+      NAME: MeanVFE
+    BACKBONE_3D:
+      NAME: VoxelBackBone8x
+    MAP_TO_BEV:
+      NAME: HeightCompression
+      NUM_BEV_FEATURES: 256
+    BACKBONE_2D:
+      NAME: BaseBEVBackbone
+      LAYER_NUMS:
+      - 5
+      - 5
+      LAYER_STRIDES:
+      - 1
+      - 2
+      NUM_FILTERS:
+      - 64
+      - 128
+      UPSAMPLE_STRIDES:
+      - 1
+      - 2
+      NUM_UPSAMPLE_FILTERS:
+      - 128
+      - 128
+    DENSE_HEAD:
+      NAME: AnchorHeadSingle
+      CLASS_AGNOSTIC: false
+      USE_DIRECTION_CLASSIFIER: true
+      DIR_OFFSET: 0.78539
+      DIR_LIMIT_OFFSET: 0.0
+      NUM_DIR_BINS: 2
+      ANCHOR_GENERATOR_CONFIG:
+      - class_name: Car
+        anchor_sizes:
+        - - 4.27
+          - 1.84
+          - 1.55
+        anchor_rotations:
+        - 0
+        - 1.57
+        anchor_bottom_heights:
+        - -2.0
+        align_center: false
+        feature_map_stride: 8
+        matched_threshold: 0.5
+        unmatched_threshold: 0.35
+      TARGET_ASSIGNER_CONFIG:
+        NAME: AxisAlignedTargetAssigner
+        POS_FRACTION: -1.0
+        SAMPLE_SIZE: 512
+        NORM_BY_NUM_EXAMPLES: false
+        MATCH_HEIGHT: false
+        BOX_CODER: ResidualCoder
+      LOSS_CONFIG:
+        LOSS_WEIGHTS:
+          cls_weight: 1.0
+          loc_weight: 2.0
+          dir_weight: 0.2
+          code_weights:
+          - 1.0
+          - 1.0
+          - 1.0
+          - 1.0
+          - 1.0
+          - 1.0
+          - 1.0
+    ROI_HEAD:
+      NAME: VoxelRCNNHead
+      CLASS_AGNOSTIC: true
+      SHARED_FC:
+      - 256
+      - 256
+      CLS_FC:
+      - 256
+      - 256
+      REG_FC:
+      - 256
+      - 256
+      DP_RATIO: 0.3
+      NMS_CONFIG:
+        TRAIN:
+          NMS_TYPE: nms_gpu
+          MULTI_CLASSES_NMS: false
+          NMS_PRE_MAXSIZE: 9000
+          NMS_POST_MAXSIZE: 512
+          NMS_THRESH: 0.8
+        TEST:
+          NMS_TYPE: nms_gpu
+          MULTI_CLASSES_NMS: false
+          USE_FAST_NMS: false
+          SCORE_THRESH: 0.0
+          NMS_PRE_MAXSIZE: 2048
+          NMS_POST_MAXSIZE: 100
+          NMS_THRESH: 0.7
+      ROI_GRID_POOL:
+        FEATURES_SOURCE:
+        - x_conv2
+        - x_conv3
+        - x_conv4
+        PRE_MLP: true
+        GRID_SIZE: 6
+        POOL_LAYERS:
+          x_conv2:
+            MLPS:
+            - - 32
+              - 32
+            QUERY_RANGES:
+            - - 4
+              - 4
+              - 4
+            POOL_RADIUS:
+            - 0.4
+            NSAMPLE:
+            - 16
+            POOL_METHOD: max_pool
+          x_conv3:
+            MLPS:
+            - - 32
+              - 32
+            QUERY_RANGES:
+            - - 4
+              - 4
+              - 4
+            POOL_RADIUS:
+            - 0.8
+            NSAMPLE:
+            - 16
+            POOL_METHOD: max_pool
+          x_conv4:
+            MLPS:
+            - - 32
+              - 32
+            QUERY_RANGES:
+            - - 4
+              - 4
+              - 4
+            POOL_RADIUS:
+            - 1.6
+            NSAMPLE:
+            - 16
+            POOL_METHOD: max_pool
+      TARGET_CONFIG:
+        BOX_CODER: ResidualCoder
+        ROI_PER_IMAGE: 128
+        FG_RATIO: 0.5
+        SAMPLE_ROI_BY_EACH_CLASS: true
+        CLS_SCORE_TYPE: roi_iou
+        CLS_FG_THRESH: 0.75
+        CLS_BG_THRESH: 0.25
+        CLS_BG_THRESH_LO: 0.1
+        HARD_BG_RATIO: 0.8
+        REG_FG_THRESH: 0.55
+      LOSS_CONFIG:
+        CLS_LOSS: BinaryCrossEntropy
+        REG_LOSS: smooth-l1
+        CORNER_LOSS_REGULARIZATION: true
+        GRID_3D_IOU_LOSS: false
+        LOSS_WEIGHTS:
+          rcnn_cls_weight: 1.0
+          rcnn_reg_weight: 1.0
+          rcnn_corner_weight: 1.0
+          rcnn_iou3d_weight: 1.0
+          code_weights:
+          - 1.0
+          - 1.0
+          - 1.0
+          - 1.0
+          - 1.0
+          - 1.0
+          - 1.0
+    POST_PROCESSING:
+      RECALL_THRESH_LIST:
+      - 0.3
+      - 0.5
+      - 0.7
+      SCORE_THRESH: 0.3
+      OUTPUT_RAW_SCORE: false
+      EVAL_METRIC: kitti
+      NMS_CONFIG:
+        MULTI_CLASSES_NMS: false
+        NMS_TYPE: nms_gpu
+        NMS_THRESH: 0.1
+        NMS_PRE_MAXSIZE: 4096
+        NMS_POST_MAXSIZE: 500
+  name: voxel_rcnn
+features:
+  _target_: hannah.features.RawFeatures
+augmentation: null
+scheduler:
+  _target_: torch.optim.lr_scheduler.OneCycleLR
+  max_lr: 0.0005
+  pct_start: 0.4
+  anneal_strategy: cos
+  cycle_momentum: true
+  base_momentum: 0.85
+  max_momentum: 0.95
+  div_factor: 10
+  final_div_factor: 10000.0
+  last_epoch: -1
+normalizer: null
+gpus:
+- 0
+unlabeled_data: null

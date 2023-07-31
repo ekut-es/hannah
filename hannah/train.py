@@ -184,7 +184,7 @@ def train(
         else:
             ckpt_path = "best"
 
-        if not lit_trainer.fast_dev_run:
+        if not (lit_trainer.fast_dev_run or config.get('skip_final_eval', False)):
             reset_seed()
             lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
 

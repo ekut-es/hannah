@@ -21,17 +21,17 @@ import logging
 import hydra
 from omegaconf import DictConfig
 
-from .. import conf  # noqa
-from ..logo import print_logo
+from hannah import conf  # noqa
+from hannah.logo import print_logo
 
 
-@hydra.main(config_name="config", config_path="../conf", version_base="1.2")
+@hydra.main(config_name="config_lidar_detection", config_path="../conf", version_base="1.2")
 def main(config: DictConfig):
 
     print_logo()
     # Lazily Imported to get quicker tab completion
-    from ..train import handle_dataset, nas, train
-    from ..utils.utils import log_execution_env_state
+    from hannah.train import handle_dataset, nas, train
+    from hannah.utils.utils import log_execution_env_state
 
     logging.captureWarnings(True)
     try:

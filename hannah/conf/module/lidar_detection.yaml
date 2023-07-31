@@ -1,0 +1,85 @@
+_target_: hannah.modules.LidarDetectionModule
+num_workers: 8
+batch_size: 3
+augmentor:
+    _target_: hannah.modules.augmentation.LidarAugmentor
+    augmentations:
+        fog:
+            enabled: false
+            metric: 'dist'
+            prob: 1
+            sigma: 50
+            mean: 200
+
+        rain:
+            enabled: false
+            precipitation_sigma: 5
+            number_drops_sigma: 1
+            prob: 1
+            noise_filter_path: '/media/sven/7cbad348-a2fb-46e0-9461-651039557046/noisefilter/'
+
+        snow:
+            enabled: false
+            precipitation_sigma: 5
+            number_drops_sigma: 1
+            prob: 1
+            scale: 1
+            noise_filter_path: '/media/sven/7cbad348-a2fb-46e0-9461-651039557046/noisefilter_snow/'
+
+        random_noise:
+            enabled: false
+            sigma: 30000
+            type: 'uniform'
+            ranges: [0, 70, -40, 40, -3, 1, 0, 255]
+
+        thin_out:
+            enabled: false
+            sigma: 0.001
+
+        random_scaling:
+            enabled: false
+            sigma: 0.05
+            max_scale: 2
+
+        random_rotation:
+            enabled: false
+            sigma: 5
+
+        random_translation:
+            enabled: false
+            sigma: 1.0
+
+        random_flip:
+            enabled: false
+            prob: 0.0
+
+        delete_labels_by_min_points:
+            enabled: false
+            min_points: 10
+
+        local_scaling:
+            enabled: false
+            max_scale: 2
+            sigma: 0
+
+        random_intensity_shift:
+            enabled: false
+            sigma: 1
+
+        universal_weather:
+            enabled: false
+            prob: 1
+            sigma: 1
+            mean: 200
+            ext_a: 1
+            ext_b: 1
+            beta_a: 1
+            beta_b: 1
+            del_a: 1
+            del_b: 1
+            int_a: 1
+            int_b: 1
+            mean_int: 1
+            int_range: 1
+
+

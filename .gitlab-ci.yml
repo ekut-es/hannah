@@ -105,9 +105,9 @@ test_python_310:
   tags:
     - docker
   interruptible: true
-  artifacts:
-    reports:
-      cobertura: coverage.xml
+  #artifacts:
+  #  reports:
+  #    cobertura: coverage.xml
   dependencies: []
   cache:
     paths:
@@ -180,7 +180,7 @@ run_ml_cloud_progressive_shrinking:
   dependencies: []
 
 run_ml_cloud_lidar:
-  stage: run
+  stage: build
   image: ubuntu:latest
   before_script:
     - apt update
@@ -194,7 +194,7 @@ run_ml_cloud_lidar:
     - docker
   script:
     - set -e
-    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
+    - tar cvzf hannah.tar.gz hannah/ scripts/ 
     - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
     - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
