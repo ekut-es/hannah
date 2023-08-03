@@ -16,14 +16,5 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-defaults:
-  - sensor: naneye
-cls: hannah.datasets.vision.DresdenCapsuleDataset
-data_folder: ${hydra:runtime.cwd}/datasets/
-download_folder: MISSING
-dataset: dresden_capsule
-sampler: random
-weighted_loss: false
-
-task: section
-split: split_0
+name: naneye-m
+resolution: [320,320]

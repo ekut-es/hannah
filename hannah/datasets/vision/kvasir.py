@@ -23,10 +23,8 @@ import pathlib
 import re
 import tarfile
 from collections import Counter, defaultdict, namedtuple
-from typing import Dict, List
 
 import albumentations as A
-import cv2
 import numpy as np
 import pandas as pd
 import requests
@@ -255,12 +253,14 @@ class KvasirCapsuleDataset(ImageDatasetBase):
             val_labels = relable_anomaly(val_labels)
             test_labels = relable_anomaly(test_labels)
 
+        transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
         return (
             cls(
                 train_images,
                 train_labels,
                 classes,
                 split0_bbox,
+                transform=transform,
             ),
             cls(
                 val_images,

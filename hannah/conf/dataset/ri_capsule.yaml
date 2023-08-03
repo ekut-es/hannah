@@ -16,6 +16,8 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
+defaults:
+  - sensor: naneye
 cls: hannah.datasets.vision.RICapsuleDataset
 data_folder: ${hydra:runtime.cwd}/datasets/
 download_folder: MISSING
@@ -23,5 +25,4 @@ dataset: ri_capsule
 val_percent: 0.1
 sampler: random
 weighted_loss: false
-
 split: official

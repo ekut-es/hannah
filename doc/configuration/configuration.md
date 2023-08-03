@@ -133,6 +133,8 @@ data_split
 downsample
 : samplerate DESTRUCTIVE! change the samplerate of the real files to the target samplerate.  Use better parameter samplingrate
 
+sensor
+: `resolution` can be adjusted for resizing of images (currently only for vision capsule datasets).
 #### variants
 variants for `kws`
 - v1, v2

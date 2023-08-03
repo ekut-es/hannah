@@ -30,6 +30,8 @@ import shutil
 import numpy as np
 import pandas as pd
 import torchvision
+from albumentations.pytorch import ToTensorV2
+import albumentations as A
 import tqdm
 
 from .base import ImageDatasetBase
@@ -66,7 +68,8 @@ class DresdenCapsuleDataset(ImageDatasetBase):
         X_val, y_val, labels = prepare_data(study_folder, val_data)
         X_test, y_test, labels = prepare_data(study_folder, test_data)
 
-        train_set = cls(X_train, y_train, labels)
+        transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
+        train_set = cls(X_train, y_train, labels, transform=transform)
         val_set = cls(X_val, y_val, labels)
         test_set = cls(X_test, y_test, labels)
 

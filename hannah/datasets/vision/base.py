@@ -20,8 +20,8 @@ import logging
 import re
 import tarfile
 from collections import Counter, namedtuple
-from typing import Dict, List
-
+from typing import Dict, List, Optional
+from omegaconf import DictConfig
 import albumentations as A
 import cv2
 import numpy as np
@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 class VisionDatasetBase(AbstractDataset):
     def __init__(self, config):
         self.config = config
+        self._resolution = [224, 224]
 
     @property
     def std(self):
@@ -51,7 +52,7 @@ class VisionDatasetBase(AbstractDataset):
 
     @property
     def resolution(self):
-        return [224, 224]
+        return self._resolution
 
 
 class TorchvisionDatasetBase(VisionDatasetBase):
