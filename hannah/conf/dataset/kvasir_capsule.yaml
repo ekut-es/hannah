@@ -16,6 +16,8 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
+defaults:
+  - sensor: naneye
 cls: hannah.datasets.vision.KvasirCapsuleDataset
 data_folder: ${hydra:runtime.cwd}/datasets/
 dataset: kvasir_capsule
@@ -24,3 +26,6 @@ sampler: random
 weighted_loss: false
 anomaly: false
 split: official
+
+sensor:
+  resolution: [336,336]

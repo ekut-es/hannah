@@ -32,6 +32,8 @@ import torchvision
 import tqdm
 
 from .base import ImageDatasetBase
+from albumentations.pytorch import ToTensorV2
+import albumentations as A
 
 BASE_PATH = pathlib.Path(__file__).parent
 DATA_PATH = BASE_PATH / "ri_data"
@@ -145,7 +147,8 @@ class RICapsuleDataset(ImageDatasetBase):
         )
         X_test, y_test = read_official_test(study_folder, DATA_PATH / "path_test.csv")
 
-        train_set = cls(X_train, y_train, list(LABELS.keys()))
+        transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
+        train_set = cls(X_train, y_train, list(LABELS.keys()), transform=transform)
         val_set = cls(X_val, y_val, list(LABELS.keys()))
         test_set = cls(X_test, y_test, list(LABELS.keys()))
 
