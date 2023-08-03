@@ -18,6 +18,8 @@ limitations under the License.
 -->
 # Development Guidelines
 
+The main development repository is available at: https://es-git.cs.uni-tuebingen.de/es/ai/hannah/hannah
+
 ## Code Style
 
 This project uses pre commit hooks for auto formatting and static code analysis.
@@ -71,3 +73,16 @@ poetry lock --no-update
 ```
 
 Try to avoid running `poetry update` on feature branches.
+
+
+## Branching
+
+We apply the following code branch naming convention. 
+
+
+- `main`: main development branch should be as stable as possible
+- `f/*`: feature branches, development branches (will be squash merged after review, and successful passing of merge request pipeline)
+- `fix/*` bug fix branches, branches containing little self contained bug fixes for existing features (feel free to merge without code review, if you can reasonably assume that they are not breaking anything that is not already broken)
+- `pub/*`: publication branches, branches containing the version corresponding to a specific, full branch name should contain abbreviation of publication and publication year. 
+
+Publication branches and main branch are automatically mirrored to the public github repository: https://github.com/ekut-es/hannah
