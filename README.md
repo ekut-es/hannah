@@ -211,7 +211,7 @@ All experiments are logged to tensorboard: To visualize the results use:
 
 or a subdirectory of trained models if only one experiment or model is of interest.
 
-## Pre commit hooks
+# Pre commit hooks
 
 This project uses precommit hooks for auto formatting and static code analysis.
 To enable precommit hooks run the following command in a `poetry shell`.
@@ -220,4 +220,10 @@ To enable precommit hooks run the following command in a `poetry shell`.
 
 Try to follow [pep8](https://pep8.org/#naming-conventions) naming conventions and the rest of pep8 to the
 best of your abilities.
+
+# Automatic Mirroring
+
+This project automatically mirrors its *main* branch and all branches prefixed with *pub/* to its public github repository. 
+
+These branches are configured as protected branches by default. 
 
