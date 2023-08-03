@@ -106,6 +106,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#resolving-merge-conflicts-in-poetrylock">Resolving merge conflicts in poetry.lock</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#branching">Branching</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
@@ -158,6 +160,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <h1 id="development-guidelines">Development Guidelines</h1>
+<p>The main development repository is available at: https://es-git.cs.uni-tuebingen.de/es/ai/hannah/hannah</p>
 <h2 id="code-style">Code Style</h2>
 <p>This project uses pre commit hooks for auto formatting and static code analysis.
 To enable pre commit hooks run the following command in a <code>poetry shell</code>.</p>
@@ -191,6 +194,15 @@ logger.debug()
 poetry lock --no-update
 </code></pre>
 <p>Try to avoid running <code>poetry update</code> on feature branches.</p>
+<h2 id="branching">Branching</h2>
+<p>We apply the following code branch naming convention. </p>
+<ul>
+<li><code>main</code>: main development branch should be as stable as possible</li>
+<li><code>f/*</code>: feature branches, development branches (will be squash merged after review, and successful passing of merge request pipeline)</li>
+<li><code>fix/*</code> bug fix branches, branches containing little self contained bug fixes for existing features (feel free to merge without code review, if you can reasonably assume that they are not breaking anything that is not already broken)</li>
+<li><code>pub/*</code>: publication branches, branches containing the version corresponding to a specific, full branch name should contain abbreviation of publication and publication year. </li>
+</ul>
+<p>Publication branches and main branch are automatically mirrored to the public github repository: https://github.com/ekut-es/hannah</p>
               
             </div>
           </div><footer>
