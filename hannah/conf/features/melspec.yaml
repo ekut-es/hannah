@@ -18,6 +18,11 @@
 ##
 
 
+# @package _group_
+
+defaults:
+  - window_fn: hann
+
 _target_: torchaudio.transforms.MelSpectrogram
 sample_rate: 16000
 n_fft: 400
@@ -29,7 +34,3 @@ pad: 0
 n_mels: 128
 power: 2.0
 normalized: False
-
-#TODO:
-#window_fn: Callable[[...], torch.Tensor] = <built-in method hann_window of type object>
-#wkwargs: Optional[dict] = None
