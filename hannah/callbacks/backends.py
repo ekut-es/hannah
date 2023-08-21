@@ -221,9 +221,6 @@ class InferenceBackendBase(Callback):
         Returns:
 
         """
-        if not self.tune:
-            return
-
         if batch_idx < self.test_batches:
             result = self.run_batch(inputs=batch[0])
             target = pl_module(batch[0].to(pl_module.device))
