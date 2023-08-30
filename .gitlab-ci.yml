@@ -44,6 +44,7 @@ before_script:
 
   # install and manage dependencies with poetry
   - poetry install -E vision
+  - poetry config installer.max-workers 10
 
   # Show limits
   - ulimit -a
@@ -55,6 +56,7 @@ test_prebuilt_docker:
     - export POETRY_HOME=/root/.local
     - export PATH=${POETRY_HOME}/bin:${PATH}
     - poetry install -E vision
+    - poetry config installer.max-workers 10
     - ulimit -a
   script:
     - set -e
@@ -89,6 +91,7 @@ test_tvm:
   script:
     - set -e
     - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
+    - poetry config installer.max-workers 10
     - poetry run external/hannah-tvm/scripts/install_full.sh
     - poetry install -E tvm -E vision
     - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test --integration
@@ -226,6 +229,7 @@ run_sca:
   before_script:
     - export POETRY_HOME=/root/.local
     - export PATH=${POETRY_HOME}/bin:${PATH}
+    - poetry config installer.max-workers 10
     - poetry install -E vision
     - ulimit -a
   script:
