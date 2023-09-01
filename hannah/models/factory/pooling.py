@@ -35,7 +35,11 @@ class ApproximateGlobalAveragePooling1D(nn.Module):
         # FIXME: Pass correct scale factor for prequantize
         if qconfig:
             self.activation_post_process = qconfig.activation()
-            self.prequantize = qconfig.accumulator()
+            self.prequantize = (
+                qconfig.accumulator()
+                if hasattr(qconfig, "accumulator")
+                else nn.Identity()
+            )
 
     def forward(self, x):
         """
