@@ -1,0 +1,76 @@
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+
+
+# This is the cnn model used in the paper
+# Farrokh Manzouri, et al. "A comparison of Energy Efficient Seizure Detectors for Implantable Neurostimulation Devices"
+
+_target_: hannah.models.factory.factory.create_cnn
+name: manzouri-cnn
+norm:
+  target: bn
+act:
+  target: relu
+qconfig:
+  _target_: hannah.models.factory.qconfig.get_trax_qat_qconfig
+  config:
+    bw_b: 8
+    bw_w: 8
+    bw_f: 8
+    power_of_2: false  # Use power of two quantization for weights
+    noise_prob: 0.8   # Probability of quantizing a value during training
+conv:
+  - target: forward
+    stride: 1
+    blocks:
+      - target: conv1d
+        kernel_size: 25
+        padding: false
+        act: true
+        norm: true
+        bias: false
+        out_channels: 15
+  - target: forward
+    stride: 4
+    blocks:
+      - target: max_pool1d
+        kernel_size: 4
+        padding: false
+      - target: conv1d
+        kernel_size: 11
+        padding: false
+        act: true
+        norm: true
+        bias: false
+        out_channels: 15
+
+  - target: forward
+    stride: 1
+    blocks:
+      - target: max_pool1d
+        kernel_size: 4
+        stride: 4
+        padding: false
+      - target: conv1d
+        kernel_size: 11
+        padding: false
+        act: true
+        norm: true
+        bias: false
+        out_channels: 10
