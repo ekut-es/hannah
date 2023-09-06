@@ -79,7 +79,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.initialized = True
 
         if self.hparams.dataset is not None:
-
             # trainset needed to set values in hparams
             self.train_set, self.dev_set, self.test_set = self.get_split()
 
@@ -239,7 +238,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         pass
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
-
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
@@ -261,10 +259,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
-        if len(batch) == 4:
-            x, x_length, y, y_length = batch
-        elif len(batch) == 2:
-            x, y = batch
+        x, x_lenght, y, y_lenght = self._decode_batch(batch)
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
@@ -284,12 +279,8 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     # VALIDATION CODE
     def validation_step(self, batch, batch_idx):
-
         # dataloader provides these four entries per batch
-        if len(batch) == 4:
-            x, x_length, y, y_length = batch
-        elif len(batch) == 2:
-            x, y = batch
+        x, x_length, y, y_length = self._decode_batch(batch)
 
         # INFERENCE
         output = self(x)
@@ -300,6 +291,16 @@ class BaseStreamClassifierModule(ClassifierModule):
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.val_metrics, "val")
         return loss
+
+    def _decode_batch(self, batch):
+        if len(batch) == 4:
+            x, x_length, y, y_length = batch
+        elif len(batch) == 2:
+            x, y = batch
+            x_length = torch.ones_like(x)
+            y_length = torch.ones_like(y)
+
+        return x, x_length, y, y_length
 
     @abstractmethod
     def val_dataloader(self):
@@ -319,9 +320,8 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     # TEST CODE
     def test_step(self, batch, batch_idx):
-
         # dataloader provides these four entries per batch
-        x, x_length, y, y_length = batch
+        x, x_length, y, y_length = self._decode_batch(batch)
 
         output = self(x)
         y = y.view(-1)

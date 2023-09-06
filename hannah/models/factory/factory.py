@@ -189,6 +189,35 @@ class NetworkFactory:
 
         return act_module
 
+    def max_pool1d(
+        self,
+        input_shape: Tuple[int, ...],
+        kernel_size: int,
+        stride: Union[int, Tuple[int, ...]] = 1,
+        padding: Union[int, Tuple[int, ...], bool] = True,
+        dilation: Union[int, Tuple[int, ...]] = 1,
+        norm: Union[BNConfig, bool] = False,
+        act: Union[ActConfig, bool] = False,
+        bias: bool = False,
+    ) -> Tuple[Tuple[int, ...], nn.Module]:
+        in_channels = input_shape[1]
+        in_len = input_shape[2]
+        output_shape = (
+            input_shape[0],
+            in_channels,
+            self._calc_spatial_dim(in_len, kernel_size, stride, padding, dilation),
+        )
+
+        if padding is True:
+            # Calculate full padding
+            padding = self._padding(kernel_size, stride, dilation)
+        if padding is False:
+            padding = 0
+
+        return output_shape, nn.MaxPool1d(
+            kernel_size, stride=stride, padding=padding, dilation=dilation
+        )
+
     def conv2d(
         self,
         input_shape: Tuple[int, ...],
@@ -672,13 +701,26 @@ class NetworkFactory:
                 bias=config.bias,
             )
         elif config.target == "max_pool1d":
-            raise NotImplementedError(
-                "Minor block config max_pool1d has not been implemented yet"
+            return self.max_pool1d(
+                input_shape,
+                kernel_size=config.kernel_size,
+                padding=config.padding,
+                stride=config.stride,
+                act=config.act,
+                norm=config.norm,
             )
+
         elif config.target == "max_pool2d":
-            raise NotImplementedError(
-                "Minor block config max_pool2d has not been implemented yet"
+            return self.max_pool2d(
+                input_shape,
+                config.out_channels,
+                kernel_size=config.kernel_size,
+                padding=config.padding,
+                stride=config.stride,
+                act=config.act,
+                norm=config.norm,
             )
+
         elif config.target == "avg_pool1d":
             raise NotImplementedError(
                 "Minor block config avg_pool1d has not been implemented yet"
@@ -923,7 +965,6 @@ class NetworkFactory:
                 # If skip connection is empty, use forward block
                 return self.forward(input_shape, config)
             else:
-
                 residual_configs.append(
                     MinorBlockConfig(
                         target=main_configs[-1].target,
@@ -1255,5 +1296,7 @@ def create_cnn(
         ),
     )
     output_shape, model = factory.network(input_shape, labels, structured_config)
+
+    print(model)
 
     return model
