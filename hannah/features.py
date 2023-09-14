@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,9 +23,32 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchaudio
 from torch import Tensor
 from torch.nn.modules.utils import _single
 from torchaudio import functional as Ftorchaudio
+
+
+class MFCC(torchaudio.transforms.MFCC):
+    """A simple wrapper around torchaudio mfcc, but melkwargs are given as direct named arguments instead of a dictionary"""
+
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        n_mfcc: int = 40,
+        dct_type: int = 2,
+        norm: str = "ortho",
+        log_mels: bool = False,
+        **melkwargs
+    ):
+        super().__init__(
+            sample_rate=sample_rate,
+            n_mfcc=n_mfcc,
+            dct_type=dct_type,
+            norm=norm,
+            log_mels=log_mels,
+            melkwargs=melkwargs,
+        )
 
 
 # Mirco Ravanelli, Yoshua Bengio, “Speaker Recognition from raw waveform with SincNet” Arxiv
@@ -265,6 +288,36 @@ class SincConvFFT(nn.Module):
         sinc_test_features = sinc_test_features.div(sinc_test_features.max())
 
         return sinc_test_features
+
+
+class PhaseSpectrogram(torch.nn.Module):
+    def __init__(self, n_fft, win_length, hop_length):
+        super().__init__()
+
+        self.n_fft = n_fft
+
+        self.win_length = win_length
+        self.hop_length = hop_length
+
+    def forward(self, samples):
+
+        channels = list()
+
+        for channel_nr in range(samples.shape[1]):
+            stft = torch.stft(
+                samples[:, channel_nr, :],
+                center=False,
+                n_fft=self.n_fft,
+                win_length=self.win_length,
+                hop_length=self.hop_length,
+                return_complex=True,
+            )
+            channel_angle = torch.angle(stft)
+            channels += [channel_angle]
+
+        data = torch.stack(channels, dim=1)
+
+        return data
 
 
 class LogSpectrogram(torch.nn.Module):

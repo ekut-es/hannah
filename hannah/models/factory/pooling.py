@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,10 +31,28 @@ class ApproximateGlobalAveragePooling1D(nn.Module):
         self.size = size
         self.divisor = next_power_of2(size)
         self.qconfig = qconfig
+
+        # FIXME: Pass correct scale factor for prequantize
         if qconfig:
             self.activation_post_process = qconfig.activation()
+            self.prequantize = (
+                qconfig.accumulator()
+                if hasattr(qconfig, "accumulator")
+                else nn.Identity()
+            )
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
+        if hasattr(self, "prequantize"):
+            x = self.prequantize(x)
+
         x = torch.sum(x, dim=2, keepdim=True)
         x = x / self.divisor
 
@@ -57,6 +75,14 @@ class ApproximateGlobalAveragePooling2D(nn.Module):
             self.activation_post_process = qconfig.activation()
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = torch.sum(x, dim=[2, 3], keepdim=True)
         x = x / self.divisor
 

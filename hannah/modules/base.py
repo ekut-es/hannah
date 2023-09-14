@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,24 +22,31 @@ import logging
 import math
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar, Union
 
 import tabulate
 import torch
+import torch.nn as nn
 import torch.utils.data as data
 import torchvision
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 from PIL import Image
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.loggers import LightningLoggerBase, TensorBoardLogger
+from pytorch_lightning.loggers import Logger, TensorBoardLogger
 from pytorch_lightning.trainer.supporters import CombinedLoader
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from torchmetrics import MetricCollection
+from torchmetrics import AUROC, MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils.utils import fullname
 from .metrics import plot_confusion_matrix
+
+try:
+    from hannah_tvm.backend import export_relay
+except ModuleNotFoundError:
+    export_relay = None
+
 
 msglogger: logging.Logger = logging.getLogger(__name__)
 
@@ -48,7 +55,7 @@ class ClassifierModule(LightningModule, ABC):
     def __init__(
         self,
         dataset: DictConfig,
-        model: DictConfig,
+        model: Union[DictConfig, nn.Module],
         optimizer: DictConfig,
         features: DictConfig,
         num_workers: int = 0,
@@ -62,11 +69,18 @@ class ClassifierModule(LightningModule, ABC):
         export_relay: bool = False,
         gpus=None,
         shuffle_all_dataloaders: bool = False,
+        augmentation: Optional[DictConfig] = None,
+        pseudo_labeling: Optional[DictConfig] = None,
         **kwargs,
     ) -> None:
         super().__init__()
 
-        self.save_hyperparameters()
+        ignore = None
+        if not isinstance(model, DictConfig):
+            self.model = model
+            ignore = ["model"]
+
+        self.save_hyperparameters(ignore=ignore)
         self.initialized = False
         self.train_set = None
         self.test_set = None
@@ -78,6 +92,7 @@ class ClassifierModule(LightningModule, ABC):
 
         self.logged_samples = 0
         self.export_onnx = export_onnx
+        self.export_relay = export_relay
         self.gpus = gpus
         self.shuffle_all_dataloaders = shuffle_all_dataloaders
 
@@ -88,6 +103,9 @@ class ClassifierModule(LightningModule, ABC):
         self.val_metrics: MetricCollection = MetricCollection({})
         self.test_metrics: MetricCollection = MetricCollection({})
         self.train_metrics: MetricCollection = MetricCollection({})
+
+        self.pseudo_label = None
+        self.batch_size = batch_size
 
     @abstractmethod
     def prepare_data(self) -> Any:
@@ -114,7 +132,6 @@ class ClassifierModule(LightningModule, ABC):
         return self._get_dataloader(self.dev_set, self.dev_set_unlabeled)
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
-        batch_size = self.hparams["batch_size"]
         dataset_conf = self.hparams.dataset
         sampler = None
         if shuffle:
@@ -126,7 +143,7 @@ class ClassifierModule(LightningModule, ABC):
 
         loader = data.DataLoader(
             dataset,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             drop_last=True,
             num_workers=self.hparams["num_workers"],
             sampler=sampler,
@@ -137,7 +154,7 @@ class ClassifierModule(LightningModule, ABC):
         if unlabeled_data:
             loader_unlabeled = data.DataLoader(
                 unlabeled_data,
-                batch_size=batch_size,
+                batch_size=self.batch_size,
                 drop_last=True,
                 num_workers=self.hparams["num_workers"],
                 sampler=data.RandomSampler(unlabeled_data),
@@ -151,14 +168,6 @@ class ClassifierModule(LightningModule, ABC):
 
     def on_train_start(self) -> None:
         super().on_train_start()
-
-        if hasattr(self, "example_input_array"):
-            input_array = self.example_input_array.clone().to(self.device)
-
-            for logger in self._logger_iterator():
-                if hasattr(logger, "log_graph"):
-                    logger.log_graph(self, input_array)
-                    pass
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
@@ -198,57 +207,12 @@ class ClassifierModule(LightningModule, ABC):
                 if hasattr(logger.experiment, "add_histogram"):
                     try:
                         logger.experiment.add_histogram(
-                            name, params, self.current_epoch
+                            name, params, global_step=self.current_epoch
                         )
                     except (ValueError, NotImplementedError):
                         logging.critical("Could not add histogram for param %s", name)
 
-        for name, module in self.named_modules():
-            loggers = self._logger_iterator()
-
-            if hasattr(module, "running_var") and module.running_var is not None:
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.running_var",
-                                module.running_var,
-                                self.current_epoch,
-                            )
-                        except (ValueError, NotImplementedError):
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
-            if hasattr(module, "scale_factor"):
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.scale_factor",
-                                module.scale_factor,
-                                self.current_epoch,
-                            )
-                        except (ValueError, NotImplementedError):
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
-            if hasattr(module, "scaled_weight"):
-                for logger in loggers:
-                    if hasattr(logger.experiment, "add_histogram"):
-                        try:
-                            logger.experiment.add_histogram(
-                                f"{name}.scaled_weight",
-                                module.scaled_weight,
-                                self.current_epoch,
-                            )
-                        except (ValueError, NotImplementedError):
-                            logging.critical(
-                                "Could not add histogram for param %s", name
-                            )
-
-    def _logger_iterator(self) -> Iterable[LightningLoggerBase]:
+    def _logger_iterator(self) -> Iterable[Logger]:
         loggers = []
         if self.trainer:
             loggers = self.trainer.loggers
@@ -268,10 +232,21 @@ class ClassifierModule(LightningModule, ABC):
         output_dir = "."
         quantized_model = copy.deepcopy(self.model)
         quantized_model.cpu()
+        quantized_model.train(False)
+
+        if self.export_relay and export_relay:
+            logging.info("Exporting relay model ...")
+            export_relay(quantized_model, self.example_feature_array.cpu())
+        elif self.export_relay:
+            raise Exception(
+                "Could not export relay due to missing hannah_tvm please install with `poetry install -E tvm`"
+            )
+
         if hasattr(self.model, "qconfig") and self.model.qconfig:
             quantized_model = torch.quantization.convert(
                 quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
+
         if self.export_onnx:
             logging.info("saving onnx...")
             try:
@@ -323,12 +298,18 @@ class ClassifierModule(LightningModule, ABC):
                 logger.log_hyperparams(self.hparams, val_metrics)
 
     def on_test_end(self) -> None:
-
         if self.trainer and self.trainer.fast_dev_run:
             return
 
         self._plot_confusion_matrix()
         self._plot_roc()
+
+    def _AUROC(self, preds, target):
+        auroc = AUROC(task="binary")
+        auroc_score = auroc(preds, target)
+        for logger in self._logger_iterator():
+            if isinstance(logger, TensorBoardLogger) and hasattr(self, "test_metrics"):
+                logger.log_metrics({"AUROC": auroc_score})
 
     def _plot_roc(self) -> None:
         if hasattr(self, "test_roc"):
@@ -376,5 +357,6 @@ class ClassifierModule(LightningModule, ABC):
         loggers = self._logger_iterator()
         for logger in loggers:
             if hasattr(logger.experiment, "add_image"):
-                images = torchvision.utils.make_grid(data, normalize=True)
-                logger.experiment.add_image(f"{name}_{batch_idx}", images)
+                if torch.numel(data) > 0:
+                    images = torchvision.utils.make_grid(data, normalize=True)
+                    logger.experiment.add_image(f"{name}_{batch_idx}", images)

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -529,7 +529,7 @@ class SpeechHotwordDataset(SpeechDataset):
             os.makedirs(data_folder)
 
         snips_filename = "hey_snips_kws_4_0.tar.gz"
-        url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/2e950ff3abbc4c46828e/?dl=1"
+        url = "https://es-cloud.cs.uni-tuebingen.de/f/2e950ff3abbc4c46828e/?dl=1"
 
         extract_from_download_cache(
             snips_filename,
@@ -818,7 +818,7 @@ class VadDataset(SpeechDataset):
         if "UWNU" in variants:
             filename = "uwnu-v2.tar"
             target_test_folder = os.path.join(speechdir, "uwnu-v2")
-            url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/bfc1be836c7a4e339215/?dl=1"
+            url = "https://es-cloud.cs.uni-tuebingen.de/f/bfc1be836c7a4e339215/?dl=1"
             target_cache = os.path.join(downloadfolder_tmp, "UWNU")
 
             extract_from_download_cache(

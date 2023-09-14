@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,11 +21,14 @@ from typing import Optional
 
 import tabulate
 import torch
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelPruning
 from torch.nn import BatchNorm1d
 
 
 class PruningAmountScheduler:
+    """ """
+
     def __init__(self, target_amount, max_epochs):
         self.target_amount = target_amount
         self.max_epochs = max_epochs
@@ -40,12 +43,33 @@ class PruningAmountScheduler:
 
 
 class FilteredPruning(ModelPruning):
-    def on_before_accelerator_backend_setup(self, trainer, pl_module):
-        # FIXME: calling setup here breaks assumptions about call order and will lead to setup being called twice
-        pl_module.setup("fit")
-        super().on_before_accelerator_backend_setup(trainer, pl_module)
+    """ """
 
-    def _run_pruning(self, current_epoch):
+    def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str):
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
+        # FIXME: calling setup here breaks assumptions about call order and will lead to setup being called twice
+        pl_module.setup(stage)
+        super().setup(trainer, pl_module, stage)
+
+    def _run_pruning(self, current_epoch) -> None:
+        """
+        Actually run the pruning on the current epoch,
+        deterministic wrapper for pytorch_lightning pruning callback.
+
+        Args:
+          current_epoch: number of current epoch
+
+        Returns:
+            None
+        """
         prune = (
             self._apply_pruning(current_epoch)
             if callable(self._apply_pruning)
@@ -55,7 +79,9 @@ class FilteredPruning(ModelPruning):
         if not prune or not amount:
             return
 
-        from utils.utils import set_deterministic
+        from ..utils.utils import (  # noqa Placed here to avoid circular import
+            set_deterministic,
+        )
 
         with set_deterministic(False):
             self.apply_pruning(amount)
@@ -68,11 +94,24 @@ class FilteredPruning(ModelPruning):
             self.apply_lottery_ticket_hypothesis()
 
     def filter_parameters_to_prune(self, parameters_to_prune=None):
-        """
-        Filter out unprunable parameters
+        """Filter out unprunable parameters
+
+        Args:
+          parameters_to_prune:  (Default value = None)
+
+        Returns:
+
         """
 
         def filter_func(x):
+            """
+
+            Args:
+              x:
+
+            Returns:
+
+            """
             if isinstance(x[0], BatchNorm1d):
                 return False
             if hasattr(x[0], x[1]) and getattr(x[0], x[1]) is not None:
@@ -83,6 +122,15 @@ class FilteredPruning(ModelPruning):
         return parameters_to_prune
 
     def on_test_end(self, trainer, pl_module) -> None:
+        """
+
+        Args:
+          trainer:
+          pl_module:
+
+        Returns:
+
+        """
         total_elements = 0.0
         total_zero_elements = 0.0
         sparsity_table = []

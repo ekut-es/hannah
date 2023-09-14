@@ -1,0 +1,41 @@
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+strong_augment:
+  pipeline: strong
+  transforms:
+    ColorJiggle:
+      p: 0.5
+      brightness: 0.5
+      contrast: 0.5
+      saturation: 0.1
+      hue: 0.0
+    RandomPosterize:
+      p: 0.5
+      bits: [4, 8]
+    RandomAffine:
+      p: 0.5
+      degrees: 30
+      translate: 0.2
+      shear: 0.2
+    RandomSharpness:
+      p: 0.5
+      sharpness: 0.5
+    RandomGaussianNoise:
+      p: 0.5
+      std: 0.05

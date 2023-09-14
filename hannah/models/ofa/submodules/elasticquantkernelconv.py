@@ -17,13 +17,11 @@
 # limitations under the License.
 #
 import copy
-import logging
 import math
 from typing import List
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as nnf
 from torch.nn import init
 
 from hannah.nn import qat
@@ -37,10 +35,42 @@ from .elasticBase import ElasticBase1d
 from .elasticBatchnorm import ElasticWidthBatchnorm1d
 from .elasticLinear import ElasticPermissiveReLU
 
+
+class QuadDataHelper:
+    """Data Container so that _forward and _dsc has the same data."""
+
+    bias_shape = None
+    kernelsize = None
+    dilation = None
+    grouping = None
+    padding = None
+    scale_factor = None
+    scaled_weight = None
+    zero_bias = None
+
+    def __init__(
+        self,
+        bias_shape,
+        kernelsize,
+        dilation,
+        grouping,
+        padding,
+        scale_factor,
+        scaled_weight,
+        zero_bias,
+    ):
+        self.bias_shape = bias_shape
+        self.kernelsize = kernelsize
+        self.dilation = dilation
+        self.grouping = grouping
+        self.padding = padding
+        self.scale_factor = scale_factor
+        self.scaled_weight = scaled_weight
+        self.zero_bias = zero_bias
+
+
 # Adapted base Class used for the Quantization
 # pytype: enable=attribute-error
-
-
 class _ElasticConvBnNd(
     ElasticBase1d, qat._ConvForwardMixin
 ):  # pytype: disable=module-attr
@@ -59,6 +89,7 @@ class _ElasticConvBnNd(
         transposed=False,
         output_padding=0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias=False,
         padding_mode="zeros",
         # BatchNormNd args
@@ -81,6 +112,7 @@ class _ElasticConvBnNd(
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             padding_mode=padding_mode,
             out_channel_sizes=out_channel_sizes,
@@ -129,14 +161,17 @@ class _ElasticConvBnNd(
             self.freeze_bn_stats()
 
     def on_warmup_end(self):
+        """ """
         for i in range(len(self.kernel_sizes) - 1):
             self.bn.append(copy.deepcopy(self.bn[0]))
 
     def reset_running_stats(self):
+        """ """
         for idx in range(len(self.bn)):
             self.bn[idx].reset_running_stats()
 
     def reset_bn_parameters(self):
+        """ """
         for idx in range(len(self.bn)):
             self.bn[idx].reset_running_stats()
             init.uniform_(self.bn[idx].weight)
@@ -148,15 +183,18 @@ class _ElasticConvBnNd(
             init.uniform_(self.bias, -bound, bound)
 
     def reset_parameters(self):
+        """ """
         super(_ElasticConvBnNd, self).reset_parameters()
 
     def update_bn_stats(self):
+        """ """
         self.freeze_bn = False
         for idx in range(len(self.bn) - 1):
             self.bn[idx].training = True
         return self
 
     def freeze_bn_stats(self):
+        """ """
         self.freeze_bn = True
         for idx in range(len(self.bn) - 1):
             self.bn[idx].training = False
@@ -164,6 +202,7 @@ class _ElasticConvBnNd(
 
     @property
     def scale_factor(self):
+        """ """
         if self.fuse_bn:
             running_std = torch.sqrt(
                 self.bn[self.target_kernel_index].running_var
@@ -179,7 +218,25 @@ class _ElasticConvBnNd(
         return filter_single_dimensional_weights(scale_factor, self.out_channel_filter)
 
     @property
+    def full_scale_factor(self):
+        """does the same as scale_factor but uses the whole kernel. Used for dsc"""
+        if self.fuse_bn:
+            running_std = torch.sqrt(
+                self.bn[self.target_kernel_index].running_var
+                + self.bn[self.target_kernel_index].eps
+            )
+
+            scale_factor = self.bn[self.target_kernel_index].weight / running_std
+        else:
+            scale_factor = torch.ones(
+                (self.weight.shape[0],), device=self.weight.device
+            )
+
+        return scale_factor
+
+    @property
     def scaled_weight(self):
+        """ """
         scale_factor = self.scale_factor
         weight, bias = self.get_kernel()
         weight_shape = [1] * len(weight.shape)
@@ -200,7 +257,28 @@ class _ElasticConvBnNd(
 
         return scaled_weight
 
-    def _forward(self, input):
+    def get_full_kernel_bias(self):
+        """Gets the full kernel and bias. Used for dsc"""
+        scale_factor = self.full_scale_factor
+        weight = self.get_full_width_kernel()
+        weight_shape = [1] * len(weight.shape)
+        weight_shape[0] = -1
+        bias_shape = [1] * len(weight.shape)
+        bias_shape[1] = -1
+
+        scaled_weight = self.weight_fake_quant(
+            weight * scale_factor.reshape(weight_shape)
+        )
+
+        if self.bias is not None:
+            full_bias = torch.zeros_like(self.bias)
+        else:
+            full_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
+
+        return scaled_weight, full_bias
+
+    def _get_params(self) -> QuadDataHelper:
+        """unifies the param procedure for _forward and _dsc"""
         bias_shape = [1] * len(self.weight.shape)
         bias_shape[1] = -1
         kernelsize = self.kernel_sizes[self.target_kernel_index]
@@ -220,8 +298,33 @@ class _ElasticConvBnNd(
         zero_bias = filter_single_dimensional_weights(
             zero_bias, self.out_channel_filter
         )
+        return QuadDataHelper(
+            bias_shape,
+            kernelsize,
+            dilation,
+            grouping,
+            self.padding,
+            scale_factor,
+            scaled_weight,
+            zero_bias,
+        )
 
-        conv = self._real_conv_forward(input, scaled_weight, zero_bias, grouping)
+    def _after_forward_function(self, conv, quad_params: QuadDataHelper):
+        """unifies the after forward procedure for _forward and _dsc
+
+        Args:
+          conv:
+          quad_params: QuadDataHelper:
+          quad_params: QuadDataHelper:
+          quad_params: QuadDataHelper:
+          quad_params: QuadDataHelper:
+
+        Returns:
+
+        """
+        scale_factor = quad_params.scale_factor
+        bias_shape = quad_params.bias_shape
+        zero_bias = quad_params.zero_bias
 
         if self.training or not self.fuse_bn:
             conv_orig = conv / scale_factor.reshape(bias_shape)
@@ -233,6 +336,7 @@ class _ElasticConvBnNd(
                 conv_orig = conv_orig + bias.reshape(bias_shape)
 
             conv = self.bn[self.target_kernel_index](conv_orig)
+            # copied from previous _forward (commented code line):
             # conv = conv - (self.bn.bias - self.bn.running_mean).reshape(bias_shape)
         else:
             bias = zero_bias
@@ -257,20 +361,94 @@ class _ElasticConvBnNd(
 
         return conv
 
+    def _dsc(self, input):
+        """this method is used for dsc.
+        it is called as an alternative of _forward
+
+        Args:
+          input:
+
+        Returns:
+
+        """
+
+        tmp_quad_helper = self._get_params()
+        # expand to variables
+        dilation = tmp_quad_helper.dilation
+        grouping = tmp_quad_helper.grouping
+        padding = tmp_quad_helper.padding
+        scaled_weight = tmp_quad_helper.scaled_weight
+        zero_bias = tmp_quad_helper.zero_bias
+
+        full_kernel, full_bias = self.get_full_kernel_bias()
+        dsc_sequence_output = self.do_dsc(
+            input=input,
+            full_kernel=full_kernel,
+            full_bias=full_bias,
+            grouping=grouping,
+            stride=self.stride,
+            padding=padding,
+            dilation=dilation,
+            quant_weight=scaled_weight,
+            quant_bias=zero_bias,
+        )
+
+        conv_output = self._after_forward_function(
+            dsc_sequence_output, quad_params=tmp_quad_helper
+        )
+        return conv_output
+
+    def _forward(self, input):
+        """
+
+        Args:
+          input:
+
+        Returns:
+
+        """
+        tmp_quad_helper: QuadDataHelper = self._get_params()
+        grouping = tmp_quad_helper.grouping
+        scaled_weight = tmp_quad_helper.scaled_weight
+        zero_bias = tmp_quad_helper.zero_bias
+
+        conv = self._real_conv_forward(input, scaled_weight, zero_bias, grouping)
+        conv = self._after_forward_function(conv, quad_params=tmp_quad_helper)
+
+        return conv
+
     def extra_repr(self):
+        """ """
         # TODO(jerryzh): extend
         return super(_ElasticConvBnNd, self).extra_repr()
 
     def forward(self, input):
-        y = self._forward(input)
+        """
 
+        Args:
+          input:
+
+        Returns:
+
+        """
+        dsc_on = self.get_dsc()
+
+        if not dsc_on:
+            y = self._forward(input)
+        else:
+            y = self._dsc(input)
         return y
 
     def train(self, mode=True):
-        """
-        Batchnorm's training behavior is using the self.training flag. Prevent
+        """Batchnorm's training behavior is using the self.training flag. Prevent
         changing it if BN is frozen. This makes sure that calling `model.train()`
         on a model with a frozen BN will behave properly.
+
+        Args:
+          mode: (Default value = True)
+
+        Returns:
+
         """
         self.training = mode
         if not self.freeze_bn:
@@ -310,6 +488,20 @@ class _ElasticConvBnNd(
         unexpected_keys,
         error_msgs,
     ):
+        """
+
+        Args:
+          state_dict:
+          prefix:
+          local_metadata:
+          strict:
+          missing_keys:
+          unexpected_keys:
+          error_msgs:
+
+        Returns:
+
+        """
         version = local_metadata.get("version", None)
         if version is None or version == 1:
             # BN related parameters and buffers were moved into the BN module for v2
@@ -349,9 +541,15 @@ class _ElasticConvBnNd(
 
     @classmethod
     def from_float(cls, mod):
-        r"""Create a qat module from a float module or qparams_dict
+        """Create a qat module from a float module or qparams_dict
         Args: `mod` a float module, either produced by torch.quantization utilities
         or directly from user
+
+        Args:
+          mod:
+
+        Returns:
+
         """
         assert type(mod) == cls._FLOAT_MODULE, (
             "qat."
@@ -389,6 +587,7 @@ class _ElasticConvBnNd(
 
 
 class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
+    """ """
 
     _FLOAT_MODULE = nn.Conv1d
 
@@ -401,6 +600,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         stride: int = 1,
         padding: int = 0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias: bool = False,
         padding_mode="zeros",
         qconfig=None,
@@ -416,6 +616,7 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             out_channel_sizes=out_channel_sizes,
             padding_mode=padding_mode,
@@ -436,58 +637,108 @@ class ElasticQuantConv1d(ElasticBase1d, qat._ConvForwardMixin):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # get the kernel for the current index
         weight, bias = self.get_kernel()
-
         grouping = self.get_group_size()
         if grouping > 1:
             weight, _ = adjust_weight_if_needed(
                 module=self, kernel=weight, groups=grouping
             )
 
-        y = self.activation_post_process(
-            self._real_conv_forward(
-                input,
-                self.weight_fake_quant(weight),
-                self.bias_fake_quant(bias) if self.bias is not None else None,
-                grouping,
+        dsc_on = self.get_dsc()
+
+        if not dsc_on:
+            y = self.activation_post_process(
+                self._real_conv_forward(
+                    input,
+                    self.weight_fake_quant(weight),
+                    self.bias_fake_quant(bias) if self.bias is not None else None,
+                    grouping,
+                )
             )
-        )
+        else:
+            full_kernel, full_bias = self.get_full_width_kernel(), self.bias
+            y = self.activation_post_process(
+                self.do_dsc(
+                    input=input,
+                    full_kernel=full_kernel,
+                    full_bias=full_bias,
+                    grouping=grouping,
+                    stride=self.stride,
+                    padding=self.padding,
+                    dilation=self.dilation,
+                    quant_weight_function=self.weight_fake_quant,
+                    quant_bias_function=self.bias_fake_quant,
+                )
+            )
         return y
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
-        kernel_size = self.kernel_size
-        dilation = self.get_dilation_size()
-
-        grouping = self.get_group_size()
         self.set_in_and_out_channel(kernel)
 
+        kernel_size = self.kernel_size
+        dilation = self.get_dilation_size()
+        grouping = self.get_group_size()
+        dsc_on = self.get_dsc()
         padding = conv1d_get_padding(kernel_size, dilation)
-        new_conv = qat.Conv1d(
-            self.in_channels,
-            self.out_channels,
-            kernel_size,
-            self.stride,
-            padding,
-            dilation,
-            grouping,
-            bias,
-            qconfig=self.qconfig,
-            out_quant=self.out_quant,
-        )
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        new_conv.weight.data = kernel
-        if bias is not None:
-            new_conv.bias = bias
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+        if dsc_on:
+            dsc_sequence: nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=qat.Conv1d,
+                full_kernel=self.get_full_width_kernel(),
+                full_bias=self.bias,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride,
+                padding=padding,
+                dilation=dilation,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            self.reset_in_and_out_channel_to_previous()
+            return dsc_sequence
+        else:
+            new_conv = qat.Conv1d(
+                self.in_channels,
+                self.out_channels,
+                kernel_size,
+                self.stride,
+                padding,
+                dilation,
+                grouping,
+                bias,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
+            new_conv.weight.data = kernel
+            if bias is not None:
+                new_conv.bias = bias
+
+            self.reset_in_and_out_channel_to_previous()
+            # print("\nassembled a basic conv from elastic kernel!")
+            return new_conv
 
 
 class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
+    """ """
 
     _FLOAT_MODULE = nn.Conv1d
 
@@ -500,6 +751,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         stride: int = 1,
         padding: int = 0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias: bool = False,
         padding_mode="zeros",
         qconfig=None,
@@ -516,6 +768,7 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             out_channel_sizes=out_channel_sizes,
         )
@@ -537,7 +790,17 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # get the kernel for the current index
         weight, bias = self.get_kernel()
         grouping = self.get_group_size()
@@ -545,49 +808,93 @@ class ElasticQuantConvReLu1d(ElasticBase1d, qat._ConvForwardMixin):
             weight, _ = adjust_weight_if_needed(
                 module=self, kernel=weight, groups=grouping
             )
-        y = self.activation_post_process(
-            self.relu(
-                self._real_conv_forward(
-                    input,
-                    self.weight_fake_quant(weight),
-                    self.bias_fake_quant(bias) if self.bias is not None else None,
-                    grouping,
+
+        dsc_on = self.get_dsc()
+
+        if not dsc_on:
+            y = self.activation_post_process(
+                self.relu(
+                    self._real_conv_forward(
+                        input,
+                        self.weight_fake_quant(weight),
+                        self.bias_fake_quant(bias) if self.bias is not None else None,
+                        grouping,
+                    )
                 )
             )
-        )
+        else:
+            full_kernel, full_bias = self.get_full_width_kernel(), self.bias
+            y = self.activation_post_process(
+                self.do_dsc(
+                    input=input,
+                    full_kernel=full_kernel,
+                    full_bias=full_bias,
+                    grouping=grouping,
+                    stride=self.stride,
+                    padding=self.padding,
+                    dilation=self.dilation,
+                    quant_weight_function=self.weight_fake_quant,
+                    quant_bias_function=self.bias_fake_quant,
+                )
+            )
+        # self.reset_in_and_out_channel_to_previous()
         return y
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         kernel_size = self.kernel_sizes[self.target_kernel_index]
         dilation = self.get_dilation_size()
         padding = conv1d_get_padding(kernel_size, dilation)
         grouping = self.get_group_size()
+        dsc_on = self.get_dsc()
         self.set_in_and_out_channel(kernel)
 
-        new_conv = qat.ConvReLU1d(
-            self.in_channels,
-            self.out_channels,
-            kernel_size,
-            self.stride,
-            padding,
-            dilation,
-            grouping,
-            bias,
-            qconfig=self.qconfig,
-            out_quant=self.out_quant,
-        )
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        new_conv.weight.data = kernel
-        if bias is not None:
-            new_conv.bias = bias
+        if dsc_on:
+            dsc_sequence: nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=qat.ConvReLU1d,
+                full_kernel=self.get_full_width_kernel(),
+                full_bias=self.bias,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride,
+                padding=padding,
+                dilation=dilation,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            self.reset_in_and_out_channel_to_previous()
+            return dsc_sequence
+        else:
+            new_conv = qat.ConvReLU1d(
+                self.in_channels,
+                self.out_channels,
+                kernel_size,
+                self.stride,
+                padding,
+                dilation,
+                grouping,
+                bias,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
+            new_conv.weight.data = kernel
+            if bias is not None:
+                new_conv.bias = bias
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+            self.reset_in_and_out_channel_to_previous()
+            # print("\nassembled a basic conv from elastic kernel!")
+            return new_conv
 
 
 class ElasticQuantConvBn1d(_ElasticConvBnNd):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -597,6 +904,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         stride: int = 1,
         padding: int = 0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias: bool = False,
         track_running_stats=True,
         qconfig=None,
@@ -612,6 +920,7 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             qconfig=qconfig,
             out_channel_sizes=out_channel_sizes,
@@ -621,57 +930,87 @@ class ElasticQuantConvBn1d(_ElasticConvBnNd):
         self.act = False
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        # return self.get_basic_conv1d().forward(input)  # for validaing assembled module
-        # get the kernel for the current index
-        kernel, bias = self.get_kernel()
-        grouping = self.get_group_size()
-        if grouping > 1:
-            # TODO kernel will be not used, is not needed?
-            kernel, _ = adjust_weight_if_needed(
-                module=self, kernel=kernel, groups=grouping
-            )
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         # get padding for the size of the kernel
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
         y = super(ElasticQuantConvBn1d, self).forward(input)
+        # self.reset_in_and_out_channel_to_previous()
         return self.activation_post_process(y)
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
         grouping = self.get_group_size()
-        new_conv = qat.ConvBn1d(
-            kernel.shape[1],
-            kernel.shape[0],
-            self.kernel_size,
-            self.stride,
-            self.padding,
-            self.dilation,
-            grouping,
-            bias,
-            eps=self.bn[self.target_kernel_index].eps,
-            momentum=self.bn[self.target_kernel_index].momentum,
-            qconfig=self.qconfig,
-            out_quant=self.out_quant,
-        )
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        new_conv.weight.data = kernel
-        new_conv.bias = bias
-        tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+        dsc_on = self.get_dsc()
+        self.set_in_and_out_channel(kernel)
 
-        new_conv.bn.weight = tmp_bn.weight
-        new_conv.bn.bias = tmp_bn.bias
-        new_conv.bn.running_var = tmp_bn.running_var
-        new_conv.bn.running_mean = tmp_bn.running_mean
-        new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
+        if dsc_on:
+            tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+            dsc_sequence: nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=qat.ConvReLU1d,
+                full_kernel=self.get_full_width_kernel(),
+                full_bias=self.bias,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                bn_eps=self.bn[self.target_kernel_index].eps,
+                bn_momentum=self.bn[self.target_kernel_index].momentum,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+                bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked),
+            )
+            self.reset_in_and_out_channel_to_previous()
+            return dsc_sequence
+        else:
+            new_conv = qat.ConvBn1d(
+                kernel.shape[1],
+                kernel.shape[0],
+                self.kernel_size,
+                self.stride,
+                self.padding,
+                self.dilation,
+                grouping,
+                bias,
+                eps=self.bn[self.target_kernel_index].eps,
+                momentum=self.bn[self.target_kernel_index].momentum,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
+            new_conv.weight.data = kernel
+            new_conv.bias = bias
+            tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+            new_conv = self.set_bn_parameter(
+                new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked
+            )
+            # print("\nassembled a basic conv from elastic kernel!")
+            self.reset_in_and_out_channel_to_previous()
+            return new_conv
 
 
 class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
+    """ """
+
     def __init__(
         self,
         in_channels: int,
@@ -681,6 +1020,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         stride: int = 1,
         padding: int = 0,
         groups: List[int] = [1],
+        dscs: List[bool] = [False],
         bias: bool = False,
         track_running_stats=True,
         qconfig=None,
@@ -696,6 +1036,7 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
             padding=padding,
             dilation_sizes=dilation_sizes,
             groups=groups,
+            dscs=dscs,
             bias=bias,
             qconfig=qconfig,
             out_channel_sizes=out_channel_sizes,
@@ -707,41 +1048,84 @@ class ElasticQuantConvBnReLu1d(ElasticQuantConvBn1d):
         self.act = True
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+          input: torch.Tensor:
+
+        Returns:
+
+        """
         dilation = self.get_dilation_size()
         self.padding = conv1d_get_padding(
             self.kernel_sizes[self.target_kernel_index], dilation
         )
-        y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
+        dsc_on = self.get_dsc()
+
+        if not dsc_on:
+            y = super(ElasticQuantConvBnReLu1d, self)._forward(input)
+        else:
+            y = super(ElasticQuantConvBnReLu1d, self)._dsc(input)
         return self.activation_post_process(self.relu(y))
 
     # return a normal conv1d equivalent to this module in the current state
-    def get_basic_module(self) -> nn.Conv1d:
+    def get_basic_module(self) -> nn.Module:
+        """ """
         kernel, bias = self.get_kernel()
+        self.set_in_and_out_channel(kernel)
+
         grouping = self.get_group_size()
-        new_conv = qat.ConvBnReLU1d(
-            kernel.shape[1],
-            kernel.shape[0],
-            self.kernel_size,
-            self.stride,
-            self.padding,
-            self.dilation,
-            grouping,
-            bias,
-            eps=self.bn[self.target_kernel_index].eps,
-            momentum=self.bn[self.target_kernel_index].momentum,
-            qconfig=self.qconfig,
-            out_quant=self.out_quant,
-        )
-        kernel, _ = adjust_weight_if_needed(module=self, kernel=kernel, groups=grouping)
-        new_conv.weight.data = kernel
-        new_conv.bias = bias
-        tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+        dsc_on = self.get_dsc()
 
-        new_conv.bn.weight = tmp_bn.weight
-        new_conv.bn.bias = tmp_bn.bias
-        new_conv.bn.running_var = tmp_bn.running_var
-        new_conv.bn.running_mean = tmp_bn.running_mean
-        new_conv.bn.num_batches_tracked = tmp_bn.num_batches_tracked
+        if dsc_on:
+            tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+            dsc_sequence: nn.Sequential = self.prepare_dsc_for_validation_model(
+                conv_class=qat.ConvBnReLU1d,
+                full_kernel=self.get_full_width_kernel(),
+                full_bias=self.bias,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                grouping=grouping,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                bn_eps=self.bn[self.target_kernel_index].eps,
+                bn_momentum=self.bn[self.target_kernel_index].momentum,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+                bn_caller=(self.set_bn_parameter, tmp_bn, tmp_bn.num_batches_tracked),
+            )
+            self.reset_in_and_out_channel_to_previous()
+            return dsc_sequence
+        else:
 
-        # print("\nassembled a basic conv from elastic kernel!")
-        return new_conv
+            new_conv = qat.ConvBnReLU1d(
+                kernel.shape[1],
+                kernel.shape[0],
+                self.kernel_size,
+                self.stride,
+                self.padding,
+                self.dilation,
+                grouping,
+                bias,
+                eps=self.bn[self.target_kernel_index].eps,
+                momentum=self.bn[self.target_kernel_index].momentum,
+                qconfig=self.qconfig,
+                out_quant=self.out_quant,
+            )
+            kernel, _ = adjust_weight_if_needed(
+                module=self, kernel=kernel, groups=grouping
+            )
+            new_conv.weight.data = kernel
+            new_conv.bias = bias
+            tmp_bn = self.bn[self.target_kernel_index].get_basic_batchnorm1d()
+
+            new_conv = self.set_bn_parameter(
+                new_conv, tmp_bn=tmp_bn, num_tracked=tmp_bn.num_batches_tracked
+            )
+            self.reset_in_and_out_channel_to_previous()
+            # print("\nassembled a basic conv from elastic kernel!")
+            return new_conv

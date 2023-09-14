@@ -26,6 +26,16 @@ from torch.autograd import Variable
 
 
 def conv_bn(inp, oup, stride):
+    """
+
+    Args:
+      inp:
+      oup:
+      stride:
+
+    Returns:
+
+    """
     return nn.Sequential(
         nn.Conv1d(inp, oup, 160, stride, 4, bias=False),
         nn.BatchNorm1d(oup),
@@ -35,12 +45,23 @@ def conv_bn(inp, oup, stride):
 
 
 def conv_1x1_bn(inp, oup):
+    """
+
+    Args:
+      inp:
+      oup:
+
+    Returns:
+
+    """
     return nn.Sequential(
         nn.Conv1d(inp, oup, 1, 1, 0, bias=False), nn.BatchNorm1d(oup), nn.ReLU6()
     )
 
 
 class InvertedResidual(nn.Module):
+    """ """
+
     def __init__(self, inp, oup, stride, expand_ratio):
         super(InvertedResidual, self).__init__()
         self.stride = stride
@@ -79,6 +100,14 @@ class InvertedResidual(nn.Module):
             )
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         if self.use_res_connect:
             return x + self.conv(x)
         else:
@@ -185,6 +214,14 @@ class RawSpeechModel(nn.Module):
         last_size = x.view(1, -1).size(1)
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         num = 0
         for layer in self.convolutions:
             x = layer(x)
@@ -200,6 +237,8 @@ class RawSpeechModel(nn.Module):
 
 
 class RawSpeechModelInvertedResidual(nn.Module):
+    """ """
+
     def __init__(self, config):
         super().__init__()
 
@@ -269,12 +308,21 @@ class RawSpeechModelInvertedResidual(nn.Module):
         self._initialize_weights()
 
     def forward(self, x):
+        """
+
+        Args:
+          x:
+
+        Returns:
+
+        """
         x = self.features(x)
         x = x.mean(2)
         x = self.classifier(x)
         return x
 
     def _initialize_weights(self):
+        """ """
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
                 n = m.kernel_size[0] * m.out_channels

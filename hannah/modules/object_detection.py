@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import torch
 import torch.utils.data as data
 from hydra.utils import get_class, instantiate
 
-from hannah.datasets.Kitti import object_collate_fn
+from hannah.datasets.collate import object_collate_fn
 from hannah.modules.augmentation.augmentation import Augmentation
 from hannah.modules.augmentation.bordersearch import (
     Bordersearch,
@@ -213,7 +213,13 @@ class ObjectDetectionModule(ClassifierModule):
         metric["val_ar"] = cocoEval.stats[6].item()
         metric["val_ar_100dets"] = cocoEval.stats[8].item()
 
-        self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log_dict(
+            metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=self.batch_size,
+        )
         cocoGt.clearBatch()
 
     # TRAINING CODE
@@ -257,7 +263,13 @@ class ObjectDetectionModule(ClassifierModule):
         metric["test_ar"] = cocoEval.stats[6].item()
         metric["test_ar_100dets"] = cocoEval.stats[8].item()
 
-        self.log_dict(metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log_dict(
+            metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=self.batch_size,
+        )
         cocoGt.clearBatch()
 
     def save(self):

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,12 +19,11 @@
 import logging
 import os
 
+import albumentations as A
 import torch.utils.data as data
 import torchvision
 from albumentations.pytorch.transforms import ToTensorV2
 from torchvision import datasets
-
-import albumentations as A
 
 from .base import TorchvisionDatasetBase
 
@@ -77,3 +76,11 @@ class Cifar10Dataset(TorchvisionDatasetBase):
             cls(config, val_set),
             cls(config, test_set),
         )
+
+    @property
+    def std(self):
+        return (0.247, 0.243, 0.261)
+
+    @property
+    def mean(self):
+        return (0.491, 0.482, 0.446)

@@ -47,7 +47,6 @@ def _create_parametrize_wrapper(params, cls):
                     num += 1
                 self._PARAMETERS[name] = arg
                 # self._annotations[name] = parameter_list[num + 1]._annotation
-        print()
         for name, arg in kwargs.items():
             if is_parametrized(arg):
                 self._PARAMETERS[name] = arg
@@ -59,10 +58,11 @@ def _create_parametrize_wrapper(params, cls):
         cls.instantiate = instantiate
         cls.check = check
         cls.set_params = set_params
-        cls.parameters = parameters
+        cls.parametrization = parametrization
         cls.get_parameters = get_parameters
         cls.set_param_scopes = set_param_scopes
         cls.cond = cond
+        cls.add_param = add_param
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
@@ -85,9 +85,14 @@ def parametrize(cls=None):
     return parametrize_function
 
 
-def sample(self):
-    for _key, param in self._PARAMETERS.items():
-        param.sample()
+def sample(self, key=None):
+    if key:
+        for _key, param in self.parametrization(flatten=True).items():
+            if key in _key:
+                param.sample()
+    else:
+        for _key, param in self.parametrization(flatten=True).items():
+            param.sample()
 
 
 def set_current(self, value):
@@ -116,7 +121,7 @@ def set_params(self, **kwargs):
             self._PARAMETERS[key].set_current(value)
 
 
-def check(self, value):
+def check(self, value=None):
     for con in self._conditions:
         if not con.evaluate():
             raise Exception("Condition not satisfied: {}".format(con))
@@ -138,6 +143,13 @@ def instantiate(self):
     return instance
 
 
+def add_param(self, id, param):
+    assert id not in self._PARAMETERS, f"Parameter with the ID {id} already registered."
+    param.id = id
+    self._PARAMETERS[id] = param
+    return param
+
+
 def get_parameters(
     self, scope: Optional[str] = None, include_empty=False, flatten=False
 ):
@@ -153,6 +165,8 @@ def get_parameters(
 
         if hasattr(current, "_PARAMETERS"):
             for param in current._PARAMETERS.values():
+                if param.id is None:
+                    param.id = current.id + '.' + param.name
                 if param.id not in visited:
                     queue.append(param)
 
@@ -160,7 +174,7 @@ def get_parameters(
     return params
 
 
-def parameters(self, include_empty=False, flatten=False):
+def parametrization(self, include_empty=False, flatten=False):
     return self.get_parameters(include_empty=include_empty, flatten=flatten)
 
 
@@ -169,15 +183,16 @@ def set_param_scopes(self):
         if isinstance(param, Expression):
             param.id = self.id + "." + name
             param.set_scope(self.id, name)
-            print()
-
 
 def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
     hierarchical_params = {}
     for key, param in parameter.items():
         if not include_empty and not isinstance(param, Parameter):
             continue
-        key_list = key.split(".")
+        if key is None:
+            key_list = [param.name]
+        else:
+            key_list = key.split(".")
         if flatten:
             current_param_branch = {}
         else:
@@ -202,3 +217,9 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
             else:
                 current_param_branch = current_param_branch[index]
     return hierarchical_params
+
+def set_parametrization(parameters, parametrization):
+    for k, v in parametrization.items():
+        if k in parameters:
+            parametrization[k].set_current(parameters[k])
+    return parametrization

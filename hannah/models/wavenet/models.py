@@ -23,9 +23,7 @@ import torch.nn as nn
 
 
 class Conv(nn.Module):
-    """
-    A convolution with the option to be causal and use xavier initialization
-    """
+    """A convolution with the option to be causal and use xavier initialization"""
 
     def __init__(
         self,
@@ -57,6 +55,14 @@ class Conv(nn.Module):
         )
 
     def forward(self, signal):
+        """
+
+        Args:
+          signal:
+
+        Returns:
+
+        """
         if self.is_causal:
             padding = (int((self.kernel_size - 1) * (self.dilation)), 0)
             signal = torch.nn.functional.pad(signal, padding)
@@ -64,6 +70,8 @@ class Conv(nn.Module):
 
 
 class WaveNet(nn.Module):
+    """ """
+
     def __init__(self, config):
         super(WaveNet, self).__init__()
         self.non_causal_layers_per_layer = config["non_causal_layers_per_layer"]
@@ -150,6 +158,14 @@ class WaveNet(nn.Module):
             self.linear = nn.Linear(self.n_classes, self.n_classes)
 
     def forward(self, input_data):
+        """
+
+        Args:
+          input_data:
+
+        Returns:
+
+        """
         forward_input = self.conv_in(input_data)
         for i in range(self.n_layers):
             in_act = self.dilate_layers[i](forward_input)

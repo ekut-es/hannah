@@ -1,0 +1,4 @@
+_target_: hannah.quantization.callback.QuantizationCallback
+is_qat: True
+qconfig_mapping: fbgemm
+backend_config: fbgemm

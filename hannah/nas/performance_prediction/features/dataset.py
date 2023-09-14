@@ -32,9 +32,24 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from sklearn.preprocessing import MinMaxScaler
 
-import hannah.conf
-from hannah.nas.graph_conversion import model_to_graph
 
+# FIXME: Find better way
+COLUMNS = ['output_quant_bits', 'output_shape_0', 'output_shape_1',
+       'output_shape_2', 'output_shape_3', 'attrs_in_channels',
+       'attrs_out_channels', 'attrs_kernel_size_0', 'attrs_kernel_size_1',
+       'attrs_stride_0', 'attrs_stride_1', 'attrs_dilation_0',
+       'attrs_dilation_1', 'attrs_groups', 'attrs_padding_0',
+       'attrs_padding_1', 'weight_quant_bits', 'weight_shape_0',
+       'weight_shape_1', 'weight_shape_2', 'weight_shape_3', 'bias_quant_bits',
+       'bias_shape_0', 'attrs_in_features', 'attrs_out_features', 'type_0',
+       'type_add', 'type_batch_norm', 'type_conv', 'type_linear',
+       'type_placeholder', 'type_pooling', 'type_relu', 'output_quant_dtype_0',
+       'output_quant_dtype_float', 'output_quant_method_0',
+       'output_quant_method_none', 'weight_quant_dtype_0',
+       'weight_quant_dtype_float', 'weight_quant_method_0',
+       'weight_quant_method_none', 'bias_quant_dtype_0',
+       'bias_quant_dtype_float', 'bias_quant_method_0',
+       'bias_quant_method_none']
 
 class NASGraphDataset(DGLDataset):
     def __init__(self, result_folder: str):
@@ -47,8 +62,7 @@ class NASGraphDataset(DGLDataset):
         self.labels = []
         assert self.result_folder.exists()
 
-        data_dict = {}
-        ct = 0
+
         for i, data_path in enumerate(self.result_folder.glob("model_*.json")):
             if i % 500 == 0:
                 print("Processing graph {}".format(i))
@@ -57,49 +71,21 @@ class NASGraphDataset(DGLDataset):
 
             graph = nx.json_graph.node_link_graph(d["graph"])
             self.nx_graphs.append(graph)
-            for j, n in enumerate(graph.nodes):
-                node = graph.nodes[n]
-                row_as_dict = dict({"graph": i, "node": j}, **flatten(node))
-                data_dict[ct] = row_as_dict
-                ct = ct + 1
+            fea = get_features(graph)
+            for i, n in enumerate(graph.nodes):
+                graph.nodes[n]['features'] = fea.iloc[i].to_numpy()
+            dgl_graph = to_dgl_graph(graph)
 
             metrics = d["metrics"]
-            if metrics.get("val_error", None):
-                label = metrics["val_error"]
+            if metrics.get("val_error", None) is not None:
+                if metrics['val_error'] == 0:
+                    label = float('inf')
+                else:
+                    label = metrics["val_error"]
             else:
                 label = 1 / metrics["latency"]
+
             self.labels.append(label)
-
-        df = pd.DataFrame.from_dict(data_dict, orient="index")
-        df = df.dropna(axis=1, how="all")
-
-        columns_to_drop = [c for c in df.columns if "name" in c]
-        df = df.drop(columns=columns_to_drop)
-
-        cat_columns = [c for c in df.columns if "type" in c or "method" in c]
-        df = pd.get_dummies(df, columns=cat_columns).fillna(0)
-
-        array_columns = [
-            c
-            for c in df.columns
-            if "shape" in c
-            or "size" in c
-            or "dilation" in c
-            or "channels" in c
-            or "stride" in c
-            or "padding" in c
-        ]
-        df = unnest(df, array_columns, axis=0).fillna(0)
-        # for col in df.columns:
-        #     if col not in ['graph', 'node'] + cat_columns:
-        #         div = (df[col].max()-df[col].min())
-        #         if not div:
-        #             div = 1
-        #         df[col] = (df[col]-df[col].min())/ div
-        for i, g in enumerate(self.nx_graphs):
-            dgl_graph = to_dgl_graph(
-                g, df[df["graph"] == i].drop(columns="node").to_numpy()
-            )
             self.graphs.append(dgl_graph)
 
         self.labels = torch.FloatTensor(self.labels)
@@ -109,11 +95,22 @@ class NASGraphDataset(DGLDataset):
         mean = self.labels.mean()
         self.labels = (self.labels - mean) / std
 
-    def normalize_features(self, max_feature):
+    def normalize_features(self, max_feature=None):
+        max_feature = np.zeros(self.graphs[0].ndata['features'].shape[1])
+        min_feature = np.zeros(self.graphs[0].ndata['features'].shape[1])
+        for g in self.graphs:
+            maximums = g.ndata['features'].max(axis=0)[0]
+            minimums = g.ndata['features'].min(axis=0)[0]
+            for row in range(len(maximums)):
+                max_feature[row] = max(max_feature[row], maximums[row])
+                min_feature[row] = min(min_feature[row], minimums[row])
+
         for g in self.graphs:
             new_features = g.ndata["features"].clone()
             for row in range(len(new_features)):
-                new_features[row] = new_features[row] / max_feature
+                for col in range(len(new_features[row])):
+                    # max_feature = max(new_features[row])
+                    new_features[row][col] = (new_features[row][col] - min_feature[col]) / ((max_feature[col] - min_feature[col]) + 1e-6)
             g.ndata["features"] = new_features
 
     def to_class_labels(self):
@@ -132,78 +129,106 @@ class NASGraphDataset(DGLDataset):
     def __len__(self):
         return len(self.graphs)
 
+class OnlineNASGraphDataset(DGLDataset):
+    def __init__(self, dgl_graphs, labels):
+        super().__init__(name="OnlineNASGraphDataset")
+        self.graphs = dgl_graphs
+        self.labels = torch.FloatTensor(labels)
 
-def to_dgl_graph(nx_graph, features):
+    def __getitem__(self, i):
+        return self.graphs[i], self.labels[i]
+
+    def __len__(self):
+        return len(self.graphs)
+
+
+
+
+def get_features(nx_graph):
+    dataframes = []
+    for n in nx_graph.nodes:
+        df = pd.json_normalize(nx_graph.nodes[n], sep='_')
+        if 'inputs' in df:
+            df.drop(columns="inputs", inplace=True)
+        if 'output_name' in df:
+            df.drop(columns="output_name", inplace=True)
+        df = unfold_columns(df, columns=get_list_columns(df))
+        dataframes.append(df)
+    df = pd.concat(dataframes)
+    # df.dropna(axis = 0, how = 'all', inplace = True)
+    df = df.fillna(0)
+    df = pd.get_dummies(df)
+    for col in COLUMNS:
+        if col not in df.columns:
+            df[col] = 0
+    df = df.reindex(sorted(df.columns), axis=1)  # Sort to have consistency
+    return df
+
+def get_list_columns(df):
+    list_cols = []
+    for col in df.keys():
+        if isinstance(df[col][0], (list, tuple, torch.Size)):
+            list_cols.append(col)
+    return list_cols
+
+# modified from
+# https://stackoverflow.com/questions/35491274/split-a-pandas-column-of-lists-into-multiple-columns
+def unfold_columns(df, columns=[], strict=False):
+    assert isinstance(columns, list), "Columns should be a list of column names"
+    if len(columns) == 0:
+        columns = [
+            column for column in df.columns
+            if df.applymap(lambda x: isinstance(x, (list, tuple, torch.Size))).all()[column]
+        ]
+    else:
+        assert(all([(column in df.columns) for column in columns])), \
+            "Not all given columns are found in df"
+    columns_order = df.columns
+    for column_name in columns:
+        if df[column_name].apply(lambda x: isinstance(x, (list, tuple, torch.Size))).all():
+            if strict:
+                assert len(set(df[column_name].apply(lambda x: len(x)))) == 1, \
+                    f"Lists in df['{column_name}'] are not of equal length"
+            unfolded = pd.DataFrame(df[column_name].tolist())
+            unfolded.columns = [f'{column_name}_{x}' for x in unfolded.columns]
+            columns_order = [
+                *columns_order[:list(columns_order).index(column_name)],
+                *unfolded.columns,
+                *columns_order[list(columns_order).index(column_name)+1:]
+            ]
+            df = df.join(unfolded).drop([column_name], axis=1)
+    return df[columns_order]
+
+
+
+def to_dgl_graph(nx_graph):
+
     node_num = {}
+    fea_tensor = []
+    fea_len = 0
     for num, n in enumerate(nx_graph.nodes):
+        feature_vec = torch.tensor(nx_graph.nodes[n]["features"])
+        fea_len = max(len(feature_vec), fea_len)
+        fea_tensor.append(feature_vec)
         node_num[n] = num
+
+    padded_features = []
+    for vec in fea_tensor:
+        padded_vec = np.pad(
+            vec, (0, fea_len - len(vec)), mode="constant", constant_values=0
+        )
+        padded_vec = torch.tensor(padded_vec)
+        padded_features.append(padded_vec)
+
     src = []
     dst = []
     for i, j in nx_graph.edges:
         src.append(node_num[i])
         dst.append(node_num[j])
 
+    fea_tensor = torch.vstack(padded_features)
     g = dgl.graph(data=(src, dst))
-    g.ndata["features"] = torch.Tensor(features)
+    g.ndata["features"] = fea_tensor
     g = dgl.add_self_loop(g)
 
     return g
-
-
-#  modified from https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
-def flatten(d, parent_key="", sep="_"):
-    items = []
-    for k, v in d.items():
-        new_key = parent_key + sep + k if parent_key else k
-        if isinstance(v, collections.MutableMapping):
-            items.extend(flatten(v, new_key, sep=sep).items())
-        elif isinstance(v, list) and isinstance(v[0], dict):
-
-            for i, item in enumerate(v):
-                if i > 0:
-                    new_key = new_key[:-2]  # remove last i
-                new_key = new_key + sep + str(i)
-                items.extend(flatten(item, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
-
-
-# modified from https://stackoverflow.com/questions/53218931/how-to-unnest-explode-a-column-in-a-pandas-dataframe
-def unnest(df, explode, axis):
-    if axis == 1:
-        idx = df.index.repeat(df[explode[0]].str.len())
-        df1 = pd.concat(
-            [pd.DataFrame({x: np.concatenate(df[x].values)}) for x in explode], axis=1
-        )
-        df1.index = idx
-
-        return df1.join(df.drop(explode, 1), how="left")
-    else:
-        df1 = pd.concat(
-            [
-                pd.DataFrame(
-                    [
-                        item if isinstance(item, list) else [item]
-                        for item in df[x].tolist()
-                    ],
-                    index=df.index,
-                ).add_prefix(x)
-                for x in explode
-            ],
-            axis=1,
-        )
-        return df1.join(df.drop(explode, 1), how="left")
-
-
-@hydra.main(config_path="../../../conf", config_name="config")
-def main(config):
-    dataset = NASGraphDataset(
-        "/home/elia/Desktop/MA/hannah/experiments/dsd22/trained_models/dsd22_kws_10uw/conv_net_trax/performance_data"
-    )
-    for item in dataset:
-        print(item)
-
-
-if __name__ == "__main__":
-    main()

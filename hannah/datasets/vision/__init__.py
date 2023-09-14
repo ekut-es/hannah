@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +17,14 @@
 # limitations under the License.
 #
 from .cifar import Cifar10Dataset
+from .dresden_capsule import DresdenCapsuleDataset
 from .fake import FakeDataset
 from .kvasir import KvasirCapsuleDataset
 from .kvasir_unlabeled import KvasirCapsuleUnlabeled
 from .ri_capsule import RICapsuleDataset
 
 __all__ = [
+    "DresdenCapsuleDataset",
     "KvasirCapsuleDataset",
     "FakeDataset",
     "Cifar10Dataset",

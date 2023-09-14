@@ -1,3 +1,4 @@
+.pydevproject
 .python-version
 *.simg
 *.sif
@@ -51,3 +52,9 @@ tmp/
 type_info.json
 *.log
 .pytest_cache
+.pydevproject
+.pyre
+_site
+build/
+
+experiments/datasets/

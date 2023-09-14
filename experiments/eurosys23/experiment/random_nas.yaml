@@ -1,0 +1,21 @@
+# @package _global_
+defaults:
+  - override /nas: random_nas
+  - override /model: lazy_convnet
+
+
+nas:
+  budget: 100
+  n_jobs: 8
+
+
+trainer:
+  max_epochs: 5
+
+
+model:
+  labels: 4
+
+seed: [1234]
+
+experiment_id: "random_nas"

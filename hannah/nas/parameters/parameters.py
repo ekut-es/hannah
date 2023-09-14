@@ -23,9 +23,12 @@ from copy import deepcopy
 from typing import Optional, Union
 
 import numpy as np
+from omegaconf import DictConfig
 
 from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
+
+from hydra.utils import instantiate
 
 
 class Parameter(Expression):
@@ -66,7 +69,7 @@ class Parameter(Expression):
     def evaluate(self):
         return self.instantiate()
 
-    def parameters(self):
+    def parametrization(self):
         return self
 
     def new(self):
@@ -102,7 +105,7 @@ class IntScalarParameter(Parameter):
     def evaluate_field(self, field_str):
         field = getattr(self, field_str)
         if isinstance(field, Parameter):
-            return self.min.instantiate()
+            return field.instantiate()
         elif isinstance(field, int):
             return field
         else:
@@ -116,14 +119,17 @@ class IntScalarParameter(Parameter):
         return (self.evaluate_field("min"), self.evaluate_field("max"))
 
     def sample(self):
-        self.current_value = self.rng.integers(*self.get_bounds())
+        min, max = self.get_bounds()
+        values = np.arange(min, max + 1 , self.step_size)
+        # self.current_value = self.rng.integers(min, max+1)
+        self.current_value = self.rng.choice(values)
         return self.current_value
 
     def instantiate(self):
         return self.current_value
 
     def check(self, value):
-        if not isinstance(value, int):
+        if not isinstance(value, (int, np.int64)):
             raise ValueError(
                 "Value {} must be of type int but is type {}".format(value, type(value))
             )

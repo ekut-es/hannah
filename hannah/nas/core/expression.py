@@ -69,20 +69,41 @@ class Expression(ABC, Generic[T]):
 
         return Add(self, other)
 
+    def __radd__(self, other):
+        from ..expressions.arithmetic import Add
+
+        return Add(other, self)
+
     def __sub__(self, other):
         from ..expressions.arithmetic import Sub
 
         return Sub(self, other)
+
+    def __rsub__(self, other):
+        from ..expressions.arithmetic import Sub
+
+        return Sub(other, self)
 
     def __mul__(self, other):
         from ..expressions.arithmetic import Mul
 
         return Mul(self, other)
 
+    def __rmul__(self, other):
+        from ..expressions.arithmetic import Mul
+
+        return Mul(other, self)
+
     def __truediv__(self, other):
         from ..expressions.arithmetic import Truediv
 
         return Truediv(self, other)
+
+    def __rtruediv__(self, other):
+        from ..expressions.arithmetic import Truediv
+
+        return Truediv(other, self)
+
 
     def __floordiv__(self, other):
         from ..expressions.arithmetic import Floordiv

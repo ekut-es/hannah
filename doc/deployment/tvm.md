@@ -1,8 +1,8 @@
 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,3 +32,41 @@ test_batches
 
 val_frequency
 : 10 (run backend every n validation epochs)
+
+board
+: Target board configuration
+
+tuner
+: optional tuner configuration
+
+### Board Configuration
+
+#### MicroTVM connected boards or simulators
+#### Automate connected Remote Boards
+
+### Tuner
+
+Autotuning is configure using the configuration group `backend/tuner`.
+
+There are 3 predefined tuner configurations:
+
+1. `àutotvm`
+
+Uses the standard configuration for autotuning on the target board, it is generallly
+the recommended setting for 8-bit quantized models on CPU like devices. As it allows the
+targets to use hand defined tuning templates, which generally include tvm tuning templates.
+
+2. `auto_scheduler`
+
+Uses the standard tvm auto_scheduler. This scheduler does not support tensorization and is therefore not recommended on targets that support tensorized instructions. This is mostly the case for tensorized instructions on the target boards.
+
+3. `baseline`
+
+This does not use any tuning but uses the predefined schedules directly.
+
+
+All tuner configurations are parametrizable using the following tuner configurations:
+
+All autotuning can be deactivated when setting `backend.tune = false`
+
+### Tuner Configuration

@@ -26,7 +26,7 @@ from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Trainer
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
-from hannah.datasets.Kitti import Kitti, object_collate_fn
+from hannah.datasets.Kitti import Kitti
 
 
 def eval_train(config, module, test=True):

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -95,6 +95,7 @@ def train(
             normalizer=config.get("normalizer", None),
             gpus=config.trainer.get("gpus", None),
             unlabeled_data=config.get("unlabeled_data"),
+            pseudo_labeling=config.get("pseudo_labeling", None),
             _recursive_=False,
         )
 
@@ -184,6 +185,8 @@ def train(
         else:
             ckpt_path = "best"
 
+        lit_module.save()
+
         if not lit_trainer.fast_dev_run:
             reset_seed()
             lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
@@ -192,7 +195,6 @@ def train(
             reset_seed()
             lit_trainer.test(ckpt_path=ckpt_path, verbose=validate_output)
 
-            lit_module.save()
             if checkpoint_callback and checkpoint_callback.best_model_path:
                 shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
 

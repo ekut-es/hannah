@@ -17,18 +17,20 @@
 ## limitations under the License.
 ##
 
+defaults:
+    - window_fn: hann
 
-_target_: torchaudio.transforms.MFCC
+_target_: hannah.features.MFCC
 sample_rate: ${dataset.samplingrate}
 n_mfcc: 40
 dct_type: 2
 norm: 'ortho'
-melkwargs:
-    hop_length: 160
-    n_fft: 480
-    f_min: 20.0
-    f_max: 4000.0
-    pad: 0
-    n_mels: 40
-    power: 2.0
-    normalized: False
+# melkwargs are given directly in our case
+hop_length: 160
+n_fft: 480
+f_min: 20.0
+f_max: 4000.0
+pad: 0
+n_mels: 40
+power: 2.0
+normalized: False

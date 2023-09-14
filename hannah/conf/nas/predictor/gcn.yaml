@@ -21,4 +21,4 @@
 _target_: hannah.nas.performance_prediction.simple.GCNPredictor
 model:
   _target_:  hannah.nas.performance_prediction.gcn.predictor.GaussianProcessPredictor
-  input_feature_size: 27
+  input_feature_size: 45

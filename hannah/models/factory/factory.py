@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import torch.nn as nn
 from hydra.utils import instantiate
-from omegaconf import MISSING, OmegaConf
+from omegaconf import MISSING, DictConfig, ListConfig, OmegaConf
 from torch.nn.modules.container import Sequential
 from torch.nn.modules.linear import Identity
 
@@ -44,12 +44,16 @@ from .reduction import ReductionBlockAdd, ReductionBlockConcat
 
 @dataclass
 class NormConfig:
+    """ """
+
     # Currently only bn is supported
     target: str = MISSING
 
 
 @dataclass
 class BNConfig(NormConfig):
+    """ """
+
     target: str = "bn"
     eps: float = 1e-05
     momentum: float = 0.1
@@ -58,17 +62,23 @@ class BNConfig(NormConfig):
 
 @dataclass
 class ActConfig:
+    """ """
+
     target: str = "relu"
 
 
 @dataclass
 class ELUConfig(ActConfig):
+    """ """
+
     target: str = "elu"
     alpha: float = 1.0
 
 
 @dataclass
 class HardtanhConfig(ActConfig):
+    """ """
+
     target: str = "hardtanh"
     min_val: float = -1.0
     max_val: float = 1.0
@@ -76,19 +86,21 @@ class HardtanhConfig(ActConfig):
 
 @dataclass
 class MinorBlockConfig:
+    """ """
+
     target: str = "conv1d"
     "target Operation"
     parallel: bool = False
     "execute block in parallel with preceding block"
     out_channels: int = 32
     "number of output channels"
-    kernel_size: Any = 3  # Union[int, Tuple[int], Tuple[int, int]]
+    kernel_size: Any = 3  # Union[int, Tuple[int, ...], Tuple[int, ...]]
     "kernel size of this Operation (if applicable)"
-    stride: Any = 1  # Union[None, int, Tuple[int], Tuple[int, int]]
+    stride: Any = 1  # Union[None, int, Tuple[int, ...], Tuple[int, ...]]
     "stride for this operation use"
     padding: bool = True
     "use padding for this operation (padding will always try to keep input dimensions / stride)"
-    dilation: Any = 1  # Union[int, Tuple[int], Tuple[int, int]]
+    dilation: Any = 1  # Union[int, Tuple[int, ...], Tuple[int, ...]]
     "dilation factor to use for this operation"
     groups: int = 1
     "number of groups for this operation"
@@ -107,15 +119,19 @@ class MinorBlockConfig:
 
 @dataclass
 class MajorBlockConfig:
+    """ """
+
     target: str = "residual"
     blocks: List[MinorBlockConfig] = field(default_factory=list)
     reduction: str = "add"
-    stride: Optional[int] = None  # Union[None, int, Tuple[int], Tuple[int, int]]
+    stride: Optional[int] = None  # Union[None, int, Tuple[int, ...], Tuple[int, ...]]
     last: bool = False  # Indicates wether this block is the last reduction block
 
 
 @dataclass
 class LinearConfig:
+    """ """
+
     outputs: int = 128
     norm: Any = False  # Union[bool, NormConfig]
     act: Any = False  # Union[bool, ActConfig]
@@ -125,6 +141,8 @@ class LinearConfig:
 
 @dataclass
 class NetworkConfig:
+    """ """
+
     _target_: str = "hannah.models.factory.create_cnn"
     name: str = MISSING
     norm: Optional[NormConfig] = BNConfig()
@@ -136,6 +154,8 @@ class NetworkConfig:
 
 
 class NetworkFactory:
+    """ """
+
     def __init__(
         self,
     ) -> None:
@@ -144,12 +164,22 @@ class NetworkFactory:
         self.default_qconfig = None
 
     def act(self, config: ActConfig) -> nn.Module:
+        """
+
+        Args:
+          config: ActConfig:
+          config: ActConfig:
+
+        Returns:
+
+        """
+        act_module: nn.Module
         if config.target == "relu":
             act_module = nn.ReLU()
         elif config.target == "elu":
-            act_module = nn.ELU(alpha=config.alpha)
+            act_module = nn.ELU(alpha=config.alpha)  # type: ignore
         elif config.target == "hardtanh":
-            act_module = nn.Hardtanh(min_val=config.min_val, max_val=config.max_val)
+            act_module = nn.Hardtanh(min_val=config.min_val, max_val=config.max_val)  # type: ignore
         elif config.target == "sigmoid":
             act_module = nn.Sigmoid()
         elif config.target == "tanh":
@@ -159,19 +189,80 @@ class NetworkFactory:
 
         return act_module
 
+    def max_pool1d(
+        self,
+        input_shape: Tuple[int, ...],
+        kernel_size: int,
+        stride: Union[int, Tuple[int, ...]] = 1,
+        padding: Union[int, Tuple[int, ...], bool] = True,
+        dilation: Union[int, Tuple[int, ...]] = 1,
+        norm: Union[BNConfig, bool] = False,
+        act: Union[ActConfig, bool] = False,
+        bias: bool = False,
+    ) -> Tuple[Tuple[int, ...], nn.Module]:
+        in_channels = input_shape[1]
+        in_len = input_shape[2]
+        output_shape = (
+            input_shape[0],
+            in_channels,
+            self._calc_spatial_dim(in_len, kernel_size, stride, padding, dilation),
+        )
+
+        if padding is True:
+            # Calculate full padding
+            padding = self._padding(kernel_size, stride, dilation)
+        if padding is False:
+            padding = 0
+
+        return output_shape, nn.MaxPool1d(
+            kernel_size, stride=stride, padding=padding, dilation=dilation
+        )
+
     def conv2d(
         self,
-        input_shape: Tuple[int, int, int, int],
+        input_shape: Tuple[int, ...],
         out_channels: int,
-        kernel_size: Union[int, Tuple[int]],
-        stride: Union[int, Tuple[int]] = 1,
-        padding: Union[int, Tuple[int], bool] = True,
-        dilation: int = 0,
+        kernel_size: Union[int, Tuple[int, ...]],
+        stride: Union[int, Tuple[int, ...]] = 1,
+        padding: Union[int, Tuple[int, ...], bool] = True,
+        dilation: Union[int, Tuple[int, ...]] = 0,
         groups: int = 1,
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
         bias: bool = False,
     ) -> None:
+        """
+
+        Args:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          out_channels: int:
+          kernel_size: Union[int:
+          Tuple[int, ...]]: (Default value = 1)
+          stride: Union[int:
+          padding: Union[int:
+          Tuple[int, ...]:
+          bool]: (Default value = False)
+          dilation: int:  (Default value = 0)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          bias: bool:  (Default value = False)
+          input_shape: Tuple[int:
+          out_channels: int:
+          kernel_size: Union[int:
+          stride: Union[int:
+          padding: Union[int:
+          dilation: int:  (Default value = 0)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          bias: bool:  (Default value = False)
+
+        Returns:
+
+        """
         in_channels = input_shape[1]
 
         if isinstance(kernel_size, int):
@@ -304,7 +395,7 @@ class NetworkFactory:
 
     def mbconv1d(
         self,
-        input_shape: Tuple[int, int, int],
+        input_shape: Tuple[int, ...],
         out_channels: int,
         kernel_size: int,
         dilation: int = 1,
@@ -316,6 +407,37 @@ class NetworkFactory:
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
     ):
+        """
+
+        Args:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          out_channels: int:
+          kernel_size: int:
+          dilation: int:  (Default value = 1)
+          stride: int:  (Default value = 1)
+          padding: Union[int:
+          bool]: (Default value = False)
+          bias: (Default value = False)
+          upsampling: float:  (Default value = 1.0)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          input_shape: Tuple[int:
+          out_channels: int:
+          kernel_size: int:
+          dilation: int:  (Default value = 1)
+          stride: int:  (Default value = 1)
+          padding: Union[int:
+          upsampling: float:  (Default value = 1.0)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+
+        Returns:
+
+        """
 
         up_channels = int(out_channels * upsampling)
 
@@ -344,7 +466,7 @@ class NetworkFactory:
 
     def conv1d(
         self,
-        input_shape: Tuple[int, int, int],
+        input_shape: Tuple[int, ...],
         out_channels: int,
         kernel_size: int,
         stride: int = 1,
@@ -355,7 +477,39 @@ class NetworkFactory:
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
         out_quant: bool = True,
-    ) -> None:
+    ) -> Tuple[Tuple[int, ...], nn.Module]:
+        """
+
+        Args:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          out_channels: int:
+          kernel_size: int:
+          stride: int:  (Default value = 1)
+          bias: bool:  (Default value = False)
+          padding: Union[int:
+          bool]: (Default value = False)
+          dilation: int:  (Default value = 1)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          out_quant: bool:  (Default value = True)
+          input_shape: Tuple[int:
+          out_channels: int:
+          kernel_size: int:
+          stride: int:  (Default value = 1)
+          bias: bool:  (Default value = False)
+          padding: Union[int:
+          dilation: int:  (Default value = 1)
+          groups: int:  (Default value = 1)
+          norm: Union[BNConfig:
+          act: Union[ActConfig:
+          out_quant: bool:  (Default value = True)
+
+        Returns:
+
+        """
 
         in_channels = input_shape[1]
 
@@ -487,6 +641,17 @@ class NetworkFactory:
         return output_shape, layers
 
     def minor(self, input_shape, config: MinorBlockConfig, major_stride=None):
+        """
+
+        Args:
+          input_shape:
+          config: MinorBlockConfig:
+          major_stride: (Default value = None)
+          config: MinorBlockConfig:
+
+        Returns:
+
+        """
         assert config.out_channels % config.groups == 0
         assert input_shape[1] % config.groups == 0
 
@@ -536,13 +701,26 @@ class NetworkFactory:
                 bias=config.bias,
             )
         elif config.target == "max_pool1d":
-            raise NotImplementedError(
-                "Minor block config max_pool1d has not been implemented yet"
+            return self.max_pool1d(
+                input_shape,
+                kernel_size=config.kernel_size,
+                padding=config.padding,
+                stride=config.stride,
+                act=config.act,
+                norm=config.norm,
             )
+
         elif config.target == "max_pool2d":
-            raise NotImplementedError(
-                "Minor block config max_pool2d has not been implemented yet"
+            return self.max_pool2d(
+                input_shape,
+                config.out_channels,
+                kernel_size=config.kernel_size,
+                padding=config.padding,
+                stride=config.stride,
+                act=config.act,
+                norm=config.norm,
             )
+
         elif config.target == "avg_pool1d":
             raise NotImplementedError(
                 "Minor block config avg_pool1d has not been implemented yet"
@@ -587,10 +765,25 @@ class NetworkFactory:
 
     def _build_chain(
         self,
-        input_shape: Tuple[int, int, int],
+        input_shape: Tuple[int, ...],
         block_configs: List[MinorBlockConfig],
         major_stride: Optional[Any],
-    ) -> List[Tuple[Tuple[int, int, int], Sequential]]:
+    ) -> List[Tuple[Tuple[int, ...], Sequential]]:
+        """
+
+        Args:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          block_configs: List[MinorBlockConfig]:
+          major_stride: Optional[Any]:
+          input_shape: Tuple[int:
+          block_configs: List[MinorBlockConfig]:
+          major_stride: Optional[Any]:
+
+        Returns:
+
+        """
         block_input_shape = input_shape
         result_chain = []
         for block_config in block_configs:
@@ -606,10 +799,28 @@ class NetworkFactory:
     def _build_reduction(
         self,
         reduction: str,
-        input_shape: Tuple[int, int, int],
-        *input_chains: List[Tuple[Tuple[int, int, int], Sequential]],
+        input_shape: Tuple[int, ...],
+        *input_chains: List[Tuple[Tuple[int, ...], Sequential]],
         reduction_quant: bool = False,
-    ) -> Tuple[Tuple[int, int, int], Union[ReductionBlockConcat, Sequential]]:
+    ) -> Tuple[Tuple[int, ...], Union[ReductionBlockConcat, Sequential]]:
+        """
+
+        Args:
+          reduction: str:
+          input_shape: Tuple[int:
+          int:
+          int]:
+          *input_chains: List[Tuple[Tuple[int:
+          Sequential]]:
+          reduction_quant: bool:  (Default value = False)
+          reduction: str:
+          input_shape: Tuple[int:
+          *input_chains: List[Tuple[Tuple[int:
+          reduction_quant: bool:  (Default value = False)
+
+        Returns:
+
+        """
         output_shapes = []
         for chain in input_chains:
             output_shapes.append(chain[-1][0] if len(chain) > 0 else input_shape)
@@ -684,12 +895,21 @@ class NetworkFactory:
         else:
             raise Exception(f"Could not find reduction: {reduction}")
 
-    def forward(self, input_shape: Tuple[int], config: MajorBlockConfig):
+    def forward(self, input_shape: Tuple[int, ...], config: MajorBlockConfig):
         """Create a forward neural network block without parallelism
 
         If parallel is set to [True, False, True, False]
 
         Input: ------->|---> parallel: False --->  parallel: False ---> | --> output
+
+        Args:
+          input_shape: Tuple[int, ...]:
+          config: MajorBlockConfig:
+          input_shape: Tuple[int, ...]:
+          config: MajorBlockConfig:
+
+        Returns:
+
         """
 
         main_configs = []
@@ -705,7 +925,7 @@ class NetworkFactory:
 
         return output_shape, major_block
 
-    def residual(self, input_shape: Tuple[int], config: MajorBlockConfig):
+    def residual(self, input_shape: Tuple[int, ...], config: MajorBlockConfig):
         """Create a neural network block with with residual parallelism
 
         If parallel is set to [True, False, True, False]
@@ -717,6 +937,15 @@ class NetworkFactory:
         and one of the branches does not contain any layers, we infer
         1x1 conv of maximum group size (gcd (input_channels, output_channels)) to do the
         downsampling.
+
+        Args:
+          input_shape: Tuple[int, ...]:
+          config: MajorBlockConfig:
+          input_shape: Tuple[int, ...]:
+          config: MajorBlockConfig:
+
+        Returns:
+
         """
 
         main_configs = []
@@ -736,7 +965,6 @@ class NetworkFactory:
                 # If skip connection is empty, use forward block
                 return self.forward(input_shape, config)
             else:
-
                 residual_configs.append(
                     MinorBlockConfig(
                         target=main_configs[-1].target,
@@ -776,6 +1004,15 @@ class NetworkFactory:
 
         If there are no parallel branches in the network. The major block is
         a standard feed forward layer.
+
+        Args:
+          in_channels: int:
+          config: MajorBlockConfig:
+          in_channels: int:
+          config: MajorBlockConfig:
+
+        Returns:
+
         """
 
         out_channels = config.out_channels
@@ -793,12 +1030,31 @@ class NetworkFactory:
                                               |--> parallel: True ---->|
 
         If there are no parallel blocks the block is a standard feed forward network.
+
+        Args:
+          in_channels: int:
+          config: MajorBlockConfig:
+          in_channels: int:
+          config: MajorBlockConfig:
+
+        Returns:
+
         """
         out_channels = config.out_channels
         block = None
         return out_channels, block
 
     def major(self, input_shape, config: MajorBlockConfig):
+        """
+
+        Args:
+          input_shape:
+          config: MajorBlockConfig:
+          config: MajorBlockConfig:
+
+        Returns:
+
+        """
         if config.target == "residual":
             out_shape, layers = self.residual(input_shape, config)
         elif config.target == "input":
@@ -813,6 +1069,16 @@ class NetworkFactory:
         return out_shape, layers
 
     def linear(self, input_shape, config: LinearConfig):
+        """
+
+        Args:
+          input_shape:
+          config: LinearConfig:
+          config: LinearConfig:
+
+        Returns:
+
+        """
 
         act = config.act
         if act is True:
@@ -825,7 +1091,7 @@ class NetworkFactory:
         qconfig = self.default_qconfig
 
         out_shape = (input_shape[0], config.outputs)
-        layers = []
+        layers: list[nn.Module] = []
         if not qconfig:
             layers.append(nn.Linear(input_shape[1], config.outputs, bias=False))
         else:
@@ -844,11 +1110,12 @@ class NetworkFactory:
         if act:
             layers.append(self.act(act))
 
-        layers = nn.Sequential(*layers)
+        layers_sequential = nn.Sequential(*layers)
 
-        return out_shape, layers
+        return out_shape, layers_sequential
 
     def identity(self) -> Identity:
+        """ """
         qconfig = self.default_qconfig
 
         if not qconfig:
@@ -858,7 +1125,21 @@ class NetworkFactory:
 
         return identity
 
-    def network(self, input_shape, labels: int, network_config: NetworkConfig):
+    def network(
+        self, input_shape, labels: int, network_config: Union[ListConfig, DictConfig]
+    ):
+        """
+
+        Args:
+          input_shape:
+          labels: int:
+          network_config: NetworkConfig:
+          labels: int:
+          network_config: NetworkConfig:
+
+        Returns:
+
+        """
         self.default_norm = network_config.norm
         self.default_act = network_config.act
         self.default_qconfig = (
@@ -870,8 +1151,9 @@ class NetworkFactory:
         for block in network_config.conv:
             input_shape, block_model = self.major(input_shape, block)
             conv_layers.append(block_model)
-        conv_layers = nn.Sequential(*conv_layers)
+        conv_layers_sequential = nn.Sequential(*conv_layers)
 
+        global_pooling: nn.Module
         if len(input_shape) == 3:
             if self.default_qconfig:
                 global_pooling = pooling.ApproximateGlobalAveragePooling1D(
@@ -902,12 +1184,16 @@ class NetworkFactory:
 
         linear_layers.append(last_linear)
 
-        linear_layers = nn.Sequential(*linear_layers)
+        linear_sequential = nn.Sequential(*linear_layers)
 
         dropout = nn.Dropout(network_config.dropout)
 
         model = ConvNet(
-            conv_layers, global_pooling, linear_layers, dropout, self.default_qconfig
+            conv_layers_sequential,
+            global_pooling,
+            linear_sequential,
+            dropout,
+            self.default_qconfig,
         )
 
         return output_shape, model
@@ -915,9 +1201,39 @@ class NetworkFactory:
     def _calc_spatial_dim(
         self, in_dim: int, kernel_size: int, stride: int, padding: int, dilation: int
     ) -> int:
+        """
+
+        Args:
+          in_dim: int:
+          kernel_size: int:
+          stride: int:
+          padding: int:
+          dilation: int:
+          in_dim: int:
+          kernel_size: int:
+          stride: int:
+          padding: int:
+          dilation: int:
+
+        Returns:
+
+        """
         return (in_dim + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
 
     def _padding(self, kernel_size: int, stride: int, _dilation: int) -> int:
+        """
+
+        Args:
+          kernel_size: int:
+          stride: int:
+          _dilation: int:
+          kernel_size: int:
+          stride: int:
+          _dilation: int:
+
+        Returns:
+
+        """
         padding = (((kernel_size - 1) * _dilation) + 1) // 2
         return padding
 
@@ -933,6 +1249,31 @@ def create_cnn(
     qconfig: Any = None,
     dropout: float = 0.5,
 ):
+    """
+
+    Args:
+      input_shape: Sequence[int]:
+      labels: int:
+      name: str:
+      conv: Optional[List[MajorBlockConfig]]:  (Default value = None)
+      linear: Optional[List[LinearConfig]]:  (Default value = None)
+      norm: Optional[NormConfig]:  (Default value = None)
+      act: Optional[ActConfig]:  (Default value = None)
+      qconfig: Any:  (Default value = None)
+      dropout: float:  (Default value = 0.5)
+      input_shape: Sequence[int]:
+      labels: int:
+      name: str:
+      conv: Optional[List[MajorBlockConfig]]:  (Default value = None)
+      linear: Optional[List[LinearConfig]]:  (Default value = None)
+      norm: Optional[NormConfig]:  (Default value = None)
+      act: Optional[ActConfig]:  (Default value = None)
+      qconfig: Any:  (Default value = None)
+      dropout: float:  (Default value = 0.5)
+
+    Returns:
+
+    """
     if conv is None:
         conv = []
     if linear is None:
@@ -955,5 +1296,7 @@ def create_cnn(
         ),
     )
     output_shape, model = factory.network(input_shape, labels, structured_config)
+
+    print(model)
 
     return model

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import logging
+import math
 import platform
 from abc import abstractmethod
 from typing import Dict, Optional, Union
@@ -29,10 +31,8 @@ import torchvision
 from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
-from sklearn.metrics import auc
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 from torchmetrics import (
-    AUC,
     AUROC,
     ROC,
     Accuracy,
@@ -43,7 +43,7 @@ from torchmetrics import (
     Recall,
 )
 
-from hannah.datasets.base import ctc_collate_fn
+from hannah.datasets.collate import ctc_collate_fn
 
 from ..datasets import SpeechDataset
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
@@ -79,11 +79,11 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.initialized = True
 
         if self.hparams.dataset is not None:
-
             # trainset needed to set values in hparams
             self.train_set, self.dev_set, self.test_set = self.get_split()
 
-            self.num_classes = self.get_num_classes()
+            self.num_classes = int(self.get_num_classes())
+            self.dataset_type = "binary" if self.num_classes == 2 else "multiclass"
 
         # Create example input
         device = self.device
@@ -108,47 +108,111 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.example_feature_array = self.normalizer(self.example_feature_array)
 
         # Instantiate Model
-        if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
-            self.model = instantiate(
-                self.hparams.model,
-                input_shape=self.example_feature_array.shape,
-                labels=self.num_classes,
-                _recursive_=False,
-            )
-        else:
-            self.hparams.model.width = self.example_feature_array.size(2)
-            self.hparams.model.height = self.example_feature_array.size(1)
-            self.hparams.model.n_labels = self.num_classes
-            self.model = get_model(self.hparams.model)
+        if hasattr(self.hparams, "model"):
+            if hasattr(self.hparams.model, "_target_") and self.hparams.model._target_:
+                self.model = instantiate(
+                    self.hparams.model,
+                    input_shape=self.example_feature_array.shape,
+                    labels=self.num_classes,
+                    _recursive_=False,
+                )
+            else:
+                self.hparams.model.width = self.example_feature_array.size(2)
+                self.hparams.model.height = self.example_feature_array.size(1)
+                self.hparams.model.n_labels = self.num_classes
+                self.model = get_model(self.hparams.model)
 
         # loss function
         self.criterion = get_loss_function(self.model, self.hparams)
 
         # Metrics
-        self.train_metrics = MetricCollection({"train_accuracy": Accuracy()})
+        self.train_metrics = MetricCollection(
+            {
+                "train_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "train_error": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+            }
+        )
         self.val_metrics = MetricCollection(
             {
-                "val_accuracy": Accuracy(),
-                "val_error": Error(),
-                "val_recall": Recall(num_classes=self.num_classes),
-                "val_precision": Precision(num_classes=self.num_classes),
-                "val_f1": F1Score(num_classes=self.num_classes),
-                "val_auroc": AUROC(num_classes=self.num_classes),
+                "val_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_error": Error(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_recall": Recall(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_precision": Precision(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_f1": F1Score(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "val_auroc": AUROC(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
             }
         )
         self.test_metrics = MetricCollection(
             {
-                "test_accuracy": Accuracy(),
-                "test_error": Error(),
-                "test_recall": Recall(num_classes=self.num_classes),
-                "test_precision": Precision(num_classes=self.num_classes),
-                "test_f1": F1Score(num_classes=self.num_classes),
-                "test_auroc": AUROC(num_classes=self.num_classes),
+                "test_accuracy": Accuracy(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_error": Error(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_recall": Recall(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_precision": Precision(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_f1": F1Score(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
+                "test_auroc": AUROC(
+                    task=self.dataset_type,
+                    num_classes=self.num_classes,
+                    average="macro",
+                ),
             }
         )
 
-        self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
-        self.test_roc = ROC(num_classes=self.num_classes, compute_on_step=False)
+        self.test_confusion = ConfusionMatrix(
+            task=self.dataset_type, num_classes=self.num_classes
+        )
+        self.test_roc = ROC(task=self.dataset_type, num_classes=self.num_classes)
 
         augmentation_passes = []
         if self.hparams.time_masking > 0:
@@ -177,26 +241,28 @@ class BaseStreamClassifierModule(ClassifierModule):
         if isinstance(output, list):
             for idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
+                if self.dataset_type == "binary":
+                    out = out.argmax(dim=1)
                 metrics(out, y)
-                self.log_dict(metrics)
+                self.log_dict(metrics, batch_size=self.batch_size)
         else:
             try:
                 output = torch.nn.functional.softmax(output, dim=1)
+                if self.dataset_type == "binary":
+                    output = output.argmax(dim=1)
                 metrics(output, y)
-                self.log_dict(metrics)
+                self.log_dict(metrics, batch_size=self.batch_size)
             except ValueError as e:
                 logging.critical(f"Could not calculate batch metrics: output={output}")
 
-        self.log(f"{prefix}_loss", loss)
+            self.log(f"{prefix}_loss", loss, batch_size=self.batch_size)
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
-        x, x_len, y, y_len = batch
-
+        x, x_lenght, y, y_lenght = self._decode_batch(batch)
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
-
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
@@ -213,18 +279,28 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     # VALIDATION CODE
     def validation_step(self, batch, batch_idx):
-
         # dataloader provides these four entries per batch
-        x, x_length, y, y_length = batch
+        x, x_length, y, y_length = self._decode_batch(batch)
 
         # INFERENCE
         output = self(x)
+        # print(output)
         y = y.view(-1)
         loss = self.criterion(output, y)
 
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.val_metrics, "val")
         return loss
+
+    def _decode_batch(self, batch):
+        if len(batch) == 4:
+            x, x_length, y, y_length = batch
+        elif len(batch) == 2:
+            x, y = batch
+            x_length = torch.ones_like(x)
+            y_length = torch.ones_like(y)
+
+        return x, x_length, y, y_length
 
     @abstractmethod
     def val_dataloader(self):
@@ -244,9 +320,8 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     # TEST CODE
     def test_step(self, batch, batch_idx):
-
         # dataloader provides these four entries per batch
-        x, x_length, y, y_length = batch
+        x, x_length, y, y_length = self._decode_batch(batch)
 
         output = self(x)
         y = y.view(-1)
@@ -313,7 +388,9 @@ class BaseStreamClassifierModule(ClassifierModule):
                     if hasattr(logger.experiment, "add_audio"):
                         logger.experiment.add_audio(
                             f"sample{self.logged_samples}_{class_names[prediction[num]]}_{class_names[y[num]]}",
-                            x[num],
+                            x[num].permute(
+                                1, 0
+                            ),  # Need to permute for tensorboard #FIXME: test with other loggers
                             self.current_epoch,
                             self.test_set.samplingrate,
                         )

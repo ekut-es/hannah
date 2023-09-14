@@ -153,14 +153,8 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         val_split = [metadata[-2]]
         test_split = [metadata[-1]]
 
-        mean = tuple(config.mean)
-        std = tuple(config.mean)
-        if isinstance(config.resolution, int):
-            resolution = (config.resolution, config.resolution)
-        else:
-            resolution = tuple(config.resolution)
-
-        train_set = cls(config, train_split)
+        transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
+        train_set = cls(config, train_split, transform=transform)
         test_set = cls(config, test_split)
         val_set = cls(config, val_split)
 

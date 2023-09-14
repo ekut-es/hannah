@@ -1,8 +1,8 @@
 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 # Development Guidelines
+
+The main development repository is available at: https://es-git.cs.uni-tuebingen.de/es/ai/hannah/hannah
 
 ## Code Style
 
@@ -49,3 +51,38 @@ dedicated logger for your module e.g.:
     ...
     logger.info()
     logger.debug()
+
+
+## Testing / CI
+
+Try to provide unit tests for new features, unit tests should be written using [pytest](https://docs.pytest.org). Unit test should be designed to run pretty fast and are run for each push.
+
+Tests marked with ``@pytest.mark.integration` are only triggered when `--integration` is given on the pytest commandline. These tests are only run on pushs to the main branch.
+
+
+
+## Resolving merge conflicts in `poetry.lock`
+
+If you have changed `poetry.lock` this can result in merge conflicts.
+
+The easiest way to resolve them is:
+
+```
+git checkout --theirs poetry.lock
+poetry lock --no-update
+```
+
+Try to avoid running `poetry update` on feature branches.
+
+
+## Branching
+
+We apply the following code branch naming convention. 
+
+
+- `main`: main development branch should be as stable as possible
+- `f/*`: feature branches, development branches (will be squash merged after review, and successful passing of merge request pipeline)
+- `fix/*` bug fix branches, branches containing little self contained bug fixes for existing features (feel free to merge without code review, if you can reasonably assume that they are not breaking anything that is not already broken)
+- `pub/*`: publication branches, branches containing the version corresponding to a specific, full branch name should contain abbreviation of publication and publication year. 
+
+Publication branches and main branch are automatically mirrored to the public github repository: https://github.com/ekut-es/hannah

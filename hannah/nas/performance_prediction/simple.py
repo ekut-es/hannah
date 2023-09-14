@@ -20,12 +20,20 @@ import logging
 
 import dgl
 import numpy as np
+import pandas as pd
 import torch
+import json
+import networkx as nx 
+import tqdm
 from hydra.utils import instantiate
 from tabulate import tabulate
 
+from pathlib import Path
+
 from hannah.callbacks.summaries import MacSummaryCallback
 from hannah.nas.graph_conversion import GraphConversionTracer, model_to_graph
+from hannah.nas.performance_prediction.features.dataset import OnlineNASGraphDataset, get_features, to_dgl_graph
+from hannah.nas.performance_prediction.gcn.predictor import prepare_dataloader
 
 logger = logging.getLogger(__name__)
 
@@ -59,23 +67,10 @@ class BackendPredictor:
 class MACPredictor:
     """A predictor class that instantiates the model and calculates abstract metrics"""
 
-    def predict(self, config):
-        model = instantiate(
-            config.module,
-            dataset=config.dataset,
-            model=config.model,
-            optimizer=config.optimizer,
-            features=config.features,
-            scheduler=config.get("scheduler", None),
-            normalizer=config.get("normalizer", None),
-            _recursive_=False,
-        )
-
-        model.setup("train")
-
+    def predict(self, model, input = None):
         predictor = MacSummaryCallback()
 
-        metrics = predictor.predict(model)
+        metrics = predictor.predict(model, input=input)
 
         logger.info("Predicted performance metrics")
         for k in metrics.keys():
@@ -89,30 +84,51 @@ class GCNPredictor:
 
     def __init__(self, model):
         self.predictor = instantiate(model)
+        self.graphs = []
+        self.labels = []
 
-    def predict(self, config):
-        backend = instantiate(config.backend)
-        model = instantiate(
-            config.module,
-            dataset=config.dataset,
-            model=config.model,
-            optimizer=config.optimizer,
-            features=config.features,
-            scheduler=config.get("scheduler", None),
-            normalizer=config.get("normalizer", None),
-            _recursive_=False,
-        )
+        
+    def load(self, result_folder : str):
+        result_folder = Path(result_folder)    
+        for i, data_path in tqdm.tqdm(enumerate(result_folder.glob("model_*.json"))):
+            #if i % 500 == 0:
+            i#print("Processing graph {}".format(i))
 
-        model.setup("train")
+            d = json.load(data_path.open())
 
-        nx_graph = model_to_graph(model)
+            nx_graph = nx.json_graph.node_link_graph(d["graph"])
+
+            #FIXME: make features configurable
+            result = d["metrics"]["val_error"]
+
+            fea = get_features(nx_graph)
+
+            for i, n in enumerate(nx_graph.nodes):
+                nx_graph.nodes[n]['features'] = fea.iloc[i].to_numpy()
+            
+            dgl_graph = to_dgl_graph(nx_graph)
+            
+            self.graphs.append(dgl_graph)
+            self.labels.append(result)
+       
+
+        self.train()
+
+
+    def predict(self, model, input):
+        model.train()
+
+        nx_graph = model_to_graph(model, input)
+        fea = get_features(nx_graph)
+        for i, n in enumerate(nx_graph.nodes):
+            nx_graph.nodes[n]['features'] = fea.iloc[i].to_numpy()
         dgl_graph = to_dgl_graph(nx_graph)
 
         result, std_dev = self.predictor.predict(dgl_graph)
 
         print(result, std_dev)
 
-        metrics = {}
+        metrics = {'val_error': result}
 
         logger.info("Predicted performance metrics")
         for k in metrics.keys():
@@ -120,37 +136,19 @@ class GCNPredictor:
 
         return metrics
 
+    def update(self, new_data, input):
+        for item, result in new_data:
+            nx_graph = model_to_graph(item, input)
+            fea = get_features(nx_graph)
 
-def to_dgl_graph(nx_graph):
+            for i, n in enumerate(nx_graph.nodes):
+                nx_graph.nodes[n]['features'] = fea.iloc[i].to_numpy()
+            dgl_graph = to_dgl_graph(nx_graph)
+            self.graphs.append(dgl_graph)
+            self.labels.append(result)
+        self.train()
 
-    node_num = {}
-    fea_tensor = []
-    fea_len = 0
-    for num, n in enumerate(nx_graph.nodes):
-        feature_vec = torch.tensor(nx_graph.nodes[n]["features"])
-        fea_len = max(len(feature_vec), fea_len)
-        fea_tensor.append(feature_vec)
-        node_num[n] = num
-
-    print("input feature len: ", fea_len)
-
-    padded_features = []
-    for vec in fea_tensor:
-        padded_vec = np.pad(
-            vec, (0, fea_len - len(vec)), mode="constant", constant_values=0
-        )
-        padded_vec = torch.tensor(padded_vec)
-        padded_features.append(padded_vec)
-
-    src = []
-    dst = []
-    for i, j in nx_graph.edges:
-        src.append(node_num[i])
-        dst.append(node_num[j])
-
-    fea_tensor = torch.vstack(padded_features)
-    g = dgl.graph(data=(src, dst))
-    g.ndata["features"] = fea_tensor
-    g = dgl.add_self_loop(g)
-
-    return g
+    def train(self):
+        dataset = OnlineNASGraphDataset(self.graphs, self.labels)
+        train_dataloader, test_dataloader = prepare_dataloader(dataset, batch_size=32, train_test_split=1)
+        self.predictor.train_and_fit(train_dataloader, num_epochs=20, verbose=25)

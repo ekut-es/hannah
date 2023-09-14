@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ from hannah.models.ofa.submodules.elastickernelconv import ElasticConv1d
 class OFAGroupTestCase(unittest.TestCase):
     def test_grouping(self):
         kernel_sizes = [3]
-        input_length = 30
+        input_length = 5
         input_channels = 8
         output_channels = 8
         batch_size = 2
@@ -48,6 +48,7 @@ class OFAGroupTestCase(unittest.TestCase):
             kernel_sizes,
             dilation_sizes=dilation_sizes,
             groups=group_sizes,
+            dscs=[0, 1, 2, 3],
         )
         loss_func = nn.MSELoss()
         optimizer = torch.optim.SGD(conv.parameters(), lr=0.1)

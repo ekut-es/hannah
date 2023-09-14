@@ -18,6 +18,6 @@
 ##
 
 
-_target_: pytorch_lightning.profiler.AdvancedProfiler
+_target_: pytorch_lightning.profilers.AdvancedProfiler
 filename: null
 line_count_restriction: 20

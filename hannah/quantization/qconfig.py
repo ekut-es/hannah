@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ from torch.quantization.observer import (
 
 from .rounding import RoundingMode
 
-QConfig = namedtuple("QConfig", ["activation", "weight", "bias"])
+QConfig = namedtuple("QConfig", ["activation", "weight", "bias", "accumulator"])
 
 
 class STE(autograd.Function):
@@ -117,7 +117,6 @@ class SymmetricQuantization:
         self.debug = debug
 
     def quantize(self, x: Union[Tensor, Parameter]) -> Tensor:
-
         if self.debug:
             print("x", x)
         x = x / self.scale
@@ -246,6 +245,7 @@ def get_trax_qat_qconfig(config) -> QConfig:
     bits_bias = config.bw_b if config.bw_b > 0 else config.bw_f
     bits_activation = config.bw_f
     bits_weight = config.bw_w
+    bits_accumulator = config.get("bw_acc", 20)
     rounding_mode = config.get("rounding_mode", "EVEN")
 
     qconfig = QConfig(
@@ -263,6 +263,11 @@ def get_trax_qat_qconfig(config) -> QConfig:
         ),
         STEQuantize.with_args(
             bits=bits_bias,
+            noise_prob=config.get("noise_prob", 1.0),
+            rounding_mode=rounding_mode,
+        ),
+        STEQuantize.with_args(
+            bits=bits_accumulator,
             noise_prob=config.get("noise_prob", 1.0),
             rounding_mode=rounding_mode,
         ),

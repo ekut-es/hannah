@@ -18,6 +18,10 @@
 ##
 
 
+
+# @package _group_
+
+
 _target_: hannah.features.SincConvBlock
 out_channels: 40
 kernel_size: 101
@@ -32,7 +36,3 @@ min_low_hz: 50
 min_band_hz: 50
 bn_len: 40
 pool_len: 2
-
-#TODO:
-#window_fn: Callable[[...], torch.Tensor] = <built-in method hann_window of type object>
-#wkwargs: Optional[dict] = None

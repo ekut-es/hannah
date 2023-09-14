@@ -16,7 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .op import BinaryOp
+from hannah.nas.core.expression import Expression
+from .op import BinaryOp, UnaryOp
 
 
 class And(BinaryOp):
@@ -37,3 +38,30 @@ class Or(BinaryOp):
     def concrete_impl(self, lhs, rhs):
         # Fixme this does not follow python semantacics exactly
         return lhs or rhs
+
+
+# FIXME: Just want to try whether this works in z3
+class If(Expression):
+    def __init__(self, operand, a, b) -> None:
+        super().__init__()
+        self.operand = operand
+        self.a = a
+        self.b = b
+
+    def evaluate(self):
+        condition = self.operand
+        if hasattr(self.operand, 'evaluate'):
+            condition = self.operand.evaluate()
+        result = self.a if condition else self.b
+        if hasattr(result, 'evaluate'):
+            result = result.evaluate()
+        return result
+
+    def format(self, indent=2, length=80):
+        return f"If({self.operand}, {self.a}, {self.b})"
+
+
+    def __repr__(self):
+        return "If(" + repr(self.operand) + ", " + repr(self.a) + ", " + repr(self.b) + ")"
+
+

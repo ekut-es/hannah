@@ -33,8 +33,11 @@ defaults:
     - early_stopping: null
     - profiler: null
     - compression: null
+    - augmentation: null
+    - fine_tuning: null
     - optional dataset/features: ${dataset}_${features}
     - nas: null
+    - pseudo_labeling: null
     - override hydra/job_logging: silent
     - _self_
 

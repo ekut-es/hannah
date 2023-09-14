@@ -1,0 +1,2 @@
+_target_: torch.ones
+_partial_: True

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
@@ -109,7 +109,7 @@ class AbstractDataset(Dataset, ABC):
         pass  # pytype: disable=bad-return-type
 
     def size(self) -> List[int]:
-        """Returns dimension of output output without batch dimension"""
+        """Returns dimension of output without batch dimension"""
 
         return [self.channels, self.input_length]
 
@@ -124,6 +124,11 @@ class AbstractDataset(Dataset, ABC):
         return None
 
     @property
+    def resolution(self) -> Optional[Tuple[int, ...]]:
+        """Returns resolution for dataset if applicable"""
+        return None
+
+    @property
     def weights(self) -> Optional[List[float]]:
         """Class weights for weighted sampling"""
         class_counts = self.class_counts
@@ -131,53 +136,3 @@ class AbstractDataset(Dataset, ABC):
             counts = list(class_counts.values())
             weights = [1 / i for i in counts]
             return weights
-
-
-def ctc_collate_fn(data):
-    """Creates mini-batch tensors from the list of tuples (src_seq, trg_seq).
-    We should build a custom collate_fn rather than using default collate_fn,
-    because merging sequences (including padding) is not supported in default.
-    Sequences are padded to the maximum length of mini-batch sequences (dynamic padding).
-    Args:
-        data: list of tuple (src_seq, src_length, trg_seq, trg_length).
-            - src_seq: torch tensor of shape (x,?); variable length.
-            - src length: torch tenso of shape 1x1
-            - trg_seq: torch tensor of shape (?); variable length.
-            - trg_length: torch_tensor of shape (1x1)
-    Returns: tuple of four torch tensors
-        src_seqs: torch tensor of shape (batch_size, x, padded_length).
-        src_lengths: torch_tensor of shape (batch_size); valid length for each padded source sequence.
-        trg_seqs: torch tensor of shape (batch_size, x, padded_length).
-        trg_lengths: torch tensor of shape (batch_size); valid length for each padded target sequence.
-    """
-
-    def merge(sequences):
-        lengths = [seq.shape[-1] for seq in sequences]
-        max_length = max(lengths)
-
-        padded_seqs = []
-
-        for item in sequences:
-            padded = torch.nn.functional.pad(
-                input=item,
-                pad=(0, max_length - item.shape[-1]),
-                mode="constant",
-                value=0,
-            )
-            padded_seqs.append(padded)
-
-        return padded_seqs, lengths
-
-    # seperate source and target sequences
-    src_seqs, src_lengths, trg_seqs, trg_lengths = zip(*data)
-
-    # merge sequences (from tuple of 1D tensor to 2D tensor)
-    src_seqs, src_lengths = merge(src_seqs)
-    trg_seqs, trg_lengths = merge(trg_seqs)
-
-    return (
-        torch.stack(src_seqs),
-        torch.Tensor(src_lengths),
-        torch.stack(trg_seqs),
-        torch.Tensor(trg_lengths),
-    )

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,16 +17,80 @@
 # limitations under the License.
 #
 import itertools
+from typing import Any, Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from torchmetrics import Accuracy
+from torchmetrics import Metric
+from torchmetrics.classification import (
+    BinaryAccuracy,
+    MulticlassAccuracy,
+    MultilabelAccuracy,
+)
 
 
-class Error(Accuracy):
+class BinaryError(BinaryAccuracy):
     def compute(self):
         return 1.0 - super().compute()
+
+
+class MulticlassError(MulticlassAccuracy):
+    def compute(self):
+        return 1.0 - super().compute()
+
+
+class MultilabelError(MultilabelAccuracy):
+    def compute(self):
+        return 1.0 - super().compute()
+
+
+class Error:
+    r"""Computes `Error` = 1 - Accuracy_
+
+    .. math::
+        \text{Error} = 1 - \frac{1}{N}\sum_i^N 1(y_i = \hat{y}_i)
+
+    Where :math:`y` is a tensor of target values, and :math:`\hat{y}` is a tensor of predictions.
+
+    This module is a simple wrapper to get the task specific versions of this metric, which is done by setting the
+    ``task`` argument to either ``'binary'``, ``'multiclass'`` or ``multilabel``. See the documentation of
+    :mod:`BinaryError`, :mod:`MulticlassError` and :mod:`MultilabelError` for the specific details of
+    each argument influence and examples.
+    """
+
+    def __new__(
+        cls,
+        task: Literal["binary", "multiclass", "multilabel"],
+        threshold: float = 0.5,
+        num_classes: Optional[int] = None,
+        num_labels: Optional[int] = None,
+        average: Optional[Literal["micro", "macro", "weighted", "none"]] = "micro",
+        multidim_average: Literal["global", "samplewise"] = "global",
+        top_k: Optional[int] = 1,
+        ignore_index: Optional[int] = None,
+        validate_args: bool = True,
+        **kwargs: Any,
+    ) -> Metric:
+        kwargs.update(
+            dict(
+                multidim_average=multidim_average,
+                ignore_index=ignore_index,
+                validate_args=validate_args,
+            )
+        )
+        if task == "binary":
+            return BinaryError(threshold, **kwargs)
+        if task == "multiclass":
+            assert isinstance(num_classes, int)
+            assert isinstance(top_k, int)
+            return MulticlassError(num_classes, top_k, average, **kwargs)
+        if task == "multilabel":
+            assert isinstance(num_labels, int)
+            return MultilabelError(num_labels, threshold, average, **kwargs)
+        raise ValueError(
+            f"Expected argument `task` to either be `'binary'`, `'multiclass'` or `'multilabel'` but got {task}"
+        )
 
 
 def plot_confusion_matrix(

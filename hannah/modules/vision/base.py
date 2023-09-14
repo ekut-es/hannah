@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
 # limitations under the License.
 #
 import logging
-from typing import Sequence
+from collections import defaultdict
+from typing import Optional, Sequence
 
+import kornia
+import kornia.augmentation as K
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.utils.data as data
-import torchvision.utils
 from hydra.utils import get_class, instantiate
 from sklearn.metrics import auc, roc_curve
 from torchmetrics import (
@@ -35,8 +35,6 @@ from torchmetrics import (
     Precision,
     Recall,
 )
-
-from hannah.utils.utils import set_deterministic
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from ..base import ClassifierModule
@@ -79,13 +77,14 @@ class VisionBaseModule(ClassifierModule):
         if self.train_set.class_names:
             self.num_classes = len(self.train_set.class_names)
 
-        msglogger.info("Setting up model %s", self.hparams.model.name)
-        self.model = instantiate(
-            self.hparams.model,
-            input_shape=self.example_input_array.shape,
-            labels=self.num_classes,
-            _recursive_=False,
-        )
+        if hasattr(self.hparams, "model"):
+            msglogger.info("Setting up model %s", self.hparams.model.name)
+            self.model = instantiate(
+                self.hparams.model,
+                input_shape=self.example_input_array.shape,
+                labels=self.num_classes,
+                _recursive_=False,
+            )
 
         if self.hparams.dataset.get("weighted_loss", False) is True:
             loss_weights = torch.tensor(self.train_set.weights)
@@ -104,37 +103,54 @@ class VisionBaseModule(ClassifierModule):
         # setup lists for reconstruction errors to compute anomaly threshold
         self.train_losses = list()
         self.normalized_train_errors = None
-        self.predictions = list()
-        self.labels = list()
+        self.predictions = torch.tensor([], device=self.device)
+        self.labels = torch.tensor([], device=self.device)
         self.test_losses = list()
+        self.encodings = dict()
+
+        self.input_normalizer = BatchAugmentationPipeline(
+            {"Normalize": {"mean": self.train_set.mean, "std": self.train_set.std}}
+        )
+
+        # Setup Augmentations
+        self.default_augmentation = torch.nn.Identity()
+        self.augmentations = {}
+
+        self.setup_augmentations(self.hparams.augmentation)
 
         # Setup Metrics
         metrics = {}
         if self.num_classes > 0:
-            self.test_confusion = ConfusionMatrix(num_classes=self.num_classes)
+            self.test_confusion = ConfusionMatrix(
+                "multiclass", num_classes=self.num_classes
+            )
 
             for step_name in ["train", "val", "test"]:
                 step_metrics = MetricCollection(
                     {
-                        f"{step_name}_accuracy": Accuracy(num_classes=self.num_classes),
-                        f"{step_name}_error": Error(num_classes=self.num_classes),
+                        f"{step_name}_accuracy": Accuracy(
+                            "multiclass", num_classes=self.num_classes
+                        ),
+                        f"{step_name}_error": Error(
+                            "multiclass", num_classes=self.num_classes
+                        ),
                         f"{step_name}_precision_micro": Precision(
-                            num_classes=self.num_classes, average="micro"
+                            "multiclass", num_classes=self.num_classes, average="micro"
                         ),
                         f"{step_name}_recall_micro": Recall(
-                            num_classes=self.num_classes, average="micro"
+                            "multiclass", num_classes=self.num_classes, average="micro"
                         ),
                         f"{step_name}_f1_micro": F1Score(
-                            num_classes=self.num_classes, average="micro"
+                            "multiclass", num_classes=self.num_classes, average="micro"
                         ),
                         f"{step_name}_precision_macro": Precision(
-                            num_classes=self.num_classes, average="macro"
+                            "multiclass", num_classes=self.num_classes, average="macro"
                         ),
                         f"{step_name}_recall_macro": Recall(
-                            num_classes=self.num_classes, average="macro"
+                            "multiclass", num_classes=self.num_classes, average="macro"
                         ),
                         f"{step_name}_f1_macro": F1Score(
-                            num_classes=self.num_classes, average="macro"
+                            "multiclass", num_classes=self.num_classes, average="macro"
                         ),
                     }
                 )
@@ -142,10 +158,18 @@ class VisionBaseModule(ClassifierModule):
 
         self.metrics = torch.nn.ModuleDict(metrics)
 
+        self.pseudo_label = instantiate(self.hparams.pseudo_labeling, model=self.model)
+
+        # FIXME
+        msglogger.info("Running dummy forward to initialize lazy modules")
+        self.eval()
+        self(self.example_input_array)
+        self.train()
+
     def _decode_batch(self, batch):
         if isinstance(batch, Sequence):
             assert len(batch) == 2
-            ret = {"data": batch[0], "labels": batch[1]}
+            ret = {"data": batch[0], "labels": batch[1], "bbox": []}
         else:
             ret = batch
 
@@ -167,9 +191,60 @@ class VisionBaseModule(ClassifierModule):
         self._log_weight_distribution()
         self.train()
 
-    def augment(self, images, labels, batch_idx):
-        augmented_data = images
-        if batch_idx == 0:
-            self._log_batch_images("augmented", batch_idx, augmented_data)
+    def augment(self, images, labels, boxes, batch_idx, pipeline: Optional[str] = None):
+        if boxes and (torch.numel(images) > 0):
+            boxes_kornia = list()
+            box_index = []
+            for i in range(len(boxes)):
+                if boxes[i]:  # not empty list
+                    box = kornia.geometry.bbox.bbox_generator(
+                        boxes[i][0][0], boxes[i][0][1], boxes[i][0][2], boxes[i][0][3]
+                    )  # convert COCO to kornia format
+                    boxes_kornia.append(box)
+                    box_index.append(i)
+            if not len(box_index) == 0:
+                boxes_kornia = torch.cat(boxes_kornia)
 
-        return augmented_data, images
+        augmented_data = self.default_augmentation(images)
+        if pipeline in self.augmentations:
+            augmented_data = self.augmentations[pipeline].forward(augmented_data)
+
+        elif pipeline is not None:
+            msglogger.critical(
+                "Could not find augmentations for `%s`, only default augmentations will be applied ",
+                pipeline,
+            )
+
+        augmented_norm_data = self.input_normalizer.forward(augmented_data)
+
+        if batch_idx == 0:
+            pipeline_name = pipeline if pipeline is not None else "default"
+            self._log_batch_images(
+                f"augmented_{pipeline_name}", batch_idx, augmented_norm_data
+            )
+
+        return augmented_norm_data, images
+
+    def setup_augmentations(self, pipeline_configs):
+        default_augment = []
+        augmentations = defaultdict(list)
+
+        if pipeline_configs is None:
+            msglogger.warning(
+                "No data augmentations have been defined, make sure that this is intentional"
+            )
+            self.default_augmentation = torch.nn.Identity()
+            return
+
+        for pipeline_id, pipeline_config in pipeline_configs.items():
+            pipeline_name = pipeline_config.get("pipeline", None)
+            pipeline_transforms = BatchAugmentationPipeline(pipeline_config.transforms)
+
+            if pipeline_name:
+                augmentations[pipeline_name].append(pipeline_transforms)
+            else:
+                default_augment.append(pipeline_transforms)
+
+        self.default_augmentation = torch.nn.Sequential(*default_augment)
+        augmentations = {k: torch.nn.Sequential(*v) for k, v in augmentations.items()}
+        self.augmentations = torch.nn.ModuleDict(augmentations)

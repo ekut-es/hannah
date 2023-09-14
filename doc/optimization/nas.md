@@ -16,6 +16,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
+
+:warning: **Note:** We are currently in the process of restructuring the Neural Architecture Search, in particular the way search spaces are constructed. Some things might not work as usual.
+
 # Neural architecture search
 
 In contrast to hyperparameter optimization neural architecture search, explores new neural network hyperparameters.

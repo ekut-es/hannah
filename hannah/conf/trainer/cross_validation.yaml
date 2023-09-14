@@ -18,7 +18,6 @@
 ##
 _target_: hannah.trainer.CrossValidationTrainer
 gpus: 1
-auto_select_gpus: True
 limit_train_batches: 1.0
 limit_val_batches: 1.0
 limit_test_batches: 1.0
@@ -27,7 +26,7 @@ default_root_dir: .
 fast_dev_run: false
 overfit_batches: 0.0
 benchmark: False
-deterministic: True
+deterministic: warn
 gradient_clip_val: 0
 auto_scale_batch_size: null
 accumulate_grad_batches: 1

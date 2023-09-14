@@ -1,8 +1,8 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 Hannah contributors.
 ##
 ## This file is part of hannah.
-## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+## See https://github.com/ekut-es/hannah for further info.
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -35,25 +35,29 @@ cache:
 
 before_script:
   - apt update
-  - apt -y install mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build
+  - apt -y install git mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3
 
 
   # Install poetry using recommended method
   - curl -sSL https://install.python-poetry.org/ | python3
   - export PATH=${POETRY_HOME}/bin:${PATH}
 
-  # Work around: https://github.com/python-poetry/poetry/issues/3199
-  - poetry config experimental.new-installer false
-
   # install and manage dependencies with poetry
   - poetry install -E vision
+  - poetry config installer.max-workers 10
 
   # Show limits
   - ulimit -a
 
-test_python_38:
+test_prebuilt_docker:
   stage: test
-  image: python:3.8
+  image: cgerum/hannah:latest
+  before_script:
+    - export POETRY_HOME=/root/.local
+    - export PATH=${POETRY_HOME}/bin:${PATH}
+    - poetry install -E vision
+    - poetry config installer.max-workers 10
+    - ulimit -a
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=hannah test hannah
@@ -61,8 +65,21 @@ test_python_38:
     - docker
   interruptible: true
   only:
-    - master
     - merge_requests
+  dependencies: []
+
+
+test_python_38:
+  stage: test
+  image: python:3.8
+  script:
+    - set -e
+    - poetry run python3 -m pytest  -v --cov=hannah test hannah --integration
+  tags:
+    - docker
+  interruptible: true
+  only:
+    - main
   dependencies: []
   cache:
     paths:
@@ -70,21 +87,20 @@ test_python_38:
 
 test_tvm:
   stage: test
-  image: python:3.10
+  image: ubuntu:22.04
   script:
     - set -e
-    - apt-get install -y llvm-dev libclang-dev
+    - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
+    - poetry config installer.max-workers 10
     - poetry run external/hannah-tvm/scripts/install_full.sh
     - poetry install -E tvm -E vision
-    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test external/hannah-tvm/test
+    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test --integration
   tags:
     - docker
-    - nfs
   interruptible: true
-  allow_failure: true
+  allow_failure: false
   only:
     - main
-    - /.*tvm.*/
   cache:
     paths:
       - .cache/
@@ -107,32 +123,36 @@ test_python_310:
   interruptible: true
   artifacts:
     reports:
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
   dependencies: []
   cache:
     paths:
       - .cache/
+  only:
+    - main
+
 
 build_docs:
-  stage: deploy
+  stage: test
+  image: ubuntu:22.04
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
     paths:
       - .cache/pip
       - venv
-
   before_script:
-    - python3 -m virtualenv venv
+    - apt update
+    - apt -y install git python3-dev libblas-dev liblapack-dev libsndfile1-dev  cmake  curl  python-is-python3 python3-virtualenv python3-pip
+    - python -m virtualenv venv
     - source venv/bin/activate
     - pip install --upgrade pydoc-markdown mkdocs pymdown-extensions
-
-  allow_failure: true
   script:
-    - pydoc-markdown --build --site-dir /afs/wsi/home/gerum/public_html/hannah
+    - pydoc-markdown --build --site-dir public_html/
   tags:
-    - afs
-    - native
+    - docker
   only:
     - main
 
@@ -204,19 +224,23 @@ run_ml_cloud_lidar:
 
 
 run_sca:
-  stage: build
-  image: python:3.9
+  stage: test
+  image: cgerum/hannah:latest
+  before_script:
+    - export POETRY_HOME=/root/.local
+    - export PATH=${POETRY_HOME}/bin:${PATH}
+    - poetry config installer.max-workers 10
+    - poetry install -E vision
+    - ulimit -a
   script:
     - set -e
     - poetry run pre-commit install
+    - poetry run pyre || true
     - poetry run pre-commit run -a
   tags:
     - docker
   interruptible: true
   allow_failure: true
-  cache:
-    paths:
-      - .cache/
 
 # ml_cloud_update_env:
 #   stage: deploy
@@ -256,6 +280,7 @@ deploy to github:
 
   only:
     - main
-  script: ./scripts/git-push git@github.com:ekut-es/hannah.git main
+    - pub/.*
+  script: ./scripts/git-push git@github.com:ekut-es/hannah.git $CI_COMMIT_REF_NAME
   tags:
     - docker

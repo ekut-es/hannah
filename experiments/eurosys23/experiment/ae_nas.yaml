@@ -1,0 +1,22 @@
+# @package _global_
+defaults:
+  - override /nas: aging_evolution_nas
+  - override /model: capsule_net
+
+
+nas:
+  budget: 2000
+  n_jobs: 20
+  num_selected_candidates: 20
+
+
+trainer:
+  max_epochs: 15
+
+
+model:
+  labels: 4
+
+seed: [1234]
+
+experiment_id: "ae_nas_capsule"

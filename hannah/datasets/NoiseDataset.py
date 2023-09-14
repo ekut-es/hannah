@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -260,7 +260,9 @@ class NoiseDataset:
 
             if "FSD50K" in noisedatasets:
                 filename = "50k.tar"
-                url = "https://atreus.informatik.uni-tuebingen.de/seafile/f/1fe048dfbbbf49eaa9d5/?dl=1"
+                url = (
+                    "https://es-cloud.cs.uni-tuebingen.de/f/1fe048dfbbbf49eaa9d5/?dl=1"
+                )
                 target_test_folder = os.path.join(target_cache, "FSDK50K")
                 extract_from_download_cache(
                     filename,

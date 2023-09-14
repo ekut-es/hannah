@@ -1,0 +1,5 @@
+defaults:
+  - base_config
+  - _self_
+
+experiment_id: "DSD22 NAS"

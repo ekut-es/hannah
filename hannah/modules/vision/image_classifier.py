@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,12 +24,7 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
-
-try:
-    from timm.data.mixup import Mixup
-except ModuleNotFoundError:
-    logging.critical("Could not import Mixup from timm.data.mixup")
-    Mixup = None
+from pytorch_lightning.trainer.supporters import CombinedLoader
 from torchmetrics import (
     Accuracy,
     ConfusionMatrix,
@@ -39,11 +34,12 @@ from torchmetrics import (
     Recall,
 )
 
-from hannah.utils.utils import set_deterministic
+from hannah.datasets.collate import vision_collate_fn
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from ..metrics import Error
 from .base import VisionBaseModule
+from .loss import SemiSupervisedLoss
 
 msglogger = logging.getLogger(__name__)
 
@@ -51,6 +47,8 @@ msglogger = logging.getLogger(__name__)
 class ImageClassifierModule(VisionBaseModule):
     def common_step(self, step_name, batch, batch_idx):
         # print("step_name", step_name)
+        ss_loss = SemiSupervisedLoss()
+
         batch = self._decode_batch(batch)
 
         x = batch["data"]
@@ -60,40 +58,66 @@ class ImageClassifierModule(VisionBaseModule):
         if batch_idx == 0:
             self._log_batch_images("input", batch_idx, x)
 
-        augmented_data, x = self.augment(x, labels, batch_idx)
+        augmented_data, x = self.augment(x, labels, boxes, batch_idx)
 
         prediction_result = self.forward(augmented_data)
 
         loss = torch.tensor([0.0], device=self.device)
         preds = None
-        if labels is not None and prediction_result.logits.numel() > 0:
+
+        if hasattr(prediction_result, "logits"):
             logits = prediction_result.logits
+        else:
+            logits = prediction_result
 
-            classifier_loss = F.cross_entropy(logits, labels, weight=self.loss_weights)
+        if labels is not None and logits.numel() > 0:
+            classifier_loss = ss_loss.forward(
+                logits=logits, labels=labels, weight=self.loss_weights
+            )
 
-            self.log(f"{step_name}_classifier_loss", classifier_loss)
+            self.log(
+                f"{step_name}_classifier_loss",
+                classifier_loss,
+                batch_size=self.batch_size,
+            )
             loss += classifier_loss
 
             preds = torch.argmax(logits, dim=1)
             self.metrics[f"{step_name}_metrics"](preds, labels)
 
-            self.log_dict(self.metrics[f"{step_name}_metrics"])
+            self.log_dict(
+                self.metrics[f"{step_name}_metrics"], batch_size=self.batch_size
+            )
 
-        if prediction_result.decoded.numel() > 0:
+        if (
+            hasattr(prediction_result, "decoded")
+            and prediction_result.decoded.numel() > 0
+        ):
             decoded = prediction_result.decoded
-            decoder_loss = F.mse_loss(decoded, x)
+            decoder_loss = ss_loss.forward(true_data=x, decoded=decoded)
             self.log(f"{step_name}_decoder_loss", decoder_loss)
             loss += decoder_loss
 
             if batch_idx == 0:
                 self._log_batch_images("decoded", batch_idx, decoded)
 
-        self.log(f"{step_name}_loss", loss)
+        self.log(f"{step_name}_loss", loss, batch_size=self.batch_size)
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
-        loss, _, _, _ = self.common_step("train", batch, batch_idx)
+        batch_labeled = batch
+        batch_unlabeled = None
+        if isinstance(batch, dict) and "unlabeled" in batch:
+            batch_labeled = batch["labeled"]
+            batch_unlabeled = batch["unlabeled"]
 
+        loss, _, _, _ = self.common_step("train", batch_labeled, batch_idx)
+        if self.pseudo_label is not None and batch_unlabeled is not None:
+            loss += self.pseudo_label(batch_unlabeled)
+        elif batch_unlabeled is not None:
+            msglogger.critical(
+                "Batch contains unlabeled data but no pseudo labeling is configured."
+            )
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -104,5 +128,41 @@ class ImageClassifierModule(VisionBaseModule):
 
         y = batch.get("labels", None)
         if y is not None and preds is not None:
-            with set_deterministic(False):
-                self.test_confusion(preds, y)
+            self.test_confusion(preds, y)
+
+    def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
+        batch_size = self.hparams["batch_size"]
+        dataset_conf = self.hparams.dataset
+        sampler = None
+        if shuffle:
+            sampler_type = dataset_conf.get("sampler", "random")
+            if sampler_type == "weighted":
+                sampler = self.get_balancing_sampler(dataset)
+            else:
+                sampler = data.RandomSampler(dataset)
+
+        loader = data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            drop_last=True,
+            num_workers=self.hparams["num_workers"],
+            sampler=sampler,
+            collate_fn=vision_collate_fn,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+        self.batches_per_epoch = len(loader)
+
+        if unlabeled_data:
+            loader_unlabeled = data.DataLoader(
+                unlabeled_data,
+                batch_size=batch_size,
+                drop_last=True,
+                num_workers=self.hparams["num_workers"],
+                sampler=data.RandomSampler(unlabeled_data),
+                multiprocessing_context="fork"
+                if self.hparams["num_workers"] > 0
+                else None,
+            )
+            return CombinedLoader({"labeled": loader, "unlabeled": loader_unlabeled})
+
+        return loader
