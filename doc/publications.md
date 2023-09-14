@@ -19,6 +19,10 @@ limitations under the License.
 # Related Publications
 
 
+Precise localization within the GI tract by combining classification of CNNs and time-series analysis of HMMs.
+by Julia Werner, Christoph Gerum, Moritz Reiber, Jörg Nick, Oliver Bringmann
+In 2023 14th International Workshop on Machine Learning in Medical Imaging (MLMI 2023)
+
 Hardware Accelerator and Neural Network Co-Optimization for Ultra-Low-Power Audio Processing Devices
 by Christoph Gerum, Adrian Frischknecht, Paul Palomero Bernardo, Tobias Hald, Konstantin Lübeck, and Oliver Bringmann
 In 2022 25th Euromicro Conference on Digital System Design (DSD), pages 1-8, 2022.
