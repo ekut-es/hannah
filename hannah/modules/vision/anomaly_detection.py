@@ -42,7 +42,6 @@ msglogger = logging.getLogger(__name__)
 
 class AnomalyDetectionModule(VisionBaseModule):
     def compute_anomaly_score(self):
-
         anomaly_score = None
         largest_train_error = None
         if self.train_losses:
@@ -244,43 +243,6 @@ class AnomalyDetectionModule(VisionBaseModule):
     def on_train_epoch_end(self):
         self.train_losses = self.train_losses[-1000:]
         super().on_train_epoch_end()
-
-    def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
-        batch_size = self.hparams["batch_size"]
-        dataset_conf = self.hparams.dataset
-        sampler = None
-        if shuffle:
-            sampler_type = dataset_conf.get("sampler", "random")
-            if sampler_type == "weighted":
-                sampler = self.get_balancing_sampler(dataset)
-            else:
-                sampler = data.RandomSampler(dataset)
-
-        loader = data.DataLoader(
-            dataset,
-            batch_size=batch_size,
-            drop_last=True,
-            num_workers=self.hparams["num_workers"],
-            sampler=sampler,
-            collate_fn=vision_collate_fn,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
-        self.batches_per_epoch = len(loader)
-
-        if unlabeled_data:
-            loader_unlabeled = data.DataLoader(
-                unlabeled_data,
-                batch_size=batch_size,
-                drop_last=True,
-                num_workers=self.hparams["num_workers"],
-                sampler=data.RandomSampler(unlabeled_data),
-                multiprocessing_context="fork"
-                if self.hparams["num_workers"] > 0
-                else None,
-            )
-            return CombinedLoader({"labeled": loader, "unlabeled": loader_unlabeled})
-
-        return loader
 
     def identify_batches(self, batch):
         batch_labeled = batch["labeled"]

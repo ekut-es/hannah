@@ -107,6 +107,8 @@ class ClassifierModule(LightningModule, ABC):
         self.pseudo_label = None
         self.batch_size = batch_size
 
+        self.loss_weights = None
+
     @abstractmethod
     def prepare_data(self) -> Any:
         # get all the necessary data stuff
@@ -360,3 +362,19 @@ class ClassifierModule(LightningModule, ABC):
                 if torch.numel(data) > 0:
                     images = torchvision.utils.make_grid(data, normalize=True)
                     logger.experiment.add_image(f"{name}_{batch_idx}", images)
+
+    def _setup_loss_weights(self):
+        """Calculate loss weights depending on class frequencies in training set"""
+        if self.hparams.dataset.get("weighted_loss", False) is True:
+            loss_weights = torch.tensor(self.train_set.weights)
+            loss_weights *= len(self.train_set) / self.num_classes
+
+            msglogger.info("Using weighted loss with weights:")
+            for num, (weight, name) in enumerate(
+                zip(loss_weights, self.train_set.class_names)
+            ):
+                msglogger.info("- %s [%d]: %f", name, num, weight.item())
+
+            return loss_weights
+
+        return None

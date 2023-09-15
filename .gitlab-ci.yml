@@ -43,8 +43,8 @@ before_script:
   - export PATH=${POETRY_HOME}/bin:${PATH}
 
   # install and manage dependencies with poetry
-  - poetry install -E vision
   - poetry config installer.max-workers 10
+  - poetry install -E vision
 
   # Show limits
   - ulimit -a
@@ -55,8 +55,8 @@ test_prebuilt_docker:
   before_script:
     - export POETRY_HOME=/root/.local
     - export PATH=${POETRY_HOME}/bin:${PATH}
-    - poetry install -E vision
     - poetry config installer.max-workers 10
+    - poetry install -E vision
     - ulimit -a
   script:
     - set -e

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,21 +26,14 @@ import torch.nn as nn
 from hydra.utils import instantiate
 
 
-def get_loss_function(model, config):
+def get_loss_function(model, config, weights=None):
 
-    ce = nn.CrossEntropyLoss()
-
-    def ce_loss_func(scores, labels):
-        scores = scores.view(scores.size(0), -1)
-        return ce(scores, labels)
-
-    criterion = ce_loss_func
+    criterion = nn.CrossEntropyLoss(weight=weights)
 
     try:
         criterion = model.get_loss_function()
     except Exception as e:
         logging.info(str(e))
-        criterion = nn.CrossEntropyLoss()
 
     return criterion
 

@@ -21,6 +21,7 @@ speech_recognition.egg-info/
 .envrc
 .ropeproject
 .ModelCheckpoint
+.ipynb_checkpoints
 
 venv/
 srf-venv/
@@ -57,4 +58,7 @@ type_info.json
 _site
 build/
 
+# results directory
+results/
+Patient_retraining.ipynb
 experiments/datasets/

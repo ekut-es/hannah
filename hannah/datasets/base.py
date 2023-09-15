@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -111,6 +111,7 @@ class AbstractDataset(Dataset, ABC):
     def size(self) -> List[int]:
         """Returns dimension of output without batch dimension"""
 
+        # FIXME: make abstract, or add abstract properties channels, input_length
         return [self.channels, self.input_length]
 
     @property
