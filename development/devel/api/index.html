@@ -5015,6 +5015,31 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 <p>Emergency Dataset</p>
 <p><a id="hannah.datasets.Downsample"></a></p>
 <h1 id="hannahdatasetsdownsample">hannah.datasets.Downsample</h1>
+<p><a id="hannah.datasets.eeg_tusz"></a></p>
+<h1 id="hannahdatasetseeg_tusz">hannah.datasets.eeg_tusz</h1>
+<p><a id="hannah.datasets.eeg_tusz.EEGDataset"></a></p>
+<h2 id="eegdataset-objects">EEGDataset Objects</h2>
+<pre><code class="language-python">class EEGDataset(AbstractDataset)
+</code></pre>
+<p><a id="hannah.datasets.eeg_tusz.EEGDataset.class_names"></a></p>
+<h4 id="class_names">class_names</h4>
+<pre><code class="language-python">@property
+def class_names() -&gt; List[str]
+</code></pre>
+<p>Returns the names of the classes in the classification dataset</p>
+<p><a id="hannah.datasets.eeg_tusz.EEGDataset.class_counts"></a></p>
+<h4 id="class_counts">class_counts</h4>
+<pre><code class="language-python">@property
+def class_counts() -&gt; Optional[Dict[int, int]]
+</code></pre>
+<p>Returns the number of items in each class of the dataset</p>
+<p>If this is not applicable to a dataset type e.g. ASR, Semantic Segmentation,
+it may return None</p>
+<p><a id="hannah.datasets.eeg_tusz.EEGDataset.size"></a></p>
+<h4 id="size">size</h4>
+<pre><code class="language-python">def size() -&gt; List[int]
+</code></pre>
+<p>Returns dimension of output without batch dimension</p>
 <p><a id="hannah.datasets.collate"></a></p>
 <h1 id="hannahdatasetscollate">hannah.datasets.collate</h1>
 <p><a id="hannah.datasets.collate.vision_collate_fn"></a></p>
@@ -5184,8 +5209,58 @@ https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring</p>
 <pre><code class="language-python">class AtrialFibrillationDataset(PhysioDataset)
 </code></pre>
 <p>Atrial Fibrillation Database (https://physionet.org/content/afdb/1.0.0/)</p>
+<p><a id="hannah.datasets.eeg_chbrt"></a></p>
+<h1 id="hannahdatasetseeg_chbrt">hannah.datasets.eeg_chbrt</h1>
+<p><a id="hannah.datasets.eeg_chbrt.EEGRTDataset"></a></p>
+<h2 id="eegrtdataset-objects">EEGRTDataset Objects</h2>
+<pre><code class="language-python">class EEGRTDataset(AbstractDataset)
+</code></pre>
+<p><a id="hannah.datasets.eeg_chbrt.EEGRTDataset.class_names"></a></p>
+<h4 id="class_names_1">class_names</h4>
+<pre><code class="language-python">@property
+def class_names() -&gt; List[str]
+</code></pre>
+<p>Returns the names of the classes in the classification dataset</p>
+<p><a id="hannah.datasets.eeg_chbrt.EEGRTDataset.class_counts"></a></p>
+<h4 id="class_counts_1">class_counts</h4>
+<pre><code class="language-python">@property
+def class_counts() -&gt; Optional[Dict[int, int]]
+</code></pre>
+<p>Returns the number of items in each class of the dataset</p>
+<p>If this is not applicable to a dataset type e.g. ASR, Semantic Segmentation,
+it may return None</p>
+<p><a id="hannah.datasets.eeg_chbrt.EEGRTDataset.size"></a></p>
+<h4 id="size_1">size</h4>
+<pre><code class="language-python">def size() -&gt; List[int]
+</code></pre>
+<p>Returns dimension of output without batch dimension</p>
 <p><a id="hannah.datasets.NoiseDataset"></a></p>
 <h1 id="hannahdatasetsnoisedataset">hannah.datasets.NoiseDataset</h1>
+<p><a id="hannah.datasets.eeg_chb"></a></p>
+<h1 id="hannahdatasetseeg_chb">hannah.datasets.eeg_chb</h1>
+<p><a id="hannah.datasets.eeg_chb.EEGDataset"></a></p>
+<h2 id="eegdataset-objects_1">EEGDataset Objects</h2>
+<pre><code class="language-python">class EEGDataset(AbstractDataset)
+</code></pre>
+<p><a id="hannah.datasets.eeg_chb.EEGDataset.class_names"></a></p>
+<h4 id="class_names_2">class_names</h4>
+<pre><code class="language-python">@property
+def class_names() -&gt; List[str]
+</code></pre>
+<p>Returns the names of the classes in the classification dataset</p>
+<p><a id="hannah.datasets.eeg_chb.EEGDataset.class_counts"></a></p>
+<h4 id="class_counts_2">class_counts</h4>
+<pre><code class="language-python">@property
+def class_counts() -&gt; Optional[Dict[int, int]]
+</code></pre>
+<p>Returns the number of items in each class of the dataset</p>
+<p>If this is not applicable to a dataset type e.g. ASR, Semantic Segmentation,
+it may return None</p>
+<p><a id="hannah.datasets.eeg_chb.EEGDataset.size"></a></p>
+<h4 id="size_2">size</h4>
+<pre><code class="language-python">def size() -&gt; List[int]
+</code></pre>
+<p>Returns dimension of output without batch dimension</p>
 <p><a id="hannah.datasets.fake1d"></a></p>
 <h1 id="hannahdatasetsfake1d">hannah.datasets.fake1d</h1>
 <p><a id="hannah.datasets.utils.cache"></a></p>
@@ -5231,13 +5306,13 @@ def splits(
 <li><code>config</code> <em>[type]</em> - [description]</li>
 </ul>
 <p><a id="hannah.datasets.base.AbstractDataset.class_names"></a></p>
-<h4 id="class_names">class_names</h4>
+<h4 id="class_names_3">class_names</h4>
 <pre><code class="language-python">@abstractproperty
 def class_names() -&gt; List[str]
 </code></pre>
 <p>Returns the names of the classes in the classification dataset</p>
 <p><a id="hannah.datasets.base.AbstractDataset.class_counts"></a></p>
-<h4 id="class_counts">class_counts</h4>
+<h4 id="class_counts_3">class_counts</h4>
 <pre><code class="language-python">@abstractproperty
 def class_counts() -&gt; Optional[Dict[int, int]]
 </code></pre>
@@ -5262,7 +5337,7 @@ def __len__() -&gt; int
 </code></pre>
 <p>Returns number of samples in dataset</p>
 <p><a id="hannah.datasets.base.AbstractDataset.size"></a></p>
-<h4 id="size">size</h4>
+<h4 id="size_3">size</h4>
 <pre><code class="language-python">def size() -&gt; List[int]
 </code></pre>
 <p>Returns dimension of output without batch dimension</p>
