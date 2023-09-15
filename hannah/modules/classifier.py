@@ -123,7 +123,10 @@ class BaseStreamClassifierModule(ClassifierModule):
                 self.model = get_model(self.hparams.model)
 
         # loss function
-        self.criterion = get_loss_function(self.model, self.hparams)
+        loss_weights = self._setup_loss_weights()
+        self.criterion = get_loss_function(
+            self.model, self.hparams, weights=loss_weights
+        )
 
         # Metrics
         self.train_metrics = MetricCollection(

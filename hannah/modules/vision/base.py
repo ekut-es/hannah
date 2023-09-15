@@ -86,19 +86,7 @@ class VisionBaseModule(ClassifierModule):
                 _recursive_=False,
             )
 
-        if self.hparams.dataset.get("weighted_loss", False) is True:
-            loss_weights = torch.tensor(self.train_set.weights)
-            loss_weights *= len(self.train_set) / self.num_classes
-
-            msglogger.info("Using weighted loss with weights:")
-            for num, (weight, name) in enumerate(
-                zip(loss_weights, self.train_set.class_names)
-            ):
-                msglogger.info("- %s [%d]: %f", name, num, weight.item())
-
-            self.register_buffer("loss_weights", loss_weights)
-        else:
-            self.loss_weights = None
+        self._setup_loss_weights()
 
         # setup lists for reconstruction errors to compute anomaly threshold
         self.train_losses = list()
