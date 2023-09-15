@@ -54,7 +54,7 @@ onnxruntime = {version = "^1.4.0", optional = true}
 onnx-tf = {version = "^1.9.0", optional = true}
 
 # optional dependencies for tvm backend
-#hannah-tvm = {path = "external/hannah-tvm", optional = true, extras = ["automate", "micro"], develop=true}
+hannah-tvm = {path = "external/hannah-tvm", optional = true, extras = ["automate", "micro"], develop=true}
 
 
 #dependencies for vision tasks
@@ -91,7 +91,7 @@ flaky = ">=3.7.0"
 [tool.poetry.extras]
 tf-backend = ["onnx-tf"]
 onnxrt-backend = ["onnxruntime"]
-#tvm = ["hannah-tvm"]
+tvm = ["hannah-tvm"]
 vision = ["pycocotools", "albumentations", "imagecorruptions", "timm", "gdown", "kornia"]
 dvc = ["dvc", "dvclive"]
 

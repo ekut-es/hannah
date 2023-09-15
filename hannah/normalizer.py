@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ class FixedPointNormalizer(nn.Module):
         self.bits = self.normalize_bits - 1
 
         if self.divide and self.normalize_bits % 2 == 0:
-
             self.bits = int((self.normalize_bits / 2) - 1)
             self.low_border = (2**self.bits) - 1
             self.high_border = self.low_border << self.bits
@@ -53,7 +52,6 @@ class FixedPointNormalizer(nn.Module):
         x = x.round()
 
         if self.divide:
-
             x = x.to(torch.int8)
             xabs = torch.abs(x)
 
@@ -88,11 +86,24 @@ class AdaptiveFixedPointNormalizer(nn.Module):
         self.normalize_bits = normalize_bits
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-
         normalize_factor = 2.0 ** (self.normalize_bits - 1)
         x = self.bn(x)
         x = x / normalize_factor
         x = x.clamp(-1.0, 1.0 - 1.0 / normalize_factor)
+        return x
+
+
+class AdaptiveMaxNormalizer(nn.Module):
+    def __init__(self, normalize_bits: int = 8) -> None:
+        super().__init__()
+        self.register_buffer("running_max", torch.zeros(1))
+        self.normalize_bits = normalize_bits
+        self.normalize_factor = 2.0 ** (self.normalize_bits - 1)
+
+    def forward(self, x):
+        self.max = torch.max(torch.max(torch.abs(x)), self.max)
+        x = x / self.normalize_factor
+        x = x.clamp(-1.0, 1.0 - 1.0 / self.normalize_factor)
         return x
 
 

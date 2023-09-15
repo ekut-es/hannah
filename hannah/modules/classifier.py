@@ -242,7 +242,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     def calculate_batch_metrics(self, output, y, loss, metrics, prefix):
         if isinstance(output, list):
-            for idx, out in enumerate(output):
+            for _idx, out in enumerate(output):
                 out = torch.nn.functional.softmax(out, dim=1)
                 if self.dataset_type == "binary":
                     out = out.argmax(dim=1)
@@ -263,6 +263,9 @@ class BaseStreamClassifierModule(ClassifierModule):
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
         x, x_lenght, y, y_lenght = self._decode_batch(batch)
+
+        print(x.mean())
+
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
@@ -270,10 +273,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
 
         return loss
-
-    # @abstractmethod
-    # def train_dataloader(self):
-    #    pass
 
     def on_train_epoch_end(self):
         self.eval()
@@ -325,8 +324,6 @@ class BaseStreamClassifierModule(ClassifierModule):
     def test_step(self, batch, batch_idx):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = self._decode_batch(batch)
-
-        print(y)
 
         output = self(x)
         y = y.view(-1)
