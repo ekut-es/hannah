@@ -326,6 +326,8 @@ class BaseStreamClassifierModule(ClassifierModule):
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = self._decode_batch(batch)
 
+        print(y)
+
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)

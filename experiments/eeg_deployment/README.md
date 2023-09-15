@@ -22,4 +22,4 @@ Example Networks and Hardware Accelerators for EEG Seizure detection on COTS Pla
 
 Example commandline:
 
-    hannah-train trainer.gpus=[] dataset=fake1d  backend=tvm  trainer.max_epochs=1  backend/board=stm32f429i_disc1
+    hannah-train trainer.gpus='[]' dataset=  backend=tvm  backend/board=stm32f429i_disc1

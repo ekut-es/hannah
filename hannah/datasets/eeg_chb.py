@@ -25,7 +25,6 @@ import numpy as np
 import torch
 
 from .base import AbstractDataset
-from tslearn.preprocessing import TimeSeriesScalerMeanVariance
 
 
 class EEGDataset(AbstractDataset):
@@ -37,7 +36,9 @@ class EEGDataset(AbstractDataset):
         self.y = dataset[set]["y"]
         # print(np.unique(dataset[set]["y"], return_counts=True))
 
-        self._class_counts = {i: k for i,k in enumerate(np.unique(self.y, return_counts=True)[1])}
+        self._class_counts = {
+            i: k for i, k in enumerate(np.unique(self.y, return_counts=True)[1])
+        }
 
     def __getitem__(self, index):
         x = self.X[index] / self.max_value  # normalize
@@ -52,7 +53,9 @@ class EEGDataset(AbstractDataset):
     def splits(cls, config):
         dataset_name = config.get("dataset_name", None)
         if dataset_name is None:
-            raise AttributeError("Please provide the dataset name in /home/kohlibha/exploration/data/---")
+            raise AttributeError(
+                "Please provide the dataset name in /home/kohlibha/exploration/data/---"
+            )
 
         train_set = EEGDataset(
             config,
