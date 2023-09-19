@@ -1,10 +1,10 @@
 from functools import partial
-from hannah.models.capsule_net_v2.expressions import expr_product
+from hannah.models.embedded_vision_net.expressions import expr_product
 from hannah.nas.expressions.arithmetic import Ceil
 from hannah.nas.expressions.types import Int
 from hannah.nas.functional_operators.executor import BasicExecutor
 from hannah.nas.functional_operators.op import Tensor, scope
-from hannah.models.capsule_net_v2.operators import adaptive_avg_pooling, add, conv2d, conv_relu, depthwise_conv2d, dynamic_depth, pointwise_conv2d, linear, relu, batch_norm, choice, identity
+from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv2d, conv_relu, depthwise_conv2d, dynamic_depth, pointwise_conv2d, linear, relu, batch_norm, choice, identity
 # from hannah.nas.functional_operators.visualizer import Visualizer
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 import time
