@@ -9,7 +9,7 @@ from datetime import datetime
 
 import torch.nn.functional as F
 
-from hannah.models.capsule_net_v2.models import search_space
+from hannah.models.embedded_vision_net.models import search_space
 
 if __name__ == '__main__':
 

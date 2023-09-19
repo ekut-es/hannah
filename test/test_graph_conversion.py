@@ -87,7 +87,7 @@ def test_graph_conversion_lazy_convnet():
 
 
 def test_graph_conversion_functional_operators():
-    from hannah.models.capsule_net_v2.models import search_space
+    from hannah.models.embedded_vision_net.models import search_space
     from hannah.nas.functional_operators.executor import BasicExecutor
     import hannah.nas.functional_operators.operators
 
