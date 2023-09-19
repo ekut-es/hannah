@@ -128,8 +128,8 @@
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
-          <li>Development &raquo;</li>
+    <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Development</li>
       <li class="breadcrumb-item active">API Documentation</li>
     <li class="wy-breadcrumbs-aside">
     </li>
@@ -360,6 +360,14 @@ def main(config: DictConfig)
 </code></pre>
 <p><strong>Arguments</strong>:</p>
 <p>x:</p>
+<p><a id="hannah.models.capsule_net_v2.models"></a></p>
+<h1 id="hannahmodelscapsule_net_v2models">hannah.models.capsule_net_v2.models</h1>
+<p><a id="hannah.models.capsule_net_v2.operators"></a></p>
+<h1 id="hannahmodelscapsule_net_v2operators">hannah.models.capsule_net_v2.operators</h1>
+<p><a id="hannah.models.capsule_net_v2.expressions"></a></p>
+<h1 id="hannahmodelscapsule_net_v2expressions">hannah.models.capsule_net_v2.expressions</h1>
+<p><a id="hannah.models.capsule_net_v2.utils"></a></p>
+<h1 id="hannahmodelscapsule_net_v2utils">hannah.models.capsule_net_v2.utils</h1>
 <p><a id="hannah.models.hello.models"></a></p>
 <h1 id="hannahmodelshellomodels">hannah.models.hello.models</h1>
 <p><a id="hannah.models.hello.models.DSConv2d"></a></p>
@@ -707,6 +715,25 @@ dilation : Union[int, Expression], optional
 </ul>
 <p><a id="hannah.models"></a></p>
 <h1 id="hannahmodels">hannah.models</h1>
+<p><a id="hannah.models.functional_net_test.models"></a></p>
+<h1 id="hannahmodelsfunctional_net_testmodels">hannah.models.functional_net_test.models</h1>
+<p><a id="hannah.models.functional_net_test.expressions"></a></p>
+<h1 id="hannahmodelsfunctional_net_testexpressions">hannah.models.functional_net_test.expressions</h1>
+<p><a id="hannah.models.functional_net_test.expressions.padding_expression"></a></p>
+<h4 id="padding_expression_1">padding_expression</h4>
+<pre><code class="language-python">def padding_expression(kernel_size, stride, dilation=1)
+</code></pre>
+<p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
+the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
+Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
+an output with also dimension 1.</p>
+<h2 id="parameters_1">Parameters</h2>
+<p>kernel_size : Union[int, Expression]
+stride : Union[int, Expression]
+dilation : Union[int, Expression], optional
+<em>description</em>, by default 1</p>
+<h2 id="returns_1">Returns</h2>
+<p>Expression</p>
 <p><a id="hannah.models.lstm.models"></a></p>
 <h1 id="hannahmodelslstmmodels">hannah.models.lstm.models</h1>
 <p><a id="hannah.models.lstm.models.LSTMModel"></a></p>
@@ -1199,19 +1226,19 @@ Input:---&gt;|                                                         +---&gt;
 <p><a id="hannah.models.resnet.models"></a></p>
 <h1 id="hannahmodelsresnetmodels">hannah.models.resnet.models</h1>
 <p><a id="hannah.models.resnet.models.padding_expression"></a></p>
-<h4 id="padding_expression_1">padding_expression</h4>
+<h4 id="padding_expression_2">padding_expression</h4>
 <pre><code class="language-python">def padding_expression(kernel_size, stride, dilation=1)
 </code></pre>
 <p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_1">Parameters</h2>
+<h2 id="parameters_2">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
-<h2 id="returns_1">Returns</h2>
+<h2 id="returns_2">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.models.resnet"></a></p>
 <h1 id="hannahmodelsresnet">hannah.models.resnet</h1>
@@ -3290,19 +3317,19 @@ def focalnet_huge_fl4(pretrained=False, **kwargs)
 <p><a id="hannah.models.capsule_net.expressions"></a></p>
 <h1 id="hannahmodelscapsule_netexpressions">hannah.models.capsule_net.expressions</h1>
 <p><a id="hannah.models.capsule_net.expressions.padding_expression"></a></p>
-<h4 id="padding_expression_2">padding_expression</h4>
+<h4 id="padding_expression_3">padding_expression</h4>
 <pre><code class="language-python">def padding_expression(kernel_size, stride, dilation=1)
 </code></pre>
 <p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_2">Parameters</h2>
+<h2 id="parameters_3">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
-<h2 id="returns_2">Returns</h2>
+<h2 id="returns_3">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.models.capsule_net.utils"></a></p>
 <h1 id="hannahmodelscapsule_netutils">hannah.models.capsule_net.utils</h1>
@@ -3634,6 +3661,12 @@ def on_validation_epoch_end(trainer, pl_module)
 </ul>
 <p><strong>Returns</strong>:</p>
 <p>dict[str, float]: Dict of MetricName =&gt; Metric Value</p>
+<p><a id="hannah.callbacks.summaries.prod"></a></p>
+<h4 id="prod">prod</h4>
+<pre><code class="language-python">def prod(seq)
+</code></pre>
+<p><strong>Arguments</strong>:</p>
+<p>seq:</p>
 <p><a id="hannah.callbacks.svd_compress"></a></p>
 <h1 id="hannahcallbackssvd_compress">hannah.callbacks.svd_compress</h1>
 <p><a id="hannah.callbacks.svd_compress.SVD"></a></p>
@@ -3827,10 +3860,10 @@ all users (including users from subsequent nodes).
 If a node_b is NOT in collect_users(node_a), this means
 that node_b is either BEFORE node_a in the graph OR it is
 in a parallel branch.</p>
-<h2 id="parameters_3">Parameters</h2>
+<h2 id="parameters_4">Parameters</h2>
 <p>node : <em>type</em>
     <em>description</em></p>
-<h2 id="returns_3">Returns</h2>
+<h2 id="returns_4">Returns</h2>
 <p><em>type</em>
     <em>description</em></p>
 <p><a id="hannah.nas.dataflow.dataflow_graph.find_first_input"></a></p>
@@ -3841,10 +3874,10 @@ in a parallel branch.</p>
 back to its first input. NOTE: The traversal is via OPERANDS
 and not OUTPUT, meaning that e.g. weight Tensors that are
 included in Ops in a DFG are not returned</p>
-<h2 id="parameters_4">Parameters</h2>
+<h2 id="parameters_5">Parameters</h2>
 <p>node : <em>type</em>
     <em>description</em></p>
-<h2 id="returns_4">Returns</h2>
+<h2 id="returns_5">Returns</h2>
 <p><em>type</em>
     <em>description</em></p>
 <p><a id="hannah.nas.performance_prediction.simple"></a></p>
@@ -3875,7 +3908,7 @@ included in Ops in a DFG are not returned</p>
 <pre><code class="language-python">def __init__(fea_name=&quot;features&quot;) -&gt; None
 </code></pre>
 <p>Parent method for different predictor classes.</p>
-<h2 id="parameters_5">Parameters</h2>
+<h2 id="parameters_6">Parameters</h2>
 <p>fea_name : str, optional
     internal name for features in the graph, as in graph.ndata[fea_name], by default 'features'</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.Predictor.train"></a></p>
@@ -3887,7 +3920,7 @@ included in Ops in a DFG are not returned</p>
           verbose=1)
 </code></pre>
 <p>Train GCN model</p>
-<h2 id="parameters_6">Parameters</h2>
+<h2 id="parameters_7">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -3903,9 +3936,9 @@ verbose : int
 <pre><code class="language-python">def predict(graph)
 </code></pre>
 <p>predict cost of graph</p>
-<h2 id="parameters_7">Parameters</h2>
+<h2 id="parameters_8">Parameters</h2>
 <p>graph : dgl.Graph</p>
-<h2 id="returns_5">Returns</h2>
+<h2 id="returns_6">Returns</h2>
 <p>torch.Tensor
     predicted cost of given graph. Retrieve float value with .item()</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.GCNPredictor"></a></p>
@@ -3920,7 +3953,7 @@ verbose : int
              fea_name=&quot;features&quot;) -&gt; None
 </code></pre>
 <p>G(raph)CN based network latency/cost predictor. End-to-end from graph to score.</p>
-<h2 id="parameters_8">Parameters</h2>
+<h2 id="parameters_9">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -3938,7 +3971,7 @@ fea_name : str, optional
                   verbose=0)
 </code></pre>
 <p>Train GCN model</p>
-<h2 id="parameters_9">Parameters</h2>
+<h2 id="parameters_10">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -3954,9 +3987,9 @@ verbose : int
 <pre><code class="language-python">def predict(graph)
 </code></pre>
 <p>predict cost of graph</p>
-<h2 id="parameters_10">Parameters</h2>
+<h2 id="parameters_11">Parameters</h2>
 <p>graph : dgl.Graph</p>
-<h2 id="returns_6">Returns</h2>
+<h2 id="returns_7">Returns</h2>
 <p>torch.Tensor
     predicted cost of given graph. Retrieve float value with .item()</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.GaussianProcessPredictor"></a></p>
@@ -3974,7 +4007,7 @@ verbose : int
              alpha=1e-10) -&gt; None
 </code></pre>
 <p>Predictor that generates a graph embedding that is used as input for a gaussian process predictor.</p>
-<h2 id="parameters_11">Parameters</h2>
+<h2 id="parameters_12">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -3998,7 +4031,7 @@ kernel : str, sklearn.gaussian_process.kernels.Kernel, optional
                   verbose=1)
 </code></pre>
 <p>Train GCN model, generate embeddings for training data and fit the predictor with embeddings.</p>
-<h2 id="parameters_12">Parameters</h2>
+<h2 id="parameters_13">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -4009,7 +4042,7 @@ validation_dataloader : [type], optional
     if given, use this data to print validation loss, by default None
 verbose : int
     if validation_dataloader is given, print validation MSE every <verbose> epoch,by default 1</p>
-<h2 id="returns_7">Returns</h2>
+<h2 id="returns_8">Returns</h2>
 <p>float
     score of predictor on TRAINING data, see sklearn doc of chosen predictor for more info</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.GaussianProcessPredictor.predict"></a></p>
@@ -4017,12 +4050,12 @@ verbose : int
 <pre><code class="language-python">def predict(X, return_std=True)
 </code></pre>
 <p>Predict cost/latency of graphs.</p>
-<h2 id="parameters_13">Parameters</h2>
+<h2 id="parameters_14">Parameters</h2>
 <p>X : dgl.DGLGraph, list[DGLGraph], dgl.dataloading.GraphDataLoader
     Input graph(s)
 return_std : bool, optional
     if true, return standard dev. else just mean prediction, by default True</p>
-<h2 id="returns_8">Returns</h2>
+<h2 id="returns_9">Returns</h2>
 <p>array (,array)
     prediction(s) , (if return_std: standard deviation(s))</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.XGBPredictor"></a></p>
@@ -4039,7 +4072,7 @@ return_std : bool, optional
              xgb_param=&quot;default&quot;) -&gt; None
 </code></pre>
 <p>Predictor that generates a graph embedding that is used as input for a xgb based predictor.</p>
-<h2 id="parameters_14">Parameters</h2>
+<h2 id="parameters_15">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -4063,7 +4096,7 @@ xgb_param : str, dict, optional
                   verbose=1)
 </code></pre>
 <p>Train GCN model, generate embeddings for training data and fit the predictor with embeddings.</p>
-<h2 id="parameters_15">Parameters</h2>
+<h2 id="parameters_16">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -4081,7 +4114,7 @@ verbose : int
 <pre><code class="language-python">def predict(X)
 </code></pre>
 <p>Predict cost/latency of graphs.</p>
-<h2 id="parameters_16">Parameters</h2>
+<h2 id="parameters_17">Parameters</h2>
 <p>X : dgl.DGLGraph, list[DGLGraph], dgl.dataloading.GraphDataLoader
     Input graph(s)
 Returns</p>
@@ -4098,7 +4131,7 @@ Returns</p>
                        validation=False)
 </code></pre>
 <p>helper function to construct dataloaders from NASGraphDataset</p>
-<h2 id="parameters_17">Parameters</h2>
+<h2 id="parameters_18">Parameters</h2>
 <p>dataset : NASGraphDataset</p>
 <p>batch_size : int, optional
     by default 50
@@ -4110,7 +4143,7 @@ seed : int, optional
     set seed for reproduceability
 validation : bool, optional
     also output a validation set e.g. for hyperparam tuning</p>
-<h2 id="returns_9">Returns</h2>
+<h2 id="returns_10">Returns</h2>
 <p>tuple(GraphDataLoader, (GraphDataLoader), GraphDataLoader)
     training dataloader to be used in CostPredictor.train() and test/validation dataloader if train_test_split &gt; 0,
     else len(test_dataloader) == 0</p>
@@ -4147,7 +4180,7 @@ validation : bool, optional
 <p>Extracts the constraints based on the type of op.
 New variables are added to self.vars and the constraints
 are added to the solver.</p>
-<h2 id="parameters_18">Parameters</h2>
+<h2 id="parameters_19">Parameters</h2>
 <p>op : OpType</p>
 <p><a id="hannah.nas.constraints.dfg_constraint_model.ConstraintModel.process_tensor"></a></p>
 <h4 id="process_tensor">process_tensor</h4>
@@ -4155,12 +4188,14 @@ are added to the solver.</p>
 </code></pre>
 <p>Goes through all axis and extracts the constraints for
 the respective axis sizes</p>
-<h2 id="parameters_19">Parameters</h2>
+<h2 id="parameters_20">Parameters</h2>
 <p>tensor : Tensor</p>
 <p><a id="hannah.nas.hardware_description.device"></a></p>
 <h1 id="hannahnashardware_descriptiondevice">hannah.nas.hardware_description.device</h1>
 <p><a id="hannah.nas.hardware_description.memory_type"></a></p>
 <h1 id="hannahnashardware_descriptionmemory_type">hannah.nas.hardware_description.memory_type</h1>
+<p><a id="hannah.nas.hardware_description.ultratrail"></a></p>
+<h1 id="hannahnashardware_descriptionultratrail">hannah.nas.hardware_description.ultratrail</h1>
 <p><a id="hannah.nas.hardware_description"></a></p>
 <h1 id="hannahnashardware_description">hannah.nas.hardware_description</h1>
 <p><a id="hannah.nas.hardware_description.description"></a></p>
@@ -4214,6 +4249,15 @@ the respective axis sizes</p>
 <h1 id="hannahnastesttest_parameters">hannah.nas.test.test_parameters</h1>
 <p><a id="hannah.nas.test.test_op_to_torch_conversion"></a></p>
 <h1 id="hannahnastesttest_op_to_torch_conversion">hannah.nas.test.test_op_to_torch_conversion</h1>
+<p><a id="hannah.nas.test.test_functional_training"></a></p>
+<h1 id="hannahnastesttest_functional_training">hannah.nas.test.test_functional_training</h1>
+<p><a id="hannah.nas.test.test_functional_ops"></a></p>
+<h1 id="hannahnastesttest_functional_ops">hannah.nas.test.test_functional_ops</h1>
+<p><a id="hannah.nas.test.test_functional_ops.conv_relu"></a></p>
+<h4 id="conv_relu">conv_relu</h4>
+<pre><code class="language-python">def conv_relu(input, out_channels, kernel_size, stride)
+</code></pre>
+<p>Example for a functional block containing conv and relu</p>
 <p><a id="hannah.nas.test.test_conditions"></a></p>
 <h1 id="hannahnastesttest_conditions">hannah.nas.test.test_conditions</h1>
 <p><a id="hannah.nas.test.test_lazy_torch"></a></p>
@@ -4263,6 +4307,8 @@ def test_unimplemeted(x, y)
 <h1 id="hannahnastesttest_add">hannah.nas.test.test_add</h1>
 <p><a id="hannah.nas.test.test_adjacency"></a></p>
 <h1 id="hannahnastesttest_adjacency">hannah.nas.test.test_adjacency</h1>
+<p><a id="hannah.nas.test.test_functional_executor"></a></p>
+<h1 id="hannahnastesttest_functional_executor">hannah.nas.test.test_functional_executor</h1>
 <p><a id="hannah.nas.parametrization"></a></p>
 <h1 id="hannahnasparametrization">hannah.nas.parametrization</h1>
 <p><a id="hannah.nas.parametrization.ScalarParameterState"></a></p>
@@ -4928,6 +4974,23 @@ stack</li>
 <h1 id="hannahnasspacesdartsdarts_space">hannah.nas.spaces.darts.darts_space</h1>
 <p><a id="hannah.nas.spaces.mobilenet.mobilenet"></a></p>
 <h1 id="hannahnasspacesmobilenetmobilenet">hannah.nas.spaces.mobilenet.mobilenet</h1>
+<p><a id="hannah.nas.functional_operators.executor"></a></p>
+<h1 id="hannahnasfunctional_operatorsexecutor">hannah.nas.functional_operators.executor</h1>
+<p><a id="hannah.nas.functional_operators.visualizer"></a></p>
+<h1 id="hannahnasfunctional_operatorsvisualizer">hannah.nas.functional_operators.visualizer</h1>
+<p><a id="hannah.nas.functional_operators.op"></a></p>
+<h1 id="hannahnasfunctional_operatorsop">hannah.nas.functional_operators.op</h1>
+<p><a id="hannah.nas.functional_operators.op.Bypass"></a></p>
+<h2 id="bypass-objects">Bypass Objects</h2>
+<pre><code class="language-python">class Bypass(Op)
+</code></pre>
+<p>Alternative Identity()</p>
+<p><a id="hannah.nas.functional_operators.lazy"></a></p>
+<h1 id="hannahnasfunctional_operatorslazy">hannah.nas.functional_operators.lazy</h1>
+<p><a id="hannah.nas.functional_operators.operators"></a></p>
+<h1 id="hannahnasfunctional_operatorsoperators">hannah.nas.functional_operators.operators</h1>
+<p><a id="hannah.nas.functional_operators.shapes"></a></p>
+<h1 id="hannahnasfunctional_operatorsshapes">hannah.nas.functional_operators.shapes</h1>
 <p><a id="hannah.nas.utils"></a></p>
 <h1 id="hannahnasutils">hannah.nas.utils</h1>
 <p><a id="hannah.nas.utils.is_pareto"></a></p>
@@ -5700,7 +5763,7 @@ print(
 </code></pre>
 <p>Dumps the configuration to json format</p>
 <p>Creates file config.json in output_dir</p>
-<h2 id="parameters_20">Parameters</h2>
+<h2 id="parameters_21">Parameters</h2>
 <p>output_dir : str
    Output directory
 config  : dict
@@ -5716,7 +5779,7 @@ config  : dict
 <li>model.json: Serialized version of network parameters in json format</li>
 <li>model.onnx: full model including paramters in onnx format</li>
 </ul>
-<h2 id="parameters_21">Parameters</h2>
+<h2 id="parameters_22">Parameters</h2>
 <p>output_dir : str
     Directory to put serialized models
 model : LightningModule
