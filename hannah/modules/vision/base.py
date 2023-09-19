@@ -17,8 +17,9 @@
 # limitations under the License.
 #
 import logging
+import warnings
 from collections import defaultdict
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Tuple
 
 import kornia
 import kornia.augmentation as K
@@ -57,12 +58,18 @@ class VisionBaseModule(ClassifierModule):
         self.initialized = True
 
         dataset_cls = get_class(self.hparams.dataset.cls)
+        data_splits : Tuple[Any]= dataset_cls.splits(self.hparams.dataset)
+
+        if len(data_splits) == 3:
+            warnings.warn("Vision datasets should return a length 4 tuple, will assume unlabeled data is None")
+            data_splits = (data_splits[0], None, data_splits[1], data_splits[2])
+
         (
             self.train_set,
             self.train_set_unlabeled,
             self.dev_set,
             self.test_set,
-        ) = dataset_cls.splits(self.hparams.dataset)
+        ) = data_splits
 
         if self.hparams.unlabeled_data:
             unlabeled_cls = get_class(self.hparams.unlabeled_data.cls)
