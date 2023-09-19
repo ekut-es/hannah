@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,11 +42,14 @@ class SemiSupervisedLoss(nn.Module):
         decoded=None,
         boxes=None,
         weight=None,
+        label_smoothing=0.0,
     ):
         loss = torch.tensor([0.0])
 
         if labels is not None and logits.numel() > 0:  # all labeled + classifier
-            loss = F.cross_entropy(logits, labels, weight=weight)
+            loss = F.cross_entropy(
+                logits, labels, weight=weight, label_smoothing=label_smoothing
+            )
 
         elif decoded is not None:  # Autoencoder
             loss = F.mse_loss(decoded, true_data) ** self.exponent

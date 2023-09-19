@@ -1,0 +1,17 @@
+capsule_augment:
+  pipeline: null
+  transforms:
+    RandomGaussianNoise:
+      mean: 0.0
+      std: 0.10
+      p: 0.5
+    RandomRotation:
+      degrees: 180
+      p: 1.0
+    RandomVerticalFlip:
+      p: 0.5
+    RandomHorizontalFlip:
+      p: 0.5
+    RandomCrop:
+      size: [336, 336]
+      padding: 64

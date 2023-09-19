@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.utils.data as data
 from hydra.utils import get_class, instantiate
-from sklearn.metrics import auc, roc_curve
+from pytorch_lightning.trainer.supporters import CombinedLoader
 from torchmetrics import (
     Accuracy,
     ConfusionMatrix,
@@ -35,6 +35,8 @@ from torchmetrics import (
     Precision,
     Recall,
 )
+
+from hannah.datasets.collate import vision_collate_fn
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from ..base import ClassifierModule
@@ -55,15 +57,30 @@ class VisionBaseModule(ClassifierModule):
         self.initialized = True
 
         dataset_cls = get_class(self.hparams.dataset.cls)
-        self.train_set, self.dev_set, self.test_set = dataset_cls.splits(
-            self.hparams.dataset
-        )
+        (
+            self.train_set,
+            self.train_set_unlabeled,
+            self.dev_set,
+            self.test_set,
+        ) = dataset_cls.splits(self.hparams.dataset)
 
         if self.hparams.unlabeled_data:
             unlabeled_cls = get_class(self.hparams.unlabeled_data.cls)
             self.train_set_unlabeled, _, _ = unlabeled_cls.splits(
                 self.hparams.unlabeled_data
             )
+
+        # Logger datasets
+        msglogger.info("Dataset lengths:")
+        msglogger.info("  Train Set (Labeled): %d", len(self.train_set))
+        msglogger.info(
+            "  Train Set (Unlabled): %d",
+            len(self.train_set_unlabeled)
+            if self.train_set_unlabeled is not None
+            else 0,
+        )
+        msglogger.info("  Dev Set: %d", len(self.dev_set))
+        msglogger.info("  Test Set: %d", len(self.test_set))
 
         example_data = self._decode_batch(self.test_set[0])["data"]
 
@@ -96,6 +113,11 @@ class VisionBaseModule(ClassifierModule):
         self.test_losses = list()
         self.encodings = dict()
 
+        msglogger.info(
+            "Instantiating input Normalizer with mean: %s, std: %s",
+            self.train_set.mean,
+            self.train_set.std,
+        )
         self.input_normalizer = BatchAugmentationPipeline(
             {"Normalize": {"mean": self.train_set.mean, "std": self.train_set.std}}
         )
@@ -146,7 +168,18 @@ class VisionBaseModule(ClassifierModule):
 
         self.metrics = torch.nn.ModuleDict(metrics)
 
-        self.pseudo_label = instantiate(self.hparams.pseudo_labeling, model=self.model)
+        # FIXME: augment should no longer be needed
+        self.pseudo_labeling = None
+        if self.hparams.pseudo_labeling is not None:
+            if "_target_" not in self.hparams.pseudo_labeling:
+                msglogger.error("pseudo_labeling has no target attribute")
+                raise Exception("pseudo_labeling has no target attribute")
+            else:
+                self.pseudo_label = instantiate(
+                    self.hparams.pseudo_labeling,
+                    model=self.model,
+                    augment=self.augment,
+                )
 
         # FIXME
         msglogger.info("Running dummy forward to initialize lazy modules")
@@ -179,7 +212,14 @@ class VisionBaseModule(ClassifierModule):
         self._log_weight_distribution()
         self.train()
 
-    def augment(self, images, labels, boxes, batch_idx, pipeline: Optional[str] = None):
+    def augment(
+        self,
+        images,
+        labels=None,
+        boxes=None,
+        batch_idx=None,
+        pipeline: Optional[str] = None,
+    ):
         if boxes and (torch.numel(images) > 0):
             boxes_kornia = list()
             box_index = []
@@ -193,15 +233,17 @@ class VisionBaseModule(ClassifierModule):
             if not len(box_index) == 0:
                 boxes_kornia = torch.cat(boxes_kornia)
 
-        augmented_data = self.default_augmentation(images)
-        if pipeline in self.augmentations:
-            augmented_data = self.augmentations[pipeline].forward(augmented_data)
-
-        elif pipeline is not None:
-            msglogger.critical(
-                "Could not find augmentations for `%s`, only default augmentations will be applied ",
-                pipeline,
-            )
+        if self.training:
+            augmented_data = self.default_augmentation(images)
+            if pipeline in self.augmentations:
+                augmented_data = self.augmentations[pipeline].forward(augmented_data)
+            elif pipeline is not None:
+                msglogger.critical(
+                    "Could not find augmentations for `%s`, only default augmentations will be applied ",
+                    pipeline,
+                )
+        else:
+            augmented_data = images
 
         augmented_norm_data = self.input_normalizer.forward(augmented_data)
 
@@ -236,3 +278,58 @@ class VisionBaseModule(ClassifierModule):
         self.default_augmentation = torch.nn.Sequential(*default_augment)
         augmentations = {k: torch.nn.Sequential(*v) for k, v in augmentations.items()}
         self.augmentations = torch.nn.ModuleDict(augmentations)
+
+    def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
+        batch_size = self.hparams["batch_size"]
+
+        # FIXME: don't use hparams here
+        dataset_conf = self.hparams.dataset
+        sampler = None
+        if shuffle:
+            sampler_type = dataset_conf.get("sampler", "random")
+            if sampler_type == "weighted":
+                sampler = self.get_balancing_sampler(dataset)
+            else:
+                sampler = data.RandomSampler(dataset)
+
+        num_workers = self.hparams["num_workers"]
+
+        def calc_workers(dataset):
+            result = (
+                num_workers
+                if num_workers <= dataset.max_workers or dataset.max_workers == -1
+                else dataset.max_workers
+            )
+            return result
+
+        loader = data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            drop_last=True,
+            num_workers=calc_workers(dataset),
+            sampler=sampler if not dataset.sequential else None,
+            collate_fn=vision_collate_fn,
+            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+        )
+        self.batches_per_epoch = len(loader)
+
+        if unlabeled_data:
+            loader_unlabeled = data.DataLoader(
+                unlabeled_data,
+                batch_size=batch_size,
+                drop_last=True,
+                num_workers=calc_workers(unlabeled_data),
+                sampler=data.RandomSampler(unlabeled_data)
+                if not unlabeled_data.sequential
+                else None,
+                multiprocessing_context="fork"
+                if self.hparams["num_workers"] > 0
+                else None,
+            )
+
+            return CombinedLoader(
+                {"labeled": loader, "unlabeled": loader_unlabeled},
+                mode="max_size_cycle",
+            )
+
+        return loader

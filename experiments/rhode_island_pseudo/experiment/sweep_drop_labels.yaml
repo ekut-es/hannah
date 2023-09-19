@@ -1,0 +1,28 @@
+# @package _global_
+
+experiment_id: sweep_drop_labels1
+
+defaults:
+  - override /augmentation: null
+  - override /pseudo_labeling: hard_labeling
+  - override /model: timm_resnet18_mc_dropout
+
+pseudo_labeling:
+  loss_ratio: 1
+  constc_reg_augm: False
+  th_confdc_pos: 0.98
+  th_confdc_neg: null
+  th_uncert_pos: 0.001
+  th_uncert_neg: null
+
+model:
+  drop_rate: 0.3
+
+
+hydra:
+  sweeper:
+    params:
+      dataset.drop_labels: 0.9, 0.8, 0.7, 0.6, 0.5, 0.3
+
+  sweep:
+    subdir: tune_drop_labels=${dataset.drop_labels}/${model.name}

@@ -1,0 +1,22 @@
+# @package _global_
+
+defaults:
+  - override /model: timm_resnet18_mc_dropout
+  - override /hydra/sweeper: optuna
+
+experiment_id: search_lr
+trainer:
+  max_epochs: 15
+
+model:
+  pretrained: false
+  decoder: false
+
+hydra:
+  sweeper:
+    n_trials: 100
+    n_jobs: 5
+    params:
+      scheduler.max_lr: tag(log, interval(0.00001, 0.01))
+  sweep:
+    subdir: ${model.name}/max_lr=${scheduler.max_lr}

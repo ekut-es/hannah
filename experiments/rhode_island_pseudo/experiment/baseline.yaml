@@ -1,0 +1,21 @@
+# @package _global_
+
+experiment_id: baseline1
+
+defaults:
+  - override /augmentation: null
+  - override /pseudo_labeling: null
+
+pseudo_labeling: null
+
+model:
+  drop_rate: 0.3
+
+hydra:
+  sweeper:
+    params:
+      model: timm_focalnet_base_srf, timm_focalnet_tiny_srf, timm_resnet50_mc_dropout, timm_resnet18_mc_dropout
+      dataset.drop_labels: 0.98, 0.95, 0.9, 0.8, 0.5
+
+  sweep:
+    subdir: baseline/drop_labels=${dataset.drop_labels}/${model.name}

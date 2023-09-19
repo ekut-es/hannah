@@ -27,7 +27,7 @@ import timm
 import torch
 import torch.nn as nn
 
-from ._vendor import focalnet
+from ._vendor import focalnet, resnet_mc_dropout
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +43,12 @@ class DefaultAnomalyDetector(nn.Module):
     def forward(self, x):
         """
 
-        Args:
-          x:
+        Simple anomaly detection head for a neural network
 
-        Returns:
+        Args:
+          x: Tensor of logits
+
+        Returns: A single element floating point tensor representing the anomaly score
 
         """
         x = self.pooling(x)

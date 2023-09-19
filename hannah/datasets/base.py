@@ -137,3 +137,15 @@ class AbstractDataset(Dataset, ABC):
             counts = list(class_counts.values())
             weights = [1 / i for i in counts]
             return weights
+
+    @property
+    def sequential(self) -> bool:
+        """Returns true if this dataset should only be iterated sequentially"""
+
+        return False
+
+    @property
+    def max_workers(self) -> int:
+        """Returns the maximum number of workers useable for this dataset"""
+
+        return -1

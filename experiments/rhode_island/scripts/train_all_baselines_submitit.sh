@@ -25,5 +25,5 @@ export HANNAH_DATA_FOLDER=/mnt/qb/datasets/STAGING/bringmann/datasets/
 
 hannah-train experiment_id=$EXPERIMENT model=$MODEL hydra/launcher=ml_cloud_4gpu \
     hydra.sweep.dir='${output_dir}/${experiment_id}/' hydra.sweep.subdir='${model.name}' \
-    module.num_workers=8 module.batch_size=16 trainer.gpus=4 trainer=sharded \
+    module.num_workers=8 module.batch_size=16 trainer.gpus=4 trainer=sharded  \
     -m
