@@ -33,6 +33,37 @@ class SymbolicAttr(Expression):
             return f"{self.expr}({self.attr})"
 
 
+class SymbolicSequence(Expression):
+    def __init__(self, expr, key) -> None:
+        super().__init__()
+        self.expr = expr
+        self.key = key
+
+    def __getitem__(self, key):
+        self.key = key
+        return self
+
+    def evaluate(self):
+        if hasattr(self.key, 'evaluate'):
+            key = self.evaluate()
+        else:
+            key = self.key
+        seq = self.expr.evaluate()[key]
+        if hasattr(seq, 'evaluate'):
+            seq = seq.evaluate()
+        if isinstance(seq, (list, tuple)):
+            evaluated_seq = []
+            for s in seq:
+                if hasattr(seq, 'evaluate'):
+                    evaluated_seq.append(s.evaluate())
+            seq = evaluated_seq
+
+        return seq
+
+    def format(self, indent=2, length=80):
+        return f"{self.expr}({self.key})"
+
+
 class Choice(Expression):
     def __init__(self, values, choice) -> None:
         super().__init__()
@@ -52,6 +83,9 @@ class Choice(Expression):
 
     def get(self, key):
         return SymbolicAttr(self, attr=key)
+
+    def __getitem__(self, key):
+        return SymbolicSequence(expr=self, key=key)
 
     def format(self, indent=2, length=80):
         return f"Choice({self.values})"

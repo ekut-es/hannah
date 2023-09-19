@@ -31,7 +31,10 @@ def _create_parametrize_wrapper(params, cls):
     old_init_fn = cls.__init__
 
     def init_fn(self, *args, **kwargs):
-        self._PARAMETERS = {}
+        if not hasattr(self, '_PARAMETERS'):
+            self._PARAMETERS = {}
+
+        # FIXME: Test what happens when the parent class is also @parametrized
         self._annotations = {}
         self._conditions = []
 
@@ -52,7 +55,6 @@ def _create_parametrize_wrapper(params, cls):
                 self._PARAMETERS[name] = arg
                 # self._annotations[name] = params[name]._annotation
 
-        # TODO:
         cls.sample = sample
         cls.set_current = set_current
         cls.instantiate = instantiate
@@ -184,6 +186,7 @@ def set_param_scopes(self):
             param.id = self.id + "." + name
             param.set_scope(self.id, name)
 
+
 def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
     hierarchical_params = {}
     for key, param in parameter.items():
@@ -217,6 +220,7 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
             else:
                 current_param_branch = current_param_branch[index]
     return hierarchical_params
+
 
 def set_parametrization(parameters, parametrization):
     for k, v in parametrization.items():

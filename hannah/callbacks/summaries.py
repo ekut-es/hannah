@@ -24,6 +24,7 @@ import torch
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from tabulate import tabulate
+from torch.fx.graph_module import GraphModule
 
 from hannah.models.ofa.submodules.elasticBase import ElasticBase1d
 
@@ -32,6 +33,10 @@ from ..models.ofa import OFAModel
 from ..models.ofa.submodules.elastickernelconv import ConvBn1d, ConvBnReLu1d, ConvRelu1d
 from ..models.ofa.type_utils import elastic_conv_type, elastic_Linear_type
 from ..models.sinc import SincNet
+
+import torch.fx as fx
+from hannah.nas.graph_conversion import GraphConversionTracer
+from hannah.nas.functional_operators.operators import conv2d, linear, add
 
 msglogger = logging.getLogger(__name__)
 
@@ -444,3 +449,145 @@ class MacSummaryCallback(Callback):
 
         pl_module.train()
         return res
+
+
+def prod(seq):
+    """
+    Args:
+      seq:
+    Returns:
+    """
+    result = 1.0
+    for number in seq:
+        result *= number
+    return int(result)
+
+
+def get_zero_op(node, output, args, kwargs):
+    return 0, 0, ""
+
+
+def get_conv(node, output, args, kwargs):
+    volume_ofm = prod(output.shape)
+    weight = args[1]
+    out_channels = weight.shape[0]
+    in_channels = weight.shape[1]
+    kernel_size = weight.shape[2]
+    num_weights = out_channels * in_channels / kwargs['groups'] * kernel_size**2
+    macs = volume_ofm * in_channels / kwargs['groups'] * kernel_size
+    attrs = "k=" + "(%d, %d)" % (kernel_size, kernel_size)
+    attrs += ", s=" + "(%d, %d)" % (kwargs['stride'], kwargs['stride'])
+    attrs += ", g=(%d)" % kwargs['groups']
+    attrs += ", dsc=(%s)" % str(
+        in_channels == out_channels == kwargs['groups']
+    )
+    attrs += ", d=" + "(%d, %d)" % (kwargs['dilation'], kwargs['dilation'])
+    return num_weights, macs, attrs
+
+
+def get_linear(node, output, args, kwargs):
+    weight = args[1]
+    in_features = weight.shape[0]
+    out_features = weight.shape[1]
+    num_weights = macs = in_features * out_features
+    attrs = ""
+    return num_weights, macs, attrs
+
+
+def get_type(node):
+    try:
+        return node.name.split('_')[-2]
+    except Exception as e:
+        pass
+    return node.name
+
+
+class MACSummaryInterpreter(fx.Interpreter):
+    def __init__(self, module: torch.nn.Module):
+        tracer = GraphConversionTracer()
+        traced_graph = tracer.trace(module)
+        gm = fx.GraphModule(dict(module.params), traced_graph)
+        super().__init__(gm)
+
+        self.count_function = {
+            conv2d: get_conv,
+            linear: get_linear,
+            add: get_zero_op,
+        }
+
+        self.data = {
+            "Name": [],
+            "Type": [],
+            "Attrs": [],
+            "IFM": [],
+            "IFM volume": [],
+            "OFM": [],
+            "OFM volume": [],
+            "Weights volume": [],
+            "MACs": [],
+        }
+
+    def run_node(self, n : torch.fx.Node):
+        try:
+            out = super().run_node(n)
+        except Exception as e:
+            print(str(e))
+        if n.op == 'call_function':
+            try:
+                args, kwargs = self.fetch_args_kwargs_from_env(n)
+                num_weights, macs, attrs = self.count_function.get(n.target, get_zero_op)(n, out, args, kwargs)
+                self.data['Name'] += [n.name]
+                self.data['Type'] += [get_type(n)]
+                self.data['Attrs'] += [attrs]
+                self.data['IFM'] += [tuple(args[0].shape)]
+                self.data['IFM volume'] += [prod(args[0].shape)]
+                self.data['OFM'] += [tuple(out.shape)]
+                self.data['OFM volume'] += [prod(out.shape)]
+                self.data['Weights volume'] += [int(num_weights)]
+                self.data['MACs'] += [int(macs)]
+            except Exception as e:
+                msglogger.warning("Summary of node %s failed: %s", n.name, str(e))
+        return out
+
+
+class FxMACSummaryCallback(MacSummaryCallback):
+    def _do_summary(self, pl_module, input=None, print_log=True):
+        interpreter = MACSummaryInterpreter(pl_module.model)
+        dummy_input = input
+        if dummy_input is None:
+            dummy_input = pl_module.example_feature_array
+        dummy_input = dummy_input.to(pl_module.device)
+        interpreter.run(dummy_input)
+
+        total_macs = 0.0
+        total_acts = 0.0
+        total_weights = 0.0
+        estimated_acts = 0.0
+
+        try:
+            df = pd.DataFrame(interpreter.data)
+            t = tabulate(df, headers="keys", tablefmt="psql", floatfmt=".5f")
+            total_macs = df["MACs"].sum()
+            total_acts = df["IFM volume"][0] + df["OFM volume"].sum()
+            total_weights = df["Weights volume"].sum()
+            estimated_acts = 2 * max(df["IFM volume"].max(), df["OFM volume"].max())
+            if print_log:
+                msglogger.info("\n" + str(t))
+                msglogger.info("Total MACs: " + "{:,}".format(total_macs))
+                msglogger.info("Total Weights: " + "{:,}".format(total_weights))
+                msglogger.info("Total Activations: " + "{:,}".format(total_acts))
+                msglogger.info(
+                    "Estimated Activations: " + "{:,}".format(estimated_acts)
+                )
+        except RuntimeError as e:
+            msglogger.warning("Could not create performance summary: %s", str(e))
+            return OrderedDict()
+
+        res = OrderedDict()
+        res["total_macs"] = total_macs
+        res["total_weights"] = total_weights
+        res["total_act"] = total_acts
+        res["est_act"] = estimated_acts
+
+        return res
+

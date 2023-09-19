@@ -170,7 +170,7 @@ class Ultratrail(Device):
         max_input_channel_block = self.rows * 2**self.ic_block_bits
         max_output_channel_block = self.cols * 2**self.oc_block_bits
 
-        stride_range = IntRange(1, 2**2**stride_bits)
+        stride_range = 2**2**stride_bits
 
         # self.cond(stride <= 2**2**S_BIT and is_power_of_2(stride))
 

@@ -129,6 +129,7 @@ class NASGraphDataset(DGLDataset):
     def __len__(self):
         return len(self.graphs)
 
+
 class OnlineNASGraphDataset(DGLDataset):
     def __init__(self, dgl_graphs, labels):
         super().__init__(name="OnlineNASGraphDataset")
@@ -140,8 +141,6 @@ class OnlineNASGraphDataset(DGLDataset):
 
     def __len__(self):
         return len(self.graphs)
-
-
 
 
 def get_features(nx_graph):
@@ -158,9 +157,9 @@ def get_features(nx_graph):
     # df.dropna(axis = 0, how = 'all', inplace = True)
     df = df.fillna(0)
     df = pd.get_dummies(df)
-    for col in COLUMNS:
-        if col not in df.columns:
-            df[col] = 0
+    # for col in COLUMNS:
+    #     if col not in df.columns:
+    #         df[col] = 0
     df = df.reindex(sorted(df.columns), axis=1)  # Sort to have consistency
     return df
 

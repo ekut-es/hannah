@@ -24,6 +24,7 @@ from torch.nn import Module
 from hannah.models.factory.pooling import ApproximateGlobalAveragePooling1D
 from hannah.models.factory.qat import ConvBn1d, ConvBnReLU1d, Linear
 from hannah.models.factory.qconfig import get_trax_qat_qconfig
+from hannah.nas.functional_operators.op import Tensor
 from hannah.nas.graph_conversion import model_to_graph
 from hannah.models.convnet.models import ConvNet
 
@@ -84,6 +85,32 @@ def test_graph_conversion_lazy_convnet():
     test_output = model(torch.rand((1, 3, 32, 32), dtype=torch.float32))
     graph = model_to_graph(model, torch.rand((1, 3, 32, 32), dtype=torch.float32))
 
+
+def test_graph_conversion_functional_operators():
+    from hannah.models.capsule_net_v2.models import search_space
+    from hannah.nas.functional_operators.executor import BasicExecutor
+    import hannah.nas.functional_operators.operators
+
+    input = Tensor(name='input',
+                   shape=(1, 3, 32, 32),
+                   axis=('N', 'C', 'H', 'W'))
+
+    # space = test_net(input)
+
+    space = search_space("net", input)
+    # space.sample()
+    model = BasicExecutor(space)
+    model.initialize()
+    x = torch.rand((1, 3, 32, 32), dtype=torch.float32)
+    # model.forward(x)
+    model.find_execution_order()
+    # model.create_forward()
+    # out = model.forward(x)
+    graph = model_to_graph(model, x)
+    print()
+
+
 if __name__ == "__main__":
     test_graph_conversion()
     test_graph_conversion_lazy_convnet()
+    test_graph_conversion_functional_operators()

@@ -29,6 +29,7 @@ from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
 
 from hydra.utils import instantiate
+from datetime import datetime
 
 
 class Parameter(Expression):
@@ -38,14 +39,7 @@ class Parameter(Expression):
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__()
-        if rng is None:
-            self.rng = np.random.default_rng(seed=None)
-        elif isinstance(rng, int):
-            self.rng = np.random.default_rng(seed=rng)
-        elif isinstance(rng, np.random.Generator):
-            self.rng = rng
-        else:
-            raise Exception("rng should be either np.random.Generator or int (or None)")
+        self.setup_rng(rng)
         self.name = name
         self.id = None
 
@@ -72,8 +66,20 @@ class Parameter(Expression):
     def parametrization(self):
         return self
 
-    def new(self):
-        return deepcopy(self)
+    def new(self, rng=None):
+        new_param = deepcopy(self)
+        new_param.setup_rng(rng)
+        return new_param
+
+    def setup_rng(self, rng):
+        if rng is None:
+            self.rng = np.random.default_rng(seed=None)
+        elif isinstance(rng, int):
+            self.rng = np.random.default_rng(seed=rng)
+        elif isinstance(rng, np.random.Generator):
+            self.rng = rng
+        else:
+            raise Exception("rng should be either np.random.Generator or int (or None)")
 
     def format(self, indent=2, length=80) -> str:
         return repr(self)
@@ -192,7 +198,8 @@ class CategoricalParameter(Parameter):
         self.sample()
 
     def sample(self):
-        self.current_value = self.rng.choice(self.choices)
+        idx = int(self.rng.choice(range(len(self.choices))))
+        self.current_value = self.choices[idx]
         if is_parametrized(self.current_value):
             self.current_value = self.current_value.sample()
         return self.current_value

@@ -82,6 +82,7 @@ class Floor(UnaryOp):
     def concrete_impl(self, operand):
         return floor(operand)
 
+
 class Ceil(UnaryOp):
     def __init__(self, operand) -> None:
         super().__init__(operand)

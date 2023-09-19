@@ -45,6 +45,7 @@ experiment_id: test
 output_dir: trained_models
 auto_lr: false
 resume: false
+fx_mac_summary: False
 
 seed: [1234]
 validate_output: False

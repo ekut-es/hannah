@@ -13,6 +13,7 @@ class Cast(Expression):
     def format(self, indent=2, length=80) -> str:
         return f"{self.type}({self.expr})"
 
+
 class Int(Cast):
     def __init__(self, expr) -> None:
         super().__init__(expr, type=int)

@@ -256,9 +256,9 @@ class Linear(nn.Module):
         in_features = self.input[1] * self.input[2] * self.input[3]
         self._linear = self.add_param('linear',
                                       linear("linear",
-                                      inputs=[self.input],
-                                      in_features=in_features,
-                                      out_features=self.labels))
+                                             inputs=[self.input],
+                                             in_features=in_features,
+                                             out_features=self.labels))
 
     def initialize(self):
         self.linear = self._linear.instantiate()

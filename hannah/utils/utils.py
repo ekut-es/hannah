@@ -56,7 +56,7 @@ from ..callbacks.dump_layers import TestDumperCallback
 from ..callbacks.fine_tuning import LinearClassifierTraining
 from ..callbacks.optimization import HydraOptCallback
 from ..callbacks.pruning import PruningAmountScheduler
-from ..callbacks.summaries import MacSummaryCallback
+from ..callbacks.summaries import FxMACSummaryCallback, MacSummaryCallback
 from ..callbacks.svd_compress import SVD
 
 try:
@@ -231,8 +231,11 @@ def common_callbacks(config: DictConfig) -> list:
             )
         device_stats = DeviceStatsMonitor(cpu_stats=config.get("device_stats", False))
         callbacks.append(device_stats)
-
-    mac_summary_callback = MacSummaryCallback()
+    use_fx_mac_summary = config.get('fx_mac_summary', False)
+    if use_fx_mac_summary:
+        mac_summary_callback = FxMACSummaryCallback()
+    else:
+        mac_summary_callback = MacSummaryCallback()
     callbacks.append(mac_summary_callback)
 
     if config.get("early_stopping", None):

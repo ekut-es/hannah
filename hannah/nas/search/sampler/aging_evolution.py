@@ -57,7 +57,7 @@ class AgingEvolutionSampler(Sampler):
         self,
         bounds,
         parametrization: dict,
-        population_size: int = 100,
+        population_size: int = 50,
         random_state = None,
         sample_size: int = 10,
         eps: float = 0.1,
