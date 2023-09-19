@@ -26,6 +26,7 @@ import os
 from abc import ABC, abstractmethod
 from hydra.utils import instantiate, get_class
 from hannah.callbacks.optimization import HydraOptCallback
+from hannah.nas.functional_operators.op import Tensor
 from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
@@ -33,6 +34,7 @@ from hannah.nas.graph_conversion import model_to_graph
 import traceback
 
 msglogger = logging.getLogger(__name__)
+
 
 class NASBase(ABC):
     def __init__(self,
@@ -50,7 +52,7 @@ class NASBase(ABC):
         self.sampler = sampler
         self.model_trainer = model_trainer
         self.predictor = predictor
-        self.constraint_model =  constraint_model
+        self.constraint_model = constraint_model
 
     def run(self):
         self.before_search()
@@ -95,38 +97,41 @@ class DirectNAS(NASBase):
         self.search_space = self.build_search_space()
         parametrization = self.search_space.parametrization(flatten=True)
         self.sampler = instantiate(self.config.nas.sampler, parametrization=parametrization)
-        self.mac_predictor = MACPredictor()
+        self.mac_predictor = MACPredictor(predictor='fx')
         self.model_trainer = instantiate(self.config.nas.model_trainer)
         if 'predictor' in self.config.nas:
             self.predictor = instantiate(self.config.nas.predictor, _recursive_=False)
             if os.path.exists('performance_data'):
                 self.predictor.load('performance_data')
-            
+
         if self.constraint_model:
             self.constraint_model = instantiate(self.config.nas.constraint_model)
+
+    def presample_candidates(self):
+        remaining_candidates = self.total_candidates - len(self.sampler.history)
+        self.candidates = []
+        if remaining_candidates > 0:
+            self.candidates = self.sample_candidates(remaining_candidates, remaining_candidates)
 
     def search(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
             self.new_points = []
 
             # Presample Candidates
-            remaining_candidates = self.total_candidates - len(self.sampler.history)
-            self.candidates = []
-            if remaining_candidates > 0:
-                self.candidates = self.sample_candidates(remaining_candidates, remaining_candidates)
-
+            self.presample_candidates()
 
             while len(self.sampler.history) < self.budget:
                 self.worklist = []
                 self.tasklist = []
-                while len(self.worklist) < self.n_jobs:
-                    try:
-                        if len(self.candidates) == 0:
-                            if self.predictor:
-                                self.predictor.update(self.new_points, self.example_input_array)
-                                self.new_points = []
-                            self.candidates = self.sample_candidates(self.total_candidates, self.num_selected_candidates)
 
+                if len(self.candidates) == 0:
+                    if self.predictor:
+                        self.predictor.update(self.new_points, self.example_input_array)
+                        self.new_points = []
+                    self.candidates = self.sample_candidates(self.total_candidates, self.num_selected_candidates)
+
+                while len(self.worklist) < self.n_jobs and len(self.candidates) > 0:
+                    try:
                         model, parameters, estimated_metrics, satisfied_bounds = self.candidates.pop(0)
                         self.append_to_worklist(parameters, estimated_metrics, satisfied_bounds)
                         current_num = len(self.tasklist) - 1
@@ -171,12 +176,14 @@ class DirectNAS(NASBase):
             model = self.model_trainer.build_model(self.search_space, parameters)
             module = self.initialize_lightning_module(model)
         except AssertionError as e:
-                 msglogger.critical(f"Instantiation failed: {e}")
+            msglogger.critical(f"Instantiation failed: {e}")
         return module
 
     def build_search_space(self):
         # FIXME: In the future, get num_labels also from dataset
-        search_space = instantiate(self.config.model, input_shape=self.example_input_array.shape, _recursive_=True)
+        # search_space = instantiate(self.config.model, input_shape=self.example_input_array.shape, _recursive_=True)
+        input = Tensor('input', shape=self.example_input_array.shape, axis=("N", "C", "H", "W"))
+        search_space = instantiate(self.config.model, input=input, _recursive_=True)
         return search_space
 
     # FIXME: Fully move to model trainer?
@@ -192,6 +199,9 @@ class DirectNAS(NASBase):
                 num_classes=len(self.train_set.class_names),
                 _recursive_=False,
             )
+        # Parameters are not part of the model but of the graph and currenlty are not automatically
+        # retrievable in the module somehow
+        module.param_list = torch.nn.ParameterList(list(model.parameters()))
         return module
 
     def initialize_dataset(self):
@@ -216,7 +226,7 @@ class DirectNAS(NASBase):
                     self.constraint_model.soft_constrain_current_parametrization(self.search_space, parameters, fix_vars=fixed_vars)
                     parameters = self.constraint_model.get_constrained_params(parameters)
                     break
-                except:
+                except Exception:
                     pass
         else:
             parameters, keys = self.sampler.next_parameters()
@@ -233,7 +243,7 @@ class DirectNAS(NASBase):
 
         # FIXME: Integrate better intro current code
     def estimate_metrics(self, model):
-        estimated_metrics = self.mac_predictor.predict(model, input = self.example_input_array)
+        estimated_metrics = self.mac_predictor.predict(model, input=self.example_input_array)
         if self.predictor:
             estimated_metrics.update(self.predictor.predict(model, self.example_input_array))
 

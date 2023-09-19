@@ -23,14 +23,14 @@ import numpy as np
 import pandas as pd
 import torch
 import json
-import networkx as nx 
+import networkx as nx
 import tqdm
 from hydra.utils import instantiate
 from tabulate import tabulate
 
 from pathlib import Path
 
-from hannah.callbacks.summaries import MacSummaryCallback
+from hannah.callbacks.summaries import FxMACSummaryCallback, MacSummaryCallback
 from hannah.nas.graph_conversion import GraphConversionTracer, model_to_graph
 from hannah.nas.performance_prediction.features.dataset import OnlineNASGraphDataset, get_features, to_dgl_graph
 from hannah.nas.performance_prediction.gcn.predictor import prepare_dataloader
@@ -66,9 +66,14 @@ class BackendPredictor:
 
 class MACPredictor:
     """A predictor class that instantiates the model and calculates abstract metrics"""
+    def __init__(self, predictor='default') -> None:
+        self._predictor = predictor
 
     def predict(self, model, input = None):
-        predictor = MacSummaryCallback()
+        if self._predictor == 'fx':
+            predictor = FxMACSummaryCallback()
+        else:
+            predictor = MacSummaryCallback()
 
         metrics = predictor.predict(model, input=input)
 
@@ -87,9 +92,9 @@ class GCNPredictor:
         self.graphs = []
         self.labels = []
 
-        
+
     def load(self, result_folder : str):
-        result_folder = Path(result_folder)    
+        result_folder = Path(result_folder)
         for i, data_path in tqdm.tqdm(enumerate(result_folder.glob("model_*.json"))):
             #if i % 500 == 0:
             i#print("Processing graph {}".format(i))
@@ -105,17 +110,17 @@ class GCNPredictor:
 
             for i, n in enumerate(nx_graph.nodes):
                 nx_graph.nodes[n]['features'] = fea.iloc[i].to_numpy()
-            
+
             dgl_graph = to_dgl_graph(nx_graph)
-            
+
             self.graphs.append(dgl_graph)
             self.labels.append(result)
-       
 
         self.train()
 
-
     def predict(self, model, input):
+        model = model.model  # FIXME: Decide when to use pl_module and when to use model
+
         model.train()
 
         nx_graph = model_to_graph(model, input)
@@ -138,7 +143,7 @@ class GCNPredictor:
 
     def update(self, new_data, input):
         for item, result in new_data:
-            nx_graph = model_to_graph(item, input)
+            nx_graph = model_to_graph(item.model, input)
             fea = get_features(nx_graph)
 
             for i, n in enumerate(nx_graph.nodes):

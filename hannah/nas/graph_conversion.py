@@ -20,15 +20,20 @@ import copy
 import logging
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import networkx as nx
 import numpy as np
 import torch.fx
+from torch.fx.node import Argument, Node, Target
+import torch
+from hannah.nas.functional_operators.executor import BasicExecutor
 
 from hannah.nas.utils import to_int
 
 from hannah.models.factory import pooling, qat, qconfig
+import hannah.nas.functional_operators.operators as f_ops
+from hannah.nas.functional_operators.op import Op, Tensor
 
 
 class GraphConversionTracer(torch.fx.Tracer):
@@ -47,6 +52,15 @@ class GraphConversionTracer(torch.fx.Tracer):
         qconfig.STEQuantize,
         pooling.ApproximateGlobalAveragePooling1D,
         pooling.ApproximateGlobalAveragePooling2D,
+        f_ops.Conv1d,
+        f_ops.Conv2d,
+        f_ops.Linear,
+        f_ops.Relu,
+        f_ops.Add,
+        f_ops.BatchNorm,
+        f_ops.Quantize,
+        f_ops.Identity,
+        Tensor,
     ]
 
     def is_leaf_module(self, module, module_qualified_name):
@@ -55,6 +69,25 @@ class GraphConversionTracer(torch.fx.Tracer):
                 return True
 
         return super().is_leaf_module(module, module_qualified_name)
+
+    def create_node(self, kind: str, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Argument], name=None, type_expr=None) -> Node:
+        if kind == 'call_function' and 'id' in kwargs:
+            name = kwargs['id']
+        return super().create_node(kind, target, args, kwargs, name, type_expr)
+
+    def create_arg(self, a: Any) -> Argument:
+        if isinstance(a, torch.nn.Parameter):
+            for n, p in self.root.named_parameters():
+                if a is p:
+                    return self.create_node("get_attr", n, (), {})
+            raise NameError("parameter is not a member of this module")
+        if isinstance(a, torch.Tensor):
+            if isinstance(self.root, BasicExecutor):
+                for n, p in self.root.params.items():
+                    if a is p:
+                        return self.create_node("get_attr", n, (), {})
+                raise NameError("parameter is not a member of this module")
+        return super().create_arg(a)
 
 
 def to_one_hot(val, options):
@@ -95,10 +128,16 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             torch.nn.Conv2d: self.add_nodes_conv,
             torch.nn.Linear: self.add_nodes_linear,
             torch.nn.BatchNorm2d: self.add_nodes_batch_norm,
-            torch.nn.Identity: self.add_nodes_relu,  #FIXME: create respective rule
+            torch.nn.Identity: self.add_nodes_relu,  # FIXME: create respective rule
             torch.nn.MaxPool2d: self.add_nodes_pooling,
             torch.nn.AvgPool2d: self.add_nodes_pooling,
             "add": self.add_nodes_add,
+            "conv2d": self.add_nodes_conv_fun,
+            "linear": self.add_nodes_linear_fun,
+            "relu": self.add_nodes_relu,
+            "batch_norm": self.add_nodes_batch_norm,
+            "flatten": self.add_nodes_flatten,
+            "adaptive_avg_pooling": self.add_nodes_pooling,
         }
         self.layer_encodings = [
             "conv",
@@ -135,7 +174,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return input_attrs
 
-    def add_nodes_quantize(self, target, mod, args, output):
+    def add_nodes_quantize(self, target, mod, args, kwargs, output):
         type_onehot = to_one_hot("quantize", self.layer_encodings)
         quant_attrs = self.extract_quant_attrs(mod)
 
@@ -154,7 +193,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
-    def add_nodes_relu(self, target, mod, args, output):
+    def add_nodes_relu(self, target, mod, args, kwargs, output):
         quant_attrs = args[0].quantization
         input_attrs = self.extract_input_attrs(args)
         self.nx_graph.add_node(
@@ -171,7 +210,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
-    def add_nodes_batch_norm(self, target, mod, args, output):
+    def add_nodes_batch_norm(self, target, mod, args, kwargs, output):
         quant_attrs = args[0].quantization
         input_attrs = self.extract_input_attrs(args)
         self.nx_graph.add_node(
@@ -188,7 +227,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
-    def add_nodes_conv(self, target, mod, args, output):
+    def add_nodes_conv(self, target, mod, args, kwargs, output):
         attrs = {}
 
         attrs["in_channels"] = to_int(mod.in_channels)
@@ -258,7 +297,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         if type(mod) in [qat.ConvReLU1d, qat.ConvBnReLU1d]:
             relu_name = target + "_relu"
             relu_args = [NamedTensor(name, output, quantization=output_quant)]
-            self.add_nodes_relu(relu_name, None, relu_args, output)
+            self.add_nodes_relu(relu_name, None, relu_args, {}, output)
 
             name = relu_name
 
@@ -275,6 +314,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
                     post_process_name,
                     activation_post_process,
                     post_process_args,
+                    {},
                     output,
                 )
                 quantization = quant_out.quantization
@@ -282,7 +322,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(name, output, quantization=quantization)
 
-    def add_nodes_linear(self, target, mod, args, output):
+    def add_nodes_linear(self, target, mod, args, kwargs, output):
         attrs = {}
 
         attrs["in_features"] = to_int(mod.in_features)
@@ -339,7 +379,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         if type(mod) in [qat.LinearReLU]:
             relu_name = target + "_relu"
             relu_args = [NamedTensor(name, output, quantization=output_quant)]
-            self.add_nodes_relu(relu_name, None, relu_args, output)
+            self.add_nodes_relu(relu_name, None, relu_args, {}, output)
 
             name = relu_name
 
@@ -355,6 +395,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
                     post_process_name,
                     activation_post_process,
                     post_process_args,
+                    {},
                     output,
                 )
                 quantization = quant_out.quantization
@@ -362,7 +403,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(name, output, quantization=quantization)
 
-    def add_nodes_pooling(self, target, mod, args, output):
+    def add_nodes_pooling(self, target, mod, args, kwargs, output):
         quant_attrs = args[0].quantization
         input_attrs = self.extract_input_attrs(args)
         self.nx_graph.add_node(
@@ -379,7 +420,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
-    def add_nodes_add(self, target, mod, args, output):
+    def add_nodes_add(self, target, mod, args, kwargs, output):
         quant_attrs = args[0].quantization
         input_attrs = self.extract_input_attrs(args)
 
@@ -397,7 +438,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
-    def add_nodes_dropout(self, target, mod, args, output):
+    def add_nodes_dropout(self, target, mod, args, kwargs, output):
         quant_attrs = args[0].quantization
         input_attrs = self.extract_input_attrs(args)
 
@@ -415,7 +456,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
-    def add_nodes_flatten(self, target, mod, args, output):
+    def add_nodes_flatten(self, target, mod, args, kwargs, output):
         quant_attrs = args[0].quantization
         input_attrs = self.extract_input_attrs(args)
 
@@ -433,6 +474,93 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
+    def add_nodes_conv_fun(self, target, mod, args, kwargs, output):
+        attrs = {}
+
+        attrs["in_channels"] = to_int(args[1].tensor.shape[1])
+        attrs["out_channels"] = to_int(args[1].tensor.shape[0])
+        attrs["kernel_size"] = to_int(args[1].tensor.shape[2])
+        attrs["stride"] = to_int(kwargs['stride'])
+        attrs["dilation"] = to_int(kwargs['dilation'])
+        attrs["groups"] = to_int(kwargs['groups'])
+        attrs["padding"] = to_int(kwargs['padding'])
+
+        # FIXME: How to handle quantization
+        weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
+
+        bias_attrs = None
+        # FIXME: Bias missing
+
+        name = target + "_conv"
+        input_attrs = self.extract_input_attrs([args[0]])
+        output_quant = {"dtype": "float", "bits": 32, "method": "none"}
+        output_attr = {"name": name, "quant": output_quant, "shape": output.shape}
+        self.nx_graph.add_node(
+            name,
+            attrs=attrs,
+            type="conv",
+            weight=weight_attrs,
+            bias=bias_attrs,
+            inputs=input_attrs,
+            output=output_attr,
+        )
+
+        input_names = [arg.name for arg in args]
+        for input_name in input_names:
+            self.nx_graph.add_edge(input_name, name)
+
+        # FIXME: quick fix, creates a weird NaN when converted to pd.DataFrame
+        quantization = {"dtype": "float", "bits": 32, "method": "none"}
+        # FIXME: Handle activation post process
+
+        return NamedTensor(name, output, quantization=quantization)
+
+    def add_nodes_linear_fun(self, target, mod, args, kwargs, output):
+        # FIXME: Handle quantization correctly
+        attrs = {}
+        attrs['in_features'] = args[1].tensor.shape[0]
+        attrs['out_features'] = args[1].tensor.shape[0]
+
+        weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
+        bias_attrs = None
+        name = target + "_linear"
+        input_attrs = self.extract_input_attrs(args)
+        output_quant = {"dtype": "float", "bits": 32, "method": "none"}
+        output_attr = {"name": name, "quant": output_quant, "shape": output.shape}
+        self.nx_graph.add_node(
+            name,
+            attrs=attrs,
+            type="linear",
+            weight=weight_attrs,
+            bias=bias_attrs,
+            inputs=input_attrs,
+            output=output_attr,
+        )
+
+        input_names = [arg.name for arg in args]
+        for input_name in input_names:
+            self.nx_graph.add_edge(input_name, name)
+        quantization = None
+        return NamedTensor(name, output, quantization=quantization)
+
+    def add_nodes_tensor(self, target, data, args, kwargs):
+        quantization = {"dtype": "float", "bits": 32, "method": "none"}
+        self.nx_graph.add_node(
+            target,
+            attrs={},
+            output={'shape': data.shape, 'quant': quantization},
+            inputs={},
+            type="tensor",
+        )
+        return NamedTensor(target, data, quantization=quantization)
+
+    def get_attr(self, target, args, kwargs):
+        assert isinstance(target, str)
+        fetched_attr = self.fetch_attr(target)
+        if isinstance(fetched_attr, (torch.Tensor, torch.nn.Parameter)):
+            return self.add_nodes_tensor(target, fetched_attr, args, kwargs)
+        return fetched_attr
+
     def add_edge(self, target, args):
         input_names = [arg.name for arg in args if isinstance(arg, NamedTensor)]
         for input_name in input_names:
@@ -441,11 +569,12 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
     def call_function(self, target, args: Tuple, kwargs: Dict) -> Any:
         self.func_num += 1
         arg_tensors = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
-        output_tensor = super().call_function(target, arg_tensors, kwargs)
+        kwarg_tensors = {key: kwarg.tensor if isinstance(kwarg, NamedTensor) else kwarg for key, kwarg in kwargs.items()}
+        output_tensor = super().call_function(target, arg_tensors, kwarg_tensors)
         target_name = target.__name__ + str(self.func_num)
         if target.__name__ in self.conversions:
             output = self.conversions[target.__name__](
-                target_name, None, args, output_tensor
+                target_name, None, args, kwargs, output_tensor
             )
         else:
             output = output_tensor
@@ -467,7 +596,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         submod = self.fetch_attr(target)
         if type(submod) in self.conversions:
 
-            output = self.conversions[type(submod)](target, submod, args, output_tensor)
+            output = self.conversions[type(submod)](target, submod, args, kwargs, output_tensor)
 
         else:
             assert len(args) == 1
@@ -492,13 +621,16 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 def model_to_graph(model, input):
     tracer = GraphConversionTracer()
 
-    model = copy.deepcopy(model)
+    # model = copy.deepcopy(model)
 
     model.cpu()
     model.eval()
     traced_graph = tracer.trace(model)
-
-    interpreter = GraphConversionInterpreter(torch.fx.GraphModule(model, traced_graph))
+    if isinstance(model, BasicExecutor):
+        mod = dict(model.params)
+    else:
+        mod = model
+    interpreter = GraphConversionInterpreter(torch.fx.GraphModule(mod, traced_graph))
     interpreter.run(input)
 
     return interpreter.nx_graph

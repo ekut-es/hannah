@@ -19,6 +19,7 @@
 import logging
 import os
 import shutil
+import sys
 import traceback
 from copy import deepcopy
 
@@ -30,11 +31,10 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
-from hannah.callbacks.optimization import HydraOptCallback
-from hannah.nas.graph_conversion import model_to_graph
 from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.utils import save_graph_to_file, setup_callbacks
 from hannah.utils.utils import common_callbacks
+from hannah.nas.functional_operators.executor import BasicExecutor
 
 msglogger = logging.getLogger(__name__)
 
@@ -44,12 +44,14 @@ class SimpleModelTrainer:
         pass
 
     def build_model(self, model, parameters):
-        model_instance = deepcopy(model)
-        set_parametrization(parameters, model_instance.parametrization(flatten=True))
-        model_instance.initialize()
-        model = model_instance
+        # model_instance = deepcopy(model)
+        set_parametrization(parameters, model.parametrization(flatten=True))
+        # model_instance.initialize()
+        # model = model_instance
+        mod = BasicExecutor(model)
+        mod.initialize()
 
-        return model
+        return mod
 
     def run_training(self, model, num, global_num, config):
         # num is the number of jobs global_num is the number of models to be created
@@ -88,7 +90,8 @@ class SimpleModelTrainer:
             except Exception as e:
                 msglogger.critical("Training failed with exception")
                 msglogger.critical(str(e))
-                print(traceback.format_exc())
+                # print(traceback.format_exc())
+                # sys.exit(1)
 
                 res = {}
                 for monitor in opt_monitor:
