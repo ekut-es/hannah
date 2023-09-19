@@ -25,4 +25,6 @@ dataset: ri_capsule
 val_percent: 0.1
 sampler: random
 weighted_loss: false
+drop_labels: null   # Will make drop_labels percent of dataset unlabeled
+
 split: official

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 import bisect
+import concurrent.futures
 import json
 import logging
 import pathlib
@@ -39,6 +40,31 @@ except ModuleNotFoundError:
 
 
 logger = logging.getLogger(__name__)
+
+
+def _decode_frame(index, metadata, end_frames, data_root):
+    video_index = bisect.bisect_left(end_frames, index)
+    assert video_index < len(metadata)
+
+    video_metadata = dict(metadata[video_index])
+
+    video_file = data_root / video_metadata["video_file"]
+    assert video_file.exists()
+
+    start_frame = 0
+    if video_index > 0:
+        start_frame = end_frames[video_index - 1] + 1
+
+    frame_index = min(max(index - start_frame, 0), video_metadata["total_frames"] - 1)
+
+    video_capture = cv2.VideoCapture(str(video_file))
+
+    video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+    ret, frame = video_capture.read()
+    assert ret is True
+
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
+    return frame, video_metadata
 
 
 class KvasirCapsuleUnlabeled(AbstractDataset):
@@ -67,6 +93,43 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
 
         self._video_captures = {}
 
+        # Cache Config
+        self.poolsize = 2048
+        self.queuesize = 1
+        self.workqueue = []
+        self.data_pool = []
+        self.worker_pool = concurrent.futures.ProcessPoolExecutor()
+
+        self._update_cache()
+
+    def _update_cache(self):
+        done_index = []
+        for index, fut in enumerate(self.workqueue):
+            if fut.done():
+                self.data_pool.append(fut.result())
+
+                done_index.append(index)
+
+        for index in sorted(done_index, reverse=True):
+            if index < len(self.workqueue):
+                del self.workqueue[index]
+
+        if len(self.data_pool) > self.poolsize:
+            start = len(self.data_pool) - self.poolsize
+            self.data_pool = self.data_pool[start:]
+
+        for _ in range(self.queuesize - len(self.workqueue)):
+            next_number = np.random.randint(low=0, high=self.total_frames)
+            self.workqueue.append(
+                self.worker_pool.submit(
+                    _decode_frame,
+                    next_number,
+                    self.metadata,
+                    self.end_frames,
+                    self.data_root,
+                )
+            )
+
     @property
     def class_counts(self):
         return None
@@ -79,43 +142,18 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
     def class_names_abbreviated(self) -> List[str]:
         return []
 
-    def _decode_frame(self, index):
-        video_index = bisect.bisect_left(self.end_frames, index)
-        assert video_index < len(self.metadata)
-
-        video_metadata = dict(self.metadata[video_index])
-
-        video_file = self.data_root / video_metadata["video_file"]
-        assert video_file.exists()
-
-        start_frame = 0
-        if video_index > 0:
-            start_frame = self.end_frames[video_index - 1] + 1
-
-        frame_index = min(
-            max(index - start_frame, 0), video_metadata["total_frames"] - 1
-        )
-
-        if video_file in self._video_captures:
-            video_capture = self._video_captures[video_file]
-        else:
-            video_capture = cv2.VideoCapture(str(video_file))
-            # self._video_captures[video_file] = video_capture
-
-        ret, frame = video_capture.read()
-        if not ret:
-            video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            ret, frame = video_capture.read()
-            assert ret is True
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
-        return frame, video_metadata
-
     def __getitem__(self, index):
         res = {}
 
         # start_time = time.time()
-        data, metadata = self._decode_frame(index)
+
+        self._update_cache()
+        while len(self.data_pool) < self.queuesize:
+            self._update_cache()
+
+        index = np.random.randint(low=0, high=len(self.data_pool))
+        data, metadata = self.data_pool[index]
+
         # end_time = time.time()
 
         # print("Decode  time", end_time - start_time)
@@ -153,16 +191,23 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
         val_split = [metadata[-2]]
         test_split = [metadata[-1]]
 
-        transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
+        transform = A.Compose(
+            [
+                A.augmentations.geometric.resize.Resize(
+                    config.sensor.resolution[0], config.sensor.resolution[1]
+                ),
+                ToTensorV2(),
+            ]
+        )
         train_set = cls(config, train_split, transform=transform)
         test_set = cls(config, test_split)
         val_set = cls(config, val_split)
 
         logger.debug("Train Data: %f Frames", train_set.total_frames)
-        logger.debug("Val Data: %f Frames", val_set.total_frames)
-        logger.debug("Test Data: %f Frames", test_set.total_frames)
+        # logger.debug("Val Data: %f Frames", val_set.total_frames)
+        # logger.debug("Test Data: %f Frames", test_set.total_frames)
 
-        return train_set, val_set, test_set
+        return train_set, None, None
 
     @classmethod
     def prepare(cls, config):
@@ -270,3 +315,15 @@ class KvasirCapsuleUnlabeled(AbstractDataset):
     def __setstate__(self, state):
         self.__dict__.update(state)
         self._video_captures = {}
+
+    @property
+    def sequential(self) -> bool:
+        """Returns true if this dataset should only be iterated sequentially"""
+
+        return True
+
+    @property
+    def max_workers(self) -> int:
+        """Returns the maximum number of workers useable for this dataset"""
+
+        return 0

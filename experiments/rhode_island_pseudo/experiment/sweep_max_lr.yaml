@@ -1,0 +1,27 @@
+# @package _global_
+
+experiment_id: sweep_max_lr1
+
+defaults:
+  - override /augmentation: null
+  - override /model: timm_resnet18_mc_dropout
+  - override /pseudo_labeling: hard_labeling
+
+pseudo_labeling:
+  loss_ratio: 1
+  constc_reg_augm: False
+  th_confdc_pos: 0.98
+  th_confdc_neg: null
+  th_uncert_pos: 0.001
+  th_uncert_neg: null
+
+model:
+  drop_rate: 0.3
+
+hydra:
+  sweeper:
+    params:
+      scheduler.max_lr: 0.01, 0.001, 0.0005, 0.0001, 0.00005
+
+  sweep:
+    subdir: tune_max_lr=${scheduler.max_lr}/${model.name}

@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -102,7 +102,6 @@ class KvasirCapsuleDataset(ImageDatasetBase):
 
     @classmethod
     def splits(cls, config):
-
         data_root = os.path.join(
             config.data_folder, "kvasir_capsule", "labelled_images"
         )
@@ -169,7 +168,6 @@ class KvasirCapsuleDataset(ImageDatasetBase):
         if config.split == "official":
 
             def process_official_split(df: pd.DataFrame):
-
                 files = df["filename"].to_list()
                 labels = df["label"].to_list()
 
@@ -194,8 +192,8 @@ class KvasirCapsuleDataset(ImageDatasetBase):
             train_images = split0_paths
             train_labels = split0_labels
 
-            val_images = split0_paths
-            val_labels = split0_labels
+            val_images = split1_paths
+            val_labels = split1_labels
 
             test_images = split1_paths
             test_labels = split1_labels
@@ -253,7 +251,14 @@ class KvasirCapsuleDataset(ImageDatasetBase):
             val_labels = relable_anomaly(val_labels)
             test_labels = relable_anomaly(test_labels)
 
-        transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
+        transform = A.Compose(
+            [
+                A.augmentations.geometric.resize.Resize(
+                    config.sensor.resolution[0], config.sensor.resolution[1]
+                ),
+                ToTensorV2(),
+            ]
+        )
         return (
             cls(
                 train_images,
@@ -262,6 +267,9 @@ class KvasirCapsuleDataset(ImageDatasetBase):
                 split0_bbox,
                 transform=transform,
             ),
+            cls(
+                [], [], classes, {}
+            ),  # FIXME dirty workaround, because train_set_unlabeled is expected
             cls(
                 val_images,
                 val_labels,

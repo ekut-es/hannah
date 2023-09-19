@@ -21,7 +21,7 @@ import re
 import tarfile
 from collections import Counter, namedtuple
 from typing import Dict, List, Optional
-from omegaconf import DictConfig
+
 import albumentations as A
 import cv2
 import numpy as np
@@ -30,6 +30,7 @@ import requests
 import torch
 import torchvision
 from albumentations.pytorch import ToTensorV2
+from omegaconf import DictConfig
 from sklearn.model_selection import train_test_split
 
 from ..base import AbstractDataset
@@ -113,7 +114,7 @@ class ImageDatasetBase(VisionDatasetBase):
         return {"data": data, "labels": target, "bbox": bbox}
 
     def size(self):
-        dim = self[0]['data'].shape
+        dim = self[0]["data"].shape
         return list(dim)
 
     def __len__(self):
@@ -128,10 +129,14 @@ class ImageDatasetBase(VisionDatasetBase):
     def class_counts(self):
         counter = Counter(self.y)
         counts = dict(counter)
-        for i in len(self.classes):
-            if i not in counts:
-                counts[i] = 0
-        return counts
+        res = {}
+        for label in self.classes:
+            i = self.label_to_index[label]
+            if label in counts:
+                res[i] = counts[label]
+            else:
+                res[i] = 0
+        return res
 
     @property
     def num_classes(self):
@@ -139,8 +144,8 @@ class ImageDatasetBase(VisionDatasetBase):
 
     # retuns a list of class index for every sample
     @property
-    def get_label_list(self) -> List[int]:
-        return self.y
+    def label_list(self) -> List[int]:
+        return [self.label_to_index[y] for y in self.y]
 
     @property
     def class_names_abbreviated(self) -> List[str]:

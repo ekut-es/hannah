@@ -28,10 +28,7 @@ import torch
 import torch.nn.functional as F
 import torch.utils.data as data
 from hydra.utils import get_class, instantiate
-from pytorch_lightning.trainer.supporters import CombinedLoader
 from tqdm import trange
-
-from hannah.datasets.collate import vision_collate_fn
 
 from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from .base import VisionBaseModule

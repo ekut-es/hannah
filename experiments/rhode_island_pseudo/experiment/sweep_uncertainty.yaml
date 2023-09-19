@@ -1,0 +1,27 @@
+# @package _global_
+
+experiment_id: sweep_uncertainty1
+
+defaults:
+  - override /augmentation: null
+  - override /pseudo_labeling: hard_labeling
+  - override /model: timm_resnet18_mc_dropout
+
+pseudo_labeling:
+  loss_ratio: 1
+  constc_reg_augm: False
+  th_confdc_pos: 0.98
+  th_confdc_neg: null
+  th_uncert_pos: 0.003
+  th_uncert_neg: null
+
+model:
+  drop_rate: 0.3
+
+hydra:
+  sweeper:
+    params:
+      pseudo_labeling.th_uncert_pos: 0.003, 0.001, 0.0001, 0.00001
+
+  sweep:
+    subdir: tune_th_uncert=${pseudo_labeling.th_uncert_pos}/${model.name}

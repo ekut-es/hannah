@@ -148,7 +148,7 @@ class ClassifierModule(LightningModule, ABC):
             batch_size=self.batch_size,
             drop_last=True,
             num_workers=self.hparams["num_workers"],
-            sampler=sampler,
+            sampler=sampler if not dataset.sequential else None,
             multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
         )
         self.batches_per_epoch = len(loader)
@@ -159,7 +159,9 @@ class ClassifierModule(LightningModule, ABC):
                 batch_size=self.batch_size,
                 drop_last=True,
                 num_workers=self.hparams["num_workers"],
-                sampler=data.RandomSampler(unlabeled_data),
+                sampler=data.RandomSampler(unlabeled_data)
+                if not dataset.sequential
+                else None,
                 multiprocessing_context="fork"
                 if self.hparams["num_workers"] > 0
                 else None,
@@ -224,7 +226,7 @@ class ClassifierModule(LightningModule, ABC):
     def get_balancing_sampler(self, dataset):
         num_sampels = list(dataset.class_counts.values())
         weights = [0 if i is None else 1 / i for i in num_sampels]
-        target_list = dataset.get_label_list
+        target_list = dataset.label_list
         sampler_weights = [weights[i] for i in target_list]
         sampler = data.WeightedRandomSampler(sampler_weights, len(dataset))
         return sampler

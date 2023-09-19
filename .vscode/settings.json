@@ -100,5 +100,6 @@
         "qscheme",
         "submitit",
         "tablefmt"
-    ]
+    ],
+    "terminal.integrated.allowChords": false
 }

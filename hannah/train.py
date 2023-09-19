@@ -28,6 +28,7 @@ import tabulate
 import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.cloud_io import load as pl_load
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
@@ -131,7 +132,7 @@ def train(
         callbacks.append(checkpoint_callback)
 
         # INIT PYTORCH-LIGHTNING
-        lit_trainer = instantiate(
+        lit_trainer: Trainer = instantiate(
             config.trainer,
             profiler=profiler,
             callbacks=callbacks,
@@ -197,13 +198,11 @@ def train(
             config.get("compression").get("clustering", None)
             or config.get("compression").get("decomposition", None)
         ):
-            # FIXME: this is a bad workaround
-            lit_trainer.save_checkpoint("last")
-            ckpt_path = "last"
+            ckpt_path = None
         else:
-            ckpt_path = "best"
-
-        lit_module.save()
+            if lit_trainer.checkpoint_callback.kth_best_model_path:
+                ckpt_path = "best"
+            ckpt_path = None
 
         if not lit_trainer.fast_dev_run:
             # reset_seed()

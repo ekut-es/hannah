@@ -112,8 +112,16 @@ class ImageClassifierModule(VisionBaseModule):
             batch_unlabeled = batch["unlabeled"]
 
         loss, _, _, _ = self.common_step("train", batch_labeled, batch_idx)
+
         if self.pseudo_label is not None and batch_unlabeled is not None:
-            loss += self.pseudo_label(batch_unlabeled)
+            pseudo_loss = self.pseudo_label.training_step(
+                batch_unlabeled, self.trainer, self, batch_idx
+            )
+
+            self.log("train_pseudo_loss", pseudo_loss, batch_size=self.batch_size)
+            self.log("train_supervised_loss", loss, batch_size=self.batch_size)
+            loss += pseudo_loss
+            self.log("train_combined_loss", loss, batch_size=self.batch_size)
         elif batch_unlabeled is not None:
             msglogger.critical(
                 "Batch contains unlabeled data but no pseudo labeling is configured."

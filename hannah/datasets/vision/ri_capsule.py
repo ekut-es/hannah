@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,13 +27,13 @@ import logging
 import pathlib
 import shutil
 
+import albumentations as A
 import pandas as pd
 import torchvision
 import tqdm
+from albumentations.pytorch import ToTensorV2
 
 from .base import ImageDatasetBase
-from albumentations.pytorch import ToTensorV2
-import albumentations as A
 
 BASE_PATH = pathlib.Path(__file__).parent
 DATA_PATH = BASE_PATH / "ri_data"
@@ -79,6 +79,26 @@ def read_official_test(study_folder: pathlib.Path, csv_file: pathlib.Path):
                     labels.append(label)
 
     return files, labels
+
+
+def split_train_set(csv_file: pathlib.Path, drop_rate: float):
+    """Split train set in two and save as separate csv files."""
+    assert 0.0 <= drop_rate <= 1.0
+    data = pd.read_csv(csv_file)
+
+    studies = data["path"].str.extract(r"(?P<STUDY>s\d+)").STUDY.unique()
+    num_drop_labels = round(drop_rate * studies.size)
+    studies_keep_labels = tuple(studies[num_drop_labels:])
+    studies_drop_labels = tuple(studies[:num_drop_labels])
+
+    X_train_keep = data[data["path"].str.startswith(studies_keep_labels)]
+    X_train_drop = data[data["path"].str.startswith(studies_drop_labels)]
+    X_train_keep.to_csv(
+        DATA_PATH / f"path_train_keep_labels_{drop_rate}.csv", index=False
+    )
+    X_train_drop.to_csv(
+        DATA_PATH / f"path_train_drop_labels_{drop_rate}.csv", index=False
+    )
 
 
 class RICapsuleDataset(ImageDatasetBase):
@@ -132,23 +152,54 @@ class RICapsuleDataset(ImageDatasetBase):
             shutil.rmtree(tmp_folder)
 
         with stamp.open("w"):
-            logger.info("Finshed datset preparation")
+            logger.info("Finshed dataset preparation")
 
     @classmethod
     def splits(cls, config):
         data_folder = pathlib.Path(config["data_folder"]) / "ri_capsule"
         study_folder = data_folder / "studies"
 
-        X_train, y_train = read_official_val_train(
-            study_folder, DATA_PATH / "path_train.csv"
-        )
+        if (
+            "drop_labels" in config
+            and config.drop_labels is not None
+            and config.drop_labels > 0.0
+        ):
+            logger.info(
+                "Dropping labels of %i %% of training set.", config.drop_labels * 100
+            )
+            split_train_set(DATA_PATH / "path_train.csv", config.drop_labels)
+            train_csv = DATA_PATH / f"path_train_keep_labels_{config.drop_labels}.csv"
+            X_train_unlabeled, y_train_unlabeled = read_official_val_train(
+                study_folder,
+                DATA_PATH / f"path_train_drop_labels_{config.drop_labels}.csv",
+            )
+        else:
+            train_csv = DATA_PATH / "path_train.csv"
+            X_train_unlabeled = []
+            y_train_unlabeled = []
+
+        X_train, y_train = read_official_val_train(study_folder, train_csv)
+
         X_val, y_val = read_official_val_train(
             study_folder, DATA_PATH / "path_valid.csv"
         )
         X_test, y_test = read_official_test(study_folder, DATA_PATH / "path_test.csv")
 
-        transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
+        transform = A.Compose(
+            [
+                A.augmentations.geometric.resize.Resize(
+                    config.sensor.resolution[0], config.sensor.resolution[1]
+                ),
+                ToTensorV2(),
+            ]
+        )
         train_set = cls(X_train, y_train, list(LABELS.keys()), transform=transform)
+        train_set_unlabeled = cls(
+            X_train_unlabeled,
+            y_train_unlabeled,  # FIXME labels must not be used
+            list(LABELS.keys()),
+            trancsform=transform,
+        )
         val_set = cls(X_val, y_val, list(LABELS.keys()))
         test_set = cls(X_test, y_test, list(LABELS.keys()))
 
@@ -157,6 +208,7 @@ class RICapsuleDataset(ImageDatasetBase):
 
         return (
             train_set,
+            train_set_unlabeled,
             val_set,
             test_set,
         )

@@ -1,0 +1,19 @@
+# @package _global_
+nas:
+  _target_: hannah.nas.OFANasTrainer
+  epochs_warmup: 35
+  epochs_kernel_step: 35
+  epochs_depth_step: 35
+  epochs_width_step: 35
+  epochs_dilation_step: 35
+  elastic_kernels_allowed: true
+  elastic_depth_allowed: true
+  elastic_width_allowed: true
+  elastic_dilation_allowed: false
+  evaluate: true
+  random_evaluate: true
+  random_eval_number: 1000
+  extract_model_config: false
+  warmup_model_path: ''
+
+experiment_id: shrink_float

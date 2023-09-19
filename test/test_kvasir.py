@@ -85,7 +85,7 @@ def test_kvasir_unlabelled_dataset():
             config_name="kvasir_unlabeled", overrides=[f"data_folder={data_folder}"]
         )
         dataset_cls = get_class(cfg.cls)
-        train_set, dev_set, test_set = dataset_cls.splits(cfg)
+        train_set, train_set_unlabeled, dev_set, test_set = dataset_cls.splits(cfg)
 
     train_set[100]
     train_set[0]
