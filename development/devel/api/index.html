@@ -650,8 +650,16 @@ dilation : Union[int, Expression], optional
 <h4 id="forward_16">forward</h4>
 <pre><code class="language-python">def forward(x)
 </code></pre>
+<p>Simple anomaly detection head for a neural network</p>
 <p><strong>Arguments</strong>:</p>
-<p>x:</p>
+<ul>
+<li>
+<p><code>x</code> - Tensor of logits</p>
+</li>
+<li>
+<p><code>Returns</code> - A single element floating point tensor representing the anomaly score</p>
+</li>
+</ul>
 <p><a id="hannah.models.timm.DefaultClassifierHead"></a></p>
 <h2 id="defaultclassifierhead-objects">DefaultClassifierHead Objects</h2>
 <pre><code class="language-python">class DefaultClassifierHead(nn.Module)
@@ -2925,6 +2933,653 @@ kernel with output_channel, input_channel / groups, kernel will be set to (<em>,
 <p>input_data:</p>
 <p><a id="hannah.models.wavenet"></a></p>
 <h1 id="hannahmodelswavenet">hannah.models.wavenet</h1>
+<p><a id="hannah.models._vendor.resnet_mc_dropout"></a></p>
+<h1 id="hannahmodels_vendorresnet_mc_dropout">hannah.models._vendor.resnet_mc_dropout</h1>
+<p>PyTorch ResNet</p>
+<p>This started as a copy of https://github.com/pytorch/vision 'resnet.py' (BSD-3-Clause) with
+additional dropout and dynamic global avg/max pool.</p>
+<p>ResNeXt, SE-ResNeXt, SENet, and MXNet Gluon stem/downsample variants, tiered stems added by Ross Wightman</p>
+<p>Copyright 2019, Ross Wightman</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ResNet"></a></p>
+<h2 id="resnet-objects">ResNet Objects</h2>
+<pre><code class="language-python">class ResNet(nn.Module)
+</code></pre>
+<p>ResNet / ResNeXt / SE-ResNeXt / SE-Net</p>
+<p>This class implements all variants of ResNet, ResNeXt, SE-ResNeXt, and SENet that
+  * have &gt; 1 stride in the 3x3 conv layer of bottleneck
+  * have conv-bn-act ordering</p>
+<p>This ResNet impl supports a number of stem and downsample options based on the v1c, v1d, v1e, and v1s
+variants included in the MXNet Gluon ResNetV1b model. The C and D variants are also discussed in the
+'Bag of Tricks' paper: https://arxiv.org/pdf/1812.01187. The B variant is equivalent to torchvision default.</p>
+<p>ResNet variants (the same modifications can be used in SE/ResNeXt models as well):
+  * normal, b - 7x7 stem, stem_width = 64, same as torchvision ResNet, NVIDIA ResNet 'v1.5', Gluon v1b
+  * c - 3 layer deep 3x3 stem, stem_width = 32 (32, 32, 64)
+  * d - 3 layer deep 3x3 stem, stem_width = 32 (32, 32, 64), average pool in downsample
+  * e - 3 layer deep 3x3 stem, stem_width = 64 (64, 64, 128), average pool in downsample
+  * s - 3 layer deep 3x3 stem, stem_width = 64 (64, 64, 128)
+  * t - 3 layer deep 3x3 stem, stem width = 32 (24, 48, 64), average pool in downsample
+  * tn - 3 layer deep 3x3 stem, stem width = 32 (24, 32, 64), average pool in downsample</p>
+<p>ResNeXt
+  * normal - 7x7 stem, stem_width = 64, standard cardinality and base widths
+  * same c,d, e, s variants as ResNet can be enabled</p>
+<p>SE-ResNeXt
+  * normal - 7x7 stem, stem_width = 64
+  * same c, d, e, s variants as ResNet can be enabled</p>
+<p>SENet-154 - 3 layer deep 3x3 stem (same as v1c-v1s), stem_width = 64, cardinality=64,
+    reduction by 2 on width of first bottleneck convolution, 3x3 downsample convs after first block</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ResNet.__init__"></a></p>
+<h4 id="__init___1">__init__</h4>
+<pre><code class="language-python">def __init__(block,
+             layers,
+             num_classes=1000,
+             in_chans=3,
+             output_stride=32,
+             global_pool=&quot;avg&quot;,
+             cardinality=1,
+             base_width=64,
+             stem_width=64,
+             stem_type=&quot;&quot;,
+             replace_stem_pool=False,
+             block_reduce_first=1,
+             down_kernel_size=1,
+             avg_down=False,
+             act_layer=nn.ReLU,
+             norm_layer=nn.BatchNorm2d,
+             aa_layer=None,
+             drop_rate=0.0,
+             drop_path_rate=0.0,
+             drop_block_rate=0.0,
+             zero_init_last=True,
+             block_args=None)
+</code></pre>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>block</code> <em>nn.Module</em> - class for the residual block. Options are BasicBlock, Bottleneck.
+  layers (List[int]) : number of layers in each block</li>
+<li><code>num_classes</code> <em>int</em> - number of classification classes (default 1000)</li>
+<li><code>in_chans</code> <em>int</em> - number of input (color) channels. (default 3)</li>
+<li><code>output_stride</code> <em>int</em> - output stride of the network, 32, 16, or 8. (default 32)</li>
+<li><code>global_pool</code> <em>str</em> - Global pooling type. One of 'avg', 'max', 'avgmax', 'catavgmax' (default 'avg')</li>
+<li><code>cardinality</code> <em>int</em> - number of convolution groups for 3x3 conv in Bottleneck. (default 1)</li>
+<li><code>base_width</code> <em>int</em> - bottleneck channels factor. <code>planes * base_width / 64 * cardinality</code> (default 64)</li>
+<li><code>stem_width</code> <em>int</em> - number of channels in stem convolutions (default 64)</li>
+<li><code>stem_type</code> <em>str</em> - The type of stem (default ''):</li>
+<li>'', default - a single 7x7 conv with a width of stem_width</li>
+<li>'deep' - three 3x3 convolution layers of widths stem_width, stem_width, stem_width * 2</li>
+<li>'deep_tiered' - three 3x3 conv layers of widths stem_width//4 * 3, stem_width, stem_width * 2</li>
+<li><code>replace_stem_pool</code> <em>bool</em> - replace stem max-pooling layer with a 3x3 stride-2 convolution</li>
+<li><code>block_reduce_first</code> <em>int</em> - Reduction factor for first convolution output width of residual blocks,
+  1 for all archs except senets, where 2 (default 1)</li>
+<li><code>down_kernel_size</code> <em>int</em> - kernel size of residual block downsample path,
+  1x1 for most, 3x3 for senets (default: 1)</li>
+<li><code>avg_down</code> <em>bool</em> - use avg pooling for projection skip connection between stages/downsample (default False)</li>
+<li><code>act_layer</code> <em>str, nn.Module</em> - activation layer</li>
+<li><code>norm_layer</code> <em>str, nn.Module</em> - normalization layer</li>
+<li><code>aa_layer</code> <em>nn.Module</em> - anti-aliasing layer</li>
+<li><code>drop_rate</code> <em>float</em> - Dropout probability before classifier, for training (default 0.)</li>
+<li><code>drop_path_rate</code> <em>float</em> - Stochastic depth drop-path rate (default 0.)</li>
+<li><code>drop_block_rate</code> <em>float</em> - Drop block rate (default 0.)</li>
+<li><code>zero_init_last</code> <em>bool</em> - zero-init the last weight in residual path (usually last BN affine weight)</li>
+<li><code>block_args</code> <em>dict</em> - Extra kwargs to pass through to block module</li>
+</ul>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet10t_mc_dropout"></a></p>
+<h4 id="resnet10t_mc_dropout">resnet10t_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet10t_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-10-T model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet14t_mc_dropout"></a></p>
+<h4 id="resnet14t_mc_dropout">resnet14t_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet14t_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-14-T model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet18_mc_dropout"></a></p>
+<h4 id="resnet18_mc_dropout">resnet18_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet18_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-18 model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet18d_mc_dropout"></a></p>
+<h4 id="resnet18d_mc_dropout">resnet18d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet18d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-18-D model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet34_mc_dropout"></a></p>
+<h4 id="resnet34_mc_dropout">resnet34_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet34_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-34 model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet34d_mc_dropout"></a></p>
+<h4 id="resnet34d_mc_dropout">resnet34d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet34d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-34-D model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet26_mc_dropout"></a></p>
+<h4 id="resnet26_mc_dropout">resnet26_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet26_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-26 model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet26t_mc_dropout"></a></p>
+<h4 id="resnet26t_mc_dropout">resnet26t_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet26t_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-26-T model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet26d_mc_dropout"></a></p>
+<h4 id="resnet26d_mc_dropout">resnet26d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet26d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-26-D model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet50_mc_dropout"></a></p>
+<h4 id="resnet50_mc_dropout">resnet50_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet50_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50 model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet50d_mc_dropout"></a></p>
+<h4 id="resnet50d_mc_dropout">resnet50d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet50d_mc_dropout(pretrained=False, **kwargs) -&gt; ResNet
+</code></pre>
+<p>Constructs a ResNet-50-D model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet50t_mc_dropout"></a></p>
+<h4 id="resnet50t_mc_dropout">resnet50t_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet50t_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50-T model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet101_mc_dropout"></a></p>
+<h4 id="resnet101_mc_dropout">resnet101_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet101_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-101 model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet101d_mc_dropout"></a></p>
+<h4 id="resnet101d_mc_dropout">resnet101d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet101d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-101-D model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet152_mc_dropout"></a></p>
+<h4 id="resnet152_mc_dropout">resnet152_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet152_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-152 model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet152d_mc_dropout"></a></p>
+<h4 id="resnet152d_mc_dropout">resnet152d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet152d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-152-D model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet200_mc_dropout"></a></p>
+<h4 id="resnet200_mc_dropout">resnet200_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet200_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-200 model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet200d_mc_dropout"></a></p>
+<h4 id="resnet200d_mc_dropout">resnet200d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet200d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-200-D model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.tv_resnet34_mc_dropout"></a></p>
+<h4 id="tv_resnet34_mc_dropout">tv_resnet34_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def tv_resnet34_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-34 model with original Torchvision weights.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.tv_resnet50_mc_dropout"></a></p>
+<h4 id="tv_resnet50_mc_dropout">tv_resnet50_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def tv_resnet50_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50 model with original Torchvision weights.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.tv_resnet101_mc_dropout"></a></p>
+<h4 id="tv_resnet101_mc_dropout">tv_resnet101_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def tv_resnet101_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-101 model w/ Torchvision pretrained weights.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.tv_resnet152_mc_dropout"></a></p>
+<h4 id="tv_resnet152_mc_dropout">tv_resnet152_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def tv_resnet152_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-152 model w/ Torchvision pretrained weights.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.wide_resnet50_2_mc_dropout"></a></p>
+<h4 id="wide_resnet50_2_mc_dropout">wide_resnet50_2_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def wide_resnet50_2_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a Wide ResNet-50-2 model.
+The model is the same as ResNet except for the bottleneck number of channels
+which is twice larger in every block. The number of channels in outer 1x1
+convolutions is the same, e.g. last block in ResNet-50 has 2048-512-2048
+channels, and in Wide ResNet-50-2 has 2048-1024-2048.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.wide_resnet101_2_mc_dropout"></a></p>
+<h4 id="wide_resnet101_2_mc_dropout">wide_resnet101_2_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def wide_resnet101_2_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a Wide ResNet-101-2 model.
+The model is the same as ResNet except for the bottleneck number of channels
+which is twice larger in every block. The number of channels in outer 1x1
+convolutions is the same.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnet50_gn_mc_dropout"></a></p>
+<h4 id="resnet50_gn_mc_dropout">resnet50_gn_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnet50_gn_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50 model w/ GroupNorm</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnext50_32x4d_mc_dropout"></a></p>
+<h4 id="resnext50_32x4d_mc_dropout">resnext50_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnext50_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt50-32x4d model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnext50d_32x4d_mc_dropout"></a></p>
+<h4 id="resnext50d_32x4d_mc_dropout">resnext50d_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnext50d_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt50d-32x4d model. ResNext50 w/ deep stem &amp; avg pool downsample</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnext101_32x4d_mc_dropout"></a></p>
+<h4 id="resnext101_32x4d_mc_dropout">resnext101_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnext101_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt-101 32x4d model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnext101_32x8d_mc_dropout"></a></p>
+<h4 id="resnext101_32x8d_mc_dropout">resnext101_32x8d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnext101_32x8d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt-101 32x8d model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnext101_64x4d_mc_dropout"></a></p>
+<h4 id="resnext101_64x4d_mc_dropout">resnext101_64x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnext101_64x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt101-64x4d model.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.tv_resnext50_32x4d_mc_dropout"></a></p>
+<h4 id="tv_resnext50_32x4d_mc_dropout">tv_resnext50_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def tv_resnext50_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt50-32x4d model with original Torchvision weights.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ig_resnext101_32x8d_mc_dropout"></a></p>
+<h4 id="ig_resnext101_32x8d_mc_dropout">ig_resnext101_32x8d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ig_resnext101_32x8d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt-101 32x8 model pre-trained on weakly-supervised data
+and finetuned on ImageNet from Figure 5 in
+<code>"Exploring the Limits of Weakly Supervised Pretraining" &lt;https://arxiv.org/abs/1805.00932&gt;</code>_
+Weights from https://pytorch.org/hub/facebookresearch_WSL-Images_resnext/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ig_resnext101_32x16d_mc_dropout"></a></p>
+<h4 id="ig_resnext101_32x16d_mc_dropout">ig_resnext101_32x16d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ig_resnext101_32x16d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt-101 32x16 model pre-trained on weakly-supervised data
+and finetuned on ImageNet from Figure 5 in
+<code>"Exploring the Limits of Weakly Supervised Pretraining" &lt;https://arxiv.org/abs/1805.00932&gt;</code>_
+Weights from https://pytorch.org/hub/facebookresearch_WSL-Images_resnext/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ig_resnext101_32x32d_mc_dropout"></a></p>
+<h4 id="ig_resnext101_32x32d_mc_dropout">ig_resnext101_32x32d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ig_resnext101_32x32d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt-101 32x32 model pre-trained on weakly-supervised data
+and finetuned on ImageNet from Figure 5 in
+<code>"Exploring the Limits of Weakly Supervised Pretraining" &lt;https://arxiv.org/abs/1805.00932&gt;</code>_
+Weights from https://pytorch.org/hub/facebookresearch_WSL-Images_resnext/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ig_resnext101_32x48d_mc_dropout"></a></p>
+<h4 id="ig_resnext101_32x48d_mc_dropout">ig_resnext101_32x48d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ig_resnext101_32x48d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNeXt-101 32x48 model pre-trained on weakly-supervised data
+and finetuned on ImageNet from Figure 5 in
+<code>"Exploring the Limits of Weakly Supervised Pretraining" &lt;https://arxiv.org/abs/1805.00932&gt;</code>_
+Weights from https://pytorch.org/hub/facebookresearch_WSL-Images_resnext/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ssl_resnet18_mc_dropout"></a></p>
+<h4 id="ssl_resnet18_mc_dropout">ssl_resnet18_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ssl_resnet18_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-supervised ResNet-18 model pre-trained on YFCC100M dataset and finetuned on ImageNet
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ssl_resnet50_mc_dropout"></a></p>
+<h4 id="ssl_resnet50_mc_dropout">ssl_resnet50_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ssl_resnet50_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-supervised ResNet-50 model pre-trained on YFCC100M dataset and finetuned on ImageNet
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ssl_resnext50_32x4d_mc_dropout"></a></p>
+<h4 id="ssl_resnext50_32x4d_mc_dropout">ssl_resnext50_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ssl_resnext50_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-supervised ResNeXt-50 32x4 model pre-trained on YFCC100M dataset and finetuned on ImageNet
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ssl_resnext101_32x4d_mc_dropout"></a></p>
+<h4 id="ssl_resnext101_32x4d_mc_dropout">ssl_resnext101_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ssl_resnext101_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-supervised ResNeXt-101 32x4 model pre-trained on YFCC100M dataset and finetuned on ImageNet
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ssl_resnext101_32x8d_mc_dropout"></a></p>
+<h4 id="ssl_resnext101_32x8d_mc_dropout">ssl_resnext101_32x8d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ssl_resnext101_32x8d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-supervised ResNeXt-101 32x8 model pre-trained on YFCC100M dataset and finetuned on ImageNet
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ssl_resnext101_32x16d_mc_dropout"></a></p>
+<h4 id="ssl_resnext101_32x16d_mc_dropout">ssl_resnext101_32x16d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ssl_resnext101_32x16d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-supervised ResNeXt-101 32x16 model pre-trained on YFCC100M dataset and finetuned on ImageNet
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.swsl_resnet18_mc_dropout"></a></p>
+<h4 id="swsl_resnet18_mc_dropout">swsl_resnet18_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def swsl_resnet18_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-weakly supervised Resnet-18 model pre-trained on 1B weakly supervised
+image dataset and finetuned on ImageNet.
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.swsl_resnet50_mc_dropout"></a></p>
+<h4 id="swsl_resnet50_mc_dropout">swsl_resnet50_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def swsl_resnet50_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-weakly supervised ResNet-50 model pre-trained on 1B weakly supervised
+image dataset and finetuned on ImageNet.
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.swsl_resnext50_32x4d_mc_dropout"></a></p>
+<h4 id="swsl_resnext50_32x4d_mc_dropout">swsl_resnext50_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def swsl_resnext50_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-weakly supervised ResNeXt-50 32x4 model pre-trained on 1B weakly supervised
+image dataset and finetuned on ImageNet.
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.swsl_resnext101_32x4d_mc_dropout"></a></p>
+<h4 id="swsl_resnext101_32x4d_mc_dropout">swsl_resnext101_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def swsl_resnext101_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-weakly supervised ResNeXt-101 32x4 model pre-trained on 1B weakly supervised
+image dataset and finetuned on ImageNet.
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.swsl_resnext101_32x8d_mc_dropout"></a></p>
+<h4 id="swsl_resnext101_32x8d_mc_dropout">swsl_resnext101_32x8d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def swsl_resnext101_32x8d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-weakly supervised ResNeXt-101 32x8 model pre-trained on 1B weakly supervised
+image dataset and finetuned on ImageNet.
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.swsl_resnext101_32x16d_mc_dropout"></a></p>
+<h4 id="swsl_resnext101_32x16d_mc_dropout">swsl_resnext101_32x16d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def swsl_resnext101_32x16d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a semi-weakly supervised ResNeXt-101 32x16 model pre-trained on 1B weakly supervised
+image dataset and finetuned on ImageNet.
+<code>"Billion-scale Semi-Supervised Learning for Image Classification" &lt;https://arxiv.org/abs/1905.00546&gt;</code>_
+Weights from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models/</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnet26t_mc_dropout"></a></p>
+<h4 id="ecaresnet26t_mc_dropout">ecaresnet26t_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnet26t_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs an ECA-ResNeXt-26-T model.
+This is technically a 28 layer ResNet, like a 'D' bag-of-tricks model but with tiered 24, 32, 64 channels
+in the deep stem and ECA attn.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnet50d_mc_dropout"></a></p>
+<h4 id="ecaresnet50d_mc_dropout">ecaresnet50d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnet50d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50-D model with eca.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnet50d_pruned_mc_dropout"></a></p>
+<h4 id="ecaresnet50d_pruned_mc_dropout">ecaresnet50d_pruned_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnet50d_pruned_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50-D model pruned with eca.
+The pruning has been obtained using https://arxiv.org/pdf/2002.08258.pdf</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnet50t_mc_dropout"></a></p>
+<h4 id="ecaresnet50t_mc_dropout">ecaresnet50t_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnet50t_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs an ECA-ResNet-50-T model.
+Like a 'D' bag-of-tricks model but with tiered 24, 32, 64 channels in the deep stem and ECA attn.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnetlight_mc_dropout"></a></p>
+<h4 id="ecaresnetlight_mc_dropout">ecaresnetlight_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnetlight_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50-D light model with eca.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnet101d_mc_dropout"></a></p>
+<h4 id="ecaresnet101d_mc_dropout">ecaresnet101d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnet101d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-101-D model with eca.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnet101d_pruned_mc_dropout"></a></p>
+<h4 id="ecaresnet101d_pruned_mc_dropout">ecaresnet101d_pruned_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnet101d_pruned_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-101-D model pruned with eca.
+The pruning has been obtained using https://arxiv.org/pdf/2002.08258.pdf</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnet200d_mc_dropout"></a></p>
+<h4 id="ecaresnet200d_mc_dropout">ecaresnet200d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnet200d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-200-D model with ECA.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnet269d_mc_dropout"></a></p>
+<h4 id="ecaresnet269d_mc_dropout">ecaresnet269d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnet269d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-269-D model with ECA.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnext26t_32x4d_mc_dropout"></a></p>
+<h4 id="ecaresnext26t_32x4d_mc_dropout">ecaresnext26t_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnext26t_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs an ECA-ResNeXt-26-T model.
+This is technically a 28 layer ResNet, like a 'D' bag-of-tricks model but with tiered 24, 32, 64 channels
+in the deep stem. This model replaces SE module with the ECA module</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.ecaresnext50t_32x4d_mc_dropout"></a></p>
+<h4 id="ecaresnext50t_32x4d_mc_dropout">ecaresnext50t_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def ecaresnext50t_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs an ECA-ResNeXt-50-T model.
+This is technically a 28 layer ResNet, like a 'D' bag-of-tricks model but with tiered 24, 32, 64 channels
+in the deep stem. This model replaces SE module with the ECA module</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.seresnet200d_mc_dropout"></a></p>
+<h4 id="seresnet200d_mc_dropout">seresnet200d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def seresnet200d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-200-D model with SE attn.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.seresnet269d_mc_dropout"></a></p>
+<h4 id="seresnet269d_mc_dropout">seresnet269d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def seresnet269d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-269-D model with SE attn.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.seresnext26d_32x4d_mc_dropout"></a></p>
+<h4 id="seresnext26d_32x4d_mc_dropout">seresnext26d_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def seresnext26d_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a SE-ResNeXt-26-D model.`
+This is technically a 28 layer ResNet, using the 'D' modifier from Gluon / bag-of-tricks for
+combination of deep stem and avg_pool in downsample.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.seresnext26t_32x4d_mc_dropout"></a></p>
+<h4 id="seresnext26t_32x4d_mc_dropout">seresnext26t_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def seresnext26t_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a SE-ResNet-26-T model.
+This is technically a 28 layer ResNet, like a 'D' bag-of-tricks model but with tiered 24, 32, 64 channels
+in the deep stem.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.seresnext26tn_32x4d_mc_dropout"></a></p>
+<h4 id="seresnext26tn_32x4d_mc_dropout">seresnext26tn_32x4d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def seresnext26tn_32x4d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a SE-ResNeXt-26-T model.
+NOTE I deprecated previous 't' model defs and replaced 't' with 'tn', this was the only tn model of note
+so keeping this def for backwards compat with any uses out there. Old 't' model is lost.</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetblur18_mc_dropout"></a></p>
+<h4 id="resnetblur18_mc_dropout">resnetblur18_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetblur18_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-18 model with blur anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetblur50_mc_dropout"></a></p>
+<h4 id="resnetblur50_mc_dropout">resnetblur50_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetblur50_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50 model with blur anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetblur50d_mc_dropout"></a></p>
+<h4 id="resnetblur50d_mc_dropout">resnetblur50d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetblur50d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50-D model with blur anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetblur101d_mc_dropout"></a></p>
+<h4 id="resnetblur101d_mc_dropout">resnetblur101d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetblur101d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-101-D model with blur anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetaa34d_mc_dropout"></a></p>
+<h4 id="resnetaa34d_mc_dropout">resnetaa34d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetaa34d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-34-D model w/ avgpool anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetaa50_mc_dropout"></a></p>
+<h4 id="resnetaa50_mc_dropout">resnetaa50_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetaa50_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50 model with avgpool anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetaa50d_mc_dropout"></a></p>
+<h4 id="resnetaa50d_mc_dropout">resnetaa50d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetaa50d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-50-D model with avgpool anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetaa101d_mc_dropout"></a></p>
+<h4 id="resnetaa101d_mc_dropout">resnetaa101d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetaa101d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-101-D model with avgpool anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.seresnetaa50d_mc_dropout"></a></p>
+<h4 id="seresnetaa50d_mc_dropout">seresnetaa50d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def seresnetaa50d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a SE=ResNet-50-D model with avgpool anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.seresnextaa101d_32x8d_mc_dropout"></a></p>
+<h4 id="seresnextaa101d_32x8d_mc_dropout">seresnextaa101d_32x8d_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def seresnextaa101d_32x8d_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a SE=ResNeXt-101-D 32x8d model with avgpool anti-aliasing</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetrs50_mc_dropout"></a></p>
+<h4 id="resnetrs50_mc_dropout">resnetrs50_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetrs50_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-RS-50 model.
+Paper: Revisiting ResNets - https://arxiv.org/abs/2103.07579
+Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/official/resnet/resnet_rs</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetrs101_mc_dropout"></a></p>
+<h4 id="resnetrs101_mc_dropout">resnetrs101_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetrs101_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-RS-101 model.
+Paper: Revisiting ResNets - https://arxiv.org/abs/2103.07579
+Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/official/resnet/resnet_rs</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetrs152_mc_dropout"></a></p>
+<h4 id="resnetrs152_mc_dropout">resnetrs152_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetrs152_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-RS-152 model.
+Paper: Revisiting ResNets - https://arxiv.org/abs/2103.07579
+Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/official/resnet/resnet_rs</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetrs200_mc_dropout"></a></p>
+<h4 id="resnetrs200_mc_dropout">resnetrs200_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetrs200_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-RS-200 model.
+Paper: Revisiting ResNets - https://arxiv.org/abs/2103.07579
+Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/official/resnet/resnet_rs</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetrs270_mc_dropout"></a></p>
+<h4 id="resnetrs270_mc_dropout">resnetrs270_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetrs270_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-RS-270 model.
+Paper: Revisiting ResNets - https://arxiv.org/abs/2103.07579
+Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/official/resnet/resnet_rs</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetrs350_mc_dropout"></a></p>
+<h4 id="resnetrs350_mc_dropout">resnetrs350_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetrs350_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-RS-350 model.
+Paper: Revisiting ResNets - https://arxiv.org/abs/2103.07579
+Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/official/resnet/resnet_rs</p>
+<p><a id="hannah.models._vendor.resnet_mc_dropout.resnetrs420_mc_dropout"></a></p>
+<h4 id="resnetrs420_mc_dropout">resnetrs420_mc_dropout</h4>
+<pre><code class="language-python">@register_model
+def resnetrs420_mc_dropout(pretrained=False, **kwargs)
+</code></pre>
+<p>Constructs a ResNet-RS-420 model
+Paper: Revisiting ResNets - https://arxiv.org/abs/2103.07579
+Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/official/resnet/resnet_rs</p>
 <p><a id="hannah.models._vendor"></a></p>
 <h1 id="hannahmodels_vendor">hannah.models._vendor</h1>
 <p><a id="hannah.models._vendor.focalnet"></a></p>
@@ -3684,24 +4339,33 @@ def on_validation_epoch_end(trainer, pl_module)
 <h1 id="hannahsslhard_labeling">hannah.ssl.hard_labeling</h1>
 <p><a id="hannah.ssl.hard_labeling.HardLabeling"></a></p>
 <h2 id="hardlabeling-objects">HardLabeling Objects</h2>
-<pre><code class="language-python">class HardLabeling(torch.nn.Module)
+<pre><code class="language-python">class HardLabeling()
 </code></pre>
-<p><a id="hannah.ssl.hard_labeling.HardLabeling.forward"></a></p>
-<h4 id="forward_68">forward</h4>
-<pre><code class="language-python">def forward(unlabeled_data: torch.Tensor) -&gt; torch.Tensor
+<p><a id="hannah.ssl.hard_labeling.HardLabeling.training_step"></a></p>
+<h4 id="training_step">training_step</h4>
+<pre><code class="language-python">def training_step(unlabeled_data: torch.Tensor,
+                  trainer: pl.Trainer,
+                  pl_module: pl.LightningModule,
+                  batch_idx: int = -1) -&gt; torch.Tensor
 </code></pre>
 <p>Calculate pseudo label loss from unlabeled data.</p>
-<p><a id="hannah.ssl.hard_labeling.HardLabeling.compute_uncertainty"></a></p>
-<h4 id="compute_uncertainty">compute_uncertainty</h4>
-<pre><code class="language-python">def compute_uncertainty(data: torch.Tensor,
-                        num_forward_passes: int = 10) -&gt; torch.Tensor
-</code></pre>
-<p>Compute Monte Carlo uncertainty using standard deviation.</p>
 <p><a id="hannah.ssl.hard_labeling.HardLabeling.get_dropout_layers"></a></p>
 <h4 id="get_dropout_layers">get_dropout_layers</h4>
 <pre><code class="language-python">def get_dropout_layers()
 </code></pre>
-<p>Returns all model layers of class dropout, dropblock.</p>
+<p>Returns all model layers of class dropout or dropblock.</p>
+<p><a id="hannah.ssl.hard_labeling.HardLabeling.compute_loss"></a></p>
+<h4 id="compute_loss">compute_loss</h4>
+<pre><code class="language-python">def compute_loss(inputs, logits, targets, loss_fn=None)
+</code></pre>
+<p>Helper function to compute loss, possibly with consistency
+regularization by augmentations (FixMatch).</p>
+<p><a id="hannah.ssl.hard_labeling.HardLabeling.negative_cre_loss"></a></p>
+<h4 id="negative_cre_loss">negative_cre_loss</h4>
+<pre><code class="language-python">def negative_cre_loss(logits, targets)
+</code></pre>
+<p>Cross Entropy Loss for negative learning which requires a mutli-
+class and multi-label loss function.</p>
 <p><a id="hannah.ssl"></a></p>
 <h1 id="hannahssl">hannah.ssl</h1>
 <p><a id="hannah.conf.optimizer"></a></p>
@@ -3904,7 +4568,7 @@ included in Ops in a DFG are not returned</p>
 <pre><code class="language-python">class Predictor()
 </code></pre>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.Predictor.__init__"></a></p>
-<h4 id="__init___1">__init__</h4>
+<h4 id="__init___2">__init__</h4>
 <pre><code class="language-python">def __init__(fea_name=&quot;features&quot;) -&gt; None
 </code></pre>
 <p>Parent method for different predictor classes.</p>
@@ -3946,7 +4610,7 @@ verbose : int
 <pre><code class="language-python">class GCNPredictor(Predictor)
 </code></pre>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.GCNPredictor.__init__"></a></p>
-<h4 id="__init___2">__init__</h4>
+<h4 id="__init___3">__init__</h4>
 <pre><code class="language-python">def __init__(input_feature_size,
              hidden_units=[128],
              readout=&quot;mean&quot;,
@@ -3997,7 +4661,7 @@ verbose : int
 <pre><code class="language-python">class GaussianProcessPredictor(Predictor)
 </code></pre>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.GaussianProcessPredictor.__init__"></a></p>
-<h4 id="__init___3">__init__</h4>
+<h4 id="__init___4">__init__</h4>
 <pre><code class="language-python">def __init__(input_feature_size,
              hidden_units=128,
              embedding_size=10,
@@ -4063,7 +4727,7 @@ return_std : bool, optional
 <pre><code class="language-python">class XGBPredictor(Predictor)
 </code></pre>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.XGBPredictor.__init__"></a></p>
-<h4 id="__init___4">__init__</h4>
+<h4 id="__init___5">__init__</h4>
 <pre><code class="language-python">def __init__(input_feature_size,
              hidden_units=128,
              embedding_size=10,
@@ -5008,6 +5672,11 @@ stack</li>
 <p>Rhode island gastroenterology video capsule endoscopy dataset</p>
 <p>https://www.nature.com/articles/s41597-022-01726-3
 https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
+<p><a id="hannah.datasets.vision.ri_capsule.split_train_set"></a></p>
+<h4 id="split_train_set">split_train_set</h4>
+<pre><code class="language-python">def split_train_set(csv_file: pathlib.Path, drop_rate: float)
+</code></pre>
+<p>Split train set in two and save as separate csv files.</p>
 <p><a id="hannah.datasets.vision.fake"></a></p>
 <h1 id="hannahdatasetsvisionfake">hannah.datasets.vision.fake</h1>
 <p><a id="hannah.datasets.vision.cifar"></a></p>
@@ -5021,6 +5690,18 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 <pre><code class="language-python">class KvasirCapsuleUnlabeled(AbstractDataset)
 </code></pre>
 <p>Dataset representing unlabelled videos</p>
+<p><a id="hannah.datasets.vision.kvasir_unlabeled.KvasirCapsuleUnlabeled.sequential"></a></p>
+<h4 id="sequential">sequential</h4>
+<pre><code class="language-python">@property
+def sequential() -&gt; bool
+</code></pre>
+<p>Returns true if this dataset should only be iterated sequentially</p>
+<p><a id="hannah.datasets.vision.kvasir_unlabeled.KvasirCapsuleUnlabeled.max_workers"></a></p>
+<h4 id="max_workers">max_workers</h4>
+<pre><code class="language-python">@property
+def max_workers() -&gt; int
+</code></pre>
+<p>Returns the maximum number of workers useable for this dataset</p>
 <p><a id="hannah.datasets.vision"></a></p>
 <h1 id="hannahdatasetsvision">hannah.datasets.vision</h1>
 <p><a id="hannah.datasets.vision.dresden_capsule"></a></p>
@@ -5057,7 +5738,7 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 <pre><code class="language-python">class ImageDatasetBase(VisionDatasetBase)
 </code></pre>
 <p><a id="hannah.datasets.vision.base.ImageDatasetBase.__init__"></a></p>
-<h4 id="__init___5">__init__</h4>
+<h4 id="__init___6">__init__</h4>
 <pre><code class="language-python">def __init__(X, y, classes, bbox=None, transform=None)
 </code></pre>
 <p>Initialize vision dataset</p>
@@ -5428,6 +6109,18 @@ def resolution() -&gt; Optional[Tuple[int, ...]]
 def weights() -&gt; Optional[List[float]]
 </code></pre>
 <p>Class weights for weighted sampling</p>
+<p><a id="hannah.datasets.base.AbstractDataset.sequential"></a></p>
+<h4 id="sequential_1">sequential</h4>
+<pre><code class="language-python">@property
+def sequential() -&gt; bool
+</code></pre>
+<p>Returns true if this dataset should only be iterated sequentially</p>
+<p><a id="hannah.datasets.base.AbstractDataset.max_workers"></a></p>
+<h4 id="max_workers_1">max_workers</h4>
+<pre><code class="language-python">@property
+def max_workers() -&gt; int
+</code></pre>
+<p>Returns the maximum number of workers useable for this dataset</p>
 <p><a id="hannah.datasets.Kitti"></a></p>
 <h1 id="hannahdatasetskitti">hannah.datasets.Kitti</h1>
 <p><a id="hannah.datasets.Kitti.Kitti"></a></p>
@@ -5855,7 +6548,7 @@ each argument influence and examples.</p>
 <pre><code class="language-python">class BatchAugmentationPipeline(nn.Module)
 </code></pre>
 <p><a id="hannah.modules.augmentation.batch_augmentation.BatchAugmentationPipeline.__init__"></a></p>
-<h4 id="__init___6">__init__</h4>
+<h4 id="__init___7">__init__</h4>
 <pre><code class="language-python">def __init__(transforms={})
 </code></pre>
 <p>Augmentation pipeline especially for self supervised learning</p>
@@ -5865,7 +6558,7 @@ each argument influence and examples.</p>
 <li><code>transforms</code> <em>dict</em> - configuration of transforms</li>
 </ul>
 <p><a id="hannah.modules.augmentation.batch_augmentation.BatchAugmentationPipeline.forward"></a></p>
-<h4 id="forward_69">forward</h4>
+<h4 id="forward_68">forward</h4>
 <pre><code class="language-python">@torch.no_grad()
 def forward(x) -&gt; torch.Tensor
 </code></pre>
