@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import logging
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -80,6 +81,8 @@ class EEGDataset(AbstractDataset):
         train_set.max_value = min_max_all
         val_set.max_value = min_max_all
         test_set.max_value = min_max_all
+
+        logging.info(f"Maximum absolute value of dataset is: {min_max_all}")
 
         return train_set, val_set, test_set
 
