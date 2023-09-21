@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -164,8 +164,6 @@ class CrossValidationTrainer:
         confusion_plot.savefig(f"fold_{self.current_fold}_test_confusion.png")
         confusion_plot.savefig(f"fold_{self.current_fold}_test_confusion.pdf")
 
-        # roc_fpr, roc_tpr, roc_thresholds = self.test_roc.compute()
-        caller.test_roc.reset()
         self.overall_test_results_array += [
             (metric_table, confusion_matrix.cpu().numpy())
         ]

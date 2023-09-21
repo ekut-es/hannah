@@ -215,7 +215,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         self.test_confusion = ConfusionMatrix(
             task=self.dataset_type, num_classes=self.num_classes
         )
-        self.test_roc = ROC(task=self.dataset_type, num_classes=self.num_classes)
 
         augmentation_passes = []
         if self.hparams.time_masking > 0:
@@ -335,8 +334,6 @@ class BaseStreamClassifierModule(ClassifierModule):
         logits = torch.nn.functional.softmax(output, dim=1)
         with set_deterministic(False):
             self.test_confusion(logits, y)
-
-        self.test_roc(logits, y)
 
         if isinstance(self.test_set, SpeechDataset):
             self._log_audio(x, logits, y)
