@@ -114,5 +114,5 @@ class EEGDataset(AbstractDataset):
         return list(self.X[0].shape)
 
     @property
-    def get_label_list(self) -> List[int]:
+    def label_list(self) -> List[int]:
         return self.y

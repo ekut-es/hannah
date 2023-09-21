@@ -44,6 +44,7 @@ class EEGDataset(AbstractDataset):
         x = self.X[index] / self.max_value  # normalize
         data = torch.tensor(x)
         label = torch.tensor([self.y[index]]).long()
+
         return data, data.shape[0], label, label.shape[0]
 
     def __len__(self):
@@ -107,5 +108,5 @@ class EEGDataset(AbstractDataset):
         return list(self.X[0].shape)
 
     @property
-    def get_label_list(self) -> List[int]:
+    def label_list(self) -> List[int]:
         return self.y

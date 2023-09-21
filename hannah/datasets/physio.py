@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,12 +69,13 @@ class PhysioDataset(AbstractDataset):
                 data = data[0]
         return data, data.shape[0], label, label.shape[0]
 
-    def get_label_list(self):
+    @property
+    def label_list(self):
         return self.physio_labels
 
     def get_categories_distribution(self):
         distribution = defaultdict(int)
-        for label in self.get_label_list():
+        for label in self.label_list:
             distribution[label] += 1
         return distribution
 
@@ -83,7 +84,6 @@ class PhysioDataset(AbstractDataset):
 
 
 class PhysioCincDataset(PhysioDataset):
-
     LABEL_NORMAL = "N"
     LABEL_ATRIAL_FIBRILLATION = "A"
     LABEL_OTHER_RYTHM = "O"
@@ -198,7 +198,6 @@ class PhysioCincDataset(PhysioDataset):
         zero_pad_len = sample_length
 
         for name in files_list:
-
             sample_path = os.path.join(raw_folder, name)
             samples, _ = wfdb.rdsamp(sample_path)
             zero_pad = np.zeros(zero_pad_len)
@@ -220,7 +219,6 @@ class PhysioCincDataset(PhysioDataset):
 
     @classmethod
     def splits(cls, config):
-
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
 
@@ -388,7 +386,6 @@ class AtrialFibrillationDataset(PhysioDataset):
             for i, (typus, start_sample) in enumerate(
                 zip(annotations.aux_note, annotations.sample)
             ):
-
                 label_number = cls.get_annotation_names()[typus]
                 if i < len(annotations.sample) - 1:
                     stop_sample = annotations.sample[i + 1]
@@ -415,7 +412,6 @@ class AtrialFibrillationDataset(PhysioDataset):
 
     @classmethod
     def splits(cls, config):
-
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
 

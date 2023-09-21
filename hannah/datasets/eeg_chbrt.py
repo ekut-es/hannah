@@ -36,7 +36,9 @@ class EEGRTDataset(AbstractDataset):
         self.y = dataset[split]["y"]
         # print(np.unique(dataset[set]["y"], return_counts=True))
 
-        self._class_counts = {i: k for i,k in enumerate(np.unique(self.y, return_counts=True)[1])}
+        self._class_counts = {
+            i: k for i, k in enumerate(np.unique(self.y, return_counts=True)[1])
+        }
 
     def __getitem__(self, index):
         x = self.X[index] / self.max_value  # normalize
@@ -52,8 +54,10 @@ class EEGRTDataset(AbstractDataset):
         patient = config.retrain_patient
         dataset_name = config.get("dataset_name", None)
         if dataset_name is None:
-            raise AttributeError("Please provide the dataset name in /home/kohlibha/exploration/data/---")
-    
+            raise AttributeError(
+                "Please provide the dataset name in /home/kohlibha/exploration/data/---"
+            )
+
         train_set = EEGRTDataset(
             config,
             f"{config.data_folder}/{config.dataset}/preprocessed/{dataset_name}/retrain/{patient}.hdf5",
@@ -104,5 +108,5 @@ class EEGRTDataset(AbstractDataset):
         return list(self.X[0].shape)
 
     @property
-    def get_label_list(self) -> List[int]:
+    def label_list(self) -> List[int]:
         return self.y

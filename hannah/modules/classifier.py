@@ -263,8 +263,6 @@ class BaseStreamClassifierModule(ClassifierModule):
     def training_step(self, batch, batch_idx):
         x, x_lenght, y, y_lenght = self._decode_batch(batch)
 
-        print(x.mean())
-
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
@@ -326,6 +324,7 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         output = self(x)
         y = y.view(-1)
+
         loss = self.criterion(output, y)
 
         # METRICS
@@ -333,6 +332,8 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         logits = torch.nn.functional.softmax(output, dim=1)
         with set_deterministic(False):
+            if self.dataset_type == "binary":
+                logits = logits.argmax(dim=1)
             self.test_confusion(logits, y)
 
         if isinstance(self.test_set, SpeechDataset):
