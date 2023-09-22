@@ -112,6 +112,10 @@ class SpeechDataset(AbstractDataset):
         self.channels = 1  # FIXME: add config option
 
     @property
+    def label_list(self):
+        return self.audio_labels + [self.silence_class] * self.n_silence
+
+    @property
     def class_names(self):
         return list(self.label_names.values())
 
@@ -260,7 +264,6 @@ class SpeechDataset(AbstractDataset):
         return classcounter
 
     def __getitem__(self, index):
-
         label = torch.Tensor(self.get_class(index))
         label = label.long()
 
@@ -600,7 +603,6 @@ class VadDataset(SpeechDataset):
         samplingrate,
         suffix=".csv",
     ):
-
         csvfiles = list_files(data_folder, suffix, prefix=False)
 
         for f in csvfiles:
@@ -867,7 +869,6 @@ class KeyWordDataset(SpeechDataset):
 
     @classmethod
     def splits(cls, config):
-
         folder = config["data_folder"]
         wanted_words = config["wanted_words"]
         unknown_prob = config["unknown_prob"]

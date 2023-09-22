@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,33 +18,36 @@
 #
 
 import logging
+import os
+import traceback
+from abc import ABC, abstractmethod
+
+import torch
+from hydra.utils import get_class, instantiate
 from joblib import Parallel, delayed
 from omegaconf import OmegaConf
-import torch
-import os
 
-from abc import ABC, abstractmethod
-from hydra.utils import instantiate, get_class
 from hannah.callbacks.optimization import HydraOptCallback
 from hannah.nas.functional_operators.op import Tensor
+from hannah.nas.graph_conversion import model_to_graph
 from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
-from hannah.nas.graph_conversion import model_to_graph
-import traceback
 
 msglogger = logging.getLogger(__name__)
 
 
 class NASBase(ABC):
-    def __init__(self,
-                 budget=2000,
-                 n_jobs=1,
-                 sampler=None,
-                 model_trainer=None,
-                 predictor=None,
-                 constraint_model=None,
-                 parent_config=None) -> None:
+    def __init__(
+        self,
+        budget=2000,
+        n_jobs=1,
+        sampler=None,
+        model_trainer=None,
+        predictor=None,
+        constraint_model=None,
+        parent_config=None,
+    ) -> None:
         self.budget = budget
         self.n_jobs = n_jobs
         self.config = parent_config
@@ -79,13 +82,15 @@ class NASBase(ABC):
 
 
 class DirectNAS(NASBase):
-    def __init__(self,
-                 presample=True,
-                 bounds=None,
-                 total_candidates=100,
-                 num_selected_candidates=10,
-                 *args,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        presample=True,
+        bounds=None,
+        total_candidates=100,
+        num_selected_candidates=10,
+        *args,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.presample = presample
         self.bounds = bounds
@@ -96,13 +101,15 @@ class DirectNAS(NASBase):
         self.initialize_dataset()
         self.search_space = self.build_search_space()
         parametrization = self.search_space.parametrization(flatten=True)
-        self.sampler = instantiate(self.config.nas.sampler, parametrization=parametrization)
-        self.mac_predictor = MACPredictor(predictor='fx')
+        self.sampler = instantiate(
+            self.config.nas.sampler, parametrization=parametrization
+        )
+        self.mac_predictor = MACPredictor(predictor="fx")
         self.model_trainer = instantiate(self.config.nas.model_trainer)
-        if 'predictor' in self.config.nas:
+        if "predictor" in self.config.nas:
             self.predictor = instantiate(self.config.nas.predictor, _recursive_=False)
-            if os.path.exists('performance_data'):
-                self.predictor.load('performance_data')
+            if os.path.exists("performance_data"):
+                self.predictor.load("performance_data")
 
         if self.constraint_model:
             self.constraint_model = instantiate(self.config.nas.constraint_model)
@@ -111,7 +118,9 @@ class DirectNAS(NASBase):
         remaining_candidates = self.total_candidates - len(self.sampler.history)
         self.candidates = []
         if remaining_candidates > 0:
-            self.candidates = self.sample_candidates(remaining_candidates, remaining_candidates)
+            self.candidates = self.sample_candidates(
+                remaining_candidates, remaining_candidates
+            )
 
     def search(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
@@ -128,14 +137,30 @@ class DirectNAS(NASBase):
                     if self.predictor:
                         self.predictor.update(self.new_points, self.example_input_array)
                         self.new_points = []
-                    self.candidates = self.sample_candidates(self.total_candidates, self.num_selected_candidates)
+                    self.candidates = self.sample_candidates(
+                        self.total_candidates, self.num_selected_candidates
+                    )
 
                 while len(self.worklist) < self.n_jobs and len(self.candidates) > 0:
                     try:
-                        model, parameters, estimated_metrics, satisfied_bounds = self.candidates.pop(0)
-                        self.append_to_worklist(parameters, estimated_metrics, satisfied_bounds)
+                        (
+                            model,
+                            parameters,
+                            estimated_metrics,
+                            satisfied_bounds,
+                        ) = self.candidates.pop(0)
+                        self.append_to_worklist(
+                            parameters, estimated_metrics, satisfied_bounds
+                        )
                         current_num = len(self.tasklist) - 1
-                        self.tasklist.append(delayed(self.model_trainer.run_training)(model, current_num, len(self.sampler.history) + current_num, self.config))
+                        self.tasklist.append(
+                            delayed(self.model_trainer.run_training)(
+                                model,
+                                current_num,
+                                len(self.sampler.history) + current_num,
+                                self.config,
+                            )
+                        )
                     except Exception as e:
                         print(str(e))
                         print(traceback.format_exc())
@@ -144,8 +169,12 @@ class DirectNAS(NASBase):
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
                     if self.predictor:
-                        self.new_points.append((self.build_model(parameters), result['val_error']))
-                        print(f"Estimated: {item.results['val_error']} Real: {result['val_error']}")
+                        self.new_points.append(
+                            (self.build_model(parameters), result["val_error"])
+                        )
+                        print(
+                            f"Estimated: {item.results['val_error']} Real: {result['val_error']}"
+                        )
                     metrics = {**item.results, **result}
                     for k, v in metrics.items():
                         metrics[k] = float(v)
@@ -156,7 +185,7 @@ class DirectNAS(NASBase):
         pass
         # self.extract_best_model()
 
-    def sample_candidates(self, num_total, num_candidates=None, sort_key='val_error'):
+    def sample_candidates(self, num_total, num_candidates=None, sort_key="val_error"):
         candidates = []
         for n in range(num_total):
             models = []
@@ -182,23 +211,25 @@ class DirectNAS(NASBase):
     def build_search_space(self):
         # FIXME: In the future, get num_labels also from dataset
         # search_space = instantiate(self.config.model, input_shape=self.example_input_array.shape, _recursive_=True)
-        input = Tensor('input', shape=self.example_input_array.shape, axis=("N", "C", "H", "W"))
+        input = Tensor(
+            "input", shape=self.example_input_array.shape, axis=("N", "C", "H", "W")
+        )
         search_space = instantiate(self.config.model, input=input, _recursive_=True)
         return search_space
 
     # FIXME: Fully move to model trainer?
     def initialize_lightning_module(self, model):
         module = instantiate(
-                self.config.module,
-                model=model,
-                dataset=self.config.dataset,
-                optimizer=self.config.optimizer,
-                features=self.config.features,
-                normalizer=self.config.get("normalizer", None),
-                scheduler=self.config.scheduler,
-                num_classes=len(self.train_set.class_names),
-                _recursive_=False,
-            )
+            self.config.module,
+            model=model,
+            dataset=self.config.dataset,
+            optimizer=self.config.optimizer,
+            features=self.config.features,
+            normalizer=self.config.get("normalizer", None),
+            scheduler=self.config.scheduler,
+            num_classes=len(self.train_set.class_names),
+            _recursive_=False,
+        )
         # Parameters are not part of the model but of the graph and currenlty are not automatically
         # retrievable in the module somehow
         module.param_list = torch.nn.ParameterList(list(model.parameters()))
@@ -207,9 +238,15 @@ class DirectNAS(NASBase):
     def initialize_dataset(self):
         get_class(self.config.dataset.cls).prepare(self.config.dataset)
         # Instantiate Dataset
-        train_set, val_set, test_set = get_class(self.config.dataset.cls).splits(self.config.dataset)
+        datasets = get_class(self.config.dataset.cls).splits(self.config.dataset)
+        if len(datasets) == 3:
+            train_set, val_set, test_set = datasets
+            unlabeled_set = None
+        elif len(datasets) == 4:
+            train_set, unlabeled_set, val_set, test_set = datasets
         self.train_set = train_set
         self.val_set = val_set
+        self.unlabeled_set = unlabeled_set
         self.test_set = test_set
         self.example_input_array = torch.rand([1] + list(train_set.size()))
 
@@ -222,9 +259,16 @@ class DirectNAS(NASBase):
             while True:
                 try:
                     parameters, keys = self.sampler.next_parameters()
-                    fixed_vars = [self.search_space.parametrization(flatten=True)[key] for key in keys]
-                    self.constraint_model.soft_constrain_current_parametrization(self.search_space, parameters, fix_vars=fixed_vars)
-                    parameters = self.constraint_model.get_constrained_params(parameters)
+                    fixed_vars = [
+                        self.search_space.parametrization(flatten=True)[key]
+                        for key in keys
+                    ]
+                    self.constraint_model.soft_constrain_current_parametrization(
+                        self.search_space, parameters, fix_vars=fixed_vars
+                    )
+                    parameters = self.constraint_model.get_constrained_params(
+                        parameters
+                    )
                     break
                 except Exception:
                     pass
@@ -242,10 +286,15 @@ class DirectNAS(NASBase):
             self.worklist.append(worklist_item)
 
         # FIXME: Integrate better intro current code
+
     def estimate_metrics(self, model):
-        estimated_metrics = self.mac_predictor.predict(model, input=self.example_input_array)
+        estimated_metrics = self.mac_predictor.predict(
+            model, input=self.example_input_array
+        )
         if self.predictor:
-            estimated_metrics.update(self.predictor.predict(model, self.example_input_array))
+            estimated_metrics.update(
+                self.predictor.predict(model, self.example_input_array)
+            )
 
         satisfied_bounds = []
         for k, v in estimated_metrics.items():
@@ -265,6 +314,7 @@ class DirectNAS(NASBase):
 
     def log_results(self, module):
         from networkx.readwrite import json_graph
+
         nx_model = model_to_graph(module.model, module.example_feature_array)
         json_data = json_graph.node_link_data(nx_model)
         if not os.path.exists("../performance_data"):
@@ -273,22 +323,24 @@ class DirectNAS(NASBase):
             import json
 
             json.dump(
-                {"graph": json_data,
-                 "hparams": {"batch_size": int(self.config.module.batch_size)},
-                             "metrics": self.result_handler.result(dict=True),
-                             "curves": self.result_handler.curves(dict=True)},
+                {
+                    "graph": json_data,
+                    "hparams": {"batch_size": int(self.config.module.batch_size)},
+                    "metrics": self.result_handler.result(dict=True),
+                    "curves": self.result_handler.curves(dict=True),
+                },
                 res_file,
             )
 
 
 class WeightSharingNAS(NASBase):
-    def __init__(self,
-                 *args,
-                 **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def before_search(self):
-        self.model_trainer = instantiate(self.config.nas.model_trainer, parent_config=self.config, _recursive_=False)
+        self.model_trainer = instantiate(
+            self.config.nas.model_trainer, parent_config=self.config, _recursive_=False
+        )
         model = self.model_trainer.build_model()
         self.model_trainer.run_training(model)
 

@@ -198,7 +198,7 @@ class RICapsuleDataset(ImageDatasetBase):
             X_train_unlabeled,
             y_train_unlabeled,  # FIXME labels must not be used
             list(LABELS.keys()),
-            trancsform=transform,
+            transform=transform,
         )
         val_set = cls(X_val, y_val, list(LABELS.keys()))
         test_set = cls(X_test, y_test, list(LABELS.keys()))
