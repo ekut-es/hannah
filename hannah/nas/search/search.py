@@ -33,6 +33,10 @@ from hannah.nas.graph_conversion import model_to_graph
 from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
+from hannah.nas.graph_conversion import model_to_graph
+import traceback
+import copy
+
 
 msglogger = logging.getLogger(__name__)
 
@@ -192,7 +196,7 @@ class DirectNAS(NASBase):
             parameters = self.sample()
             model = self.build_model(parameters)
             models.append(model)
-            estimated_metrics, satisfied_bounds = self.estimate_metrics(model)
+            estimated_metrics, satisfied_bounds = self.estimate_metrics(copy.deepcopy(model))
             candidates.append((model, parameters, estimated_metrics, satisfied_bounds))
 
         if self.predictor:
