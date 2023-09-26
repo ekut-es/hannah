@@ -43,7 +43,8 @@ def save_config_to_file(current_index, configs, results):
         with result_path.open("w") as result_file:
             yaml.safe_dump(result_history, result_file)
 
-def save_graph_to_file(global_num, opt_callback, model):
+
+def save_graph_to_file(global_num, results: dict, model):
     nx_model = model_to_graph(model.model, model.example_feature_array.to(model.device))
     from networkx.readwrite import json_graph
 
@@ -54,7 +55,7 @@ def save_graph_to_file(global_num, opt_callback, model):
         import json
 
         json.dump(
-                {"graph": json_data, "metrics": opt_callback.result(dict=True)},
+                {"graph": json_data, "metrics": results},
                 res_file,
             )
 
