@@ -87,6 +87,8 @@ class SimpleModelTrainer:
 
                 reset_seed()
                 trainer.validate(ckpt_path=ckpt_path, verbose=False)
+                res = opt_callback.result(dict=True)
+                save_graph_to_file(global_num, res, module)
             except Exception as e:
                 msglogger.critical("Training failed with exception")
                 msglogger.critical(str(e))
@@ -97,9 +99,7 @@ class SimpleModelTrainer:
                 for monitor in opt_monitor:
                     res[monitor] = float("inf")
 
-            save_graph_to_file(global_num, opt_callback, module)
-
-            return opt_callback.result(dict=True)
+            return res
         finally:
             os.chdir("..")
 
