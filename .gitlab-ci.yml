@@ -159,69 +159,6 @@ build_docs:
   # Empty dependencies to disable artifacts passing
   dependencies: []
 
-run_ml_cloud:
-  before_script: []
-  stage: run
-  # run
-  tags:
-    - ml-cloud
-  script:
-    - conda activate hannah
-    - pushd scripts/ci
-    - ./flow.sh
-    - popd
-  rules:
-    - if: $CI_DEPLOY_FREEZE == null && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    #- if: $CI_JOB_MANUAL == true && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  dependencies: []
-  resource_group: cluster
-
-run_ml_cloud_progressive_shrinking:
-  stage: run
-  image: ubuntu:latest
-  before_script:
-    - apt update
-    - apt -y install openssh-client
-    - eval $(ssh-agent -s)
-    - ssh-add <(echo "$ML_CLOUD_KEY")
-    - mkdir -p ~/.ssh
-    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
-  tags:
-    - docker
-  script:
-    - set -e
-    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
-    - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-    - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
-    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_progressive_shrinking.sh"
-  when: manual
-  dependencies: []
-
-run_ml_cloud_lidar:
-  stage: run
-  image: ubuntu:latest
-  before_script:
-    - apt update
-    - apt -y install openssh-client
-    - eval $(ssh-agent -s)
-    - ssh-add <(echo "$ML_CLOUD_KEY")
-    - mkdir -p ~/.ssh
-    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
-  tags:
-    - docker
-  script:
-    - set -e
-    - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
-    - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-    - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
-    - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && sbatch scripts/ml_cloud_lidar.sh"
-  when: manual
-  dependencies: []
-
 
 run_sca:
   stage: test
@@ -242,29 +179,27 @@ run_sca:
   interruptible: true
   allow_failure: true
 
-# ml_cloud_update_env:
-#   stage: deploy
-#   image: ubuntu:latest
-#   before_script:
-#     - apt update
-#     - apt -y install openssh-client
-#     - eval $(ssh-agent -s)
-#     - ssh-add <(echo "$ML_CLOUD_KEY")
-#     - mkdir -p ~/.ssh
-#     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+ml_cloud_integration:
+  stage: build
+  image: ubuntu:latest
+  dependencies: []
+  before_script:
+    - apt update
+    - apt -y install openssh-client
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - echo "$ML_CLOUD_KEY" > ~/.ssh/ml_cloud.key
+    - chmod -R  0600 ~/.ssh
+    - ssh-add ~/.ssh/ml_cloud.key
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+  script:
+    - set -e
+    - scp scripts/ml_cloud_ci.sh cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/ml_cloud_ci.sh
+    - ssh cgerum05@134.2.168.52  /home/bringmann/cgerum05/ci/ml_cloud_ci.sh
+  only:
+    - main
+    - merge_requests
 
-#   tags:
-#     - docker
-#   script:
-#     - set -e
-#     - tar cvzf hannah.tar.gz hannah/ scripts/ plugins/
-#     - ssh cgerum05@134.2.168.52 mkdir -p /home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-#     - scp hannah.tar.gz cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/$CI_COMMIT_SHORT_SHA
-#     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && tar xvzf hannah.tar.gz"
-#     - ssh cgerum05@134.2.168.52 "cd ci/$CI_COMMIT_SHORT_SHA && mkdir -p jobs && scripts/ml_cloud_update_env.sh"
-#   dependencies: []
-#   only:
-#     - main
 
 deploy to github:
   stage: build

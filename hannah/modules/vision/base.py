@@ -19,7 +19,7 @@
 import logging
 import warnings
 from collections import defaultdict
-from typing import Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 import kornia
 import kornia.augmentation as K
@@ -58,10 +58,12 @@ class VisionBaseModule(ClassifierModule):
         self.initialized = True
 
         dataset_cls = get_class(self.hparams.dataset.cls)
-        data_splits : Tuple[Any]= dataset_cls.splits(self.hparams.dataset)
+        data_splits: Tuple[Any] = dataset_cls.splits(self.hparams.dataset)
 
         if len(data_splits) == 3:
-            warnings.warn("Vision datasets should return a length 4 tuple, will assume unlabeled data is None")
+            warnings.warn(
+                "Vision datasets should return a length 4 tuple, will assume unlabeled data is None"
+            )
             data_splits = (data_splits[0], None, data_splits[1], data_splits[2])
 
         (
@@ -125,8 +127,8 @@ class VisionBaseModule(ClassifierModule):
             self.train_set.mean,
             self.train_set.std,
         )
-        self.input_normalizer = BatchAugmentationPipeline(
-            {"Normalize": {"mean": self.train_set.mean, "std": self.train_set.std}}
+        self.input_normalizer = kornia.enhance.Normalize(
+            self.train_set.mean, self.train_set.std
         )
 
         # Setup Augmentations
@@ -151,22 +153,13 @@ class VisionBaseModule(ClassifierModule):
                         f"{step_name}_error": Error(
                             "multiclass", num_classes=self.num_classes
                         ),
-                        f"{step_name}_precision_micro": Precision(
-                            "multiclass", num_classes=self.num_classes, average="micro"
-                        ),
-                        f"{step_name}_recall_micro": Recall(
-                            "multiclass", num_classes=self.num_classes, average="micro"
-                        ),
-                        f"{step_name}_f1_micro": F1Score(
-                            "multiclass", num_classes=self.num_classes, average="micro"
-                        ),
-                        f"{step_name}_precision_macro": Precision(
+                        f"{step_name}_precision": Precision(
                             "multiclass", num_classes=self.num_classes, average="macro"
                         ),
-                        f"{step_name}_recall_macro": Recall(
+                        f"{step_name}_recall": Recall(
                             "multiclass", num_classes=self.num_classes, average="macro"
                         ),
-                        f"{step_name}_f1_macro": F1Score(
+                        f"{step_name}_f1": F1Score(
                             "multiclass", num_classes=self.num_classes, average="macro"
                         ),
                     }
