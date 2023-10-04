@@ -56,7 +56,7 @@ class ImageClassifierModule(VisionBaseModule):
         boxes = batch.get("bbox", None)
 
         if batch_idx == 0:
-            self._log_batch_images("input", batch_idx, x)
+            self._log_batch_images(f"input_{step_name}", batch_idx, x)
 
         augmented_data, x = self.augment(x, labels, boxes, batch_idx)
 
@@ -129,7 +129,34 @@ class ImageClassifierModule(VisionBaseModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.common_step("val", batch, batch_idx)
+        loss, prediction_result, batch, preds = self.common_step(
+            "val", batch, batch_idx
+        )
+
+        return {"preds": preds.detach().cpu(), "labels": batch["labels"].detach().cpu()}
+
+    def on_validation_epoch_start(self):
+        super().on_validation_epoch_start()
+
+        import pandas as pd
+
+        self.validation_res_df = pd.DataFrame(data={"preds": [], "labels": []})
+
+    def on_validation_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
+        super().on_validation_batch_end(outputs, batch, batch_idx, dataloader_idx=0)
+
+        # combined = torch.stack((outputs["preds"], outputs["labels"]))
+
+        import pandas as pd
+
+        df = pd.DataFrame(outputs)
+
+        self.validation_res_df = self.validation_res_df.append(df)
+
+    def on_validation_epoch_end(self):
+        super().on_validation_epoch_end()
+
+        print(self.validation_res_df.head())
 
     def test_step(self, batch, batch_idx):
         _, step_results, batch, preds = self.common_step("test", batch, batch_idx)

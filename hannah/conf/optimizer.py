@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -144,9 +144,9 @@ cs.store(group="optimizer", name="rprop", node=RpropConf())
 class SGDConf:
     _target_: str = "torch.optim.sgd.SGD"
     lr: Any = 0.1  # _RequiredParameter
-    momentum: Any = 0
+    momentum: Any = 0.9
     dampening: Any = 0
-    weight_decay: Any = 0
+    weight_decay: Any = 5e-4
     nesterov: Any = False
 
 
