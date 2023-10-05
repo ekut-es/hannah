@@ -118,6 +118,8 @@ class DirectNAS(NASBase):
         if self.constraint_model:
             self.constraint_model = instantiate(self.config.nas.constraint_model)
 
+        self.setup_model_logging()
+
     def presample_candidates(self):
         remaining_candidates = self.total_candidates - len(self.sampler.history)
         self.candidates = []
@@ -135,11 +137,15 @@ class DirectNAS(NASBase):
 
             while len(self.sampler.history) < self.budget:
                 self.worklist = []
-                self.tasklist = []
 
                 if len(self.candidates) == 0:
                     if self.predictor:
-                        self.predictor.update(self.new_points, self.example_input_array)
+                        try:
+                            self.predictor.update(self.new_points, self.example_input_array)
+                        except Exception as e:
+                            # FIXME: Find reason for NaN in embeddings
+                            msglogger.error("Updating predictor failed:")
+                            msglogger.error(f"{str(e)}")
                         self.new_points = []
                     self.candidates = self.sample_candidates(
                         self.total_candidates, self.num_selected_candidates
@@ -153,31 +159,28 @@ class DirectNAS(NASBase):
                             estimated_metrics,
                             satisfied_bounds,
                         ) = self.candidates.pop(0)
-                        self.append_to_worklist(
-                            parameters, estimated_metrics, satisfied_bounds
-                        )
-                        current_num = len(self.tasklist) - 1
-                        self.tasklist.append(
-                            delayed(self.model_trainer.run_training)(
+    
+                        current_num = len(self.worklist)
+                        task = delayed(self.model_trainer.run_training)(
                                 model,
                                 current_num,
                                 len(self.sampler.history) + current_num,
                                 self.config,
                             )
+
+                        self.append_to_worklist(
+                            parameters, task, estimated_metrics, satisfied_bounds
                         )
                     except Exception as e:
                         print(str(e))
                         print(traceback.format_exc())
 
-                results = executor([task for task in self.tasklist])
+                results = executor([item.task for item in self.worklist])
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
                     if self.predictor:
                         self.new_points.append(
                             (self.build_model(parameters), result["val_error"])
-                        )
-                        print(
-                            f"Estimated: {item.results['val_error']} Real: {result['val_error']}"
                         )
                     metrics = {**item.results, **result}
                     for k, v in metrics.items():
@@ -280,8 +283,8 @@ class DirectNAS(NASBase):
             parameters, keys = self.sampler.next_parameters()
         return parameters
 
-    def append_to_worklist(self, parameters, estimated_metrics={}, satisfied_bounds=[]):
-        worklist_item = WorklistItem(parameters, estimated_metrics)
+    def append_to_worklist(self, parameters, task, estimated_metrics={}, satisfied_bounds=[]):
+        worklist_item = WorklistItem(parameters, estimated_metrics, task)
 
         if self.presample:
             if all(satisfied_bounds):
@@ -311,7 +314,7 @@ class DirectNAS(NASBase):
 
     def setup_model_logging(self):
         self.callbacks = common_callbacks(self.config)
-        opt_monitor = self.config.get("monitor", ["val_error", "train_classifier_loss"])
+        opt_monitor = self.config.get("monitor", ["val_error"])
         opt_callback = HydraOptCallback(monitor=opt_monitor)
         self.result_handler = opt_callback
         self.callbacks.append(opt_callback)
@@ -319,7 +322,7 @@ class DirectNAS(NASBase):
     def log_results(self, module):
         from networkx.readwrite import json_graph
 
-        nx_model = model_to_graph(module.model, module.example_feature_array)
+        nx_model = model_to_graph(module.model, module.example_feature_array.to(module.device))
         json_data = json_graph.node_link_data(nx_model)
         if not os.path.exists("../performance_data"):
             os.mkdir("../performance_data")
