@@ -8,6 +8,8 @@ from typing import Any, Dict
 import numpy as np
 import yaml
 
+from hannah.nas.search.utils import np_to_primitive
+msglogger = logging.getLogger(__name__)
 
 @dataclass()
 class SearchResult:
@@ -38,6 +40,7 @@ class Sampler(ABC):
     def tell_result(self, parameters, metrics):
         "Tell the result of a task"
 
+        parameters = np_to_primitive(parameters)
         result = SearchResult(len(self.history), parameters, metrics)
         self.history.append(result)
         self.save()
@@ -50,6 +53,7 @@ class Sampler(ABC):
         with history_file_tmp.open("w") as history_data:
             yaml.dump(self.history, history_data)
         shutil.move(history_file_tmp, history_file)
+        msglogger.info(f"Updated {history_file.name}")
 
     def load(self):
         history_file = self.output_folder / "history.yml"
@@ -57,4 +61,4 @@ class Sampler(ABC):
         with history_file.open("r") as history_data:
             self.history = yaml.unsafe_load(history_data)
 
-        logging.info("Loaded %d points from history", len(self.history))
+        msglogger.info("Loaded %d points from history", len(self.history))

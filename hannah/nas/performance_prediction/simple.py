@@ -33,7 +33,8 @@ from pathlib import Path
 from hannah.callbacks.summaries import FxMACSummaryCallback, MacSummaryCallback
 from hannah.nas.graph_conversion import GraphConversionTracer, model_to_graph
 from hannah.nas.performance_prediction.features.dataset import OnlineNASGraphDataset, get_features, to_dgl_graph
-from hannah.nas.performance_prediction.gcn.predictor import prepare_dataloader
+from hannah.nas.performance_prediction.gcn.predictor import Predictor, prepare_dataloader
+from omegaconf import DictConfig
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,12 @@ class GCNPredictor:
     """A predictor class that instantiates the model and uses the backends predict function to predict performance metrics"""
 
     def __init__(self, model):
-        self.predictor = instantiate(model)
+        if isinstance(model, DictConfig):
+            self.predictor = instantiate(model)
+        elif isinstance(model, Predictor):
+            self.predictor = model
+        else:
+            raise Exception(f"type {type(model)} is not a valid type for a predictor model.")
         self.graphs = []
         self.labels = []
 
@@ -119,7 +125,8 @@ class GCNPredictor:
         self.train()
 
     def predict(self, model, input):
-        model = model.model  # FIXME: Decide when to use pl_module and when to use model
+        if hasattr(model, 'model'):
+            model = model.model  # FIXME: Decide when to use pl_module and when to use model
 
         model.train()
 

@@ -1,7 +1,10 @@
+from copy import deepcopy
 from dataclasses import dataclass
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict
+import numpy as np
 
 from omegaconf import OmegaConf
 import yaml
@@ -11,11 +14,14 @@ from hannah.nas.graph_conversion import model_to_graph
 from hydra.utils import instantiate
 from hannah.utils.utils import common_callbacks
 
+msglogger = logging.getLogger(__name__)
+
 
 @dataclass
 class WorklistItem:
     parameters: Any
     results: Dict[str, float]
+    task: Any
 
 
 def save_config_to_file(current_index, configs, results):
@@ -58,6 +64,7 @@ def save_graph_to_file(global_num, results: dict, model):
                 {"graph": json_data, "metrics": results},
                 res_file,
             )
+        msglogger.info(f"Saved model model_{global_num}.json with results {results} to {res_file}.")
 
 def setup_callbacks(config):
     callbacks = common_callbacks(config)
@@ -67,4 +74,16 @@ def setup_callbacks(config):
 
     checkpoint_callback = instantiate(config.checkpoint)
     callbacks.append(checkpoint_callback)
-    return callbacks,opt_monitor,opt_callback
+    return callbacks, opt_monitor, opt_callback
+
+
+def np_to_primitive(d):
+    new_d = deepcopy(d)
+    for k, v in d.items():
+        if isinstance(v, (int, float)):
+            new_d[k] = v
+        elif isinstance(v, np.number):
+            new_d[k] = v.item()
+        else:
+            msglogger.warning(f"No primitive registered for parameter {k} of type {type(v)}. Using original value")
+    return new_d
