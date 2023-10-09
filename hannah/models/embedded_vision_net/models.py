@@ -120,7 +120,7 @@ def classifier_head(input, num_classes):
     return out
 
 
-def search_space(name, input):
+def search_space(name,  input, num_classes=10):
     out_channels = IntScalarParameter(4, 64, name='out_channels')
     kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
     stride = CategoricalParameter([1, 2], name='stride')
@@ -139,7 +139,7 @@ def search_space(name, input):
         exits.append(out)
 
     out = dynamic_depth(*exits, switch=num_blocks)
-    out = classifier_head(out, 11)  # FIXME: Configure num_classes automatically
+    out = classifier_head(out, num_classes=num_classes)  # FIXME: Configure num_classes automatically
 
     strides = [v for k, v in out.parametrization(flatten=True).items() if k.split('.')[-1] == 'stride']
     total_stride = expr_product(strides)

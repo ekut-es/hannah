@@ -1,3 +1,4 @@
 _target_: hannah.models.embedded_vision_net.models.search_space
 name: embedded_vision_net
+num_classes: 10
 
