@@ -7,6 +7,9 @@ class Cast(Expression):
         self.expr = expr
         self.type = type
 
+    def get_children(self):
+        return [self.expr, self.type]
+
     def evaluate(self):
         return self.type(self.expr.evaluate())
 

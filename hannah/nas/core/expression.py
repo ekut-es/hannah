@@ -31,6 +31,10 @@ class Expression(ABC, Generic[T]):
     def format(self, indent=2, length=80) -> str:
         ...
 
+    @abstractmethod
+    def get_children(self):
+        ...
+
     def __str__(self) -> str:
         return self.format()
 

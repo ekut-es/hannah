@@ -72,6 +72,9 @@ class BinaryOp(Op):
         self.rhs = rhs
         self.symbol = type(self).__name__
 
+    def get_children(self):
+        return [self.lhs, self.rhs]
+
     def format(self, indent=2, length=80):
         ret = "(" + self.symbol + "\n"
         ret += (
@@ -111,6 +114,9 @@ class UnaryOp(Op):
         super().__init__()
         self.operand = operand
         self.symbol = type(self).__name__
+
+    def get_children(self):
+        return [self.operand]
 
     def evaluate(self):
         current_operand = self._evaluate_operand(self.operand)

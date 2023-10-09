@@ -9,6 +9,9 @@ class SymbolicAttr(Expression):
         self.attr = attr
         self.key = key
 
+    def get_children(self):
+        return [self.expr, self.attr, self.key]
+
     def __getitem__(self, key):
         self.key = key
         return self
@@ -42,6 +45,9 @@ class SymbolicSequence(Expression):
     def __getitem__(self, key):
         self.key = key
         return self
+    
+    def get_children(self):
+        return [self.expr, self.key]
 
     def evaluate(self):
         if hasattr(self.key, 'evaluate'):
@@ -69,6 +75,9 @@ class Choice(Expression):
         super().__init__()
         self.values = values
         self.choice = choice
+
+    def get_children(self):
+        return [self.values, self.choice]
 
     def evaluate(self):
         if hasattr(self.choice, 'evaluate'):
