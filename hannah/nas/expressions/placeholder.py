@@ -27,6 +27,9 @@ class Placeholder(Expression):
         self.id = id
         self._conditions = []
 
+    def get_children(self):
+        return []
+
     def evaluate(self):
         raise NotImplementedError()
 

@@ -43,6 +43,9 @@ class Parameter(Expression):
         self.name = name
         self.id = None
 
+    def get_children(self):
+        return []
+
     @abstractmethod
     def sample(self):
         ...

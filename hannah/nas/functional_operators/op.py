@@ -10,6 +10,7 @@ from hannah.nas.core.expression import Expression
 from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.dataflow.data_type import FloatType
 from hannah.nas.expressions.choice import Choice
+from hannah.nas.expressions.utils import extract_parameter_from_expression
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.parameters.parameters import Parameter, CategoricalParameter, IntScalarParameter
 from hannah.nas.parameters.parametrize import parametrize
@@ -99,7 +100,14 @@ class Op:
 
     def connect(self, node):
         if is_parametrized(self):
-            node._PARAMETERS[self.name] = self
+            param_keys = list(node._PARAMETERS.keys())
+            param_keys = [k for k in param_keys if self.name in k]
+            if param_keys:
+                current_count = max([int(k.split("_")[-1]) for k in param_keys]) + 1
+            else:
+                current_count = 0
+            node._PARAMETERS[f"{self.name}_{current_count}"] = self
+
         node.operands.append(self)
         self.users.append(node)
 
@@ -163,6 +171,11 @@ class Tensor:
             if is_parametrized(s):
                 # FIXME: IDs of parameters
                 self._PARAMETERS[self.id + '.' + s.name] = s
+            elif isinstance(s, Expression):
+                params = extract_parameter_from_expression(s)
+                for p in params:
+                    self._PARAMETERS[self.id + '.' + p.name] = p
+
         self.axis = axis
         self.users = []
         self.operands = []
@@ -261,7 +274,7 @@ class ChoiceOp(Op):
         for i, node_opt in enumerate(self.options):
             self.options[i] = node_opt(*operands)
             if is_parametrized(self.options[i]):
-                self._PARAMETERS[self.options[i].name] = self.options[i]  # FIXME:
+                self._PARAMETERS[self.options[i].id] = self.options[i]  # FIXME:
         # TODO: Try converting to modulelist
         ct = get_highest_scope_counter(operands, self.name) + 1
         self.id = f"{self.id}_{ct}"

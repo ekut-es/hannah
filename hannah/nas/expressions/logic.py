@@ -48,6 +48,9 @@ class If(Expression):
         self.a = a
         self.b = b
 
+    def get_children(self):
+        return [self.operand, self.a, self.b]
+
     def evaluate(self):
         condition = self.operand
         if hasattr(self.operand, 'evaluate'):
