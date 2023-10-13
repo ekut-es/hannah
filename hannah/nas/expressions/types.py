@@ -11,7 +11,11 @@ class Cast(Expression):
         return [self.expr, self.type]
 
     def evaluate(self):
-        return self.type(self.expr.evaluate())
+        if hasattr(self.expr, 'evaluate'):
+            val = self.expr.evaluate()
+        else:
+            val = self.expr
+        return self.type(val)
 
     def format(self, indent=2, length=80) -> str:
         return f"{self.type}({self.expr})"
