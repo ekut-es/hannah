@@ -155,13 +155,16 @@ class BasicExecutor(torch.nn.Module):
             for node in get_nodes(self.output):
                 if isinstance(node, Op):
                     node.train()
+            self.training = True
 
     def eval(self, mode=True):
         if not mode:
             self.train()
-        for node in get_nodes(self.output):
-            if isinstance(node, Op):
-                node.eval()
+        else:
+            for node in get_nodes(self.output):
+                if isinstance(node, Op):
+                    node.eval()
+            self.training = False    
 
 
 class WeightSharingExecutor:
