@@ -1,11 +1,15 @@
 from hannah.models.mobilenet.expressions import padding_expression
 from hannah.nas.functional_operators.op import Tensor, scope
-from hannah.nas.functional_operators.operators import AdaptiveAvgPooling, BatchNorm, Conv2d, Linear, Relu
+from hannah.nas.functional_operators.operators import AdaptiveAvgPooling, Add, BatchNorm, Conv2d, Linear, Relu
 from hannah.nas.expressions.types import Int
 
 
 def relu(input):
     return Relu()(input)
+
+
+def add(input, other):
+    return Add()(input, other)
 
 
 @scope
@@ -60,7 +64,7 @@ def pointwise_conv2d(input, out_channels):
 def inverted_residual(input, out_channels, stride, expand_ratio):
     in_channels = input.shape()[1]
     hidden_dim = Int(in_channels * expand_ratio)
-    
+
     out = input
     if isinstance(expand_ratio, int) and expand_ratio == 1:
         out = depthwise_conv2d(out, in_channels, kernel_size=3, stride=stride)
@@ -72,18 +76,23 @@ def inverted_residual(input, out_channels, stride, expand_ratio):
         out = pointwise_conv2d(out, hidden_dim)
         out = batch_norm(out)
         out = relu(out)
-        out = depthwise_conv2d(out, hidden_dim, kernel_size=3, stride=stride)     
+        out = depthwise_conv2d(out, hidden_dim, kernel_size=3, stride=stride)
         out = batch_norm(out)
         out = relu(out)
         out = pointwise_conv2d(out, out_channels=out_channels)
         out = relu(out)
-    return out
+
+    if stride == 1 and in_channels == out_channels:
+        return add(out, input)
+    else:
+        return out
 
 
 def adaptive_avg_pooling(input):
     return AdaptiveAvgPooling()(input)
 
 
+@scope
 def linear(input, out_features):
     input_shape = input.shape()
     in_features = input_shape[1] * input_shape[2] * input_shape[3]
