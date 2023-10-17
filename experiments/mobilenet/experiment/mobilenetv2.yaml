@@ -1,0 +1,24 @@
+# @package _global_
+defaults:
+  - override /nas: random_nas
+  - override /model: mobilenetv2_functional
+
+
+nas:
+  budget: 1
+  n_jobs: 1
+  predictor:
+    model:
+      input_feature_size: 30
+
+
+trainer:
+  max_epochs: 150
+
+
+model:
+  num_classes: 10
+
+seed: [1234]
+
+experiment_id: "mobilenetv2_cifar10"

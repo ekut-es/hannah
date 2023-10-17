@@ -184,17 +184,8 @@ class Tensor:
         self.executor = None
 
     def forward(self, *operands):
-        # shape = tuple([lazy(s) for s in self._shape])
-        # if self.data is None:
-        #     self.data = torch.ones(shape)
-        #     if self.grad:
-        #         self.data = torch.nn.Parameter(self.data)
-        # else:
-        #     pass
-        #     # assert self.data.shape == shape, "Shape of provided data does not match required tensor shape."
-        # return self.data
-        # return self.executor.param_dict[self.id.replace('.', '_')]
-        return self.executor.params[self.id]  # FIXME: change to self.executor.get_params(self.id)
+        # TODO: Shape checking
+        return self.executor.get_data(self.id)
 
     def _forward_implementation(self, *operands):
         return self.forward()
@@ -224,11 +215,8 @@ class Tensor:
     def current_shape(self):  # FIXME: better naming
         return tuple([lazy(s) for s in self._shape])
 
-    def feed_data(self, data, grad=False):
-        if grad:
-            self.data = torch.nn.Parameter(data)
-        else:
-            self.data = data
+    # def feed_data(self, data, grad=False):
+    #     self.data = data
 
     def __fx_create_arg__(self, tracer: torch.fx.Tracer):
         return tracer.create_node(
@@ -338,5 +326,3 @@ class Bypass(Op):
 
     def _forward_implementation(self, *operands):
         return operands[0].forward()
-
-

@@ -83,10 +83,15 @@ class GraphConversionTracer(torch.fx.Tracer):
             raise NameError("parameter is not a member of this module")
         if isinstance(a, torch.Tensor):
             if isinstance(self.root, BasicExecutor):
-                for n, p in self.root.params.items():
-                    if a is p:
-                        return self.create_node("get_attr", n, (), {})
-                raise NameError("parameter is not a member of this module")
+                if isinstance(a, torch.nn.Parameter):
+                    for n, p in self.root.named_parameters():
+                        if a is p:
+                            return self.create_node("get_attr", n, (), {})
+                    raise NameError("parameter is not a member of this module")
+                elif isinstance(a, torch.Tensor):
+                    for n_, p_ in self.root.named_buffers():
+                        if a is p_:
+                            return self.create_node("get_attr", n_, (), {})
         return super().create_arg(a)
 
 
@@ -626,11 +631,11 @@ def model_to_graph(model, input):
     model.cpu()
     model.eval()
     traced_graph = tracer.trace(model)
-    if isinstance(model, BasicExecutor):
-        mod = dict(model.params)
-    else:
-        mod = model
-    interpreter = GraphConversionInterpreter(torch.fx.GraphModule(mod, traced_graph))
+    # if isinstance(model, BasicExecutor):
+    #     mod = dict(model.params)
+    # else:
+    #     mod = model
+    interpreter = GraphConversionInterpreter(torch.fx.GraphModule(model, traced_graph))
     interpreter.run(input)
 
     return interpreter.nx_graph

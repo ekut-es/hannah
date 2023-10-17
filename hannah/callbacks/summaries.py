@@ -18,6 +18,8 @@
 #
 import logging
 from collections import OrderedDict
+import sys
+import traceback
 
 import pandas as pd
 import torch
@@ -446,6 +448,8 @@ class MacSummaryCallback(Callback):
         except Exception as e:
             msglogger.critical("_do_summary failed")
             msglogger.critical(str(e))
+            print(traceback.format_exc())
+            sys.exit(1)
 
         pl_module.train()
         return res
@@ -506,7 +510,7 @@ class MACSummaryInterpreter(fx.Interpreter):
     def __init__(self, module: torch.nn.Module):
         tracer = GraphConversionTracer()
         traced_graph = tracer.trace(module)
-        gm = fx.GraphModule(dict(module.params), traced_graph)
+        gm = fx.GraphModule(module, traced_graph)
         super().__init__(gm)
 
         self.count_function = {
@@ -590,4 +594,3 @@ class FxMACSummaryCallback(MacSummaryCallback):
         res["est_act"] = estimated_acts
 
         return res
-
