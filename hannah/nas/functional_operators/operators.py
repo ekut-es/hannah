@@ -40,7 +40,8 @@ def batch_norm(input, running_mu, running_std, *, id, training, track_running_st
     else:
         running_mu = None
         running_std = None
-    return F.batch_norm(input, running_mu, running_std, training=training)
+    res = F.batch_norm(input, running_mu, running_std, training=training)
+    return res
 
 
 @torch.fx.wrap
@@ -56,7 +57,6 @@ def add(input, other, *, id):
 @torch.fx.wrap
 def adaptive_avg_pooling(input, output_size=(1, 1), *, id):
     return F.adaptive_avg_pool2d(input, output_size=output_size)
-
 
 
 @parametrize
@@ -253,10 +253,3 @@ class AdaptiveAvgPooling(Op):
 
     def _forward_implementation(self, *operands):
         return adaptive_avg_pooling(operands[0], output_size=self.output_size, id=self.id)
-
-
-
-
-
-# dropout, avg_pooling
-# matmul, pointwise_mult
