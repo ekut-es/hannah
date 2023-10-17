@@ -33,9 +33,13 @@ def linear(input, weight, *, id):
 
 
 @torch.fx.wrap
-def batch_norm(input, running_mu, running_std, *, id, training):
-    running_mu = running_mu.to(input.device)
-    running_std = running_std.to(input.device)
+def batch_norm(input, running_mu, running_std, *, id, training, track_running_stats):
+    if not training or track_running_stats:
+        running_mu = running_mu.to(input.device)
+        running_std = running_std.to(input.device)
+    else:
+        running_mu = None
+        running_std = None
     return F.batch_norm(input, running_mu, running_std, training=training)
 
 
@@ -224,8 +228,9 @@ class Quantize(Op):
 
 @parametrize
 class BatchNorm(Op):
-    def __init__(self) -> None:
+    def __init__(self, track_running_stats=True) -> None:
         super().__init__(name='BatchNorm')
+        self.track_running_stats = track_running_stats
 
     def __call__(self, *operands) -> Any:
         return super().__call__(*operands)
@@ -234,7 +239,7 @@ class BatchNorm(Op):
         return self.operands[0].shape()
 
     def _forward_implementation(self, *operands):
-        return batch_norm(operands[0], operands[1], operands[2], id=self.id, training=self._train)
+        return batch_norm(operands[0], operands[1], operands[2], id=self.id, training=self._train, track_running_stats=self.track_running_stats)
 
 
 @parametrize
