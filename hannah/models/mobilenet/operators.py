@@ -43,17 +43,20 @@ def conv2d(input, out_channels, kernel_size=1, stride=1, dilation=1, groups=1):
     return conv
 
 
+@scope
 def depthwise_conv2d(input, out_channels, kernel_size, stride, dilation=1):
     in_channels = 1
     conv = conv2d(input, out_channels=out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, groups=in_channels)
     return conv
 
 
+@scope
 def pointwise_conv2d(input, out_channels):
     conv = conv2d(input, out_channels=out_channels, kernel_size=1)
     return conv
 
 
+@scope
 def inverted_residual(input, out_channels, stride, expand_ratio):
     in_channels = input.shape()[1]
     hidden_dim = Int(in_channels * expand_ratio)
