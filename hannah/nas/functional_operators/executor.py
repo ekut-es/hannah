@@ -47,24 +47,25 @@ class BasicExecutor(torch.nn.Module):
             name = id.replace(".", "_")
             return getattr(self, name)
 
-    def parameters(self):
-        queue = [self.output]
-        visited = [self.output.id]
+    # def parameters(self):
+    #     queue = [self.output]
+    #     visited = [self.output.id]
 
-        while queue:
-            node = queue.pop(0)
-            if isinstance(node, Tensor) and isinstance(node.data, Parameter):
-                yield node.data
+    #     while queue:
+    #         node = queue.pop(0)
+    #         if isinstance(node, Tensor) and isinstance(node.data, Parameter):
+    #             yield node.data
 
-            for operand in node.operands:
-                while isinstance(operand, ChoiceOp):
-                    active_op_index = operand.switch.evaluate()
-                    operand = operand.operands[active_op_index]
+    #         for operand in node.operands:
+    #             while isinstance(operand, ChoiceOp):
+    #                 active_op_index = operand.switch.evaluate()
+    #                 operand = operand.operands[active_op_index]
 
-                if operand.id not in visited:
-                    queue.append(operand)
-                    visited.append(operand.id)
+    #             if operand.id not in visited:
+    #                 queue.append(operand)
+    #                 visited.append(operand.id)
 
+    # TODO: Let parameters only return the active parameters
     def _all_parameters(self):
         for node in get_nodes(self.output):
             if isinstance(node, Tensor) and isinstance(node.data, Parameter):
