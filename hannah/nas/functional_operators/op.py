@@ -166,16 +166,13 @@ class Tensor:
         self.dtype = dtype
 
         # FIXME: Maybe check for lists/tuples in @parametrize?
-        # FIXME: What if a parameter is defined elsewhere (e.g. conv)
+        # FIXME: What if a parameter is defined elsewhere (e.g. conv) --> not good
         for s in self._shape:
             if is_parametrized(s):
                 # FIXME: IDs of parameters
-                self._PARAMETERS[self.id + '.' + s.name] = s
-            elif isinstance(s, Expression):
-                params = extract_parameter_from_expression(s)
-                for p in params:
-                    self._PARAMETERS[self.id + '.' + p.name] = p
-
+                if s.id is None:  # Else: parameter is registered elsewhere
+                    s.id = self.id + '.' + s.name
+                    self._PARAMETERS[s.id] = s
         self.axis = axis
         self.users = []
         self.operands = []

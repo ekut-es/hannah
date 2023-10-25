@@ -19,6 +19,8 @@ limitations under the License.
 # HANNAH - Hardware Accelerator and Neural network searcH
 
 # Getting Started
+!!! note
+    For more information, visit the [documentation](https://ekut-es.github.io/hannah/).
 
 ## Installing dependencies
 
