@@ -17,18 +17,10 @@
 ## limitations under the License.
 ##
 defaults:
-    - predictor: gcn
-    - sampler: aging_evolution
-    - model_trainer: simple
-    - constraint_model: z3
+  - submitit_slurm
+  - _self_
 
-_target_: hannah.nas.search.search.DirectNAS
-budget: 2000
-n_jobs: 10
-presample: True
-total_candidates: 100
-num_selected_candidates: 20
-bounds:
-    val_error: 0.12
-    total_macs: 128000000
-    total_weights: 500000
+timeout_min: 3600
+gpus_per_task: 4
+cpus_per_gpu: 8
+partition: gpu-2080ti

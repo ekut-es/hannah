@@ -36,7 +36,7 @@ def main(config):
     logger.info("Current working directory %s", os.getcwd())
     result_metrics, parameters = prepare_summary(
         config.data,
-        base_path=hydra.utils.get_original_cwd(),
+        base_dir=hydra.utils.get_original_cwd(),
         force=config.get("force", False),
     )
 

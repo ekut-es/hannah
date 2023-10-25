@@ -1,13 +1,12 @@
 # @package _global_
 defaults:
   - override /nas: random_nas
-  - override /model: embedded_vision_nas
+  - override /model: embedded_vision_net
 
 
 nas:
-  budget: 100
+  budget: 300
   n_jobs: 8
-  presample: False
 
 
 trainer:
@@ -15,4 +14,4 @@ trainer:
 
 seed: [1234]
 
-experiment_id: "random_nas_log_saving"
+oxperiment_id: "random_nas"
