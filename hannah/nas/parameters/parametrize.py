@@ -168,6 +168,8 @@ def get_parameters(
         if hasattr(current, "_PARAMETERS"):
             for param in current._PARAMETERS.values():
                 if param.id is None:
+                    param.id = param.name
+                if isinstance(param, Parameter) and param.id not in visited:
                     param.id = current.id + '.' + param.name
                 if param.id not in visited:
                     queue.append(param)

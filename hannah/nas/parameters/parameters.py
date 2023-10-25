@@ -35,7 +35,7 @@ from datetime import datetime
 class Parameter(Expression):
     def __init__(
         self,
-        name: Optional[str] = None,
+        name: Optional[str] = "",
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__()
@@ -102,7 +102,7 @@ class IntScalarParameter(Parameter):
         min: Union[int, IntScalarParameter],
         max: Union[int, IntScalarParameter],
         step_size: int = 1,
-        name: Optional[str] = None,
+        name: Optional[str] = "",
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(name, rng)
@@ -157,7 +157,7 @@ class FloatScalarParameter(Parameter):
         self,
         min,
         max,
-        name: Optional[str] = None,
+        name: Optional[str] = "",
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(name, rng)
@@ -193,7 +193,7 @@ class CategoricalParameter(Parameter):
     def __init__(
         self,
         choices,
-        name: Optional[str] = None,
+        name: Optional[str] = "",
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(name, rng)
@@ -238,7 +238,7 @@ class SubsetParameter(Parameter):
         choices,
         min,
         max,
-        name: Optional[str] = None,
+        name: Optional[str] = "",
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(name, rng)

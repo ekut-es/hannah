@@ -23,6 +23,11 @@ processors:
   - type: filter
   - type: smart
   - type: crossref
+
+hooks:
+  pre-render:
+    - cp -r doc/assets build/docs/content
+
 renderer:
   type: mkdocs
   pages:
@@ -60,16 +65,33 @@ renderer:
         name: compression/decomposition
         source: doc/compression/decomposition.md
       - title: Knowledge Distillation
-        name: compresseion/knowledge_distillation
+        name: compression/knowledge_distillation
         source: doc/compression/knowledge_distillation.md
     - title: Optimization
       children:
         - title: Hyperparameter Optimization
           name: optimization/hyperparameter
           source: doc/optimization/hyperparameters.md
-        - title: Neural Architecture Search
-          name: optimization/nas
-          source: doc/optimization/nas.md
+    - title: Neural Architecture Search
+      children:
+        - title: NAS (Legacy)
+          name: nas/legacy
+          source: doc/nas/legacy.md
+        - title: Usage
+          name: nas/usage
+          source: doc/nas/usage.md
+        - title: Search Spaces
+          name: nas/search_spaces
+          source: doc/nas/search_spaces.md
+        - title: Parametrization
+          name: nas/parametrization
+          source: doc/nas/parametrization.md
+        - title: Search
+          name: nas/search
+          source: doc/nas/search.md
+        - title: Evaluating Results
+          name: nas/eval
+          source: doc/nas/eval.md
     - title: Deployment
       children:
         - title: Torch Mobile
@@ -109,6 +131,7 @@ renderer:
     markdown_extensions:
       - def_list
       - admonition
+      - codehilite
       - pymdownx.arithmatex:
           generic: true
     extra_javascript:

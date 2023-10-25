@@ -24,9 +24,9 @@ def conv_relu(input: TensorExpression,
 @dataflow
 def block(input: TensorExpression,
           expansion=FloatScalarParameter(1, 6, name='expansion'),
-          output_channel=IntScalarParameter(4, 64),
-          kernel_size=CategoricalParameter([1, 3, 5]),
-          stride=CategoricalParameter([1, 2])):
+          output_channel=IntScalarParameter(4, 64, name='out_channels'),
+          kernel_size=CategoricalParameter([1, 3, 5], name='kernel_size'),
+          stride=CategoricalParameter([1, 2], name='stride')):
 
     out = conv_relu(input, output_channel=output_channel.new()*expansion.new(), kernel_size=kernel_size.new(), stride=DefaultInt(1))
     out = conv_relu(out, output_channel=output_channel.new(), kernel_size=DefaultInt(1), stride=stride.new())
@@ -81,7 +81,7 @@ def test_flatten():
 
 def test_parameter_extraction():
     input = batched_image_tensor(name='input')
-    out = block(input, stride=IntScalarParameter(min=1, max=2))
+    out = block(input, stride=IntScalarParameter(min=1, max=2, name='stride'))
     out = block(out)
     # flattened_graph = flatten(out)
     params = out.parametrization(include_empty=True, flatten=True)

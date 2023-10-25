@@ -41,7 +41,7 @@ class Activation(nn.Module):
 
         self.mods = nn.ModuleDict({"relu": relu_act, "identity": identity_act})
         # self.mods = {"relu": relu_act, "identity": identity_act}
-        self.choice = handle_parameter(self, params, f"{self.id}.choice")
+        self.choice = handle_parameter(self, params, "choice")
         self.active_module = Choice(self.mods, self.choice)
 
     def initialize(self):
@@ -68,8 +68,8 @@ class ExpandReduce(nn.Module):
         self.in_channels = input_shape[1]
 
         # FIXME: Share parameters over patterns
-        self.out_channels = handle_parameter(self, self.params.convolution.out_channels, f"{self.id}.out_channels")
-        self.expand_ratio = handle_parameter(self, self.params.expand_reduce.ratio, f"{self.id}.expand_ratio")
+        self.out_channels = handle_parameter(self, self.params.convolution.out_channels, "out_channels")
+        self.expand_ratio = handle_parameter(self, self.params.expand_reduce.ratio, "expand_ratio")
 
         self.expanded_channels = Int(self.expand_ratio * self.in_channels)
         self.expansion = PointwiseConvolution(self.expanded_channels, self.id + '.expand', inputs)
@@ -126,8 +126,8 @@ class ReduceExpand(nn.Module):
         self.in_channels = self.input_shape[1]
 
         # FIXME: Share parameters over patterns
-        self.out_channels = handle_parameter(self, self.params.convolution.out_channels, f"{self.id}.out_channels")
-        self.reduce_ratio = handle_parameter(self, self.params.reduce_expand.ratio, f"{self.id}.reduce_ratio")
+        self.out_channels = handle_parameter(self, self.params.convolution.out_channels, f"out_channels")
+        self.reduce_ratio = handle_parameter(self, self.params.reduce_expand.ratio, f"reduce_ratio")
 
         self.reduced_channels = Int(self.reduce_ratio * self.in_channels)
         self.reduction = PointwiseConvolution(self.reduced_channels, self.id + '.expand', inputs)
@@ -233,8 +233,8 @@ class Pattern(nn.Module):
         self.id = id
 
         # shared parameters
-        self.stride = handle_parameter(self, params.stride, f"{self.id}.stride")
-        self.out_channels = handle_parameter(self, params.out_channels, f"{self.id}.out_channels")
+        self.stride = handle_parameter(self, params.stride, "stride")
+        self.out_channels = handle_parameter(self, params.out_channels, "out_channels")
 
         conv_params = OmegaConf.create({'convolution': {'stride': self.stride, 'out_channels': self.out_channels},
                                         'pooling': {'stride': self.stride}}, flags={"allow_objects": True})
@@ -289,7 +289,7 @@ class Block(nn.Module):
         super().__init__()
         self.id = id
         self.input_shape = input_shape
-        self.depth = handle_parameter(self, params.depth, f'{self.id}.depth')
+        self.depth = handle_parameter(self, params.depth, 'depth')
         self.mods = nn.ModuleList()
         self.params = params
 
