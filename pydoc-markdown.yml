@@ -26,6 +26,7 @@ processors:
 
 hooks:
   pre-render:
+    - mkdir -p build/docs/content
     - cp -r doc/assets build/docs/content
 
 renderer:
