@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../../img/favicon.ico" />
-    <title>Neural Architecture Search - HANNAH</title>
+    <title>Evaluating Results - HANNAH</title>
     <link rel="stylesheet" href="../../../css/theme.css" />
     <link rel="stylesheet" href="../../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Neural Architecture Search";
-        var mkdocs_page_input_path = "optimization/optimization/nas.md";
+        var mkdocs_page_name = "Evaluating Results";
+        var mkdocs_page_input_path = "neural-architecture-search/nas/eval.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -68,29 +68,28 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
-              <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../hyperparameter/">Hyperparameter Optimization</a>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="./">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../search/">Search</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="./">Evaluating Results</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#parametrization">Parametrization</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#choice-parameter">Choice Parameter</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#choice-list-parameters">Choice List Parameters</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#intervall-parameters">Intervall Parameters</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#subset-parameter">Subset Parameter</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#partition-parameter">Partition Parameter</a>
-    </li>
-        </ul>
-    </li>
     </ul>
                   </li>
               </ul>
@@ -133,8 +132,8 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
-          <li class="breadcrumb-item">Optimization</li>
-      <li class="breadcrumb-item active">Neural Architecture Search</li>
+          <li class="breadcrumb-item">Neural Architecture Search</li>
+      <li class="breadcrumb-item active">Evaluating Results</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -143,98 +142,16 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <!--
-Copyright (c) 2022 University of Tübingen.
-
-This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--->
-
-<p>:warning: <strong>Note:</strong> We are currently in the process of restructuring the Neural Architecture Search, in particular the way search spaces are constructed. Some things might not work as usual.</p>
-<h1 id="neural-architecture-search">Neural architecture search</h1>
-<p>In contrast to hyperparameter optimization neural architecture search, explores new neural network hyperparameters.</p>
-<p>A aging evolution based neural architecture search has been implemented as a hydra plugin:</p>
-<p>hannah-train --config-name config_unas</p>
-<p>To launch multiple configuration jobs in parallel use joblib launcher:</p>
-<pre><code>hannah-train --config-name config_unas hydra/launcher=joblib
-</code></pre>
-<p>Parametrization for neural architecture search need to be given as <em>YAML</em> configuration files at
-the moment. For an example see: <code>speech_recognition/conf/config_unas.yaml</code></p>
-<h2 id="parametrization">Parametrization</h2>
-<p>The Parametrization contains the following elements:</p>
-<h3 id="choice-parameter">Choice Parameter</h3>
-<p>Choice Parameters select options from a list of parameters. They are configured as a list of options in
-the parameters. Example:</p>
-<pre><code>conv_size: [1,3,5,7,9,11]
-</code></pre>
-<h3 id="choice-list-parameters">Choice List Parameters</h3>
-<p>Choice List Parameters represent a variable length list of Choices. They are configured with the follwing parameters:</p>
-<dl>
-<dt><code>min</code></dt>
-<dd>Minimum length of list</dd>
-<dt><code>max</code></dt>
-<dd>Maximum length of list+1</dd>
-<dt><code>choices</code></dt>
-<dd>List of Choices</dd>
-</dl>
-<p>Example:</p>
-<pre><code>min: 4
-max: 10
-choices:
-  - _target_: "torch.nn.Conv2d"
-    size: 3
-  - _target : "torch.nn.MaxPool2d"
-    size: 7
-</code></pre>
-<p><em>Warning</em>: Mutations for intervall parameters currently always sample randomly from the range of values</p>
-<h3 id="intervall-parameters">Intervall Parameters</h3>
-<p>Intervall Parameters represent a Scalar Value from an intervall of Values
-They are configure with the following parameters:</p>
-<dl>
-<dt><code>lower</code></dt>
-<dd>lower bound of intervall [lower, upper[</dd>
-<dt><code>upper</code></dt>
-<dd>upper bound of intervall [lower, upper[</dd>
-<dt><code>int</code></dt>
-<dd>set to true to generate integers</dd>
-<dt><code>log</code></dt>
-<dd>set to true to generate log scaled distribution</dd>
-</dl>
-<h3 id="subset-parameter">Subset Parameter</h3>
-<p>Subset Parameters select a subset of a list of choices.</p>
-<p>They are configured using the following parameters:</p>
-<dl>
-<dt><code>choices</code></dt>
-<dd>List of choices to sample from</dd>
-<dt><code>size</code></dt>
-<dd>size of the subset to generate</dd>
-</dl>
-<h3 id="partition-parameter">Partition Parameter</h3>
-<p>Partition parameters split the list of choices into a predefined number of partitions.</p>
-<p>They are configured using the following parameters:</p>
-<dl>
-<dt><code>choices</code></dt>
-<dd>List of choices to partition</dd>
-<dt><code>partition</code></dt>
-<dd>Number of partitions to generate</dd>
-</dl>
+                <h1 id="evaluation">Evaluation</h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Coming soon</p>
+</div>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../hyperparameter/" class="btn btn-neutral float-left" title="Hyperparameter Optimization"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../search/" class="btn btn-neutral float-left" title="Search"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../../../deployment/deployment/torchmobile/" class="btn btn-neutral float-right" title="Torch Mobile">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -258,7 +175,7 @@ They are configure with the following parameters:</p>
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../hyperparameter/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../search/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../../../deployment/deployment/torchmobile/" style="color: #fcfcfc">Next &raquo;</a></span>

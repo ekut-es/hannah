@@ -74,14 +74,27 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -189,10 +202,11 @@ for noise prob seem to be in the range of 0.7 to 0.9.</p>
     power_of_2: false  # Use power of two quantization for weights
     noise_prob: 0.7    # Probability of quantizing a value during training</p>
 <p>Aditionally standard pytorch quantization aware training is supported by using a standard pytorch qconfig.</p>
-<pre><code>qconfig:
-    _target_: torch.quantization.get_default_qat_qconfig
-    backend: fbgemm
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">qconfig</span><span class="o">:</span><span class="w"></span>
+<span class="w">    </span><span class="n">_target_</span><span class="o">:</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="na">quantization</span><span class="o">.</span><span class="na">get_default_qat_qconfig</span><span class="w"></span>
+<span class="w">    </span><span class="n">backend</span><span class="o">:</span><span class="w"> </span><span class="n">fbgemm</span><span class="w"></span>
+</code></pre></div>
+
 <p>In this case no quantization noise is supported.</p>
               
             </div>

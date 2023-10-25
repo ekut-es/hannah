@@ -68,14 +68,27 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -169,8 +182,9 @@ configs using <code>trainer.flag name</code></p>
 <p>This tests if the model can overfit a small percentage (0.01) of the dataset. A good model should be able reach almost 100 percent accuracy very quickly.</p>
 <h3 id="trainerlimit__batches"><code>trainer.limit_*_batches</code></h3>
 <p>This limits the amount of batches used for training. e.g.:</p>
-<pre><code>hannah-train trainer.limit_train_batches=0.1 trainer.limit_val_batches=0.1 trainer.limit_test_batches=0.1
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train trainer.limit_train_batches=0.1 trainer.limit_val_batches=0.1 trainer.limit_test_batches=0.1
+</code></pre></div>
+
 <p>Limits the training to 10 percent of available batches for train, validation and test.</p>
               
             </div>

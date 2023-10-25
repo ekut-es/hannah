@@ -70,14 +70,27 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="compression/compression/decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="compression/compression/knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="optimization/optimization/nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -148,6 +161,10 @@ limitations under the License.
 -->
 <h1 id="hannah-hardware-accelerator-and-neural-network-search">HANNAH - Hardware Accelerator and Neural network searcH</h1>
 <h1 id="getting-started">Getting Started</h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For more information, visit the <a href="https://ekut-es.github.io/hannah/">documentation</a>.</p>
+</div>
 <h2 id="installing-dependencies">Installing dependencies</h2>
 <p>Dependencies and virtual environments are managed using <a href="https://python-poetry.org/">poetry</a>.</p>
 <ul>
@@ -159,105 +176,129 @@ limitations under the License.
 </ul>
 <h3 id="ubuntu-2004">Ubuntu 20.04+</h3>
 <p>Install dependencies:</p>
-<pre><code>sudo apt update
+<div class="codehilite"><pre><span></span><code>sudo apt update
 sudo apt -y install python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev git-lfs
-</code></pre>
+</code></pre></div>
+
 <h3 id="centos-rhel-scientific-linux-7">Centos / RHEL / Scientific Linux: 7+</h3>
 <p>Install dependencies:</p>
-<pre><code>sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
-</code></pre>
+<div class="codehilite"><pre><span></span><code>sudo yum install portaudio-devel libsndfile1-devel libsox-devel -y
+</code></pre></div>
+
 <p>Install a python 3.9 or python 3.10 version using <a href="https://github.com/pyenv/pyenv">pyenv</a>.</p>
 <h3 id="install-poetry">Install poetry</h3>
-<pre><code>curl -sSL https://install.python-poetry.org/ | python3
-</code></pre>
+<div class="codehilite"><pre><span></span><code>curl -sSL https://install.python-poetry.org/ | python3
+</code></pre></div>
+
 <p>For alternative installation methods see:  https://python-poetry.org/docs/#installation</p>
 <p><strong>Caution</strong>: this usually installs poetry to ~/.local/bin if this folder is not in your path you might need to run poetry as:</p>
-<pre><code>~/.local/bin/poetry
-</code></pre>
+<div class="codehilite"><pre><span></span><code>~/.local/bin/poetry
+</code></pre></div>
+
 <h2 id="software-installation">Software installation</h2>
 <p>In the root directory of the project run:</p>
-<pre><code>git submodule update --init --recursive
+<div class="codehilite"><pre><span></span><code>git submodule update --init --recursive
 poetry install -E vision
-</code></pre>
+</code></pre></div>
+
 <p>This creates a virtual environment under ~/.cache/pypoetry/virtualenvs.</p>
 <p>The environment can be activated using:</p>
-<pre><code>poetry shell
-</code></pre>
+<div class="codehilite"><pre><span></span><code>poetry shell
+</code></pre></div>
+
 <h3 id="optional-dependencies">Optional Dependencies</h3>
 <p>We support installation of optional dependencies using poetry's <code>-E</code> commandline flag</p>
 <p>We currently have the following optional dependencies:</p>
 <h4 id="vision-models">Vision-Models</h4>
 <p>Vision models require additional dependencies, these can be installed using:</p>
-<pre><code>poetry install -E vision
-</code></pre>
+<div class="codehilite"><pre><span></span><code>poetry install -E vision
+</code></pre></div>
+
 <p>These dependencies include <code>kornia</code> and <code>albumentations</code> for image augmentations and <code>timm</code> (torch image models)
 for baseline neural network models.</p>
 <h4 id="onnx-runtime-backend">Onnx-Runtime Backend</h4>
-<pre><code>poetry install -E onnxrt-backend
-</code></pre>
+<div class="codehilite"><pre><span></span><code>poetry install -E onnxrt-backend
+</code></pre></div>
+
 <p>Backend support for running models on onnx-runtime.</p>
 <h4 id="tflite-backend">Tflite-Backend</h4>
-<pre><code>poetry install -E onnx-tf
-</code></pre>
+<div class="codehilite"><pre><span></span><code>poetry install -E onnx-tf
+</code></pre></div>
+
 <p>Onnx based conversion of trained models to tensorflow/tensorflow-lite for external inference backends.</p>
 <h4 id="dvc-based-experiment-management-experimental">DVC based experiment management (experimental)</h4>
-<pre><code>poetry install -E dvc
-</code></pre>
+<div class="codehilite"><pre><span></span><code>poetry install -E dvc
+</code></pre></div>
+
 <p>This installs dvc based model, data and experiment management. DVC support is highly experimental and subject to change.</p>
 <h3 id="installation-tips">Installation Tips</h3>
 <p>1.) venv location</p>
 <p>poetry installs the dependencies to a virtual environment in ~/.cache/pypoetry/virtualenvs</p>
 <p>You can change the location of this directory using:</p>
-<pre><code>poetry config virtualenvs.path  &lt;desired virtual environment path&gt;
-</code></pre>
+<div class="codehilite"><pre><span></span><code>poetry config virtualenvs.path  &lt;desired virtual environment path&gt;
+</code></pre></div>
+
 <p>Or move it to a subdirectory of the project directory using:</p>
-<pre><code>poetry config virtualenvs.in-project true
-</code></pre>
+<div class="codehilite"><pre><span></span><code>poetry config virtualenvs.in-project true
+</code></pre></div>
+
 <h2 id="installing-the-datasets">Installing the datasets</h2>
 <p>Datasets are downloaded automatically to the datasets data folder by default this is a subfolder of the dataset's data folder.</p>
 <p>For the VAD Dataset the following Flag is needed to Download/Override the Dataset</p>
-<pre><code>dataset.override=True
-</code></pre>
+<div class="codehilite"><pre><span></span><code>dataset.override=True
+</code></pre></div>
+
 <h2 id="training-keyword-spotting">Training - Keyword Spotting</h2>
 <p>Training is invoked by</p>
-<pre><code>hannah-train
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train
+</code></pre></div>
+
 <p>If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.<code>gpus=[number]</code>
 e.g. for GPU 2 use:</p>
-<pre><code>hannah-train trainer.gpus=[2]
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train trainer.gpus=[2]
+</code></pre></div>
+
 <p>Trained models are saved under <code>trained_models/&lt;experiment_id&gt;/&lt;model_name&gt;</code>.</p>
 <h2 id="training-vad">Training - VAD</h2>
 <p>Training of VAD is invoked by</p>
-<pre><code>hannah-train dataset=vad model.n_labels=2
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train dataset=vad model.n_labels=2
+</code></pre></div>
+
 <p>Training of VAD_Extended is invoked by</p>
-<pre><code>hannah-train dataset=vad_extended model.n_labels=2
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train dataset=vad_extended model.n_labels=2
+</code></pre></div>
+
 <h3 id="vad-dataset-variants">VAD dataset variants</h3>
 <p>Selection of other Voice Dataset use  <code>dataset.variants="[UWNU, de, en, it, fr, es]"</code></p>
-<pre><code>hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, de, en, it, fr, es]"
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">hannah</span><span class="o">-</span><span class="n">train</span><span class="w"> </span><span class="n">dataset</span><span class="o">=</span><span class="n">vad</span><span class="w"> </span><span class="n">model</span><span class="o">.</span><span class="n">n_labels</span><span class="o">=</span><span class="mi">2</span><span class="w"> </span><span class="n">dataset</span><span class="o">.</span><span class="n">variants</span><span class="o">=</span><span class="s2">&quot;[UWNU, de, en, it, fr, es]&quot;</span><span class="w"></span>
+</code></pre></div>
+
 <p>Selection of other Noise Datasets use  <code>dataset.noise_dataset="[TUT]"</code></p>
-<pre><code>hannah-train dataset=vad model.n_labels=2 dataset.noise_dataset="[TUT]"
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">hannah</span><span class="o">-</span><span class="n">train</span><span class="w"> </span><span class="n">dataset</span><span class="o">=</span><span class="n">vad</span><span class="w"> </span><span class="n">model</span><span class="p">.</span><span class="n">n_labels</span><span class="o">=</span><span class="mi">2</span><span class="w"> </span><span class="n">dataset</span><span class="p">.</span><span class="n">noise_dataset</span><span class="o">=</span><span class="ss">&quot;[TUT]&quot;</span><span class="w"></span>
+</code></pre></div>
+
 <p>Selection of dataset Split use  <code>dataset.data_split="vad_balanced"</code></p>
-<pre><code>hannah-train dataset=vad model.n_labels=2 dataset.data_split="vad_balanced"
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train dataset=vad model.n_labels=2 dataset.data_split=&quot;vad_balanced&quot;
+</code></pre></div>
+
 <p>Create Vad_small Dataset</p>
-<pre><code>hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU]" dataset.noise_dataset="[TUT]" dataset.data_split="vad_balanced"
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">hannah</span><span class="o">-</span><span class="n">train</span><span class="w"> </span><span class="n">dataset</span><span class="o">=</span><span class="n">vad</span><span class="w"> </span><span class="n">model</span><span class="p">.</span><span class="n">n_labels</span><span class="o">=</span><span class="mi">2</span><span class="w"> </span><span class="n">dataset</span><span class="p">.</span><span class="n">variants</span><span class="o">=</span><span class="ss">&quot;[UWNU]&quot;</span><span class="w"> </span><span class="n">dataset</span><span class="p">.</span><span class="n">noise_dataset</span><span class="o">=</span><span class="ss">&quot;[TUT]&quot;</span><span class="w"> </span><span class="n">dataset</span><span class="p">.</span><span class="n">data_split</span><span class="o">=</span><span class="ss">&quot;vad_balanced&quot;</span><span class="w"></span>
+</code></pre></div>
+
 <p>Create VAD_big Dataset</p>
-<pre><code>hannah-train dataset=vad model.n_labels=2 dataset.variants="[UWNU, en, de, fr, es, it]" dataset.noise_dataset="[TUT, FSD50K]" dataset.data_split="vad_balanced"
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">hannah</span><span class="o">-</span><span class="n">train</span><span class="w"> </span><span class="n">dataset</span><span class="o">=</span><span class="n">vad</span><span class="w"> </span><span class="n">model</span><span class="o">.</span><span class="n">n_labels</span><span class="o">=</span><span class="mi">2</span><span class="w"> </span><span class="n">dataset</span><span class="o">.</span><span class="n">variants</span><span class="o">=</span><span class="s2">&quot;[UWNU, en, de, fr, es, it]&quot;</span><span class="w"> </span><span class="n">dataset</span><span class="o">.</span><span class="n">noise_dataset</span><span class="o">=</span><span class="s2">&quot;[TUT, FSD50K]&quot;</span><span class="w"> </span><span class="n">dataset</span><span class="o">.</span><span class="n">data_split</span><span class="o">=</span><span class="s2">&quot;vad_balanced&quot;</span><span class="w"></span>
+</code></pre></div>
+
 <h2 id="training-pamap2">Training - PAMAP2</h2>
 <p>Training of PAMAP2 human activity detection dataset is invoked by:</p>
-<pre><code>hannah-train -cn config_activity
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train -cn config_activity
+</code></pre></div>
+
 <h2 id="training-emergency-siren-dataset">Training - Emergency Siren Dataset</h2>
 <p>Training of emergency siren detection dataset is invoked by:</p>
-<pre><code>hannah-train -cn config_siren_detection
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train -cn config_siren_detection
+</code></pre></div>
+
 <h1 id="parallel-launchers">Parallel Launchers</h1>
 <p>To launch multiple optimizations in parallel you can use a hydra launcher. </p>
 <p>Joblib launcher is installed by default:</p>
@@ -265,18 +306,21 @@ e.g. for GPU 2 use:</p>
 <p>Launches optimizer hyperparameter optimization with 5 parallel jobs.</p>
 <h1 id="early-stopping">Early stopping</h1>
 <p>To stop training early when a validation metric does not improve, you can use lightning's early stopping callback:</p>
-<pre><code>hannah-train early_stopping=default
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train early_stopping=default
+</code></pre></div>
+
 <h1 id="showing-graphical-results">Showing graphical results</h1>
 <p>All experiments are logged to tensorboard: To visualize the results use:</p>
-<pre><code>tensorboard --logdir trained_models
-</code></pre>
+<div class="codehilite"><pre><span></span><code>tensorboard --logdir trained_models
+</code></pre></div>
+
 <p>or a subdirectory of trained models if only one experiment or model is of interest.</p>
 <h1 id="pre-commit-hooks">Pre commit hooks</h1>
 <p>This project uses precommit hooks for auto formatting and static code analysis.
 To enable precommit hooks run the following command in a <code>poetry shell</code>.</p>
-<pre><code> pre-commit install
-</code></pre>
+<div class="codehilite"><pre><span></span><code> pre-commit install
+</code></pre></div>
+
 <p>Try to follow <a href="https://pep8.org/#naming-conventions">pep8</a> naming conventions and the rest of pep8 to the
 best of your abilities.</p>
 <h1 id="automatic-mirroring">Automatic Mirroring</h1>
@@ -331,5 +375,5 @@ best of your abilities.</p>
 
 <!--
 MkDocs version : 1.5.3
-Build Date UTC : 2023-10-17 15:45:08.803109+00:00
+Build Date UTC : 2023-10-25 14:34:00.418412+00:00
 -->

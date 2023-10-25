@@ -72,14 +72,27 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -153,8 +166,9 @@ limitations under the License.
 <h2 id="k-means">k-means</h2>
 <p><span class="arithmatex">\(k\)</span>-means clustering can be applied to the weights of all layers at the end of a training epoch. Each time, for a defined number of <span class="arithmatex">\(k\)</span> clusters per layer the centroids are identified per layer. Next, each weight is replaced with the value of the closest cluster center. The zero is not clustered to preserve the amount of zeros induced by pruning. This results in a total of <span class="arithmatex">\(k+1\)</span> distinct values. Additionally, at the end of the fitting process, clustering is applied. Afterwards, the weights are not further altered. After completing the training process, every value of each layer of the trained neural network should be equal to one cluster center or zero.</p>
 <p>Clustering (in combination with pruning and SVD-based compression) can be invoked by:</p>
-<pre><code>hannah-train  compression=full
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train  compression=full
+</code></pre></div>
+
 <dl>
 <dt>The default <code>amount</code> of clusters is</dt>
 <dd>15</dd>

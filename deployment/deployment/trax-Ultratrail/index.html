@@ -68,14 +68,27 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -156,8 +169,9 @@ limitations under the License.
 <li>Set environment variable <code>TEDA_HOME</code> to path of teda checkout</li>
 </ol>
 <p>To run it use:</p>
-<pre><code> hannah-train compress=fp_8_8_8 backend=trax_ut
-</code></pre>
+<div class="codehilite"><pre><span></span><code> hannah-train compress=fp_8_8_8 backend=trax_ut
+</code></pre></div>
+
 <h2 id="configuration">Configuration</h2>
 <dl>
 <dt>teda_dir</dt>

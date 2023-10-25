@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../../img/favicon.ico" />
+    <title>Search Spaces - HANNAH</title>
+    <link rel="stylesheet" href="../../../css/theme.css" />
+    <link rel="stylesheet" href="../../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Search Spaces";
+        var mkdocs_page_input_path = "neural-architecture-search/nas/search_spaces.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../../.." class="icon icon-home"> HANNAH
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../../fallacies/">Fallacies and Pitfalls</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../../publications/">Publications</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Configuration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../configuration/configuration/overview/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../configuration/configuration/multi_gpu/">Multi-GPU support</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Compression</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/quantization/">Quantization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/pruning/">Pruning</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/clustering/">Clustering</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/knowledge_distillation/">Knowledge Distillation</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Optimization</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="./">Search Spaces</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#basic-building-blocks">Basic Building Blocks</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#ops-tensors">Ops &amp; Tensors</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#parametrization-expressions">Parametrization &amp; Expressions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#graphs-and-hierarchy">Graphs and Hierarchy</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#blocks">Blocks</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#scopes">Scopes</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#choice-ops">Choice Ops</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#custom-ops">Custom Ops</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#executor">Executor</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../eval/">Evaluating Results</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Deployment</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/torchmobile/">Torch Mobile</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/trax-Ultratrail/">T-Rax Ultratrail</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/tvm/">TVM</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Evaluation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../evaluation/eval/">Evaluation</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../development/devel/overview/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../development/devel/debugging/">Debugging</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../development/devel/profiling/">Profiling</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../development/devel/api/">API Documentation</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../..">HANNAH</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Neural Architecture Search</li>
+      <li class="breadcrumb-item active">Search Spaces</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The search spaces in HANNAH are currently under construction. If you run into bugs, please contact us.</p>
+</div>
+<h1 id="search-spaces">Search Spaces</h1>
+<p>Search spaces in HANNAH are directed graphs (DAGs) where the nodes are <strong>Ops</strong> or <strong>Tensors</strong> and the edges indicate data movement.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Search spaces are not executable themselves but need an <a href="#executor">Executor</a> which uses the current parametrization state to
+build a <code>forward</code>.</p>
+</div>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.operators</span> <span class="kn">import</span> <span class="n">Conv2d</span>
+</code></pre></div>
+
+<p><img alt="Graph illustration" src="../../../assets/graph.jpg" /></p>
+<h2 id="basic-building-blocks">Basic Building Blocks</h2>
+<h3 id="ops-tensors">Ops &amp; Tensors</h3>
+<p><strong>Op</strong> nodes represent the operators used in the networks of the search space. Their basic syntax is</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># usage</span>
+<span class="n">var_name</span> <span class="o">=</span> <span class="n">Operator</span><span class="p">(</span><span class="n">param0</span><span class="o">=</span><span class="n">val0</span><span class="p">,</span> <span class="n">param1</span><span class="o">=</span><span class="n">val1</span><span class="p">,</span> <span class="o">...</span><span class="p">)(</span><span class="o">*</span><span class="n">operands</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Tensor</strong> nodes indicate the presence of data in the graph. They do not themselves contain actual values when 
+the search space graph is defined (the actual data is managed by the <a href="#executor">Executor</a>). The tensor node 
+defines attributes that the data has at this point in the graph (e.g., shape, axis names, datatypes, ...). </p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.operators</span> <span class="kn">import</span> <span class="n">Conv2d</span>
+<span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.op</span> <span class="kn">import</span> <span class="n">Tensor</span>
+
+<span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;W&quot;</span><span class="p">))</span>
+<span class="n">weight</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;O&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;kH&quot;</span><span class="p">,</span> <span class="s2">&quot;kW&quot;</span><span class="p">))</span>
+
+<span class="n">conv</span> <span class="o">=</span> <span class="n">Conv2d</span><span class="p">(</span><span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>   <span class="c1"># Define operator and parametrization</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">conv</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>           <span class="c1"># Define/create/extend graph</span>
+<span class="n">graph</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>Conv2d(Conv2d_0)
+</code></pre></div>
+
+<p>A set of basic operators is implemented in HANNAH, among them </p>
+<ul>
+<li>Convolution (1D, 2D)</li>
+<li>Linear</li>
+<li>BatchNorm</li>
+<li>Relu</li>
+<li>Add</li>
+</ul>
+<p>and more operators will be added in the future. It is also easy to 
+define a new operator, see <a href="#custom-ops">Custom Ops</a>. </p>
+<h2 id="parametrization-expressions">Parametrization &amp; Expressions</h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For more information about parametrization and expressions, see <a href="../parametrization/">Parametrization</a>.</p>
+</div>
+<p>To build a search space it is not sufficient to feed scalar values to operator parameters. Instead, one can use 
+<em>parameters</em>. </p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">hannah.nas.parameters.parameters</span> <span class="kn">import</span> <span class="n">CategoricalParameter</span><span class="p">,</span> <span class="n">IntScalarParameter</span>
+
+<span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;W&quot;</span><span class="p">))</span>
+<span class="n">weight</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">IntScalarParameter</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;out_channels&#39;</span><span class="p">),</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;O&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;kH&quot;</span><span class="p">,</span> <span class="s2">&quot;kW&quot;</span><span class="p">))</span>
+
+<span class="c1"># a search space with stride 1 and stride 2 convolutions</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">Conv2d</span><span class="p">(</span><span class="n">stride</span><span class="o">=</span><span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;stride&#39;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]))(</span><span class="nb">input</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>
+<span class="n">graph</span><span class="o">.</span><span class="n">parametrization</span><span class="p">(</span><span class="n">flatten</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>{&#39;Conv2d_0.weight.out_channels&#39;: IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
+ None: CategoricalParameter(rng = Generator(PCG64), name = stride, id = None, choices = [1, 2], current_value = 1)}
+</code></pre></div>
+
+<p>As futher explained in <a href="../parametrization/">Parametrization</a>, parameters are <em>expressions</em> and can be combined to more complex <em>expressions</em>,
+encoding properties of the search space symbolically. One common use-case is symbolically expressing shapes. Consider for example the following:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">in_channel</span> <span class="o">=</span> <span class="mi">3</span> 
+<span class="n">kernel_size</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span>
+               <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">in_channel</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+               <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">))</span>
+
+<span class="n">weight_0</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span> 
+                  <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">IntScalarParameter</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;out_channels&#39;</span><span class="p">),</span> <span class="n">in_channel</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">),</span> 
+                  <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;O&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;kH&quot;</span><span class="p">,</span> <span class="s2">&quot;kW&quot;</span><span class="p">))</span>
+<span class="n">conv_0</span> <span class="o">=</span> <span class="n">Conv2d</span><span class="p">(</span><span class="n">stride</span><span class="o">=</span><span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;stride&#39;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]))(</span><span class="nb">input</span><span class="p">,</span> <span class="n">weight_0</span><span class="p">)</span>
+</code></pre></div>
+
+<p>How can we know the output shape of <code>conv_0</code>, e.g., to put it into the weight tensor of a following convolution, without knowing what value 
+the <code>out_channel</code> parameter has? 
+--&gt; Each node has a method <code>.shape()</code> which returns the shape as an expression and can be used interchangeably with actual values. Those expressions
+are then only evaluated at sampling and during the forward. </p>
+<div class="codehilite"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Input shape: &quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Weight shape: &quot;</span><span class="p">,</span> <span class="n">weight_0</span><span class="o">.</span><span class="n">shape</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Convolution output shape:&quot;</span><span class="p">,</span> <span class="n">conv_0</span><span class="o">.</span><span class="n">shape</span><span class="p">())</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>Input shape:  (1, 3, 32, 32)
+Weight shape:  (IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8), 3, 1, 1)
+Convolution output shape: (1, IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8), &lt;hannah.nas.expressions.arithmetic.Floor object at 0x7ff93a6ce8c0&gt;, &lt;hannah.nas.expressions.arithmetic.Floor object at 0x7ff93a6ce7a0&gt;)
+</code></pre></div>
+
+<p>The <code>lazy</code> keyword can be used to evaluate values which <em>might</em> be parameters (but could also be <code>int</code> or else).</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.lazy</span> <span class="kn">import</span> <span class="n">lazy</span>
+
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Input shape: &quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">lazy</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">()])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Weight shape: &quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">lazy</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">weight_0</span><span class="o">.</span><span class="n">shape</span><span class="p">()])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Convolution output shape:&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">lazy</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">conv_0</span><span class="o">.</span><span class="n">shape</span><span class="p">()])</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>Input shape:  [1, 3, 32, 32]
+Weight shape:  [8, 3, 1, 1]
+Convolution output shape: [1, 8, 16, 16]
+</code></pre></div>
+
+<p>When defining an operator, one also has to define a <code>shape</code> function (the default shape function is identity, i.e., <code>output_shape == input_shape</code>). Tensors return their own shape. </p>
+<h2 id="graphs-and-hierarchy">Graphs and Hierarchy</h2>
+<p>As seen in the simple examples above, we can chain op and tensor nodes together to create graphs and use parameters to span search spaces.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.operators</span> <span class="kn">import</span> <span class="n">Relu</span>
+
+<span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span>
+               <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+               <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">))</span>
+
+<span class="n">weight_0</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">IntScalarParameter</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;out_channels&#39;</span><span class="p">),</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;O&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;kH&quot;</span><span class="p">,</span> <span class="s2">&quot;kW&quot;</span><span class="p">))</span>
+
+<span class="n">conv_0</span> <span class="o">=</span> <span class="n">Conv2d</span><span class="p">(</span><span class="n">stride</span><span class="o">=</span><span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;stride&#39;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]))(</span><span class="nb">input</span><span class="p">,</span> <span class="n">weight_0</span><span class="p">)</span>
+<span class="n">relu_0</span> <span class="o">=</span> <span class="n">Relu</span><span class="p">()(</span><span class="n">conv_0</span><span class="p">)</span>
+
+<span class="n">weight_1</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">IntScalarParameter</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;out_channels&#39;</span><span class="p">),</span> <span class="n">conv_0</span><span class="o">.</span><span class="n">shape</span><span class="p">()[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;O&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;kH&quot;</span><span class="p">,</span> <span class="s2">&quot;kW&quot;</span><span class="p">))</span>
+<span class="n">conv_1</span> <span class="o">=</span> <span class="n">Conv2d</span><span class="p">(</span><span class="n">stride</span><span class="o">=</span><span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;stride&#39;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]))(</span><span class="n">relu_0</span><span class="p">,</span> <span class="n">weight_1</span><span class="p">)</span>
+<span class="n">relu_1</span> <span class="o">=</span> <span class="n">Relu</span><span class="p">()(</span><span class="n">conv_1</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="n">relu_1</span><span class="o">.</span><span class="n">parametrization</span><span class="p">(</span><span class="n">flatten</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>{&#39;Conv2d_1.weight.out_channels&#39;: IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_1.weight.out_channels, min = 32, max = 64, step_size = 1, current_value = 32),
+ &#39;Conv2d_0.weight.out_channels&#39;: IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
+ &#39;Conv2d_0.stride&#39;: CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_0.stride, choices = [1, 2], current_value = 2),
+ &#39;Conv2d_1.stride&#39;: CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_1.stride, choices = [1, 2], current_value = 2)}
+</code></pre></div>
+
+<p>Nodes have <em>operands</em> for backwards traversal and <em>users</em> for forward traversal.
+With helper functions like <code>get_nodes</code> one can iterate through all graph nodes.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.op</span> <span class="kn">import</span> <span class="n">get_nodes</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Relu Operands: &quot;</span><span class="p">,</span> <span class="n">relu_1</span><span class="o">.</span><span class="n">operands</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Conv Users: &quot;</span><span class="p">,</span> <span class="n">relu_1</span><span class="o">.</span><span class="n">operands</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Nodes:&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">get_nodes</span><span class="p">(</span><span class="n">relu_1</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Node:&#39;</span><span class="p">,</span> <span class="n">node</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Operands: &#39;</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">operands</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>Relu Operands:  [Conv2d(Conv2d_1)]
+Conv Users:  [Relu(Relu_1)]
+
+Nodes:
+Node: Relu(Relu_1)
+    Operands:  [Conv2d(Conv2d_1)]
+Node: Conv2d(Conv2d_1)
+    Operands:  [Relu(Relu_0), Tensor(Conv2d_1.weight)]
+Node: Tensor(Conv2d_1.weight)
+    Operands:  []
+Node: Relu(Relu_0)
+    Operands:  [Conv2d(Conv2d_0)]
+Node: Conv2d(Conv2d_0)
+    Operands:  [Tensor(input), Tensor(Conv2d_0.weight)]
+Node: Tensor(Conv2d_0.weight)
+    Operands:  []
+Node: Tensor(input)
+    Operands:  []
+</code></pre></div>
+
+<h3 id="blocks">Blocks</h3>
+<p>Creating large graphs with a lot of operators and tensors manually can get tedious and convoluted. Instead, we can define search space graphs in a hierarchical manner by encapsulating them in functions:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">conv_relu</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">stride</span><span class="p">):</span>
+    <span class="n">in_channels</span> <span class="o">=</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span>
+                    <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">out_channels</span><span class="p">,</span> <span class="n">in_channels</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">),</span>
+                    <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="s1">&#39;I&#39;</span><span class="p">,</span> <span class="s1">&#39;kH&#39;</span><span class="p">,</span> <span class="s1">&#39;kW&#39;</span><span class="p">),</span>
+                    <span class="n">grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">conv</span> <span class="o">=</span> <span class="n">Conv2d</span><span class="p">(</span><span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">)(</span><span class="nb">input</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>
+    <span class="n">relu</span> <span class="o">=</span> <span class="n">Relu</span><span class="p">()(</span><span class="n">conv</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">relu</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span>
+               <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+               <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">))</span>
+
+<span class="n">kernel_size</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;kernel_size&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">stride</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;stride&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">out_channels</span> <span class="o">=</span> <span class="n">IntScalarParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;out_channels&quot;</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">)</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">get_nodes</span><span class="p">(</span><span class="n">net</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>Relu(Relu_1)
+Conv2d(Conv2d_1)
+Tensor(Conv2d_1.weight)
+Relu(Relu_0)
+Conv2d(Conv2d_0)
+Tensor(Conv2d_0.weight)
+Tensor(input)
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">parametrization</span><span class="p">(</span><span class="n">flatten</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>{&#39;Conv2d_0.weight.kernel_size&#39;: CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = Conv2d_0.weight.kernel_size, choices = [1, 3, 5], current_value = 5),
+ &#39;Conv2d_0.weight.out_channels&#39;: IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
+ &#39;Conv2d_0.stride&#39;: CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_0.stride, choices = [1, 2], current_value = 1)}
+</code></pre></div>
+
+<p>Note, how there is just one set of parameters. If defined this way, both blocks share their parameters. To define seperate parameters one can use <code>param.new()</code></p>
+<div class="codehilite"><pre><span></span><code><span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span>
+               <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+               <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">))</span>
+
+<span class="n">kernel_size</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;kernel_size&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">stride</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;stride&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">out_channels</span> <span class="o">=</span> <span class="n">IntScalarParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;out_channels&quot;</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+
+<span class="n">net</span><span class="o">.</span><span class="n">parametrization</span><span class="p">(</span><span class="n">flatten</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>{&#39;Conv2d_1.weight.kernel_size&#39;: CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = Conv2d_1.weight.kernel_size, choices = [1, 3, 5], current_value = 3),
+ &#39;Conv2d_1.weight.out_channels&#39;: IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_1.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
+ &#39;Conv2d_0.weight.kernel_size&#39;: CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = Conv2d_0.weight.kernel_size, choices = [1, 3, 5], current_value = 3),
+ &#39;Conv2d_0.weight.out_channels&#39;: IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
+ &#39;Conv2d_0.stride&#39;: CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_0.stride, choices = [1, 2], current_value = 2),
+ &#39;Conv2d_1.stride&#39;: CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_1.stride, choices = [1, 2], current_value = 2)}
+</code></pre></div>
+
+<p>These function blocks can be nested as desired.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">block</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="n">kernel_size</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;kernel_size&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+    <span class="n">stride</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;stride&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+    <span class="n">out_channels</span> <span class="o">=</span> <span class="n">IntScalarParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;out_channels&quot;</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">net</span>
+
+<span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span>
+               <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+               <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">))</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">net</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">get_nodes</span><span class="p">(</span><span class="n">net</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>Relu(Relu_5)
+Conv2d(Conv2d_5)
+Tensor(Conv2d_5.weight)
+Relu(Relu_4)
+Conv2d(Conv2d_4)
+Tensor(Conv2d_4.weight)
+Relu(Relu_3)
+Conv2d(Conv2d_3)
+Tensor(Conv2d_3.weight)
+Relu(Relu_2)
+Conv2d(Conv2d_2)
+Tensor(Conv2d_2.weight)
+Relu(Relu_1)
+Conv2d(Conv2d_1)
+Tensor(Conv2d_1.weight)
+Relu(Relu_0)
+Conv2d(Conv2d_0)
+Tensor(Conv2d_0.weight)
+Tensor(input)
+</code></pre></div>
+
+<h3 id="scopes">Scopes</h3>
+<p>As seen above, while the <em>definition</em> of the graph is made in a hierarchical manner, the actual graph and its node are "flat" and do not have any inherent hierarchy. To make the graph more clear and readable one can use <strong>scopes</strong> with the <code>@scope</code> decorator for blocks. Note that <code>@scope</code> does not have any effect on the inherent structure of the graph but only affects the node <code>id</code>s.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.op</span> <span class="kn">import</span> <span class="n">scope</span>
+
+
+<span class="nd">@scope</span>
+<span class="k">def</span> <span class="nf">conv_relu</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">stride</span><span class="p">):</span>
+    <span class="n">in_channels</span> <span class="o">=</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span>
+                    <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">out_channels</span><span class="p">,</span> <span class="n">in_channels</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">),</span>
+                    <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="s1">&#39;I&#39;</span><span class="p">,</span> <span class="s1">&#39;kH&#39;</span><span class="p">,</span> <span class="s1">&#39;kW&#39;</span><span class="p">),</span>
+                    <span class="n">grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">conv</span> <span class="o">=</span> <span class="n">Conv2d</span><span class="p">(</span><span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">)(</span><span class="nb">input</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>
+    <span class="n">relu</span> <span class="o">=</span> <span class="n">Relu</span><span class="p">()(</span><span class="n">conv</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">relu</span>
+
+<span class="nd">@scope</span>
+<span class="k">def</span> <span class="nf">block</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="n">kernel_size</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;kernel_size&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+    <span class="n">stride</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;stride&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+    <span class="n">out_channels</span> <span class="o">=</span> <span class="n">IntScalarParameter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;out_channels&quot;</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">net</span>
+
+<span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span>
+               <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+               <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">))</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">net</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">get_nodes</span><span class="p">(</span><span class="n">net</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>Relu(block_1.conv_relu_2.Relu_0)
+Conv2d(block_1.conv_relu_2.Conv2d_0)
+Tensor(block_1.conv_relu_2.Conv2d_0.weight)
+Relu(block_1.conv_relu_1.Relu_0)
+Conv2d(block_1.conv_relu_1.Conv2d_0)
+Tensor(block_1.conv_relu_1.Conv2d_0.weight)
+Relu(block_1.conv_relu_0.Relu_0)
+Conv2d(block_1.conv_relu_0.Conv2d_0)
+Tensor(block_1.conv_relu_0.Conv2d_0.weight)
+Relu(block_0.conv_relu_2.Relu_0)
+Conv2d(block_0.conv_relu_2.Conv2d_0)
+Tensor(block_0.conv_relu_2.Conv2d_0.weight)
+Relu(block_0.conv_relu_1.Relu_0)
+Conv2d(block_0.conv_relu_1.Conv2d_0)
+Tensor(block_0.conv_relu_1.Conv2d_0.weight)
+Relu(block_0.conv_relu_0.Relu_0)
+Conv2d(block_0.conv_relu_0.Conv2d_0)
+Tensor(block_0.conv_relu_0.Conv2d_0.weight)
+Tensor(input)
+</code></pre></div>
+
+<h2 id="choice-ops">Choice Ops</h2>
+<p>A choice op is a special node kind that allows to have multiple paths in the graph that exclude each other (or have other specialized behaviour). </p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.operators</span> <span class="kn">import</span> <span class="n">Identity</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.op</span> <span class="kn">import</span> <span class="n">ChoiceOp</span>
+
+<span class="nd">@scope</span>
+<span class="k">def</span> <span class="nf">choice_block</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="n">kernel_size</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;kernel_size&#39;</span><span class="p">)</span>
+    <span class="n">out_channels</span> <span class="o">=</span> <span class="n">IntScalarParameter</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;out_channels&#39;</span><span class="p">)</span>
+    <span class="n">stride</span> <span class="o">=</span> <span class="n">CategoricalParameter</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;stride&#39;</span><span class="p">)</span>
+
+    <span class="n">identity</span> <span class="o">=</span> <span class="n">Identity</span><span class="p">()</span>
+    <span class="n">optional_conv</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">conv_relu</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">ChoiceOp</span><span class="p">(</span><span class="n">identity</span><span class="p">,</span> <span class="n">optional_conv</span><span class="p">)(</span><span class="nb">input</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">net</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">))</span>
+<span class="n">conv</span> <span class="o">=</span> <span class="n">conv_relu</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="o">.</span><span class="n">new</span><span class="p">(),</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="o">.</span><span class="n">new</span><span class="p">())</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">choice_block</span><span class="p">(</span><span class="n">conv</span><span class="p">)</span>
+
+<span class="n">net</span><span class="o">.</span><span class="n">parametrization</span><span class="p">(</span><span class="n">flatten</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>{&#39;choice_block_0.ChoiceOp_0.choice&#39;: IntScalarParameter(rng = Generator(PCG64), name = choice, id = choice_block_0.ChoiceOp_0.choice, min = 0, max = 1, step_size = 1, current_value = 0),
+ &#39;choice_block_0.conv_relu_1.Conv2d_0.stride&#39;: CategoricalParameter(rng = Generator(PCG64), name = stride, id = choice_block_0.conv_relu_1.Conv2d_0.stride, choices = [1, 2], current_value = 2),
+ &#39;choice_block_0.conv_relu_1.Conv2d_0.weight.kernel_size&#39;: CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = choice_block_0.conv_relu_1.Conv2d_0.weight.kernel_size, choices = [1, 3, 5], current_value = 5),
+ &#39;choice_block_0.conv_relu_1.Conv2d_0.weight.out_channels&#39;: IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = choice_block_0.conv_relu_1.Conv2d_0.weight.out_channels, min = 4, max = 64, step_size = 1, current_value = 4),
+ &#39;conv_relu_0.Conv2d_0.stride&#39;: CategoricalParameter(rng = Generator(PCG64), name = stride, id = conv_relu_0.Conv2d_0.stride, choices = [1, 2], current_value = 2),
+ &#39;conv_relu_0.Conv2d_0.weight.kernel_size&#39;: CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = conv_relu_0.Conv2d_0.weight.kernel_size, choices = [1, 3, 5], current_value = 3),
+ &#39;conv_relu_0.Conv2d_0.weight.out_channels&#39;: IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = conv_relu_0.Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8)}
+</code></pre></div>
+
+<p><img alt="Choice node" src="../../../assets/choice_node.jpg" /></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When defining options for a choice node, one can either use ops directly (see <code>Identity()</code> above) or use block functions (<code>conv_relu</code>). For block functions, one has to use <code>functools.partial</code> to enable 
+the choice node to perform the respective integration in the graph.  </p>
+</div>
+<p>During execution, the choice node can be leveraged to define the behaviour (e.g., select one and only one path, execute all paths and return a parametrized sum for differential NAS, ...). Choice nodes can, for example, be used to search over different operator types, different operator patterns, or to implement dynamic depth/a variable amount of layers/blocks.  </p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">dynamic_depth</span><span class="p">(</span><span class="o">*</span><span class="n">exits</span><span class="p">,</span> <span class="n">switch</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">ChoiceOp</span><span class="p">(</span><span class="o">*</span><span class="n">exits</span><span class="p">,</span> <span class="n">switch</span><span class="o">=</span><span class="n">switch</span><span class="p">)()</span>
+</code></pre></div>
+
+<h2 id="custom-ops">Custom Ops</h2>
+<p>To define custom operators, one can inherit from the <code>Op</code> class. Then, one can override the <code>__call__(self, *operands)</code> class to perform specific actions, e.g., saving certain parameters of the operands as fields of the operator instance that is returned. Don't forget to call <code>super().__call__(*operands)</code>, which performs the integration of the new operator instance into the graph. </p>
+<p>Then, one has to provide a <code>_forward_implementation(self, *args)</code>, which defines the computation that the operator executes. </p>
+<p>Lastly, a <code>shape_fun(self)</code> defines the output shape of the operator.</p>
+<h2 id="executor">Executor</h2>
+<p>The search space graphs are not themselves executable. For that one needs an <code>Executor</code>. The <code>BasicExecutor</code> analyzes the graph to find dependencies and a valid node order (e.g., to execute the results of operands first before they are added in an <code>Add</code> operation) and builds a <code>forward</code> function. It also registers torch parameters and buffers for training.The executor should be usable as a normal <code>torch.nn.Module</code>. One can define custom executors, e.g., for weight sharing NAS or differential NAS. </p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">hannah.nas.functional_operators.executor</span> <span class="kn">import</span> <span class="n">BasicExecutor</span>
+
+
+<span class="nb">input</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;input&#39;</span><span class="p">,</span>
+               <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+               <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">))</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">net</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">BasicExecutor</span><span class="p">(</span><span class="n">net</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">())</span>
+<span class="n">model</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>tensor([[[[0.0000, 0.0000, 0.0000, 0.0000],
+          [0.0000, 0.0000, 0.0000, 0.0000],
+          [0.0000, 0.0000, 0.0000, 0.0000],
+          [0.0000, 0.0000, 0.0000, 0.0000]],
+
+         [[0.0255, 0.0000, 0.0000, 0.0000],
+          [0.0000, 0.0152, 0.0000, 0.0000],
+          [0.0000, 0.0000, 0.0898, 0.0000],
+          [0.1132, 0.0894, 0.0094, 0.0138]],
+
+         [[0.0000, 0.0000, 0.0365, 0.0000],
+          [0.0000, 0.1532, 0.0000, 0.2529],
+          [0.0000, 0.0859, 0.0396, 0.0000],
+          [0.0000, 0.2311, 0.0757, 0.0000]],
+
+         [[0.0000, 0.1285, 0.1754, 0.0000],
+          [0.1788, 0.1729, 0.1973, 0.1036],
+          [0.1823, 0.2994, 0.2293, 0.2580],
+          [0.0554, 0.2454, 0.1355, 0.3018]],
+
+         [[0.0000, 0.0234, 0.0000, 0.0000],
+          [0.0725, 0.0212, 0.0615, 0.0960],
+          [0.1040, 0.0960, 0.1613, 0.0927],
+          [0.1025, 0.0846, 0.0000, 0.0424]],
+
+         [[0.0000, 0.0000, 0.0672, 0.0818],
+          [0.0000, 0.1420, 0.0404, 0.0326],
+          [0.0000, 0.0000, 0.0000, 0.1140],
+          [0.0000, 0.1518, 0.1521, 0.2088]],
+
+         [[0.0000, 0.0995, 0.1362, 0.0000],
+          [0.0000, 0.1206, 0.0000, 0.0000],
+          [0.0000, 0.1001, 0.0000, 0.0000],
+          [0.0000, 0.0000, 0.0000, 0.0435]],
+
+         [[0.0000, 0.0000, 0.0000, 0.0245],
+          [0.0000, 0.0938, 0.0000, 0.0763],
+          [0.0000, 0.0000, 0.0000, 0.0000],
+          [0.0000, 0.0000, 0.0000, 0.0000]]]], grad_fn=&lt;ReluBackward0&gt;)
+</code></pre></div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../usage/" class="btn btn-neutral float-left" title="Usage"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../parametrization/" class="btn btn-neutral float-right" title="Parametrization">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../usage/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../parametrization/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../../..";</script>
+    <script src="../../../js/theme_extra.js"></script>
+    <script src="../../../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

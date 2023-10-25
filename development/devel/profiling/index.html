@@ -68,14 +68,27 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -156,16 +169,19 @@ limitations under the License.
 <h1 id="profiling-tools">Profiling Tools</h1>
 <p>To debug training inefficiencies we support the following profiling tools:</p>
 <h2 id="pytorch-autograd-profiler">pytorch autograd profiler:</h2>
-<pre><code> hannah-train profiler=simple trainer.max_epochs=1 profiler=pytorch
-</code></pre>
+<div class="codehilite"><pre><span></span><code> hannah-train profiler=simple trainer.max_epochs=1 profiler=pytorch
+</code></pre></div>
+
 <p>By default profiles are logged to the trainings output directory and can be visualized using tensorboard. For the example run use:</p>
-<pre><code> tensorboard --logdir trained_models/test/tc-res8
-</code></pre>
+<div class="codehilite"><pre><span></span><code> tensorboard --logdir trained_models/test/tc-res8
+</code></pre></div>
+
 <h2 id="simple-profiler">Simple Profiler:</h2>
-<pre><code> hannah-train profiler=simple trainer.max_epochs=1 profiler=simple
-</code></pre>
+<div class="codehilite"><pre><span></span><code> hannah-train profiler=simple trainer.max_epochs=1 profiler=simple
+</code></pre></div>
+
 <p>Generates a summary of the durations of the individual training steps:</p>
-<pre><code> Action                                 |  Mean duration (s)    |Num calls          |  Total time (s)   |  Percentage %     |
+<div class="codehilite"><pre><span></span><code> Action                                 |  Mean duration (s)    |Num calls          |  Total time (s)   |  Percentage %     |
  ------------------------------------------------------------------------------------------------------------------------------------
  Total                                  |  -                |_                  |  29.42            |  100 %            |
  ------------------------------------------------------------------------------------------------------------------------------------
@@ -202,39 +218,41 @@ limitations under the License.
  on_fit_start                           |  2.0443e-05       |1                  |  2.0443e-05       |  6.9486e-05       |
  on_train_epoch_start                   |  1.2379e-05       |1                  |  1.2379e-05       |  4.2077e-05       |
  on_before_accelerator_backend_setup    |  1.1862e-05       |1                  |  1.1862e-05       |  4.0319e-05       |
-</code></pre>
+</code></pre></div>
+
 <h2 id="advanced-profiler">Advanced Profiler</h2>
-<pre><code>hannah-train profiler=simple trainer.max_epochs=1 profiler=advanced
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train profiler=simple trainer.max_epochs=1 profiler=advanced
+</code></pre></div>
+
 <p>Creates python level performance summaries for the individual Training steps:</p>
-<pre><code> Profile stats for: optimizer_step_and_closure_0
- 8064 function calls in 8.897 seconds
+<div class="codehilite"><pre><span></span><code> <span class="nv">Profile</span> <span class="nv">stats</span> <span class="k">for</span>: <span class="nv">optimizer_step_and_closure_0</span>
+ <span class="mi">8064</span> <span class="nv">function</span> <span class="nv">calls</span> <span class="nv">in</span> <span class="mi">8</span>.<span class="mi">897</span> <span class="nv">seconds</span>
 
- Ordered by: cumulative time
- List reduced from 25 to 20 due to restriction &lt;20&gt;
+ <span class="nv">Ordered</span> <span class="nv">by</span>: <span class="nv">cumulative</span> <span class="nv">time</span>
+ <span class="nv">List</span> <span class="nv">reduced</span> <span class="nv">from</span> <span class="mi">25</span> <span class="nv">to</span> <span class="mi">20</span> <span class="nv">due</span> <span class="nv">to</span> <span class="nv">restriction</span> <span class="o">&lt;</span><span class="mi">20</span><span class="o">&gt;</span>
 
- ncalls  tottime  percall  cumtime  percall filename:lineno(function)
- 288    0.001    0.000    8.897    0.031 accelerator.py:265(optimizer_step)
- 288    0.000    0.000    8.896    0.031 accelerator.py:282(run_optimizer_step)
- 288    0.000    0.000    8.896    0.031 training_type_plugin.py:159(optimizer_step)
- 288    0.000    0.000    8.896    0.031 grad_mode.py:12(decorate_context)
- 288    0.000    0.000    8.894    0.031 adamw.py:54(step)
- 288    0.000    0.000    8.893    0.031 training_loop.py:648(train_step_and_backward_closure)
- 288    0.000    0.000    8.893    0.031 training_loop.py:737(training_step_and_backward)
- 288    0.000    0.000    8.892    0.031 contextlib.py:108(__enter__)
- 288    0.000    0.000    8.892    0.031 {built-in method builtins.next}
- 288    0.000    0.000    8.892    0.031 profilers.py:62(profile)
- 288    0.000    0.000    8.892    0.031 profilers.py:250(start)
- 288    8.892    0.031    8.892    0.031 {method 'enable' of '_lsprof.Profiler' objects}
- 288    0.000    0.000    0.001    0.000 grad_mode.py:65(__enter__)
- 288    0.000    0.000    0.000    0.000 accelerator.py:104(lightning_module)
- 288    0.000    0.000    0.000    0.000 contextlib.py:238(helper)
- 288    0.000    0.000    0.000    0.000 training_type_plugin.py:91(lightning_module)
- 288    0.000    0.000    0.000    0.000 grad_mode.py:104(__enter__)
- 288    0.000    0.000    0.000    0.000 contextlib.py:82(__init__)
- 576    0.000    0.000    0.000    0.000 {built-in method torch._C.is_grad_enabled}
- 288    0.000    0.000    0.000    0.000 base.py:82(unwrap_lightning_module)
-</code></pre>
+ <span class="nv">ncalls</span>  <span class="nv">tottime</span>  <span class="nv">percall</span>  <span class="nv">cumtime</span>  <span class="nv">percall</span> <span class="nv">filename</span>:<span class="nv">lineno</span><span class="ss">(</span><span class="nv">function</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">001</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">897</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">accelerator</span>.<span class="nv">py</span>:<span class="mi">265</span><span class="ss">(</span><span class="nv">optimizer_step</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">896</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">accelerator</span>.<span class="nv">py</span>:<span class="mi">282</span><span class="ss">(</span><span class="nv">run_optimizer_step</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">896</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">training_type_plugin</span>.<span class="nv">py</span>:<span class="mi">159</span><span class="ss">(</span><span class="nv">optimizer_step</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">896</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">grad_mode</span>.<span class="nv">py</span>:<span class="mi">12</span><span class="ss">(</span><span class="nv">decorate_context</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">894</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">adamw</span>.<span class="nv">py</span>:<span class="mi">54</span><span class="ss">(</span><span class="nv">step</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">893</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">training_loop</span>.<span class="nv">py</span>:<span class="mi">648</span><span class="ss">(</span><span class="nv">train_step_and_backward_closure</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">893</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">training_loop</span>.<span class="nv">py</span>:<span class="mi">737</span><span class="ss">(</span><span class="nv">training_step_and_backward</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">892</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">contextlib</span>.<span class="nv">py</span>:<span class="mi">108</span><span class="ss">(</span><span class="nv">__enter__</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">892</span>    <span class="mi">0</span>.<span class="mi">031</span> {<span class="nv">built</span><span class="o">-</span><span class="nv">in</span> <span class="nv">method</span> <span class="nv">builtins</span>.<span class="k">next</span>}
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">892</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">profilers</span>.<span class="nv">py</span>:<span class="mi">62</span><span class="ss">(</span><span class="nv">profile</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">8</span>.<span class="mi">892</span>    <span class="mi">0</span>.<span class="mi">031</span> <span class="nv">profilers</span>.<span class="nv">py</span>:<span class="mi">250</span><span class="ss">(</span><span class="nv">start</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">8</span>.<span class="mi">892</span>    <span class="mi">0</span>.<span class="mi">031</span>    <span class="mi">8</span>.<span class="mi">892</span>    <span class="mi">0</span>.<span class="mi">031</span> {<span class="nv">method</span> <span class="s1">&#39;</span><span class="s">enable</span><span class="s1">&#39;</span> <span class="nv">of</span> <span class="s1">&#39;</span><span class="s">_lsprof.Profiler</span><span class="s1">&#39;</span> <span class="nv">objects</span>}
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">001</span>    <span class="mi">0</span>.<span class="mi">000</span> <span class="nv">grad_mode</span>.<span class="nv">py</span>:<span class="mi">65</span><span class="ss">(</span><span class="nv">__enter__</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span> <span class="nv">accelerator</span>.<span class="nv">py</span>:<span class="mi">104</span><span class="ss">(</span><span class="nv">lightning_module</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span> <span class="nv">contextlib</span>.<span class="nv">py</span>:<span class="mi">238</span><span class="ss">(</span><span class="nv">helper</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span> <span class="nv">training_type_plugin</span>.<span class="nv">py</span>:<span class="mi">91</span><span class="ss">(</span><span class="nv">lightning_module</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span> <span class="nv">grad_mode</span>.<span class="nv">py</span>:<span class="mi">104</span><span class="ss">(</span><span class="nv">__enter__</span><span class="ss">)</span>
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span> <span class="nv">contextlib</span>.<span class="nv">py</span>:<span class="mi">82</span><span class="ss">(</span><span class="nv">__init__</span><span class="ss">)</span>
+ <span class="mi">576</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span> {<span class="nv">built</span><span class="o">-</span><span class="nv">in</span> <span class="nv">method</span> <span class="nv">torch</span>.<span class="nv">_C</span>.<span class="nv">is_grad_enabled</span>}
+ <span class="mi">288</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span>    <span class="mi">0</span>.<span class="mi">000</span> <span class="nv">base</span>.<span class="nv">py</span>:<span class="mi">82</span><span class="ss">(</span><span class="nv">unwrap_lightning_module</span><span class="ss">)</span>
+</code></pre></div>
               
             </div>
           </div><footer>

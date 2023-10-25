@@ -72,14 +72,27 @@
     </li>
     </ul>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -154,8 +167,9 @@ limitations under the License.
 <p>In a CNN, the SVD can be applied to a fully connected layer, corresponding to a matrix <span class="arithmatex">\(A\)</span>, resulting in the composition of two fully connected layers of lower dimension associated to the matrices <span class="arithmatex">\(U'\)</span> and <span class="arithmatex">\(\Sigma' V^{T'}\)</span>. If <span class="arithmatex">\(\Sigma\)</span> is truncated to a rank <span class="arithmatex">\(r=k\)</span>, dimensions change to <span class="arithmatex">\(U'\in \mathbb{R}^{m \times k}\)</span>, <span class="arithmatex">\(\Sigma' \in \mathbb{R}^{k \times k}\)</span> and <span class="arithmatex">\(V^{T'}\in \mathbb{R}^{k \times n}\)</span>.
 Therefore, the SVD is applied to all weights of the linear layers, resulting in the decomposition of matrices. Subsequently, the weight matrices of the fully connected layers are compressed with a fixed rank <span class="arithmatex">\(r\)</span>. Afterwards, the model is restructured, resulting in two smaller fully connected layers instead of one larger fully connected layer.</p>
 <p>SVD-based compression (in combination with pruning and clustering) can be invoked by:</p>
-<pre><code>hannah-train  compression=full
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train  compression=full
+</code></pre></div>
+
 <dl>
 <dt>The default <code>rank_compression</code> of SVD is</dt>
 <dd>4</dd>
@@ -167,7 +181,7 @@ The layer's name can be adjusted to add other models.</p>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../clustering/" class="btn btn-neutral float-left" title="Clustering"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../../compresseion/knowledge_distillation/" class="btn btn-neutral float-right" title="Knowledge Distillation">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../knowledge_distillation/" class="btn btn-neutral float-right" title="Knowledge Distillation">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -193,7 +207,7 @@ The layer's name can be adjusted to add other models.</p>
       <span><a href="../clustering/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../../compresseion/knowledge_distillation/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../knowledge_distillation/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

@@ -68,14 +68,27 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/hyperparameter/">Hyperparameter Optimization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../optimization/optimization/nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -164,8 +177,9 @@ limitations under the License.
 <h2 id="code-style">Code Style</h2>
 <p>This project uses pre commit hooks for auto formatting and static code analysis.
 To enable pre commit hooks run the following command in a <code>poetry shell</code>.</p>
-<pre><code> pre-commit install
-</code></pre>
+<div class="codehilite"><pre><span></span><code> pre-commit install
+</code></pre></div>
+
 <h2 id="naming-conventions">Naming Conventions</h2>
 <p>Try to follow (pep8)[https://pep8.org/#naming-conventions] and the rest of pep8 to the
 best of your abilities.</p>
@@ -179,20 +193,22 @@ best of your abilities.</p>
 <p>Try to avoid <code>print</code> for doing outputs whenever possible. Use python module (logging)[https://docs.python.org/3.8/howto/logging.html] instead.</p>
 <p>Default logglevel for informational messages should be <code>logging.info()</code>. If you want to be able to have more finegrained control, use a
 dedicated logger for your module e.g.:</p>
-<pre><code>logger = logging.getLogger('datasets.speech')
+<div class="codehilite"><pre><span></span><code>logger = logging.getLogger(&#39;datasets.speech&#39;)
 ...
 logger.info()
 logger.debug()
-</code></pre>
+</code></pre></div>
+
 <h2 id="testing-ci">Testing / CI</h2>
 <p>Try to provide unit tests for new features, unit tests should be written using <a href="https://docs.pytest.org">pytest</a>. Unit test should be designed to run pretty fast and are run for each push.</p>
 <p>Tests marked with <code>`@pytest.mark.integration</code> are only triggered when <code>--integration</code> is given on the pytest commandline. These tests are only run on pushs to the main branch.</p>
 <h2 id="resolving-merge-conflicts-in-poetrylock">Resolving merge conflicts in <code>poetry.lock</code></h2>
 <p>If you have changed <code>poetry.lock</code> this can result in merge conflicts.</p>
 <p>The easiest way to resolve them is:</p>
-<pre><code>git checkout --theirs poetry.lock
+<div class="codehilite"><pre><span></span><code>git checkout --theirs poetry.lock
 poetry lock --no-update
-</code></pre>
+</code></pre></div>
+
 <p>Try to avoid running <code>poetry update</code> on feature branches.</p>
 <h2 id="branching">Branching</h2>
 <p>We apply the following code branch naming convention. </p>

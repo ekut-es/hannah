@@ -68,7 +68,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/decomposition/">Tensor Decompositions</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compresseion/knowledge_distillation/">Knowledge Distillation</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../compression/compression/knowledge_distillation/">Knowledge Distillation</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Optimization</span></p>
@@ -85,7 +85,20 @@
     </li>
     </ul>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../nas/">Neural Architecture Search</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
@@ -160,56 +173,60 @@ limitations under the License.
 <p>The <a href="https://hydra.cc/docs/next/plugins/optuna_sweeper/">optuna sweeper</a> is installed by default. Sweeper plugins support specifying the
 hyperparameter search space on the commandline. For example the following command optimizes the learning rate and weight decay parameters
 for the default optimizer (<code>adamw</code>):</p>
-<pre><code> hannah-train scheduler.max_lr='interval(0.00001, 0.001)' optimizer.weight_decay='interval(0.00001, 0.001)' hydra/sweeper=optuna hydra/launcher=joblib -m
-</code></pre>
+<div class="codehilite"><pre><span></span><code> hannah-train scheduler.max_lr=&#39;interval(0.00001, 0.001)&#39; optimizer.weight_decay=&#39;interval(0.00001, 0.001)&#39; hydra/sweeper=optuna hydra/launcher=joblib -m
+</code></pre></div>
+
 <p>Parametrization can be given on the commandline as well as using configuration files for a detailed documentation have a look at  <a href="https://hydra.cc/docs/advanced/override_grammar/basic">basic override syntax</a>  and <a href="https://hydra.cc/docs/advanced/override_grammar/extended">extended override syntax</a>.</p>
 <h2 id="optuna-options">Optuna Options</h2>
 <p>The optuna hyperparameter optimizer has the following options.</p>
-<pre><code class="language-bash">hannah-train hydra/sweeper=optuna --cfg hydra -p hydra.sweeper
-# @package hydra.sweeper
+<div class="codehilite"><pre><span></span><code>hannah-train hydra/sweeper<span class="o">=</span>optuna --cfg hydra -p hydra.sweeper
+<span class="c1"># @package hydra.sweeper</span>
 sampler:
   _target_: optuna.samplers.TPESampler
   seed: null
-  consider_prior: true
-  prior_weight: 1.0
-  consider_magic_clip: true
-  consider_endpoints: false
-  n_startup_trials: 10
-  n_ei_candidates: 24
-  multivariate: false
-  warn_independent_sampling: true
+  consider_prior: <span class="nb">true</span>
+  prior_weight: <span class="m">1</span>.0
+  consider_magic_clip: <span class="nb">true</span>
+  consider_endpoints: <span class="nb">false</span>
+  n_startup_trials: <span class="m">10</span>
+  n_ei_candidates: <span class="m">24</span>
+  multivariate: <span class="nb">false</span>
+  warn_independent_sampling: <span class="nb">true</span>
 _target_: hydra_plugins.hydra_optuna_sweeper.optuna_sweeper.OptunaSweeper
 direction: minimize
 storage: null
 study_name: null
-n_trials: 20
-n_jobs: 2
-search_space: {}
-</code></pre>
+n_trials: <span class="m">20</span>
+n_jobs: <span class="m">2</span>
+search_space: <span class="o">{}</span>
+</code></pre></div>
+
 <p>Try especially increasing the number of trials to run <code>n_trials</code>, and if the sweeper options are dependent on each other try enabling multivariate sampling e.g. <code>sampler.multivariate</code>.</p>
 <h2 id="state-persistence">State Persistence</h2>
 <p>If you want to save the optimization results for later analyis you can save them to a relational or redis database by setting
 the <code>study_name</code> and <code>storage</code> options. e.g.:</p>
-<pre><code>hannah-train experiment_id=&quot;test_optuna_resume&quot; hydra/sweeper=optuna hydra.sweeper.study_name='${experiment_id}' hydra.sweeper.storage='sqlite:///${experiment_id}.sqlite'  trainer.max_epochs=15 scheduler.max_lr='interval(0.0001, 0.1)' module.num_workers=4 -m
-</code></pre>
+<div class="codehilite"><pre><span></span><code>hannah-train experiment_id=&quot;test_optuna_resume&quot; hydra/sweeper=optuna hydra.sweeper.study_name=&#39;<span class="cp">${</span><span class="n">experiment_id</span><span class="cp">}</span>&#39; hydra.sweeper.storage=&#39;sqlite:///<span class="cp">${</span><span class="n">experiment_id</span><span class="cp">}</span>.sqlite&#39;  trainer.max_epochs=15 scheduler.max_lr=&#39;interval(0.0001, 0.1)&#39; module.num_workers=4 -m
+</code></pre></div>
+
 <p>The tuning results can then be visualized using the tools from <a href="https://optuna.readthedocs.io/en/stable/search.html?q=visualize&amp;check_keywords=yes&amp;area=default#"><code>optuna.visualize</code></a>:
 A simple example would be:</p>
-<pre><code class="language-python">import optuna
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span> <span class="nn">optuna</span>
 
-storage = &quot;sqlite:///test_optuna_resume.sqlite&quot;
-study_name = &quot;test_optuna_resume&quot;
+<span class="n">storage</span> <span class="o">=</span> <span class="s2">&quot;sqlite:///test_optuna_resume.sqlite&quot;</span>
+<span class="n">study_name</span> <span class="o">=</span> <span class="s2">&quot;test_optuna_resume&quot;</span>
 
-def main():
-    study = optuna.load_study(study_name, storage)
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">study</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">load_study</span><span class="p">(</span><span class="n">study_name</span><span class="p">,</span> <span class="n">storage</span><span class="p">)</span>
 
-    fig = optuna.visualization.plot_optimization_history(study)
-    fig.write_image(&quot;history.png&quot;)
-    fig.write_image(&quot;history.pdf&quot;)
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">visualization</span><span class="o">.</span><span class="n">plot_optimization_history</span><span class="p">(</span><span class="n">study</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">write_image</span><span class="p">(</span><span class="s2">&quot;history.png&quot;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">write_image</span><span class="p">(</span><span class="s2">&quot;history.pdf&quot;</span><span class="p">)</span>
 
 
-if __name__ == '__main__':
-    main()
-</code></pre>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</code></pre></div>
+
 <p>For a slightly extended visualization script have a look at <code>scripts/optuna_visualize_results.py</code> or use <a href="https://github.com/optuna/optuna-dashboard"><code>optuna-dashboard</code></a> for a web based visualization.</p>
 <h2 id="resuming-trials">Resuming Trials</h2>
 <p>An additional benefit of exporting the study state to database is that trials can be somewhat resumed at a later time by just restarting the trial with the same parameters.
@@ -221,8 +238,8 @@ Although this has a view problems:
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../../../compression/compresseion/knowledge_distillation/" class="btn btn-neutral float-left" title="Knowledge Distillation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../nas/" class="btn btn-neutral float-right" title="Neural Architecture Search">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../../../compression/compression/knowledge_distillation/" class="btn btn-neutral float-left" title="Knowledge Distillation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../../neural-architecture-search/nas/legacy/" class="btn btn-neutral float-right" title="NAS (Legacy)">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -245,10 +262,10 @@ Although this has a view problems:
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../../../compression/compresseion/knowledge_distillation/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../../../compression/compression/knowledge_distillation/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../nas/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../../../neural-architecture-search/nas/legacy/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
