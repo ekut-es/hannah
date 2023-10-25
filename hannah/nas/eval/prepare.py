@@ -65,7 +65,7 @@ def prepare_summary(
     parameters_all = {}
     for name, source in data.items():
         logger.info("  Extracting design points for task: %s", name)
-        history_path = base_path / source / "history.pkl"
+        history_path = base_path / source / "history.yml"
 
         if history_path.suffix == ".yml":
             with history_path.open("r") as yaml_file:

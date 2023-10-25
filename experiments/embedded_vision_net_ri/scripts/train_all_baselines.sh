@@ -1,8 +1,9 @@
+#!/bin/bash
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 Hannah contributors.
 ##
 ## This file is part of hannah.
-## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+## See https://github.com/ekut-es/hannah for further info.
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -16,19 +17,15 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-defaults:
-    - predictor: gcn
-    - sampler: aging_evolution
-    - model_trainer: simple
-    - constraint_model: z3
 
-_target_: hannah.nas.search.search.DirectNAS
-budget: 2000
-n_jobs: 10
-presample: True
-total_candidates: 100
-num_selected_candidates: 20
-bounds:
-    val_error: 0.12
-    total_macs: 128000000
-    total_weights: 500000
+EXPERIMENT="baseline"
+MODELS="timm_resnet18 timm_resnet50 timm_resnet152 timm_efficientnet_lite1 timm_mobilenetv3_small_100 timm_mobilenetv3_small_075 timm_mobilenetv3_large_100 timm_focalnet_base_srf"
+
+export HANNAH_DATA_FOLDER=/mnt/qb/datasets/STAGING/bringmann/datasets/
+
+SBATCH=""
+#SBATCH="sbatch --job-name=baseline"
+
+for MODEL in ${MODELS}; do
+    sbatch --job-name=$MODEL  scripts/train_baselines_slurm.sh  -m $MODEL
+done

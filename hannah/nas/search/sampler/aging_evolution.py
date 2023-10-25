@@ -28,6 +28,7 @@ import yaml
 from hannah.nas.parameters.parameters import CategoricalParameter, FloatScalarParameter, IntScalarParameter
 from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.sampler.mutator import ParameterMutator
+from hannah.nas.search.utils import np_to_primitive
 
 from ...parametrization import SearchSpace
 from ...utils import is_pareto
@@ -122,7 +123,7 @@ class AgingEvolutionSampler(Sampler):
 
     def tell_result(self, parameters, metrics):
         "Tell the result of a task"
-
+        parameters = np_to_primitive(parameters)
         result = SearchResult(len(self.history), parameters, metrics)
 
         self.history.append(result)
