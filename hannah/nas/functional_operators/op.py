@@ -167,12 +167,12 @@ class Tensor:
 
         # FIXME: Maybe check for lists/tuples in @parametrize?
         # FIXME: What if a parameter is defined elsewhere (e.g. conv) --> not good
-        for s in self._shape:
-            if is_parametrized(s):
-                # FIXME: IDs of parameters
-                if s.id is None:  # Else: parameter is registered elsewhere
-                    s.id = self.id + '.' + s.name
-                    self._PARAMETERS[s.id] = s
+        # for s in self._shape:
+        #     if is_parametrized(s):
+        #         # FIXME: IDs of parameters
+        #         if s.id is None:  # Else: parameter is registered elsewhere
+        #             s.id = self.id + '.' + s.name
+        #             self._PARAMETERS[s.id] = s
         self.axis = axis
         self.users = []
         self.operands = []
@@ -243,7 +243,7 @@ class ChoiceOp(Op):
         self.called = False  # FIXME: better name
 
         if switch is not None:
-            self.switch = self.add_param(switch.name, switch)
+            self.switch = switch
         else:
             self.switch = self.add_param("choice", IntScalarParameter(min=0, max=len(self.options) - 1, name='choice'))
 

@@ -1,0 +1,21 @@
+# @package _global_
+defaults:
+  - override /nas: aging_evolution_nas
+  - override /model: embedded_vision_nas
+  - override /dataset: cifar10
+
+model:
+  num_classes: 10
+module:
+  batch_size: 128
+nas:
+  budget: 600
+  n_jobs: 8
+
+
+trainer:
+  max_epochs: 10
+
+seed: [1234]
+
+experiment_id: "ae_nas_cifar10_fixreduce"
