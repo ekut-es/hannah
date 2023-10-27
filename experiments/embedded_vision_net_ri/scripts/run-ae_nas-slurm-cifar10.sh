@@ -59,4 +59,4 @@ scontrol show job $SLURM_JOB_ID
 conda activate hannah
 
 
-hannah-train trainer.gpus=8 experiment=ae_nas_cifar10_v2 model=embedded_vision_net dataset=cifar10 model.num_classes=10 nas.n_jobs=8 fx_mac_summary=True ~normalizer
+hannah-train trainer.gpus=8 experiment=ae_nas_cifar10_fixreduce model=embedded_vision_net dataset=cifar10 model.num_classes=10 nas.n_jobs=8 fx_mac_summary=True ~normalizer
