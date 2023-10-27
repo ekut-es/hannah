@@ -1,0 +1,4 @@
+_target_: hannah.models.embedded_vision_net.models.search_space_cwm
+name: embedded_vision_net_cwm
+num_classes: 10
+
