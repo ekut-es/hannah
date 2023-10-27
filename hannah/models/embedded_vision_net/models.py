@@ -11,7 +11,7 @@ from hannah.models.embedded_vision_net.blocks import block, cwm_block, classifie
 
 
 def search_space(name,  input, num_classes=10):
-    out_channels = IntScalarParameter(32, 64, step_size=4, name='out_channels')
+    out_channels = IntScalarParameter(16, 64, step_size=4, name='out_channels')
     kernel_size = CategoricalParameter([3, 5, 7, 9], name='kernel_size')
     stride = CategoricalParameter([1, 2], name='stride')
     expand_ratio = IntScalarParameter(1, 3, name='expand_ratio')
@@ -22,7 +22,9 @@ def search_space(name,  input, num_classes=10):
     num_blocks = IntScalarParameter(0, 6, name='num_blocks')
     exits = []
 
-    out = input
+    stem_kernel_size = CategoricalParameter([3, 5], name="kernel_size")
+    stem_channels = IntScalarParameter(min=16, max=32, step_size=4, name="out_channels")
+    out = stem(input, stem_kernel_size, stride.new(), stem_channels)
     for i in range(num_blocks.max+1):
         out = block(out, depth=depth.new(), stride=stride.new(), out_channels=out_channels.new(), kernel_size=kernel_size.new(),
                     expand_ratio=expand_ratio.new(), reduce_ratio=reduce_ratio.new())
