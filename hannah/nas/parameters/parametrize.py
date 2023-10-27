@@ -42,6 +42,7 @@ def _create_parametrize_wrapper(params, cls):
         num = 1
         tuple_idx = 0
 
+        # FIXME: USE SIGNATURE NAME IF PARAM.NAME IS "" (empty)
         for arg in args:
             if is_parametrized(arg):
                 name = parameter_list[num].name
@@ -175,7 +176,9 @@ def add_param(self, id, param):
     assert id not in self._PARAMETERS, f"Parameter with the ID {id} already registered."
     param.id = id
     self._PARAMETERS[id] = param
-    param.register()
+    if hasattr(param, "register"):
+        # if this is a Parameter, it must be registered
+        param.register()
     return param
 
 
