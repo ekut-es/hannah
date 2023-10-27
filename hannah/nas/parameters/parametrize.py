@@ -23,6 +23,7 @@ from typing import Optional
 
 from hannah.nas.core.expression import Expression
 from hannah.nas.core.parametrized import is_parametrized
+from hannah.nas.expressions.utils import extract_parameter_from_expression
 from hannah.nas.parameters.parameters import Parameter
 
 
@@ -40,6 +41,7 @@ def _create_parametrize_wrapper(params, cls):
 
         num = 1
         tuple_idx = 0
+
         for arg in args:
             if is_parametrized(arg):
                 name = parameter_list[num].name
@@ -49,11 +51,35 @@ def _create_parametrize_wrapper(params, cls):
                 else:
                     num += 1
                 self._PARAMETERS[name] = arg
-                # self._annotations[name] = parameter_list[num + 1]._annotation
+                # arg.register()
+            elif isinstance(arg, Expression):
+                params = extract_parameter_from_expression(arg)
+                idx = 0
+                name = parameter_list[num].name
+                for p in params:
+                    n = name + f"_{idx}"
+                    self._PARAMETERS[n] = p
+            elif isinstance(arg, (list, tuple)):
+                print()
         for name, arg in kwargs.items():
-            if is_parametrized(arg):
-                self._PARAMETERS[name] = arg
-                # self._annotations[name] = params[name]._annotation
+            if isinstance(arg, (list, tuple)):
+                items = arg
+            else:
+                items = [arg]
+            for i, item in enumerate(items):
+                if is_parametrized(item):
+                    if isinstance(item, Parameter):
+                        if not item.is_registered():
+                            self._PARAMETERS[item.name] = item
+                            item.register()
+                    else:
+                        self._PARAMETERS[name] = item
+                elif isinstance(item, Expression):
+                    params = extract_parameter_from_expression(item)
+                    for p in params:
+                        if not p.is_registered():
+                            self._PARAMETERS[p.name] = p
+                            p.register()
 
         cls.sample = sample
         cls.set_current = set_current
@@ -149,6 +175,7 @@ def add_param(self, id, param):
     assert id not in self._PARAMETERS, f"Parameter with the ID {id} already registered."
     param.id = id
     self._PARAMETERS[id] = param
+    param.register()
     return param
 
 

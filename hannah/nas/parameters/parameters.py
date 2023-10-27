@@ -42,9 +42,16 @@ class Parameter(Expression):
         self.setup_rng(rng)
         self.name = name
         self.id = None
+        self._registered = False
 
     def get_children(self):
         return []
+
+    def is_registered(self):
+        return self._registered
+
+    def register(self):
+        self._registered = True
 
     @abstractmethod
     def sample(self):
