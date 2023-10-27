@@ -25,10 +25,10 @@ defaults:
 _target_: hannah.nas.search.search.DirectNAS
 budget: 2000
 n_jobs: 10
-presample: True
+presample: False
 total_candidates: 100
 num_selected_candidates: 20
 bounds:
-    val_error: 0.12
+    val_error: 0.03
     total_macs: 128000000
     total_weights: 500000
