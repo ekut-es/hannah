@@ -21,6 +21,7 @@ import logging
 import os
 import traceback
 from abc import ABC, abstractmethod
+import numpy as np
 
 import torch
 from hydra.utils import get_class, instantiate
@@ -34,6 +35,8 @@ from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
 from hannah.nas.graph_conversion import model_to_graph
+
+from hannah.nas.search.sampler.aging_evolution import FitnessFunction
 import traceback
 import copy
 
@@ -51,6 +54,7 @@ class NASBase(ABC):
         predictor=None,
         constraint_model=None,
         parent_config=None,
+        random_state=None,
     ) -> None:
         self.budget = budget
         self.n_jobs = n_jobs
@@ -60,6 +64,10 @@ class NASBase(ABC):
         self.model_trainer = model_trainer
         self.predictor = predictor
         self.constraint_model = constraint_model
+        if random_state is None:
+            self.random_state = np.random.RandomState()
+        else:
+            self.random_state = random_state
 
     def run(self):
         self.before_search()
@@ -83,6 +91,14 @@ class NASBase(ABC):
 
     def add_sampler(self, sampler):
         self.sampler = sampler
+
+    def get_fitness_function(self):
+        # FIXME: make better configurable
+        if hasattr(self, 'bounds') and self.bounds is not None:
+            bounds = self.bounds
+            return FitnessFunction(bounds, self.random_state)
+        else:
+            return lambda x: x['val_error']
 
 
 class DirectNAS(NASBase):
@@ -192,7 +208,7 @@ class DirectNAS(NASBase):
         pass
         # self.extract_best_model()
 
-    def sample_candidates(self, num_total, num_candidates=None, sort_key="val_error"):
+    def sample_candidates(self, num_total, num_candidates=None, sort_key="ff"):
         candidates = []
         for n in range(num_total):
             models = []
@@ -200,6 +216,8 @@ class DirectNAS(NASBase):
             model = self.build_model(parameters)
             models.append(model)
             estimated_metrics, satisfied_bounds = self.estimate_metrics(copy.deepcopy(model))
+            ff = self.get_fitness_function()(estimated_metrics)
+            estimated_metrics['ff'] = ff
             candidates.append((model, parameters, estimated_metrics, satisfied_bounds))
 
         if self.predictor:
