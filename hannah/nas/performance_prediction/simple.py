@@ -140,7 +140,7 @@ class GCNPredictor:
 
         print(result, std_dev)
 
-        metrics = {'val_error': result}
+        metrics = {'val_error': result.item()}
 
         logger.info("Predicted performance metrics")
         for k in metrics.keys():
