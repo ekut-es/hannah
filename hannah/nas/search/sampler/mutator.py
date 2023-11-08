@@ -23,6 +23,8 @@ class ParameterMutator:
             if num in mutation_indices:
                 parametrization[key] = self.mutate_parameter(param)
                 mutated_keys.append(key)
+            else:
+                parametrization[key] = param.current_value
 
         return parametrization, mutated_keys
 
