@@ -145,24 +145,7 @@ def train(
             lit_module.setup("train")
             input_ckpt = pl_load(config.input_file)
             lit_module.load_state_dict(input_ckpt["state_dict"], strict=False)
-            
-        if config.dataset.get("retrain_patient", None):
-            if config.get("input_file", None): 
-                for param in lit_module.model.parameters():
-                    param.requires_grad = False
-                
-                for name, module in lit_module.model.named_modules():
-                    if isinstance(module, nn.Linear):
-                        print("Unfreezing weights and bias of", name)
-                        
-                        module.reset_parameters()
-                        module.weight.requires_grad = True
-                        if module.bias is not None:
-                            module.bias.requires_grad = True
-
-            else:
-                raise AttributeError("Patient-specific retraining requires a pretrained model. Please specify the model weights using the \"input_file\" parameter.")
-                
+             
         if config["auto_lr"]:
             # run lr finder (counts as one epoch)
             lr_finder = lit_trainer.lr_find(lit_module)
