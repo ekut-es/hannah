@@ -197,8 +197,7 @@ ml_cloud_integration:
     - scp scripts/ml_cloud_ci.sh cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/ml_cloud_ci.sh
     - ssh cgerum05@134.2.168.52  /home/bringmann/cgerum05/ci/ml_cloud_ci.sh
   only:
-    - main
-    - merge_requests
+    - triggers
 
 
 deploy to github:
