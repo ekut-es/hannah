@@ -18,20 +18,13 @@
 #
 import logging
 import re
-import tarfile
-from collections import Counter, namedtuple
-from typing import Dict, List, Optional
+from collections import Counter
+from typing import List
 
 import albumentations as A
 import cv2
 import numpy as np
-import pandas as pd
-import requests
-import torch
-import torchvision
 from albumentations.pytorch import ToTensorV2
-from omegaconf import DictConfig
-from sklearn.model_selection import train_test_split
 
 from ..base import AbstractDataset
 

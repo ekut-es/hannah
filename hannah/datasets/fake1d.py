@@ -26,44 +26,35 @@ import torchvision
 
 from ..utils.utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
-from .vision.base import TorchvisionDatasetBase
 
 
-class Fake1dDataset(TorchvisionDatasetBase):
+class Fake1dDataset(AbstractDataset):
+    def __init__(self, config, size):
+        self.config = config
+        self.size = size
+
+        self.data = torch.randn((size, config["channels"], config["resolution"])).split(
+            1, 0
+        )
+        self.target = torch.randn(
+            (size, config.size), dtype=torch.int32, min=0, max=config["num_classes"]
+        )
+
     @classmethod
     def prepare(cls, config):
         pass
 
     @classmethod
     def splits(cls, config):
-        resolution = config.resolution
-        channels = config.channels
-
-        test_data = torchvision.datasets.FakeData(
-            size=128,
-            image_size=(channels, resolution),
-            num_classes=config.num_classes,
-        )
-        val_data = torchvision.datasets.FakeData(
-            size=128,
-            image_size=(channels, resolution),
-            num_classes=config.num_classes,
-        )
-        train_data = torchvision.datasets.FakeData(
-            size=512,
-            image_size=(channels, resolution),
-            num_classes=config.num_classes,
-        )
-
-        return cls(config, train_data), cls(config, val_data), cls(config, test_data)
+        return cls(config, size=128), cls(config, size=32), cls(config, size=32)
 
     def __getitem__(self, index):
-        data, target = self.dataset[index]
-        data = np.array(data).astype(np.float32) / 255
-        data = self.transform(image=data)["image"]
-        data = torch.squeeze(data)
+        data, target = self.data[index], self.target[index]
         return data, target
 
     @property
     def class_names(self):
         return [f"class{n}" for n in range(self.config.num_classes)]
+
+    def __len__(self):
+        return len(self.targets)

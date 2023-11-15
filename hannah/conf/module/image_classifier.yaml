@@ -16,7 +16,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-_target_: hannah.modules.ImageClassifierModule
+_target_: hannah.modules.vision.ImageClassifierModule
 num_workers: 0
 batch_size: 128
 shuffle_all_dataloaders: False

@@ -27,14 +27,11 @@ from .classifier import (
     StreamClassifierModule,
 )
 from .object_detection import ObjectDetectionModule
-from .vision import AnomalyDetectionModule, ImageClassifierModule
 
 __all__ = [
-    "AnomalyDetectionModule",
     "CrossValidationStreamClassifierModule",
     "SpeechClassifierModule",
     "StreamClassifierModule",
-    "ImageClassifierModule",
     "AnomalyDetectionModule",
     "ObjectDetectionModule",
     "CartesianClassifierModule",
