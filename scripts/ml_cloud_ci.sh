@@ -23,8 +23,11 @@ cd $WORK/hannah-ci
 git fetch
 
 if [[ -z "${CI_COMMIT_SHA}" ]]; then
+  git checkout main
+  git pull
+
   export CI_COMMIT_SHA=`git rev-parse HEAD`
-  echo "CI_COMMIT_SHA is not defined, use current commit (${CI_COMMIT_SHA})"
+  echo "CI_COMMIT_SHA is not defined, use current head on main branch commit (${CI_COMMIT_SHA})"
 else
   git checkout $CI_COMMIT_SHA
 fi
