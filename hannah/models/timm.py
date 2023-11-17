@@ -80,7 +80,7 @@ class DefaultClassifierHead(nn.Module):
         Returns:
           Resulting torch.Tensor after applying classification
         """
-        # x = self.pooling(x)
+        x = self.pooling(x)
         x = self.flatten(x)
         x = self.linear(x)
         return x

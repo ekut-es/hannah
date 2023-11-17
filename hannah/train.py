@@ -22,10 +22,10 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Type, Union
 
-import torch.nn as nn
 import pandas as pd
 import tabulate
 import torch
+import torch.nn as nn
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
@@ -44,6 +44,7 @@ from .utils import (
 )
 
 msglogger: logging.Logger = logging.getLogger(__name__)
+
 
 @rank_zero_only
 def handle_dataset(config=DictConfig):
@@ -99,8 +100,7 @@ def train(
             pseudo_labeling=config.get("pseudo_labeling", None),
             _recursive_=False,
         )
-        
-        
+
         profiler = None
         if config.get("profiler", None):
             profiler = instantiate(config.profiler)
@@ -145,7 +145,7 @@ def train(
             lit_module.setup("train")
             input_ckpt = pl_load(config.input_file)
             lit_module.load_state_dict(input_ckpt["state_dict"], strict=False)
-             
+
         if config["auto_lr"]:
             # run lr finder (counts as one epoch)
             lr_finder = lit_trainer.lr_find(lit_module)
@@ -158,8 +158,8 @@ def train(
             suggested_lr = lr_finder.suggestion()
             config["lr"] = suggested_lr
 
-        lit_trainer.tune(lit_module)        
-        
+        lit_trainer.tune(lit_module)
+
         logging.info("Starting training")
         # PL TRAIN
         ckpt_path = None
@@ -188,17 +188,16 @@ def train(
             ckpt_path = None
 
         if not lit_trainer.fast_dev_run:
-            # reset_seed()
-            # lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
-
-            # PL TEST
             reset_seed()
-            lit_trainer.test(ckpt_path=ckpt_path, verbose=validate_output)
+            lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
 
-            if checkpoint_callback and checkpoint_callback.best_model_path:
-                shutil.copy(checkpoint_callback.best_model_path, "best.ckpt")
+            if not config.get("skip_test", False):
+                # PL TEST
+                reset_seed()
+                lit_trainer.test(ckpt_path=ckpt_path, verbose=validate_output)
 
-            test_output.append(opt_callback.test_result())
+                test_output.append(opt_callback.test_result())
+
             results.append(opt_callback.result())
 
     @rank_zero_only
