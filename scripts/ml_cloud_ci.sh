@@ -38,3 +38,8 @@ srun --job-name update_env --mincpus 4 --time 01:00:00 poetry install -E vision
 
 pushd experiments/cifar10
 sbatch scripts/train_slurm.sh
+popd
+
+pushd experiments/rhode_island
+sbatch scripts/train_slurm.sh
+popd
