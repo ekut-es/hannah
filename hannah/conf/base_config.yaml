@@ -47,7 +47,7 @@ auto_lr: false
 resume: false
 fx_mac_summary: False
 skip_test: False # skip the test run after training
-skip_val: False # skip final validation (After full model training, usually run on best ckpt according to checkpoint callback)
+skip_val: False  # skip final validation (After full model training, usually run on best ckpt according to checkpoint callback)
 
 seed: [1234]
 validate_output: False
