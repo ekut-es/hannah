@@ -44,10 +44,187 @@ from hannah.nas.core.parametrized import is_parametrized
 from ...callbacks.optimization import HydraOptCallback
 from ...callbacks.summaries import MacSummaryCallback
 from ...utils import clear_outputs, common_callbacks, fullname
-from .optimizer.aging_evolution import AgingEvolution
+from  .sampler.aging_evolution import AgingEvolutionSampler
 from ..graph_conversion import model_to_graph
+from ..parametrization import SearchSpace
 
 msglogger = logging.getLogger(__name__)
+
+
+
+import logging
+import pickle
+import shutil
+
+from typing import Dict, Any, List, Union, Optional
+from dataclasses import dataclass
+from pathlib import Path
+import pandas as pd
+
+
+import numpy as np
+import yaml
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass()
+class EvolutionResult:
+    index: int
+    parameters: Dict[str, Any]
+    result: Dict[str, float]
+    test_result: Optional[Dict[str, float]] = None
+    result_curves: Optional[pd.DataFrame] = None
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
+    duration: Optional[float] = None
+
+    def costs(self):
+        return np.asarray(
+            [float(self.result[k]) for k in sorted(self.result.keys())],
+            dtype=np.float32,
+        )
+
+
+class FitnessFunction:
+    def __init__(self, bounds, random_state):
+        self.bounds = bounds
+        self.lambdas = random_state.uniform(low=0.0, high=1.0, size=len(self.bounds))
+
+    def __call__(self, values):
+
+        result = 0.0
+        for num, key in enumerate(self.bounds.keys()):
+            if key in values:
+                result += np.power(
+                    self.lambdas[num] * (values[key] / self.bounds[key]), 2
+                )
+            else:
+                logger.warning("Metric %s is missing in sample", key)
+                return float("inf")
+        return np.sqrt(result)
+
+
+class AgingEvolution:
+    """Aging Evolution based multi objective optimization"""
+
+    def __init__(
+        self,
+        parametrization,
+        bounds,
+        population_size=100,
+        sample_size=20,
+        eps=0.1,
+        random_state=None,
+        output_folder=".",
+    ):
+        self.parametrization = SearchSpace(parametrization, random_state)
+        self.bounds = bounds
+
+        self.population_size = population_size
+        self.sample_size = sample_size
+        self.eps = eps
+
+        self.random_state = (
+            random_state if random_state is not None else np.random.RandomState()
+        )
+        if random_state is None:
+            self.random_state = np.random.RandomState()
+
+        self.history = []
+        self.population = []
+        self._pareto_points = []
+        self.output_folder = Path(output_folder)
+        if (self.output_folder / "history.pkl").exists():
+            self.load()
+
+    def get_fitness_function(self):
+        ff = FitnessFunction(self.bounds, self.random_state)
+
+        return ff
+
+    def ask(self):
+        return self.next_parameters()
+
+    def next_parameters(self):
+        "Returns a list of current tasks"
+
+        parametrization = {}
+
+        if len(self.history) < self.population_size:
+            parametrization = self.parametrization.get_random()
+        elif self.random_state.uniform() < self.eps:
+            parametrization = self.parametrization.get_random()
+        else:
+            logger.info("Sampling parents")
+            sample = self.random_state.choice(self.population, size=self.sample_size)
+            fitness_function = self.get_fitness_function()
+
+            sample = [x for x in sample if hasattr(x, "result")]
+            fitness = [fitness_function(x.result) for x in sample]
+
+            parent = sample[np.argmin(fitness)]
+
+            parametrization = self.parametrization.mutate(parent.parameters)
+
+        return parametrization
+
+    def tell(self, parameters, metrics):
+        return self.tell_result(parameters, metrics)
+
+    def tell_result(self, parameters, metrics):
+        "Tell the result of a task"
+
+        if isinstance(metrics, dict):
+            result = EvolutionResult(len(self.history), parameters, metrics)
+        else:
+            result = EvolutionResult(
+                len(self.history),
+                parameters,
+                metrics.metrics,
+                metrics.test_metrics,
+                metrics.curves,
+                metrics.start_time,
+                metrics.end_time,
+                metrics.duration,
+            )
+
+        self.history.append(result)
+        self.population.append(result)
+        if len(self.population) > self.population_size:
+            self.population.pop(0)
+
+        self.save()
+
+        return None
+
+    def load(self):
+        # suffixes = [".pkl", ".yml"]
+        suffixes = [".pkl"]
+        history_file_base = self.output_folder / "history"
+        for suffix in suffixes:
+            history_file = history_file_base.with_suffix(suffix)
+            if history_file.exists():
+                break
+
+        self.history = []
+        self.population = []
+
+        if history_file.exists():
+            if suffix == ".yml":
+                with history_file.open("r") as history_data:
+                    self.history = yaml.unsafe_load(history_data)
+            elif suffix == ".pkl":
+                with history_file.open("rb") as history_data:
+                    self.history = pickle.load(history_data)
+
+        if len(self.history) > self.population_size:
+            population_start = len(self.history) - self.population_size - 1
+            self.population = self.history[population_start:]
+        else:
+            self.population = self.history
+
+        logging.info("Loaded %d points from history", len(self.history))
 
 
 @dataclass
@@ -85,7 +262,7 @@ def run_training(
                 gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
 
             if gpu >= torch.cuda.device_count():
-                logger.warning(
+                logging.warning(
                     "GPU %d is not available on this device using GPU %d instead",
                     gpu,
                     gpu % torch.cuda.device_count(),
@@ -273,12 +450,18 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             random_state=self.random_state,
         )
 
-        self.predictor = None
-        # if predictor is not None:
-        #    self.predictor = instantiate(predictor, _recursive_=False)
+        if predictor is not None:
+            self.predictor = instantiate(predictor, _recursive_=False)
+        else:
+            self.predictor = None
 
         self.worklist = []
         self.presample = presample
+
+        if self.config.get('backend', None):
+            self.backend =  instantiate(self.config.backend)
+        else:
+            self.backend = None
 
     # sample parameters and estimated metrics from the space
     def _sample(self):
@@ -308,7 +491,13 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
             msglogger.critical(str(e))
         else:
             estimated_metrics = {}
-            # estimated_metrics = self.predictor.estimate(model)
+            if self.predictor is not None:
+                estimated_metrics = self.predictor.estimate(model)
+
+            if self.backend:
+                self.backend.prepare(model)
+                backend_metrics = self.backend.estimate_metrics()
+                estimated_metrics.update(backend_metrics)
 
             satisfied_bounds = []
             for k, v in estimated_metrics.items():
