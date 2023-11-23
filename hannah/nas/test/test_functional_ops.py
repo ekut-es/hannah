@@ -78,6 +78,28 @@ def test_functional_ops():
     net = Relu()(net)
 
 
+def test_functional_ops_chained():
+    kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
+    out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
+    stride = CategoricalParameter([1, 2], name='stride')
+
+    input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
+    weight0 = Tensor(name='weight',
+                     shape=(out_channels, 3, kernel_size, kernel_size),
+                     axis=('O', 'I', 'kH', 'kW'))
+    net = Conv2d(stride=stride)(input, weight0)
+    net = Relu()(net)
+
+    weight1 = Tensor(name='weight',
+                     shape=(out_channels, 3, kernel_size, kernel_size),
+                     axis=('O', 'I', 'kH', 'kW'))
+
+    net = Conv2d(stride=stride.new())(net, weight1)
+    net = Relu()(net)
+
+    # print(net.parametrization(flatten=True))
+
+
 def test_shape_propagation():
     kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
     out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
@@ -217,14 +239,15 @@ def test_dynamic_depth():
 
 
 if __name__ == '__main__':
-    test_functional_ops()
-    test_shape_propagation()
-    test_blocks()
-    test_operators()
-    test_multibranches()
-    test_scoping()
-    test_parametrization()
-    test_choice()
-    test_optional_op()
-    test_dynamic_depth()
+    # test_functional_ops()
+    test_functional_ops_chained()
+    # test_shape_propagation()
+    # test_blocks()
+    # test_operators()
+    # test_multibranches()
+    # test_scoping()
+    # test_parametrization()
+    # test_choice()
+    # test_optional_op()
+    # test_dynamic_depth()
     # test_visualization()

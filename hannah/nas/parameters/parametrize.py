@@ -193,7 +193,11 @@ def get_parameters(
     while queue:
         current = queue.pop(-1)
         visited.append(current.id)
-        params[current.id] = current
+        if current.id is None:
+            name = current.name
+        else:
+            name = current.id
+        params[name] = current
 
         if hasattr(current, "_PARAMETERS"):
             for param in current._PARAMETERS.values():
@@ -246,7 +250,10 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
 
             if k == key_list[-1] and isinstance(param, Expression):
                 if flatten:
-                    hierarchical_params[param.id] = param
+                    if param.id is None:
+                        hierarchical_params[param.name] = param
+                    else:
+                        hierarchical_params[param.id] = param
                 else:
                     current_param_branch[index] = param
             else:
