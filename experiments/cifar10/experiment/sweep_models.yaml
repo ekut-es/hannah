@@ -1,0 +1,9 @@
+# @package _global_
+experiment_id: sweep_models
+hydra:
+  mode: MULTIRUN
+  sweep:
+    subdir: ${model.name}
+  sweeper:
+    params:
+      model: timm_resnet18,timm_mobilenetv3_small_075,timm_mobilenetv3_small_100

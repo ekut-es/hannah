@@ -1297,6 +1297,4 @@ def create_cnn(
     )
     output_shape, model = factory.network(input_shape, labels, structured_config)
 
-    print(model)
-
     return model

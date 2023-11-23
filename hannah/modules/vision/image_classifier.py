@@ -156,8 +156,6 @@ class ImageClassifierModule(VisionBaseModule):
     def on_validation_epoch_end(self):
         super().on_validation_epoch_end()
 
-        print(self.validation_res_df.head())
-
     def test_step(self, batch, batch_idx):
         _, step_results, batch, preds = self.common_step("test", batch, batch_idx)
 

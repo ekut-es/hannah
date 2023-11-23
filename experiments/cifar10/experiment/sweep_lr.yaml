@@ -1,0 +1,9 @@
+# @package _global_
+experiment_id: sweep_lr
+hydra:
+  mode: MULTIRUN
+  sweep:
+    subdir: lr=${scheduler.max_lr}
+  sweeper:
+    params:
+      scheduler.max_lr: 0.0001,0.001,0.01,0.1
