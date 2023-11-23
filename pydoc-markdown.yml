@@ -41,6 +41,9 @@ renderer:
     - title: Publications
       name: publications
       source: doc/publications.md
+    - title: Experiment Management
+      name: experiments
+      source: doc/experiments.md
     - title: Configuration
       name: configuration
       children:
