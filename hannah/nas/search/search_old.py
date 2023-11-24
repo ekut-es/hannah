@@ -44,26 +44,16 @@ from hannah.nas.core.parametrized import is_parametrized
 from ...callbacks.optimization import HydraOptCallback
 from ...callbacks.summaries import MacSummaryCallback
 from ...utils import clear_outputs, common_callbacks, fullname
-from  .sampler.aging_evolution import AgingEvolutionSampler
 from ..graph_conversion import model_to_graph
 from ..parametrization import SearchSpace
+from .sampler.aging_evolution import AgingEvolutionSampler
 
 msglogger = logging.getLogger(__name__)
 
-
-
-import logging
 import pickle
-import shutil
+from typing import List, Optional, Union
 
-from typing import Dict, Any, List, Union, Optional
-from dataclasses import dataclass
-from pathlib import Path
 import pandas as pd
-
-
-import numpy as np
-import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +82,6 @@ class FitnessFunction:
         self.lambdas = random_state.uniform(low=0.0, high=1.0, size=len(self.bounds))
 
     def __call__(self, values):
-
         result = 0.0
         for num, key in enumerate(self.bounds.keys()):
             if key in values:
@@ -197,6 +186,14 @@ class AgingEvolution:
         self.save()
 
         return None
+
+    def save(self):
+        history_file = self.output_folder / "history.yml"
+        history_file_tmp = history_file.with_suffix(".tmp")
+
+        with history_file_tmp.open("w") as history_data:
+            yaml.dump(self.history, history_data)
+        shutil.move(history_file_tmp, history_file)
 
     def load(self):
         # suffixes = [".pkl", ".yml"]
@@ -458,8 +455,8 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
         self.worklist = []
         self.presample = presample
 
-        if self.config.get('backend', None):
-            self.backend =  instantiate(self.config.backend)
+        if self.config.get("backend", None):
+            self.backend = instantiate(self.config.backend)
         else:
             self.backend = None
 
