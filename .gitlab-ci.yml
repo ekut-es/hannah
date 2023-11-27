@@ -100,7 +100,7 @@ test_tvm:
   interruptible: true
   allow_failure: false
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF == "main"
+    - if: ($CI_PIPELINE_SOURCE == "push") && ($CI_COMMIT_REF == "main")
   cache:
     paths:
       - .cache/
@@ -131,7 +131,7 @@ test_python_310:
     paths:
       - .cache/
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF == "main"
+    - if: ($CI_PIPELINE_SOURCE == "push") && ($CI_COMMIT_REF == "main")
 
 
 
@@ -155,7 +155,7 @@ build_docs:
   tags:
     - docker
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF == "main"
+    - if: ($CI_PIPELINE_SOURCE == "push") && ($CI_COMMIT_REF == "main")
   # Empty dependencies to disable artifacts passing
   dependencies: []
 
