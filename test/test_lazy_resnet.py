@@ -4,7 +4,7 @@ import torch
 import yaml
 import os
 
-from hannah.models.resnet.models import ResNet
+from hannah.models.resnet.models_lazy import ResNet
 
 
 def test_lazy_resnet_init():

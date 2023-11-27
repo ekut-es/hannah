@@ -1,0 +1,3 @@
+_target_: hannah.models.resnet.models.search_space
+name: resnet
+num_classes: 10
