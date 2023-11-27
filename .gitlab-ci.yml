@@ -101,6 +101,8 @@ test_tvm:
   allow_failure: false
   only:
     - main
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
   cache:
     paths:
       - .cache/
@@ -132,6 +134,8 @@ test_python_310:
       - .cache/
   only:
     - main
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
 
 
 build_docs:
@@ -155,6 +159,8 @@ build_docs:
     - docker
   only:
     - main
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
 
   # Empty dependencies to disable artifacts passing
   dependencies: []
@@ -196,8 +202,8 @@ ml_cloud_integration:
     - set -e
     - scp scripts/ml_cloud_ci.sh cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/ml_cloud_ci.sh
     - ssh cgerum05@134.2.168.52  /home/bringmann/cgerum05/ci/ml_cloud_ci.sh
-  only:
-    - triggers
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
 
 
 deploy to github:
@@ -215,6 +221,8 @@ deploy to github:
   only:
     - main
     - pub/.*
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
   script: ./scripts/git-push git@github.com:ekut-es/hannah.git $CI_COMMIT_REF_NAME
   tags:
     - docker
