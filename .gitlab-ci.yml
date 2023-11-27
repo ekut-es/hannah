@@ -99,10 +99,8 @@ test_tvm:
     - docker
   interruptible: true
   allow_failure: false
-  only:
-    - main
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF == "main"
   cache:
     paths:
       - .cache/
@@ -132,10 +130,8 @@ test_python_310:
   cache:
     paths:
       - .cache/
-  only:
-    - main
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF == "main"
 
 
 build_docs:
@@ -157,10 +153,9 @@ build_docs:
     - pydoc-markdown --build --site-dir public_html/
   tags:
     - docker
-  only:
-    - main
+
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF == "main"
 
   # Empty dependencies to disable artifacts passing
   dependencies: []
@@ -221,8 +216,6 @@ deploy to github:
   only:
     - main
     - pub/.*
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
   script: ./scripts/git-push git@github.com:ekut-es/hannah.git $CI_COMMIT_REF_NAME
   tags:
     - docker
