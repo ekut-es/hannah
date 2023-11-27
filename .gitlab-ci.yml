@@ -134,6 +134,7 @@ test_python_310:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF == "main"
 
 
+
 build_docs:
   stage: test
   image: ubuntu:22.04
@@ -153,10 +154,8 @@ build_docs:
     - pydoc-markdown --build --site-dir public_html/
   tags:
     - docker
-
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF == "main"
-
   # Empty dependencies to disable artifacts passing
   dependencies: []
 
