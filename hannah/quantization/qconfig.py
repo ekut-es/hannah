@@ -207,9 +207,7 @@ class STEQuantize(FakeQuantizeBase):
         self.dtype = dtype
 
         if power_of_2:
-            self.quantization_function = PowerOf2Quantization(
-                bits, scale=scale, debug=self.debug
-            )
+            self.quantization_function = PowerOf2Quantization(bits, debug=self.debug)
         else:
             self.quantization_function = SymmetricQuantization(
                 bits, rounding_mode=rounding_mode, debug=self.debug
