@@ -228,12 +228,16 @@ class TimmModel(nn.Module):
                 if hasattr(self.encoder, "conv1"):
                     input_conv = self.encoder.conv1
                     out_channels = input_conv.out_channels
-                    new_conv = torch.nn.Conv2d(input_channels, out_channels, 3, 1)
+                    new_conv = torch.nn.Conv2d(
+                        input_channels, out_channels, 3, 1, padding=1
+                    )
                     self.encoder.conv1 = new_conv
                 elif hasattr(self.encoder, "conv_stem"):
                     input_conv = self.encoder.conv_stem
                     out_channels = input_conv.out_channels
-                    new_conv = torch.nn.Conv2d(input_channels, out_channels, 3, 1)
+                    new_conv = torch.nn.Conv2d(
+                        input_channels, out_channels, 3, 1, padding=1
+                    )
                     self.encoder.conv_stem = new_conv
                 else:
                     logger.critical(
@@ -242,6 +246,7 @@ class TimmModel(nn.Module):
 
                 if hasattr(self.encoder, "maxpool"):
                     self.encoder.maxpool = torch.nn.Identity()
+
         elif stem == "default":
             logger.info("""Using default stem for pulp model""")
         else:
