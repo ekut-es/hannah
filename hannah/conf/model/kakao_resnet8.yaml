@@ -1,0 +1,2 @@
+_target_: hannah.models.kakao_resnet.resnet8
+name: kakao_resnet8
