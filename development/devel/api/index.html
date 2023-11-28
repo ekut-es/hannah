@@ -3688,17 +3688,17 @@ the respective axis sizes</p>
 <div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">kMeans</span><span class="p">(</span><span class="n">Callback</span><span class="p">)</span>
 </code></pre></div>
 
-<p><a id="hannah.callbacks.clustering.kMeans.on_fit_end"></a></p>
-<h4 id="on_fit_end">on_fit_end</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_fit_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
+<p><a id="hannah.callbacks.clustering.kMeans.on_test_epoch_start"></a></p>
+<h4 id="on_test_epoch_start">on_test_epoch_start</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_test_epoch_start</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
 </code></pre></div>
 
 <p><strong>Arguments</strong>:</p>
 <p>trainer:
   pl_module:</p>
-<p><a id="hannah.callbacks.clustering.kMeans.on_epoch_end"></a></p>
-<h4 id="on_epoch_end">on_epoch_end</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_epoch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
+<p><a id="hannah.callbacks.clustering.kMeans.on_train_epoch_end"></a></p>
+<h4 id="on_train_epoch_end">on_train_epoch_end</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_train_epoch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
 </code></pre></div>
 
 <p><strong>Arguments</strong>:</p>
@@ -3765,7 +3765,7 @@ the respective axis sizes</p>
 <p>trainer:
   pl_module:</p>
 <p><a id="hannah.callbacks.backends.InferenceBackendBase.on_test_epoch_start"></a></p>
-<h4 id="on_test_epoch_start">on_test_epoch_start</h4>
+<h4 id="on_test_epoch_start_1">on_test_epoch_start</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_test_epoch_start</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
 </code></pre></div>
 
@@ -3882,9 +3882,9 @@ the respective axis sizes</p>
 <div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">SVD</span><span class="p">(</span><span class="n">Callback</span><span class="p">)</span>
 </code></pre></div>
 
-<p><a id="hannah.callbacks.svd_compress.SVD.on_epoch_start"></a></p>
-<h4 id="on_epoch_start">on_epoch_start</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_epoch_start</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
+<p><a id="hannah.callbacks.svd_compress.SVD.on_train_epoch_start"></a></p>
+<h4 id="on_train_epoch_start">on_train_epoch_start</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_train_epoch_start</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
 </code></pre></div>
 
 <p><strong>Arguments</strong>:</p>
