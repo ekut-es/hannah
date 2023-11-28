@@ -137,24 +137,6 @@ def test_kitti():
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "model,epochs,random_evaluate,random_evaluate_number",
-    [
-        ("ofa_quant", "1", "True", "5"),
-        ("ofa", "1", "True", "5"),
-        ("ofa_quant", "1", "False", "5"),
-        ("ofa", "1", "False", "5"),
-    ],
-)
-def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
-    epochs = 1
-    command_line = f"python -m hannah.tools.train --config-name nas_ofa trainer.limit_train_batches=5 trainer.limit_val_batches=5 trainer.limit_test_batches=5 experiment_id=test_ofa nas.model_trainer.epochs_warmup={epochs} nas.model_trainer.epochs_kernel_step={epochs} nas.model_trainer.epochs_depth_step={epochs} nas.model_trainer.epochs_dilation_step={epochs} nas.model_trainer.epochs_width_step={epochs} nas.model_trainer.random_evaluate=False model={model} nas.model_trainer.random_evaluate={random_evaluate} nas.model_trainer.random_eval_number={random_evaluate_number}"
-
-    logging.info("runing commandline %s", command_line)
-    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize(
     "config",
     [
         # FIXME:  beamforming does not seamm to work "config_dd_beamforming"
@@ -169,7 +151,6 @@ def test_ofa(model, epochs, random_evaluate, random_evaluate_number):
     ],
 )
 def test_directional(config):
-
     command_line = f"hannah-train --config-name {config} trainer.fast_dev_run=true module.batch_size=2"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
