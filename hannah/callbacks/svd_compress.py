@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ class SVD(Callback):
         self.compress_after = compress_after
         super().__init__()
 
-    def on_epoch_start(self, trainer, pl_module):
+    def on_train_epoch_start(self, trainer, pl_module):
         """
 
         Args:
@@ -45,7 +45,6 @@ class SVD(Callback):
         if trainer.current_epoch == self.compress_after / 2:
             with torch.no_grad():
                 for name, module in pl_module.named_modules():
-
                     # First case: conv-net-trax model with Sequential Layers
                     if name == "model.linear.0.0" and not isinstance(
                         pl_module.model.linear[0][0], nn.Sequential

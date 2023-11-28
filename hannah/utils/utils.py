@@ -231,7 +231,7 @@ def common_callbacks(config: DictConfig) -> list:
             )
         device_stats = DeviceStatsMonitor(cpu_stats=config.get("device_stats", False))
         callbacks.append(device_stats)
-    use_fx_mac_summary = config.get('fx_mac_summary', False)
+    use_fx_mac_summary = config.get("fx_mac_summary", False)
     if use_fx_mac_summary:
         mac_summary_callback = FxMACSummaryCallback()
     else:

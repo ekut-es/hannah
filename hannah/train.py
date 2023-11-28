@@ -177,15 +177,9 @@ def train(
                 )
         lit_trainer.fit(lit_module, ckpt_path=ckpt_path)
 
-        if config.get("compression", None) and (
-            config.get("compression").get("clustering", None)
-            or config.get("compression").get("decomposition", None)
-        ):
-            ckpt_path = None
-        else:
-            if lit_trainer.checkpoint_callback.kth_best_model_path:
-                ckpt_path = "best"
-            ckpt_path = None
+        if lit_trainer.checkpoint_callback.kth_best_model_path:
+            ckpt_path = "best"
+        ckpt_path = None
 
         if not lit_trainer.fast_dev_run:
             reset_seed()
