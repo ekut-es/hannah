@@ -16,6 +16,5 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-_target_: hannah.callbacks.clustering.kMeans
-method: kmeans
-amount: 16
+defaults:
+  - clustering: kmeans

@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import torch
 import torch.nn as nn
 from pytorch_lightning.callbacks import Callback
 from scipy.sparse import csr_matrix
-from sklearn.cluster import KMeans, MiniBatchKMeans
+from sklearn.cluster import MiniBatchKMeans
 
 from ..models.factory.qat import Conv1d, ConvBn1d, ConvBnReLU1d, ConvReLU1d
 
@@ -55,7 +55,7 @@ class kMeans(Callback):
     def __init__(self, cluster):
         self.cluster = cluster
 
-    def on_fit_end(self, trainer, pl_module):
+    def on_test_epoch_start(self, trainer, pl_module):
         """
 
         Args:
@@ -92,7 +92,6 @@ class kMeans(Callback):
             """
             for name, child in module.named_children():
                 replace_modules(child)
-
                 if isinstance(child, ConvBn1d):
                     tmp = Conv1d(
                         child.in_channels,
@@ -160,9 +159,11 @@ class kMeans(Callback):
                     replace_values_by_centers
                 )  # _ symbolizes inplace function, tensor moved to cpu, since apply_() only works that way
                 module.to(device=device)  # move from cpu to gpu
+        # PATH = os.getcwd() + '/checkpoints/last.ckpt'
+        # torch.save(pl_module.state_dict(), PATH)
         logger.critical("Clustering error: %f", float(inertia))
 
-    def on_epoch_end(self, trainer, pl_module):
+    def on_train_epoch_end(self, trainer, pl_module):
         """
 
         Args:
