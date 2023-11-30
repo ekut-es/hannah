@@ -42,7 +42,9 @@ try:
 except ModuleNotFoundError:
     onnxrt_backend = None
 
-from ..models.factory.qat import QAT_MODULE_MAPPINGS
+from typing import Mapping
+
+from ..nn.qat import QAT_MODULE_MAPPINGS
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +174,8 @@ class InferenceBackendBase(Callback):
         Returns:
 
         """
+        logger.info("Exporting module")
+
         pl_module = self.quantize(pl_module)
         self.prepare(pl_module)
         self.export()
@@ -222,8 +226,14 @@ class InferenceBackendBase(Callback):
 
         """
         if batch_idx < self.test_batches:
-            result = self.run_batch(inputs=batch[0])
-            target = pl_module(batch[0].to(pl_module.device))
+            # decode batches from target device
+            if isinstance(batch, Mapping) or isinstance(batch, dict):
+                inputs = batch["data"]
+            else:
+                inputs = batch[0]
+
+            result = self.run_batch(inputs=inputs)
+            target = pl_module(inputs.to(pl_module.device))
             target = target[: result.shape[0]]
 
             mse = torch.nn.functional.mse_loss(

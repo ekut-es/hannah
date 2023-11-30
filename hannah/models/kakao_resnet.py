@@ -79,9 +79,28 @@ def resnet8(*args, **kwargs):
 
 
 def resnet8_025(*args, **kwargs):
-    num_class = 10
+    num_class = 4
     model = nn.Sequential(
-        conv_bn(3, 16, kernel_size=4, stride=2, padding=0),
+        conv_bn(3, 16, kernel_size=8, stride=8, padding=0),
+        conv_bn(16, 32, kernel_size=5, stride=2, padding=2),
+        Residual(nn.Sequential(conv_bn(32, 32), conv_bn(32, 32))),
+        conv_bn(32, 64, kernel_size=3, stride=1, padding=1),
+        nn.MaxPool2d(2),
+        Residual(nn.Sequential(conv_bn(64, 64), conv_bn(64, 64))),
+        conv_bn(64, 32, kernel_size=3, stride=1, padding=0),
+        nn.AdaptiveMaxPool2d((1, 1)),
+        Flatten(),
+        nn.Linear(32, num_class, bias=False),
+        Mul(0.2),
+    )
+
+    return model
+
+
+def resnet8_012(*args, **kwargs):
+    num_class = 4
+    model = nn.Sequential(
+        conv_bn(3, 16, kernel_size=16, stride=16, padding=0),
         conv_bn(16, 32, kernel_size=5, stride=2, padding=2),
         Residual(nn.Sequential(conv_bn(32, 32), conv_bn(32, 32))),
         conv_bn(32, 64, kernel_size=3, stride=1, padding=1),

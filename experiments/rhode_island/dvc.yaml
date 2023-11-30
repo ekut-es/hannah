@@ -1,7 +1,0 @@
-stages:
-  train_baseline:
-    cmd: ./scripts/train_all_baselines.sh
-    deps:
-    - scripts/train_all_baselines.sh
-    outs:
-    - trained_models/baseline
