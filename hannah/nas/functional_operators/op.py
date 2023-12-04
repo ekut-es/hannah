@@ -1,18 +1,40 @@
-from abc import ABC, abstractmethod
-from typing import Any
-from copy import deepcopy
+#
+# Copyright (c) 2023 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import sys
-
+from abc import ABC, abstractmethod
+from copy import deepcopy
 from functools import wraps
+from typing import Any, List
 
 import torch
+
 from hannah.nas.core.expression import Expression
 from hannah.nas.core.parametrized import is_parametrized
-from hannah.nas.dataflow.data_type import FloatType
 from hannah.nas.expressions.choice import Choice
 from hannah.nas.expressions.utils import extract_parameter_from_expression
+from hannah.nas.functional_operators.data_type import FloatType
 from hannah.nas.functional_operators.lazy import lazy
-from hannah.nas.parameters.parameters import Parameter, CategoricalParameter, IntScalarParameter
+from hannah.nas.parameters.parameters import (
+    CategoricalParameter,
+    IntScalarParameter,
+    Parameter,
+)
 from hannah.nas.parameters.parametrize import parametrize
 
 
@@ -49,8 +71,8 @@ def get_highest_scope_counter(start_nodes, scope):
     for start_node in start_nodes:
         for n in get_nodes(start_node):
             highest_scope = n.id.split(".")[0]
-            if scope == "_".join(highest_scope.split('_')[:-1]):
-                ct = max(int(highest_scope.split('_')[-1]), ct)
+            if scope == "_".join(highest_scope.split("_")[:-1]):
+                ct = max(int(highest_scope.split("_")[-1]), ct)
     return ct
 
 
@@ -60,7 +82,9 @@ def scope(function):
     def set_scope(*args, **kwargs):
         out = function(*args, **kwargs)
         name = function.__name__
-        inputs = [a for a in args if isinstance(a, (Op, Tensor))] + [a for k, a in kwargs.items() if isinstance(a, (Op, Tensor))]
+        inputs = [a for a in args if isinstance(a, (Op, Tensor))] + [
+            a for k, a in kwargs.items() if isinstance(a, (Op, Tensor))
+        ]
         ct = get_highest_scope_counter(inputs, name) + 1
         for n in nodes_in_scope(out, inputs):
             n.setid(f"{name}_{ct}.{n.id}")
@@ -70,11 +94,22 @@ def scope(function):
             #     if isinstance(p, Expression):
             #         p.id = f"{name}.{k}"
         return out
+
     return set_scope
 
 
+class BaseNode(ABC):
+    """
+    Base class for all nodes in the operator description, it defines the basic inteface used by all members of the data flow graph.
+    """
+
+    operands: List["BaseNode"] = []
+    users: List["BaseNode"] = []
+    id: str = ""  # Fully qualified name of the node, e.g., "net.res.conv1" or "net.res.conv1.weight"
+
+
 @parametrize
-class Op:
+class Op(BaseNode):
     def __init__(self, name, *args, **kwargs) -> None:
         super().__init__()
         self.operands = []
@@ -94,7 +129,7 @@ class Op:
             operand.connect(new_op)
         ct = get_highest_scope_counter(operands, self.name) + 1
         # Some Ops (ChoiceOp) can be called multiple times and already have a counter
-        if not len(self.id.split('.')[-1].split('_')) > 1:
+        if not len(self.id.split(".")[-1].split("_")) > 1:
             self.id = f"{self.id}_{ct}"
         return new_op
 
@@ -148,7 +183,7 @@ class Op:
         self._train = False
 
     def __repr__(self) -> str:
-        return str(self.__class__).split('.')[-1].split('\'')[0] + f"({self.id})"
+        return str(self.__class__).split(".")[-1].split("'")[0] + f"({self.id})"
 
 
 @torch.fx.wrap
@@ -157,7 +192,7 @@ def get_tensor_data(tensor):
 
 
 @parametrize
-class Tensor:
+class Tensor(BaseNode):
     def __init__(self, name, shape, axis, dtype=FloatType(), grad=False) -> None:
         super().__init__()
         self.name = name
@@ -223,7 +258,7 @@ class Tensor:
                 # tracer.create_arg(self.data),
             ),
             kwargs={},
-            name=self.id
+            name=self.id,
         )
 
     def __repr__(self):
@@ -237,7 +272,7 @@ class Tensor:
 @parametrize
 class ChoiceOp(Op):
     def __init__(self, *options, switch=None) -> None:
-        super().__init__(name='ChoiceOp')
+        super().__init__(name="ChoiceOp")
         self.options = list(options)
         self.operands = self.options
         self.called = False  # FIXME: better name
@@ -245,7 +280,10 @@ class ChoiceOp(Op):
         if switch is not None:
             self.switch = switch
         else:
-            self.switch = self.add_param("choice", IntScalarParameter(min=0, max=len(self.options) - 1, name='choice'))
+            self.switch = self.add_param(
+                "choice",
+                IntScalarParameter(min=0, max=len(self.options) - 1, name="choice"),
+            )
 
     def __call__(self, *operands):
         if self.called:
@@ -295,7 +333,7 @@ class ChoiceOp(Op):
 class OptionalOp(ChoiceOp):
     def __init__(self, node, switch=None) -> None:
         # optional -> only two choices
-        switch = IntScalarParameter(min=0, max=1, name='choice')
+        switch = IntScalarParameter(min=0, max=1, name="choice")
         super().__init__(node, switch=switch)
 
     def __call__(self, *operands):
@@ -305,8 +343,8 @@ class OptionalOp(ChoiceOp):
 
 
 class Bypass(Op):
-    """Alternative Identity()
-    """
+    """Alternative Identity()"""
+
     def __init__(self) -> None:
         super().__init__(name="bypass")
 
