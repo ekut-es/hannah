@@ -20,9 +20,12 @@
 Translates target patterns to be applied on the hannah neural network search space descriptions.
 """
 
+import logging
 from typing import List
 
+from hannah.nas.core.expression import Expression
 from hannah.nas.functional_operators.op import BaseNode, Op, Tensor
+from hannah.nas.parameters import CategoricalParameter
 
 from .base import DescriptionBackend
 from .utils import all_nodes
@@ -78,6 +81,83 @@ class HannahPattern:
                 worklist.append(operand, pattern_operand)
 
         return None
+
+    def _match_op(self, node: Op, pattern: Op) -> bool:
+        """Matches an op node."""
+
+        # Iterate over attributes of op node
+        for attr in node.__dict__:
+            if attr.startswith("_"):
+                continue
+
+            if attr == "operands":
+                continue
+
+            if attr == "users":
+                continue
+
+            # FIXME: use regex match here
+            if attr == "id":
+                continue
+            if attr == "name":
+                continue
+            if attr == "scope":
+                continue
+
+            print("Matching attributes: ", attr)
+            if not self._is_subset(getattr(node, attr), getattr(pattern, attr)):
+                print("Failed to match attributes: ", attr)
+                return False
+
+        return True
+
+    def _match_tensor(self, node: BaseNode, pattern: Tensor) -> bool:
+        """Matches a tensor pattern, the node pattern can still be an op.
+
+        In the case of matching against an op pattern we only check the shape.
+        """
+
+        if isinstance(pattern, Op):
+            logging.critical(
+                "Matching a tensor against an op pattern is not implemented correctly, shapes might not match"
+            )
+            return True
+
+        if len(node.shape) != len(pattern.shape):
+            return False
+        else:
+            for dim, pattern_dim in zip(node.shape, pattern.shape):
+                if not self._is_subset(dim, pattern_dim):
+                    return False
+
+        return True
+
+    def _is_subset(self, node_attr, pattern_attr):
+        """Checks if a node attribute is a subset of the pattern attribute."""
+
+        print("Matching attribute sets: ", node_attr, pattern_attr)
+
+        if isinstance(node_attr, CategoricalParameter):
+            node_set = set(node_attr.values)
+            if hasattr(pattern_attr, "values"):
+                pattern_set = set(pattern_attr.values)
+            elif isinstance(pattern_attr, Expression):
+                logging.critical(
+                    "Matching a categorical parameter against an expression is not implemented correctly"
+                )
+            elif isinstance(pattern_attr, int):
+                pattern_set = set([pattern_attr])
+
+            if not node_set.issubset(pattern_set):
+                return False
+        elif isinstance(node_attr, Expression):
+            return True
+        else:
+            res = node_attr == pattern_attr
+            print("Matching attribute sets result: ", res)
+            return res
+
+        return True
 
 
 class HannahMatcher:
