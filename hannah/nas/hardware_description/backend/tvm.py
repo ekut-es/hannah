@@ -16,6 +16,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .device import Device
+import logging
 
-__all__ = ["Device"]
+from ..device import Device
+
+logger = logging.getLogger(__name__)
+
+
+class BackendGenerator:
+    def __init__(self):
+        pass
+
+    def rewrite(self, device: Device):
+        pass
+
+
+class TVMBackendGenerator:
+    pass
+
+
+def build_tvm_patterns(device: Device):
+    generator = TVMBackendGenerator()
+
+    pattern_table = generator.generate(device)
+
+    return pattern_table

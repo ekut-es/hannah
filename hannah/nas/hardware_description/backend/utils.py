@@ -16,6 +16,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .device import Device
 
-__all__ = ["Device"]
+"""
+Utilities for the hardware description backend generation.
+
+Most of them should be moved to the general search space module.
+"""
+
+from hannah.nas.functional_operators.op import BaseNode
+
+
+def all_nodes(search_space: BaseNode):
+    """
+    Return all nodes in the search space.
+    """
+
+    nodes = set()
+    worklist = [search_space]
+
+    while worklist:
+        node = worklist.pop()
+        nodes.add(node)
+        worklist.extend(node.operands)
+
+    return nodes

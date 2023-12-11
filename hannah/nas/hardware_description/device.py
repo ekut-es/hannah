@@ -16,26 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import logging
 from abc import ABC, abstractmethod
-from typing import List, Sequence
+from typing import List, NamedTuple, Sequence
 
-from ..dataflow.dataflow_graph import DataFlowGraph, dataflow
-from ..dataflow.op_type import OpType
 from ..expressions.placeholder import IntRange, UndefinedFloat, UndefinedInt
 from ..hardware_description.memory_type import MemoryType
-from ..ops import (
-    add,
-    avg_pool,
-    axis,
-    broadcast,
-    int_t,
-    optional,
-    quantization,
-    relu,
-    requantize,
-    tensor,
-)
 from ..parameters.parametrize import parametrize
+
+logger = logging.getLogger(__name__)
+
+Constraint = any
+DataFlowGraph = any
 
 
 class TargetOp(NamedTuple):
@@ -45,10 +37,33 @@ class TargetOp(NamedTuple):
 
 
 class Device(ABC):
-    def __init__(self) -> None:
+    name: str
+    description: str
+    _ops: List[TargetOp]
+    _memories: List[MemoryType]
+
+    def __init__(self, name: str = "", description: str = "") -> None:
         super().__init__()
+        if not name:
+            name = "unnamed_device"
+            logger.warning(
+                "Unnamed device created. Please provide a name for the device."
+            )
+
+        self.name = name
+        self.description = description
         self._ops: List = []
         self._memories = []
+
+    def add_op(
+        self,
+        name: str,
+        graph: DataFlowGraph,
+        constraints: Sequence[Constraint],
+    ) -> None:
+        """Adds an operation to the device."""
+
+        self._ops.append(TargetOp(name, graph, constraints))
 
     @property
     def ops(self) -> Sequence[TargetOp]:

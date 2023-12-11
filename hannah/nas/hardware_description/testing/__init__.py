@@ -16,6 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .device import Device
+from .device import get_device
 
-__all__ = ["Device"]
+__all__ = ["get_device"]

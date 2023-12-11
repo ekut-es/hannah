@@ -16,6 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .device import Device
+"""Backends for the hannah target descriptions.
 
-__all__ = ["Device"]
+These backend descritptions can be used to generate translate the target descritption to different data formats.
+"""
+
+
+from .hannah import HannahBackend
+from .markdown import MarkdownBackend
+
+__all__ = ["MarkdownBackend", "HannahBackend"]
