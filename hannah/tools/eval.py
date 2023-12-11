@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,9 +23,9 @@ from typing import Any, Optional, Type
 import hydra
 import torch
 from hydra.utils import instantiate, to_absolute_path
+from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 import hannah.modules.classifier
 
@@ -57,7 +57,7 @@ def eval_checkpoint(config: DictConfig, checkpoint) -> None:
     module.setup("test")
     module.load_state_dict(checkpoint["state_dict"])
 
-    trainer = Trainer(gpus=0, deterministic=True)
+    trainer = Trainer(devices=0, deterministic=True)
     trainer.validate(model=module, ckpt_path=None)
     reset_seed()
     trainer.test(model=module, ckpt_path=None)

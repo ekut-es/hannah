@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ from pathlib import Path
 import hydra
 import torch
 from hydra.utils import instantiate, to_absolute_path
+from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Trainer
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from hannah.datasets.Kitti import Kitti
 
@@ -40,8 +40,8 @@ def eval_train(config, module, test=True):
     Returns:
 
     """
-    gpus = config["gpus"] if len(config["gpus"]) > 0 else 0
-    trainer = Trainer(gpus=gpus, deterministic=True, logger=False)
+    devices = config["devices"] if len(config["devices"]) > 0 else 0
+    trainer = Trainer(devices=devices, deterministic=True, logger=False)
     val = trainer.validate(model=module, ckpt_path=None, verbose=test)
 
     return val

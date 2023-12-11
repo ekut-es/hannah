@@ -24,7 +24,6 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
-from pytorch_lightning.trainer.supporters import CombinedLoader
 from torchmetrics import (
     Accuracy,
     ConfusionMatrix,

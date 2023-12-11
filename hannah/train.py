@@ -26,13 +26,12 @@ import pandas as pd
 import tabulate
 import torch
 import torch.nn as nn
-from hydra.utils import instantiate
+from hydra.utils import get_class, instantiate
+from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.cloud_io import load as pl_load
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
@@ -74,11 +73,9 @@ def train(
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
-        if not torch.cuda.is_available():
-            config.trainer.gpus = None
 
-        if isinstance(config.trainer.gpus, int):
-            config.trainer.gpus = auto_select_gpus(config.trainer.gpus)
+        if isinstance(config.trainer.devices, int):
+            config.trainer.devices = auto_select_gpus(config.trainer.devices)
 
         if not config.trainer.fast_dev_run and not config.get("resume", False):
             clear_outputs()
@@ -86,20 +83,26 @@ def train(
         logging.info("Configuration: ")
         logging.info(OmegaConf.to_yaml(config))
         logging.info("Current working directory %s", os.getcwd())
-        lit_module = instantiate(
-            config.module,
-            dataset=config.dataset,
-            model=config.model,
-            optimizer=config.optimizer,
-            features=config.get("features", None),
-            augmentation=config.get("augmentation", None),
-            scheduler=config.get("scheduler", None),
-            normalizer=config.get("normalizer", None),
-            gpus=config.trainer.get("gpus", None),
-            unlabeled_data=config.get("unlabeled_data"),
-            pseudo_labeling=config.get("pseudo_labeling", None),
-            _recursive_=False,
-        )
+
+        if config.get("input_file", None):
+            msglogger.info("Loading initial weights from model %s", config.input_file)
+            lit_module = get_class(config.module._target_).load_from_checkpoint(
+                config.input_file
+            )
+        else:
+            lit_module = instantiate(
+                config.module,
+                dataset=config.dataset,
+                model=config.model,
+                optimizer=config.optimizer,
+                features=config.get("features", None),
+                augmentation=config.get("augmentation", None),
+                scheduler=config.get("scheduler", None),
+                normalizer=config.get("normalizer", None),
+                unlabeled_data=config.get("unlabeled_data"),
+                pseudo_labeling=config.get("pseudo_labeling", None),
+                _recursive_=False,
+            )
 
         profiler = None
         if config.get("profiler", None):
@@ -139,26 +142,6 @@ def train(
             logger=logger,
             _convert_="partial",
         )
-
-        if config.get("input_file", None):
-            msglogger.info("Loading initial weights from model %s", config.input_file)
-            lit_module.setup("train")
-            input_ckpt = pl_load(config.input_file)
-            lit_module.load_state_dict(input_ckpt["state_dict"], strict=False)
-
-        if config["auto_lr"]:
-            # run lr finder (counts as one epoch)
-            lr_finder = lit_trainer.lr_find(lit_module)
-
-            # inspect results
-            fig = lr_finder.plot()
-            fig.savefig("./learning_rate.png")
-
-            # recreate module with updated config
-            suggested_lr = lr_finder.suggestion()
-            config["lr"] = suggested_lr
-
-        lit_trainer.tune(lit_module)
 
         logging.info("Starting training")
         # PL TRAIN

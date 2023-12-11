@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.utils.data as data
 from hydra.utils import get_class, instantiate
-from pytorch_lightning.trainer.supporters import CombinedLoader
+from pytorch_lightning.utilities import CombinedLoader
 from torchmetrics import (
     Accuracy,
     ConfusionMatrix,

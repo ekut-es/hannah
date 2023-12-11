@@ -17,7 +17,8 @@
 ## limitations under the License.
 ##
 _target_: pytorch_lightning.trainer.Trainer
-gpus: 1
+accelerator: auto
+devices: 1
 limit_train_batches: 1.0
 limit_val_batches: 1.0
 limit_test_batches: 1.0
@@ -28,8 +29,7 @@ overfit_batches: 0.0
 benchmark: False
 deterministic: "warn"
 gradient_clip_val: 0
-auto_scale_batch_size: null
 accumulate_grad_batches: 1
 plugins: null
-strategy: null
+strategy: auto
 reload_dataloaders_every_n_epochs: 0

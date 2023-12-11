@@ -34,8 +34,7 @@ from omegaconf import DictConfig
 from PIL import Image
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import Logger, TensorBoardLogger
-from pytorch_lightning.trainer.supporters import CombinedLoader
-from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from pytorch_lightning.utilities import CombinedLoader, rank_zero_only
 from torchmetrics import AUROC, MetricCollection
 
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
@@ -67,7 +66,6 @@ class ClassifierModule(LightningModule, ABC):
         unlabeled_data: Optional[DictConfig] = None,
         export_onnx: bool = True,
         export_relay: bool = False,
-        gpus=None,
         shuffle_all_dataloaders: bool = False,
         augmentation: Optional[DictConfig] = None,
         pseudo_labeling: Optional[DictConfig] = None,
@@ -93,7 +91,6 @@ class ClassifierModule(LightningModule, ABC):
         self.logged_samples = 0
         self.export_onnx = export_onnx
         self.export_relay = export_relay
-        self.gpus = gpus
         self.shuffle_all_dataloaders = shuffle_all_dataloaders
 
         self.train_set = None
@@ -267,6 +264,9 @@ class ClassifierModule(LightningModule, ABC):
                 logging.error("Could not export onnx model ...\n {}".format(str(e)))
 
     def on_load_checkpoint(self, checkpoint) -> None:
+        # Calling self setup to make sure that the model is instantiated
+        self.setup("train")
+
         for k, v in self.state_dict().items():
             if k not in checkpoint["state_dict"]:
                 msglogger.warning(
