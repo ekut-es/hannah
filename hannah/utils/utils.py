@@ -202,6 +202,9 @@ def extract_from_download_cache(
 def auto_select_gpus(gpus=1) -> List[int]:
     num_gpus = gpus
 
+    if not nvsmi.is_nvidia_smi_on_path():
+        return list(range(num_gpus))
+
     gpus = list(nvsmi.get_gpus())
 
     gpus = list(

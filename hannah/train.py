@@ -74,7 +74,10 @@ def train(
     for seed in config.seed:
         seed_everything(seed, workers=True)
 
-        if isinstance(config.trainer.devices, int):
+        if isinstance(config.trainer.devices, int) and config.trainer.accelerator in [
+            "gpu",
+            "auto",
+        ]:
             config.trainer.devices = auto_select_gpus(config.trainer.devices)
 
         if not config.trainer.fast_dev_run and not config.get("resume", False):
