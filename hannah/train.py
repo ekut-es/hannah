@@ -41,6 +41,7 @@ from .utils import (
     common_callbacks,
     log_execution_env_state,
 )
+from .utils.dvclive import DVCLIVE_AVAILABLE, DVCLogger
 
 msglogger: logging.Logger = logging.getLogger(__name__)
 
@@ -116,12 +117,9 @@ def train(
                 ".", version=None, name="", default_hp_metric=False, log_graph=True
             )
         ]
-        if config.trainer.get("stochastic_weight_avg", False):
-            logging.critical(
-                "CSVLogger is not compatible with logging with SWA, disabling csv logger"
-            )
-        else:
-            logger.append(CSVLogger(".", version=None, name=""))
+        logger.append(CSVLogger(".", version=None, name=""))
+        if DVCLIVE_AVAILABLE:
+            logger.append(DVCLogger())
 
         callbacks = []
         if config.get("backend", None):
