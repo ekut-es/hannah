@@ -131,7 +131,7 @@ test_python_310:
     paths:
       - .cache/
   rules:
-    - if: ($CI_PIPELINE_SOURCE == "push") && ($CI_COMMIT_REF == "main")
+    - if: ($CI_PIPELINE_SOURCE != "schedule") && ($CI_COMMIT_REF == "main")
 
 
 
@@ -145,6 +145,7 @@ build_docs:
       - .cache/pip
       - venv
   before_script:
+    - env
     - apt update
     - apt -y install git python3-dev libblas-dev liblapack-dev libsndfile1-dev  cmake  curl  python-is-python3 python3-virtualenv python3-pip
     - python -m virtualenv venv
@@ -155,7 +156,7 @@ build_docs:
   tags:
     - docker
   rules:
-    - if: ($CI_PIPELINE_SOURCE == "push") && ($CI_COMMIT_REF == "main")
+    - if: $CI_COMMIT_REF == "main"
   # Empty dependencies to disable artifacts passing
   dependencies: []
 
