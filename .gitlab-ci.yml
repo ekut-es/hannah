@@ -216,6 +216,8 @@ deploy to github:
   only:
     - main
     - pub/.*
-  script: ./scripts/git-push git@github.com:ekut-es/hannah.git $CI_COMMIT_REF_NAME
+  script: 
+    - env
+    - ./scripts/git-push git@github.com:ekut-es/hannah.git $CI_COMMIT_REF_NAME
   tags:
     - docker
