@@ -20,7 +20,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Mapping, Type, Union
 
 import pandas as pd
 import tabulate
@@ -30,11 +30,13 @@ from hydra.utils import get_class, instantiate
 from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import RichModelSummary, RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
+from .callbacks.prediction_logger import PredictionLogger
 from .utils import (
     auto_select_gpus,
     clear_outputs,
@@ -65,6 +67,7 @@ def train(
     config: DictConfig,
 ) -> Union[float, Dict[Any, float], List[Union[float, Dict[Any, float]]]]:
     test_output = []
+    val_output = []
     results = []
     if isinstance(config.seed, int):
         config.seed = [config.seed]
@@ -118,8 +121,8 @@ def train(
             )
         ]
         logger.append(CSVLogger(".", version=None, name=""))
-        if DVCLIVE_AVAILABLE:
-            logger.append(DVCLogger())
+        # if DVCLIVE_AVAILABLE:
+        #    logger.append(DVCLogger())
 
         callbacks = []
         if config.get("backend", None):
@@ -132,8 +135,13 @@ def train(
         opt_callback = HydraOptCallback(monitor=opt_monitor)
         callbacks.append(opt_callback)
 
+        callbacks.append(PredictionLogger())
+
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
+
+        callbacks.append(RichModelSummary())
+        callbacks.append(RichProgressBar())
 
         # INIT PYTORCH-LIGHTNING
         lit_trainer: Trainer = instantiate(
@@ -168,6 +176,7 @@ def train(
         if not lit_trainer.fast_dev_run:
             reset_seed()
             lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
+            val_output.append(opt_callback.val_result())
 
             if not config.get("skip_test", False):
                 # PL TEST
@@ -179,14 +188,17 @@ def train(
             results.append(opt_callback.result())
 
     @rank_zero_only
-    def summarize_test(test_output) -> None:
-        if not test_output:
+    def summarize_stage(stage: str, output: Mapping["str", float]) -> None:
+        if not output:
             return
-        result_frame = pd.DataFrame.from_dict(test_output)
+        result_frame = pd.DataFrame.from_dict(output)
         if result_frame.empty:
             return
-        result_frame.to_json("test_results.json")
-        result_frame.to_pickle("test_results.pkl")
+
+        result_frame = result_frame.astype(float)
+
+        result_frame.to_json(f"{stage}_results.json")
+        result_frame.to_pickle(f"{stage}_results.pkl")
 
         description = result_frame.describe()
         description = description.fillna(0.0)
@@ -200,7 +212,8 @@ def train(
         )
         msglogger.info("Averaged Result Metrics:\n%s", desc_table)
 
-    summarize_test(test_output)
+    summarize_stage("test", test_output)
+    summarize_stage("val", val_output)
 
     if len(results) == 1:
         return results[0]
