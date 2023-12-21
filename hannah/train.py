@@ -237,7 +237,10 @@ def train(
 
                 for k, v in out.items():
                     if isinstance(v, torch.Tensor):
-                        out[k] = v.item()
+                        if v.numel() == 1:
+                            out[k] = v.item()
+                        else:
+                            out[k] = v.cpu().tolist()
 
                 fp.write(json.dumps(out) + "\n")
 
