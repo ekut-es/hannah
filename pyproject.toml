@@ -106,6 +106,7 @@ hannah-nas-eval = "hannah.nas.eval.__main__:main"
 [tool.poetry.group.dev.dependencies]
 pyre-check = "^0.9.17"
 pytest-xdist = "^3.1.0"
+ipykernel = "^6.27.1"
 
 [build-system]
 requires = ["poetry>=0.12"]

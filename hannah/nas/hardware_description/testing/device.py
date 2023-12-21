@@ -18,11 +18,15 @@
 #
 " A very simple device description containing supporting only conv2d -> relu -> max_pool2d "
 
-from hannah.nas.functional_operators.operators import Conv2d, Tensor
+from hannah.nas.expressions.placeholder import UndefinedInt
+from hannah.nas.functional_operators.op import ChoiceOp
+from hannah.nas.functional_operators.operators import Conv2d, MaxPool2d, Relu, Tensor
 from hannah.nas.hardware_description import Device
 
+Dyn = UndefinedInt("Dyn")
 
-def get_device(name, *args, **kwargs):
+
+def get_device(name, relu=False, *args, **kwargs):
     simple_device = Device(
         name,
         """
@@ -42,15 +46,20 @@ def get_device(name, *args, **kwargs):
         """,
     )
 
-    input = Tensor(
-        "input", shape=["Dyn", "Dyn", "Dyn" "Dyn"], axis=["N", "C", "H", "W"]
-    )
-    weight = Tensor(
-        "weight", shape=["Dyn", "Dyn", "Dyn", "Dyn"], axis=["O", "I", "kH", "kW"]
-    )
+    input = Tensor("input", shape=[Dyn, Dyn, Dyn, Dyn], axis=["N", "C", "H", "W"])
+    weight = Tensor("weight", shape=[Dyn, Dyn, 3, 3], axis=["O", "I", "kH", "kW"])
 
-    op = Conv2d(stride=1, padding=0, dilation=1, groups=1)(input, weight)
+    op = Conv2d(stride=1, padding=1, dilation=1, groups=1)(input, weight)
+    max_pool = MaxPool2d(
+        kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False
+    )(op)
 
-    simple_device.add_op("conv2d", op, [])
+    op = ChoiceOp(op, max_pool)
+
+    if relu:
+        relu = Relu()(op)
+        op = ChoiceOp(op, relu)
+
+    simple_device.add_op("conv2d_maxpool_relu", op, [])
 
     return simple_device

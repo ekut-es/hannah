@@ -24,5 +24,6 @@ These backend descritptions can be used to generate translate the target descrit
 
 from .hannah import HannahBackend
 from .markdown import MarkdownBackend
+from .tvm import TVMBackend
 
-__all__ = ["MarkdownBackend", "HannahBackend"]
+__all__ = ["MarkdownBackend", "HannahBackend", "TVMBackend"]

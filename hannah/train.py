@@ -27,10 +27,10 @@ import tabulate
 import torch
 import torch.nn as nn
 from hydra.utils import instantiate
+from lightning.fabric.utilities.cloud_io import load as pl_load
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.cloud_io import load as pl_load
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 

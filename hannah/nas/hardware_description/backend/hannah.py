@@ -21,14 +21,26 @@ Translates target patterns to be applied on the hannah neural network search spa
 """
 
 import logging
-from typing import List
+from typing import List, Sequence
 
 from hannah.nas.core.expression import Expression
+from hannah.nas.expressions.placeholder import UndefinedInt
 from hannah.nas.functional_operators.op import BaseNode, Op, Tensor
 from hannah.nas.parameters import CategoricalParameter
 
 from .base import DescriptionBackend
 from .utils import all_nodes
+
+
+class MatchedRegion:
+    """A matched region of a hannah pattern."""
+
+    def __init__(self, pattern, nodes):
+        self.pattern = pattern
+        self.nodes = nodes
+
+    def __str__(self):
+        return f"MatchedRegion(pattern={self.pattern.name}, nodes={[n.id for n in self.nodes]})"
 
 
 class HannahPattern:
@@ -46,7 +58,8 @@ class HannahPattern:
 
         for node in nodes:
             match = self._match_node(node)
-            if matches:
+            if match:
+                match = MatchedRegion(self._pattern, match)
                 matches.append(match)
         return matches
 
@@ -59,6 +72,7 @@ class HannahPattern:
         worklist = [(node, self._pattern)]
         while worklist:
             current_node, current_pattern = worklist.pop()
+            print("matching:", current_node.id, current_pattern.id)
 
             # Dispatch over the different types of nodes
             if isinstance(current_node, Op):
@@ -69,18 +83,20 @@ class HannahPattern:
                 matches = self._match_tensor(current_node, current_pattern)
                 if not matches:
                     return []
-
-            if len(current_node.operands) != len(current_pattern.operands):
-                return []
-
             partial_match.append(current_node)
 
-            for operand, pattern_operand in zip(
-                current_node.operands, current_pattern.operands
-            ):
-                worklist.append(operand, pattern_operand)
+            print("partial match:", [n.id for n in partial_match])
 
-        return None
+            if current_pattern.operands:
+                if len(current_node.operands) != len(current_pattern.operands):
+                    return []
+
+                for operand, pattern_operand in zip(
+                    current_node.operands, current_pattern.operands
+                ):
+                    worklist.append((operand, pattern_operand))
+
+        return partial_match
 
     def _match_op(self, node: Op, pattern: Op) -> bool:
         """Matches an op node."""
@@ -104,7 +120,7 @@ class HannahPattern:
             if attr == "scope":
                 continue
 
-            print("Matching attributes: ", attr)
+            # print("Matching attributes: ", attr)
             if not self._is_subset(getattr(node, attr), getattr(pattern, attr)):
                 print("Failed to match attributes: ", attr)
                 return False
@@ -123,10 +139,10 @@ class HannahPattern:
             )
             return True
 
-        if len(node.shape) != len(pattern.shape):
+        if len(node.shape()) != len(pattern.shape()):
             return False
         else:
-            for dim, pattern_dim in zip(node.shape, pattern.shape):
+            for dim, pattern_dim in zip(node.shape(), pattern.shape()):
                 if not self._is_subset(dim, pattern_dim):
                     return False
 
@@ -138,8 +154,10 @@ class HannahPattern:
         print("Matching attribute sets: ", node_attr, pattern_attr)
 
         if isinstance(node_attr, CategoricalParameter):
-            node_set = set(node_attr.values)
-            if hasattr(pattern_attr, "values"):
+            node_set = set(node_attr.choices)
+            if isinstance(pattern_attr, UndefinedInt):
+                return True
+            elif hasattr(pattern_attr, "values"):
                 pattern_set = set(pattern_attr.values)
             elif isinstance(pattern_attr, Expression):
                 logging.critical(
@@ -148,14 +166,27 @@ class HannahPattern:
             elif isinstance(pattern_attr, int):
                 pattern_set = set([pattern_attr])
 
-            if not node_set.issubset(pattern_set):
+            if not (node_set & pattern_set):
                 return False
+            else:
+                # FIXME: this is a hack to make sure that the choices are only the ones in the pattern
+                # FIXME: this can result in unexpected behaviour if the current_value is not set to one of the restricted values
+                node_attr.choices = [x for x in node_attr.choices if x in pattern_set]
         elif isinstance(node_attr, Expression):
             return True
-        else:
-            res = node_attr == pattern_attr
-            print("Matching attribute sets result: ", res)
-            return res
+        elif isinstance(node_attr, int):
+            if isinstance(pattern_attr, int):
+                if node_attr != pattern_attr:
+                    return False
+            elif isinstance(pattern_attr, UndefinedInt):
+                return True
+            else:
+                logging.critical(
+                    f"Matching an int against an expression of type: {type(pattern_attr)} is not implemented correctly"
+                )
+                return True
+
+            return True
 
         return True
 
@@ -173,7 +204,14 @@ class HannahMatcher:
 
         nodes = all_nodes(search_space)
         for pattern in self._patterns:
-            self._matched_regions.append(pattern.match(nodes))
+            self._matched_regions.extend(pattern.match(nodes))
+
+        return self._matched_regions
+
+    @property
+    def matches(self) -> Sequence[MatchedRegion]:
+        """Returns the matched regions."""
+        return self._matched_regions
 
 
 class HannahBackend(DescriptionBackend):
