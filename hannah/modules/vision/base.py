@@ -29,11 +29,13 @@ import torch.utils.data as data
 from hydra.utils import get_class, instantiate
 from pytorch_lightning.utilities import CombinedLoader
 from torchmetrics import (
+    ROC,
     Accuracy,
     ConfusionMatrix,
     F1Score,
     MetricCollection,
     Precision,
+    PrecisionRecallCurve,
     Recall,
 )
 
@@ -142,6 +144,13 @@ class VisionBaseModule(ClassifierModule):
         if self.num_classes > 0:
             self.test_confusion = ConfusionMatrix(
                 "multiclass", num_classes=self.num_classes
+            )
+
+            self.test_roc = ROC(
+                "multiclass", num_classes=self.num_classes, thresholds=10
+            )
+            self.test_pr_curve = PrecisionRecallCurve(
+                "multiclass", num_classes=self.num_classes, thresholds=10
             )
 
             for step_name in ["train", "val", "test"]:

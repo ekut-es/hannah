@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import datetime
+import json
 import logging
 import os
 import shutil
@@ -26,11 +28,10 @@ import pandas as pd
 import tabulate
 import torch
 import torch.nn as nn
-from hydra.utils import get_class, instantiate
+from hydra.utils import get_class, get_original_cwd, instantiate
 from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import RichModelSummary, RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
@@ -41,9 +42,11 @@ from .utils import (
     auto_select_gpus,
     clear_outputs,
     common_callbacks,
+    git_version,
     log_execution_env_state,
 )
 from .utils.dvclive import DVCLIVE_AVAILABLE, DVCLogger
+from .utils.logger import JSONLogger
 
 msglogger: logging.Logger = logging.getLogger(__name__)
 
@@ -117,10 +120,16 @@ def train(
 
         logger = [
             TensorBoardLogger(
-                ".", version=None, name="", default_hp_metric=False, log_graph=True
+                ".",
+                version="tensorboard",
+                name="",
+                default_hp_metric=False,
+                log_graph=True,
             )
         ]
-        logger.append(CSVLogger(".", version=None, name=""))
+        logger.append(CSVLogger(".", version="logs", name=""))
+        logger.append(JSONLogger(".", version="logs", name=""))
+
         # if DVCLIVE_AVAILABLE:
         #    logger.append(DVCLogger())
 
@@ -139,9 +148,6 @@ def train(
 
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
-
-        callbacks.append(RichModelSummary())
-        callbacks.append(RichProgressBar())
 
         # INIT PYTORCH-LIGHTNING
         lit_trainer: Trainer = instantiate(
@@ -211,6 +217,29 @@ def train(
             tablefmt="github",
         )
         msglogger.info("Averaged Result Metrics:\n%s", desc_table)
+
+        # Append summarized result metrics to common history buffer
+        history_file = (
+            Path(get_original_cwd()) / Path(config.output_dir) / "history.jsonl"
+        )
+        with history_file.open("a+") as fp:
+            for out in output:
+                out["stage"] = stage
+                out["experiment"] = config.experiment_id
+                out["model"] = config.model.name
+
+                out["date"] = datetime.datetime.now().isoformat()
+                out["seed"] = seed
+                out["version"] = git_version()
+                out["dir"] = os.path.relpath(
+                    os.path.join(os.getcwd(), config.output_dir), get_original_cwd()
+                )
+
+                for k, v in out.items():
+                    if isinstance(v, torch.Tensor):
+                        out[k] = v.item()
+
+                fp.write(json.dumps(out) + "\n")
 
     summarize_stage("test", test_output)
     summarize_stage("val", val_output)

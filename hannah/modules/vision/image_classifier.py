@@ -82,6 +82,7 @@ class ImageClassifierModule(VisionBaseModule):
             loss += classifier_loss
 
             preds = torch.argmax(logits, dim=1)
+            provs = torch.softmax(logits, dim=1)
             self.metrics[f"{step_name}_metrics"](preds, labels)
 
             self.log_dict(
@@ -142,5 +143,10 @@ class ImageClassifierModule(VisionBaseModule):
         y = batch.get("labels", None)
         if y is not None and preds is not None:
             self.test_confusion(preds, y)
+
+        if y is not None and step_results.logits.numel() > 0:
+            probs = torch.softmax(step_results.logits, dim=1)
+            self.test_roc(probs, y)
+            self.test_pr_curve(probs, y)
 
         return step_results

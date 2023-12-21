@@ -23,6 +23,7 @@ import pathlib
 import platform
 import random
 import shutil
+import subprocess
 import sys
 import time
 from contextlib import _GeneratorContextManager, contextmanager
@@ -73,16 +74,7 @@ logger = logging.getLogger(__name__)
 
 
 def log_execution_env_state() -> None:
-    """Log information about the execution environment.
-    File 'config_path' will be copied to directory 'logdir'. A common use-case
-    is passing the path to a (compression) schedule YAML file. Storing a copy
-    of the schedule file, with the experiment logs, is useful in order to
-    reproduce experiments.
-    Args:
-        config_path: path to config file, used only when logdir is set
-        logdir: log directory
-        git_root: the path to the .git root directory
-    """
+    """Log information about the execution environment."""
 
     logger.info("Environment info:")
 
@@ -127,6 +119,28 @@ def log_execution_env_state() -> None:
     log_git_state(os.path.join(os.path.dirname(__file__), ".."))
     logger.info("  Command line: %s", " ".join(sys.argv))
     logger.info("  ")
+
+
+def git_version(short=True):
+    """Return the current git sha
+
+    Parameters:
+        short (bool): If True, return the short (7 character) version of the SHA
+
+    Returns:
+        str: The current git SHA
+    """
+
+    workdir = os.path.dirname(__file__)
+
+    command = ["git", "rev-parse", "--short" if short else "--verify", "HEAD"]
+    return (
+        subprocess.check_output(
+            command,
+        )
+        .decode("utf8")
+        .strip()
+    )
 
 
 def list_all_files(
@@ -304,6 +318,12 @@ def clear_outputs():
         if component.name == "checkpoints":
             shutil.rmtree(component)
         elif component.name.startswith("version_"):
+            shutil.rmtree(component)
+        elif component.name == "tensorboard":
+            shutil.rmtree(component)
+        elif component.name == "logs":
+            shutil.rmtree(component)
+        elif component.name == "plots":
             shutil.rmtree(component)
         elif component.name == "profile":
             shutil.rmtree(component)

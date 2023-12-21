@@ -18,6 +18,7 @@
 #
 import copy
 import io
+import json
 import logging
 import math
 import os
@@ -100,6 +101,9 @@ class ClassifierModule(LightningModule, ABC):
         self.val_metrics: MetricCollection = MetricCollection({})
         self.test_metrics: MetricCollection = MetricCollection({})
         self.train_metrics: MetricCollection = MetricCollection({})
+
+        self.test_roc = None
+        self.test_pr_curve = None
 
         self.pseudo_label = None
         self.batch_size = batch_size
@@ -306,7 +310,9 @@ class ClassifierModule(LightningModule, ABC):
             return
 
         self._plot_confusion_matrix()
+        self._plot_curves()
 
+    # FIXME: this is terrible please use standard metrics for auroc scores
     def _AUROC(self, preds, target):
         auroc = AUROC(task="binary")
         auroc_score = auroc(preds, target)
@@ -314,13 +320,65 @@ class ClassifierModule(LightningModule, ABC):
             if isinstance(logger, TensorBoardLogger) and hasattr(self, "test_metrics"):
                 logger.log_metrics({"AUROC": auroc_score})
 
+    def _plot_curves(self) -> None:
+        os.makedirs("plots", exist_ok=True)
+        if self.test_roc is not None:
+            roc = self.test_roc.compute()
+            fpr, tpr, thresholds = roc
+
+            with open("plots/test_roc.json", "w") as fp:
+                json.dump(
+                    {
+                        "fpr": fpr.cpu().numpy().tolist(),
+                        "tpr": tpr.cpu().numpy().tolist(),
+                        "thresholds": thresholds.cpu().numpy().tolist(),
+                        "categories": list(self.test_set.class_names_abbreviated),
+                    },
+                    fp,
+                )
+
+            fig, ax = self.test_roc.plot(roc)
+            fig.savefig("plots/test_roc.png")
+            fig.savefig("plots/test_roc.pdf")
+
+            self.test_roc.reset()
+
+        if self.test_pr_curve:
+            pr_curve = self.test_pr_curve.compute()
+            precision, recall, thresholds = pr_curve
+            with open("plots/test_pr_curve.json", "w") as fp:
+                json.dump(
+                    {
+                        "precision": precision.cpu().numpy().tolist(),
+                        "recall": recall.cpu().numpy().tolist(),
+                        "thresholds": thresholds.cpu().numpy().tolist(),
+                        "categories": list(self.test_set.class_names_abbreviated),
+                    },
+                    fp,
+                )
+
+            fig, ax = self.test_pr_curve.plot(pr_curve)
+            fig.savefig("plots/test_pr_curve.png")
+            fig.savefig("plots/test_pr_curve.pdf")
+
+            self.test_pr_curve.reset()
+
     def _plot_confusion_matrix(self) -> None:
-        if hasattr(self, "test_confusion"):
+        os.makedirs("plots", exist_ok=True)
+        if hasattr(self, "test_confusion") and self.test_confusion is not None:
             confusion_matrix = self.test_confusion.compute()
             self.test_confusion.reset()
 
             if self.trainer.global_rank > 0:
                 return
+
+            json.dump(
+                {
+                    "data": confusion_matrix.cpu().numpy().tolist(),
+                    "categories": list(self.test_set.class_names_abbreviated),
+                },
+                open("plots/test_confusion.json", "w"),
+            )
 
             confusion_plot = plot_confusion_matrix(
                 confusion_matrix.cpu().numpy(),
@@ -328,8 +386,8 @@ class ClassifierModule(LightningModule, ABC):
                 figsize=(self.num_classes, self.num_classes),
             )
 
-            confusion_plot.savefig("test_confusion.png")
-            confusion_plot.savefig("test_confusion.pdf")
+            confusion_plot.savefig("plots/test_confusion.png")
+            confusion_plot.savefig("plots/test_confusion.pdf")
 
             buf = io.BytesIO()
 
