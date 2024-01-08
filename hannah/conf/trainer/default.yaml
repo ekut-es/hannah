@@ -33,3 +33,4 @@ accumulate_grad_batches: 1
 plugins: null
 strategy: auto
 reload_dataloaders_every_n_epochs: 0
+precision: 32
