@@ -17,7 +17,8 @@
 ## limitations under the License.
 ##
 _target_: hannah.trainer.CrossValidationTrainer
-gpus: 1
+accelerator: auto
+devices: 1
 limit_train_batches: 1.0
 limit_val_batches: 1.0
 limit_test_batches: 1.0

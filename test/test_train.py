@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -66,10 +66,6 @@ def test_models(model, features):
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    platform.processor() == "ppc64le",
-    reason="currently needs cpu based fft wich is not available on ppc",
-)
 @pytest.mark.parametrize(
     "model,backend", [("tc-res8", "torchmobile"), ("gds", "torchmobile")]
 )

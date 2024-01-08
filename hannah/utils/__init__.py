@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ from .utils import (
     common_callbacks,
     extract_from_download_cache,
     fullname,
+    git_version,
     list_all_files,
     log_execution_env_state,
     set_deterministic,
@@ -38,4 +39,5 @@ __all__ = [
     "fullname",
     "set_deterministic",
     "lazy_import",
+    "git_version",
 ]

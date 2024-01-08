@@ -58,7 +58,6 @@ class AngleClassifierModule(StreamClassifierModule):
         self.initialized = True
 
         if self.hparams.dataset is not None:
-
             # trainset needed to set values in hparams
             self.train_set, self.dev_set, self.test_set = self.get_split()
 
@@ -69,14 +68,10 @@ class AngleClassifierModule(StreamClassifierModule):
         self.example_input_array = self.get_example_input_array()
         dummy_input = self.example_input_array.to(device)
         logging.info("Example input array shape: %s", str(dummy_input.shape))
-        if platform.machine() == "ppc64le":
-            dummy_input = dummy_input.to("cuda:" + str(self.gpus[0]))
 
         # Instantiate features
         self.features = instantiate(self.hparams.features)
         self.features.to(device)
-        if platform.machine() == "ppc64le":
-            self.features.to("cuda:" + str(self.gpus[0]))
 
         features = self._extract_features(dummy_input)
         self.example_feature_array = features.to(self.device)
@@ -146,7 +141,6 @@ class AngleClassifierModule(StreamClassifierModule):
 
     # VALIDATION CODE
     def validation_step(self, batch, batch_idx):
-
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 
@@ -160,7 +154,6 @@ class AngleClassifierModule(StreamClassifierModule):
 
     # TEST CODE
     def test_step(self, batch, batch_idx):
-
         # dataloader provides these four entries per batch
         x, x_length, y, y_length = batch
 

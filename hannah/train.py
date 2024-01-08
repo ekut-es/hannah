@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -16,32 +16,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import datetime
+import json
 import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Mapping, Type, Union
 
 import pandas as pd
 import tabulate
 import torch
 import torch.nn as nn
-from hydra.utils import instantiate
+from hydra.utils import get_class, get_original_cwd, instantiate
+from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.cloud_io import load as pl_load
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
+from .callbacks.prediction_logger import PredictionLogger
 from .utils import (
     auto_select_gpus,
     clear_outputs,
     common_callbacks,
+    git_version,
     log_execution_env_state,
 )
+from .utils.dvclive import DVCLIVE_AVAILABLE, DVCLogger
+from .utils.logger import JSONLogger
 
 msglogger: logging.Logger = logging.getLogger(__name__)
 
@@ -65,6 +70,7 @@ def train(
     config: DictConfig,
 ) -> Union[float, Dict[Any, float], List[Union[float, Dict[Any, float]]]]:
     test_output = []
+    val_output = []
     results = []
     if isinstance(config.seed, int):
         config.seed = [config.seed]
@@ -74,11 +80,13 @@ def train(
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
-        if not torch.cuda.is_available():
-            config.trainer.gpus = None
 
-        if isinstance(config.trainer.gpus, int):
-            config.trainer.gpus = auto_select_gpus(config.trainer.gpus)
+        if isinstance(config.trainer.devices, int) and config.trainer.accelerator in [
+            "gpu",
+            "auto",
+        ]:
+            if torch.cuda.is_available():
+                config.trainer.devices = auto_select_gpus(config.trainer.devices)
 
         if not config.trainer.fast_dev_run and not config.get("resume", False):
             clear_outputs()
@@ -86,20 +94,26 @@ def train(
         logging.info("Configuration: ")
         logging.info(OmegaConf.to_yaml(config))
         logging.info("Current working directory %s", os.getcwd())
-        lit_module = instantiate(
-            config.module,
-            dataset=config.dataset,
-            model=config.model,
-            optimizer=config.optimizer,
-            features=config.get("features", None),
-            augmentation=config.get("augmentation", None),
-            scheduler=config.get("scheduler", None),
-            normalizer=config.get("normalizer", None),
-            gpus=config.trainer.get("gpus", None),
-            unlabeled_data=config.get("unlabeled_data"),
-            pseudo_labeling=config.get("pseudo_labeling", None),
-            _recursive_=False,
-        )
+
+        if config.get("input_file", None):
+            msglogger.info("Loading initial weights from model %s", config.input_file)
+            lit_module = get_class(config.module._target_).load_from_checkpoint(
+                config.input_file
+            )
+        else:
+            lit_module = instantiate(
+                config.module,
+                dataset=config.dataset,
+                model=config.model,
+                optimizer=config.optimizer,
+                features=config.get("features", None),
+                augmentation=config.get("augmentation", None),
+                scheduler=config.get("scheduler", None),
+                normalizer=config.get("normalizer", None),
+                unlabeled_data=config.get("unlabeled_data"),
+                pseudo_labeling=config.get("pseudo_labeling", None),
+                _recursive_=False,
+            )
 
         profiler = None
         if config.get("profiler", None):
@@ -107,15 +121,18 @@ def train(
 
         logger = [
             TensorBoardLogger(
-                ".", version=None, name="", default_hp_metric=False, log_graph=True
+                ".",
+                version="tensorboard",
+                name="",
+                default_hp_metric=False,
+                log_graph=True,
             )
         ]
-        if config.trainer.get("stochastic_weight_avg", False):
-            logging.critical(
-                "CSVLogger is not compatible with logging with SWA, disabling csv logger"
-            )
-        else:
-            logger.append(CSVLogger(".", version=None, name=""))
+        logger.append(CSVLogger(".", version="logs", name=""))
+        logger.append(JSONLogger(".", version="logs", name=""))
+
+        # if DVCLIVE_AVAILABLE:
+        #    logger.append(DVCLogger())
 
         callbacks = []
         if config.get("backend", None):
@@ -128,6 +145,8 @@ def train(
         opt_callback = HydraOptCallback(monitor=opt_monitor)
         callbacks.append(opt_callback)
 
+        callbacks.append(PredictionLogger())
+
         checkpoint_callback = instantiate(config.checkpoint)
         callbacks.append(checkpoint_callback)
 
@@ -139,26 +158,6 @@ def train(
             logger=logger,
             _convert_="partial",
         )
-
-        if config.get("input_file", None):
-            msglogger.info("Loading initial weights from model %s", config.input_file)
-            lit_module.setup("train")
-            input_ckpt = pl_load(config.input_file)
-            lit_module.load_state_dict(input_ckpt["state_dict"], strict=False)
-
-        if config["auto_lr"]:
-            # run lr finder (counts as one epoch)
-            lr_finder = lit_trainer.lr_find(lit_module)
-
-            # inspect results
-            fig = lr_finder.plot()
-            fig.savefig("./learning_rate.png")
-
-            # recreate module with updated config
-            suggested_lr = lr_finder.suggestion()
-            config["lr"] = suggested_lr
-
-        lit_trainer.tune(lit_module)
 
         logging.info("Starting training")
         # PL TRAIN
@@ -184,6 +183,7 @@ def train(
         if not lit_trainer.fast_dev_run:
             reset_seed()
             lit_trainer.validate(ckpt_path=ckpt_path, verbose=validate_output)
+            val_output.append(opt_callback.val_result())
 
             if not config.get("skip_test", False):
                 # PL TEST
@@ -195,14 +195,17 @@ def train(
             results.append(opt_callback.result())
 
     @rank_zero_only
-    def summarize_test(test_output) -> None:
-        if not test_output:
+    def summarize_stage(stage: str, output: Mapping["str", float]) -> None:
+        if not output:
             return
-        result_frame = pd.DataFrame.from_dict(test_output)
+        result_frame = pd.DataFrame.from_dict(output)
         if result_frame.empty:
             return
-        result_frame.to_json("test_results.json")
-        result_frame.to_pickle("test_results.pkl")
+
+        result_frame = result_frame.astype(float)
+
+        result_frame.to_json(f"{stage}_results.json")
+        result_frame.to_pickle(f"{stage}_results.pkl")
 
         description = result_frame.describe()
         description = description.fillna(0.0)
@@ -216,7 +219,34 @@ def train(
         )
         msglogger.info("Averaged Result Metrics:\n%s", desc_table)
 
-    summarize_test(test_output)
+        # Append summarized result metrics to common history buffer
+        history_file = (
+            Path(get_original_cwd()) / Path(config.output_dir) / "history.jsonl"
+        )
+        with history_file.open("a+") as fp:
+            for out in output:
+                out["stage"] = stage
+                out["experiment"] = config.experiment_id
+                out["model"] = config.model.name
+
+                out["date"] = datetime.datetime.now().isoformat()
+                out["seed"] = seed
+                out["version"] = git_version()
+                out["dir"] = os.path.relpath(
+                    os.path.join(os.getcwd(), config.output_dir), get_original_cwd()
+                )
+
+                for k, v in out.items():
+                    if isinstance(v, torch.Tensor):
+                        if v.numel() == 1:
+                            out[k] = v.item()
+                        else:
+                            out[k] = v.cpu().tolist()
+
+                fp.write(json.dumps(out) + "\n")
+
+    summarize_stage("test", test_output)
+    summarize_stage("val", val_output)
 
     if len(results) == 1:
         return results[0]
