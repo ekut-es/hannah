@@ -24,7 +24,6 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.utils
 from hydra.utils import get_class, instantiate
-from pytorch_lightning.trainer.supporters import CombinedLoader
 from torchmetrics import (
     Accuracy,
     ConfusionMatrix,
@@ -83,6 +82,7 @@ class ImageClassifierModule(VisionBaseModule):
             loss += classifier_loss
 
             preds = torch.argmax(logits, dim=1)
+            provs = torch.softmax(logits, dim=1)
             self.metrics[f"{step_name}_metrics"](preds, labels)
 
             self.log_dict(
@@ -94,14 +94,16 @@ class ImageClassifierModule(VisionBaseModule):
             and prediction_result.decoded.numel() > 0
         ):
             decoded = prediction_result.decoded
-            decoder_loss = ss_loss.forward(true_data=x, decoded=decoded)
+            decoder_loss = torch.nn.functional.mse_loss(
+                decoded, augmented_data, reduction="mean"
+            )
             self.log(f"{step_name}_decoder_loss", decoder_loss)
             loss += decoder_loss
 
             if batch_idx == 0:
                 self._log_batch_images("decoded", batch_idx, decoded)
 
-        self.log(f"{step_name}_loss", loss, batch_size=self.batch_size)
+        self.log(f"{step_name}_loss", loss, batch_size=self.batch_size, prog_bar=True)
         return loss, prediction_result, batch, preds
 
     def training_step(self, batch, batch_idx):
@@ -133,28 +135,7 @@ class ImageClassifierModule(VisionBaseModule):
             "val", batch, batch_idx
         )
 
-        return {"preds": preds.detach().cpu(), "labels": batch["labels"].detach().cpu()}
-
-    def on_validation_epoch_start(self):
-        super().on_validation_epoch_start()
-
-        import pandas as pd
-
-        self.validation_res_df = pd.DataFrame(data={"preds": [], "labels": []})
-
-    def on_validation_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
-        super().on_validation_batch_end(outputs, batch, batch_idx, dataloader_idx=0)
-
-        # combined = torch.stack((outputs["preds"], outputs["labels"]))
-
-        import pandas as pd
-
-        df = pd.DataFrame(outputs)
-
-        self.validation_res_df = self.validation_res_df.append(df)
-
-    def on_validation_epoch_end(self):
-        super().on_validation_epoch_end()
+        return None
 
     def test_step(self, batch, batch_idx):
         _, step_results, batch, preds = self.common_step("test", batch, batch_idx)
@@ -162,3 +143,10 @@ class ImageClassifierModule(VisionBaseModule):
         y = batch.get("labels", None)
         if y is not None and preds is not None:
             self.test_confusion(preds, y)
+
+        if y is not None and step_results.logits.numel() > 0:
+            probs = torch.softmax(step_results.logits, dim=1)
+            self.test_roc(probs, y)
+            self.test_pr_curve(probs, y)
+
+        return step_results
