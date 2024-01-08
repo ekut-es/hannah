@@ -4596,6 +4596,8 @@ class and multi-label loss function.</p>
 <p><strong>Arguments</strong>:</p>
 <p>trainer:
   pl_module:</p>
+<p><a id="hannah.callbacks.prediction_logger"></a></p>
+<h1 id="hannahcallbacksprediction_logger">hannah.callbacks.prediction_logger</h1>
 <p><a id="hannah.callbacks.backends"></a></p>
 <h1 id="hannahcallbacksbackends">hannah.callbacks.backends</h1>
 <p><a id="hannah.callbacks.backends.symbolic_batch_dim"></a></p>
@@ -4797,6 +4799,82 @@ class and multi-label loss function.</p>
 <p><strong>Arguments</strong>:</p>
 <p>trainer:
   pl_module:</p>
+<p><a id="hannah.utils.dvclive"></a></p>
+<h1 id="hannahutilsdvclive">hannah.utils.dvclive</h1>
+<p><a id="hannah.utils.logger"></a></p>
+<h1 id="hannahutilslogger">hannah.utils.logger</h1>
+<p><a id="hannah.utils.logger.JSONLogger"></a></p>
+<h2 id="jsonlogger-objects">JSONLogger Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">JSONLogger</span><span class="p">(</span><span class="n">Logger</span><span class="p">)</span>
+</code></pre></div>
+
+<p><a id="hannah.utils.logger.JSONLogger.name"></a></p>
+<h4 id="name">name</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span> <span class="nf">name</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+
+<p>Gets the name of the experiment.</p>
+<p><strong>Returns</strong>:</p>
+<p>The name of the experiment.</p>
+<p><a id="hannah.utils.logger.JSONLogger.version"></a></p>
+<h4 id="version">version</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span> <span class="nf">version</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</code></pre></div>
+
+<p>Gets the version of the experiment.</p>
+<p><strong>Returns</strong>:</p>
+<p>The version of the experiment if it is specified, else the next version.</p>
+<p><a id="hannah.utils.logger.JSONLogger.root_dir"></a></p>
+<h4 id="root_dir">root_dir</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span> <span class="nf">root_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+
+<p>Gets the save directory where the versioned JSON experiments are saved.</p>
+<p><a id="hannah.utils.logger.JSONLogger.log_dir"></a></p>
+<h4 id="log_dir">log_dir</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span> <span class="nf">log_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+
+<p>The log directory for this run.</p>
+<p>By default, it is named <code>'version_${self.version}'</code> but it can be overridden by passing a string value for the
+constructor's version parameter instead of <code>None</code> or an int.</p>
+<p><a id="hannah.utils.logger.JSONLogger.experiment"></a></p>
+<h4 id="experiment">experiment</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="nd">@rank_zero_experiment</span>
+<span class="k">def</span> <span class="nf">experiment</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="s2">&quot;_ExperimentWriter&quot;</span>
+</code></pre></div>
+
+<p>Actual ExperimentWriter object. To use ExperimentWriter features anywhere in your code, do the following.</p>
+<p>Example::</p>
+<p>self.logger.experiment.some_experiment_writer_function()</p>
+<p><a id="hannah.utils.logger._ExperimentWriter"></a></p>
+<h2 id="_experimentwriter-objects">_ExperimentWriter Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">_ExperimentWriter</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Experiment writer for CSVLogger.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>log_dir</code> - Directory for the experiment logs</li>
+</ul>
+<p><a id="hannah.utils.logger._ExperimentWriter.log_metrics"></a></p>
+<h4 id="log_metrics">log_metrics</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">log_metrics</span><span class="p">(</span><span class="n">metrics_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+                <span class="n">step</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Record metrics.</p>
+<p><a id="hannah.utils.logger._ExperimentWriter.save"></a></p>
+<h4 id="save">save</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">save</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Save recorded metrics into files.</p>
 <p><a id="hannah.utils.utils"></a></p>
 <h1 id="hannahutilsutils">hannah.utils.utils</h1>
 <p><a id="hannah.utils.utils.log_execution_env_state"></a></p>
@@ -4804,16 +4882,20 @@ class and multi-label loss function.</p>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">log_execution_env_state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 
-<p>Log information about the execution environment.
-File 'config_path' will be copied to directory 'logdir'. A common use-case
-is passing the path to a (compression) schedule YAML file. Storing a copy
-of the schedule file, with the experiment logs, is useful in order to
-reproduce experiments.</p>
+<p>Log information about the execution environment.</p>
+<p><a id="hannah.utils.utils.git_version"></a></p>
+<h4 id="git_version">git_version</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">git_version</span><span class="p">(</span><span class="n">short</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Return the current git sha</p>
 <p><strong>Arguments</strong>:</p>
 <ul>
-<li><code>config_path</code> - path to config file, used only when logdir is set</li>
-<li><code>logdir</code> - log directory</li>
-<li><code>git_root</code> - the path to the .git root directory</li>
+<li><code>short</code> <em>bool</em> - If True, return the short (7 character) version of the SHA</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<ul>
+<li><code>str</code> - The current git SHA</li>
 </ul>
 <p><a id="hannah.utils.utils.extract_from_download_cache"></a></p>
 <h4 id="extract_from_download_cache">extract_from_download_cache</h4>

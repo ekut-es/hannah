@@ -262,9 +262,9 @@ for baseline neural network models.</p>
 <div class="codehilite"><pre><span></span><code>hannah-train
 </code></pre></div>
 
-<p>If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.<code>gpus=[number]</code>
+<p>If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.<code>devices=[number]</code>
 e.g. for GPU 2 use:</p>
-<div class="codehilite"><pre><span></span><code>hannah-train trainer.gpus=[2]
+<div class="codehilite"><pre><span></span><code>hannah-train trainer.devices=[2]
 </code></pre></div>
 
 <p>Trained models are saved under <code>trained_models/&lt;experiment_id&gt;/&lt;model_name&gt;</code>.</p>
@@ -309,7 +309,7 @@ e.g. for GPU 2 use:</p>
 </code></pre></div>
 
 <h1 id="parallel-launchers">Parallel Launchers</h1>
-<p>To launch multiple optimizations in parallel you can use a hydra launcher. </p>
+<p>To launch multiple optimizations in parallel you can use a hydra launcher.</p>
 <p>Joblib launcher is installed by default:</p>
 <p>hannah-train --multirun hydra/sweeper=optuna hydra/launcher=joblib optimizer.lr='interval(0.0001,0.1)' optimizer.weight_decay='interval(0, 0.1)' hydra.launcher.n_jobs=5</p>
 <p>Launches optimizer hyperparameter optimization with 5 parallel jobs.</p>
@@ -333,8 +333,8 @@ To enable precommit hooks run the following command in a <code>poetry shell</cod
 <p>Try to follow <a href="https://pep8.org/#naming-conventions">pep8</a> naming conventions and the rest of pep8 to the
 best of your abilities.</p>
 <h1 id="automatic-mirroring">Automatic Mirroring</h1>
-<p>This project automatically mirrors its <em>main</em> branch and all branches prefixed with <em>pub/</em> to its public github repository. </p>
-<p>These branches are configured as protected branches by default. </p>
+<p>This project automatically mirrors its <em>main</em> branch and all branches prefixed with <em>pub/</em> to its public github repository.</p>
+<p>These branches are configured as protected branches by default.</p>
               
             </div>
           </div><footer>
@@ -384,5 +384,5 @@ best of your abilities.</p>
 
 <!--
 MkDocs version : 1.5.3
-Build Date UTC : 2023-12-18 13:11:13.877088+00:00
+Build Date UTC : 2024-01-08 16:07:25.523194+00:00
 -->

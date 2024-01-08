@@ -152,10 +152,10 @@
             <div class="section" itemprop="articleBody">
               
                 <!--
-Copyright (c) 2022 University of Tübingen.
+Copyright (c) 2023 Hannah contributors.
 
 This file is part of hannah.
-See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -172,10 +172,10 @@ limitations under the License.
 <h1 id="multi-gpu-training">Multi GPU training</h1>
 <p>Hannah supports multi GPU-Training using the lightning distributed APIs:</p>
 <p>We provide preset trainer configs for distributed data parallel training:</p>
-<p><code>hannah-train trainer=ddp trainer.gpus=[0,1]</code></p>
+<p><code>hannah-train trainer=ddp trainer.devices=[0,1]</code></p>
 <p>And for sharded training using fairscale:</p>
-<p><code>hannah-train trainer=sharded trainer.gpus=[0,1]</code></p>
-<p>Sharded training distributes some of the model parameters across multiple GPUs and allows fitting bigger models in the same amount of GPU memory.</p>
+<p><code>hannah-train trainer=sharded trainer.devices=[0,1]</code></p>
+<p>Sharded training distributes some of the model parameters across multiple devices and allows fitting bigger models in the same amount of GPU memory.</p>
               
             </div>
           </div><footer>
