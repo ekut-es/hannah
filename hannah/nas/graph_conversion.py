@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,20 +24,19 @@ from typing import Any, Dict, Optional, Tuple
 
 import networkx as nx
 import numpy as np
+import torch
 import torch.fx
 from torch.fx.node import Argument, Node, Target
-import torch
-from hannah.nas.functional_operators.executor import BasicExecutor
 
+import hannah.nas.functional_operators.operators as f_ops
+from hannah.models.factory import pooling, qat, qconfig
+from hannah.nas.functional_operators.executor import BasicExecutor
+from hannah.nas.functional_operators.op import Op, Tensor
+from hannah.nas.fx.tracer import SearchSpaceTracer
 from hannah.nas.utils import to_int
 
-from hannah.models.factory import pooling, qat, qconfig
-import hannah.nas.functional_operators.operators as f_ops
-from hannah.nas.functional_operators.op import Op, Tensor
 
-
-class GraphConversionTracer(torch.fx.Tracer):
-
+class GraphConversionTracer(SearchSpaceTracer):
     LEAF_MODULES = [
         qat.Conv1d,
         qat.Conv2d,
@@ -69,30 +68,6 @@ class GraphConversionTracer(torch.fx.Tracer):
                 return True
 
         return super().is_leaf_module(module, module_qualified_name)
-
-    def create_node(self, kind: str, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Argument], name=None, type_expr=None) -> Node:
-        if kind == 'call_function' and 'id' in kwargs:
-            name = kwargs['id']
-        return super().create_node(kind, target, args, kwargs, name, type_expr)
-
-    def create_arg(self, a: Any) -> Argument:
-        if isinstance(a, torch.nn.Parameter):
-            for n, p in self.root.named_parameters():
-                if a is p:
-                    return self.create_node("get_attr", n, (), {})
-            raise NameError("parameter is not a member of this module")
-        if isinstance(a, torch.Tensor):
-            if isinstance(self.root, BasicExecutor):
-                if isinstance(a, torch.nn.Parameter):
-                    for n, p in self.root.named_parameters():
-                        if a is p:
-                            return self.create_node("get_attr", n, (), {})
-                    raise NameError("parameter is not a member of this module")
-                elif isinstance(a, torch.Tensor):
-                    for n_, p_ in self.root.named_buffers():
-                        if a is p_:
-                            return self.create_node("get_attr", n_, (), {})
-        return super().create_arg(a)
 
 
 def to_one_hot(val, options):
@@ -159,7 +134,6 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         self.func_num = 0
 
     def extract_quant_attrs(self, quantizer):
-
         if quantizer:
             quant_attrs = {
                 "dtype": quantizer.dtype,
@@ -485,10 +459,10 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         attrs["in_channels"] = to_int(args[1].tensor.shape[1])
         attrs["out_channels"] = to_int(args[1].tensor.shape[0])
         attrs["kernel_size"] = to_int(args[1].tensor.shape[2])
-        attrs["stride"] = to_int(kwargs['stride'])
-        attrs["dilation"] = to_int(kwargs['dilation'])
-        attrs["groups"] = to_int(kwargs['groups'])
-        attrs["padding"] = to_int(kwargs['padding'])
+        attrs["stride"] = to_int(kwargs["stride"])
+        attrs["dilation"] = to_int(kwargs["dilation"])
+        attrs["groups"] = to_int(kwargs["groups"])
+        attrs["padding"] = to_int(kwargs["padding"])
 
         # FIXME: How to handle quantization
         weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
@@ -523,8 +497,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
     def add_nodes_linear_fun(self, target, mod, args, kwargs, output):
         # FIXME: Handle quantization correctly
         attrs = {}
-        attrs['in_features'] = args[1].tensor.shape[0]
-        attrs['out_features'] = args[1].tensor.shape[0]
+        attrs["in_features"] = args[1].tensor.shape[0]
+        attrs["out_features"] = args[1].tensor.shape[0]
 
         weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
         bias_attrs = None
@@ -553,7 +527,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         self.nx_graph.add_node(
             target,
             attrs={},
-            output={'shape': data.shape, 'quant': quantization},
+            output={"shape": data.shape, "quant": quantization},
             inputs={},
             type="tensor",
         )
@@ -573,8 +547,13 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
     def call_function(self, target, args: Tuple, kwargs: Dict) -> Any:
         self.func_num += 1
-        arg_tensors = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
-        kwarg_tensors = {key: kwarg.tensor if isinstance(kwarg, NamedTensor) else kwarg for key, kwarg in kwargs.items()}
+        arg_tensors = [
+            arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args
+        ]
+        kwarg_tensors = {
+            key: kwarg.tensor if isinstance(kwarg, NamedTensor) else kwarg
+            for key, kwarg in kwargs.items()
+        }
         output_tensor = super().call_function(target, arg_tensors, kwarg_tensors)
         target_name = target.__name__ + str(self.func_num)
         if target.__name__ in self.conversions:
@@ -587,8 +566,9 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         return output
 
     def call_method(self, target, args: Tuple, kwargs: Dict) -> Any:
-
-        arg_tensors = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
+        arg_tensors = [
+            arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args
+        ]
         output_tensor = super().call_method(target, arg_tensors, kwargs)
         self.add_edge(target, args)
         return NamedTensor(target, output_tensor)
@@ -596,12 +576,15 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
     def call_module(self, target, args: Tuple, kwargs: Dict) -> Any:
         # print(target, args, kwargs)
 
-        tensor_args = [arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args]
+        tensor_args = [
+            arg.tensor if isinstance(arg, NamedTensor) else arg for arg in args
+        ]
         output_tensor = super().call_module(target, tensor_args, kwargs)
         submod = self.fetch_attr(target)
         if type(submod) in self.conversions:
-
-            output = self.conversions[type(submod)](target, submod, args, kwargs, output_tensor)
+            output = self.conversions[type(submod)](
+                target, submod, args, kwargs, output_tensor
+            )
 
         else:
             assert len(args) == 1
@@ -631,10 +614,6 @@ def model_to_graph(model, input):
     model.cpu()
     model.eval()
     traced_graph = tracer.trace(model)
-    # if isinstance(model, BasicExecutor):
-    #     mod = dict(model.params)
-    # else:
-    #     mod = model
     interpreter = GraphConversionInterpreter(torch.fx.GraphModule(model, traced_graph))
     interpreter.run(input)
 
