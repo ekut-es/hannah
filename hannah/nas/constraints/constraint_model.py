@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,12 +16,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from z3 import Int, Or, Solver, Real, Bool, AtMost, AtLeast, Implies, If, And
+import logging
+
+from z3 import And, AtLeast, AtMost, Bool, If, Implies, Int, Or, Real, Solver
 
 from hannah.nas.expressions.arithmetic import Add, Floor, Floordiv, Mul, Sub, Truediv
-from hannah.nas.expressions.conditions import LECondition, GECondition, LTCondition, GTCondition
-from hannah.nas.expressions.logic import If as expr_if
+from hannah.nas.expressions.conditions import (
+    GECondition,
+    GTCondition,
+    LECondition,
+    LTCondition,
+)
 from hannah.nas.expressions.logic import And as expr_and
+from hannah.nas.expressions.logic import If as expr_if
 from hannah.nas.expressions.op import BinaryOp, UnaryOp
 from hannah.nas.expressions.placeholder import (
     Categorical,
@@ -35,11 +42,13 @@ from hannah.nas.parameters.parameters import (
     Parameter,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ConstraintModel:
-    def __init__(self, method='naive', fix_strategy='none', timeout=300) -> None:
+    def __init__(self, method="naive", fix_strategy="none", timeout=300) -> None:
         self.method = method
-        self.fix_strategy = fix_strategy # FIXME: Implement
+        self.fix_strategy = fix_strategy  # FIXME: Implement
         self.timeout = timeout  # currently not in use
         self.solver = []
         self.vars = {}
@@ -54,7 +63,6 @@ class ConstraintModel:
             self.vars[sol] = {}
             sol.add(self.build_constraint_from_expression(sol, con, fixed_vars))
             self.solver.append(sol)
-
 
     def extract_parameter(self, solver, expr, fixed_vars):
         if isinstance(expr, (IntScalarParameter, IntRange)):
@@ -71,16 +79,16 @@ class ConstraintModel:
     def fix_var(self, solver, param):
         try:
             self.extract_parameter(solver, param, [param.id])
-        except:
-            pass
+        except Exception as e:
+            logger.critical(str(e))
 
     def get_tracker_var(self, solver, expr, key=None):
-        tracker_var = Bool(f'tracker_{expr.id}')
+        tracker_var = Bool(f"tracker_{expr.id}")
         if key and key not in expr.id:
             return None
         try:
             var = Int(expr.id)
-            con = (var == int(expr.current_value))
+            con = var == int(expr.current_value)
             solver.add(Implies(tracker_var, con))
         except Exception:
             pass
@@ -109,7 +117,7 @@ class ConstraintModel:
                 # print("Not sat")
         raise Exception("No satisfiable configuration possible")
 
-    def naive_search(self, solver,  module, key=None, parameters=None):
+    def naive_search(self, solver, module, key=None, parameters=None):
         ct = 0
         if not parameters:
             parameters = module.parametrization(flatten=True)
@@ -120,11 +128,11 @@ class ConstraintModel:
                 continue
             try:
                 var = Int(n)
-                if hasattr(p, 'current_value'):
+                if hasattr(p, "current_value"):
                     val = int(p.current_value)
                 else:
                     val = int(p)
-                con = (var == val)
+                con = var == val
                 solver.push()
                 ct += 1
                 solver.add(con)
@@ -140,16 +148,18 @@ class ConstraintModel:
 
         raise Exception("No satisfiable configuration possible")
 
-    def soft_constrain_current_parametrization(self, module, parameters=None, key=None, fix_vars=[]):
+    def soft_constrain_current_parametrization(
+        self, module, parameters=None, key=None, fix_vars=[]
+    ):
         self.solver = []
         self.build_model(module._conditions)
         for solver in self.solver:
             for v in fix_vars:
                 self.fix_var(solver, v)
-            if self.method == 'linear':
+            if self.method == "linear":
                 trackers = self.get_all_tracker_vars(solver, module, key, parameters)
                 self.linear_search(solver, trackers)
-            elif self.method == 'naive':
+            elif self.method == "naive":
                 self.naive_search(solver, module, key, parameters)
 
     def get_constrained_params(self, params: dict):
@@ -160,10 +170,9 @@ class ConstraintModel:
                 if name in self.vars[solver]:
                     try:
                         params[name] = mod[self.vars[solver][name]].as_long()
-                    except:
-                        pass # FIXME: Investigate
+                    except Exception as e:
+                        logger.error(str(e))
         return params
-
 
     def insert_model_values_to_module(self, module):
         for solver in self.solver:
@@ -177,7 +186,6 @@ class ConstraintModel:
                     except Exception as e:
                         print(str(e))
         return module
-
 
     def extract_int_range(self, solver, expr, fixed_vars):
         if expr.id:
@@ -237,8 +245,10 @@ class ConstraintModel:
             solver.add(var == expr)
             return var
         elif isinstance(expr, Floor):
-                con = self.build_constraint_from_expression(solver, expr.operand, fixed_vars)
-                return con
+            con = self.build_constraint_from_expression(
+                solver, expr.operand, fixed_vars
+            )
+            return con
         elif isinstance(expr, expr_if):
             operand = self.build_constraint_from_expression(solver, expr.operand)
             a = self.build_constraint_from_expression(solver, expr.a)
@@ -270,7 +280,9 @@ class ConstraintModel:
                 con = And(lhs, rhs)
             return con
         else:
-            raise Exception(f"The expression -> constraint transformation is not defined for: {expr} of type {type(expr)}.")
+            raise Exception(
+                f"The expression -> constraint transformation is not defined for: {expr} of type {type(expr)}."
+            )
 
 
 def check_for_id(a, b):
