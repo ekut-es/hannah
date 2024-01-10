@@ -38,13 +38,7 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from . import conf  # noqa
 from .callbacks.optimization import HydraOptCallback
 from .callbacks.prediction_logger import PredictionLogger
-from .utils import (
-    auto_select_gpus,
-    clear_outputs,
-    common_callbacks,
-    git_version,
-    log_execution_env_state,
-)
+from .utils import clear_outputs, common_callbacks, git_version, log_execution_env_state
 from .utils.dvclive import DVCLIVE_AVAILABLE, DVCLogger
 from .utils.logger import JSONLogger
 
@@ -80,12 +74,6 @@ def train(
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
-
-        if isinstance(config.trainer.devices, int) and config.trainer.accelerator in [
-            "gpu",
-            "auto",
-        ]:
-            config.trainer.devices = auto_select_gpus(config.trainer.devices)
 
         if not config.trainer.fast_dev_run and not config.get("resume", False):
             clear_outputs()

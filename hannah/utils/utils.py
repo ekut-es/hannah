@@ -213,31 +213,6 @@ def extract_from_download_cache(
         )
 
 
-def auto_select_gpus(gpus=1) -> Union[List[int]]:
-    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
-        return gpus
-
-    num_gpus = gpus
-
-    if not nvsmi.is_nvidia_smi_on_path():
-        return list(range(num_gpus))
-
-    gpus = list(nvsmi.get_gpus())
-
-    gpus = list(
-        sorted(gpus, key=lambda gpu: (gpu.mem_free, 1.0 - gpu.gpu_util), reverse=True)
-    )
-
-    job_num = hydra.core.hydra_config.HydraConfig.get().job.get("num", 0)
-
-    result = []
-    for i in range(num_gpus):
-        num = (i + job_num) % len(gpus)
-        result.append(int(gpus[num].id))
-
-    return result
-
-
 def common_callbacks(config: DictConfig) -> list:
     callbacks: List[Callback] = []
 

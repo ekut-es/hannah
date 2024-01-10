@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -18,7 +18,6 @@
 #
 from .imports import lazy_import
 from .utils import (
-    auto_select_gpus,
     clear_outputs,
     common_callbacks,
     extract_from_download_cache,
@@ -33,7 +32,6 @@ __all__ = [
     "log_execution_env_state",
     "list_all_files",
     "extract_from_download_cache",
-    "auto_select_gpus",
     "common_callbacks",
     "clear_outputs",
     "fullname",
