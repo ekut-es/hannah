@@ -3214,6 +3214,15 @@ Input:---&gt;|                                                         +---&gt;
 </ul>
 <p><strong>Returns</strong>:</p>
 <p>A (n_points, ) boolean array, indicating whether each point is Pareto efficient</p>
+<p><a id="hannah.nas.fx.tracer"></a></p>
+<h1 id="hannahnasfxtracer">hannah.nas.fx.tracer</h1>
+<p><a id="hannah.nas.fx.tracer.InliningTracer"></a></p>
+<h2 id="inliningtracer-objects">InliningTracer Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">InliningTracer</span><span class="p">(</span><span class="n">SearchSpaceTracer</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Inline all search space functions, into the graph.</p>
+<p>This generates a standard pytorch.fx graph module containing only replacing the search space parametrizable functions with their equivalent form torch.functional`</p>
 <p><a id="hannah.nas.expressions.shapes"></a></p>
 <h1 id="hannahnasexpressionsshapes">hannah.nas.expressions.shapes</h1>
 <p><a id="hannah.nas.expressions.logic"></a></p>
