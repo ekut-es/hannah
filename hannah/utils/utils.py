@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -28,7 +28,7 @@ import sys
 import time
 from contextlib import _GeneratorContextManager, contextmanager
 from pathlib import Path
-from typing import Any, Callable, Iterator, List, Type, TypeVar
+from typing import Any, Callable, Iterator, List, Type, TypeVar, Union
 
 import hydra
 import numpy as np
@@ -213,7 +213,10 @@ def extract_from_download_cache(
         )
 
 
-def auto_select_gpus(gpus=1) -> List[int]:
+def auto_select_gpus(gpus=1) -> Union[List[int]]:
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+        return gpus
+
     num_gpus = gpus
 
     if not nvsmi.is_nvidia_smi_on_path():

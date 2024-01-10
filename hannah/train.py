@@ -85,8 +85,7 @@ def train(
             "gpu",
             "auto",
         ]:
-            if torch.cuda.is_available():
-                config.trainer.devices = auto_select_gpus(config.trainer.devices)
+            config.trainer.devices = auto_select_gpus(config.trainer.devices)
 
         if not config.trainer.fast_dev_run and not config.get("resume", False):
             clear_outputs()
