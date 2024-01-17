@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -50,7 +50,7 @@ msglogger: logging.Logger = logging.getLogger(__name__)
 
 class VisionBaseModule(ClassifierModule):
     def setup(self, stage):
-        if self.trainer:
+        if self._trainer:
             for logger in self.trainer.loggers:
                 logger.log_hyperparams(self.hparams)
 
@@ -342,3 +342,15 @@ class VisionBaseModule(ClassifierModule):
             )
 
         return loader
+
+    @property
+    def backbone(self):
+        if self.model is None:
+            self.setup("train")
+
+        if hasattr(self.model, "backbone"):
+            return self.model
+        elif hasattr(self.model, "encoder"):
+            return self.model.encoder
+        else:
+            raise AttributeError("No backbone found in model")

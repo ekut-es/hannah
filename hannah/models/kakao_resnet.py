@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from typing import Sequence
+
 import torch.nn as nn
 
 
@@ -59,57 +61,60 @@ def conv_bn(channels_in, channels_out, kernel_size=3, stride=1, padding=1, group
     )
 
 
-def resnet8(*args, **kwargs):
-    num_class = 10
+def resnet8(
+    input_shape: Sequence[int],
+    labels: int = 10,
+    input_stride: int = 1,
+    input_kernel: int = 3,
+    width_multiplier: float = 1.0,
+    **kwargs
+):
+    num_class = labels
     model = nn.Sequential(
-        conv_bn(3, 64, kernel_size=3, stride=1, padding=1),
-        conv_bn(64, 128, kernel_size=5, stride=2, padding=2),
-        Residual(nn.Sequential(conv_bn(128, 128), conv_bn(128, 128))),
-        conv_bn(128, 256, kernel_size=3, stride=1, padding=1),
+        conv_bn(
+            input_shape[1],
+            int(64 * width_multiplier),
+            kernel_size=input_kernel,
+            stride=input_stride,
+            padding=1,
+        ),
+        conv_bn(
+            int(64 * width_multiplier),
+            int(128 * width_multiplier),
+            kernel_size=5,
+            stride=2,
+            padding=2,
+        ),
+        Residual(
+            nn.Sequential(
+                conv_bn(int(128 * width_multiplier), int(128 * width_multiplier)),
+                conv_bn(int(128 * width_multiplier), int(128 * width_multiplier)),
+            )
+        ),
+        conv_bn(
+            int(128 * width_multiplier),
+            int(256 * width_multiplier),
+            kernel_size=3,
+            stride=1,
+            padding=1,
+        ),
         nn.MaxPool2d(2),
-        Residual(nn.Sequential(conv_bn(256, 256), conv_bn(256, 256))),
-        conv_bn(256, 128, kernel_size=3, stride=1, padding=0),
+        Residual(
+            nn.Sequential(
+                conv_bn(int(256 * width_multiplier), int(256 * width_multiplier)),
+                conv_bn(int(256 * width_multiplier), int(256 * width_multiplier)),
+            )
+        ),
+        conv_bn(
+            int(256 * width_multiplier),
+            int(128 * width_multiplier),
+            kernel_size=3,
+            stride=1,
+            padding=0,
+        ),
         nn.AdaptiveMaxPool2d((1, 1)),
         Flatten(),
-        nn.Linear(128, num_class, bias=False),
-        Mul(0.2),
-    )
-
-    return model
-
-
-def resnet8_025(*args, **kwargs):
-    num_class = 4
-    model = nn.Sequential(
-        conv_bn(3, 16, kernel_size=8, stride=8, padding=0),
-        conv_bn(16, 32, kernel_size=5, stride=2, padding=2),
-        Residual(nn.Sequential(conv_bn(32, 32), conv_bn(32, 32))),
-        conv_bn(32, 64, kernel_size=3, stride=1, padding=1),
-        nn.MaxPool2d(2),
-        Residual(nn.Sequential(conv_bn(64, 64), conv_bn(64, 64))),
-        conv_bn(64, 32, kernel_size=3, stride=1, padding=0),
-        nn.AdaptiveMaxPool2d((1, 1)),
-        Flatten(),
-        nn.Linear(32, num_class, bias=False),
-        Mul(0.2),
-    )
-
-    return model
-
-
-def resnet8_012(*args, **kwargs):
-    num_class = 4
-    model = nn.Sequential(
-        conv_bn(3, 16, kernel_size=16, stride=16, padding=0),
-        conv_bn(16, 32, kernel_size=5, stride=2, padding=2),
-        Residual(nn.Sequential(conv_bn(32, 32), conv_bn(32, 32))),
-        conv_bn(32, 64, kernel_size=3, stride=1, padding=1),
-        nn.MaxPool2d(2),
-        Residual(nn.Sequential(conv_bn(64, 64), conv_bn(64, 64))),
-        conv_bn(64, 32, kernel_size=3, stride=1, padding=0),
-        nn.AdaptiveMaxPool2d((1, 1)),
-        Flatten(),
-        nn.Linear(32, num_class, bias=False),
+        nn.Linear(int(128 * width_multiplier), num_class, bias=False),
         Mul(0.2),
     )
 

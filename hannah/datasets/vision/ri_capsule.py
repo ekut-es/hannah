@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -185,23 +185,31 @@ class RICapsuleDataset(ImageDatasetBase):
         )
         X_test, y_test = read_official_test(study_folder, DATA_PATH / "path_test.csv")
 
-        transform = A.Compose(
+        train_transform = A.Compose(
             [
-                A.augmentations.geometric.resize.Resize(
-                    config.sensor.resolution[0], config.sensor.resolution[1]
-                ),
+                A.RandomCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
                 ToTensorV2(),
             ]
         )
-        train_set = cls(X_train, y_train, list(LABELS.keys()), transform=transform)
+
+        test_transform = A.Compose(
+            [
+                A.CenterCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
+                ToTensorV2(),
+            ]
+        )
+
+        train_set = cls(
+            X_train, y_train, list(LABELS.keys()), transform=train_transform
+        )
         train_set_unlabeled = cls(
             X_train_unlabeled,
             y_train_unlabeled,  # FIXME labels must not be used
             list(LABELS.keys()),
-            transform=transform,
+            transform=train_transform,
         )
-        val_set = cls(X_val, y_val, list(LABELS.keys()))
-        test_set = cls(X_test, y_test, list(LABELS.keys()))
+        val_set = cls(X_val, y_val, list(LABELS.keys()), test_transform)
+        test_set = cls(X_test, y_test, list(LABELS.keys()), transform=test_transform)
 
         # RANDOM, RANDOM_PER_STUDY Splits
         # preprocessing,

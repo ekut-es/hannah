@@ -32,12 +32,13 @@ dataset:
   data_folder: ${oc.env:HANNAH_DATA_FOLDER,${hydra:runtime.cwd}/../../datasets/}
 
 module:
-  batch_size: 512
+  batch_size: 256
+  num_workers: 8
 
 trainer:
   max_epochs: 15
 
-scheduler:
-  max_lr: 0.1
+optimizer:
+  lr: 0.1
 
 skip_test: true
