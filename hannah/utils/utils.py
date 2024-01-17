@@ -278,13 +278,8 @@ def common_callbacks(config: DictConfig) -> list:
             callbacks.append(quantization_callback)
 
     if config.get("fine_tuning", None):
-        if config.fine_tuning.get("_target_", LinearClassifierTraining):
-            callbacks.append(
-                LinearClassifierTraining(
-                    epochs=config.fine_tuning.epochs,
-                    learning_rate=config.fine_tuning.learning_rate,
-                )
-            )
+        fine_tuning_callback = hydra.utils.instantiate(config.fine_tuning)
+        callbacks.append(fine_tuning_callback)
 
     return callbacks
 

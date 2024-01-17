@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -74,8 +74,9 @@ class ClassifierModule(LightningModule, ABC):
     ) -> None:
         super().__init__()
 
+        self.model = None
         ignore = None
-        if not isinstance(model, DictConfig):
+        if isinstance(model, nn.Module):
             self.model = model
             ignore = ["model"]
 
@@ -109,7 +110,7 @@ class ClassifierModule(LightningModule, ABC):
         self.batch_size = batch_size
 
         self.loss_weights = None
-
+        
     @abstractmethod
     def prepare_data(self) -> Any:
         # get all the necessary data stuff
