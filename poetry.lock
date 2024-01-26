@@ -2941,13 +2941,13 @@ zookeeper = ["kazoo (>=2.8.0)"]
 
 [[package]]
 name = "kornia"
-version = "0.6.12"
+version = "0.7.1"
 description = "Open Source Differentiable Computer Vision Library for PyTorch"
 optional = true
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "kornia-0.6.12-py2.py3-none-any.whl", hash = "sha256:659f0f0948e127b69ed437592f49531ccf4fc83d672474e1d89ed30d087e39e1"},
-    {file = "kornia-0.6.12.tar.gz", hash = "sha256:e30bd3d830226f7a159dff1f7757c6200e8f27d1333f06e9d2f98bdb33ce18d3"},
+    {file = "kornia-0.7.1-py2.py3-none-any.whl", hash = "sha256:bd1cbe99373beafe6e59423be2374afbc2086a9ba57a8c66b94db6622b86f091"},
+    {file = "kornia-0.7.1.tar.gz", hash = "sha256:65b54a50f70c1f88240b557fda3fdcc1ab866982a5d062e52213130f5a48465c"},
 ]
 
 [package.dependencies]
@@ -2955,9 +2955,9 @@ packaging = "*"
 torch = ">=1.9.1"
 
 [package.extras]
-dev = ["isort", "kornia-rs (==0.0.8)", "mypy[reports]", "numpy", "opencv-python", "pre-commit (>=2)", "pydocstyle", "pytest (==7.3.1)", "pytest-cov (==4)", "scipy"]
-docs = ["PyYAML (>=5.1)", "furo", "kornia-moons", "matplotlib", "opencv-python", "sphinx (>=4)", "sphinx-autodoc-defaultargs", "sphinx-autodoc-typehints", "sphinx-copybutton (>=0.3)", "sphinx-design", "sphinxcontrib-bibtex", "sphinxcontrib-gtagjs", "sphinxcontrib-youtube", "torchvision"]
-x = ["accelerate (==0.18.0)"]
+dev = ["coverage", "kornia-rs (==0.0.8)", "mypy[reports]", "numpy", "onnx", "pre-commit (>=2)", "pydocstyle", "pytest (==7.4.3)", "pytest-timeout"]
+docs = ["PyYAML (>=5.1)", "furo", "kornia-moons", "matplotlib", "opencv-python", "sphinx", "sphinx-autodoc-defaultargs", "sphinx-autodoc-typehints", "sphinx-copybutton (>=0.3)", "sphinx-design", "sphinxcontrib-bibtex", "sphinxcontrib-gtagjs", "sphinxcontrib-youtube"]
+x = ["accelerate (==0.25.0)", "onnxruntime-gpu (>=1.16)"]
 
 [[package]]
 name = "lazy-loader"
@@ -5050,38 +5050,34 @@ validation = ["pydantic (>=1.7.4)"]
 
 [[package]]
 name = "pytorch-lightning"
-version = "1.9.5"
+version = "2.1.3"
 description = "PyTorch Lightning is the lightweight PyTorch wrapper for ML researchers. Scale your models. Write less boilerplate."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "pytorch-lightning-1.9.5.tar.gz", hash = "sha256:925fe7b80ddf04859fa385aa493b260be4000b11a2f22447afb4a932d1f07d26"},
-    {file = "pytorch_lightning-1.9.5-py3-none-any.whl", hash = "sha256:06821558158623c5d2ecf5d3d0374dc8bd661e0acd3acf54a6d6f71737c156c5"},
+    {file = "pytorch-lightning-2.1.3.tar.gz", hash = "sha256:2500b002fa09cb37b0e12f879876bf30a2d260b0f04783d33264dab175f0c966"},
+    {file = "pytorch_lightning-2.1.3-py3-none-any.whl", hash = "sha256:03ed186035a230b161130e0d8ecf1dd6657ff7e3f1520e9257b0db7650f9aeea"},
 ]
 
 [package.dependencies]
-fsspec = {version = ">2021.06.0", extras = ["http"]}
-lightning-utilities = ">=0.6.0.post0"
+fsspec = {version = ">=2022.5.0", extras = ["http"]}
+lightning-utilities = ">=0.8.0"
 numpy = ">=1.17.2"
-packaging = ">=17.1"
+packaging = ">=20.0"
 PyYAML = ">=5.4"
-torch = ">=1.10.0"
+torch = ">=1.12.0"
 torchmetrics = ">=0.7.0"
 tqdm = ">=4.57.0"
 typing-extensions = ">=4.0.0"
 
 [package.extras]
-all = ["colossalai (>=0.2.0)", "deepspeed (>=0.6.0)", "fairscale (>=0.4.5)", "gym[classic-control] (>=0.17.0)", "hivemind (==1.1.5)", "horovod (>=0.21.2,!=0.24.0)", "hydra-core (>=1.0.5)", "ipython[all] (<8.7.1)", "jsonargparse[signatures] (>=4.18.0)", "matplotlib (>3.1)", "omegaconf (>=2.0.5)", "rich (>=10.14.0,!=10.15.0.a)", "tensorboardX (>=2.2)", "torchmetrics (>=0.10.0)", "torchvision (>=0.11.1)"]
-colossalai = ["colossalai (>=0.2.0)"]
-deepspeed = ["deepspeed (>=0.6.0)"]
-dev = ["cloudpickle (>=1.3)", "codecov (==2.1.12)", "colossalai (>=0.2.0)", "coverage (==6.5.0)", "deepspeed (>=0.6.0)", "fairscale (>=0.4.5)", "fastapi (<0.87.0)", "gym[classic-control] (>=0.17.0)", "hivemind (==1.1.5)", "horovod (>=0.21.2,!=0.24.0)", "hydra-core (>=1.0.5)", "ipython[all] (<8.7.1)", "jsonargparse[signatures] (>=4.18.0)", "matplotlib (>3.1)", "omegaconf (>=2.0.5)", "onnx (<1.14.0)", "onnxruntime (<1.14.0)", "pandas (>1.0)", "pre-commit (==2.20.0)", "protobuf (<=3.20.1)", "psutil (<5.9.5)", "pytest (==7.2.0)", "pytest-cov (==4.0.0)", "pytest-forked (==1.4.0)", "pytest-rerunfailures (==10.3)", "rich (>=10.14.0,!=10.15.0.a)", "scikit-learn (>0.22.1)", "tensorboard (>=2.9.1)", "tensorboardX (>=2.2)", "torchmetrics (>=0.10.0)", "torchvision (>=0.11.1)", "uvicorn (<0.19.1)"]
-examples = ["gym[classic-control] (>=0.17.0)", "ipython[all] (<8.7.1)", "torchmetrics (>=0.10.0)", "torchvision (>=0.11.1)"]
-extra = ["hydra-core (>=1.0.5)", "jsonargparse[signatures] (>=4.18.0)", "matplotlib (>3.1)", "omegaconf (>=2.0.5)", "rich (>=10.14.0,!=10.15.0.a)", "tensorboardX (>=2.2)"]
-fairscale = ["fairscale (>=0.4.5)"]
-hivemind = ["hivemind (==1.1.5)"]
-horovod = ["horovod (>=0.21.2,!=0.24.0)"]
-strategies = ["colossalai (>=0.2.0)", "deepspeed (>=0.6.0)", "fairscale (>=0.4.5)", "hivemind (==1.1.5)", "horovod (>=0.21.2,!=0.24.0)"]
-test = ["cloudpickle (>=1.3)", "codecov (==2.1.12)", "coverage (==6.5.0)", "fastapi (<0.87.0)", "onnx (<1.14.0)", "onnxruntime (<1.14.0)", "pandas (>1.0)", "pre-commit (==2.20.0)", "protobuf (<=3.20.1)", "psutil (<5.9.5)", "pytest (==7.2.0)", "pytest-cov (==4.0.0)", "pytest-forked (==1.4.0)", "pytest-rerunfailures (==10.3)", "scikit-learn (>0.22.1)", "tensorboard (>=2.9.1)", "uvicorn (<0.19.1)"]
+all = ["bitsandbytes (<=0.41.1)", "deepspeed (>=0.8.2,<=0.9.3)", "gym[classic-control] (>=0.17.0)", "hydra-core (>=1.0.5)", "ipython[all] (<8.15.0)", "jsonargparse[signatures] (>=4.26.1)", "lightning-utilities (>=0.8.0)", "matplotlib (>3.1)", "omegaconf (>=2.0.5)", "rich (>=12.3.0)", "tensorboardX (>=2.2)", "torchmetrics (>=0.10.0)", "torchvision (>=0.13.0)"]
+deepspeed = ["deepspeed (>=0.8.2,<=0.9.3)"]
+dev = ["bitsandbytes (<=0.41.1)", "cloudpickle (>=1.3)", "coverage (==7.3.1)", "deepspeed (>=0.8.2,<=0.9.3)", "fastapi", "gym[classic-control] (>=0.17.0)", "hydra-core (>=1.0.5)", "ipython[all] (<8.15.0)", "jsonargparse[signatures] (>=4.26.1)", "lightning-utilities (>=0.8.0)", "matplotlib (>3.1)", "omegaconf (>=2.0.5)", "onnx (>=0.14.0)", "onnxruntime (>=0.15.0)", "pandas (>1.0)", "psutil (<5.9.6)", "pytest (==7.4.0)", "pytest-cov (==4.1.0)", "pytest-random-order (==1.1.0)", "pytest-rerunfailures (==12.0)", "pytest-timeout (==2.1.0)", "rich (>=12.3.0)", "scikit-learn (>0.22.1)", "tensorboard (>=2.9.1)", "tensorboardX (>=2.2)", "torchmetrics (>=0.10.0)", "torchvision (>=0.13.0)", "uvicorn"]
+examples = ["gym[classic-control] (>=0.17.0)", "ipython[all] (<8.15.0)", "lightning-utilities (>=0.8.0)", "torchmetrics (>=0.10.0)", "torchvision (>=0.13.0)"]
+extra = ["bitsandbytes (<=0.41.1)", "hydra-core (>=1.0.5)", "jsonargparse[signatures] (>=4.26.1)", "matplotlib (>3.1)", "omegaconf (>=2.0.5)", "rich (>=12.3.0)", "tensorboardX (>=2.2)"]
+strategies = ["deepspeed (>=0.8.2,<=0.9.3)"]
+test = ["cloudpickle (>=1.3)", "coverage (==7.3.1)", "fastapi", "onnx (>=0.14.0)", "onnxruntime (>=0.15.0)", "pandas (>1.0)", "psutil (<5.9.6)", "pytest (==7.4.0)", "pytest-cov (==4.1.0)", "pytest-random-order (==1.1.0)", "pytest-rerunfailures (==12.0)", "pytest-timeout (==2.1.0)", "scikit-learn (>0.22.1)", "tensorboard (>=2.9.1)", "uvicorn"]
 
 [[package]]
 name = "pytz"
@@ -7170,4 +7166,4 @@ vision = ["albumentations", "gdown", "imagecorruptions", "kornia", "pycocotools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">3.8 <3.12"
-content-hash = "3e8a18b1bd8aa11b328d6ac9f0b1f61c85aa24ef9d1ea47a9b015b5fb322b3b5"
+content-hash = "735bec380b7040d57a2e260bcfb530321ce7cd13d42b2338abf8798848f0e9ac"

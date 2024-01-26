@@ -26,11 +26,16 @@ from typing import Any, Dict, List, Mapping, Optional, Set, Union
 
 from lightning_fabric.loggers.logger import rank_zero_experiment
 from lightning_fabric.utilities import rank_zero_only, rank_zero_warn
-from lightning_fabric.utilities.cloud_io import _is_dir, get_filesystem
+from lightning_fabric.utilities.cloud_io import get_filesystem
 from pytorch_lightning.loggers import Logger
 from torch import Tensor
 
+import fsspec
+
 log = logging.getLogger(__name__)
+
+def _is_dir(fs, path, strict=False):
+    return fs.isdir(path) or (not strict and fs.exists(path) and not fs.isfile(path))
 
 
 def _add_prefix(
