@@ -145,8 +145,8 @@ class NetworkConfig:
 
     _target_: str = "hannah.models.factory.create_cnn"
     name: str = MISSING
-    norm: Optional[NormConfig] = BNConfig()
-    act: Optional[ActConfig] = ActConfig()
+    norm: Optional[NormConfig] = field(default_factory=BNConfig)
+    act: Optional[ActConfig] = field(default_factory=ActConfig)
     qconfig: Optional[Any] = None
     conv: List[MajorBlockConfig] = field(default_factory=list)
     linear: List[LinearConfig] = field(default_factory=list)

@@ -146,6 +146,25 @@ def train(
             _convert_="partial",
         )
 
+        if config.get("input_file", None):
+            msglogger.info("Loading initial weights from model %s", config.input_file)
+            lit_module.setup("train")
+            lit_module.load_from_state_dict(config.input_file, strict=False)
+
+        if config["auto_lr"]:
+            # run lr finder (counts as one epoch)
+            lr_finder = lit_trainer.lr_find(lit_module)
+
+            # inspect results
+            fig = lr_finder.plot()
+            fig.savefig("./learning_rate.png")
+
+            # recreate module with updated config
+            suggested_lr = lr_finder.suggestion()
+            config["lr"] = suggested_lr
+
+        lit_trainer.tune(lit_module)
+
         logging.info("Starting training")
         # PL TRAIN
         ckpt_path = None
