@@ -4969,8 +4969,12 @@ class and multi-label loss function.</p>
   pl_module:</p>
 <p><a id="hannah.callbacks.backends.InferenceBackendBase.on_validation_batch_end"></a></p>
 <h4 id="on_validation_batch_end">on_validation_batch_end</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_validation_batch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span>
-                            <span class="n">dataloader_idx</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_validation_batch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span>
+                            <span class="n">pl_module</span><span class="p">,</span>
+                            <span class="n">outputs</span><span class="p">,</span>
+                            <span class="n">batch</span><span class="p">,</span>
+                            <span class="n">batch_idx</span><span class="p">,</span>
+                            <span class="n">dataloader_idx</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 
 <p><strong>Arguments</strong>:</p>
@@ -4978,8 +4982,7 @@ class and multi-label loss function.</p>
   pl_module:
   outputs:
   batch:
-  batch_idx:
-  dataloader_idx:</p>
+  batch_idx:</p>
 <p><a id="hannah.callbacks.backends.InferenceBackendBase.on_validation_epoch_end"></a></p>
 <h4 id="on_validation_epoch_end">on_validation_epoch_end</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_validation_epoch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
@@ -5012,8 +5015,12 @@ class and multi-label loss function.</p>
 </ul>
 <p><a id="hannah.callbacks.backends.InferenceBackendBase.on_test_batch_end"></a></p>
 <h4 id="on_test_batch_end">on_test_batch_end</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_test_batch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span>
-                      <span class="n">dataloader_idx</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_test_batch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span>
+                      <span class="n">pl_module</span><span class="p">,</span>
+                      <span class="n">outputs</span><span class="p">,</span>
+                      <span class="n">batch</span><span class="p">,</span>
+                      <span class="n">batch_idx</span><span class="p">,</span>
+                      <span class="n">dataloader_idx</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 
 <p><strong>Arguments</strong>:</p>
