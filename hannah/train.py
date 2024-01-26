@@ -27,7 +27,6 @@ import tabulate
 import torch
 import torch.nn as nn
 from hydra.utils import instantiate
-from lightning.fabric.utilities.cloud_io import load as pl_load
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
@@ -143,8 +142,7 @@ def train(
         if config.get("input_file", None):
             msglogger.info("Loading initial weights from model %s", config.input_file)
             lit_module.setup("train")
-            input_ckpt = pl_load(config.input_file)
-            lit_module.load_state_dict(input_ckpt["state_dict"], strict=False)
+            lit_module.load_from_state_dict(config.input_file, strict=False)
 
         if config["auto_lr"]:
             # run lr finder (counts as one epoch)
