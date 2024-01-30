@@ -280,6 +280,8 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <p><a id="hannah.nas.parametrization.ScalarParameterState.sigma"></a></p>
 <h4 id="sigma">sigma</h4>
 <p>variance of sampling parameter</p>
+<p><a id="hannah.nas.test.test_operators"></a></p>
+<h1 id="hannahnastesttest_operators">hannah.nas.test.test_operators</h1>
 <p><a id="hannah.nas.test.test_darts_space"></a></p>
 <h1 id="hannahnastesttest_darts_space">hannah.nas.test.test_darts_space</h1>
 <p><a id="hannah.nas.test.test_description_ultratrail"></a></p>
@@ -381,6 +383,8 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 
 <p>Representation of all the options to define
 a scalar.</p>
+<p><a id="hannah.nas.search.presampler.simple"></a></p>
+<h1 id="hannahnassearchpresamplersimple">hannah.nas.search.presampler.simple</h1>
 <p><a id="hannah.nas.search.search_old"></a></p>
 <h1 id="hannahnassearchsearch_old">hannah.nas.search.search_old</h1>
 <p><a id="hannah.nas.search.search_old.AgingEvolution"></a></p>
@@ -424,6 +428,8 @@ a scalar.</p>
 </code></pre></div>
 
 <p>Tell the result of a task</p>
+<p><a id="hannah.nas.search.sampler.defined_space_sampler"></a></p>
+<h1 id="hannahnassearchsamplerdefined_space_sampler">hannah.nas.search.sampler.defined_space_sampler</h1>
 <p><a id="hannah.nas.search.sampler.mutator"></a></p>
 <h1 id="hannahnassearchsamplermutator">hannah.nas.search.sampler.mutator</h1>
 <p><a id="hannah.nas.search.sampler.aging_evolution"></a></p>
@@ -808,6 +814,8 @@ are added to the solver.</p>
 the respective axis sizes</p>
 <h2 id="parameters_14">Parameters</h2>
 <p>tensor : Tensor</p>
+<p><a id="hannah.nas.constraints.random_walk"></a></p>
+<h1 id="hannahnasconstraintsrandom_walk">hannah.nas.constraints.random_walk</h1>
 <p><a id="hannah.nas.functional_operators.executor"></a></p>
 <h1 id="hannahnasfunctional_operatorsexecutor">hannah.nas.functional_operators.executor</h1>
 <p><a id="hannah.nas.functional_operators.op"></a></p>
@@ -822,6 +830,22 @@ the respective axis sizes</p>
 <h1 id="hannahnasfunctional_operatorsoperators">hannah.nas.functional_operators.operators</h1>
 <p><a id="hannah.nas.functional_operators.shapes"></a></p>
 <h1 id="hannahnasfunctional_operatorsshapes">hannah.nas.functional_operators.shapes</h1>
+<p><a id="hannah.nas.functional_operators.shapes.padding_expression"></a></p>
+<h4 id="padding_expression">padding_expression</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
+the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
+Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
+an output with also dimension 1.</p>
+<h2 id="parameters_15">Parameters</h2>
+<p>kernel_size : Union[int, Expression]
+stride : Union[int, Expression]
+dilation : Union[int, Expression], optional
+<em>description</em>, by default 1</p>
+<h2 id="returns_5">Returns</h2>
+<p>Expression</p>
 <p><a id="hannah.nas.functional_operators.visualizer"></a></p>
 <h1 id="hannahnasfunctional_operatorsvisualizer">hannah.nas.functional_operators.visualizer</h1>
 <p><a id="hannah.nas.functional_operators.lazy"></a></p>
@@ -892,10 +916,10 @@ all users (including users from subsequent nodes).
 If a node_b is NOT in collect_users(node_a), this means
 that node_b is either BEFORE node_a in the graph OR it is
 in a parallel branch.</p>
-<h2 id="parameters_15">Parameters</h2>
+<h2 id="parameters_16">Parameters</h2>
 <p>node : <em>type</em>
     <em>description</em></p>
-<h2 id="returns_5">Returns</h2>
+<h2 id="returns_6">Returns</h2>
 <p><em>type</em>
     <em>description</em></p>
 <p><a id="hannah.nas.dataflow.dataflow_graph.find_first_input"></a></p>
@@ -907,10 +931,10 @@ in a parallel branch.</p>
 back to its first input. NOTE: The traversal is via OPERANDS
 and not OUTPUT, meaning that e.g. weight Tensors that are
 included in Ops in a DFG are not returned</p>
-<h2 id="parameters_16">Parameters</h2>
+<h2 id="parameters_17">Parameters</h2>
 <p>node : <em>type</em>
     <em>description</em></p>
-<h2 id="returns_6">Returns</h2>
+<h2 id="returns_7">Returns</h2>
 <p><em>type</em>
     <em>description</em></p>
 <p><a id="hannah.nas.dataflow.compression_type"></a></p>
@@ -1012,7 +1036,7 @@ included in Ops in a DFG are not returned</p>
 <p><a id="hannah.models.mobilenet.expressions"></a></p>
 <h1 id="hannahmodelsmobilenetexpressions">hannah.models.mobilenet.expressions</h1>
 <p><a id="hannah.models.mobilenet.expressions.padding_expression"></a></p>
-<h4 id="padding_expression">padding_expression</h4>
+<h4 id="padding_expression_1">padding_expression</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 
@@ -1020,12 +1044,12 @@ included in Ops in a DFG are not returned</p>
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_17">Parameters</h2>
+<h2 id="parameters_18">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
-<h2 id="returns_7">Returns</h2>
+<h2 id="returns_8">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.models.mobilenet.operators"></a></p>
 <h1 id="hannahmodelsmobilenetoperators">hannah.models.mobilenet.operators</h1>
@@ -1126,7 +1150,7 @@ dilation : Union[int, Expression], optional
 <p><a id="hannah.models.convnet.models"></a></p>
 <h1 id="hannahmodelsconvnetmodels">hannah.models.convnet.models</h1>
 <p><a id="hannah.models.convnet.models.padding_expression"></a></p>
-<h4 id="padding_expression_1">padding_expression</h4>
+<h4 id="padding_expression_2">padding_expression</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 
@@ -1134,12 +1158,12 @@ dilation : Union[int, Expression], optional
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_18">Parameters</h2>
+<h2 id="parameters_19">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
-<h2 id="returns_8">Returns</h2>
+<h2 id="returns_9">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.models.ekut"></a></p>
 <h1 id="hannahmodelsekut">hannah.models.ekut</h1>
@@ -1925,6 +1949,8 @@ activation functions.</p>
 <h1 id="hannahmodels">hannah.models</h1>
 <p><a id="hannah.models.kakao_resnet"></a></p>
 <h1 id="hannahmodelskakao_resnet">hannah.models.kakao_resnet</h1>
+<p><a id="hannah.models.embedded_vision_net.parameters"></a></p>
+<h1 id="hannahmodelsembedded_vision_netparameters">hannah.models.embedded_vision_net.parameters</h1>
 <p><a id="hannah.models.embedded_vision_net.blocks"></a></p>
 <h1 id="hannahmodelsembedded_vision_netblocks">hannah.models.embedded_vision_net.blocks</h1>
 <p><a id="hannah.models.embedded_vision_net.utils"></a></p>
@@ -1984,7 +2010,7 @@ activation functions.</p>
 <p><a id="hannah.models.capsule_net.expressions"></a></p>
 <h1 id="hannahmodelscapsule_netexpressions">hannah.models.capsule_net.expressions</h1>
 <p><a id="hannah.models.capsule_net.expressions.padding_expression"></a></p>
-<h4 id="padding_expression_2">padding_expression</h4>
+<h4 id="padding_expression_3">padding_expression</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 
@@ -1992,12 +2018,12 @@ activation functions.</p>
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_19">Parameters</h2>
+<h2 id="parameters_20">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
-<h2 id="returns_9">Returns</h2>
+<h2 id="returns_10">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.models.capsule_net.operators"></a></p>
 <h1 id="hannahmodelscapsule_netoperators">hannah.models.capsule_net.operators</h1>
@@ -3328,24 +3354,6 @@ Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/o
 <p><a id="hannah.models.functional_net_test.expressions"></a></p>
 <h1 id="hannahmodelsfunctional_net_testexpressions">hannah.models.functional_net_test.expressions</h1>
 <p><a id="hannah.models.functional_net_test.expressions.padding_expression"></a></p>
-<h4 id="padding_expression_3">padding_expression</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
-the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
-Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
-an output with also dimension 1.</p>
-<h2 id="parameters_20">Parameters</h2>
-<p>kernel_size : Union[int, Expression]
-stride : Union[int, Expression]
-dilation : Union[int, Expression], optional
-<em>description</em>, by default 1</p>
-<h2 id="returns_10">Returns</h2>
-<p>Expression</p>
-<p><a id="hannah.models.resnet.models_lazy"></a></p>
-<h1 id="hannahmodelsresnetmodels_lazy">hannah.models.resnet.models_lazy</h1>
-<p><a id="hannah.models.resnet.models_lazy.padding_expression"></a></p>
 <h4 id="padding_expression_4">padding_expression</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
@@ -3361,15 +3369,9 @@ dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
 <h2 id="returns_11">Returns</h2>
 <p>Expression</p>
-<p><a id="hannah.models.resnet.blocks"></a></p>
-<h1 id="hannahmodelsresnetblocks">hannah.models.resnet.blocks</h1>
-<p><a id="hannah.models.resnet"></a></p>
-<h1 id="hannahmodelsresnet">hannah.models.resnet</h1>
-<p><a id="hannah.models.resnet.models"></a></p>
-<h1 id="hannahmodelsresnetmodels">hannah.models.resnet.models</h1>
-<p><a id="hannah.models.resnet.expressions"></a></p>
-<h1 id="hannahmodelsresnetexpressions">hannah.models.resnet.expressions</h1>
-<p><a id="hannah.models.resnet.expressions.padding_expression"></a></p>
+<p><a id="hannah.models.resnet.models_lazy"></a></p>
+<h1 id="hannahmodelsresnetmodels_lazy">hannah.models.resnet.models_lazy</h1>
+<p><a id="hannah.models.resnet.models_lazy.padding_expression"></a></p>
 <h4 id="padding_expression_5">padding_expression</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
@@ -3384,6 +3386,30 @@ stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
 <h2 id="returns_12">Returns</h2>
+<p>Expression</p>
+<p><a id="hannah.models.resnet.blocks"></a></p>
+<h1 id="hannahmodelsresnetblocks">hannah.models.resnet.blocks</h1>
+<p><a id="hannah.models.resnet"></a></p>
+<h1 id="hannahmodelsresnet">hannah.models.resnet</h1>
+<p><a id="hannah.models.resnet.models"></a></p>
+<h1 id="hannahmodelsresnetmodels">hannah.models.resnet.models</h1>
+<p><a id="hannah.models.resnet.expressions"></a></p>
+<h1 id="hannahmodelsresnetexpressions">hannah.models.resnet.expressions</h1>
+<p><a id="hannah.models.resnet.expressions.padding_expression"></a></p>
+<h4 id="padding_expression_6">padding_expression</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
+the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
+Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
+an output with also dimension 1.</p>
+<h2 id="parameters_23">Parameters</h2>
+<p>kernel_size : Union[int, Expression]
+stride : Union[int, Expression]
+dilation : Union[int, Expression], optional
+<em>description</em>, by default 1</p>
+<h2 id="returns_13">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.models.resnet.operators"></a></p>
 <h1 id="hannahmodelsresnetoperators">hannah.models.resnet.operators</h1>
@@ -4186,7 +4212,7 @@ each argument influence and examples.</p>
 
 <p>Dumps the configuration to json format</p>
 <p>Creates file config.json in output_dir</p>
-<h2 id="parameters_23">Parameters</h2>
+<h2 id="parameters_24">Parameters</h2>
 <p>output_dir : str
    Output directory
 config  : dict
@@ -4203,7 +4229,7 @@ config  : dict
 <li>model.json: Serialized version of network parameters in json format</li>
 <li>model.onnx: full model including paramters in onnx format</li>
 </ul>
-<h2 id="parameters_24">Parameters</h2>
+<h2 id="parameters_25">Parameters</h2>
 <p>output_dir : str
     Directory to put serialized models
 model : LightningModule
