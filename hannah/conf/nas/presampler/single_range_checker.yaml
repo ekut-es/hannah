@@ -1,0 +1,3 @@
+_target_: hannah.nas.search.presampler.simple.SingleRangeChecker
+min: 250000
+max: 550000

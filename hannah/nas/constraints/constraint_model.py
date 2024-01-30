@@ -148,9 +148,10 @@ class ConstraintModel:
 
         raise Exception("No satisfiable configuration possible")
 
-    def soft_constrain_current_parametrization(
-        self, module, parameters=None, key=None, fix_vars=[]
-    ):
+    def solve(self, module, parameters=None, key=None, fix_vars=[]):
+        self.soft_constrain_current_parametrization(module, parameters, key, fix_vars)
+
+    def soft_constrain_current_parametrization(self, module, parameters=None, key=None, fix_vars=[]):
         self.solver = []
         self.build_model(module._conditions)
         for solver in self.solver:

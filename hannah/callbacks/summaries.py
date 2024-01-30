@@ -34,6 +34,7 @@ from hannah.nas.graph_conversion import GraphConversionTracer
 
 from ..models.factory import qat
 from ..models.sinc import SincNet
+import numpy as np
 
 msglogger = logging.getLogger(__name__)
 
@@ -458,8 +459,8 @@ def get_conv(node, output, args, kwargs):
     out_channels = weight.shape[0]
     in_channels = weight.shape[1]
     kernel_size = weight.shape[2]
-    num_weights = out_channels * in_channels / kwargs["groups"] * kernel_size**2
-    macs = volume_ofm * in_channels / kwargs["groups"] * kernel_size
+    num_weights = np.prod(weight.shape)
+    macs = volume_ofm * in_channels * kernel_size**2
     attrs = "k=" + "(%d, %d)" % (kernel_size, kernel_size)
     attrs += ", s=" + "(%d, %d)" % (kwargs["stride"], kwargs["stride"])
     attrs += ", g=(%d)" % kwargs["groups"]

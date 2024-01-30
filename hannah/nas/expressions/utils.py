@@ -14,7 +14,14 @@ def extract_parameter_from_expression(expression):
         elif isinstance(current, Expression):
             children = current.get_children()
             for c in children:
-                if not any([c is v for v in visited]):  # Hack because EQCondition messes with classical "if x in list" syntax
-                    queue.append(c)
-                    visited.append(c)
+                # the following if/else with c_ is just to include tuples and lists
+                if isinstance(c, (tuple, list)):
+                    c_ = c
+                else:
+                    c_ = [c]
+                for x in c_:
+                    if not any([x is v for v in visited]):  # Hack because EQCondition messes with classical "if x in list" syntax
+                        queue.append(x)
+                        visited.append(x)
+
     return params

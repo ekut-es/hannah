@@ -1,6 +1,22 @@
+from hannah.models.embedded_vision_net.parameters import Groups
+from hannah.nas.core.expression import Expression
+from hannah.nas.core.parametrized import is_parametrized
+from hannah.nas.expressions.arithmetic import Mod
+from hannah.nas.expressions.logic import And
+from hannah.nas.expressions.types import Int
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.functional_operators.op import ChoiceOp, Tensor, scope
-from hannah.nas.functional_operators.operators import AdaptiveAvgPooling, Add, BatchNorm, Conv2d, Linear, Relu, Identity
+from hannah.nas.functional_operators.operators import AdaptiveAvgPooling, Add, BatchNorm, Conv2d, InterleaveChannels, Linear, Relu, Identity, MaxPooling, AvgPooling
+
+
+def max_pool(input, kernel_size, stride):
+    out = MaxPooling(kernel_size=kernel_size, stride=stride)(input)
+    return out
+
+
+def avg_pool(input, kernel_size, stride):
+    out = AvgPooling(kernel_size=kernel_size, stride=stride)(input)
+    return out
 
 
 def conv2d(input, out_channels, kernel_size=1, stride=1, dilation=1, groups=1, padding=None):
@@ -14,9 +30,24 @@ def conv2d(input, out_channels, kernel_size=1, stride=1, dilation=1, groups=1, p
     return conv
 
 
-def depthwise_conv2d(input, out_channels, kernel_size, stride, dilation=1):
-    in_channels = 1
-    conv = conv2d(input, out_channels=out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, groups=in_channels)
+def grouped_conv2d(input, out_channels, kernel_size, stride, dilation=1, padding=None, groups=None):
+    in_channels = input.shape()[1]
+    if groups is None:
+        groups = Groups(in_channels=in_channels, out_channels=out_channels, name="groups")
+
+    grouped_channels = Int(in_channels / groups)
+    weight = Tensor(name='weight',
+                    shape=(out_channels, grouped_channels, kernel_size, kernel_size),
+                    axis=('O', 'I', 'kH', 'kW'),
+                    grad=True)
+
+    conv = Conv2d(stride=stride, dilation=dilation, groups=groups, padding=padding)(input, weight)
+    return conv
+
+
+def depthwise_conv2d(input, out_channels, kernel_size, stride, dilation=1, padding=None):
+    in_channels = input.shape()[1]
+    conv = grouped_conv2d(input, out_channels=out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, groups=in_channels, padding=padding)
     return conv
 
 
@@ -76,3 +107,7 @@ def choice(input, *choices, switch=None):
 
 def dynamic_depth(*exits, switch):
     return ChoiceOp(*exits, switch=switch)()
+
+
+def interleave_channels(input, step_size):
+    return InterleaveChannels(step_size)(input)

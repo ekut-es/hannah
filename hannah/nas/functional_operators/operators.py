@@ -7,14 +7,12 @@ import torch
 import torch.nn.functional as F
 import torch.fx as fx
 from hannah.nas.core.parametrized import is_parametrized
-# from hannah.nas.functional_operators.fx_wrapped_functions import conv2d_forward, linear_forward
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.functional_operators.op import Choice, Op, Tensor
-from hannah.nas.functional_operators.shapes import adaptive_average_pooling2d_shape, conv_shape, identity_shape, linear_shape
+from hannah.nas.functional_operators.shapes import adaptive_average_pooling2d_shape, conv_shape, identity_shape, linear_shape, padding_expression, pool_shape
 
 from hannah.nas.parameters.parametrize import parametrize
 from hannah.nas.parameters.parameters import IntScalarParameter, CategoricalParameter
-from hannah.models.functional_net_test.expressions import padding_expression
 
 
 @torch.fx.wrap
@@ -59,6 +57,22 @@ def adaptive_avg_pooling(input, output_size=(1, 1), *, id):
     return F.adaptive_avg_pool2d(input, output_size=output_size)
 
 
+@torch.fx.wrap
+def max_pool(input, kernel_size, stride, padding, dilation):
+    return F.max_pool2d(input, kernel_size, stride, padding, dilation)
+
+
+@torch.fx.wrap
+def avg_pool(input, kernel_size, stride, padding):
+    return F.avg_pool2d(input, kernel_size, stride, padding)
+
+
+@torch.fx.wrap
+def interleave(input, step_size):
+    # Assuming NCHW layout!! Maybe change later to use named axis of Tensor?
+    return torch.concat([input[:, shift_pos::step_size, :, :] for shift_pos in range(step_size)], dim=1)
+
+
 @parametrize
 class Conv1d(Op):
     def __init__(self, out_channels, kernel_size=1, stride=1, dilation=1) -> None:
@@ -86,8 +100,8 @@ class Conv1d(Op):
 
     # FIXME: Use wrapped implementation
     def _forward_implementation(self, *operands):
-        x = operands[0]  # .forward()
-        weight = operands[1]  # .forward()
+        x = operands[0]
+        weight = operands[1]
         return F.conv1d(input=x, weight=weight, stride=lazy(self.stride), padding=lazy(self.padding), dilation=lazy(self.dilation))
 
     def shape_fun(self):
@@ -243,6 +257,38 @@ class BatchNorm(Op):
 
 
 @parametrize
+class MaxPooling(Op):
+    def __init__(self, kernel_size, stride, dilation=1) -> None:
+        super().__init__(name="MaxPooling")
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.dilation = dilation
+        self.padding = padding_expression(self.kernel_size, self.stride, self.dilation)
+
+    def shape_fun(self):
+        return pool_shape(*self.operands, dims=2, kernel_size=self.kernel_size, stride=self.stride, padding=self.padding, dilation=self.dilation)
+
+    def _forward_implementation(self, *operands):
+        return max_pool(operands[0], kernel_size=lazy(self.kernel_size), stride=lazy(self.stride), padding=lazy(self.padding), dilation=lazy(self.dilation))
+
+
+@parametrize
+class AvgPooling(Op):
+    def __init__(self, kernel_size, stride, dilation=1) -> None:
+        super().__init__(name="AvgPooling")
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.dilation = dilation
+        self.padding = padding_expression(self.kernel_size, self.stride, self.dilation)
+
+    def shape_fun(self):
+        return pool_shape(*self.operands, dims=2, kernel_size=self.kernel_size, stride=self.stride, padding=self.padding, dilation=self.dilation)
+
+    def _forward_implementation(self, *operands):
+        return avg_pool(operands[0], kernel_size=lazy(self.kernel_size), stride=lazy(self.stride), padding=lazy(self.padding))
+
+
+@parametrize
 class AdaptiveAvgPooling(Op):
     def __init__(self, output_size=(1, 1)) -> None:
         super().__init__(name='AvgPooling')
@@ -253,3 +299,16 @@ class AdaptiveAvgPooling(Op):
 
     def _forward_implementation(self, *operands):
         return adaptive_avg_pooling(operands[0], output_size=self.output_size, id=self.id)
+
+
+@parametrize
+class InterleaveChannels(Op):
+    def __init__(self, step_size) -> None:
+        super().__init__(name='InterleaveChannels')
+        self.step_size = step_size
+
+    def shape_fun(self):
+        return self.operands[0].shape()
+
+    def _forward_implementation(self, *operands):
+        return interleave(operands[0], step_size=lazy(self.step_size))

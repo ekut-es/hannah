@@ -105,6 +105,7 @@ class DirectNAS(NASBase):
     def __init__(
         self,
         presample=True,
+        presampler=None,
         bounds=None,
         total_candidates=100,
         num_selected_candidates=10,
@@ -113,6 +114,7 @@ class DirectNAS(NASBase):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.presample = presample
+        self.presampler = presampler
         self.bounds = bounds
         self.total_candidates = total_candidates
         self.num_selected_candidates = num_selected_candidates
@@ -122,7 +124,7 @@ class DirectNAS(NASBase):
         self.search_space = self.build_search_space()
         parametrization = self.search_space.parametrization(flatten=True)
         self.sampler = instantiate(
-            self.config.nas.sampler, parametrization=parametrization
+            self.config.nas.sampler, parametrization=parametrization, parent_config=self.config, _recursive_=False
         )
         self.mac_predictor = MACPredictor(predictor="fx")
         self.model_trainer = instantiate(self.config.nas.model_trainer)
@@ -134,22 +136,25 @@ class DirectNAS(NASBase):
         if self.constraint_model:
             self.constraint_model = instantiate(self.config.nas.constraint_model)
 
+        if self.presampler:
+            self.presampler = instantiate(self.config.nas.presampler)
+
         self.setup_model_logging()
 
-    def presample_candidates(self):
+    def init_candidates(self):
         remaining_candidates = self.total_candidates - len(self.sampler.history)
         self.candidates = []
         if remaining_candidates > 0:
             self.candidates = self.sample_candidates(
-                remaining_candidates, remaining_candidates
+                remaining_candidates, remaining_candidates, presample=self.presample
             )
 
     def search(self):
         with Parallel(n_jobs=self.n_jobs) as executor:
             self.new_points = []
 
-            # Presample Candidates
-            self.presample_candidates()
+            # first batch of candidates
+            self.init_candidates()
 
             while len(self.sampler.history) < self.budget:
                 self.worklist = []
@@ -164,7 +169,7 @@ class DirectNAS(NASBase):
                             msglogger.error(f"{str(e)}")
                         self.new_points = []
                     self.candidates = self.sample_candidates(
-                        self.total_candidates, self.num_selected_candidates
+                        self.total_candidates, self.num_selected_candidates, presample=self.presample
                     )
 
                 while len(self.worklist) < self.n_jobs and len(self.candidates) > 0:
@@ -175,7 +180,7 @@ class DirectNAS(NASBase):
                             estimated_metrics,
                             satisfied_bounds,
                         ) = self.candidates.pop(0)
-    
+
                         current_num = len(self.worklist)
                         task = delayed(self.model_trainer.run_training)(
                                 model,
@@ -208,21 +213,31 @@ class DirectNAS(NASBase):
         pass
         # self.extract_best_model()
 
-    def sample_candidates(self, num_total, num_candidates=None, sort_key="ff"):
+    def sample_candidates(self, num_total, num_candidates=None, sort_key="ff", presample=False):
         candidates = []
-        for n in range(num_total):
-            models = []
+        skip_ct = 0
+        while len(candidates) < num_total:
             parameters = self.sample()
             model = self.build_model(parameters)
-            models.append(model)
             estimated_metrics, satisfied_bounds = self.estimate_metrics(copy.deepcopy(model))
+            if presample:
+                if not self.presampler.check(model, estimated_metrics):
+                    skip_ct += 1
+                    continue
             ff = self.get_fitness_function()(estimated_metrics)
             estimated_metrics['ff'] = ff
             candidates.append((model, parameters, estimated_metrics, satisfied_bounds))
 
+        if presample:
+            msglogger.info(f"Skipped {skip_ct} models for not meeting constraints.")
+
         if self.predictor:
             candidates.sort(key=lambda x: x[2][sort_key])
             candidates = candidates[:num_candidates]
+
+        # # FIXME: EXPERIMENTAL
+        # candidates.sort(key=lambda x: x[2]['total_macs'], reverse=True)
+        # candidates = candidates[:num_candidates]
         return candidates
 
     def build_model(self, parameters):
@@ -288,7 +303,7 @@ class DirectNAS(NASBase):
                         self.search_space.parametrization(flatten=True)[key]
                         for key in keys
                     ]
-                    self.constraint_model.soft_constrain_current_parametrization(
+                    self.constraint_model.solve(
                         self.search_space, parameters, fix_vars=fixed_vars
                     )
                     parameters = self.constraint_model.get_constrained_params(
@@ -297,6 +312,7 @@ class DirectNAS(NASBase):
                     break
                 except Exception:
                     pass
+            print()
         else:
             parameters, keys = self.sampler.next_parameters()
         return parameters
@@ -304,12 +320,12 @@ class DirectNAS(NASBase):
     def append_to_worklist(self, parameters, task, estimated_metrics={}, satisfied_bounds=[]):
         worklist_item = WorklistItem(parameters, estimated_metrics, task)
 
-        if self.presample:
-            if all(satisfied_bounds):
-                self.worklist.append(worklist_item)
-        else:
-            self.worklist.append(worklist_item)
-
+        # if self.presample:
+        #     if all(satisfied_bounds):
+        #         self.worklist.append(worklist_item)
+        # else:
+        #     self.worklist.append(worklist_item)
+        self.worklist.append(worklist_item)
         # FIXME: Integrate better intro current code
 
     def estimate_metrics(self, model):

@@ -38,6 +38,7 @@ def _create_parametrize_wrapper(params, cls):
         # FIXME: Test what happens when the parent class is also @parametrized
         self._annotations = {}
         self._conditions = []
+        self._condition_knobs = []
 
         num = 1
         tuple_idx = 0
@@ -92,6 +93,7 @@ def _create_parametrize_wrapper(params, cls):
         cls.set_param_scopes = set_param_scopes
         cls.cond = cond
         cls.add_param = add_param
+        cls.get_constraints = get_constraints
         self._parametrized = True
         old_init_fn(self, *args, **kwargs)
 
@@ -156,8 +158,27 @@ def check(self, value=None):
             raise Exception("Condition not satisfied: {}".format(con))
 
 
-def cond(self, condition):
+def cond(self, condition, allowed_params=None):
     self._conditions.append(condition)
+    self._condition_knobs.append(allowed_params)
+
+
+def get_constraints(self):
+    constraints = []
+    knobs = []
+    queue = [self]
+    visited = [self]
+
+    while queue:
+        n = queue.pop(-1)
+        constraints.extend(n._conditions)
+        knobs.extend(n._condition_knobs)
+        for o in n.operands:
+            # Cant use "in" because of EQ-Condition
+            if o not in visited:
+                queue.append(o)
+                visited.append(o)
+    return constraints, knobs
 
 
 def instantiate(self):
@@ -212,7 +233,7 @@ def get_parameters(
     return params
 
 
-def parametrization(self, include_empty=False, flatten=False):
+def parametrization(self, include_empty=False, flatten=True):
     return self.get_parameters(include_empty=include_empty, flatten=flatten)
 
 

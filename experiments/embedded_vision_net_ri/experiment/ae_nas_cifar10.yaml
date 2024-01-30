@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
   - override /nas: aging_evolution_nas
-  - override /model: embedded_vision_nas
+  - override /model: embedded_vision_net
   - override /dataset: cifar10
 
 model:

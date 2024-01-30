@@ -26,9 +26,11 @@ class SearchResult:
 
 class Sampler(ABC):
     def __init__(self,
-                output_folder=".") -> None:
+                 parent_config,
+                 output_folder=".") -> None:
         self.history = []
         self.output_folder = Path(output_folder)
+        self.parent_config = parent_config
 
     @abstractmethod
     def next_parameters(self):
