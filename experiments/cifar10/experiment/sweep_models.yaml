@@ -6,4 +6,4 @@ hydra:
     subdir: ${model.name}
   sweeper:
     params:
-      model: timm_resnet18,timm_mobilenetv3_small_075,timm_mobilenetv3_small_100
+      model: timm_resnet18,timm_mobilenetv3_small_075,timm_mobilenetv3_small_100,kakao_resnet8 

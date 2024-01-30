@@ -40,8 +40,8 @@ msglogger = logging.getLogger(__name__)
 
 
 class SimpleModelTrainer:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, per_process_memory_fraction = None) -> None:
+        self.per_process_memory_fraction = per_process_memory_fraction
 
     def build_model(self, model, parameters):
         # model_instance = deepcopy(model)
@@ -134,4 +134,7 @@ class SimpleModelTrainer:
                 )
                 device = device % torch.cuda.device_count()
 
+            if self.per_process_memory_fraction:
+                torch.cuda.set_per_process_memory_fraction(self.per_process_memory_fraction, device=device)
+                
             config.trainer.devices = [device]

@@ -70,6 +70,7 @@ class ClassifierModule(LightningModule, ABC):
         shuffle_all_dataloaders: bool = False,
         augmentation: Optional[DictConfig] = None,
         pseudo_labeling: Optional[DictConfig] = None,
+        log_images: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -110,6 +111,8 @@ class ClassifierModule(LightningModule, ABC):
         self.batch_size = batch_size
 
         self.loss_weights = None
+        
+        self._log_images = log_images
         
     @abstractmethod
     def prepare_data(self) -> Any:
@@ -408,6 +411,8 @@ class ClassifierModule(LightningModule, ABC):
                     )
 
     def _log_batch_images(self, name: str, batch_idx: int, data: torch.tensor):
+        if not self._log_images:
+            return 
         loggers = self._logger_iterator()
         for logger in loggers:
             if hasattr(logger.experiment, "add_image"):

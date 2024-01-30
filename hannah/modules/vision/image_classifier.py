@@ -35,7 +35,6 @@ from torchmetrics import (
 
 from hannah.datasets.collate import vision_collate_fn
 
-from ..augmentation.batch_augmentation import BatchAugmentationPipeline
 from ..metrics import Error
 from .base import VisionBaseModule
 from .loss import SemiSupervisedLoss
@@ -144,7 +143,7 @@ class ImageClassifierModule(VisionBaseModule):
         if y is not None and preds is not None:
             self.test_confusion(preds, y)
 
-        if y is not None and step_results.logits.numel() > 0:
+        if y is not None and hasattr(step_results, 'logits') and step_results.logits.numel() > 0:
             probs = torch.softmax(step_results.logits, dim=1)
             self.test_roc(probs, y)
             self.test_pr_curve(probs, y)

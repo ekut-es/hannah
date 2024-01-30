@@ -71,6 +71,8 @@ def train(
     validate_output = False
     if hasattr(config, "validate_output") and isinstance(config.validate_output, bool):
         validate_output = config.validate_output
+    
+    torch.set_float32_matmul_precision('high')
 
     for seed in config.seed:
         seed_everything(seed, workers=True)

@@ -286,7 +286,10 @@ class VisionBaseModule(ClassifierModule):
 
         self.default_augmentation = torch.nn.Sequential(*default_augment)
         augmentations = {k: torch.nn.Sequential(*v) for k, v in augmentations.items()}
-        self.augmentations = torch.nn.ModuleDict(augmentations)
+        
+        return augmentations
+        
+        # self.augmentations = torch.nn.ModuleDict(augmentations)
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
@@ -310,29 +313,35 @@ class VisionBaseModule(ClassifierModule):
                 else dataset.max_workers
             )
             return result
+        
+        num_workers = calc_workers(dataset)
 
         loader = data.DataLoader(
             dataset,
             batch_size=batch_size,
             drop_last=True,
-            num_workers=calc_workers(dataset),
+            num_workers=num_workers,
             sampler=sampler if not dataset.sequential else None,
             collate_fn=vision_collate_fn,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+            multiprocessing_context="fork"  if num_workers > 0 else None,
+            persistent_workers = True if num_workers > 0 else False,
+            prefetch_factor = 2 if num_workers > 0 else None,
+            pin_memory=True,
         )
         self.batches_per_epoch = len(loader)
 
         if unlabeled_data:
+            unlabeled_workers = calc_workers(unlabeled_data)
             loader_unlabeled = data.DataLoader(
                 unlabeled_data,
                 batch_size=batch_size,
                 drop_last=True,
-                num_workers=calc_workers(unlabeled_data),
+                num_workers=unlabeled_workers,
                 sampler=data.RandomSampler(unlabeled_data)
                 if not unlabeled_data.sequential
                 else None,
                 multiprocessing_context="fork"
-                if self.hparams["num_workers"] > 0
+                if unlabeled_workers > 0
                 else None,
             )
 
