@@ -15,10 +15,11 @@ monitor:
   direction: maximize
 
 module:
-  batch_size: 512
+  batch_size: 2048
 
 trainer:
-  max_epochs: 30
+  max_epochs: 50
+  precision: 16
 
 optimizer:
   lr: 0.3

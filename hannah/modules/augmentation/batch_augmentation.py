@@ -54,7 +54,6 @@ class BatchAugmentationPipeline(nn.Module):
         Returns:
             Tuple[torch.Tensor, torch.Tensor]; Batch augmented with `replica` different random augmentations
         """
-
         result = self.transforms(x)
 
         return result

@@ -3,7 +3,8 @@ experiment_id: sweep_lr
 hydra:
   mode: MULTIRUN
   sweep:
-    subdir: lr=${scheduler.max_lr}
+    subdir: ${model.name}/lr=${scheduler.max_lr}
   sweeper:
     params:
       scheduler.max_lr: 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9
+      model: timm_resnet18,timm_mobilenetv3_small_075,timm_mobilenetv3_small_100,kakao_resnet8
