@@ -118,6 +118,9 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             "batch_norm": self.add_nodes_batch_norm,
             "flatten": self.add_nodes_flatten,
             "adaptive_avg_pooling": self.add_nodes_pooling,
+            "avg_pool": self.add_nodes_pooling,
+            "max_pool": self.add_nodes_pooling,
+            "interleave": self.add_nodes_relu
         }
         self.layer_encodings = [
             "conv",

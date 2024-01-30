@@ -3,14 +3,35 @@ from hannah.models.embedded_vision_net.expressions import expr_product
 from hannah.nas.expressions.arithmetic import Ceil
 from hannah.nas.expressions.types import Int
 from hannah.nas.functional_operators.op import scope
-from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv2d, conv_relu, depthwise_conv2d, dynamic_depth, pointwise_conv2d, linear, relu, batch_norm, choice, identity
+from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv2d, conv_relu, depthwise_conv2d, dynamic_depth, grouped_conv2d, interleave_channels, pointwise_conv2d, linear, relu, batch_norm, choice, identity, max_pool, avg_pool
 # from hannah.nas.functional_operators.visualizer import Visualizer
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 
 
 @scope
+def pooling(input, kernel_size, stride):
+    avgp = partial(avg_pool, kernel_size=kernel_size, stride=stride)
+    maxp = partial(max_pool, kernel_size=kernel_size, stride=stride)
+    pool_choice = CategoricalParameter([0, 1], name='pool_mode')
+    out = choice(input, avgp, maxp, switch=pool_choice)
+    return out
+
+
+@scope
+def grouped_pointwise(input, out_channels):
+    pw_k = grouped_conv2d(input, out_channels, kernel_size=1, stride=1)
+    out = interleave_channels(pw_k, step_size=pw_k.groups)
+    pw_l = grouped_conv2d(out, out_channels, kernel_size=1, stride=1, groups=pw_k.groups)
+    out = add(pw_l, pw_k)
+    return out
+
+
+@scope
 def expansion(input, expanded_channels):
-    return pointwise_conv2d(input, expanded_channels)
+    pw = partial(pointwise_conv2d, out_channels=expanded_channels)
+    grouped_pw = partial(grouped_pointwise, out_channels=expanded_channels)
+    return choice(input, pw, grouped_pw)
+    # return pointwise_conv2d(input, out_channels=expanded_channels)
 
 
 @scope
@@ -20,7 +41,10 @@ def spatial_correlation(input, out_channels, kernel_size, stride=1):
 
 @scope
 def reduction(input, out_channels):
-    return pointwise_conv2d(input, out_channels=out_channels)
+    pw = partial(pointwise_conv2d, out_channels=out_channels)
+    grouped_pw = partial(grouped_pointwise, out_channels=out_channels)
+    return choice(input, pw, grouped_pw)
+    # return pointwise_conv2d(input, out_channels=out_channels)
 
 
 @scope
@@ -60,11 +84,11 @@ def expand_reduce(input, out_channels, expand_ratio, kernel_size, stride):
 @scope
 def pattern(input, stride, out_channels, kernel_size, expand_ratio, reduce_ratio):
     convolution = partial(conv_relu, stride=stride, kernel_size=kernel_size, out_channels=out_channels)
-    exp_red = partial(expand_reduce, out_channels=out_channels, expand_ratio=expand_ratio, kernel_size=kernel_size, stride=stride)
     red_exp = partial(reduce_expand, out_channels=out_channels, reduce_ratio=reduce_ratio, kernel_size=kernel_size, stride=stride)
-    # TODO: pooling
+    exp_red = partial(expand_reduce, out_channels=out_channels, expand_ratio=expand_ratio, kernel_size=kernel_size, stride=stride)
+    pool = partial(pooling, kernel_size=kernel_size, stride=stride)
 
-    out = choice(input, convolution, exp_red, red_exp)
+    out = choice(input, convolution, exp_red, red_exp, pool)
     return out
 
 
@@ -135,6 +159,6 @@ def stem(input, kernel_size, stride, out_channels):
 
 @scope
 def classifier_head(input, num_classes):
-    out = choice(input, adaptive_avg_pooling)
+    out = adaptive_avg_pooling(input)
     out = linear(out, num_classes)
     return out

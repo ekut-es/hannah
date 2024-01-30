@@ -1,3 +1,2 @@
 _target_: hannah.nas.search.sampler.aging_evolution.AgingEvolutionSampler
-bounds: {}
 population_size: 20

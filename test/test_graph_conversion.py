@@ -97,7 +97,7 @@ def test_graph_conversion_functional_operators():
 
     # space = test_net(input)
 
-    space = search_space("net", input)
+    space = search_space("net", input, num_classes=10)
     # space.sample()
     model = BasicExecutor(space)
     model.initialize()

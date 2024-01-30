@@ -1,0 +1,8 @@
+batch_augment:
+  pipeline: null
+  transforms:
+    RandomVerticalFlip:
+      p: 0.5
+    RandomCrop:
+      size: [32,32]
+      padding: 4

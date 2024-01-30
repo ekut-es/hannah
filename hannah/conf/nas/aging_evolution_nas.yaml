@@ -20,7 +20,9 @@ defaults:
     - predictor: gcn
     - sampler: aging_evolution
     - model_trainer: simple
-    - constraint_model: z3
+    - constraint_model: random_walk
+    - presampler: null
+
 
 _target_: hannah.nas.search.search.DirectNAS
 budget: 2000
@@ -29,6 +31,6 @@ presample: False
 total_candidates: 50
 num_selected_candidates: 20
 bounds:
-    val_error: 0.03
+    val_error: 0.1
     total_macs: 128000000
     total_weights: 500000
