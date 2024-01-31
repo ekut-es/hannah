@@ -62,3 +62,6 @@ build/
 results/
 Patient_retraining.ipynb
 experiments/datasets/
+experiments/**/datasets/
+hannah/datasets/downloads
+trained_models/

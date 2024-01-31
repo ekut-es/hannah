@@ -298,7 +298,6 @@ class ChoiceOp(Op):
             self.options[i] = node_opt(*operands)
             if is_parametrized(self.options[i]):
                 self._PARAMETERS[self.options[i].id] = self.options[i]  # FIXME:
-        # TODO: Try converting to modulelist
         ct = get_highest_scope_counter(operands, self.name) + 1
         self.id = f"{self.id}_{ct}"
 

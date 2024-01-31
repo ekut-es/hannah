@@ -58,7 +58,7 @@ class AgingEvolutionSampler(Sampler):
 
     def __init__(
         self,
-        bounds,
+        parent_config,
         parametrization: dict,
         population_size: int = 50,
         random_state = None,
@@ -66,8 +66,8 @@ class AgingEvolutionSampler(Sampler):
         eps: float = 0.1,
         output_folder=".",
     ):
-        super().__init__(output_folder=output_folder)
-        self.bounds = bounds
+        super().__init__(parent_config, output_folder=output_folder)
+        self.bounds = self.parent_config.nas.bounds
         self.parametrization = parametrization
 
         self.random_state = (
@@ -163,7 +163,6 @@ class AgingEvolutionSampler(Sampler):
 
         self._pareto_points = new_points
 
-
     def load(self):
         super().load()
         self.population = []
@@ -172,3 +171,9 @@ class AgingEvolutionSampler(Sampler):
             self.population = self.history[len(self.history) - self.population_size :]
         else:
             self.population = self.history
+
+
+class AgingEvolutionRestrictedParameterSet(AgingEvolutionSampler):
+    def __init__(self, parent_config, parametrization: dict, tunable_knobs: list, population_size: int = 50, random_state=None, sample_size: int = 10, eps: float = 0.1, output_folder="."):
+        super().__init__(parent_config, parametrization, population_size, random_state, sample_size, eps, output_folder)
+        self.parametrization = {k: v for k, v in self.parametrization.items() if v.name in tunable_knobs}

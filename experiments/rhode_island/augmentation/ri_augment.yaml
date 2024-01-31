@@ -11,9 +11,6 @@ batch_augment:
       scale: [0.9, 1.1]
       shear: [-5, 5]
       p: 0.5
-    RandomCrop:
-      size: [320,320]
-      padding: 64
     RandomErasing:
       p: 0.5
       #scale: [0.!, 0.3]

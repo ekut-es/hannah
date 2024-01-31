@@ -21,7 +21,7 @@ checkpoints: [trained_models/fasterrcnn_brs_new/faster-rcnn-resnet50/best.ckpt]
 noise: []
 methods: ["original", "full_augmented", "real_rain", "dawn_rain", "dawn_snow", "dawn_fog"]
 output_dir: eval
-gpus: [1]
+devices: [1]
 
 augmentation:
   - augmented_pct: 50

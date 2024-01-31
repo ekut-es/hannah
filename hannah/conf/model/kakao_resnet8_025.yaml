@@ -1,2 +1,5 @@
-_target_: hannah.models.kakao_resnet.resnet8_025
+_target_: hannah.models.kakao_resnet.resnet8
 name: kakao_resnet8_025
+width_multiplier: 0.25
+input_kernel: 8
+input_stride: 8

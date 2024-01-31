@@ -33,10 +33,10 @@ import torch.package as package
 import yaml
 from hydra.utils import instantiate
 from joblib import Parallel, delayed
+from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import OmegaConf
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
 from hannah.models.convnet.models import ConvNet
 from hannah.nas.core.parametrized import is_parametrized
@@ -248,15 +248,15 @@ def run_training(
             seed = seed[0]
         seed_everything(seed, workers=True)
 
-        if config.trainer.gpus is not None:
-            if isinstance(config.trainer.gpus, int):
-                num_gpus = config.trainer.gpus
+        if config.trainer.devices is not None:
+            if isinstance(config.trainer.devices, int):
+                num_gpus = config.trainer.devices
                 gpu = num % num_gpus
             elif len(config.trainer.gpus) == 0:
                 num_gpus = torch.cuda.device_count()
                 gpu = num % num_gpus
             else:
-                gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
+                gpu = config.trainer.devices[num % len(config.trainer.gpus)]
 
             if gpu >= torch.cuda.device_count():
                 logging.warning(
@@ -266,7 +266,7 @@ def run_training(
                 )
                 gpu = gpu % torch.cuda.device_count()
 
-            config.trainer.gpus = [gpu]
+            config.trainer.devices = [gpu]
 
         callbacks = common_callbacks(config)
         opt_monitor = config.get("monitor", ["val_error"])

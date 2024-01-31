@@ -135,10 +135,10 @@ Training is invoked by
 
     hannah-train
 
-If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.`gpus=[number]`
+If available the first GPU of the system will be used by default. Selecting another GPU is possible using the argument trainer.`devices=[number]`
 e.g. for GPU 2 use:
 
-    hannah-train trainer.gpus=[2]
+    hannah-train trainer.devices=[2]
 
 Trained models are saved under `trained_models/<experiment_id>/<model_name>`.
 
@@ -190,7 +190,7 @@ Training of emergency siren detection dataset is invoked by:
 
 # Parallel Launchers
 
-To launch multiple optimizations in parallel you can use a hydra launcher. 
+To launch multiple optimizations in parallel you can use a hydra launcher.
 
 Joblib launcher is installed by default:
 
@@ -225,7 +225,6 @@ best of your abilities.
 
 # Automatic Mirroring
 
-This project automatically mirrors its *main* branch and all branches prefixed with *pub/* to its public github repository. 
+This project automatically mirrors its *main* branch and all branches prefixed with *pub/* to its public github repository.
 
-These branches are configured as protected branches by default. 
-
+These branches are configured as protected branches by default.

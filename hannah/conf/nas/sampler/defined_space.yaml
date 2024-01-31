@@ -1,0 +1,2 @@
+_target_: hannah.nas.search.sampler.defined_space_sampler.DefinedSpaceSampler
+data_folder: "mac_weight_data_bounded.pkl"

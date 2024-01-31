@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -27,13 +27,15 @@ import matplotlib.pyplot as plt
 import torch
 import torch.utils.data as data
 from hydra.utils import get_class, instantiate
-from pytorch_lightning.trainer.supporters import CombinedLoader
+from pytorch_lightning.utilities import CombinedLoader
 from torchmetrics import (
+    ROC,
     Accuracy,
     ConfusionMatrix,
     F1Score,
     MetricCollection,
     Precision,
+    PrecisionRecallCurve,
     Recall,
 )
 
@@ -48,7 +50,7 @@ msglogger: logging.Logger = logging.getLogger(__name__)
 
 class VisionBaseModule(ClassifierModule):
     def setup(self, stage):
-        if self.trainer:
+        if self._trainer:
             for logger in self.trainer.loggers:
                 logger.log_hyperparams(self.hparams)
 
@@ -142,6 +144,13 @@ class VisionBaseModule(ClassifierModule):
         if self.num_classes > 0:
             self.test_confusion = ConfusionMatrix(
                 "multiclass", num_classes=self.num_classes
+            )
+
+            self.test_roc = ROC(
+                "multiclass", num_classes=self.num_classes, thresholds=10
+            )
+            self.test_pr_curve = PrecisionRecallCurve(
+                "multiclass", num_classes=self.num_classes, thresholds=10
             )
 
             for step_name in ["train", "val", "test"]:
@@ -277,7 +286,10 @@ class VisionBaseModule(ClassifierModule):
 
         self.default_augmentation = torch.nn.Sequential(*default_augment)
         augmentations = {k: torch.nn.Sequential(*v) for k, v in augmentations.items()}
-        self.augmentations = torch.nn.ModuleDict(augmentations)
+        
+        return augmentations
+        
+        # self.augmentations = torch.nn.ModuleDict(augmentations)
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
@@ -301,29 +313,35 @@ class VisionBaseModule(ClassifierModule):
                 else dataset.max_workers
             )
             return result
+        
+        num_workers = calc_workers(dataset)
 
         loader = data.DataLoader(
             dataset,
             batch_size=batch_size,
             drop_last=True,
-            num_workers=calc_workers(dataset),
+            num_workers=num_workers,
             sampler=sampler if not dataset.sequential else None,
             collate_fn=vision_collate_fn,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
+            multiprocessing_context="fork"  if num_workers > 0 else None,
+            persistent_workers = True if num_workers > 0 else False,
+            prefetch_factor = 2 if num_workers > 0 else None,
+            pin_memory=True,
         )
         self.batches_per_epoch = len(loader)
 
         if unlabeled_data:
+            unlabeled_workers = calc_workers(unlabeled_data)
             loader_unlabeled = data.DataLoader(
                 unlabeled_data,
                 batch_size=batch_size,
                 drop_last=True,
-                num_workers=calc_workers(unlabeled_data),
+                num_workers=unlabeled_workers,
                 sampler=data.RandomSampler(unlabeled_data)
                 if not unlabeled_data.sequential
                 else None,
                 multiprocessing_context="fork"
-                if self.hparams["num_workers"] > 0
+                if unlabeled_workers > 0
                 else None,
             )
 
@@ -333,3 +351,15 @@ class VisionBaseModule(ClassifierModule):
             )
 
         return loader
+
+    @property
+    def backbone(self):
+        if self.model is None:
+            self.setup("train")
+
+        if hasattr(self.model, "backbone"):
+            return self.model
+        elif hasattr(self.model, "encoder"):
+            return self.model.encoder
+        else:
+            raise AttributeError("No backbone found in model")

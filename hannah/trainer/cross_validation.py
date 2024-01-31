@@ -204,7 +204,6 @@ class CrossValidationTrainer:
         working_model.prepare_data()
         working_model.setup(None)
         working_trainer = deepcopy(self.trainer)
-        working_trainer.tune(working_model)
         loader_model = deepcopy(working_model)
         for fold, (train_loader, val_loader, test_loader) in enumerate(
             zip(

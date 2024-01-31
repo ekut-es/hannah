@@ -77,6 +77,7 @@ class Choice(Expression):
         self.choice = choice
 
     def get_children(self):
+        # return self.values + [self.choice]
         return [self.values, self.choice]
 
     def evaluate(self):
@@ -86,7 +87,7 @@ class Choice(Expression):
             concrete_value = self.choice
 
         concrete_choice = self.values[concrete_value]
-        if hasattr(concrete_value, 'evaluate'):
+        if hasattr(concrete_choice, 'evaluate'):
             concrete_choice = concrete_choice.evaluate()
         return concrete_choice
 

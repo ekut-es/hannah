@@ -17,8 +17,12 @@
 ## limitations under the License.
 ##
 data:
-  AE: trained_models/ae_nas_cifar10/embedded_vision_net
-  RANDOM: trained_models/random_nas_cifar10_workingbn/embedded_vision_net
+  random_nas_cifar10: trained_models/random_nas_cifar10_boundawarepred/embedded_vision_net
+  random_nas_cifar10_l: trained_models/random_nas_cifar10_boundawarepred_lambda/embedded_vision_net
+  ae_nas_cifar10: trained_models/ae_nas_cifar10_boundawarepred/embedded_vision_net
+  ae_nas_cifar10_l: trained_models/ae_nas_cifar10_boundawarepred_lambda/embedded_vision_net
+
+
 
 metrics:
   total_act:
@@ -54,7 +58,7 @@ plots:
       - macs_m
 
 extract:
-  AE:
+  random_nas_cifar10:
     bounds:
         val_error: 0.20
         total_macs: 100000000

@@ -160,7 +160,15 @@ class DefaultDecoderHead(nn.Module):
                 ),
                 nn.BatchNorm2d(out_channels),
                 nn.LeakyReLU(2.0),
-                # nn.Upsample(scale_factor=2.0),
+                nn.Conv2d(
+                    out_channels,
+                    out_channels,
+                    3,
+                    stride=1,
+                    padding=(1, 1),
+                ),
+                nn.BatchNorm2d(out_channels),
+                nn.LeakyReLU(2.0),
             )
 
             dim_x *= 2.0
@@ -170,9 +178,9 @@ class DefaultDecoderHead(nn.Module):
             upscale.append(stage)
 
         stage = nn.Sequential(
+            nn.Upsample(size=(input_x, input_y)),
             nn.Conv2d(channels, input_channels, 3, padding=(1, 1)),
             nn.BatchNorm2d(input_channels),
-            nn.Upsample(size=(input_x, input_y)),
             nn.Tanh(),
         )
         upscale.append(stage)

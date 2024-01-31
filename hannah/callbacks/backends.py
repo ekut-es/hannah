@@ -119,7 +119,7 @@ class InferenceBackendBase(Callback):
                 self.prepare(pl_module)
 
     def on_validation_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx = -1 
     ):
         """
 
@@ -129,8 +129,6 @@ class InferenceBackendBase(Callback):
           outputs:
           batch:
           batch_idx:
-          dataloader_idx:
-
         Returns:
 
         """
@@ -210,7 +208,7 @@ class InferenceBackendBase(Callback):
         return pl_module
 
     def on_test_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx = -1 
     ):
         """
 

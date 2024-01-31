@@ -27,21 +27,21 @@ import omegaconf
 import torch
 import torch.nn as nn
 from hydra.utils import instantiate
+from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from pytorch_lightning.utilities.seed import reset_seed, seed_everything
 
+from hannah.nas.functional_operators.executor import BasicExecutor
 from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.utils import save_graph_to_file, setup_callbacks
 from hannah.utils.utils import common_callbacks
-from hannah.nas.functional_operators.executor import BasicExecutor
 
 msglogger = logging.getLogger(__name__)
 
 
 class SimpleModelTrainer:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, per_process_memory_fraction = None) -> None:
+        self.per_process_memory_fraction = per_process_memory_fraction
 
     def build_model(self, model, parameters):
         # model_instance = deepcopy(model)
@@ -67,9 +67,9 @@ class SimpleModelTrainer:
 
             self.setup_seed(config)
             print("=======")
-            print(config.trainer.gpus)
-            self.setup_gpus(num, config, logger)
-            print(config.trainer.gpus)
+            print(config.trainer.devices)
+            self.setup_devices(num, config, logger)
+            print(config.trainer.devices)
             print("=========")
             callbacks, opt_monitor, opt_callback = setup_callbacks(config)
             try:
@@ -98,7 +98,9 @@ class SimpleModelTrainer:
                 res = {}
                 for monitor in opt_monitor:
                     # res[monitor] = float("inf")
-                    res[monitor] = 1  # FIXME: "inf" causes errors in performance prediction. Find "worst" value for each respective metric?
+                    res[
+                        monitor
+                    ] = 1  # FIXME: "inf" causes errors in performance prediction. Find "worst" value for each respective metric?
 
             return res
         finally:
@@ -113,23 +115,26 @@ class SimpleModelTrainer:
             seed = seed[0]
         seed_everything(seed, workers=True)
 
-    def setup_gpus(self, num, config, logger):
-        if config.trainer.gpus is not None:
-            if isinstance(config.trainer.gpus, int):
-                num_gpus = config.trainer.gpus
-                gpu = num % num_gpus
-            elif len(config.trainer.gpus) == 0:
-                num_gpus = torch.cuda.device_count()
-                gpu = num % num_gpus
+    def setup_devices(self, num, config, logger):
+        if config.trainer.devices is not None:
+            if isinstance(config.trainer.devices, int):
+                num_devices = config.trainer.devices
+                device = num % num_devices
+            elif len(config.trainer.devices) == 0:
+                num_devices = torch.cuda.device_count()
+                device = num % num_devices
             else:
-                gpu = config.trainer.gpus[num % len(config.trainer.gpus)]
+                device = config.trainer.devices[num % len(config.trainer.devices)]
 
-            if gpu >= torch.cuda.device_count():
+            if device >= torch.cuda.device_count():
                 msglogger.warning(
                     "GPU %d is not available on this device using GPU %d instead",
-                    gpu,
-                    gpu % torch.cuda.device_count(),
+                    device,
+                    device % torch.cuda.device_count(),
                 )
-                gpu = gpu % torch.cuda.device_count()
+                device = device % torch.cuda.device_count()
 
-            config.trainer.gpus = [gpu]
+            if self.per_process_memory_fraction:
+                torch.cuda.set_per_process_memory_fraction(self.per_process_memory_fraction, device=device)
+                
+            config.trainer.devices = [device]

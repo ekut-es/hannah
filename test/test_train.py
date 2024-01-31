@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -66,10 +66,6 @@ def test_models(model, features):
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    platform.processor() == "ppc64le",
-    reason="currently needs cpu based fft wich is not available on ppc",
-)
 @pytest.mark.parametrize(
     "model,backend", [("tc-res8", "torchmobile"), ("gds", "torchmobile")]
 )
@@ -108,7 +104,7 @@ def test_datasets(model, dataset, split):
     "model", ["timm_resnet50", "timm_efficientnet_lite1", "timm_focalnet_base_srf"]
 )
 def test_2d(model):
-    command_line = f"hannah-train module=image_classifier dataset=fake2d features=identity trainer.gpus=[0] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5 module.batch_size=2"
+    command_line = f"hannah-train module=image_classifier dataset=fake2d features=identity trainer.devices=1 model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5 module.batch_size=2"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
@@ -117,7 +113,7 @@ def test_2d(model):
     "model", ["timm_resnet50", "timm_efficientnet_lite1", "timm_resnet18"]
 )
 def test_cifar_2d(model):
-    command_line = f"hannah-train module=image_classifier dataset=cifar10 features=identity trainer.gpus=[0] model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5 module.batch_size=2"
+    command_line = f"hannah-train module=image_classifier dataset=cifar10 features=identity trainer.devices=1 model={model}  trainer.fast_dev_run=true scheduler.max_lr=2.5 module.batch_size=2"
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
