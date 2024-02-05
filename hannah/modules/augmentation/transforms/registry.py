@@ -16,15 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-class TransformRegistry:
-    def __init__(self):
-        self.transforms = {}
 
-    def register(self, cls):
-        self.transforms[cls.__name__] = cls
+from hannah.utils.registry import Registry
 
-    def instantiate(self, name, **params):
-        return self.transforms[name](**params)
-
-
-registry = TransformRegistry()
+registry = Registry()

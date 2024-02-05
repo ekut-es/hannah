@@ -1,35 +1,6 @@
-from hannah.nas.dataflow.data_type import IntType
 from hannah.nas.expressions.placeholder import IntRange, UndefinedFloat, UndefinedInt
 from hannah.nas.functional_operators.op import Tensor, scope
 from hannah.nas.functional_operators.operators import Add, Conv2d, Quantize, Relu
-from hannah.nas.ops import quantization
-
-
-def conv1d(input, weight, stride, dilation=1):
-    in_channels = input.shape()[1]
-    conv = Conv2d(stride, dilation)(input, weight)
-    return conv
-
-
-def quantize(input, dtype, quantization):
-    # FIXME: Use quantization
-    return Quantize()(input)
-
-
-def add(input, other):
-    return Add()(input, other)
-
-
-def avg_pool(input):
-    return input  # FIXME: Implement avg pool
-
-
-def relu(input):
-    return Relu()(input)
-
-
-def optional(input, alternative):
-    return input
 
 
 @scope
@@ -96,9 +67,6 @@ def ut_op(
     return requantization
 
 
-if __name__ == '__main__':
-    op = ut_op()
-    print(op)
 
 
 

@@ -17,12 +17,13 @@
 # limitations under the License.
 #
 import logging
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 from typing import List, NamedTuple, Sequence
 
 from ..expressions.placeholder import IntRange, UndefinedFloat, UndefinedInt
 from ..hardware_description.memory_type import MemoryType
 from ..parameters.parametrize import parametrize
+from .registry import devices
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,19 @@ class TargetOp(NamedTuple):
     graph: DataFlowGraph
     constraints: Sequence[Constraint]
 
+class DeviceMeta(ABCMeta):
+    def __new__(mcls, name, bases, namespace, /, **kwargs):
+        cls = super().__new__(mcls, name, bases, namespace, **kwargs)
+        if not hasattr(cls, "name"):
+            cls.name = name
+            
+        devices.register(cls)
+        return cls
 
-class Device(ABC):
-    name: str
-    description: str
-    _ops: List[TargetOp]
+class Device(metaclass=DeviceMeta):
+    name: str = ""
+    description: str = ""
+    _ops: List[TargetOp] 
     _memories: List[MemoryType]
 
     def __init__(self, name: str = "", description: str = "") -> None:

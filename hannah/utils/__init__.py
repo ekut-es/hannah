@@ -28,6 +28,8 @@ from .utils import (
     set_deterministic,
 )
 
+from .import registry
+
 __all__ = [
     "log_execution_env_state",
     "list_all_files",
@@ -38,4 +40,5 @@ __all__ = [
     "set_deterministic",
     "lazy_import",
     "git_version",
+    "registry",
 ]
