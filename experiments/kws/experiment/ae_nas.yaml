@@ -1,0 +1,16 @@
+# @package _global_  
+# The preciding line specifies that the following configuration changes global configuration settings instead of setting in the experiment namespace
+
+defaults:
+  - override /nas: aging_evolution_nas
+  - override /model: 1d_space
+  
+experiment_id: ae_nas   # The experiment id is used to identify the experiment it especially defines the subfolder under /trained_models where the results will be saved
+
+nas:
+  predictor: null
+  bounds: 
+    val_error: 0.08
+    total_macs: 250000
+  budget: 250
+  input_shape: [40,101] 

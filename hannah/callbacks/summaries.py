@@ -29,7 +29,7 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from tabulate import tabulate
 from torch.fx.graph_module import GraphModule
 
-from hannah.nas.functional_operators.operators import add, conv2d, linear
+from hannah.nas.functional_operators.operators import add, conv2d, linear, conv1d
 from hannah.nas.graph_conversion import GraphConversionTracer
 
 from ..models.factory import qat
@@ -337,7 +337,7 @@ class MacSummaryCallback(Callback):
                 msglogger.info(
                     "Estimated Activations: " + "{:,}".format(estimated_acts)
                 )
-        except RuntimeError as e:
+        except (RuntimeError, KeyError) as e:
             msglogger.warning("Could not create performance summary: %s", str(e))
             return OrderedDict()
 
@@ -494,6 +494,7 @@ class MACSummaryInterpreter(fx.Interpreter):
         super().__init__(gm)
 
         self.count_function = {
+            conv1d: get_conv,
             conv2d: get_conv,
             linear: get_linear,
             add: get_zero_op,
@@ -514,6 +515,7 @@ class MACSummaryInterpreter(fx.Interpreter):
     def run_node(self, n: torch.fx.Node):
         try:
             out = super().run_node(n)
+            print(out.shape, n)
         except Exception as e:
             print(str(e))
         if n.op == "call_function":
@@ -533,6 +535,7 @@ class MACSummaryInterpreter(fx.Interpreter):
                 self.data["MACs"] += [int(macs)]
             except Exception as e:
                 msglogger.warning("Summary of node %s failed: %s", n.name, str(e))
+                print(traceback.format_exc())   
         return out
 
 
@@ -540,6 +543,7 @@ class FxMACSummaryCallback(MacSummaryCallback):
     def _do_summary(self, pl_module, input=None, print_log=True):
         interpreter = MACSummaryInterpreter(pl_module.model)
         dummy_input = input
+        
         if dummy_input is None:
             dummy_input = pl_module.example_feature_array
         dummy_input = dummy_input.to(pl_module.device)

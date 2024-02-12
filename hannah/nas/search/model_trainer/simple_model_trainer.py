@@ -92,7 +92,7 @@ class SimpleModelTrainer:
             except Exception as e:
                 msglogger.critical("Training failed with exception")
                 msglogger.critical(str(e))
-                # print(traceback.format_exc())
+                print(traceback.format_exc())
                 # sys.exit(1)
 
                 res = {}

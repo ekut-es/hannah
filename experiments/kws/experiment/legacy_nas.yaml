@@ -1,0 +1,37 @@
+# @package _global_  
+# The preciding line specifies that the following configuration changes global configuration settings instead of setting in the experiment namespace
+
+defaults:
+  - override /nas: aging_evolution_nas_legacy
+  
+experiment_id: legacy_nas   # The experiment id is used to identify the experiment it especially defines the subfolder under /trained_models where the results will be saved
+
+
+nas:
+  parametrization: 
+    model:
+      qconfig:
+        config:
+          bw_f: [4,8]
+          bw_w: [2,4,8]
+      conv:
+        min: 1
+        max: 2
+
+        choices:
+          - target: forward
+            stride: [1,2]
+            blocks:
+              min: 1
+              max: 4
+              choices:
+                - target: conv1d
+                  kernel_size: [3,5,7]
+                  act: true
+                  norm: true
+                  out_channels: [8,16,32,64]
+
+  bounds: 
+    val_error: 0.08
+    total_macs: 250000
+  budget: 250
