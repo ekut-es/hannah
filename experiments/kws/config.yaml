@@ -19,11 +19,15 @@
 
 
 defaults:
-    - base_config
-    - _self_
+    - base_config  # Base configuration uses a single neural network training and kws dataset
+    - _self_ # This is a special value that specifies that values defined in this file take precedence over values from the other files
 
-module:
-  num_workers: 8
+module: # The module encapsulate the target task for neural network training in this case we use the default task which is classification on 1D signals
+  num_workers: 32  # Number of workers gives the number of parallel processes used to load data
+  batch_size: 1024
 
-trainer:
-  max_epochs: 30
+trainer:                   # Trainer arguments set hyperparameters for all trainings
+  max_epochs: 30 
+
+dataset:
+  data_folder: ${oc.env:HANNAH_DATA_FOLDER,${hydra:runtime.cwd}/../../datasets/}  # Set the location for dataset files in this case we wille use the value of the environment variable HANNAH_DATA_FOLDER or the folder ../../datasets/ relative to the location of the directory where hannah-train is run, usually the folder containing this file

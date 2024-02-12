@@ -9,10 +9,19 @@ import torch.fx as fx
 from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.functional_operators.op import Choice, Op, Tensor
-from hannah.nas.functional_operators.shapes import adaptive_average_pooling2d_shape, conv_shape, identity_shape, linear_shape, padding_expression, pool_shape
+from hannah.nas.functional_operators.shapes import adaptive_average_pooling_shape, conv_shape, identity_shape, linear_shape, padding_expression, pool_shape
 
 from hannah.nas.parameters.parametrize import parametrize
 from hannah.nas.parameters.parameters import IntScalarParameter, CategoricalParameter
+
+@torch.fx.wrap
+def conv1d(input, weight, stride, padding, dilation, groups, *, id):
+    return F.conv1d(input=input,
+                    weight=weight,
+                    stride=lazy(stride),
+                    padding=lazy(padding),
+                    dilation=lazy(dilation),
+                    groups=lazy(groups))
 
 
 @torch.fx.wrap
@@ -53,8 +62,13 @@ def add(input, other, *, id):
 
 
 @torch.fx.wrap
-def adaptive_avg_pooling(input, output_size=(1, 1), *, id):
+def adaptive_avg_pooling2d(input, output_size=(1, 1), *, id):
     return F.adaptive_avg_pool2d(input, output_size=output_size)
+
+
+@torch.fx.wrap
+def adaptive_avg_pooling1d(input, output_size=(1, 1), *, id):
+    return F.adaptive_avg_pool1d(input, output_size=output_size)
 
 
 @torch.fx.wrap
@@ -75,16 +89,13 @@ def interleave(input, step_size):
 
 @parametrize
 class Conv1d(Op):
-    def __init__(self, out_channels, kernel_size=1, stride=1, dilation=1) -> None:
+    def __init__(self, kernel_size=1, stride=1, dilation=1, groups=1) -> None:
         super().__init__(name='Conv1d')
-        self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
         self.dilation = dilation
+        self.groups = groups
         self.padding = padding_expression(self.kernel_size, self.stride, self.dilation)
-
-    # def _verify_operands(self, operands):
-    #     assert len(operands) == 2
 
     def __call__(self, *operands) -> Any:
         new_conv = super().__call__(*operands)
@@ -98,14 +109,13 @@ class Conv1d(Op):
         new_conv.padding = padding_expression(new_conv.kernel_size, new_conv.stride, new_conv.dilation)
         return new_conv
 
-    # FIXME: Use wrapped implementation
     def _forward_implementation(self, *operands):
         x = operands[0]
         weight = operands[1]
-        return F.conv1d(input=x, weight=weight, stride=lazy(self.stride), padding=lazy(self.padding), dilation=lazy(self.dilation))
+        return conv1d(x, weight, stride=lazy(self.stride), padding=lazy(self.padding), dilation=lazy(self.dilation), groups=lazy(self.groups), id=self.id)
 
     def shape_fun(self):
-        return conv_shape(*self.operands, dims=2, stride=self.stride, padding=self.padding, dilation=self.dilation)
+        return conv_shape(*self.operands, dims=1, stride=self.stride, padding=self.padding, dilation=self.dilation)
 
 
 @parametrize
@@ -116,9 +126,6 @@ class Conv2d(Op):
         self.dilation = dilation
         self.groups = groups
         self.padding = padding
-
-    # def _verify_operands(self, operands):
-    #     assert len(operands) == 2
 
     def __call__(self, *operands) -> Any:
         new_conv = super().__call__(*operands)
@@ -131,15 +138,7 @@ class Conv2d(Op):
         new_conv.kernel_size = weight_shape[2]
         if self.padding is None:
             new_conv.padding = padding_expression(new_conv.kernel_size, new_conv.stride, new_conv.dilation)
-
-        # new_conv.weight = Tensor(name=self.id + '.weight',
-        #                          shape=(self.out_channels, new_conv.in_channels, self.kernel_size, self.kernel_size),
-        #                          axis=('O', 'I', 'kH', 'kW'))
-
-        # new_conv.operands.append(new_conv.weight)
-        # if is_parametrized(new_conv.weight):
-        #     new_conv._PARAMETERS[new_conv.weight.name] = new_conv.weight
-        # new_conv._verify_operands(new_conv.operands)
+            
         return new_conv
 
     def _forward_implementation(self, x, weight):
@@ -293,12 +292,19 @@ class AdaptiveAvgPooling(Op):
     def __init__(self, output_size=(1, 1)) -> None:
         super().__init__(name='AvgPooling')
         self.output_size = output_size
+        if isinstance(output_size, int):
+            self.dim = 1
+        else:
+            self.dim = len(output_size)
 
     def shape_fun(self):
-        return adaptive_average_pooling2d_shape(*self.operands, output_size=self.output_size)
+        return adaptive_average_pooling_shape(*self.operands, output_size=self.output_size)
 
     def _forward_implementation(self, *operands):
-        return adaptive_avg_pooling(operands[0], output_size=self.output_size, id=self.id)
+        if self.dim == 1:
+            return adaptive_avg_pooling1d(operands[0], output_size=self.output_size, id=self.id)
+        else:
+            return adaptive_avg_pooling2d(operands[0], output_size=self.output_size, id=self.id)
 
 
 @parametrize

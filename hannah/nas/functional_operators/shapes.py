@@ -77,11 +77,14 @@ def linear_shape(*operands):
     return (batch, out_features)
 
 
-def adaptive_average_pooling2d_shape(*operands, output_size):
+def adaptive_average_pooling_shape(*operands, output_size):
     dims = operands[0].shape()
     # NOTE: dims might be SymbolicSequence. Symbolic sequence has in its symbolic state no fixed length, making it
     # necessary to know and define which dimensions hold values.
     new_dims = [dims[0], dims[1]]
-    new_dims += [output_size[0], output_size[1]]
+    if isinstance(output_size, int):
+        output_size = [output_size]
+        
+    new_dims.extend(output_size)
 
     return tuple(new_dims)

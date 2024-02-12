@@ -112,6 +112,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             torch.nn.MaxPool2d: self.add_nodes_pooling,
             torch.nn.AvgPool2d: self.add_nodes_pooling,
             "add": self.add_nodes_add,
+            "conv1d": self.add_nodes_conv_fun,
             "conv2d": self.add_nodes_conv_fun,
             "linear": self.add_nodes_linear_fun,
             "relu": self.add_nodes_relu,
@@ -564,7 +565,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
                 target_name, None, args, kwargs, output_tensor
             )
         else:
-            output = output_tensor
+            output = NamedTensor(target_name, output_tensor)
+
 
         return output
 
