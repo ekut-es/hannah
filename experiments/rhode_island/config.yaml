@@ -41,4 +41,4 @@ trainer:
 optimizer:
   lr: 0.1
 
-skip_test: true
+skip_test: false
