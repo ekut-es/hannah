@@ -1,5 +1,8 @@
+# @package _global_
+
+
 defaults:
-  - /model: localization_net
+  - override /model: localization_net
 
 experiment_id: quantized_localization
 
