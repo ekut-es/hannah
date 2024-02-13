@@ -1,0 +1,8 @@
+defaults:
+  - /model: localization_net
+
+experiment_id: quantized_localization
+
+module:
+  batch_size: 128
+  num_workers: 4

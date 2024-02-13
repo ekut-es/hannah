@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -143,9 +143,11 @@ class ImageClassifierModule(VisionBaseModule):
         if y is not None and preds is not None:
             self.test_confusion(preds, y)
 
-        if y is not None and hasattr(step_results, 'logits') and step_results.logits.numel() > 0:
+        if (
+            y is not None
+            and hasattr(step_results, "logits")
+            and step_results.logits.numel() > 0
+        ):
             probs = torch.softmax(step_results.logits, dim=1)
             self.test_roc(probs, y)
             self.test_pr_curve(probs, y)
-
-        return step_results
