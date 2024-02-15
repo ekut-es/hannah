@@ -55,6 +55,9 @@ class NASBase(ABC):
         constraint_model=None,
         parent_config=None,
         random_state=None,
+        input_shape = None,
+        *args,
+        **kwargs,
     ) -> None:
         self.budget = budget
         self.n_jobs = n_jobs
@@ -68,6 +71,10 @@ class NASBase(ABC):
             self.random_state = np.random.RandomState()
         else:
             self.random_state = random_state
+        
+        self.example_input_array = None
+        if input_shape is not None:
+            self.example_input_array = torch.rand([1] + list(input_shape))
 
     def run(self):
         self.before_search()
@@ -128,7 +135,7 @@ class DirectNAS(NASBase):
         )
         self.mac_predictor = MACPredictor(predictor="fx")
         self.model_trainer = instantiate(self.config.nas.model_trainer)
-        if "predictor" in self.config.nas:
+        if "predictor" in self.config.nas and self.config.nas.predictor is not None:
             self.predictor = instantiate(self.config.nas.predictor, _recursive_=False)
             if os.path.exists("performance_data"):
                 self.predictor.load("performance_data")
@@ -249,11 +256,12 @@ class DirectNAS(NASBase):
         return module
 
     def build_search_space(self):
-        # FIXME: In the future, get num_labels also from dataset
-        # search_space = instantiate(self.config.model, input_shape=self.example_input_array.shape, _recursive_=True)
+        
+        
         input = Tensor(
             "input", shape=self.example_input_array.shape, axis=("N", "C", "H", "W")
         )
+        
         search_space = instantiate(self.config.model, input=input, _recursive_=True)
         return search_space
 
@@ -288,7 +296,8 @@ class DirectNAS(NASBase):
         self.val_set = val_set
         self.unlabeled_set = unlabeled_set
         self.test_set = test_set
-        self.example_input_array = torch.rand([1] + list(train_set.size()))
+        if self.example_input_array is None:
+            self.example_input_array = torch.rand([1] + list(train_set.size()))
 
     def train_model(self, model):
         trainer = instantiate(self.config.trainer, callbacks=self.callbacks)

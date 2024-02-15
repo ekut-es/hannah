@@ -1,0 +1,5 @@
+_target_: hannah.models.simple1d.space
+name: simple1d_searchspace
+num_classes: 12
+max_channels: 256
+max_depth: 4
