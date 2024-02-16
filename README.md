@@ -30,7 +30,6 @@ Dependencies and virtual environments are managed using [poetry](https://python-
 - libsndfile and development headers
 - libsox and development headers
 - a blas implementation and development headers
-- git-lfs for management of checkpoints
 
 ### Ubuntu 20.04+
 
