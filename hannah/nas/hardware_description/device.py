@@ -52,7 +52,25 @@ class TargetOp(NamedTuple):
                 node_list.append(ids[operand.id])
 
             for attr, value in node.attributes().items():
-                node_list.append(f"{attr}={str(value)}")
+
+                def value_to_str(value):
+                    if isinstance(value, IntRange):
+                        value_str = f"{value.min}..{value.max}"
+                    elif isinstance(value, UndefinedInt):
+                        value_str = f"?{str(value.id)}"
+                    elif isinstance(value, UndefinedFloat):
+                        value_str = f"?{str(value.id)}"
+                    elif isinstance(value, Sequence) and not isinstance(value, str):
+                        value_str = (
+                            "[" + ", ".join(value_to_str(x) for x in value) + "]"
+                        )
+                    else:
+                        value_str = str(value)
+                    return value_str
+
+                value_str = value_to_str(value)
+
+                node_list.append(f"{attr}={value_str}")
 
             node_str = f"{node.name}({', '.join(node_list)})"
 

@@ -216,9 +216,9 @@ class Tensor(BaseNode):
         self.name = name
         self.id = name
 
-        for num, (axis, size) in enumerate(zip(axis, shape)):
+        for num, (ax, size) in enumerate(zip(axis, shape)):
             if size is None:
-                shape[num] = UndefinedInt(f"{name}_{axis}")
+                shape[num] = UndefinedInt(f"{name}_{ax}")
 
         self._shape = shape
         self.dtype = dtype

@@ -48,7 +48,14 @@ def export(args):
     found = False
     for device in devices:
         if device.name == args.device:
-            device.export(args.output, args.backend)
+            if args.backend == "tvm":
+                from hannah.nas.hardware_description.backend import TVMBackend
+
+                device: Device = device()
+                backend = TVMBackend()
+                result = backend.generate(device)
+                print(result)
+
             found = True
             break
     if not found:

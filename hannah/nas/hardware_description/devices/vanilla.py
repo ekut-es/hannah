@@ -22,7 +22,7 @@ from hannah.nas.functional_operators.operators import Conv2d, Tensor
 from hannah.nas.hardware_description import Device
 
 
-class VanillaAcclerator(Device):
+class VanillaAccelerator(Device):
     name = "vanilla_accelerator"
     description = "A simple Abstract Hardware Device only supporting 2d convolutions with a stride of 1 and same padding"
 
