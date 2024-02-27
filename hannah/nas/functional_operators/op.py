@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -20,13 +20,14 @@ import sys
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from functools import wraps
-from typing import Any, List
+from typing import Any, List, Mapping
 
 import torch
 
 from hannah.nas.core.expression import Expression
 from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.expressions.choice import Choice
+from hannah.nas.expressions.placeholder import UndefinedInt
 from hannah.nas.expressions.utils import extract_parameter_from_expression
 from hannah.nas.functional_operators.data_type import FloatType
 from hannah.nas.functional_operators.lazy import lazy
@@ -106,6 +107,23 @@ class BaseNode(ABC):
     operands: List["BaseNode"] = []
     users: List["BaseNode"] = []
     id: str = ""  # Fully qualified name of the node, e.g., "net.res.conv1" or "net.res.conv1.weight"
+
+    def size(self, axis: int):
+        return self.shape()[axis]
+
+    def attributes(self) -> Mapping[str, Any]:
+        res = {}
+        for k, v in self.__dict__.items():
+            if k.startswith("_"):
+                continue
+            if k in ["operands", "users", "id", "name", "executor"]:
+                continue
+
+            if is_parametrized(self) and k in self._PARAMETERS:
+                res[k] = v[k]
+
+            res[k] = v
+        return res
 
 
 @parametrize
@@ -197,6 +215,11 @@ class Tensor(BaseNode):
         super().__init__()
         self.name = name
         self.id = name
+
+        for num, (axis, size) in enumerate(zip(axis, shape)):
+            if size is None:
+                shape[num] = UndefinedInt(f"{name}_{axis}")
+
         self._shape = shape
         self.dtype = dtype
 

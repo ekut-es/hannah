@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -20,7 +20,10 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import List, NamedTuple, Sequence
 
+from hannah.nas.core.parametrized import is_parametrized
+
 from ..expressions.placeholder import IntRange, UndefinedFloat, UndefinedInt
+from ..functional_operators.utils.visit import reverse_post_order
 from ..hardware_description.memory_type import MemoryType
 from ..parameters.parametrize import parametrize
 from .registry import devices
@@ -36,32 +39,54 @@ class TargetOp(NamedTuple):
     graph: DataFlowGraph
     constraints: Sequence[Constraint]
 
+    def markdown(self) -> str:
+        res = "### " + self.name + "\n"
+
+        ids = {}
+        res += "\nGraph:\n"
+        res += "```mlir\n"
+        for num, node in enumerate(reverse_post_order(self.graph)):
+            node_list = []
+            ids[node.id] = f"%{node.id}_{num}"
+            for operand in node.operands:
+                node_list.append(ids[operand.id])
+
+            for attr, value in node.attributes().items():
+                node_list.append(f"{attr}={str(value)}")
+
+            node_str = f"{node.name}({', '.join(node_list)})"
+
+            res += f"%{node.id}_{num} = {node_str}\n"
+        res += "```\n"
+
+        res += "\nConstraints:\n"
+        ids = {}
+        for constraint in self.constraints:
+            res += "- " + str(constraint) + "\n"
+
+        return res
+
+
 class DeviceMeta(ABCMeta):
     def __new__(mcls, name, bases, namespace, /, **kwargs):
         cls = super().__new__(mcls, name, bases, namespace, **kwargs)
         if not hasattr(cls, "name"):
             cls.name = name
-            
+
         devices.register(cls)
         return cls
+
 
 class Device(metaclass=DeviceMeta):
     name: str = ""
     description: str = ""
-    _ops: List[TargetOp] 
+    _ops: List[TargetOp]
     _memories: List[MemoryType]
 
-    def __init__(self, name: str = "", description: str = "") -> None:
+    def __init__(self) -> None:
         super().__init__()
-        if not name:
-            name = "unnamed_device"
-            logger.warning(
-                "Unnamed device created. Please provide a name for the device."
-            )
 
-        self.name = name
-        self.description = description
-        self._ops: List = []
+        self._ops: List[TargetOp] = []
         self._memories = []
 
     def add_op(
@@ -87,6 +112,7 @@ class Device(metaclass=DeviceMeta):
         res += "Ops:\n"
         for op in self.ops:
             res += str(op) + "\n"
+
         for memory in self.memories:
             res += str(memory) + "\n"
         return res

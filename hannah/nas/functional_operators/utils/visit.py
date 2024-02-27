@@ -16,4 +16,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from . import simple, ultratrail, vanilla
+from ..op import BaseNode
+
+
+def post_order(op: BaseNode):
+    """Visits the operator graph in post order"""
+    visited = set()
+    worklist = [op]
+    while len(worklist) > 0:
+        current = worklist[-1]
+        if current in visited:
+            worklist.pop()
+            continue
+        visited.add(current)
+        for operand in current.operands:
+            if operand not in visited:
+                worklist.append(operand)
+        if current in worklist:
+            worklist.remove(current)
+        yield current
+
+
+def reverse_post_order(op: BaseNode):
+    """Visits the operator graph in reverse post order"""
+    return reversed(list(post_order(op)))

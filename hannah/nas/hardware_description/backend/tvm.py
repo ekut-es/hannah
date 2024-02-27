@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -18,7 +18,7 @@
 #
 import logging
 
-from ...functional_operators.operators import ChoiceOp, Op, Tensor
+from ...functional_operators.operators import Choice, Op, Tensor
 from ..device import Device, TargetOp
 from .base import DescriptionBackend
 
@@ -103,7 +103,7 @@ class TVMBackend(DescriptionBackend):
 
             if isinstance(op, Tensor):
                 matcher = "wildcard()"  # FIXME: handle consts
-            elif isinstance(op, ChoiceOp):
+            elif isinstance(op, Choice):
                 matcher = "||".join([f"{id_table[o]}" for o in op.options])
             elif isinstance(op, Op):
                 if op.name not in _TVM_OP_TABLE:

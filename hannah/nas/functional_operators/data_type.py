@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -16,13 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 from numbers import Number
 from typing import Tuple, Union
 
 
 class DataType(ABC):
-    @abstractmethod
+    @abstractproperty
     def bits(self) -> int:
         ...
 
@@ -35,9 +35,6 @@ class IntType(DataType):
     def __init__(self, signed: bool = True, bits: int = 8):
         self.signed = signed
         self.bits = bits
-
-    def bits(self) -> int:
-        return self.bits
 
     def signed(self) -> bool:
         return self.signed
@@ -52,6 +49,9 @@ class IntType(DataType):
 
         return (min_val, max_val)
 
+    def __str__(self):
+        return f"u{self.bits}" if not self.signed else f"i{self.bits}"
+
 
 class FloatType(DataType):
     def __init__(self, signed=True, significand_bits=23, exponent_bits=8):
@@ -59,15 +59,13 @@ class FloatType(DataType):
         self.significand_bits = significand_bits
         self.exponent_bits = exponent_bits
 
+    @property
     def bits(self) -> int:
-        bits = self.significand + self.exponent_bits
+        bits = self.significand_bits + self.exponent_bits
         if self.signed:
             bits += 1
 
         return bits
-
-    def signed(self) -> int:
-        return self.signed
 
     def range(self) -> float:
         # FIXME: calculate correct range
@@ -78,6 +76,9 @@ class FloatType(DataType):
         )
         min_val = -1 * max_val
         return (min_val, max_val)
+
+    def __str__(self):
+        return f"f{self.bits}"
 
 
 if __name__ == "__main__":

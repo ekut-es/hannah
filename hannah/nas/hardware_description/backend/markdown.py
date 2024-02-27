@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -41,6 +41,6 @@ class MarkdownBackend(DescriptionBackend):
         text += "## Supported Operations\n\n"
 
         for op in device.ops:
-            text += f"- {op}\n"
+            text += f"{op.markdown()}\n"
 
         return text
