@@ -24,7 +24,7 @@ from hannah.nas.core.parametrized import is_parametrized
 
 from ..expressions.placeholder import IntRange, UndefinedFloat, UndefinedInt
 from ..functional_operators.utils.visit import reverse_post_order
-from ..hardware_description.memory_type import MemoryType
+from ..hardware_description.memory_type import CouplingType, ManagementType, MemoryType
 from ..parameters.parametrize import parametrize
 from .registry import devices
 
@@ -106,6 +106,42 @@ class Device(metaclass=DeviceMeta):
 
         self._ops: List[TargetOp] = []
         self._memories = []
+
+    def add_memory(
+        self,
+        scope: str,
+        size: int,
+        latency: int,
+        management: ManagementType = ManagementType.EXPLICIT,
+        coupling: CouplingType = CouplingType.COUPLED,
+        read_bandwidth: int = 10,
+        write_bandwidth: int = 10,
+        read_energy: int = 10,
+        write_energy: int = 10,
+        idle_energy: int = 10,
+        area: int = 10,
+        read_port: int = 10,
+        write_port: int = 10,
+        rw_port: int = 10,
+    ) -> None:
+        self._memories.append(
+            MemoryType(
+                scope,
+                size,
+                latency,
+                management,
+                coupling,
+                read_bandwidth,
+                write_bandwidth,
+                read_energy,
+                write_energy,
+                idle_energy,
+                area,
+                read_port,
+                write_port,
+                rw_port,
+            )
+        )
 
     def add_op(
         self,

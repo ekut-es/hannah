@@ -46,7 +46,7 @@ class MarkdownBackend(DescriptionBackend):
 
         memory_table = "Scope | Size | Latency | Orchestration | Bandwidth | Energy | Area | Ports |  \n"
         memory_table += "-----| -----| --------| ------------- |-----------|--------|------|-------| \n"
-        for mem in device.memory_hierarchy:
+        for mem in device.memories:
             memory_table += f"{mem.scope} | {mem.size} | {mem.latency} | {mem.management.value},{mem.coupling.value} | r: {mem.read_bandwidth} w: {mem.write_bandwithd} | r: {mem.read_energy} w: {mem.write_energy} i: {mem.idle_energy} | {mem.area} | r: {mem.read_port} w: {mem.write_port} rw: {mem.rw_port} | \n"
         text += memory_table + "\n"
 

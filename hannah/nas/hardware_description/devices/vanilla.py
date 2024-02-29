@@ -30,6 +30,11 @@ class VanillaAccelerator(Device):
         super().__init__()
         self._add_conv2d()
 
+        self.add_memory(
+            "local",
+            size=1024 * 10,
+        )
+
     def _add_conv2d(self):
         input = Tensor(
             "input", shape=[None, None, None, None], axis=["N", "C", "H", "W"]

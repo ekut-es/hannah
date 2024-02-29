@@ -32,7 +32,7 @@ from .registry import devices
 
 def add_args(parser, known_args):
     for device in devices:
-        if device.name == known_args.device:
+        if device in known_args and device.name == known_args.device:
             pass
             # device.add_args(parser, known_args)
 
