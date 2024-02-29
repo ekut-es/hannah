@@ -33,6 +33,7 @@ class VanillaAccelerator(Device):
         self.add_memory(
             "local",
             size=1024 * 10,
+            latency=1,
         )
 
     def _add_conv2d(self):
