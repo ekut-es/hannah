@@ -1,5 +1,6 @@
 from functools import partial
-from hannah.models.embedded_vision_net.expressions import expr_product, extract_macs_recursive, extract_weights_recursive
+from hannah.models.embedded_vision_net.expressions import expr_product, extract_macs_recursive, extract_weights_recursive, expr_and
+from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.expressions.arithmetic import Ceil
 from hannah.nas.expressions.logic import And
 from hannah.nas.expressions.types import Int
@@ -7,6 +8,7 @@ from hannah.nas.expressions.utils import extract_parameter_from_expression
 from hannah.nas.functional_operators.executor import BasicExecutor
 from hannah.nas.functional_operators.op import Tensor, get_nodes, scope
 from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv2d, conv_relu, depthwise_conv2d, dynamic_depth, pointwise_conv2d, linear, relu, batch_norm, choice, identity
+from hannah.nas.functional_operators.operators import Conv2d
 # from hannah.nas.functional_operators.visualizer import Visualizer
 from hannah.nas.parameters.parameters import CategoricalParameter, FloatScalarParameter, IntScalarParameter
 from hannah.models.embedded_vision_net.blocks import block, cwm_block, classifier_head, stem
@@ -54,26 +56,34 @@ def search_space(name, input, num_classes: int, max_channels=512, constraints: l
             arch.weights = extract_weights_recursive(arch)
             weight_params = extract_parameter_from_expression(arch.weights)
             weight_params = [p for p in weight_params if 'stride' not in p.name and 'groups' not in p.name]
-            if "lower" in con and "upper" in con:
-                upper = arch.weights < con.upper
-                lower = arch.weights > con.lower
-                arch.cond(And(lower, upper), weight_params)
-            elif "upper" in con:
+            # weight_params = [p for p in weight_params if "depth" in p.name or "num_blocks" in p.name]
+            # if "lower" in con and "upper" in con:
+            #     upper = arch.weights < con.upper
+            #     lower = arch.weights > con.lower
+            #     arch.cond(And(lower, upper), weight_params)
+            if "upper" in con:
                 arch.cond(arch.weights < con.upper, weight_params)
-            elif "lower" in con:
+            if "lower" in con:
                 arch.cond(arch.weights > con.lower, weight_params)
         elif con.name == "macs":
             arch.macs = extract_macs_recursive(arch)
             mac_params = extract_parameter_from_expression(arch.macs)
             mac_params = [p for p in mac_params if 'stride' not in p.name and 'groups' not in p.name]
-            if "lower" in con and "upper" in con:
-                upper = arch.macs < con.upper
-                lower = arch.macs > con.lower
-                arch.cond(And(lower, upper), mac_params)
-            elif "upper" in con:
+            # if "lower" in con and "upper" in con:
+            #     upper = arch.macs < con.upper
+            #     lower = arch.macs > con.lower
+            #     arch.cond(And(lower, upper), mac_params)
+            if "upper" in con:
                 arch.cond(arch.macs < con.upper, mac_params)
-            elif "lower" in con:
+            if "lower" in con:
                 arch.cond(arch.macs > con.lower, mac_params)
+        # elif con.name == "ofm":
+        #     for node in get_nodes(arch):
+        #         if isinstance(node, Conv2d):
+        #             ofm_vol = node.shape()[1] * node.shape()[2] * node.shape()[3]
+        #             node.operands[1].axis[0]  # output channels
+        #             possible_params = [node.stride, node.dilation, node.operands[1].shape()[0]]
+        #             arch.cond(ofm_vol < con.upper, allowed_params=[p for p in possible_params if is_parametrized(p)])
         else:
             raise NotImplementedError(f"Constraint {con.name} not implemented")
     return arch

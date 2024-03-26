@@ -57,3 +57,5 @@ class Groups(Parameter):
         if x not in possible_values:
             diff = np.abs(np.array(possible_values)) - x
             self.current_value = int(possible_values[np.argmin(diff)])
+        else:
+            self.current_value = int(x)
