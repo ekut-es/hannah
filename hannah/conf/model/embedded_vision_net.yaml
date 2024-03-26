@@ -3,11 +3,11 @@ name: embedded_vision_net
 num_classes: 10
 max_channels: 256
 
-# constraints:
-#   - name: weights
-#     upper: 550000
-#     # lower: 250000
-#   - name: macs
-#     upper: 128000000
-#     # lower: 60000000
+constraints:
+  - name: weights
+    upper: 550000
+    # lower: 250000
+  - name: macs
+    upper: 128000000
+    # lower: 60000000
 

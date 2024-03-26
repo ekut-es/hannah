@@ -220,7 +220,7 @@ class DirectNAS(NASBase):
         pass
         # self.extract_best_model()
 
-    def sample_candidates(self, num_total, num_candidates=None, sort_key="ff", presample=False):
+    def sample_candidates(self, num_total, num_candidates=None, sort_key="val_error", presample=False):
         candidates = []
         skip_ct = 0
         while len(candidates) < num_total:
@@ -319,9 +319,9 @@ class DirectNAS(NASBase):
                         parameters
                     )
                     break
-                except Exception:
-                    pass
-            print()
+                except Exception as e:
+                    print("Error occured while sampling: ")
+                    print(str(e))
         else:
             parameters, keys = self.sampler.next_parameters()
         return parameters

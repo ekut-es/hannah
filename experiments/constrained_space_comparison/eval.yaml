@@ -1,0 +1,77 @@
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+data:
+  # baseline: trained_models/ae_nas_cifar10_baseline/embedded_vision_net
+  # weights: trained_models/ae_nas_cifar10_weight/embedded_vision_net
+  # weights_and_macs: trained_models/ae_nas_cifar10_weight_and_macs/embedded_vision_net
+  # macs: trained_models/ae_nas_cifar10_macs/embedded_vision_net
+  # nopred: trained_models/ae_nas_cifar10_weight_and_macs_no_pred/embedded_vision_net
+  # sortbymacs: trained_models/ae_nas_cifar10_weight_and_macs_sortbymacs/embedded_vision_net
+  250k: trained_models/ae_nas_cifar10_weight_250k/embedded_vision_net
+  250k_20e: trained_models/ae_nas_cifar10_weight_250k_20epochs/embedded_vision_net
+  250k_50m: trained_models/ae_nas_cifar10_weight_250k_macs_50m/embedded_vision_net
+
+
+metrics:
+  total_act:
+    name: Activations
+  total_weights:
+    name: Weights
+  weights_m:
+    name: Weights [M]
+    derived: data["total_weights"] / 1000 / 1000
+  val_accuracy:
+    name: Accuracy [%]
+    derived: (1.0 - data["val_error"]) * 100.0
+  act_k:
+    name: Activations [k]
+    derived: data["total_act"] / 1000
+  macs_m:
+    name: MACS [M]
+    derived: data["total_macs"] / 1000 / 1000
+
+plots:
+  # Comparison plots 2-3 metrics using y, x and size as visualization points
+  - type: comparison
+    name: accuracy_memory
+    metrics:
+      - val_accuracy
+      - weights_m
+      - act_k
+
+  - type: comparison
+    name: accuracy_macs
+    metrics:
+      - val_accuracy
+      - macs_m
+
+extract:
+  random_nas_cifar10:
+    bounds:
+        val_error: 0.20
+        total_macs: 100000000
+        total_weights: 1000000
+
+
+experiment: presampling
+force: false
+
+hydra:
+  run:
+    dir: ./nas_results/${experiment}

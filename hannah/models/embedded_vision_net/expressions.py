@@ -23,6 +23,16 @@ def expr_sum(expressions: list):
     return res
 
 
+def expr_and(expressions):
+    res = None
+    for expr in expressions:
+        if res:
+            res = res + expr
+        else:
+            res = expr
+    return res
+
+
 ADD = 1
 CHOICE = 2
 

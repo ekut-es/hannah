@@ -4,7 +4,6 @@ from hannah.nas.expressions.arithmetic import Ceil
 from hannah.nas.expressions.types import Int
 from hannah.nas.functional_operators.op import scope
 from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv2d, conv_relu, depthwise_conv2d, dynamic_depth, grouped_conv2d, interleave_channels, pointwise_conv2d, linear, relu, batch_norm, choice, identity, max_pool, avg_pool
-# from hannah.nas.functional_operators.visualizer import Visualizer
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 
 
