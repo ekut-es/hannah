@@ -19,7 +19,7 @@
 from abc import abstractmethod, abstractproperty
 
 import torch
-from torch.ao.quantization import FixedQParamsFakeQuantize, FixedQParamsObserver
+from torch.ao.quantization import FakeQuantize, FixedQParamsObserver
 
 from .data_type import DataType
 from .op import Op, Tensor
@@ -57,14 +57,14 @@ class FixedQuantize(BaseQuantize):
 
         range = dtype.range()
 
-        self.observer = FixedQParamsObserver(
+        self.quantizer = FakeQuantize(
+            observer=FixedQParamsObserver,
             scale=scale,
             zero_point=zero_point,
             dtype=torch.qint8 if dtype.signed else torch.quint8,
             quant_min=range[0],
             quant_max=range[1],
         )
-        self.quantizer = FixedQParamsFakeQuantize(observer=self.observer)
 
     def shape_fun(self):
         return self.operands[0].shape()
