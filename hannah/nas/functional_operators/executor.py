@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -23,7 +23,7 @@ from typing import Iterator, Tuple
 import torch
 from torch.nn.parameter import Parameter
 
-from hannah.nas.functional_operators.op import ChoiceOp, Op, Tensor, get_nodes
+from .op import ChoiceOp, Op, Tensor, get_nodes
 
 
 class BasicExecutor(torch.nn.Module):

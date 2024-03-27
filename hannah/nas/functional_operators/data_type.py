@@ -32,25 +32,41 @@ class DataType(ABC):
 
 
 class IntType(DataType):
-    def __init__(self, signed: bool = True, bits: int = 8):
+    """Describe the properties of an integer datatype.add()
+
+    Args:
+        signed (bool, optional): Whether the integer is signed or not. Defaults to True.
+        bits (int, optional): The number of bits used to represent the integer. Defaults to 8.
+        reduce_range (bool, optional): Whether to reduce the range of the integer to make the dataranges symmetric around zero.  Only applies to signed datatypes. Defaults to False.
+    """
+
+    def __init__(self, signed: bool = True, bits: int = 8, reduce_range: bool = False):
         self.signed = signed
-        self.bits = bits
+        self._bits = bits
+        self.reduce_range = reduce_range
 
     def signed(self) -> bool:
         return self.signed
 
     def range(self) -> Tuple[int, int]:
         if self.signed:
-            min_val = -(2 ** (self.bits - 1))
-            max_val = 2 ** (self.bits - 1) - 1
+            if self.reduce_range:
+                min_val = -(2 ** (self._bits - 1)) + 1
+            else:
+                min_val = -(2 ** (self._bits - 1))
+            max_val = 2 ** (self._bits - 1) - 1
         else:
             min_val = 0
-            max_val = 2 ** (self.bits) - 1
+            max_val = 2 ** (self._bits) - 1
 
         return (min_val, max_val)
 
     def __str__(self):
-        return f"u{self.bits}" if not self.signed else f"i{self.bits}"
+        return f"u{self._bits}" if not self.signed else f"i{self._bits}"
+
+    @property
+    def bits(self) -> int:
+        return self._bits
 
 
 class FloatType(DataType):
@@ -78,7 +94,7 @@ class FloatType(DataType):
         return (min_val, max_val)
 
     def __str__(self):
-        return f"f{self.bits}"
+        return f"f{self._bits}"
 
 
 if __name__ == "__main__":
