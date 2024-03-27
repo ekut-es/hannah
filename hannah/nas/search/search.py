@@ -71,7 +71,7 @@ class NASBase(ABC):
             self.random_state = np.random.RandomState()
         else:
             self.random_state = random_state
-        
+
         self.example_input_array = None
         if input_shape is not None:
             self.example_input_array = torch.rand([1] + list(input_shape))
@@ -256,12 +256,9 @@ class DirectNAS(NASBase):
         return module
 
     def build_search_space(self):
-        
-        
         input = Tensor(
             "input", shape=self.example_input_array.shape, axis=("N", "C", "H", "W")
         )
-        
         search_space = instantiate(self.config.model, input=input, _recursive_=True)
         return search_space
 

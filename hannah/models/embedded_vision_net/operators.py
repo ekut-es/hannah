@@ -34,6 +34,8 @@ def grouped_conv2d(input, out_channels, kernel_size, stride, dilation=1, padding
     in_channels = input.shape()[1]
     if groups is None:
         groups = Groups(in_channels=in_channels, out_channels=out_channels, name="groups")
+    else:
+        groups = Int(groups)
 
     grouped_channels = Int(in_channels / groups)
     weight = Tensor(name='weight',

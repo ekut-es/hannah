@@ -27,10 +27,10 @@ def grouped_pointwise(input, out_channels):
 
 @scope
 def expansion(input, expanded_channels):
-    #pw = partial(pointwise_conv2d, out_channels=expanded_channels)
-    #grouped_pw = partial(grouped_pointwise, out_channels=expanded_channels)
-    #return choice(input, pw, grouped_pw)
-    return pointwise_conv2d(input, out_channels=expanded_channels)
+    pw = partial(pointwise_conv2d, out_channels=expanded_channels)
+    grouped_pw = partial(grouped_pointwise, out_channels=expanded_channels)
+    return choice(input, pw, grouped_pw)
+    # return pointwise_conv2d(input, out_channels=expanded_channels)
 
 
 @scope
@@ -40,10 +40,10 @@ def spatial_correlation(input, out_channels, kernel_size, stride=1):
 
 @scope
 def reduction(input, out_channels):
-    #pw = partial(pointwise_conv2d, out_channels=out_channels)
-    #grouped_pw = partial(grouped_pointwise, out_channels=out_channels)
-    #return choice(input, pw, grouped_pw)
-    return pointwise_conv2d(input, out_channels=out_channels)
+    pw = partial(pointwise_conv2d, out_channels=out_channels)
+    grouped_pw = partial(grouped_pointwise, out_channels=out_channels)
+    return choice(input, pw, grouped_pw)
+    # return pointwise_conv2d(input, out_channels=out_channels)
 
 
 @scope
@@ -80,14 +80,31 @@ def expand_reduce(input, out_channels, expand_ratio, kernel_size, stride):
     return out
 
 
+# FIXME: integrate this into reduce_expand?
+@scope
+def sandglass_block(input, out_channels, reduce_ratio, kernel_size, stride):
+    in_channels = input.shape()[1]
+    reduced_channels = Int(in_channels / reduce_ratio)
+    out = depthwise_conv2d(input, out_channels=in_channels, kernel_size=kernel_size, stride=1)
+    out = batch_norm(out)
+    out = relu(out)
+    out = reduction(out, out_channels=reduced_channels)
+    out = expansion(out, expanded_channels=out_channels)
+    out = relu(out)
+    out = batch_norm(out)
+    out = depthwise_conv2d(out, out_channels=out_channels, kernel_size=kernel_size, stride=stride)
+    return out
+
+
 @scope
 def pattern(input, stride, out_channels, kernel_size, expand_ratio, reduce_ratio):
     convolution = partial(conv_relu, stride=stride, kernel_size=kernel_size, out_channels=out_channels)
     red_exp = partial(reduce_expand, out_channels=out_channels, reduce_ratio=reduce_ratio, kernel_size=kernel_size, stride=stride)
     exp_red = partial(expand_reduce, out_channels=out_channels, expand_ratio=expand_ratio, kernel_size=kernel_size, stride=stride)
-    #pool = partial(pooling, kernel_size=kernel_size, stride=stride)
+    pool = partial(pooling, kernel_size=kernel_size, stride=stride)
+    sandglass = partial(sandglass_block, out_channels=out_channels, reduce_ratio=reduce_ratio, kernel_size=kernel_size, stride=stride)
 
-    out = choice(input, convolution, exp_red, red_exp)
+    out = choice(input, convolution, exp_red, red_exp, pool, sandglass)
     return out
 
 
