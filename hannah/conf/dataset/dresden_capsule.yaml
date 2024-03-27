@@ -25,5 +25,17 @@ dataset: dresden_capsule
 sampler: random
 weighted_loss: false
 
-task: section
+task: sections # Check splits folder for other task options.
 split: split_0
+
+downsampling:
+  enabled: true
+  ratio:
+    binary: 1 # ratio normal : anomaly
+    # Proportions of each class that should be used.
+    sections: [1, 1, 0.05, 0.01, 0.005]
+    technical_multilabel_bubbles_dirt: [1, 1]
+    technical_multiclass_view: [1, 1, 1]
+  anomalies_fraction: 0.3 # only relevant for binary task
+
+seed: 1234

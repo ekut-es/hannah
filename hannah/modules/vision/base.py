@@ -286,10 +286,11 @@ class VisionBaseModule(ClassifierModule):
 
         self.default_augmentation = torch.nn.Sequential(*default_augment)
         augmentations = {k: torch.nn.Sequential(*v) for k, v in augmentations.items()}
+
+        self.augmentations = torch.nn.ModuleDict(augmentations)
         
         return augmentations
         
-        # self.augmentations = torch.nn.ModuleDict(augmentations)
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]

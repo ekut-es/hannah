@@ -69,9 +69,9 @@ test_prebuilt_docker:
   dependencies: []
 
 
-test_python_38:
+test_python_39:
   stage: test
-  image: python:3.8
+  image: python:3.9
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=hannah test hannah --integration
