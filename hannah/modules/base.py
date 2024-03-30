@@ -54,11 +54,11 @@ msglogger: logging.Logger = logging.getLogger(__name__)
 class ClassifierModule(LightningModule, ABC):
     def __init__(
         self,
-        dataset: DictConfig,
+        dataset: Optional[DictConfig],
         model: Union[DictConfig, nn.Module],
-        optimizer: DictConfig,
-        features: DictConfig,
-        num_workers: int = 0,
+        optimizer: Optional[DictConfig],
+        features: Optional[DictConfig],
+        num_workers: Optional[int] = 0,
         batch_size: int = 128,
         time_masking: int = 0,
         frequency_masking: int = 0,
@@ -111,9 +111,9 @@ class ClassifierModule(LightningModule, ABC):
         self.batch_size = batch_size
 
         self.loss_weights = None
-        
+
         self._log_images = log_images
-        
+
     @abstractmethod
     def prepare_data(self) -> Any:
         # get all the necessary data stuff
@@ -178,7 +178,7 @@ class ClassifierModule(LightningModule, ABC):
     def on_train_start(self) -> None:
         super().on_train_start()
 
-    def configure_optimizers(self) -> torch.optim.Optimizer:
+    def configure_optimizers(self) -> Any:
         optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
 
         retval = {}
@@ -412,7 +412,7 @@ class ClassifierModule(LightningModule, ABC):
 
     def _log_batch_images(self, name: str, batch_idx: int, data: torch.tensor):
         if not self._log_images:
-            return 
+            return
         loggers = self._logger_iterator()
         for logger in loggers:
             if hasattr(logger.experiment, "add_image"):

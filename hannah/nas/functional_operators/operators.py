@@ -184,7 +184,10 @@ class Conv2d(Op):
 
         new_conv.in_channels = input_shape[1]
         new_conv.out_channels = weight_shape[0]
-        new_conv.kernel_size = (weight_shape[2], weight_shape[3])
+        new_conv.kernel_size = weight_shape[2]
+        assert (
+            weight_shape[3] == weight_shape[2]
+        ), "Only square kernels are supported, at the moment."
         if self.padding is None:
             new_conv.padding = padding_expression(
                 new_conv.kernel_size, new_conv.stride, new_conv.dilation

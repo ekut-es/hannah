@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -230,7 +230,7 @@ class NetworkFactory:
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
         bias: bool = False,
-    ) -> None:
+    ) -> Any:
         """
 
         Args:
@@ -468,12 +468,12 @@ class NetworkFactory:
         self,
         input_shape: Tuple[int, ...],
         out_channels: int,
-        kernel_size: int,
-        stride: int = 1,
+        kernel_size: Union[int, Tuple[int]],
+        stride: Union[int, Tuple[int]] = 1,
         bias: bool = False,
-        padding: Union[int, bool] = True,
-        dilation: int = 1,
-        groups: int = 1,
+        padding: Union[int, bool, Tuple[int]] = True,
+        dilation: Union[int, Tuple[int]] = 1,
+        groups: Union[int, Tuple[int]] = 1,
         norm: Union[BNConfig, bool] = False,
         act: Union[ActConfig, bool] = False,
         out_quant: bool = True,
@@ -513,18 +513,19 @@ class NetworkFactory:
 
         in_channels = input_shape[1]
 
+        if isinstance(kernel_size, tuple):
+            kernel_size = kernel_size[0]
+        if isinstance(stride, tuple):
+            stride = stride[0]
+        if isinstance(dilation, tuple):
+            dilation = dilation[0]
+
         if padding is True:
             # Calculate full padding
             padding = self._padding(kernel_size, stride, dilation)
 
         if isinstance(padding, tuple):
             padding = padding[0]
-        if isinstance(dilation, tuple):
-            dilation = dilation[0]
-        if isinstance(kernel_size, tuple):
-            kernel_size = kernel_size[0]
-        if isinstance(stride, tuple):
-            stride = stride[0]
 
         if padding is False:
             padding = 0

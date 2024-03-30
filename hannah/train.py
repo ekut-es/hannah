@@ -22,7 +22,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Type, Union
+from typing import Any, Dict, List, Mapping, Sequence, Type, Union
 
 import pandas as pd
 import tabulate
@@ -71,8 +71,8 @@ def train(
     validate_output = False
     if hasattr(config, "validate_output") and isinstance(config.validate_output, bool):
         validate_output = config.validate_output
-    
-    torch.set_float32_matmul_precision('high')
+
+    torch.set_float32_matmul_precision("high")
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
@@ -196,7 +196,7 @@ def train(
             results.append(opt_callback.result())
 
     @rank_zero_only
-    def summarize_stage(stage: str, output: Mapping["str", float]) -> None:
+    def summarize_stage(stage: str, output: Sequence[Mapping["str", float]]) -> None:
         if not output:
             return
         result_frame = pd.DataFrame.from_dict(output)

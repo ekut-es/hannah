@@ -25,6 +25,10 @@ from .data_type import DataType
 from .op import Op, Tensor
 
 
+def linear_quantize(x, scale, zero_point, dtype):
+    return torch.round(x / scale) + zero_point
+
+
 class BaseQuantize(Op):
     @abstractproperty
     def scale(self):
@@ -72,6 +76,7 @@ class FixedQuantize(BaseQuantize):
     def _forward_implementation(self, inputs):
         assert len(inputs) == 1
         x = inputs[0]
+
         return self.quantizer(x)
 
     @property

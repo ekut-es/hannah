@@ -94,7 +94,7 @@ class FloatType(DataType):
         return (min_val, max_val)
 
     def __str__(self):
-        return f"f{self._bits}"
+        return f"f{self.bits}"
 
 
 if __name__ == "__main__":

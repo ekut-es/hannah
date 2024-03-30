@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -20,7 +20,7 @@ import copy
 import logging
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import networkx as nx
 import numpy as np
@@ -84,7 +84,9 @@ def to_one_hot(val, options):
 @dataclass
 class NamedTensor:
     name: str
-    tensor: torch.Tensor
+    tensor: Union[
+        torch.Size, torch.Tensor, int
+    ]  # FIXME: this probably is not the intended type
     quantization: Any = None
 
 
@@ -121,7 +123,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             "adaptive_avg_pooling": self.add_nodes_pooling,
             "avg_pool": self.add_nodes_pooling,
             "max_pool": self.add_nodes_pooling,
-            "interleave": self.add_nodes_relu
+            "interleave": self.add_nodes_relu,
         }
         self.layer_encodings = [
             "conv",
@@ -566,7 +568,6 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             )
         else:
             output = NamedTensor(target_name, output_tensor)
-
 
         return output
 

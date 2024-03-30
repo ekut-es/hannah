@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,13 +31,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.intrinsic as nni
 from torch import Tensor
+from torch.ao.quantization.qconfig import QConfig as QConfigAO
 from torch.nn import init
 from torch.nn.modules.utils import _pair, _single
 from torch.nn.parameter import Parameter
 
-from hannah.quantization.qconfig import QConfig
+from hannah.quantization.qconfig import QConfig as QConfigHannah
 
 from . import quantized as q
+
+QConfig = Union[QConfigHannah, QConfigAO]
+
 
 _BN_CLASS_MAP = {1: nn.BatchNorm1d, 2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
 
@@ -87,7 +91,6 @@ class _ConvForwardMixin:
 class _ConvBnNd(
     nn.modules.conv._ConvNd, _ConvForwardMixin
 ):  # pytype: disable=module-attr
-
     _version = 2
 
     def __init__(
@@ -328,7 +331,7 @@ class _ConvBnNd(
         Args: `mod` a float module, either produced by torch.quantization utilities
         or directly from user
         """
-        assert type(mod) == cls._FLOAT_MODULE, (
+        assert type(mod) is cls._FLOAT_MODULE, (
             "qat."
             + cls.__name__
             + ".from_float only works for "
@@ -473,7 +476,6 @@ class ConvBnReLU1d(ConvBn1d):
         qconfig: Union[QConfig, QConfig] = None,
         out_quant: bool = True,
     ) -> None:
-
         super().__init__(
             in_channels,
             out_channels,
@@ -952,7 +954,7 @@ class Linear(nn.Linear):
         Args: `mod` a float module, either produced by torch.quantization utilities
         or directly from user
         """
-        assert type(mod) == cls._FLOAT_MODULE, (
+        assert type(mod) is cls._FLOAT_MODULE, (
             " qat."
             + cls.__name__
             + ".from_float only works for "
@@ -960,7 +962,7 @@ class Linear(nn.Linear):
         )
         assert hasattr(mod, "qconfig"), "Input float module must have qconfig defined"
         assert mod.qconfig, "Input float module must have a valid qconfig"
-        if type(mod) == LinearReLU:
+        if type(mod) is LinearReLU:
             mod = mod[0]
 
         qconfig = mod.qconfig
@@ -1032,7 +1034,7 @@ class LinearReLU(nn.Linear):
         Args: `mod` a float module, either produced by torch.quantization utilities
         or directly from user
         """
-        assert type(mod) == cls._FLOAT_MODULE, (
+        assert type(mod) is cls._FLOAT_MODULE, (
             " qat."
             + cls.__name__
             + ".from_float only works for "
@@ -1040,7 +1042,7 @@ class LinearReLU(nn.Linear):
         )
         assert hasattr(mod, "qconfig"), "Input float module must have qconfig defined"
         assert mod.qconfig, "Input float module must have a valid qconfig"
-        if type(mod) == LinearReLU:
+        if type(mod) is LinearReLU:
             mod = mod[0]
 
         qconfig = mod.qconfig
@@ -1086,7 +1088,7 @@ class Identity(nn.Identity):
         Args: `mod` a float module, either produced by torch.quantization utilities
         or directly from user
         """
-        assert type(mod) == cls._FLOAT_MODULE, (
+        assert type(mod) is cls._FLOAT_MODULE, (
             " qat."
             + cls.__name__
             + ".from_float only works for "
