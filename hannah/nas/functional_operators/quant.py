@@ -77,6 +77,9 @@ class FixedQuantize(BaseQuantize):
         assert len(inputs) == 1
         x = inputs[0]
 
+        if not self._train:
+            return x
+
         return self.quantizer(x)
 
     @property

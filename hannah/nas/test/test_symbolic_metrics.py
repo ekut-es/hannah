@@ -1,13 +1,36 @@
+#
+# Copyright (c) 2024 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import torch
 import torch.nn as nn
-from hannah.models.capsule_net.expressions import padding_expression
+
+from hannah.callbacks.summaries import walk_model
+from hannah.nas.expressions.metrics import (
+    conv2d_macs,
+    conv2d_weights,
+    linear_macs,
+    linear_weights,
+)
 from hannah.nas.expressions.shapes import conv2d_shape, linear_shape
-from hannah.nas.expressions.metrics import conv2d_macs, conv2d_weights, linear_macs, linear_weights
+from hannah.nas.functional_operators.shapes import padding_expression
 from hannah.nas.parameters.lazy import Lazy
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
-
 from hannah.nas.parameters.parametrize import parametrize
-from hannah.callbacks.summaries import walk_model
 
 conv2d = Lazy(nn.Conv2d, shape_func=conv2d_shape)
 linear = Lazy(nn.Linear, shape_func=linear_shape)
@@ -17,7 +40,7 @@ linear = Lazy(nn.Linear, shape_func=linear_shape)
 class Convolution(nn.Module):
     def __init__(self, inputs) -> None:
         super().__init__()
-        self.id = 'convolution'
+        self.id = "convolution"
         self.inputs = inputs
         input_shape = inputs[0]
         self.in_channels = input_shape[1]
@@ -25,13 +48,15 @@ class Convolution(nn.Module):
         self.kernel_size = CategoricalParameter([1, 3, 5])
         self.stride = CategoricalParameter([1, 2])
 
-        self.conv = conv2d(self.id + ".conv",
-                           inputs=inputs,
-                           in_channels=self.in_channels,
-                           out_channels=self.out_channels,
-                           kernel_size=self.kernel_size,
-                           stride=self.stride,
-                           padding=padding_expression(self.kernel_size, self.stride))
+        self.conv = conv2d(
+            self.id + ".conv",
+            inputs=inputs,
+            in_channels=self.in_channels,
+            out_channels=self.out_channels,
+            kernel_size=self.kernel_size,
+            stride=self.stride,
+            padding=padding_expression(self.kernel_size, self.stride),
+        )
 
     def initialize(self):
         self.tconv = self.conv.instantiate()
@@ -61,10 +86,12 @@ class Linear(nn.Module):
         self.labels = labels
 
         in_features = self.input[1] * self.input[2] * self.input[3]
-        self._linear = linear("linear",
-                              inputs=[self.input],
-                              in_features=in_features,
-                              out_features=self.labels)
+        self._linear = linear(
+            "linear",
+            inputs=[self.input],
+            in_features=in_features,
+            out_features=self.labels,
+        )
 
     def initialize(self):
         self.linear = self._linear.instantiate()
@@ -95,12 +122,12 @@ def test_conv_metrics():
     out = conv(input_tensor)
     summary = walk_model(conv, input_tensor)
 
-    mac_summary = summary['MACs'].item()
+    mac_summary = summary["MACs"].item()
     mac_symbolic = conv.macs.evaluate()
 
     assert mac_summary == mac_symbolic
 
-    weight_summary = summary['Weights volume'].item()
+    weight_summary = summary["Weights volume"].item()
     weights_symbolic = conv.weights.evaluate()
 
     assert weight_summary == weights_symbolic
@@ -120,18 +147,18 @@ def test_linear_metrics():
 
     summary = walk_model(fc, conv_out)
 
-    mac_summary = summary['MACs'].item()
+    mac_summary = summary["MACs"].item()
     mac_symbolic = fc.macs.evaluate()
 
     assert mac_summary == mac_symbolic
 
-    weight_summary = summary['Weights volume'].item()
+    weight_summary = summary["Weights volume"].item()
     weights_symbolic = fc.weights.evaluate()
 
     assert weight_summary == weights_symbolic
     print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_conv_metrics()
     test_linear_metrics()
