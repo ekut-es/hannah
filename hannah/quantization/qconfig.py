@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -117,6 +117,7 @@ class SymmetricQuantization:
         self.debug = debug
 
     def quantize(self, x: Union[Tensor, Parameter]) -> Tensor:
+        # print("Pre-Quantized:", x.min(), x.max(), x.mean(), x.std(), x.shape)
         if self.debug:
             print("x", x)
         x = x / self.scale
@@ -124,6 +125,8 @@ class SymmetricQuantization:
         if self.debug:
             print("rounded", x)
         x = torch.clamp(x, self.min, self.max)
+
+        # print("Post-Quantized:", x.min(), x.max(), x.mean(), x.std(), x.shape)
 
         return x
 
