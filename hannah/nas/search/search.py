@@ -34,10 +34,8 @@ from hannah.nas.graph_conversion import model_to_graph
 from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
-from hannah.nas.graph_conversion import model_to_graph
 
 from hannah.nas.search.sampler.aging_evolution import FitnessFunction
-import traceback
 import copy
 
 
@@ -55,7 +53,7 @@ class NASBase(ABC):
         constraint_model=None,
         parent_config=None,
         random_state=None,
-        input_shape = None,
+        input_shape=None,
         *args,
         **kwargs,
     ) -> None:
