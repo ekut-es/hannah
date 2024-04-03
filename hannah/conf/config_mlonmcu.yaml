@@ -1,0 +1,61 @@
+##
+## Copyright (c) 2024 University of Tübingen.
+##
+## This file is part of hannah.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+defaults:
+    - base_config
+    - override nas: aging_evolution_nas
+    - override model: embedded_vision_net
+    - override dataset: cifar10          # Dataset configuration name
+    - override features: identity        # Feature extractor configuration name (use identity for vision datasets)
+    - override scheduler: 1cycle         # learning rate scheduler config name
+    - override optimizer: adamw          # Optimizer config name
+    - override normalizer: null          # Feature normalizer (used for quantized neural networks)
+    - override module: image_classifier  # Lightning module config for the training loop (image classifier for image classification tasks)
+    - override /nas/constraint_model: random_walk
+    - override /nas/mac_predictor: mlonmcu  # MLonMCU predictor
+    - override augmentation: null
+    - _self_
+
+
+model:
+  num_classes: 10
+
+module:
+  batch_size: 128
+  num_workers: 4
+
+nas:
+  budget: 100
+  n_jobs: 4
+  bounds:
+    val_error: 0.03
+    total_weights: 100000
+    Cycles: 700000000  # measured by MLonMCU
+    Total ROM: 1500000  # measured by MLonMCU
+
+trainer:
+  max_epochs: 10
+
+scheduler:
+  max_lr: 0.001
+
+fx_mac_summary: True
+
+seed: [1234]
+
+experiment_id: "nas_mlonmcu"
