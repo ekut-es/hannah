@@ -23,7 +23,17 @@ import logging
 import math
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Iterable, Optional, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import tabulate
 import torch
@@ -43,7 +53,7 @@ from ..utils.utils import fullname
 from .metrics import plot_confusion_matrix
 
 try:
-    from hannah_tvm.backend import export_relay
+    from hannah_tvm.export import export_relay
 except ModuleNotFoundError:
     export_relay = None
 
@@ -111,9 +121,9 @@ class ClassifierModule(LightningModule, ABC):
         self.batch_size = batch_size
 
         self.loss_weights = None
-        
+
         self._log_images = log_images
-        
+
     @abstractmethod
     def prepare_data(self) -> Any:
         # get all the necessary data stuff
@@ -124,7 +134,7 @@ class ClassifierModule(LightningModule, ABC):
         pass
 
     @abstractmethod
-    def get_class_names(self) -> Any:
+    def get_class_names(self) -> Sequence[str]:
         pass
 
     def train_dataloader(self):
@@ -412,7 +422,7 @@ class ClassifierModule(LightningModule, ABC):
 
     def _log_batch_images(self, name: str, batch_idx: int, data: torch.tensor):
         if not self._log_images:
-            return 
+            return
         loggers = self._logger_iterator()
         for logger in loggers:
             if hasattr(logger.experiment, "add_image"):

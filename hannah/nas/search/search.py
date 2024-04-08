@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -17,12 +17,13 @@
 # limitations under the License.
 #
 
+import copy
 import logging
 import os
 import traceback
 from abc import ABC, abstractmethod
-import numpy as np
 
+import numpy as np
 import torch
 from hydra.utils import get_class, instantiate
 from joblib import Parallel, delayed
@@ -32,12 +33,9 @@ from hannah.callbacks.optimization import HydraOptCallback
 from hannah.nas.functional_operators.op import Tensor
 from hannah.nas.graph_conversion import model_to_graph
 from hannah.nas.performance_prediction.simple import MACPredictor
+from hannah.nas.search.sampler.aging_evolution import FitnessFunction
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
-
-from hannah.nas.search.sampler.aging_evolution import FitnessFunction
-import copy
-
 
 msglogger = logging.getLogger(__name__)
 
@@ -99,11 +97,11 @@ class NASBase(ABC):
 
     def get_fitness_function(self):
         # FIXME: make better configurable
-        if hasattr(self, 'bounds') and self.bounds is not None:
+        if hasattr(self, "bounds") and self.bounds is not None:
             bounds = self.bounds
             return FitnessFunction(bounds, self.random_state)
         else:
-            return lambda x: x['val_error']
+            return lambda x: x["val_error"]
 
 
 class DirectNAS(NASBase):
@@ -129,9 +127,15 @@ class DirectNAS(NASBase):
         self.search_space = self.build_search_space()
         parametrization = self.search_space.parametrization(flatten=True)
         self.sampler = instantiate(
-            self.config.nas.sampler, parametrization=parametrization, parent_config=self.config, _recursive_=False
+            self.config.nas.sampler,
+            parametrization=parametrization,
+            parent_config=self.config,
+            _recursive_=False,
         )
-        self.mac_predictor = MACPredictor(predictor="fx")
+
+        # from ..performance_prediction.mlonmcu.predictor import MLonMCUPredictor
+        # self.mac_predictor = MLonMCUPredictor("nas_model")
+
         self.model_trainer = instantiate(self.config.nas.model_trainer)
         if "predictor" in self.config.nas and self.config.nas.predictor is not None:
             self.predictor = instantiate(self.config.nas.predictor, _recursive_=False)
@@ -167,14 +171,18 @@ class DirectNAS(NASBase):
                 if len(self.candidates) == 0:
                     if self.predictor:
                         try:
-                            self.predictor.update(self.new_points, self.example_input_array)
+                            self.predictor.update(
+                                self.new_points, self.example_input_array
+                            )
                         except Exception as e:
                             # FIXME: Find reason for NaN in embeddings
                             msglogger.error("Updating predictor failed:")
                             msglogger.error(f"{str(e)}")
                         self.new_points = []
                     self.candidates = self.sample_candidates(
-                        self.total_candidates, self.num_selected_candidates, presample=self.presample
+                        self.total_candidates,
+                        self.num_selected_candidates,
+                        presample=self.presample,
                     )
 
                 while len(self.worklist) < self.n_jobs and len(self.candidates) > 0:
@@ -188,11 +196,11 @@ class DirectNAS(NASBase):
 
                         current_num = len(self.worklist)
                         task = delayed(self.model_trainer.run_training)(
-                                model,
-                                current_num,
-                                len(self.sampler.history) + current_num,
-                                self.config,
-                            )
+                            model,
+                            current_num,
+                            len(self.sampler.history) + current_num,
+                            self.config,
+                        )
 
                         self.append_to_worklist(
                             parameters, task, estimated_metrics, satisfied_bounds
@@ -218,19 +226,23 @@ class DirectNAS(NASBase):
         pass
         # self.extract_best_model()
 
-    def sample_candidates(self, num_total, num_candidates=None, sort_key="val_error", presample=False):
+    def sample_candidates(
+        self, num_total, num_candidates=None, sort_key="val_error", presample=False
+    ):
         candidates = []
         skip_ct = 0
         while len(candidates) < num_total:
             parameters = self.sample()
             model = self.build_model(parameters)
-            estimated_metrics, satisfied_bounds = self.estimate_metrics(copy.deepcopy(model))
+            estimated_metrics, satisfied_bounds = self.estimate_metrics(
+                copy.deepcopy(model)
+            )
             if presample:
                 if not self.presampler.check(model, estimated_metrics):
                     skip_ct += 1
                     continue
             ff = self.get_fitness_function()(estimated_metrics)
-            estimated_metrics['ff'] = ff
+            estimated_metrics["ff"] = ff
             candidates.append((model, parameters, estimated_metrics, satisfied_bounds))
 
         if presample:
@@ -321,7 +333,9 @@ class DirectNAS(NASBase):
             parameters, keys = self.sampler.next_parameters()
         return parameters
 
-    def append_to_worklist(self, parameters, task, estimated_metrics={}, satisfied_bounds=[]):
+    def append_to_worklist(
+        self, parameters, task, estimated_metrics={}, satisfied_bounds=[]
+    ):
         worklist_item = WorklistItem(parameters, estimated_metrics, task)
 
         # if self.presample:
@@ -360,7 +374,9 @@ class DirectNAS(NASBase):
     def log_results(self, module):
         from networkx.readwrite import json_graph
 
-        nx_model = model_to_graph(module.model, module.example_feature_array.to(module.device))
+        nx_model = model_to_graph(
+            module.model, module.example_feature_array.to(module.device)
+        )
         json_data = json_graph.node_link_data(nx_model)
         if not os.path.exists("../performance_data"):
             os.mkdir("../performance_data")

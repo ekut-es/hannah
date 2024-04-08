@@ -16,4 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from ..backends import *  # noqa: F401
+def symbolic_batch_dim(model) -> None:
+    """
+    make the batch dimension symbolic for onnx models
+    Args:
+      model: onnx model
+    """
+    sym_batch_dim = "N"
+
+    inputs = model.graph.input
+    for input in inputs:
+        dim1 = input.type.tensor_type.shape.dim[0]
+        dim1.dim_param = sym_batch_dim

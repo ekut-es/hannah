@@ -16,4 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from ..backends import *  # noqa: F401
+
+
+from .onnxrt import OnnxruntimeBackend
+from .torch_mobile import TorchMobileBackend
+
+__all__ = [
+    "OnnxruntimeBackend",
+    "TorchMobileBackend",
+]
