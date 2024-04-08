@@ -86,6 +86,7 @@ class ClassifierModule(LightningModule, ABC):
         super().__init__()
 
         self.model = None
+        self.model = None
         ignore = None
         if isinstance(model, nn.Module):
             self.model = model
