@@ -27,7 +27,6 @@ defaults:
     - override normalizer: null          # Feature normalizer (used for quantized neural networks)
     - override module: image_classifier  # Lightning module config for the training loop (image classifier for image classification tasks)
     - override /nas/constraint_model: random_walk
-    - override /nas/mac_predictor: mlonmcu  # MLonMCU predictor
     - override augmentation: null
     - _self_
 
