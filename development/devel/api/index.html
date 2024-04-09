@@ -124,53 +124,23 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="./">API Documentation</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#symbolic_batch_dim">symbolic_batch_dim</a>
+    <li class="toctree-l2"><a class="reference internal" href="#profilingresult-objects">ProfilingResult Objects</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#inferencebackendbase-objects">InferenceBackendBase Objects</a>
+    <li class="toctree-l2"><a class="reference internal" href="#abstractbackend-objects">AbstractBackend Objects</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#run_batch">run_batch</a>
-    </li>
     <li class="toctree-l3"><a class="reference internal" href="#prepare">prepare</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#on_validation_epoch_start">on_validation_epoch_start</a>
+    <li class="toctree-l3"><a class="reference internal" href="#run">run</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#on_validation_batch_end">on_validation_batch_end</a>
+    <li class="toctree-l3"><a class="reference internal" href="#profile">profile</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#on_validation_epoch_end">on_validation_epoch_end</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#on_test_epoch_start">on_test_epoch_start</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#quantize">quantize</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#on_test_batch_end">on_test_batch_end</a>
+    <li class="toctree-l3"><a class="reference internal" href="#available">available</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#export">export</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#torchmobilebackend-objects">TorchMobileBackend Objects</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#prepare_1">prepare</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#run_batch_1">run_batch</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#onnxtfbackend-objects">OnnxTFBackend Objects</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#prepare_2">prepare</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#run_batch_2">run_batch</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#onnxruntimebackend-objects">OnnxruntimeBackend Objects</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#prepare_3">prepare</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#run_batch_3">run_batch</a>
-    </li>
-        </ul>
+    <li class="toctree-l2"><a class="reference internal" href="#inferencebackendbase-objects">InferenceBackendBase Objects</a>
     </li>
     </ul>
                   </li>
@@ -199,182 +169,121 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <p><a id="hannah.callbacks.backends"></a></p>
-<h1 id="hannahcallbacksbackends">hannah.callbacks.backends</h1>
-<p><a id="hannah.callbacks.backends.symbolic_batch_dim"></a></p>
-<h4 id="symbolic_batch_dim">symbolic_batch_dim</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">symbolic_batch_dim</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+                <p><a id="hannah.backends.base"></a></p>
+<h1 id="hannahbackendsbase">hannah.backends.base</h1>
+<p><a id="hannah.backends.base.ProfilingResult"></a></p>
+<h2 id="profilingresult-objects">ProfilingResult Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">ProfilingResult</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">)</span>
 </code></pre></div>
 
-<p><strong>Arguments</strong>:</p>
-<p>model:</p>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase"></a></p>
-<h2 id="inferencebackendbase-objects">InferenceBackendBase Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">InferenceBackendBase</span><span class="p">(</span><span class="n">Callback</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Base class to run val and test on a backend inference engine</p>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.run_batch"></a></p>
-<h4 id="run_batch">run_batch</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">run_batch</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
+<p>Result of a profiling run</p>
+<p><strong>Attributes</strong>:</p>
 <ul>
-<li><code>inputs</code> - (Default value = None)</li>
+<li><code>outputs</code> - the outputs of the model on the given input batch</li>
+<li><code>metrics</code> - a dictionary containing the combined metrics obtained from the profiling run</li>
+<li><code>profile</code> - the raw profile in a backend-specific format</li>
 </ul>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.prepare"></a></p>
+<p><a id="hannah.backends.base.AbstractBackend"></a></p>
+<h2 id="abstractbackend-objects">AbstractBackend Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">AbstractBackend</span><span class="p">(</span><span class="n">ABC</span><span class="p">)</span>
+</code></pre></div>
+
+<p><a id="hannah.backends.base.AbstractBackend.prepare"></a></p>
 <h4 id="prepare">prepare</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="n">ClassifierModule</span><span class="p">)</span>
 </code></pre></div>
 
+<p>Prepare the model for execution on the target device</p>
 <p><strong>Arguments</strong>:</p>
-<p>module:</p>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.on_validation_epoch_start"></a></p>
-<h4 id="on_validation_epoch_start">on_validation_epoch_start</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_validation_epoch_start</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
+<ul>
+<li><code>module</code> - the classifier module to be exported</li>
+</ul>
+<p><a id="hannah.backends.base.AbstractBackend.run"></a></p>
+<h4 id="run">run</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]</span>
 </code></pre></div>
 
-<p><strong>Arguments</strong>:</p>
-<p>trainer:
-  pl_module:</p>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.on_validation_batch_end"></a></p>
-<h4 id="on_validation_batch_end">on_validation_batch_end</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_validation_batch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span>
-                            <span class="n">pl_module</span><span class="p">,</span>
-                            <span class="n">outputs</span><span class="p">,</span>
-                            <span class="n">batch</span><span class="p">,</span>
-                            <span class="n">batch_idx</span><span class="p">,</span>
-                            <span class="n">dataloader_idx</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
-<p>trainer:
-  pl_module:
-  outputs:
-  batch:
-  batch_idx:</p>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.on_validation_epoch_end"></a></p>
-<h4 id="on_validation_epoch_end">on_validation_epoch_end</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_validation_epoch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
-<p>trainer:
-  pl_module:</p>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.on_test_epoch_start"></a></p>
-<h4 id="on_test_epoch_start">on_test_epoch_start</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_test_epoch_start</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
-<p>trainer:
-  pl_module:</p>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.quantize"></a></p>
-<h4 id="quantize">quantize</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">quantize</span><span class="p">(</span><span class="n">pl_module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span>
-</code></pre></div>
-
+<p>Run a batch on the target device</p>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li>
-<p><code>pl_module</code> - torch.nn.Module to quantize</p>
+<p><code>inputs</code> - a list of torch tensors representing the inputs to be run on the target device, each tensor represents a whole batched input, so for models taking 1 parameter, the list will contain 1 tensor of shape (batch_size, *input_shape)</p>
 </li>
 <li>
-<p><code>Returns</code> - quantized  torch.nn.Module</p>
+<p><code>Returns</code> - the output(s) of the model as a torch tensor or a Sequence of torch tensors for models producing multiple outputs</p>
 </li>
 </ul>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.on_test_batch_end"></a></p>
-<h4 id="on_test_batch_end">on_test_batch_end</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_test_batch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span>
-                      <span class="n">pl_module</span><span class="p">,</span>
-                      <span class="n">outputs</span><span class="p">,</span>
-                      <span class="n">batch</span><span class="p">,</span>
-                      <span class="n">batch_idx</span><span class="p">,</span>
-                      <span class="n">dataloader_idx</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<p><a id="hannah.backends.base.AbstractBackend.profile"></a></p>
+<h4 id="profile">profile</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="k">def</span> <span class="nf">profile</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProfilingResult</span>
 </code></pre></div>
 
+<p>Do a profiling run on the target device</p>
 <p><strong>Arguments</strong>:</p>
-<p>trainer:
-  pl_module:
-  outputs:
-  batch:
-  batch_idx:
-  dataloader_idx:</p>
-<p><a id="hannah.callbacks.backends.InferenceBackendBase.export"></a></p>
+<ul>
+<li>
+<p><code>inputs</code> - a list of torch tensors representing the inputs to be run on the target device, each tensor represents a whole batched input, so for models taking 1 parameter, the list will contain 1 tensor of shape (batch_size, *input_shape)</p>
+</li>
+<li>
+<p><code>Returns</code> - a ProfilingResult object containing the outputs of the model, the metrics obtained from the profiling run and the raw profile in a backend-specific format</p>
+</li>
+</ul>
+<p><a id="hannah.backends.base.AbstractBackend.available"></a></p>
+<h4 id="available">available</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="nd">@abstractmethod</span>
+<span class="k">def</span> <span class="nf">available</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+
+<p>Check if the backend is available</p>
+<p>Returns: True if the backend is available, False otherwise</p>
+<p><a id="hannah.backends.base.AbstractBackend.export"></a></p>
 <h4 id="export">export</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">export</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 
 <p>Export the model through the target backend</p>
-<p><a id="hannah.callbacks.backends.TorchMobileBackend"></a></p>
-<h2 id="torchmobilebackend-objects">TorchMobileBackend Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">TorchMobileBackend</span><span class="p">(</span><span class="n">InferenceBackendBase</span><span class="p">)</span>
+<p><a id="hannah.backends.base.InferenceBackendBase"></a></p>
+<h2 id="inferencebackendbase-objects">InferenceBackendBase Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">InferenceBackendBase</span><span class="p">(</span><span class="n">AbstractBackend</span><span class="p">,</span> <span class="n">Callback</span><span class="p">)</span>
 </code></pre></div>
 
-<p>Inference backend for torch mobile</p>
-<p><a id="hannah.callbacks.backends.TorchMobileBackend.prepare"></a></p>
-<h4 id="prepare_1">prepare</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>model</code> <em>torch.nn.Module</em> - nn.Module to be exported</li>
-</ul>
-<p>Returns (None)</p>
-<p><a id="hannah.callbacks.backends.TorchMobileBackend.run_batch"></a></p>
-<h4 id="run_batch_1">run_batch</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">run_batch</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>inputs</code> - (Default value = None)</li>
-</ul>
-<p><a id="hannah.callbacks.backends.OnnxTFBackend"></a></p>
-<h2 id="onnxtfbackend-objects">OnnxTFBackend Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">OnnxTFBackend</span><span class="p">(</span><span class="n">InferenceBackendBase</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Inference Backend for tensorflow</p>
-<p><a id="hannah.callbacks.backends.OnnxTFBackend.prepare"></a></p>
-<h4 id="prepare_2">prepare</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
-<p>model:</p>
-<p><a id="hannah.callbacks.backends.OnnxTFBackend.run_batch"></a></p>
-<h4 id="run_batch_2">run_batch</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">run_batch</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
-<p>inputs:</p>
-<p><a id="hannah.callbacks.backends.OnnxruntimeBackend"></a></p>
+<p>Base class to wrap backends as a lightning callback</p>
+<p><a id="hannah.backends"></a></p>
+<h1 id="hannahbackends">hannah.backends</h1>
+<p><a id="hannah.backends.onnxrt"></a></p>
+<h1 id="hannahbackendsonnxrt">hannah.backends.onnxrt</h1>
+<p><a id="hannah.backends.onnxrt.OnnxruntimeBackend"></a></p>
 <h2 id="onnxruntimebackend-objects">OnnxruntimeBackend Objects</h2>
 <div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">OnnxruntimeBackend</span><span class="p">(</span><span class="n">InferenceBackendBase</span><span class="p">)</span>
 </code></pre></div>
 
 <p>Inference Backend for tensorflow</p>
-<p><a id="hannah.callbacks.backends.OnnxruntimeBackend.prepare"></a></p>
-<h4 id="prepare_3">prepare</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<p><a id="hannah.backends.torch_mobile"></a></p>
+<h1 id="hannahbackendstorch_mobile">hannah.backends.torch_mobile</h1>
+<p><a id="hannah.backends.torch_mobile.TorchMobileBackend"></a></p>
+<h2 id="torchmobilebackend-objects">TorchMobileBackend Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">TorchMobileBackend</span><span class="p">(</span><span class="n">InferenceBackendBase</span><span class="p">)</span>
 </code></pre></div>
 
-<p><strong>Arguments</strong>:</p>
-<p>model:</p>
-<p><a id="hannah.callbacks.backends.OnnxruntimeBackend.run_batch"></a></p>
-<h4 id="run_batch_3">run_batch</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">run_batch</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<p>Inference backend for torch mobile</p>
+<p><a id="hannah.backends.utils"></a></p>
+<h1 id="hannahbackendsutils">hannah.backends.utils</h1>
+<p><a id="hannah.backends.utils.symbolic_batch_dim"></a></p>
+<h4 id="symbolic_batch_dim">symbolic_batch_dim</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">symbolic_batch_dim</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 
+<p>make the batch dimension symbolic for onnx models</p>
 <p><strong>Arguments</strong>:</p>
 <ul>
-<li><code>inputs</code> - (Default value = None)</li>
+<li><code>model</code> - onnx model</li>
 </ul>
-<p>Returns</p>
+<p><a id="hannah.callbacks.backends"></a></p>
+<h1 id="hannahcallbacksbackends">hannah.callbacks.backends</h1>
 <p><a id="hannah.callbacks.optimization"></a></p>
 <h1 id="hannahcallbacksoptimization">hannah.callbacks.optimization</h1>
 <p><a id="hannah.callbacks.optimization.HydraOptCallback"></a></p>
@@ -443,7 +352,7 @@
 </code></pre></div>
 
 <p><a id="hannah.callbacks.clustering.kMeans.on_test_epoch_start"></a></p>
-<h4 id="on_test_epoch_start_1">on_test_epoch_start</h4>
+<h4 id="on_test_epoch_start">on_test_epoch_start</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">on_test_epoch_start</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
 </code></pre></div>
 
@@ -517,7 +426,7 @@
 <p>trainer:
   pl_module:</p>
 <p><a id="hannah.callbacks.summaries.MacSummaryCallback.on_validation_epoch_end"></a></p>
-<h4 id="on_validation_epoch_end_1">on_validation_epoch_end</h4>
+<h4 id="on_validation_epoch_end">on_validation_epoch_end</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@rank_zero_only</span>
 <span class="k">def</span> <span class="nf">on_validation_epoch_end</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
 </code></pre></div>
@@ -1542,7 +1451,7 @@ Sequences are padded to the maximum length of mini-batch sequences (dynamic padd
 </code></pre></div>
 
 <p><a id="hannah.datasets.base.AbstractDataset.prepare"></a></p>
-<h4 id="prepare_4">prepare</h4>
+<h4 id="prepare_1">prepare</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@abstractclassmethod</span>
 <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
