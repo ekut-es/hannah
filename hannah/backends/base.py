@@ -49,7 +49,7 @@ class ProfilingResult(NamedTuple):
 
 class AbstractBackend(ABC):
     @abstractmethod
-    def prepare(self, module: ClassifierModule:
+    def prepare(self, module: ClassifierModule):
         """
         Prepare the model for execution on the target device
 
