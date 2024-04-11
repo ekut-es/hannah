@@ -93,23 +93,25 @@ class VisionBaseModule(ClassifierModule):
         msglogger.info("  Dev Set: %d", len(self.dev_set))
         msglogger.info("  Test Set: %d", len(self.test_set))
 
-        example_data = self._decode_batch(self.test_set[0])["data"]
+        example_data = self._decode_batch(self.test_set[0])["data"].unsqueeze(0)
 
         if not isinstance(example_data, torch.Tensor):
             example_data = torch.tensor(example_data, device=self.device)
 
-        self.example_input_array = example_data.clone().detach().unsqueeze(0)
-        self.example_feature_array = example_data.clone().detach().unsqueeze(0)
+        self.example_input_array = example_data.clone().detach()
+        self.example_feature_array = example_data.clone().detach()
 
         self.num_classes = 0
         if self.train_set.class_names:
             self.num_classes = len(self.train_set.class_names)
 
+        input_shape = self.example_input_array.shape
+
         if hasattr(self.hparams, "model"):
             msglogger.info("Setting up model %s", self.hparams.model.name)
             self.model = instantiate(
                 self.hparams.model,
-                input_shape=self.example_input_array.shape,
+                input_shape=input_shape,
                 labels=self.num_classes,
                 _recursive_=False,
             )
@@ -288,9 +290,8 @@ class VisionBaseModule(ClassifierModule):
         augmentations = {k: torch.nn.Sequential(*v) for k, v in augmentations.items()}
 
         self.augmentations = torch.nn.ModuleDict(augmentations)
-        
+
         return augmentations
-        
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
         batch_size = self.hparams["batch_size"]
@@ -314,7 +315,7 @@ class VisionBaseModule(ClassifierModule):
                 else dataset.max_workers
             )
             return result
-        
+
         num_workers = calc_workers(dataset)
 
         loader = data.DataLoader(
@@ -324,9 +325,9 @@ class VisionBaseModule(ClassifierModule):
             num_workers=num_workers,
             sampler=sampler if not dataset.sequential else None,
             collate_fn=vision_collate_fn,
-            multiprocessing_context="fork"  if num_workers > 0 else None,
-            persistent_workers = True if num_workers > 0 else False,
-            prefetch_factor = 2 if num_workers > 0 else None,
+            multiprocessing_context="fork" if num_workers > 0 else None,
+            persistent_workers=True if num_workers > 0 else False,
+            prefetch_factor=2 if num_workers > 0 else None,
             pin_memory=True,
         )
         self.batches_per_epoch = len(loader)
@@ -341,9 +342,7 @@ class VisionBaseModule(ClassifierModule):
                 sampler=data.RandomSampler(unlabeled_data)
                 if not unlabeled_data.sequential
                 else None,
-                multiprocessing_context="fork"
-                if unlabeled_workers > 0
-                else None,
+                multiprocessing_context="fork" if unlabeled_workers > 0 else None,
             )
 
             return CombinedLoader(
