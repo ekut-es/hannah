@@ -2667,6 +2667,18 @@ dilation : Union[int, Expression], optional
 <p>Alternative Identity()</p>
 <p><a id="hannah.nas.functional_operators.operators"></a></p>
 <h1 id="hannahnasfunctional_operatorsoperators">hannah.nas.functional_operators.operators</h1>
+<p><a id="hannah.nas.functional_operators.operators.self_attention2d"></a></p>
+<h4 id="self_attention2d">self_attention2d</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">wrap</span>
+<span class="k">def</span> <span class="nf">self_attention2d</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">num_heads</span><span class="p">,</span> <span class="n">d_model</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>q</code> - Tensor, shape <code>[B, h*d, H, W]</code></li>
+<li><code>k</code> - Tensor, shape <code>[B, h*d, H, W]</code></li>
+<li><code>v</code> - Tensor, shape <code>[B, h*d, H, W]</code></li>
+</ul>
 <p><a id="hannah.nas.graph_conversion"></a></p>
 <h1 id="hannahnasgraph_conversion">hannah.nas.graph_conversion</h1>
 <p><a id="hannah.nas.utils"></a></p>
@@ -2837,6 +2849,14 @@ dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
 <h2 id="returns_9">Returns</h2>
 <p>Expression</p>
+<p><a id="hannah.models.conv_vit.blocks"></a></p>
+<h1 id="hannahmodelsconv_vitblocks">hannah.models.conv_vit.blocks</h1>
+<p><a id="hannah.models.conv_vit.models"></a></p>
+<h1 id="hannahmodelsconv_vitmodels">hannah.models.conv_vit.models</h1>
+<p><a id="hannah.models.conv_vit.attention"></a></p>
+<h1 id="hannahmodelsconv_vitattention">hannah.models.conv_vit.attention</h1>
+<p><a id="hannah.models.conv_vit.operators"></a></p>
+<h1 id="hannahmodelsconv_vitoperators">hannah.models.conv_vit.operators</h1>
 <p><a id="hannah.models.tc"></a></p>
 <h1 id="hannahmodelstc">hannah.models.tc</h1>
 <p><a id="hannah.models.tc.models"></a></p>
