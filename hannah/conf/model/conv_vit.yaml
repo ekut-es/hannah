@@ -1,0 +1,3 @@
+_target_: hannah.models.conv_vit.models.search_space
+name: conv_vit
+num_classes: 10

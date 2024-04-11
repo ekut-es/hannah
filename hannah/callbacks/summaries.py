@@ -29,7 +29,7 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from tabulate import tabulate
 from torch.fx.graph_module import GraphModule
 
-from hannah.nas.functional_operators.operators import add, conv2d, linear, conv1d
+from hannah.nas.functional_operators.operators import add, conv2d, linear, conv1d, self_attention2d
 from hannah.nas.graph_conversion import GraphConversionTracer
 
 from ..models.factory import qat
@@ -478,6 +478,25 @@ def get_linear(node, output, args, kwargs):
     return num_weights, macs, attrs
 
 
+def get_attn2d(node, output, args, kwargs):
+    num_weights = 0
+
+    qkv_input = args[0]  # shape: [B, h*d*3, H, W]
+    batch_size = qkv_input.shape[0]
+    numheads_x_headdim = qkv_input.shape[1] / 3
+    height = qkv_input.shape[2]
+    width = qkv_input.shape[3]
+    hxw = height * width
+    # query and key dot product
+    qk_macs = batch_size * hxw * hxw * numheads_x_headdim
+    # attention and value dot product
+    av_macs = batch_size * hxw * hxw * numheads_x_headdim
+    macs = qk_macs + av_macs
+
+    attrs = ""
+    return num_weights, macs, attrs
+
+
 def get_type(node):
     try:
         return node.name.split("_")[-2]
@@ -498,6 +517,7 @@ class MACSummaryInterpreter(fx.Interpreter):
             conv2d: get_conv,
             linear: get_linear,
             add: get_zero_op,
+            self_attention2d: get_attn2d,
         }
 
         self.data = {

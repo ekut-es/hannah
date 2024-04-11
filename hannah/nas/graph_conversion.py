@@ -59,6 +59,7 @@ class GraphConversionTracer(SearchSpaceTracer):
         f_ops.BatchNorm,
         f_ops.Quantize,
         f_ops.Identity,
+        f_ops.SelfAttention2d,
         Tensor,
     ]
 
@@ -121,7 +122,9 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             "adaptive_avg_pooling": self.add_nodes_pooling,
             "avg_pool": self.add_nodes_pooling,
             "max_pool": self.add_nodes_pooling,
-            "interleave": self.add_nodes_relu
+            "interleave": self.add_nodes_relu,
+            "dropout": self.add_nodes_dropout,
+            "self_attention2d": self.add_nodes_attn2d,
         }
         self.layer_encodings = [
             "conv",
@@ -457,6 +460,27 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         return NamedTensor(target, output, quantization=quant_attrs)
 
+    def add_nodes_attn2d(self, target, mod, args, kwargs, output):
+        attrs = {}
+        attrs["num_heads"] = to_int(kwargs['num_heads'])
+        attrs["d_model"] = to_int(kwargs['d_model'])
+
+        quant_attrs = args[0].quantization
+        input_attrs = self.extract_input_attrs(args)
+        self.nx_graph.add_node(
+            target,
+            attrs=attrs,
+            output={"quant": quant_attrs, "shape": output.shape},
+            inputs=input_attrs,
+            type="self_attention",
+        )
+
+        input_names = [arg.name for arg in args]
+        for input_name in input_names:
+            self.nx_graph.add_edge(input_name, target)
+
+        return NamedTensor(target, output, quantization=quant_attrs)
+
     def add_nodes_conv_fun(self, target, mod, args, kwargs, output):
         attrs = {}
 
@@ -566,7 +590,6 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             )
         else:
             output = NamedTensor(target_name, output_tensor)
-
 
         return output
 
