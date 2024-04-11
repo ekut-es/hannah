@@ -14,6 +14,7 @@ from hannah.nas.functional_operators.shapes import adaptive_average_pooling_shap
 from hannah.nas.parameters.parametrize import parametrize
 from hannah.nas.parameters.parameters import IntScalarParameter, CategoricalParameter
 
+
 @torch.fx.wrap
 def conv1d(input, weight, stride, padding, dilation, groups, *, id):
     return F.conv1d(input=input,
@@ -87,6 +88,35 @@ def interleave(input, step_size):
     return torch.concat([input[:, shift_pos::step_size, :, :] for shift_pos in range(step_size)], dim=1)
 
 
+@torch.fx.wrap
+def dropout(input, p, *, id):
+    return F.dropout(input, p)
+
+
+@torch.fx.wrap
+def self_attention2d(q, k, v, num_heads, d_model, *, id):
+    """
+    Arguments:
+        q: Tensor, shape ``[B, h*d, H, W]``
+        k: Tensor, shape ``[B, h*d, H, W]``
+        v: Tensor, shape ``[B, h*d, H, W]``
+    """
+    scale = d_model ** -0.5
+    b, _, h, w = q.shape
+    q = q.view(b, num_heads, d_model, h * w)
+    k = k.view(b, num_heads, d_model, h * w)
+    v = v.view(b, num_heads, d_model, h * w)
+    # [B, h, d, H*W]
+
+    q *= scale
+    attn = q.transpose(-2, -1) @ k  # [B, h, H*W, H*W]
+    attn = F.softmax(attn, dim=-1)
+    score = v @ attn  # [B, h, d, H*W]
+    out = score.reshape(b, -1, h, w)  # [B, h*d, H, W]
+
+    return out
+
+
 @parametrize
 class Conv1d(Op):
     def __init__(self, kernel_size=1, stride=1, dilation=1, groups=1) -> None:
@@ -138,7 +168,7 @@ class Conv2d(Op):
         new_conv.kernel_size = weight_shape[2]
         if self.padding is None:
             new_conv.padding = padding_expression(new_conv.kernel_size, new_conv.stride, new_conv.dilation)
-            
+
         return new_conv
 
     def _forward_implementation(self, x, weight):
@@ -308,6 +338,23 @@ class AdaptiveAvgPooling(Op):
 
 
 @parametrize
+class Dropout(Op):
+    def __init__(self, p) -> None:
+        super().__init__(name='Dropout', p=p)
+        self.p = p
+
+    def __call__(self, *operands) -> Any:
+        op = super().__call__(*operands)
+        return op
+
+    def _forward_implementation(self, input):
+        return dropout(input, p=self.p, id=self.id)
+
+    def shape_fun(self):
+        return identity_shape(*self.operands)
+
+
+@parametrize
 class InterleaveChannels(Op):
     def __init__(self, step_size) -> None:
         super().__init__(name='InterleaveChannels')
@@ -318,3 +365,41 @@ class InterleaveChannels(Op):
 
     def _forward_implementation(self, *operands):
         return interleave(operands[0], step_size=lazy(self.step_size))
+
+
+@parametrize
+class SelfAttention2d(Op):
+    def __init__(self, num_heads, d_model) -> None:
+        super().__init__(name='SelfAttention2d', num_heads=num_heads, d_model=d_model)
+        self.num_heads = num_heads
+        self.d_model = d_model
+
+    # def _verify_operands(self, operands):
+    #     assert len(operands) == 3
+
+    def __call__(self, *operands) -> Any:
+        new_attn = super().__call__(*operands)
+        # self._verify_operands(new_attn.operands)
+        return new_attn
+
+    def _forward_implementation(self, *operands):
+        q = operands[0]
+        k = operands[1]
+        v = operands[2]
+        out = self_attention2d(
+            q, k, v,
+            num_heads=lazy(self.num_heads),
+            d_model=lazy(self.d_model),
+            id=self.id
+        )
+
+        return out
+
+    def shape_fun(self):
+        input_shape = self.operands[0].shape()
+        batch = input_shape[0]
+        height = input_shape[-2]
+        width = input_shape[-1]
+        out_dim = self.num_heads * self.d_model
+
+        return (batch, out_dim, height, width)

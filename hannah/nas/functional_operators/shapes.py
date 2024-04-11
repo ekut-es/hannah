@@ -88,3 +88,24 @@ def adaptive_average_pooling_shape(*operands, output_size):
     new_dims.extend(output_size)
 
     return tuple(new_dims)
+
+
+def max_pooling2d_shape(*operands, dims, kernel_size, stride, padding, dilation):
+    def _calc_output_dim(input_size, kernel_size, stride, padding, dilation) -> Expression:
+        if padding == 'same':
+            padding = kernel_size // 2
+        ax = Floor(((input_size + padding * 2 - dilation * (kernel_size - 1) - 1) / stride) + 1)
+        return ax
+
+    # assuming NCHW layout
+    input_shape = operands[0].shape()
+    batch = input_shape[0]
+    out_channels = input_shape[1]
+
+    num_spatial_dims = dims
+    spatial_dims = []
+    for i in range(2, num_spatial_dims + 2):
+        output_dim = _calc_output_dim(input_shape[i], padding, dilation, kernel_size, stride)
+        spatial_dims.append(output_dim)
+
+    return (batch, out_channels, *spatial_dims)
