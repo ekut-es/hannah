@@ -931,6 +931,27 @@ test = ["certifi", "pretend", "pytest (>=6.2.0)", "pytest-benchmark", "pytest-co
 test-randomorder = ["pytest-randomly"]
 
 [[package]]
+name = "cuda-python"
+version = "12.4.0"
+description = "Python bindings for CUDA"
+optional = true
+python-versions = "*"
+files = [
+    {file = "cuda_python-12.4.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3a9ddcbfe14a9b38eedf7e98323f680acc8c61ed6529638da2c7d4a5a8787e12"},
+    {file = "cuda_python-12.4.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d9e1a2cf38d71be0c85f1063967409b48badc06fb4294dd72fdf05de852f42fb"},
+    {file = "cuda_python-12.4.0-cp310-cp310-win_amd64.whl", hash = "sha256:8d505667cae5f793435dbe5fcaab4bff4a2a3029024148ce16e4003bae43cf45"},
+    {file = "cuda_python-12.4.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e845338ad9634be2778b787f12f3a05b0116d49610a9a517f017fd91e79b1b97"},
+    {file = "cuda_python-12.4.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6dde31841f204f3de78e5e121252f7c43f1cfcf207ff3a0cf1d1017acb08dabf"},
+    {file = "cuda_python-12.4.0-cp311-cp311-win_amd64.whl", hash = "sha256:43d92a8f7531c5fa8d9d68e24b36dd352d1653353791583c4a3b10a629176fd4"},
+    {file = "cuda_python-12.4.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:84cd4f3a174fc116a6c1496efb3d60a7d4dce791194456461582908653ac67b2"},
+    {file = "cuda_python-12.4.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dcf44462196af79e34d2516f4416c5e46691a4d6b9faa13e75664115bdc40d4c"},
+    {file = "cuda_python-12.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:07db8b89ac34ba4520b070f8de971f0266229fabe2443608ca91a8b93d572c09"},
+    {file = "cuda_python-12.4.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f2202ed9793c5948282e4e575e8227c127adb29e21fd31cb6d80098f93a2c14e"},
+    {file = "cuda_python-12.4.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7146ed28810c28704649204f83ca60a9609263b3e8f08f77a33e154501cd84dd"},
+    {file = "cuda_python-12.4.0-cp39-cp39-win_amd64.whl", hash = "sha256:de0a2cb4ce6ea8e302010a580576ab78a2e95d015963e0d6933bb2508f65bd6a"},
+]
+
+[[package]]
 name = "cycler"
 version = "0.12.1"
 description = "Composable style cycles"
@@ -5144,6 +5165,19 @@ files = [
 ]
 
 [[package]]
+name = "tensorrt"
+version = "8.6.1.post1"
+description = "A high performance deep learning inference library"
+optional = true
+python-versions = ">=3.6"
+files = [
+    {file = "tensorrt-8.6.1.post1.tar.gz", hash = "sha256:0ca64da500480a2d204c18d7c6791ec462c163ae4fa1db574b8c211da1116ea2"},
+]
+
+[package.extras]
+numpy = ["numpy"]
+
+[[package]]
 name = "testslide"
 version = "2.7.1"
 description = "A test framework for Python that makes mocking and iterating over code with tests a breeze"
@@ -6021,10 +6055,11 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 
 [extras]
 onnxrt = ["onnx", "onnxruntime"]
+tensorrt = ["cuda-python", "onnx", "tensorrt"]
 tvm = ["hannah-tvm"]
 vision = ["albumentations", "gdown", "imagecorruptions", "kornia", "pycocotools", "timm"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9 <3.12"
-content-hash = "5d0e2e4512f788caf6632ee89a1236229ca05222d905548ee76bc062b444ed0f"
+content-hash = "3e8977d3fab1c67a043508ad06bae926079618b56f99f55eaefbe7f1d3da2e91"

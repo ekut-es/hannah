@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -220,12 +220,11 @@ class TimmModel(nn.Module):
         super().__init__()
         self.name = name
 
-        dummy_input = torch.randn(input_shape)
+        dummy_input = torch.randn(tuple(input_shape))
 
         self.encoder = timm.create_model(
             name, num_classes=0, global_pool="", pretrained=pretrained, **kwargs
         )
-
         _, input_channels, input_x, input_y = dummy_input.shape
         if stem == "auto":
             logger.info("""Using default logger for automatic stem creation""")

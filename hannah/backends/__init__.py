@@ -19,9 +19,11 @@
 
 
 from .onnxrt import OnnxruntimeBackend
+from .tensorrt import TensorRTBackend
 from .torch_mobile import TorchMobileBackend
 
 __all__ = [
     "OnnxruntimeBackend",
     "TorchMobileBackend",
+    "TensorRTBackend",
 ]

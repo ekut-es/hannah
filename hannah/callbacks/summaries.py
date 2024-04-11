@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -21,6 +21,7 @@ import sys
 import traceback
 from collections import OrderedDict
 
+import numpy as np
 import pandas as pd
 import torch
 import torch.fx as fx
@@ -29,12 +30,17 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from tabulate import tabulate
 from torch.fx.graph_module import GraphModule
 
-from hannah.nas.functional_operators.operators import add, conv2d, linear, conv1d, self_attention2d
+from hannah.nas.functional_operators.operators import (
+    add,
+    conv1d,
+    conv2d,
+    linear,
+    self_attention2d,
+)
 from hannah.nas.graph_conversion import GraphConversionTracer
 
 from ..models.factory import qat
 from ..models.sinc import SincNet
-import numpy as np
 
 msglogger = logging.getLogger(__name__)
 
