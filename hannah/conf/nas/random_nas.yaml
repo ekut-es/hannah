@@ -20,7 +20,9 @@ defaults:
   - sampler: random
   - model_trainer: simple
   - constraint_model: z3
-  - predictor: gcn
+  - predictor:
+      - gcn
+      - macs
   - presampler: single_range_checker
 
 _target_: hannah.nas.search.search.DirectNAS

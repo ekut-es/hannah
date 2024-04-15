@@ -319,7 +319,15 @@ class MacSummaryCallback(Callback):
         """
         dummy_input = input
         if dummy_input is None:
-            dummy_input = pl_module.example_feature_array
+            if hasattr(pl_module, "example_feature_array"):
+                dummy_input = pl_module.example_feature_array
+            elif hasattr(pl_module, "example_input_array"):
+                dummy_input = pl_module.example_input_array
+            else:
+                raise ValueError(
+                    "No example_input_array or example_feature_array found in pl_module"
+                )
+
         dummy_input = dummy_input.to(pl_module.device)
 
         total_macs = 0.0

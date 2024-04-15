@@ -71,8 +71,8 @@ def train(
     validate_output = False
     if hasattr(config, "validate_output") and isinstance(config.validate_output, bool):
         validate_output = config.validate_output
-    
-    torch.set_float32_matmul_precision('high')
+
+    torch.set_float32_matmul_precision("high")
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
@@ -124,9 +124,6 @@ def train(
         #    logger.append(DVCLogger())
 
         callbacks = []
-        if config.get("backend", None):
-            backend = instantiate(config.backend)
-            callbacks.append(backend)
 
         callbacks.extend(list(common_callbacks(config)))
 

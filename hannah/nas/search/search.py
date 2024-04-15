@@ -22,6 +22,7 @@ import logging
 import os
 import traceback
 from abc import ABC, abstractmethod
+from typing import Any, Mapping, Optional
 
 import numpy as np
 import torch
@@ -47,7 +48,6 @@ class NASBase(ABC):
         n_jobs=1,
         sampler=None,
         model_trainer=None,
-        predictor=None,
         constraint_model=None,
         parent_config=None,
         random_state=None,
@@ -61,7 +61,7 @@ class NASBase(ABC):
         self.callbacks = []
         self.sampler = sampler
         self.model_trainer = model_trainer
-        self.predictor = predictor
+        self.predictors = {}
         self.constraint_model = constraint_model
         if random_state is None:
             self.random_state = np.random.RandomState()
@@ -133,14 +133,20 @@ class DirectNAS(NASBase):
             _recursive_=False,
         )
 
-        # from ..performance_prediction.mlonmcu.predictor import MLonMCUPredictor
-        # self.mac_predictor = MLonMCUPredictor("nas_model")
-
         self.model_trainer = instantiate(self.config.nas.model_trainer)
         if "predictor" in self.config.nas and self.config.nas.predictor is not None:
-            self.predictor = instantiate(self.config.nas.predictor, _recursive_=False)
-            if os.path.exists("performance_data"):
-                self.predictor.load("performance_data")
+            predictor_config = self.config.nas.predictor
+
+            if not isinstance(predictor_config, Mapping):
+                logging.warning("Predictor config is not a mapping")
+
+                logger_config = {"default": predictor_config}
+
+            for name, config in predictor_config.items():
+                predictor = instantiate(config)
+                if os.path.exists("performance_data"):
+                    predictor.load("performance_data")
+                self.predictors[name] = predictor
 
         if self.constraint_model:
             self.constraint_model = instantiate(self.config.nas.constraint_model)
@@ -169,15 +175,14 @@ class DirectNAS(NASBase):
                 self.worklist = []
 
                 if len(self.candidates) == 0:
-                    if self.predictor:
+                    for name, predictor in self.predictors:
                         try:
-                            self.predictor.update(
-                                self.new_points, self.example_input_array
-                            )
+                            predictor.update(self.new_points, self.example_input_array)
                         except Exception as e:
                             # FIXME: Find reason for NaN in embeddings
                             msglogger.error("Updating predictor failed:")
                             msglogger.error(f"{str(e)}")
+
                         self.new_points = []
                     self.candidates = self.sample_candidates(
                         self.total_candidates,
@@ -212,7 +217,7 @@ class DirectNAS(NASBase):
                 results = executor([item.task for item in self.worklist])
                 for result, item in zip(results, self.worklist):
                     parameters = item.parameters
-                    if self.predictor:
+                    if self.predictors:
                         self.new_points.append(
                             (self.build_model(parameters), result["val_error"])
                         )
@@ -248,7 +253,7 @@ class DirectNAS(NASBase):
         if presample:
             msglogger.info(f"Skipped {skip_ct} models for not meeting constraints.")
 
-        if self.predictor:
+        if self.predictors:
             candidates.sort(key=lambda x: x[2][sort_key])
             candidates = candidates[:num_candidates]
 
@@ -347,13 +352,15 @@ class DirectNAS(NASBase):
         # FIXME: Integrate better intro current code
 
     def estimate_metrics(self, model):
-        estimated_metrics = self.mac_predictor.predict(
-            model, input=self.example_input_array
-        )
-        if self.predictor:
-            estimated_metrics.update(
-                self.predictor.predict(model, self.example_input_array)
-            )
+        estimated_metrics = {}
+        for name, predictor in self.predictors.items():
+            metrics = predictor.predict(model, self.example_input_array)
+
+            print(f"Predicted metrics for {name}:")
+            for k, v in metrics.items():
+                print(f"  {k}: {v:.8f}")
+
+            estimated_metrics.update(metrics)
 
         satisfied_bounds = []
         for k, v in estimated_metrics.items():

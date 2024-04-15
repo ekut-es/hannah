@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import logging
+
 import dgl
 import numpy as np
 import torch
@@ -122,7 +124,11 @@ class Predictor:
 
 class GCNPredictor(Predictor):
     def __init__(
-        self, input_feature_size, hidden_units=[128], readout="mean", fea_name="features"
+        self,
+        input_feature_size,
+        hidden_units=[128],
+        readout="mean",
+        fea_name="features",
     ) -> None:
         """G(raph)CN based network latency/cost predictor. End-to-end from graph to score.
 
@@ -138,6 +144,8 @@ class GCNPredictor(Predictor):
             internal name for features in the graph, as in graph.ndata[fea_name], by default 'features'
         """
         super().__init__(fea_name)
+
+        self.input_feature_size = input_feature_size
         self.model = GCN(
             input_feature_size, hidden_units, num_classes=1, readout=readout
         )
@@ -181,6 +189,7 @@ class GCNPredictor(Predictor):
         torch.Tensor
             predicted cost of given graph. Retrieve float value with .item()
         """
+
         return super().predict(graph)
 
 
@@ -217,12 +226,13 @@ class GaussianProcessPredictor(Predictor):
         super().__init__(fea_name)
         if isinstance(hidden_units, int):
             hidden_units = [hidden_units]
-        self.model = GCNEmbedding(
-            input_feature_size,
-            hidden_units,
-            embedding_size=embedding_size,
-            readout=readout,
-        )
+
+        self.input_feature_size = input_feature_size
+        self.hidden_units = hidden_units
+        self.embedding_size = embedding_size
+        self.readout = readout
+
+        self.init_embeddings()
         if kernel == "default":
             kernel = RBF() + DotProduct() + WhiteKernel()
         else:
@@ -233,6 +243,14 @@ class GaussianProcessPredictor(Predictor):
             normalize_y=True,
             n_restarts_optimizer=2,
             alpha=alpha,
+        )
+
+    def init_embeddings(self):
+        self.model = GCNEmbedding(
+            self.input_feature_size,
+            self.hidden_units,
+            embedding_size=self.embedding_size,
+            readout=self.readout,
         )
 
     def set_predictor(self, predictor):
@@ -334,10 +352,23 @@ class GaussianProcessPredictor(Predictor):
 
     def normalize_embeddings(self, embedding):
         for r in range(len(embedding)):
-            embedding[r] = (embedding[r] - min(embedding[r])) / (max(embedding[r] - min(embedding[r])))
+            embedding[r] = (embedding[r] - min(embedding[r])) / (
+                max(embedding[r] - min(embedding[r]))
+            )
         return embedding
 
     def get_embedding(self, graph):
+        shape = graph.ndata[self.fea_name].shape
+
+        assert len(shape) == 2, "Feature must have shape nxm"
+
+        if shape[1] != self.input_feature_size:
+            logging.warning(
+                f"Feature shape {shape} does not match input feature size {self.input_feature_size}. Reinitializing model with new input feature size."
+            )
+            self.input_feature_size = shape[1]
+            self.init_embeddings()
+
         return self.model.get_embedding(graph, graph.ndata[self.fea_name].float())
 
     def score(self, X, y):
@@ -358,6 +389,7 @@ class GaussianProcessPredictor(Predictor):
         array (,array)
             prediction(s) , (if return_std: standard deviation(s))
         """
+
         if isinstance(X, dgl.DGLGraph):
             if X.batch_size == 1:
                 embeddings = self.get_embedding(X).detach().numpy()

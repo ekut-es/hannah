@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -493,7 +493,7 @@ class AgingEvolutionNASTrainer(NASTrainerBase):
 
             if self.backend:
                 self.backend.prepare(model)
-                backend_metrics = self.backend.estimate_metrics()
+                backend_metrics = self.backend.predict()
                 estimated_metrics.update(backend_metrics)
 
             satisfied_bounds = []

@@ -25,11 +25,7 @@ from .base import InferenceBackendBase, ProfilingResult
 class TorchMobileBackend(InferenceBackendBase):
     """Inference backend for torch mobile"""
 
-    def __init__(
-        self, val_batches=1, test_batches=1, val_frequency=1, warmup=2, repeat=10
-    ):
-        super().__init__(val_batches, test_batches, val_frequency)
-
+    def __init__(self, warmup=2, repeat=10):
         self.warmup = warmup
         self.repeat = repeat
         self.script_module = None

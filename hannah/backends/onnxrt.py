@@ -40,16 +40,9 @@ class OnnxruntimeBackend(InferenceBackendBase):
 
     def __init__(
         self,
-        val_batches=1,
-        test_batches=1,
-        val_frequency=10,
         repeat=10,
         warmup=2,
     ):
-        super(OnnxruntimeBackend, self).__init__(
-            val_batches=val_batches, test_batches=test_batches, val_frequency=10
-        )
-
         self.repeat = repeat
         self.warmup = warmup
 

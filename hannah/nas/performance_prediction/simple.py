@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import json
 import logging
 from pathlib import Path
@@ -31,6 +32,7 @@ from omegaconf import DictConfig
 from tabulate import tabulate
 
 from hannah.callbacks.summaries import FxMACSummaryCallback, MacSummaryCallback
+from hannah.modules.base import ClassifierModule
 from hannah.nas.graph_conversion import GraphConversionTracer, model_to_graph
 from hannah.nas.performance_prediction.features.dataset import (
     OnlineNASGraphDataset,
@@ -45,49 +47,17 @@ from hannah.nas.performance_prediction.gcn.predictor import (
 logger = logging.getLogger(__name__)
 
 
-class BackendPredictor:
-    """A predictor class that instantiates the model and uses the backends predict function to predict performance metrics"""
-
-    def predict(self, config):
-        backend = instantiate(config.backend)
-        model = instantiate(
-            config.module,
-            dataset=config.dataset,
-            model=config.model,
-            optimizer=config.optimizer,
-            features=config.features,
-            scheduler=config.get("scheduler", None),
-            normalizer=config.get("normalizer", None),
-            _recursive_=False,
-        )
-
-        model.setup("train")
-        metrics = backend.estimate(model)
-
-        logger.info("Predicted performance metrics")
-        for k in metrics.keys():
-            logger.info("%s: %s", k, metrics[k])
-
-        return metrics
-
-
 class MACPredictor:
     """A predictor class that instantiates the model and calculates abstract metrics"""
 
     def __init__(self, predictor="default") -> None:
-        self._predictor = predictor
+        if predictor == "fx":
+            self.predictor = FxMACSummaryCallback()
+        else:
+            self.predictor = MacSummaryCallback()
 
     def predict(self, model, input=None):
-        if self._predictor == "fx":
-            predictor = FxMACSummaryCallback()
-        else:
-            predictor = MacSummaryCallback()
-
-        metrics = predictor.predict(model, input=input)
-
-        logger.info("Predicted performance metrics")
-        for k in metrics.keys():
-            logger.info("%s: %s", k, metrics[k])
+        metrics = self.predictor.predict(model, input=input)
 
         return metrics
 
@@ -133,8 +103,16 @@ class GCNPredictor:
 
         self.train()
 
-    def predict(self, model, input):
-        if hasattr(model, "model"):
+    def predict(self, model, input=None):
+        if input is None:
+            if hasattr(model, "example_feature_array"):
+                input = model.example_feature_array
+            elif hasattr(model, "example_input_array"):
+                input = model.example_input_array
+            else:
+                raise Exception("No input provided and no example input found in model")
+
+        if isinstance(model, ClassifierModule):
             model = (
                 model.model
             )  # FIXME: Decide when to use pl_module and when to use model
