@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../../img/favicon.ico" />
-    <title>Usage - HANNAH</title>
+    <title>TensorRT - HANNAH</title>
     <link rel="stylesheet" href="../../../css/theme.css" />
     <link rel="stylesheet" href="../../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Usage";
-        var mkdocs_page_input_path = "neural-architecture-search/nas/usage.md";
+        var mkdocs_page_name = "TensorRT";
+        var mkdocs_page_input_path = "deployment/deployment/tensorrt.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -81,33 +81,39 @@
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Neural Architecture Search</span></p>
-              <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../legacy/">NAS (Legacy)</a>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/legacy/">NAS (Legacy)</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="./">Usage</a>
-    <ul class="current">
-    </ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/usage/">Usage</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../search_spaces/">Search Spaces</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search_spaces/">Search Spaces</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../parametrization/">Parametrization</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/parametrization/">Parametrization</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../search/">Search</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/search/">Search</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../eval/">Evaluating Results</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/eval/">Evaluating Results</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../metrics/">Optimization Metrics</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../neural-architecture-search/nas/metrics/">Optimization Metrics</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Deployment</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/torchmobile/">Torch Mobile</a>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../torchmobile/">Torch Mobile</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/trax-Ultratrail/">T-Rax Ultratrail</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../trax-Ultratrail/">T-Rax Ultratrail</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/tvm/">TVM</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../tvm/">TVM</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../deployment/deployment/tensorrt/">TensorRT</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="./">TensorRT</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#todo">TODO:</a>
+    </li>
+    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Evaluation</span></p>
@@ -145,8 +151,8 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
-          <li class="breadcrumb-item">Neural Architecture Search</li>
-      <li class="breadcrumb-item active">Usage</li>
+          <li class="breadcrumb-item">Deployment</li>
+      <li class="breadcrumb-item active">TensorRT</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -156,10 +162,10 @@
             <div class="section" itemprop="articleBody">
               
                 <!--
-Copyright (c) 2023 University of Tübingen.
+Copyright (c) 2024 Hannah contributors.
 
 This file is part of hannah.
-See https://es-git.cs.uni-tuebingen.de/es/ai/hannah/hannah for further info.
+See https://github.com/ekut-es/hannah for further info.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -173,21 +179,36 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Coming soon</p>
-</div>
-<h1 id="introduction">Introduction</h1>
-<h1 id="usage">Usage</h1>
-<h2 id="nas-cli">NAS CLI</h2>
-<h2 id="cl-options">CL options</h2>
-<h2 id="debugging-in-vscode">Debugging in VSCode</h2>
+<h1 id="tensorrt-backend">TensorRT Backend</h1>
+<p>For deployment on NVIDIA targets we support TensorRT backends.
+Currently the TensorRT backend always compiles for the first GPU of the local system.</p>
+<h2 id="installation">Installation</h2>
+<p>The tensorrt module in the poetry shell needs to be installed seperately via pip:</p>
+<div class="codehilite"><pre><span></span><code>poetry shell
+pip install tensorrt
+</code></pre></div>
+
+<h2 id="configuration">Configuration</h2>
+<p>The backend supports the following configuration  options.</p>
+<dl>
+<dt>val_batches</dt>
+<dd>1 (number of batches used for validation)</dd>
+<dt>test_batches</dt>
+<dd>1 (number of batches used for test)</dd>
+<dt>val_frequency</dt>
+<dd>10 (run backend every n validation epochs)</dd>
+</dl>
+<h2 id="todo">TODO:</h2>
+<ul>
+<li>[ ] remote execution support</li>
+<li>[ ] profiling and feedback support</li>
+</ul>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../legacy/" class="btn btn-neutral float-left" title="NAS (Legacy)"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../search_spaces/" class="btn btn-neutral float-right" title="Search Spaces">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../tvm/" class="btn btn-neutral float-left" title="TVM"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../../evaluation/eval/" class="btn btn-neutral float-right" title="Evaluation">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -210,10 +231,10 @@ limitations under the License.
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../legacy/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../tvm/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../search_spaces/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../../../evaluation/eval/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
