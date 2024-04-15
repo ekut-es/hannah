@@ -96,6 +96,9 @@ renderer:
         - title: Evaluating Results
           name: nas/eval
           source: doc/nas/eval.md
+        - title: Optimization Metrics
+          name: nas/metrics
+          source: doc/nas/metrics.md
     - title: Deployment
       children:
         - title: Torch Mobile

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -40,7 +40,7 @@ msglogger = logging.getLogger(__name__)
 
 
 class SimpleModelTrainer:
-    def __init__(self, per_process_memory_fraction = None) -> None:
+    def __init__(self, per_process_memory_fraction=None) -> None:
         self.per_process_memory_fraction = per_process_memory_fraction
 
     def build_model(self, model, parameters):
@@ -54,6 +54,8 @@ class SimpleModelTrainer:
         return mod
 
     def run_training(self, model, num, global_num, config):
+        print("Running training:", num)
+
         # num is the number of jobs global_num is the number of models to be created
         if os.path.exists(str(num)):
             shutil.rmtree(str(num))
@@ -78,6 +80,7 @@ class SimpleModelTrainer:
                 )
                 module = model
                 trainer.fit(module)
+
                 ckpt_path = "best"
                 if trainer.fast_dev_run:
                     logging.warning(
@@ -135,6 +138,8 @@ class SimpleModelTrainer:
                 device = device % torch.cuda.device_count()
 
             if self.per_process_memory_fraction:
-                torch.cuda.set_per_process_memory_fraction(self.per_process_memory_fraction, device=device)
-                
+                torch.cuda.set_per_process_memory_fraction(
+                    self.per_process_memory_fraction, device=device
+                )
+
             config.trainer.devices = [device]

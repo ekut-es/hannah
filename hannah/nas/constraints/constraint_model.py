@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -151,7 +151,9 @@ class ConstraintModel:
     def solve(self, module, parameters=None, key=None, fix_vars=[]):
         self.soft_constrain_current_parametrization(module, parameters, key, fix_vars)
 
-    def soft_constrain_current_parametrization(self, module, parameters=None, key=None, fix_vars=[]):
+    def soft_constrain_current_parametrization(
+        self, module, parameters=None, key=None, fix_vars=[]
+    ):
         self.solver = []
         self.build_model(module._conditions)
         for solver in self.solver:

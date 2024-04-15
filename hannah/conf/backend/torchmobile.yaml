@@ -19,6 +19,3 @@
 
 
 _target_: hannah.callbacks.backends.TorchMobileBackend
-val_batches: 10
-test_batches: 10
-val_frequency: 10

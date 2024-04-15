@@ -77,15 +77,7 @@ def cuda_call(call):
 
 
 class TensorRTBackend(InferenceBackendBase):
-    def __init__(
-        self, val_batches=1, test_batches=1, val_frequency=10, warmup=10, repeat=30
-    ):
-        super().__init__(
-            val_batches=val_batches,
-            test_batches=test_batches,
-            val_frequency=val_frequency,
-        )
-
+    def __init__(self, warmup=10, repeat=30):
         if trt is None or cuda is None or cudart is None:
             raise RuntimeError(
                 "TensorRT is not available, please install with tensorrt extra activated."
