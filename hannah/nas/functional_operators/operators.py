@@ -187,6 +187,7 @@ class Linear(Op):
         new_linear = super().__call__(*operands)
         new_linear.in_features = operands[1].shape()[0]
         new_linear.out_features = operands[1].shape()[1]
+        operands[1].id = f"{new_linear.id}.{operands[1].id}"
         return new_linear
 
     def shape_fun(self):
