@@ -126,7 +126,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../profiling/">Profiling</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="./">API Documentation</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">API Documentation</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#onecyclelrconf-objects">OneCycleLRConf Objects</a>
     </li>
@@ -1148,6 +1148,8 @@ Example usage::</p>
 </code></pre></div>
 
 <p>A contextmanager to set deterministic algorithms</p>
+<p><a id="hannah.utils.tuple"></a></p>
+<h1 id="hannahutilstuple">hannah.utils.tuple</h1>
 <p><a id="hannah.logo"></a></p>
 <h1 id="hannahlogo">hannah.logo</h1>
 <p><a id="hannah.callbacks.summaries"></a></p>
@@ -2057,6 +2059,11 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 
 <p><strong>Arguments</strong>:</p>
 <p>x:</p>
+<p><a id="hannah.models.ai8x"></a></p>
+<h1 id="hannahmodelsai8x">hannah.models.ai8x</h1>
+<p><a id="hannah.models.ai8x.models"></a></p>
+<h1 id="hannahmodelsai8xmodels">hannah.models.ai8x.models</h1>
+<p>A search space based on the cifar 10 NASNet search space for ai85x devices from: htt</p>
 <p><a id="hannah.models.embedded_vision_net.operators"></a></p>
 <h1 id="hannahmodelsembedded_vision_netoperators">hannah.models.embedded_vision_net.operators</h1>
 <p><a id="hannah.models.embedded_vision_net.blocks"></a></p>
@@ -4730,6 +4737,8 @@ dilation : Union[int, Expression], optional
 </code></pre></div>
 
 <p>Alternative Identity()</p>
+<p><a id="hannah.nas.functional_operators"></a></p>
+<h1 id="hannahnasfunctional_operators">hannah.nas.functional_operators</h1>
 <p><a id="hannah.nas.functional_operators.executor"></a></p>
 <h1 id="hannahnasfunctional_operatorsexecutor">hannah.nas.functional_operators.executor</h1>
 <p><a id="hannah.nas.parameters.lazy"></a></p>
@@ -4790,6 +4799,8 @@ a scalar.</p>
 <h1 id="hannahnastesttest_description_ultratrail">hannah.nas.test.test_description_ultratrail</h1>
 <p><a id="hannah.nas.test.test_op_to_torch_conversion"></a></p>
 <h1 id="hannahnastesttest_op_to_torch_conversion">hannah.nas.test.test_op_to_torch_conversion</h1>
+<p><a id="hannah.nas.test.test_onnx_export"></a></p>
+<h1 id="hannahnastesttest_onnx_export">hannah.nas.test.test_onnx_export</h1>
 <p><a id="hannah.nas.test.test_lazy_torch"></a></p>
 <h1 id="hannahnastesttest_lazy_torch">hannah.nas.test.test_lazy_torch</h1>
 <p><a id="hannah.nas.test.test_add"></a></p>
@@ -4923,6 +4934,16 @@ the respective axis sizes</p>
 
 <p>Inline all search space functions, into the graph.</p>
 <p>This generates a standard pytorch.fx graph module containing only replacing the search space parametrizable functions with their equivalent form torch.functional`</p>
+<p><a id="hannah.nas.export.onnx"></a></p>
+<h1 id="hannahnasexportonnx">hannah.nas.export.onnx</h1>
+<p><a id="hannah.nas.export.onnx.eval"></a></p>
+<h4 id="eval_2">eval</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="n">exp_tree</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span>
+</code></pre></div>
+
+<p>Recursively evaluate expressions organized as a pytree</p>
+<p><a id="hannah.nas.export"></a></p>
+<h1 id="hannahnasexport">hannah.nas.export</h1>
 <p><a id="hannah.nas.plotter"></a></p>
 <h1 id="hannahnasplotter">hannah.nas.plotter</h1>
 <p><a id="hannah.nas.performance_prediction.examples.gcn_predictor_example"></a></p>
