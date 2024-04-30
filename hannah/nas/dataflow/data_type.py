@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2024 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from abc import ABC, abstractmethod
 from numbers import Number
 from typing import Tuple, Union
@@ -11,6 +29,9 @@ class DataType(ABC):
     @abstractmethod
     def range(self) -> Tuple[Number, Number]:
         ...
+
+    def as_numpy(self) -> str:
+        return ""
 
 
 class IntType(DataType):
@@ -34,6 +55,12 @@ class IntType(DataType):
 
         return (min_val, max_val)
 
+    def as_numpy(self) -> str:
+        if self.signed:
+            return f"np.int{self.bits}"
+        else:
+            return f"np.uint{self.bits}"
+
 
 class FloatType(DataType):
     def __init__(self, signed=True, significand_bits=23, exponent_bits=8):
@@ -42,7 +69,7 @@ class FloatType(DataType):
         self.exponent_bits = exponent_bits
 
     def bits(self) -> int:
-        bits = self.significand + self.exponent_bits
+        bits = self.significand_bits + self.exponent_bits
         if self.signed:
             bits += 1
 
@@ -60,6 +87,9 @@ class FloatType(DataType):
         )
         min_val = -1 * max_val
         return (min_val, max_val)
+
+    def as_numpy(self) -> str:
+        return f"float{self.bits()}"
 
 
 if __name__ == "__main__":

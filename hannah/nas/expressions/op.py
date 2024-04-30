@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -128,5 +128,7 @@ class UnaryOp(Op):
 
     def format(self, indent=2, length=80):
         ret = "(" + self.symbol
-        ret += " " + self._format_operand(self.operand) + ")"
+        ret += (
+            " " + self._format_operand(self.operand, indent=indent, length=length) + ")"
+        )
         return ret

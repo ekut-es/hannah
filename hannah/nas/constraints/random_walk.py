@@ -1,11 +1,34 @@
+#
+# Copyright (c) 2024 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import logging
+import random
 from copy import deepcopy
 from dataclasses import dataclass
-import random
 from typing import Any
+
 import numpy as np
+
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.utils import np_to_primitive
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,15 +61,22 @@ def hierarchical_parameter_dict(parameter, include_empty=False, flatten=False):
     return hierarchical_params
 
 
-CHOICES = {0: "conv", 1: "expand_reduce", 2: "reduce_expand", 3: "pooling"}
+CHOICES = {
+    0: "conv",
+    1: "expand_reduce",
+    2: "reduce_expand",
+    3: "pooling",
+    4: "sandglass",
+}
 
 
 def get_active_parameter(params):
+    # FIXME: this needs to be generalized
     active_params = {}
     params = hierarchical_parameter_dict(params)
     num_blocks = params["ChoiceOp_0"]["num_blocks"][""].value
     active_params["num_blocks"] = num_blocks + 1
-    for i in range(num_blocks+1):
+    for i in range(num_blocks + 1):
         current_block = f"block_{i}"
         depth = params[current_block]["ChoiceOp_0"]["depth"].value
         active_params[params[current_block]["ChoiceOp_0"]["depth"].name] = depth + 1
@@ -64,6 +94,7 @@ def get_active_parameter(params):
                     active_params[v.name] = v.value
                 elif "ChoiceOp" in k:
                     active_params[v.name] = CHOICES[v.value]
+
     return active_params
 
 
@@ -145,31 +176,42 @@ class RandomWalkConstraintSolver:
             ct = 0
             while ct < self.max_iterations:
                 active_params = get_active_parameter(params)
+
                 param_keys = [p for p in all_param_keys if p in active_params]
                 current = con.lhs.evaluate()
                 if con.evaluate():
                     self.solution.update(params)
                     solved_conditions.append(con)
-                    print(f"Solved constraint {i} with {ct} iterations.")
+                    logger.info(f"Solved constraint {i} with {ct} iterations.")
                     break
                 else:
                     new_target = lazy(con.lhs)
                     key_to_change = random.choice(param_keys)
-                    old_val = mod.parametrization(flatten=True)[key_to_change].current_value
+                    old_val = mod.parametrization(flatten=True)[
+                        key_to_change
+                    ].current_value
                     new_val = mod.parametrization(flatten=True)[key_to_change].sample()
 
                     j = 0
                     while not self.right_direction(current, new_target, direction):
-                        mod.parametrization(flatten=True)[key_to_change].set_current(old_val)
+                        mod.parametrization(flatten=True)[key_to_change].set_current(
+                            old_val
+                        )
 
                         key_to_change = random.choice(param_keys)
-                        old_val = mod.parametrization(flatten=True)[key_to_change].current_value
-                        new_val = mod.parametrization(flatten=True)[key_to_change].sample()
+                        old_val = mod.parametrization(flatten=True)[
+                            key_to_change
+                        ].current_value
+                        new_val = mod.parametrization(flatten=True)[
+                            key_to_change
+                        ].sample()
                         new_target = lazy(con.lhs)
-                        param_keys.remove(key_to_change)
+                        # param_keys.remove(key_to_change)
                         j += 1
                         if j > 1000:
                             raise Exception("Timeout: Failed to find improvement.")
+                        if len(param_keys) == 0:
+                            break  # FIXME: break or fail?
 
                     # print(f"Param: {key_to_change}: {old_val} -> {new_val}")
                     valid = True
@@ -180,18 +222,22 @@ class RandomWalkConstraintSolver:
                                 print("Solution violated already satisfied constraint")
                                 # reverse modification to satisfy already solved constraints again
                                 param_keys.remove(key_to_change)
-                                mod.parametrization(flatten=True)[key_to_change].set_current(old_val)
+                                mod.parametrization(flatten=True)[
+                                    key_to_change
+                                ].set_current(old_val)
                                 valid = False
                     else:
                         print("No improvement")
-                        mod.parametrization(flatten=True)[key_to_change].set_current(old_val)
+                        mod.parametrization(flatten=True)[key_to_change].set_current(
+                            old_val
+                        )
                         valid = False
                     if valid:
                         # update proposed solution for this constraint
                         params[key_to_change] = new_val
                     print(f"Constraint lhs: {lazy(con.lhs)} - rhs: {lazy(con.rhs)}")
                     ct += 1
-                    if ct == self.max_iterations-1:
+                    if ct == self.max_iterations - 1:
                         print(f"Failed to solve constraint {i}.")
                         raise Exception(f"Failed to solve constraint {i}.")
 
