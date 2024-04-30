@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,13 +23,9 @@ from copy import deepcopy
 from typing import Optional, Union
 
 import numpy as np
-from omegaconf import DictConfig
 
 from ..core.expression import Expression
 from ..core.parametrized import is_parametrized
-
-from hydra.utils import instantiate
-from datetime import datetime
 
 
 class Parameter(Expression):
@@ -136,7 +132,7 @@ class IntScalarParameter(Parameter):
 
     def sample(self):
         min, max = self.get_bounds()
-        values = np.arange(min, max + 1 , self.step_size)
+        values = np.arange(min, max + 1, self.step_size)
         # self.current_value = self.rng.integers(min, max+1)
         self.current_value = self.rng.choice(values)
         return self.current_value

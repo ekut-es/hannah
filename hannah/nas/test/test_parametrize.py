@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ class ParametrizedTest:
         self.c = c
         self.id = "parametrized_test"
 
+
 @parametrize
 class NestedParametrizedTest:
     def __init__(self, t: ParametrizedTest = None):
@@ -38,7 +39,7 @@ class NestedParametrizedTest:
 
 
 def test_parametrization():
-    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, name='a'))
+    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, name="a"))
     assert isinstance(parametrized_test.a, IntScalarParameter)
     assert parametrized_test.b is None
     assert parametrized_test.c == "test"
@@ -52,7 +53,9 @@ def test_parametrization():
 
 def test_sample():
     rng = default_rng(seed=321)
-    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, name='a', rng=rng))
+    parametrized_test = ParametrizedTest(
+        a=IntScalarParameter(min=10, max=20, name="a", rng=rng)
+    )
     parametrized_test.sample()
     assert parametrized_test.a.current_value == 14
     assert parametrized_test.a.instantiate() == 14
@@ -61,7 +64,7 @@ def test_sample():
 def test_sample_float():
     rng = default_rng(seed=321)
     parametrized_test = ParametrizedTest(
-        a=FloatScalarParameter(min=0.1, max=3, name='a', rng=rng)
+        a=FloatScalarParameter(min=0.1, max=3, name="a", rng=rng)
     )
     parametrized_test.sample()
     assert parametrized_test.a.current_value == 2.010423416621207
@@ -71,7 +74,7 @@ def test_sample_float():
 def test_sample_nested():
     rng = default_rng(seed=321)
     parametrized_test = NestedParametrizedTest(
-        t=ParametrizedTest(a=IntScalarParameter(min=10, max=11, name='a', rng=rng))
+        t=ParametrizedTest(a=IntScalarParameter(min=10, max=11, name="a", rng=rng))
     )
     parametrized_test.sample()
 
@@ -86,7 +89,9 @@ def test_set_current():
 
 def test_set_params():
     rng = default_rng(seed=321)
-    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng, name='a'))
+    parametrized_test = ParametrizedTest(
+        a=IntScalarParameter(min=10, max=20, rng=rng, name="a")
+    )
     parametrized_test.set_params(a=16)
 
     assert parametrized_test.a.current_value == 16
@@ -95,9 +100,11 @@ def test_set_params():
 def test_set_params_nested():
     rng = default_rng(seed=321)
     parametrized_test = NestedParametrizedTest(
-        t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng, name='a'))
+        t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng, name="a"))
     )
-    other_test_object = ParametrizedTest(a=IntScalarParameter(min=0, max=3, rng=rng, name='a'))
+    other_test_object = ParametrizedTest(
+        a=IntScalarParameter(min=0, max=3, rng=rng, name="a")
+    )
 
     parametrized_test.set_params(t=other_test_object)
     assert parametrized_test.t == other_test_object
@@ -122,7 +129,9 @@ def test_set_params_nested():
 
 def test_instantiate():
     rng = default_rng(seed=321)
-    parametrized_test = ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng, name='a'))
+    parametrized_test = ParametrizedTest(
+        a=IntScalarParameter(min=10, max=20, rng=rng, name="a")
+    )
     parametrized_test.sample()
     instance = parametrized_test.instantiate()
     assert instance.a == 14
@@ -136,9 +145,11 @@ def test_instantiate():
 
     rng = default_rng(seed=321)
     parametrized_test = NestedParametrizedTest(
-        t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng, name='a'))
+        t=ParametrizedTest(a=IntScalarParameter(min=10, max=20, rng=rng, name="a"))
     )
-    other_test_object = ParametrizedTest(a=IntScalarParameter(min=0, max=3, rng=rng, name='a'))
+    other_test_object = ParametrizedTest(
+        a=IntScalarParameter(min=0, max=3, rng=rng, name="a")
+    )
 
     parametrized_test.set_params(t=other_test_object)
     parametrized_test.set_params(t={"a": 2})
