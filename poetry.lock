@@ -3225,22 +3225,6 @@ protobuf = "*"
 sympy = "*"
 
 [[package]]
-name = "onnxscript"
-version = "0.1.0.dev20240413"
-description = "Naturally author ONNX functions and models using a subset of Python"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "onnxscript-0.1.0.dev20240413-py3-none-any.whl", hash = "sha256:d11be58ead2a5fa59f41a6a287278f7ee01135e3dbd621be865671dcb610642e"},
-    {file = "onnxscript-0.1.0.dev20240413.tar.gz", hash = "sha256:010a548bd39baf79647e852286f7fd8c78f289326d5e178ce3ef389c0a0f3e88"},
-]
-
-[package.dependencies]
-numpy = "*"
-onnx = ">=1.15"
-typing_extensions = "*"
-
-[[package]]
 name = "opencv-python"
 version = "4.9.0.80"
 description = "Wrapper package for OpenCV python bindings."
@@ -3259,10 +3243,10 @@ files = [
 [package.dependencies]
 numpy = [
     {version = ">=1.21.0", markers = "python_version == \"3.9\" and platform_system == \"Darwin\" and platform_machine == \"arm64\""},
+    {version = ">=1.19.3", markers = "platform_system == \"Linux\" and platform_machine == \"aarch64\" and python_version >= \"3.8\" and python_version < \"3.10\" or python_version > \"3.9\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_system != \"Darwin\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_machine != \"arm64\" and python_version < \"3.10\""},
     {version = ">=1.23.5", markers = "python_version >= \"3.11\""},
     {version = ">=1.21.4", markers = "python_version >= \"3.10\" and platform_system == \"Darwin\" and python_version < \"3.11\""},
     {version = ">=1.21.2", markers = "platform_system != \"Darwin\" and python_version >= \"3.10\" and python_version < \"3.11\""},
-    {version = ">=1.19.3", markers = "platform_system == \"Linux\" and platform_machine == \"aarch64\" and python_version >= \"3.8\" and python_version < \"3.10\" or python_version > \"3.9\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_system != \"Darwin\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_machine != \"arm64\" and python_version < \"3.10\""},
 ]
 
 [[package]]
@@ -3284,10 +3268,10 @@ files = [
 [package.dependencies]
 numpy = [
     {version = ">=1.21.0", markers = "python_version == \"3.9\" and platform_system == \"Darwin\" and platform_machine == \"arm64\""},
+    {version = ">=1.19.3", markers = "platform_system == \"Linux\" and platform_machine == \"aarch64\" and python_version >= \"3.8\" and python_version < \"3.10\" or python_version > \"3.9\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_system != \"Darwin\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_machine != \"arm64\" and python_version < \"3.10\""},
     {version = ">=1.23.5", markers = "python_version >= \"3.11\""},
     {version = ">=1.21.4", markers = "python_version >= \"3.10\" and platform_system == \"Darwin\" and python_version < \"3.11\""},
     {version = ">=1.21.2", markers = "platform_system != \"Darwin\" and python_version >= \"3.10\" and python_version < \"3.11\""},
-    {version = ">=1.19.3", markers = "platform_system == \"Linux\" and platform_machine == \"aarch64\" and python_version >= \"3.8\" and python_version < \"3.10\" or python_version > \"3.9\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_system != \"Darwin\" and python_version < \"3.10\" or python_version >= \"3.9\" and platform_machine != \"arm64\" and python_version < \"3.10\""},
 ]
 
 [[package]]
@@ -3303,6 +3287,66 @@ files = [
 
 [package.dependencies]
 et-xmlfile = "*"
+
+[[package]]
+name = "optree"
+version = "0.11.0"
+description = "Optimized PyTree Utilities."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "optree-0.11.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:fa9ed745d4cbac5e15df70339b30867ba033542b87f7b734f4cacae5ec73ba00"},
+    {file = "optree-0.11.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f53951bfb640417558568284a8949d67bcdbf21fa0113107e20bd9403aa20b2b"},
+    {file = "optree-0.11.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:0df9a3923725aabb112ec7f10c74fa96b6c640da1cd30e7bc62fd4b03ef02875"},
+    {file = "optree-0.11.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:979ffc2b96f16595c219fb7a89597dd2fa00ac47a3b411fdcf8ae6821da52290"},
+    {file = "optree-0.11.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:228b97e8c991739b10c8548c118747ba32ee765f88236342e492bf9648afc0bc"},
+    {file = "optree-0.11.0-cp310-cp310-win_amd64.whl", hash = "sha256:a91840f9d45e7c01f151ba1815ae32b4c3c21e4290298772ee4b13314f729856"},
+    {file = "optree-0.11.0-cp310-cp310-win_arm64.whl", hash = "sha256:31d444684ebd8c9f09a3d806fb3277843138ef9952b7a2954908e440e3b22519"},
+    {file = "optree-0.11.0-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:a5f37bcfe4e363e3bb8d36c5698fb829546956b2fe88951994387162a1859625"},
+    {file = "optree-0.11.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:6e8c3757088cd7fce666f2a5e031b65d7898e210452380d2657c0fc0a7ec9932"},
+    {file = "optree-0.11.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:39bed744a61e2f795e172d2853779ac59b8dea236982dc160ea22063afc99ca3"},
+    {file = "optree-0.11.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5e250144eacdd5813dec0b18d91df0229197e3be402db42fd8e254ec90ea343d"},
+    {file = "optree-0.11.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bc17f9d085cd75a2de4f299a9c5e3c3520138eac7596061e581230b03862b44d"},
+    {file = "optree-0.11.0-cp311-cp311-win_amd64.whl", hash = "sha256:a64df43fce2d8eeafd7db6e27447c56b3fa64842df847819684b3b1cc254c016"},
+    {file = "optree-0.11.0-cp311-cp311-win_arm64.whl", hash = "sha256:d666099a78f7bf31bf3a520d6871ddcae65484bcff095fc4271a391553b09c75"},
+    {file = "optree-0.11.0-cp312-cp312-macosx_10_9_universal2.whl", hash = "sha256:9bf322ad14f907ad4660ca286e731e750546d54934a94cc5ba7efe8860c60ab4"},
+    {file = "optree-0.11.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:64c2e00fe508f50a42c50838df0d1f5be0dce5b4bef2373db8ad72b860211015"},
+    {file = "optree-0.11.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:738e8bf4158e9c11cd051d89c2e453aeacf80ff8719ebc3251069015646554d0"},
+    {file = "optree-0.11.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0db6968394096223881053dffdcaf2b8e220fd85db904f14aa931e4dc422c046"},
+    {file = "optree-0.11.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5e5df0e8aaca124cc1ffca311786cc909810f3c046de090729cdafbf910082f8"},
+    {file = "optree-0.11.0-cp312-cp312-win_amd64.whl", hash = "sha256:ee208f0bec6436085a9fa3ae98af54bfcb8822086894fc1ade283e80a6f11fd7"},
+    {file = "optree-0.11.0-cp312-cp312-win_arm64.whl", hash = "sha256:26b1230f9b75b579923a4f837c7c13db8b8d815cf68ce5af31dda5d818a877b2"},
+    {file = "optree-0.11.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:6cdd625dab2dff5374ff9c6792e8702fced8f0ea713ce959fc8f95499b5ecb2f"},
+    {file = "optree-0.11.0-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:234a4f8f97a1217f13390df7ac416771689749d9a1c8eda31bf8622cd333219e"},
+    {file = "optree-0.11.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6a406eee5acd3fd4875fa44c3972d29ae6d4329e7296e9219986fe6ff8e92ea0"},
+    {file = "optree-0.11.0-cp37-cp37m-win_amd64.whl", hash = "sha256:63e020a34b7168b5d0701a265c7c95b07984ff699d4894b20fa601282be88f20"},
+    {file = "optree-0.11.0-cp38-cp38-macosx_10_9_universal2.whl", hash = "sha256:e2d47bd28eff690eb2f7432e490265a291b04d6d346cf7b586491b2e2337bf97"},
+    {file = "optree-0.11.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:2bc08fb9691f43afc3a01119dead6b823ce3d7239e42fc3e47d4028eed50a6a2"},
+    {file = "optree-0.11.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:3cdc9fac9888d9eff11128ccfc4d4c10309163e372f312f7942ecee8df3d7824"},
+    {file = "optree-0.11.0-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2b3bb59324d635f2015bb3e237fd772b1fd548eee6cc80e008fbe0f092e9228d"},
+    {file = "optree-0.11.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b201a9405e250cf5770955863af2a236e382bdf5e4e086897ff03c41418c39da"},
+    {file = "optree-0.11.0-cp38-cp38-win_amd64.whl", hash = "sha256:162ed3ff2eb3f1c358e131e72c025f2b93d69b906e9057a811d014032ec71dc8"},
+    {file = "optree-0.11.0-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:00a63f10d4a476e8e9aa2988daba9b2e88cb369c5aacc12545957d7d00bcd1a7"},
+    {file = "optree-0.11.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:418850ceff364f51a6d81f32a1efd06a4e2d8df79a162e892685bc20c0aedd72"},
+    {file = "optree-0.11.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:b8126d81ecb2c9e3554420834014ba343251f564c905ee3bef09d205b924b0c0"},
+    {file = "optree-0.11.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4144126dd3c2ece2d2dd1d5e0b39fb91adf1c46f660c2c5a2df7f80666989d5d"},
+    {file = "optree-0.11.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b9d236bc1491a5e366921b95fecc05aa6ff55989a81f2242cd11121b82c24503"},
+    {file = "optree-0.11.0-cp39-cp39-win_amd64.whl", hash = "sha256:b26ac807d8993b7e43081b4b7bbb0378b4e5f3e6525daf923c470bc176cc3327"},
+    {file = "optree-0.11.0-cp39-cp39-win_arm64.whl", hash = "sha256:9d9d644e5448db9f32e2497487aca3bb2d3f92cbb50429a411ccda3f1f0968f3"},
+    {file = "optree-0.11.0.tar.gz", hash = "sha256:8e6a46e95c3ea8546055087d6fe52a1dcd56de5182365f1469106cc72cdf3307"},
+]
+
+[package.dependencies]
+typing-extensions = ">=4.0.0"
+
+[package.extras]
+benchmark = ["dm-tree (>=0.1,<0.2.0a0)", "jax[cpu] (>=0.4.6,<0.5.0a0)", "pandas", "tabulate", "termcolor", "torch (>=2.0,<2.1.0a0)", "torchvision"]
+docs = ["docutils", "jax[cpu]", "numpy", "sphinx (>=5.2.1)", "sphinx-autoapi", "sphinx-autobuild", "sphinx-autodoc-typehints (>=1.19.2)", "sphinx-copybutton", "sphinx-rtd-theme", "sphinxcontrib-bibtex", "torch"]
+jax = ["jax"]
+lint = ["black (>=22.6.0)", "cpplint", "doc8 (<1.0.0a0)", "flake8", "flake8-bugbear", "flake8-comprehensions", "flake8-docstrings", "flake8-pyi", "flake8-simplify", "isort (>=5.11.0)", "mypy (>=0.990)", "pre-commit", "pydocstyle", "pyenchant", "pylint[spelling] (>=2.15.0)", "ruff", "xdoctest"]
+numpy = ["numpy"]
+test = ["pytest", "pytest-cov", "pytest-xdist"]
+torch = ["torch"]
 
 [[package]]
 name = "optuna"
@@ -4979,6 +5023,22 @@ files = [
 ]
 
 [[package]]
+name = "spox"
+version = "0.10.3"
+description = "A framework for constructing ONNX computational graphs."
+optional = false
+python-versions = ">=3.8.0"
+files = [
+    {file = "spox-0.10.3-py3-none-any.whl", hash = "sha256:9f412679d54386088bb213af03eb63284a66e41a93bb7051e3eb1b3e125cd9db"},
+    {file = "spox-0.10.3.tar.gz", hash = "sha256:8ca8eba0acff9dd6b0227218e477f2c3afc08e2202ea2c0558ec5d21c231b81e"},
+]
+
+[package.dependencies]
+numpy = "*"
+onnx = ">=1.13"
+packaging = "*"
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.29"
 description = "Database Abstraction Library"
@@ -6056,4 +6116,4 @@ vision = ["albumentations", "gdown", "imagecorruptions", "kornia", "pycocotools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9 <3.12"
-content-hash = "04fa89cc74f2d17b888433dfc4554a5d03864eff24cef75a0bfefd9ac34c26c7"
+content-hash = "5c7bce52fa128d08640b9724573eda568b27bb105b06d680245ae232f4140626"

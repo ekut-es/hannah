@@ -16,31 +16,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .imports import lazy_import
-from .tuple import pair, quadruple, single, triple
-from .utils import (
-    clear_outputs,
-    common_callbacks,
-    extract_from_download_cache,
-    fullname,
-    git_version,
-    list_all_files,
-    log_execution_env_state,
-    set_deterministic,
-)
+import collections
+from itertools import repeat
+from typing import Any, Dict, List
 
-__all__ = [
-    "log_execution_env_state",
-    "list_all_files",
-    "extract_from_download_cache",
-    "common_callbacks",
-    "clear_outputs",
-    "fullname",
-    "set_deterministic",
-    "lazy_import",
-    "git_version",
-    "single",
-    "pair",
-    "triple",
-    "quadruple",
-]
+
+def _ntuple(n, name="parse"):
+    def parse(x):
+        if isinstance(x, collections.abc.Iterable):
+            return tuple(x)
+        return tuple(repeat(x, n))
+
+    parse.__name__ = name
+    return parse
+
+
+single = _ntuple(1, "_single")
+pair = _ntuple(2, "_pair")
+triple = _ntuple(3, "_triple")
+quadruple = _ntuple(4, "_quadruple")
