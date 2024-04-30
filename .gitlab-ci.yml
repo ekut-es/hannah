@@ -50,7 +50,7 @@ before_script:
   - ulimit -a
 
 build_container:
-  image: gcr.io/kaniko-project/executor:debug
+  image: gcr.io/kaniko-project/executor:v1.14.0-debug
   stage: build
   script:
     - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
