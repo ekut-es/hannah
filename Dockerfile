@@ -33,4 +33,4 @@ COPY poetry.lock pyproject.toml /deps/
 
 # Install dependencies
 RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi -E vision --no-root
+  && poetry install --no-interaction --no-ansi --all-extras --no-root

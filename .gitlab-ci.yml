@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2023 Hannah contributors.
+## Copyright (c) 2024 Hannah contributors.
 ##
 ## This file is part of hannah.
 ## See https://github.com/ekut-es/hannah for further info.
@@ -44,10 +44,20 @@ before_script:
 
   # install and manage dependencies with poetry
   - poetry config installer.max-workers 10
-  - poetry install -E vision
+  - poetry install --all-extras
 
   # Show limits
   - ulimit -a
+
+build_container:
+  image: gcr.io/kaniko-project/executor:debug
+  stage: build
+  script:
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+  tags:
+    - docker
+
+
 
 test_prebuilt_docker:
   stage: test
@@ -133,6 +143,33 @@ test_python_310:
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+test_python_311:
+  stage: test
+  image: python:3.11
+  script:
+    - set -e
+    - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
+    - export PYTHONPATH=$PWD
+    - export COVERAGE_PROCESS_START=$PWD/.coveragerc
+    - poetry run coverage run --source hannah -m pytest test
+    - unset PYTHONPATH
+    - unset COVERAGE_PROCESS_START
+    - poetry run coverage report
+    - poetry run coverage xml
+  tags:
+    - docker
+  interruptible: true
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+  dependencies: []
+  cache:
+    paths:
+      - .cache/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 
 build_docs:
@@ -215,7 +252,7 @@ deploy to github:
   only:
     - main
     - pub/.*
-  script: 
+  script:
     - env
     - ./scripts/git-push git@github.com:ekut-es/hannah.git $CI_COMMIT_REF_NAME
   tags:
