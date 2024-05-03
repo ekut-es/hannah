@@ -4261,13 +4261,22 @@ files = [
 
 [[package]]
 name = "tensorrt"
-version = "8.6.1.post1"
+version = "8.6.0"
 description = "A high performance deep learning inference library"
-optional = true
-python-versions = ">=3.6"
+optional = false
+python-versions = "*"
 files = [
-    {file = "tensorrt-8.6.1.post1.tar.gz", hash = "sha256:0ca64da500480a2d204c18d7c6791ec462c163ae4fa1db574b8c211da1116ea2"},
+    {file = "tensorrt-8.6.0-cp310-none-manylinux_2_17_x86_64.whl", hash = "sha256:8850d470a92e17e65686fce2a5105dc51fc89f2b438d60d66027288a165732ba"},
+    {file = "tensorrt-8.6.0-cp36-none-manylinux_2_17_x86_64.whl", hash = "sha256:1eb0b9b29f3f6c9a6f737b95d1edfe63353dd6b5427478b1c580c9cb72340749"},
+    {file = "tensorrt-8.6.0-cp37-none-manylinux_2_17_x86_64.whl", hash = "sha256:ae2e99fb98952d71d6a7443335f7f8e1a8c471b8136e33bb491f11e410dea3cd"},
+    {file = "tensorrt-8.6.0-cp38-none-manylinux_2_17_x86_64.whl", hash = "sha256:ba9eb8d1a7c32c63981b4203b72b90b38402ad000ec554fb8dd85a7401de60dd"},
+    {file = "tensorrt-8.6.0-cp39-none-manylinux_2_17_x86_64.whl", hash = "sha256:4dc971cd8def3b41086c34d93ca8bff56f5d7d9a2ab5f8738307d040b0bf751e"},
 ]
+
+[package.dependencies]
+nvidia-cublas-cu12 = "*"
+nvidia-cuda-runtime-cu12 = "*"
+nvidia-cudnn-cu12 = "*"
 
 [package.extras]
 numpy = ["numpy"]
@@ -4911,4 +4920,4 @@ vision = ["albumentations", "gdown", "imagecorruptions", "kornia", "pycocotools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9 <3.12"
-content-hash = "ac0d3bb68cfdae31d58b78ccc7bd6d5e82e4cfddf352ddd914c091040971bf5f"
+content-hash = "e25cadd0f6058212a4456cbfdd82c7c525f6892ed13e5512da7a7e71e9912e9b"
