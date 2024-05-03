@@ -22,7 +22,8 @@ from typing import Any, Union
 import numpy as np
 import onnx
 import spox
-import spox.opset.ai.onnx.v19 as op
+import spox.opset.ai.onnx.v20 as op
+import torch
 from optree import tree_map
 from spox._function import to_function
 
@@ -44,6 +45,7 @@ from ..functional_operators.operators import (
     Linear,
     MaxPooling,
     Relu,
+    Requantize,
     SelfAttention2d,
 )
 from ..parameters.parameters import Parameter
@@ -154,14 +156,26 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
                 dtype = "float32"
                 scale = op.constant(value=np.ones(channels, dtype=dtype))
                 bias = op.constant(value=np.zeros(channels, dtype=dtype))
-                res, _, _ = op.batch_normalization(
-                    node_cache[node.operands[0]],
-                    scale,
-                    bias,
-                    node_cache[node.operands[1]],
-                    node_cache[node.operands[2]],
-                    training_mode=1,
-                )
+
+                X = node_cache[node.operands[0]]
+                mean = node_cache[node.operands[1]]
+                var = node_cache[node.operands[2]]
+
+                epsilon = 1e-5
+
+                # We only use non affine batchnorms at the moment, this means we can use the following formula
+                @to_function("BatchNorm", "hannah")
+                def batch_norm2d(
+                    x: spox.Var,
+                    mean: spox.Var,
+                    var: spox.Var,
+                    scale: spox.Var,
+                    bias: spox.Var,
+                    epsilon: spox.Var,
+                ):
+                    return [op.batch_norm(x, scale, bias, mean, var, epsilon)]
+
+                res = op.div(op.sub(X, mean), op.sqrt(var + epsilon))
             elif isinstance(node, InterleaveChannels):
                 step_size = eval(node.step_size)
                 x = node_cache[node.operands[0]]
@@ -209,6 +223,32 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
             elif isinstance(node, ChoiceOp):
                 switch = eval(node.switch)
                 res = node_cache[node.options[switch]]
+            elif isinstance(node, Requantize):
+                dtype = eval(node.dtype)
+                scale = eval(node.scale)
+                zero_point = eval(node.zero_point)
+                ch_axis = eval(node.ch_axis)
+                if dtype == torch.quint8:
+                    zero_point = zero_point.astype(np.uint8)
+                elif dtype != torch.qint8:
+                    zero_point = zero_point.astype(np.int8)
+                else:
+                    raise NotImplementedError(
+                        f"Requantize is only supported for int8(types), got {dtype}"
+                    )
+
+                zero_point = op.constant(value=zero_point)
+                scale = op.constant(value=scale)
+
+                res = op.quantize_linear(
+                    node_cache[node.operands[0]],
+                    scale,
+                    zero_point,
+                    axis=ch_axis,
+                )
+
+                res = op.dequantize_linear(res, scale, zero_point, axis=ch_axis)
+
             else:
                 raise NotImplementedError(f"Unsupported operator: {node}")
 

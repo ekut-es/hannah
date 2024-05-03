@@ -68,11 +68,7 @@ class SimpleModelTrainer:
             logger = TensorBoardLogger(".")
 
             self.setup_seed(config)
-            print("=======")
-            print(config.trainer.devices)
             self.setup_devices(num, config, logger)
-            print(config.trainer.devices)
-            print("=========")
             callbacks, opt_monitor, opt_callback = setup_callbacks(config)
             try:
                 trainer = instantiate(

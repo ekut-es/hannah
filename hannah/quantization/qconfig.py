@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -54,29 +54,6 @@ class STE(autograd.Function):
         grad_inputs = grad_outputs * gate
 
         return grad_inputs, None
-
-
-class QuantizationLoss(nn.Module):
-    def __init__(self, bits=8):
-        super().__init__()
-
-        self.quantization_loss = torch.tensor([0.0])
-        self.scale = torch.nn.Parameter(torch.tensor([1 / 128]))
-        self.max = 127
-
-    def forward(self, x):
-        self.scale = self.scale.to(x.device)
-        self.quantization_loss = self.quantization_loss.to(x.device)
-        scaled_x = (
-            torch.clamp(torch.round(x / self.scale), -self.max, self.max) * self.scale
-        )
-
-        self.quantization_loss = (scaled_x - x).norm(1)
-
-        if not self.training:
-            x = scaled_x
-
-        return x
 
 
 class FixedpointObserver(ObserverBase):

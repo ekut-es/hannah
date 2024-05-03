@@ -33,6 +33,7 @@ from omegaconf import OmegaConf
 from hannah.callbacks.optimization import HydraOptCallback
 from hannah.nas.functional_operators.op import Tensor
 from hannah.nas.graph_conversion import model_to_graph
+from hannah.nas.performance_prediction.protocol import FitablePredictor
 from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.search.sampler.aging_evolution import FitnessFunction
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
@@ -145,7 +146,8 @@ class DirectNAS(NASBase):
             for name, config in predictor_config.items():
                 predictor = instantiate(config)
                 if os.path.exists("performance_data"):
-                    predictor.load("performance_data")
+                    if isinstance(predictor, FitablePredictor):
+                        predictor.load("performance_data")
                 self.predictors[name] = predictor
 
         if self.constraint_model:
