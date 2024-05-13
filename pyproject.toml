@@ -66,11 +66,9 @@ dgl = "1.1.3"
 pytorch-lightning = "^2.1.3"
 onnx = "^1.16.0"
 cuda-python = {version = "^12.1.0", optional = true}
-tensorrt = "8.6.0"
 spox = "^0.11.0"
 optree = "^0.11.0"
-
-
+tensorrt = {version = "^10.0.1", optional = true}
 
 [tool.poetry.dev-dependencies]
 pytest = ">=7.2.0"
@@ -106,6 +104,12 @@ hannah-nas-eval = "hannah.nas.eval.__main__:main"
 [tool.poetry.group.dev.dependencies]
 pyre-check = "^0.9.17"
 pytest-xdist = "^3.1.0"
+
+
+[[tool.poetry.source]]
+name = "nvidia"
+url = "https://pypi.nvidia.com/"
+priority = "supplemental"
 
 [build-system]
 requires = ["poetry>=0.12"]

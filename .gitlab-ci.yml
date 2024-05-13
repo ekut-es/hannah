@@ -52,11 +52,22 @@ before_script:
 build_container:
   image:
     name: gcr.io/kaniko-project/executor:v1.14.0-debug
-    entrypoint: [""]
+    entrypoint: ["/bin/sh"]
   before_script: []
   stage: build
   script:
     - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination "$CI_REGISTRY_IMAGE:main"
+  tags:
+    - docker
+
+build_container_mlonmcu:
+  image:
+    name: gcr.io/kaniko-project/executor:v1.14.0-debug
+    entrypoint: ["/bin/sh"]
+  before_script: []
+  stage: build
+  script:
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile.mlonmcu --destination "$CI_REGISTRY_IMAGE:mlonmcu"
   tags:
     - docker
 
