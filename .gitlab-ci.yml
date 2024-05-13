@@ -52,7 +52,7 @@ before_script:
 build_container:
   image:
     name: gcr.io/kaniko-project/executor:v1.14.0-debug
-    entrypoint: ["/bin/sh"]
+    entrypoint: [""]
   before_script: []
   stage: build
   script:
@@ -63,7 +63,7 @@ build_container:
 build_container_mlonmcu:
   image:
     name: gcr.io/kaniko-project/executor:v1.14.0-debug
-    entrypoint: ["/bin/sh"]
+    entrypoint: [""]
   before_script: []
   stage: build
   script:
