@@ -5062,4 +5062,4 @@ vision = ["albumentations", "gdown", "imagecorruptions", "kornia", "pycocotools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9 <3.12"
-content-hash = "31be5bd0ce5d0c46aee8c93d316421ea4d713e3b56e6d999cd268a3063257c85"
+content-hash = "468ddc680e827778251d83ab67bc879cf03c0b7ad893f30decd572e3f8ade487"
