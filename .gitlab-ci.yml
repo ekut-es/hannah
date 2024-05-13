@@ -67,7 +67,7 @@ build_container_mlonmcu:
   before_script: []
   stage: build
   script:
-    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile.mlonmcu --destination "$CI_REGISTRY_IMAGE:mlonmcu"
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination "$CI_REGISTRY_IMAGE:mlonmcu"
   tags:
     - docker
 
