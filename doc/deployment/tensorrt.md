@@ -22,7 +22,8 @@ For deployment on NVIDIA targets we support TensorRT backends.
 Currently the TensorRT backend always compiles for the first GPU of the local system.
 
 ## Installation
-The tensorrt module has been added as poetry dependency. It can be installed using ``poetry install -E tensorrt`
+
+Tensorrt is unfortunately not compatible to poetry installation and must be installed separately `pip install tensorrt`
 
 ## Configuration
 
