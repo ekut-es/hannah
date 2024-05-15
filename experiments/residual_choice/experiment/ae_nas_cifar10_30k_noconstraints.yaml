@@ -1,0 +1,35 @@
+# @package _global_
+defaults:
+  - override /nas: aging_evolution_nas
+  - override /model: embedded_vision_net
+  - override /dataset: cifar10
+  - override /nas/constraint_model: random_walk
+
+
+model:
+  num_classes: 10
+
+  constraints:
+    - name: weights
+      #upper: 150000
+    - name: macs
+      #upper: 128000000
+
+
+
+nas:
+  budget: 600
+  n_jobs: 1
+  num_selected_candidates: 20
+  total_candidates: 50
+  bounds:
+    val_error: 0.1
+    total_macs: 128000000
+    total_weights: 30000
+
+
+
+
+seed: [1234]
+
+experiment_id: "ae_nas_cifar10_w30000_m128000000_noconstraints"

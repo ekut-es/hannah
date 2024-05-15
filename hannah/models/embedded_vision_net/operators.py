@@ -107,6 +107,11 @@ def choice(input, *choices, switch=None):
     return ChoiceOp(*choices, switch=switch)(input)
 
 
+def alternative_paths(*exits, switch):
+    return ChoiceOp(*exits, switch=switch)()
+
+
+# ALIAS for alternative paths
 def dynamic_depth(*exits, switch):
     return ChoiceOp(*exits, switch=switch)()
 

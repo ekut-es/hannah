@@ -117,7 +117,7 @@ class IntScalarParameter(Parameter):
     def evaluate_field(self, field_str):
         field = getattr(self, field_str)
         if isinstance(field, Parameter):
-            return field.instantiate()
+            return int(field.instantiate())
         elif isinstance(field, int):
             return field
         else:
@@ -134,7 +134,7 @@ class IntScalarParameter(Parameter):
         min, max = self.get_bounds()
         values = np.arange(min, max + 1, self.step_size)
         # self.current_value = self.rng.integers(min, max+1)
-        self.current_value = self.rng.choice(values)
+        self.current_value = int(self.rng.choice(values))
         return self.current_value
 
     def instantiate(self):
@@ -207,7 +207,7 @@ class CategoricalParameter(Parameter):
         idx = int(self.rng.choice(range(len(self.choices))))
         self.current_value = self.choices[idx]
         if is_parametrized(self.current_value):
-            self.current_value = self.current_value.sample()
+            self.current_value = self.current_value.sample()  # FIXME: This doesnt seem right? It should probably just call sample but not assign to SELF current value
         return self.current_value
 
     def instantiate(self):

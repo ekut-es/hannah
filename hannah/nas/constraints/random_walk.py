@@ -155,6 +155,7 @@ class RandomWalkConstraintSolver:
                 return False
 
     def solve(self, module, parameters, fix_vars=[]):
+        print("Start constraint solving")
         mod = deepcopy(module)  # FIXME copying is inefficient
         # mod = module
         self.solution = deepcopy(parameters)

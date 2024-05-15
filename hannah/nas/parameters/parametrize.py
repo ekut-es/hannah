@@ -207,13 +207,13 @@ def get_parameters(
     self, scope: Optional[str] = None, include_empty=False, flatten=False
 ):
     params = {}
-    visited = []
+    visited = [self]
     queue = []
     queue.extend(self._PARAMETERS.values())
 
     while queue:
         current = queue.pop(-1)
-        visited.append(current.id)
+        # visited.append(current.id)
         if current.id is None:
             name = current.name
         else:
@@ -226,8 +226,10 @@ def get_parameters(
                     param.id = param.name
                 if isinstance(param, Parameter) and param.id not in visited:
                     param.id = current.id + '.' + param.name
-                if param.id not in visited:
+                # if param not in visited:
+                if not any([param is v for v in visited]):
                     queue.append(param)
+                    visited.append(param)
 
     params = hierarchical_parameter_dict(params, include_empty, flatten)
     return params

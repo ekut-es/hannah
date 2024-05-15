@@ -96,7 +96,7 @@ class SimpleModelTrainer:
                 msglogger.critical("Training failed with exception")
                 msglogger.critical(str(e))
                 print(traceback.format_exc())
-                # sys.exit(1)
+                sys.exit(1)
 
                 res = {}
                 for monitor in opt_monitor:
