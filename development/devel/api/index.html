@@ -2160,32 +2160,6 @@ dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
 <h2 id="returns_1">Returns</h2>
 <p>Expression</p>
-<p><a id="hannah.models.capsule_net.operators"></a></p>
-<h1 id="hannahmodelscapsule_netoperators">hannah.models.capsule_net.operators</h1>
-<p><a id="hannah.models.capsule_net"></a></p>
-<h1 id="hannahmodelscapsule_net">hannah.models.capsule_net</h1>
-<p><a id="hannah.models.capsule_net.models"></a></p>
-<h1 id="hannahmodelscapsule_netmodels">hannah.models.capsule_net.models</h1>
-<p><a id="hannah.models.capsule_net.utils"></a></p>
-<h1 id="hannahmodelscapsule_netutils">hannah.models.capsule_net.utils</h1>
-<p><a id="hannah.models.capsule_net.expressions"></a></p>
-<h1 id="hannahmodelscapsule_netexpressions">hannah.models.capsule_net.expressions</h1>
-<p><a id="hannah.models.capsule_net.expressions.padding_expression"></a></p>
-<h4 id="padding_expression_2">padding_expression</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
-the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
-Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
-an output with also dimension 1.</p>
-<h2 id="parameters_4">Parameters</h2>
-<p>kernel_size : Union[int, Expression]
-stride : Union[int, Expression]
-dilation : Union[int, Expression], optional
-<em>description</em>, by default 1</p>
-<h2 id="returns_2">Returns</h2>
-<p>Expression</p>
 <p><a id="hannah.models.lstm"></a></p>
 <h1 id="hannahmodelslstm">hannah.models.lstm</h1>
 <p><a id="hannah.models.lstm.models"></a></p>
@@ -4325,7 +4299,7 @@ activation functions.</p>
 <p><a id="hannah.models.mobilenet.expressions"></a></p>
 <h1 id="hannahmodelsmobilenetexpressions">hannah.models.mobilenet.expressions</h1>
 <p><a id="hannah.models.mobilenet.expressions.padding_expression"></a></p>
-<h4 id="padding_expression_3">padding_expression</h4>
+<h4 id="padding_expression_2">padding_expression</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 
@@ -4333,12 +4307,12 @@ activation functions.</p>
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_5">Parameters</h2>
+<h2 id="parameters_4">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
-<h2 id="returns_3">Returns</h2>
+<h2 id="returns_2">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.models.vad"></a></p>
 <h1 id="hannahmodelsvad">hannah.models.vad</h1>
@@ -4442,6 +4416,26 @@ dilation : Union[int, Expression], optional
 <p><a id="hannah.models.functional_net_test.expressions"></a></p>
 <h1 id="hannahmodelsfunctional_net_testexpressions">hannah.models.functional_net_test.expressions</h1>
 <p><a id="hannah.models.functional_net_test.expressions.padding_expression"></a></p>
+<h4 id="padding_expression_3">padding_expression</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
+the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
+Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
+an output with also dimension 1.</p>
+<h2 id="parameters_5">Parameters</h2>
+<p>kernel_size : Union[int, Expression]
+stride : Union[int, Expression]
+dilation : Union[int, Expression], optional
+<em>description</em>, by default 1</p>
+<h2 id="returns_3">Returns</h2>
+<p>Expression</p>
+<p><a id="hannah.models.convnet"></a></p>
+<h1 id="hannahmodelsconvnet">hannah.models.convnet</h1>
+<p><a id="hannah.models.convnet.models"></a></p>
+<h1 id="hannahmodelsconvnetmodels">hannah.models.convnet.models</h1>
+<p><a id="hannah.models.convnet.models.padding_expression"></a></p>
 <h4 id="padding_expression_4">padding_expression</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
@@ -4456,26 +4450,6 @@ stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
 <h2 id="returns_4">Returns</h2>
-<p>Expression</p>
-<p><a id="hannah.models.convnet"></a></p>
-<h1 id="hannahmodelsconvnet">hannah.models.convnet</h1>
-<p><a id="hannah.models.convnet.models"></a></p>
-<h1 id="hannahmodelsconvnetmodels">hannah.models.convnet.models</h1>
-<p><a id="hannah.models.convnet.models.padding_expression"></a></p>
-<h4 id="padding_expression_5">padding_expression</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Symbolically calculate padding such that for a given kernel_size, stride and dilation
-the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
-Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
-an output with also dimension 1.</p>
-<h2 id="parameters_7">Parameters</h2>
-<p>kernel_size : Union[int, Expression]
-stride : Union[int, Expression]
-dilation : Union[int, Expression], optional
-<em>description</em>, by default 1</p>
-<h2 id="returns_5">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.nas.dataflow.tensor_type"></a></p>
 <h1 id="hannahnasdataflowtensor_type">hannah.nas.dataflow.tensor_type</h1>
@@ -4550,10 +4524,10 @@ all users (including users from subsequent nodes).
 If a node_b is NOT in collect_users(node_a), this means
 that node_b is either BEFORE node_a in the graph OR it is
 in a parallel branch.</p>
-<h2 id="parameters_8">Parameters</h2>
+<h2 id="parameters_7">Parameters</h2>
 <p>node : <em>type</em>
     <em>description</em></p>
-<h2 id="returns_6">Returns</h2>
+<h2 id="returns_5">Returns</h2>
 <p><em>type</em>
     <em>description</em></p>
 <p><a id="hannah.nas.dataflow.dataflow_graph.find_first_input"></a></p>
@@ -4565,10 +4539,10 @@ in a parallel branch.</p>
 back to its first input. NOTE: The traversal is via OPERANDS
 and not OUTPUT, meaning that e.g. weight Tensors that are
 included in Ops in a DFG are not returned</p>
-<h2 id="parameters_9">Parameters</h2>
+<h2 id="parameters_8">Parameters</h2>
 <p>node : <em>type</em>
     <em>description</em></p>
-<h2 id="returns_7">Returns</h2>
+<h2 id="returns_6">Returns</h2>
 <p><em>type</em>
     <em>description</em></p>
 <p><a id="hannah.nas.dataflow.axis_type"></a></p>
@@ -4714,7 +4688,7 @@ included in Ops in a DFG are not returned</p>
 <p><a id="hannah.nas.functional_operators.shapes"></a></p>
 <h1 id="hannahnasfunctional_operatorsshapes">hannah.nas.functional_operators.shapes</h1>
 <p><a id="hannah.nas.functional_operators.shapes.padding_expression"></a></p>
-<h4 id="padding_expression_6">padding_expression</h4>
+<h4 id="padding_expression_5">padding_expression</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">padding_expression</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 
@@ -4722,12 +4696,12 @@ included in Ops in a DFG are not returned</p>
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_10">Parameters</h2>
+<h2 id="parameters_9">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
-<h2 id="returns_8">Returns</h2>
+<h2 id="returns_7">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.nas.functional_operators.op"></a></p>
 <h1 id="hannahnasfunctional_operatorsop">hannah.nas.functional_operators.op</h1>
@@ -4831,8 +4805,6 @@ a scalar.</p>
 <h1 id="hannahnastesttest_parametrize">hannah.nas.test.test_parametrize</h1>
 <p><a id="hannah.nas.test.test_adjacency"></a></p>
 <h1 id="hannahnastesttest_adjacency">hannah.nas.test.test_adjacency</h1>
-<p><a id="hannah.nas.test.test_symbolic_metrics"></a></p>
-<h1 id="hannahnastesttest_symbolic_metrics">hannah.nas.test.test_symbolic_metrics</h1>
 <p><a id="hannah.nas.test.test_conditions"></a></p>
 <h1 id="hannahnastesttest_conditions">hannah.nas.test.test_conditions</h1>
 <p><a id="hannah.nas.test.test_z3"></a></p>
@@ -4897,7 +4869,7 @@ a scalar.</p>
 <p>Extracts the constraints based on the type of op.
 New variables are added to self.vars and the constraints
 are added to the solver.</p>
-<h2 id="parameters_11">Parameters</h2>
+<h2 id="parameters_10">Parameters</h2>
 <p>op : OpType</p>
 <p><a id="hannah.nas.constraints.dfg_constraint_model.ConstraintModel.process_tensor"></a></p>
 <h4 id="process_tensor">process_tensor</h4>
@@ -4906,7 +4878,7 @@ are added to the solver.</p>
 
 <p>Goes through all axis and extracts the constraints for
 the respective axis sizes</p>
-<h2 id="parameters_12">Parameters</h2>
+<h2 id="parameters_11">Parameters</h2>
 <p>tensor : Tensor</p>
 <p><a id="hannah.nas.parametrization"></a></p>
 <h1 id="hannahnasparametrization">hannah.nas.parametrization</h1>
@@ -4969,7 +4941,7 @@ the respective axis sizes</p>
 </code></pre></div>
 
 <p>Parent method for different predictor classes.</p>
-<h2 id="parameters_13">Parameters</h2>
+<h2 id="parameters_12">Parameters</h2>
 <p>fea_name : str, optional
     internal name for features in the graph, as in graph.ndata[fea_name], by default 'features'</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.Predictor.train"></a></p>
@@ -4982,7 +4954,7 @@ the respective axis sizes</p>
 </code></pre></div>
 
 <p>Train GCN model</p>
-<h2 id="parameters_14">Parameters</h2>
+<h2 id="parameters_13">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -4999,9 +4971,9 @@ verbose : int
 </code></pre></div>
 
 <p>predict cost of graph</p>
-<h2 id="parameters_15">Parameters</h2>
+<h2 id="parameters_14">Parameters</h2>
 <p>graph : dgl.Graph</p>
-<h2 id="returns_9">Returns</h2>
+<h2 id="returns_8">Returns</h2>
 <p>torch.Tensor
     predicted cost of given graph. Retrieve float value with .item()</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.GCNPredictor"></a></p>
@@ -5018,7 +4990,7 @@ verbose : int
 </code></pre></div>
 
 <p>G(raph)CN based network latency/cost predictor. End-to-end from graph to score.</p>
-<h2 id="parameters_16">Parameters</h2>
+<h2 id="parameters_15">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -5037,7 +5009,7 @@ fea_name : str, optional
 </code></pre></div>
 
 <p>Train GCN model</p>
-<h2 id="parameters_17">Parameters</h2>
+<h2 id="parameters_16">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -5054,9 +5026,9 @@ verbose : int
 </code></pre></div>
 
 <p>predict cost of graph</p>
-<h2 id="parameters_18">Parameters</h2>
+<h2 id="parameters_17">Parameters</h2>
 <p>graph : dgl.Graph</p>
-<h2 id="returns_10">Returns</h2>
+<h2 id="returns_9">Returns</h2>
 <p>torch.Tensor
     predicted cost of given graph. Retrieve float value with .item()</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.GaussianProcessPredictor"></a></p>
@@ -5076,7 +5048,7 @@ verbose : int
 </code></pre></div>
 
 <p>Predictor that generates a graph embedding that is used as input for a gaussian process predictor.</p>
-<h2 id="parameters_19">Parameters</h2>
+<h2 id="parameters_18">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -5101,7 +5073,7 @@ kernel : str, sklearn.gaussian_process.kernels.Kernel, optional
 </code></pre></div>
 
 <p>Train GCN model, generate embeddings for training data and fit the predictor with embeddings.</p>
-<h2 id="parameters_20">Parameters</h2>
+<h2 id="parameters_19">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -5112,7 +5084,7 @@ validation_dataloader : [type], optional
     if given, use this data to print validation loss, by default None
 verbose : int
     if validation_dataloader is given, print validation MSE every <verbose> epoch,by default 1</p>
-<h2 id="returns_11">Returns</h2>
+<h2 id="returns_10">Returns</h2>
 <p>float
     score of predictor on TRAINING data, see sklearn doc of chosen predictor for more info</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.GaussianProcessPredictor.predict"></a></p>
@@ -5121,12 +5093,12 @@ verbose : int
 </code></pre></div>
 
 <p>Predict cost/latency of graphs.</p>
-<h2 id="parameters_21">Parameters</h2>
+<h2 id="parameters_20">Parameters</h2>
 <p>X : dgl.DGLGraph, list[DGLGraph], dgl.dataloading.GraphDataLoader
     Input graph(s)
 return_std : bool, optional
     if true, return standard dev. else just mean prediction, by default True</p>
-<h2 id="returns_12">Returns</h2>
+<h2 id="returns_11">Returns</h2>
 <p>array (,array)
     prediction(s) , (if return_std: standard deviation(s))</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.XGBPredictor"></a></p>
@@ -5145,7 +5117,7 @@ return_std : bool, optional
 </code></pre></div>
 
 <p>Predictor that generates a graph embedding that is used as input for a xgb based predictor.</p>
-<h2 id="parameters_22">Parameters</h2>
+<h2 id="parameters_21">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -5170,7 +5142,7 @@ xgb_param : str, dict, optional
 </code></pre></div>
 
 <p>Train GCN model, generate embeddings for training data and fit the predictor with embeddings.</p>
-<h2 id="parameters_23">Parameters</h2>
+<h2 id="parameters_22">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -5189,7 +5161,7 @@ verbose : int
 </code></pre></div>
 
 <p>Predict cost/latency of graphs.</p>
-<h2 id="parameters_24">Parameters</h2>
+<h2 id="parameters_23">Parameters</h2>
 <p>X : dgl.DGLGraph, list[DGLGraph], dgl.dataloading.GraphDataLoader
     Input graph(s)
 Returns</p>
@@ -5207,7 +5179,7 @@ Returns</p>
 </code></pre></div>
 
 <p>helper function to construct dataloaders from NASGraphDataset</p>
-<h2 id="parameters_25">Parameters</h2>
+<h2 id="parameters_24">Parameters</h2>
 <p>dataset : NASGraphDataset</p>
 <p>batch_size : int, optional
     by default 50
@@ -5219,7 +5191,7 @@ seed : int, optional
     set seed for reproduceability
 validation : bool, optional
     also output a validation set e.g. for hyperparam tuning</p>
-<h2 id="returns_13">Returns</h2>
+<h2 id="returns_12">Returns</h2>
 <p>tuple(GraphDataLoader, (GraphDataLoader), GraphDataLoader)
     training dataloader to be used in CostPredictor.train() and test/validation dataloader if train_test_split &gt; 0,
     else len(test_dataloader) == 0</p>
