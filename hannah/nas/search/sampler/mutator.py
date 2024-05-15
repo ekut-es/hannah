@@ -35,6 +35,8 @@ class ParameterMutator:
             return self.mutate_int_scalar(parameter)
         elif isinstance(parameter, FloatScalarParameter):
             return self.mutate_float_scalar(parameter)
+        else:
+            return self.mutate_generic(parameter)
 
     def mutate_choice(self, parameter):
         mutations = self.get_choice_mutations()
@@ -44,12 +46,17 @@ class ParameterMutator:
     def mutate_int_scalar(self, parameter):
         mutations = self.get_int_mutations()
         chosen_mutation = self.rng.choice(mutations)
-        return chosen_mutation(parameter)
+        return int(chosen_mutation(parameter))
 
     def mutate_float_scalar(self, parameter):
         mutations = self.get_float_mutations()
         chosen_mutation = self.rng.choice(mutations)
         return chosen_mutation(parameter)
+
+    def mutate_generic(self, parameter):
+        # we assume each parameter has at least a sample() method
+        # FIXME: Gather custom mutations
+        return parameter.sample()
 
     # gather the relevant mutations
     def get_choice_mutations(self):
@@ -64,7 +71,8 @@ class ParameterMutator:
     ####################################
     # The individual mutations
     def random_choice(self, parameter):
-        return parameter.rng.choice(parameter.choices)
+        idx = int(parameter.rng.choice(range(len(parameter.choices))))
+        return parameter.choices[idx]
 
     def increase_choice(self, parameter):
         index = parameter.choices.index(parameter.current_value)

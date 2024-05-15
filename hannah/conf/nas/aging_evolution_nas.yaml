@@ -33,5 +33,5 @@ total_candidates: 50
 num_selected_candidates: 20
 bounds:
     val_error: 0.1
-    total_macs: 128000000
-    total_weights: 500000
+    # total_macs: 128000000
+    # total_weights: 500000

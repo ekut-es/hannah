@@ -75,6 +75,17 @@ def get_unique_id():
     return _id
 
 
+_id = 0
+
+
+def get_unique_id():
+    global _id
+    _id += 1
+    return _id
+
+
+# FIXME: Traverses nodes to often -> massively increases time when building
+# search spaces
 def get_highest_scope_counter(start_nodes, scope):
     ct = -1
     for start_node in start_nodes:
