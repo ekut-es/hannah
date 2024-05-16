@@ -572,6 +572,65 @@ it may return None</p>
 </code></pre></div>
 
 <p>Returns the maximum number of workers useable for this dataset</p>
+<p><a id="hannah.datasets.pickle_set"></a></p>
+<h1 id="hannahdatasetspickle_set">hannah.datasets.pickle_set</h1>
+<p><a id="hannah.datasets.pickle_set.PickleDataset"></a></p>
+<h2 id="pickledataset-objects">PickleDataset Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">PickleDataset</span><span class="p">(</span><span class="n">AbstractDataset</span><span class="p">)</span>
+</code></pre></div>
+
+<p>A dataset loading data from a number of pickle files</p>
+<p><a id="hannah.datasets.pickle_set.PickleDataset.loader"></a></p>
+<h4 id="loader">loader</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">loader</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Return the data loader for the dataset</p>
+<p><a id="hannah.datasets.pickle_set.PickleDataset.prepare"></a></p>
+<h4 id="prepare_1">prepare</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Prepare the dataset</p>
+<p><a id="hannah.datasets.pickle_set.PickleDataset.splits"></a></p>
+<h4 id="splits_4">splits</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">splits</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Return the dataset splits</p>
+<p><a id="hannah.datasets.pickle_set.PickleDataset.class_names"></a></p>
+<h4 id="class_names_3">class_names</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span> <span class="nf">class_names</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Return the class names</p>
+<p><a id="hannah.datasets.pickle_set.PickleDataset.class_counts"></a></p>
+<h4 id="class_counts_3">class_counts</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span> <span class="nf">class_counts</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Return the class counts</p>
+<p><a id="hannah.datasets.pickle_set.PickleDataset.__getitem__"></a></p>
+<h4 id="__getitem___1">__getitem__</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Return the item at the index</p>
+<p><a id="hannah.datasets.pickle_set.PickleDataset.__len__"></a></p>
+<h4 id="__len___1">__len__</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="fm">__len__</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Return the length of the dataset</p>
+<p><a id="hannah.datasets.pickle_set.PickleDataset.max_workers"></a></p>
+<h4 id="max_workers_2">max_workers</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span> <span class="nf">max_workers</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Not really needed as the number of workers processes is defined by the loader() method</p>
 <p><a id="hannah.datasets.eeg_chbrt"></a></p>
 <h1 id="hannahdatasetseeg_chbrt">hannah.datasets.eeg_chbrt</h1>
 <p><a id="hannah.datasets.eeg_chbrt.EEGRTDataset"></a></p>
@@ -580,14 +639,14 @@ it may return None</p>
 </code></pre></div>
 
 <p><a id="hannah.datasets.eeg_chbrt.EEGRTDataset.class_names"></a></p>
-<h4 id="class_names_3">class_names</h4>
+<h4 id="class_names_4">class_names</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
 <span class="k">def</span> <span class="nf">class_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </code></pre></div>
 
 <p>Returns the names of the classes in the classification dataset</p>
 <p><a id="hannah.datasets.eeg_chbrt.EEGRTDataset.class_counts"></a></p>
-<h4 id="class_counts_3">class_counts</h4>
+<h4 id="class_counts_4">class_counts</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
 <span class="k">def</span> <span class="nf">class_counts</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span>
 </code></pre></div>
@@ -1961,7 +2020,7 @@ dilation : Union[int, Expression], optional
 </code></pre></div>
 
 <p><a id="hannah.backends.base.AbstractBackend.prepare"></a></p>
-<h4 id="prepare_1">prepare</h4>
+<h4 id="prepare_2">prepare</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="n">ClassifierModule</span><span class="p">)</span>
 </code></pre></div>
