@@ -460,7 +460,8 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 
 <p><a id="hannah.datasets.base.AbstractDataset.prepare"></a></p>
 <h4 id="prepare">prepare</h4>
-<div class="codehilite"><pre><span></span><code><span class="nd">@abstractclassmethod</span>
+<div class="codehilite"><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 
@@ -474,7 +475,8 @@ it is available for public download.</p>
 </ul>
 <p><a id="hannah.datasets.base.AbstractDataset.splits"></a></p>
 <h4 id="splits_3">splits</h4>
-<div class="codehilite"><pre><span></span><code><span class="nd">@abstractclassmethod</span>
+<div class="codehilite"><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">splits</span><span class="p">(</span>
     <span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="s2">&quot;AbstractDataset&quot;</span><span class="p">,</span> <span class="s2">&quot;AbstractDataset&quot;</span><span class="p">,</span> <span class="s2">&quot;AbstractDataset&quot;</span><span class="p">]</span>
@@ -487,14 +489,16 @@ it is available for public download.</p>
 </ul>
 <p><a id="hannah.datasets.base.AbstractDataset.class_names"></a></p>
 <h4 id="class_names_2">class_names</h4>
-<div class="codehilite"><pre><span></span><code><span class="nd">@abstractproperty</span>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">class_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </code></pre></div>
 
 <p>Returns the names of the classes in the classification dataset</p>
 <p><a id="hannah.datasets.base.AbstractDataset.class_counts"></a></p>
 <h4 id="class_counts_2">class_counts</h4>
-<div class="codehilite"><pre><span></span><code><span class="nd">@abstractproperty</span>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">class_counts</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span>
 </code></pre></div>
 
