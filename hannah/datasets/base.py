@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -36,7 +36,8 @@ class DatasetType(Enum):
 
 
 class AbstractDataset(Dataset, ABC):
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def prepare(cls, config: Dict[str, Any]) -> None:
         """Prepare the dataset.
 
@@ -52,7 +53,8 @@ class AbstractDataset(Dataset, ABC):
 
         pass
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def splits(
         cls, config: Dict[str, Any]
     ) -> Tuple["AbstractDataset", "AbstractDataset", "AbstractDataset"]:
@@ -64,7 +66,8 @@ class AbstractDataset(Dataset, ABC):
 
         pass  # pytype: disable=bad-return-type
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def class_names(self) -> List[str]:
         """Returns the names of the classes in the classification dataset"""
         pass  # pytype: disable=bad-return-type
@@ -81,7 +84,8 @@ class AbstractDataset(Dataset, ABC):
 
         return self.class_names
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def class_counts(self) -> Optional[Dict[int, int]]:
         """Returns the number of items in each class of the dataset
 

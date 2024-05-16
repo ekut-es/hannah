@@ -150,39 +150,68 @@ class ClassifierModule(LightningModule, ABC):
         return self._get_dataloader(self.dev_set, self.dev_set_unlabeled)
 
     def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
-        dataset_conf = self.hparams.dataset
-        sampler = None
-        if shuffle:
-            sampler_type = dataset_conf.get("sampler", "random")
-            if sampler_type == "weighted":
-                sampler = self.get_balancing_sampler(dataset)
-            else:
-                sampler = data.RandomSampler(dataset)
+        batch_size = self.hparams["batch_size"]
 
-        loader = data.DataLoader(
-            dataset,
-            batch_size=self.batch_size,
-            drop_last=True,
-            num_workers=self.hparams["num_workers"],
-            sampler=sampler if not dataset.sequential else None,
-            multiprocessing_context="fork" if self.hparams["num_workers"] > 0 else None,
-        )
+        def calc_workers(dataset):
+            result = (
+                num_workers
+                if num_workers <= dataset.max_workers or dataset.max_workers == -1
+                else dataset.max_workers
+            )
+            return result
+
+        if hasattr(dataset, "loader"):
+            loader = dataset.loader(batch_size, shuffle=shuffle)
+        else:
+            # FIXME: don't use hparams here
+            dataset_conf = self.hparams.dataset
+            sampler = None
+            if shuffle:
+                sampler_type = dataset_conf.get("sampler", "random")
+                if sampler_type == "weighted":
+                    sampler = self.get_balancing_sampler(dataset)
+                else:
+                    sampler = data.RandomSampler(dataset)
+
+            num_workers = self.hparams["num_workers"]
+
+            num_workers = calc_workers(dataset)
+
+            loader = data.DataLoader(
+                dataset,
+                batch_size=batch_size,
+                drop_last=True,
+                num_workers=num_workers,
+                sampler=sampler if not dataset.sequential else None,
+                collate_fn=self.collate_fn,
+                multiprocessing_context="fork" if num_workers > 0 else None,
+                persistent_workers=True if num_workers > 0 else False,
+                prefetch_factor=2 if num_workers > 0 else None,
+                pin_memory=True,
+            )
+
         self.batches_per_epoch = len(loader)
 
         if unlabeled_data:
-            loader_unlabeled = data.DataLoader(
-                unlabeled_data,
-                batch_size=self.batch_size,
-                drop_last=True,
-                num_workers=self.hparams["num_workers"],
-                sampler=data.RandomSampler(unlabeled_data)
-                if not dataset.sequential
-                else None,
-                multiprocessing_context="fork"
-                if self.hparams["num_workers"] > 0
-                else None,
+            if hasattr(unlabeled_data, "loader"):
+                unlabeled_data = unlabeled_data.loader(batch_size, shuffle=shuffle)
+            else:
+                unlabeled_workers = calc_workers(unlabeled_data)
+                loader_unlabeled = data.DataLoader(
+                    unlabeled_data,
+                    batch_size=batch_size,
+                    drop_last=True,
+                    num_workers=unlabeled_workers,
+                    sampler=data.RandomSampler(unlabeled_data)
+                    if not unlabeled_data.sequential
+                    else None,
+                    multiprocessing_context="fork" if unlabeled_workers > 0 else None,
+                )
+
+            return CombinedLoader(
+                {"labeled": loader, "unlabeled": loader_unlabeled},
+                mode="max_size_cycle",
             )
-            return CombinedLoader({"labeled": loader, "unlabeled": loader_unlabeled})
 
         return loader
 
@@ -446,3 +475,6 @@ class ClassifierModule(LightningModule, ABC):
             return loss_weights
 
         return None
+
+    def collate_fn(self, batch):
+        return torch.utils.data.default_collate(batch)

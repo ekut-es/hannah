@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -395,6 +395,9 @@ class BaseStreamClassifierModule(ClassifierModule):
                             self.test_set.samplingrate,
                         )
                 self.logged_samples += 1
+
+    def collate_fn(self, batch):
+        return ctc_collate_fn(batch)
 
 
 class StreamClassifierModule(BaseStreamClassifierModule):

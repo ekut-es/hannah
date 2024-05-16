@@ -293,65 +293,6 @@ class VisionBaseModule(ClassifierModule):
 
         return augmentations
 
-    def _get_dataloader(self, dataset, unlabeled_data=None, shuffle=False):
-        batch_size = self.hparams["batch_size"]
-
-        # FIXME: don't use hparams here
-        dataset_conf = self.hparams.dataset
-        sampler = None
-        if shuffle:
-            sampler_type = dataset_conf.get("sampler", "random")
-            if sampler_type == "weighted":
-                sampler = self.get_balancing_sampler(dataset)
-            else:
-                sampler = data.RandomSampler(dataset)
-
-        num_workers = self.hparams["num_workers"]
-
-        def calc_workers(dataset):
-            result = (
-                num_workers
-                if num_workers <= dataset.max_workers or dataset.max_workers == -1
-                else dataset.max_workers
-            )
-            return result
-
-        num_workers = calc_workers(dataset)
-
-        loader = data.DataLoader(
-            dataset,
-            batch_size=batch_size,
-            drop_last=True,
-            num_workers=num_workers,
-            sampler=sampler if not dataset.sequential else None,
-            collate_fn=vision_collate_fn,
-            multiprocessing_context="fork" if num_workers > 0 else None,
-            persistent_workers=True if num_workers > 0 else False,
-            prefetch_factor=2 if num_workers > 0 else None,
-            pin_memory=True,
-        )
-        self.batches_per_epoch = len(loader)
-
-        if unlabeled_data:
-            unlabeled_workers = calc_workers(unlabeled_data)
-            loader_unlabeled = data.DataLoader(
-                unlabeled_data,
-                batch_size=batch_size,
-                drop_last=True,
-                num_workers=unlabeled_workers,
-                sampler=data.RandomSampler(unlabeled_data)
-                if not unlabeled_data.sequential
-                else None,
-                multiprocessing_context="fork" if unlabeled_workers > 0 else None,
-            )
-
-            return CombinedLoader(
-                {"labeled": loader, "unlabeled": loader_unlabeled},
-                mode="max_size_cycle",
-            )
-
-        return loader
-
     @property
     def backbone(self):
         if self.model is None:
@@ -363,3 +304,6 @@ class VisionBaseModule(ClassifierModule):
             return self.model.encoder
         else:
             raise AttributeError("No backbone found in model")
+
+    def collate_fn(self, batch):
+        return vision_collate_fn(batch)

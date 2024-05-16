@@ -1,0 +1,11 @@
+cls: hannah.datasets.pickle_set.PickleDataset
+train:
+  - ${hydra:runtime.cwd}/train.pkl
+
+val:
+  - ${hydra:runtime.cwd}/val.pkl
+
+test:
+  - ${hydra:runtime.cwd}/test.pkl
+
+samplingrate: 16000
