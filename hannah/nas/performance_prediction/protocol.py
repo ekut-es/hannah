@@ -16,7 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import TYPE_CHECKING, Mapping, Optional, Protocol, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Mapping,
+    Optional,
+    Protocol,
+    Tuple,
+    Union,
+    runtime_checkable,
+)
 
 from hannah.modules.base import ClassifierModule
 
@@ -29,6 +37,7 @@ if TYPE_CHECKING:
 InputShape = Union["Tensor", Tuple[int, ...], "torch.tensor"]
 
 
+@runtime_checkable
 class Predictor(Protocol):
     def predict(
         self, model: ClassifierModule, input: Optional[InputShape] = None
@@ -44,9 +53,16 @@ class Predictor(Protocol):
         ...
 
 
+@runtime_checkable
 class FitablePredictor(Predictor):
     def load(self, result_folder: str):
+        """Load predefined model from a folder.
+
+        Args:
+            result_folder (str): Path to the folder containing the model or training data to recreate the model.
+        """
         ...
 
     def update(self, new_data, input=None):
+        """Update the model with new data."""
         ...
