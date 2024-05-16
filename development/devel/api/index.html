@@ -1495,7 +1495,8 @@ the respective axis sizes</p>
 <h1 id="hannahnasperformance_predictionprotocol">hannah.nas.performance_prediction.protocol</h1>
 <p><a id="hannah.nas.performance_prediction.protocol.Predictor"></a></p>
 <h2 id="predictor-objects">Predictor Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">Predictor</span><span class="p">(</span><span class="n">Protocol</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="nd">@runtime_checkable</span>
+<span class="k">class</span> <span class="nc">Predictor</span><span class="p">(</span><span class="n">Protocol</span><span class="p">)</span>
 </code></pre></div>
 
 <p><a id="hannah.nas.performance_prediction.protocol.Predictor.predict"></a></p>
@@ -1511,6 +1512,28 @@ the respective axis sizes</p>
 <li><code>model</code> <em>ClassifierModule</em> - The model to predict the performance of.</li>
 <li><code>input</code> __type_, optional_ - Input shape of input  . Defaults to None.</li>
 </ul>
+<p><a id="hannah.nas.performance_prediction.protocol.FitablePredictor"></a></p>
+<h2 id="fitablepredictor-objects">FitablePredictor Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="nd">@runtime_checkable</span>
+<span class="k">class</span> <span class="nc">FitablePredictor</span><span class="p">(</span><span class="n">Predictor</span><span class="p">)</span>
+</code></pre></div>
+
+<p><a id="hannah.nas.performance_prediction.protocol.FitablePredictor.load"></a></p>
+<h4 id="load">load</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">result_folder</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Load predefined model from a folder.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>result_folder</code> <em>str</em> - Path to the folder containing the model or training data to recreate the model.</li>
+</ul>
+<p><a id="hannah.nas.performance_prediction.protocol.FitablePredictor.update"></a></p>
+<h4 id="update">update</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="n">new_data</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Update the model with new data.</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor"></a></p>
 <h1 id="hannahnasperformance_predictiongcnpredictor">hannah.nas.performance_prediction.gcn.predictor</h1>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.Predictor"></a></p>
