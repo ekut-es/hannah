@@ -27,6 +27,7 @@ from hannah.nas.functional_operators.operators import (
     Linear,
     MaxPooling,
     Relu,
+    Requantize,
 )
 from hannah.nas.parameters.parameters import (
     CategoricalParameter,
@@ -65,7 +66,6 @@ def dynamic_depth(*exits, switch):
     return ChoiceOp(*exits, switch=switch)()
 
 
-@scope
 def batch_norm(input):
     n_chans = input.shape()[1]
     running_mu = Tensor(name="running_mean", shape=(n_chans,), axis=("c",))
@@ -73,34 +73,38 @@ def batch_norm(input):
     return BatchNorm()(input, running_mu, running_std)
 
 
-@scope
-def block(input):
-    expand_ratio = IntScalarParameter(1, 3, name="expand_ratio")
-    reduce_ratio = IntScalarParameter(1, 3, name="reduce_ratio")
+def quantize_weight(weight):
+    weight = Requantize()(weight)
+    return weight
 
+
+@scope
+def block(input, expand_ratio, reduce_ratio):
     max_pool1 = max_pool(input, kernel_size=2, stride=2, padding=1)
     identity1 = identity(input)
-    conv_in = choice(input, [max_pool1, identity1])
+    # conv_in = choice(input, [max_pool1, identity1])
 
     conv_in = input
 
     weight1 = Tensor(
         "w1",
-        (conv_in.shape()[1], Int(conv_in.shape()[1] * expand_ratio), 1, 1),
+        (Int(conv_in.shape()[1] * expand_ratio), Int(conv_in.shape()[1]), 1, 1),
         axis=["O", "I", "kH", "kW"],
         grad=True,
     )
-    conv1 = conv2d(conv_in, weight1)
+    weight1_quantized = quantize_weight(weight1)
+    conv1 = conv2d(conv_in, weight1_quantized)
     bn1 = batch_norm(conv1)
     relu1 = relu(bn1)
 
     weight2 = Tensor(
         "w2",
-        (relu1.shape()[1], Int(relu1.shape()[1] / reduce_ratio), 3, 3),
+        (Int(relu1.shape()[1] / reduce_ratio), relu1.shape()[1], 3, 3),
         axis=["O", "I", "kH", "kW"],
         grad=True,
     )
-    conv2 = conv2d(relu1, weight2)
+    weight2_quantized = quantize_weight(weight2)
+    conv2 = conv2d(relu1, weight2_quantized)
     bn2 = batch_norm(conv2)
     relu2 = relu(bn2)
 
@@ -108,21 +112,25 @@ def block(input):
 
 
 def search_space(name, input, num_classes=10, max_blocks=9):
+    expand_ratio = IntScalarParameter(1, 3, name="expand_ratio")
+    reduce_ratio = IntScalarParameter(1, 3, name="reduce_ratio")
+
     depth = IntScalarParameter(0, max_blocks, name="depth")
     input_channels = IntScalarParameter(8, 64, name="input_channels", step_size=8)
 
     weight = Tensor(
         "w1",
-        (input.shape()[1], input_channels, 3, 3),
+        (input_channels, input.shape()[1], 3, 3),
         axis=["O", "I", "kH", "kW"],
         grad=True,
     )
+    weight = quantize_weight(weight)
 
     out = conv2d(input, weight)
 
     blocks = []
     for i in range(max_blocks + 1):
-        out = block(out)
+        out = block(out, expand_ratio.new(), reduce_ratio.new())
         blocks.append(out)
 
     out = dynamic_depth(*blocks, switch=depth)
@@ -133,6 +141,7 @@ def search_space(name, input, num_classes=10, max_blocks=9):
         axis=["O", "I"],
         grad=True,
     )
+    linear_weight = quantize_weight(linear_weight)
     out = linear(out, linear_weight)
 
     return out

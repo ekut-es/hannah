@@ -21,9 +21,11 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any
 
+import numpy as np
 import torch
 import torch.fx as fx
 import torch.nn.functional as F
+from torch.ao.quantization.fake_quantize import FakeQuantize
 
 from hannah.nas.core.parametrized import is_parametrized
 from hannah.nas.functional_operators.lazy import lazy
@@ -318,9 +320,27 @@ class Identity(Op):
 
 
 @parametrize
-class Quantize(Op):
+class Requantize(Op):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(name="Quantize")
+
+        self.quantize = FakeQuantize()
+
+    @property
+    def dtype(self):
+        return self.quantize.dtype  # FIXME: we might wan't to switch to our own dtypes
+
+    @property
+    def scale(self) -> np.ndarray:
+        return self.quantize.scale.numpy()
+
+    @property
+    def zero_point(self) -> np.ndarray:
+        return self.quantize.zero_point.numpy()
+
+    @property
+    def ch_axis(self):
+        return self.quantize.ch_axis
 
     def __call__(self, *operands) -> Any:
         op = super().__call__(*operands)
@@ -330,7 +350,7 @@ class Quantize(Op):
         return self.operands[0].shape()
 
     def _forward_implementation(self, *operands):
-        return operands[0]  # TODO: Implement real quantization functionality
+        return self.quantize(operands[0])
 
 
 @parametrize

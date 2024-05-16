@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -57,7 +57,7 @@ class GraphConversionTracer(SearchSpaceTracer):
         f_ops.Relu,
         f_ops.Add,
         f_ops.BatchNorm,
-        f_ops.Quantize,
+        f_ops.Requantize,
         f_ops.Identity,
         f_ops.SelfAttention2d,
         Tensor,
@@ -462,8 +462,8 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
     def add_nodes_attn2d(self, target, mod, args, kwargs, output):
         attrs = {}
-        attrs["num_heads"] = to_int(kwargs['num_heads'])
-        attrs["d_model"] = to_int(kwargs['d_model'])
+        attrs["num_heads"] = to_int(kwargs["num_heads"])
+        attrs["d_model"] = to_int(kwargs["d_model"])
 
         quant_attrs = args[0].quantization
         input_attrs = self.extract_input_attrs(args)

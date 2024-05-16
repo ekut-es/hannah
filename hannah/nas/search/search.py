@@ -34,8 +34,8 @@ from omegaconf import OmegaConf
 from hannah.callbacks.optimization import HydraOptCallback
 from hannah.nas.functional_operators.op import Tensor
 from hannah.nas.graph_conversion import model_to_graph
-from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.performance_prediction.protocol import FitablePredictor
+from hannah.nas.performance_prediction.simple import MACPredictor
 from hannah.nas.search.sampler.aging_evolution import FitnessFunction
 from hannah.nas.search.utils import WorklistItem, save_config_to_file
 from hannah.utils.utils import common_callbacks
@@ -146,7 +146,9 @@ class DirectNAS(NASBase):
 
             for name, config in predictor_config.items():
                 predictor = instantiate(config)
-                if isinstance(predictor, FitablePredictor) and os.path.exists("performance_data"):
+                if isinstance(predictor, FitablePredictor) and os.path.exists(
+                    "performance_data"
+                ):
                     predictor.load("performance_data")
                 self.predictors[name] = predictor
 
@@ -163,7 +165,10 @@ class DirectNAS(NASBase):
         self.candidates = []
         if remaining_candidates > 0:
             self.candidates = self.sample_candidates(
-                remaining_candidates, remaining_candidates, presample=self.presample, constrain=False
+                remaining_candidates,
+                remaining_candidates,
+                presample=self.presample,
+                constrain=False,
             )
 
     def search(self):
@@ -180,7 +185,9 @@ class DirectNAS(NASBase):
                     for name, predictor in self.predictors.items():
                         try:
                             if isinstance(predictor, FitablePredictor):
-                                predictor.update(self.new_points, self.example_input_array)
+                                predictor.update(
+                                    self.new_points, self.example_input_array
+                                )
                         except Exception as e:
                             # FIXME: Find reason for NaN in embeddings
                             msglogger.error("Updating predictor failed:")
@@ -235,7 +242,12 @@ class DirectNAS(NASBase):
         # self.extract_best_model()
 
     def sample_candidates(
-        self, num_total, num_candidates=None, sort_key="val_error", presample=False, constrain=False
+        self,
+        num_total,
+        num_candidates=None,
+        sort_key="val_error",
+        presample=False,
+        constrain=False,
     ):
         candidates = []
         skip_ct = 0

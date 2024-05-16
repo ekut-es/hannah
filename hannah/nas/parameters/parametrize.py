@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 import inspect
 from copy import deepcopy
 from inspect import Parameter as P
-from typing import Optional
+from typing import Optional, Sequence
 
 from hannah.nas.core.expression import Expression
 from hannah.nas.core.parametrized import is_parametrized
@@ -32,7 +32,7 @@ def _create_parametrize_wrapper(params, cls):
     old_init_fn = cls.__init__
 
     def init_fn(self, *args, **kwargs):
-        if not hasattr(self, '_PARAMETERS'):
+        if not hasattr(self, "_PARAMETERS"):
             self._PARAMETERS = {}
 
         # FIXME: Test what happens when the parent class is also @parametrized
@@ -45,24 +45,38 @@ def _create_parametrize_wrapper(params, cls):
 
         # FIXME: USE SIGNATURE NAME IF PARAM.NAME IS "" (empty)
         for arg in args:
+            name = parameter_list[num].name
+            if parameter_list[num].kind == P.VAR_POSITIONAL:
+                name = name + f"_{tuple_idx}"
+                tuple_idx += 1
+            else:
+                num += 1
+
             if is_parametrized(arg):
-                name = parameter_list[num].name
-                if parameter_list[num].kind == P.VAR_POSITIONAL:
-                    name = name + f"_{tuple_idx}"
-                    tuple_idx += 1
-                else:
-                    num += 1
                 self._PARAMETERS[name] = arg
                 # arg.register()
             elif isinstance(arg, Expression):
                 params = extract_parameter_from_expression(arg)
                 idx = 0
-                name = parameter_list[num].name
                 for p in params:
                     n = name + f"_{idx}"
                     self._PARAMETERS[n] = p
-            elif isinstance(arg, (list, tuple)):
-                print()
+            elif isinstance(arg, Sequence):
+                for idx, param in enumerate(arg):
+                    if is_parametrized(param):
+                        if isinstance(param, Parameter):
+                            if not param.is_registered():
+                                param.register()
+                        n = f"{name}_{idx}"
+                        self._PARAMETERS[n] = param
+                    if isinstance(param, Expression):
+                        params = extract_parameter_from_expression(param)
+                        for idx2, p in enumerate(params):
+                            if not p.is_registered():
+                                p.register()
+                            n = f"{name}_{idx}_{idx2}"
+                            self._PARAMETERS[n] = p
+
         for name, arg in kwargs.items():
             if isinstance(arg, (list, tuple)):
                 items = arg
@@ -213,7 +227,7 @@ def get_parameters(
 
     while queue:
         current = queue.pop(-1)
-        # visited.append(current.id)
+
         if current.id is None:
             name = current.name
         else:
@@ -225,8 +239,8 @@ def get_parameters(
                 if param.id is None:
                     param.id = param.name
                 if isinstance(param, Parameter) and param.id not in visited:
-                    param.id = current.id + '.' + param.name
-                # if param not in visited:
+                    param.id = current.id + "." + param.name
+
                 if not any([param is v for v in visited]):
                     queue.append(param)
                     visited.append(param)

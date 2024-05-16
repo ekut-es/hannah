@@ -17,14 +17,20 @@
 # limitations under the License.
 #
 import logging
-from typing import Any, Union
+from dataclasses import dataclass
+from typing import Any, Optional, Union
 
 import numpy as np
 import onnx
 import spox
-import spox.opset.ai.onnx.v19 as op
+import spox.opset.ai.onnx.v20 as op
+import torch
 from optree import tree_map
+from spox._attributes import AttrFloat32, AttrInt64
+from spox._fields import BaseAttributes, BaseInputs, BaseOutputs, Var
 from spox._function import to_function
+from spox._node import OpType
+from spox._standard import StandardNode
 
 from hannah.utils import pair, quadruple, single, triple
 
@@ -44,11 +50,69 @@ from ..functional_operators.operators import (
     Linear,
     MaxPooling,
     Relu,
+    Requantize,
     SelfAttention2d,
 )
 from ..parameters.parameters import Parameter
 
 logger = logging.getLogger(__name__)
+
+
+class _BatchNormalization(StandardNode):
+    @dataclass
+    class Attributes(BaseAttributes):
+        epsilon: AttrFloat32
+        momentum: AttrFloat32
+        training_mode: AttrInt64
+
+    @dataclass
+    class Inputs(BaseInputs):
+        X: Var
+        scale: Var
+        B: Var
+        input_mean: Var
+        input_var: Var
+
+    @dataclass
+    class Outputs(BaseOutputs):
+        Y: Var
+
+    op_type = OpType("BatchNormalization", "", 15)
+
+    attrs: Attributes
+    inputs: Inputs
+    outputs: Outputs
+
+
+def batch_normalization(
+    X: Var,
+    scale: Var,
+    B: Var,
+    input_mean: Var,
+    input_var: Var,
+    *,
+    epsilon: float = 9.999999747378752e-06,
+    momentum: float = 0.8999999761581421,
+    training_mode: int = 0,
+) -> Var:
+    assert (
+        not training_mode
+    ), "Only support export of batch normalization for inference."
+
+    return _BatchNormalization(
+        _BatchNormalization.Attributes(
+            epsilon=AttrFloat32(epsilon, name="epsilon"),
+            momentum=AttrFloat32(momentum, name="momentum"),
+            training_mode=AttrInt64(training_mode, name="training_mode"),
+        ),
+        _BatchNormalization.Inputs(
+            X=X,
+            scale=scale,
+            B=B,
+            input_mean=input_mean,
+            input_var=input_var,
+        ),
+    ).outputs.Y
 
 
 def eval(exp_tree: Any) -> Any:
@@ -154,14 +218,19 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
                 dtype = "float32"
                 scale = op.constant(value=np.ones(channels, dtype=dtype))
                 bias = op.constant(value=np.zeros(channels, dtype=dtype))
-                res, _, _ = op.batch_normalization(
-                    node_cache[node.operands[0]],
-                    scale,
-                    bias,
-                    node_cache[node.operands[1]],
-                    node_cache[node.operands[2]],
-                    training_mode=1,
+
+                X = node_cache[node.operands[0]]
+                mean = node_cache[node.operands[1]]
+                var = node_cache[node.operands[2]]
+
+                print(mean, var)
+
+                epsilon = 1e-5
+
+                res = batch_normalization(
+                    X, scale, bias, mean, var, epsilon=epsilon, training_mode=0
                 )
+
             elif isinstance(node, InterleaveChannels):
                 step_size = eval(node.step_size)
                 x = node_cache[node.operands[0]]
@@ -209,6 +278,32 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
             elif isinstance(node, ChoiceOp):
                 switch = eval(node.switch)
                 res = node_cache[node.options[switch]]
+            elif isinstance(node, Requantize):
+                dtype = eval(node.dtype)
+                scale = eval(node.scale)
+                zero_point = eval(node.zero_point)
+                ch_axis = eval(node.ch_axis)
+                if dtype == torch.quint8:
+                    zero_point = zero_point.astype(np.uint8)
+                elif dtype != torch.qint8:
+                    zero_point = zero_point.astype(np.int8)
+                else:
+                    raise NotImplementedError(
+                        f"Requantize is only supported for int8(types), got {dtype}"
+                    )
+
+                zero_point = op.constant(value=zero_point)
+                scale = op.constant(value=scale)
+
+                res = op.quantize_linear(
+                    node_cache[node.operands[0]],
+                    scale,
+                    zero_point,
+                    axis=ch_axis,
+                )
+
+                res = op.dequantize_linear(res, scale, zero_point, axis=ch_axis)
+
             else:
                 raise NotImplementedError(f"Unsupported operator: {node}")
 
@@ -222,8 +317,9 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
                 worklist.append((node.options[switch], False))
 
     inputs = {}
-    for node in input_tensors:
-        inputs[node.id] = node_cache[node]
+    for idx, node in enumerate(input_tensors):
+        node_id = f"{node.id}_{idx}"
+        inputs[node_id] = node_cache[node]
     outputs = {}
     outputs[model.id] = node_cache[model]
 
