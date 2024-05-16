@@ -3,7 +3,7 @@ from hannah.models.embedded_vision_net.expressions import expr_product
 from hannah.nas.expressions.arithmetic import Ceil
 from hannah.nas.expressions.types import Int
 from hannah.nas.functional_operators.op import scope
-from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv2d, conv_relu, depthwise_conv2d, dynamic_depth, grouped_conv2d, interleave_channels, pointwise_conv2d, linear, relu, batch_norm, choice, identity, max_pool, avg_pool
+from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv2d, conv_relu, depthwise_conv2d, dynamic_depth, grouped_conv2d, interleave_channels, pointwise_conv2d, linear, relu, batch_norm, choice, identity, max_pool, avg_pool, alternative_paths
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 
 
@@ -138,8 +138,10 @@ def block(input, depth, stride, out_channels, kernel_size, expand_ratio, reduce_
 
     out = dynamic_depth(*exits, switch=depth)
     res = residual(input, out.shape())
-    out = add(out, res)
-
+    res_add = add(out, res)
+    residual_choice = IntScalarParameter(0, 1, name="residual_choice")
+    out = alternative_paths(out, res_add, switch=residual_choice)
+    # out = res_add
     return out
 
 

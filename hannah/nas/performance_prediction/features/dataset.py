@@ -34,22 +34,17 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 # FIXME: Find better way
-COLUMNS = ['output_quant_bits', 'output_shape_0', 'output_shape_1',
-       'output_shape_2', 'output_shape_3', 'attrs_in_channels',
-       'attrs_out_channels', 'attrs_kernel_size_0', 'attrs_kernel_size_1',
-       'attrs_stride_0', 'attrs_stride_1', 'attrs_dilation_0',
-       'attrs_dilation_1', 'attrs_groups', 'attrs_padding_0',
-       'attrs_padding_1', 'weight_quant_bits', 'weight_shape_0',
-       'weight_shape_1', 'weight_shape_2', 'weight_shape_3', 'bias_quant_bits',
-       'bias_shape_0', 'attrs_in_features', 'attrs_out_features', 'type_0',
-       'type_add', 'type_batch_norm', 'type_conv', 'type_linear',
-       'type_placeholder', 'type_pooling', 'type_relu', 'output_quant_dtype_0',
-       'output_quant_dtype_float', 'output_quant_method_0',
-       'output_quant_method_none', 'weight_quant_dtype_0',
-       'weight_quant_dtype_float', 'weight_quant_method_0',
-       'weight_quant_method_none', 'bias_quant_dtype_0',
-       'bias_quant_dtype_float', 'bias_quant_method_0',
-       'bias_quant_method_none']
+COLUMNS = ['attrs_dilation', 'attrs_groups', 'attrs_in_channels',
+           'attrs_in_features', 'attrs_kernel_size', 'attrs_out_channels',
+           'attrs_out_features', 'attrs_padding', 'attrs_stride', 'bias_nan',
+           'output_quant_bits', 'output_quant_dtype_float',
+           'output_quant_dtype_nan', 'output_quant_method_nan',
+           'output_quant_method_none', 'output_quant_nan', 'output_shape_0',
+           'output_shape_1', 'output_shape_2', 'output_shape_3', 'type_add',
+           'type_batch_norm', 'type_conv', 'type_flatten', 'type_linear',
+           'type_nan', 'type_placeholder', 'type_pooling', 'type_relu',
+           'type_tensor', 'weight_quant_nan', 'weight_shape_0', 'weight_shape_1',
+           'weight_shape_2', 'weight_shape_3']
 
 class NASGraphDataset(DGLDataset):
     def __init__(self, result_folder: str):
@@ -155,11 +150,11 @@ def get_features(nx_graph):
         dataframes.append(df)
     df = pd.concat(dataframes)
     # df.dropna(axis = 0, how = 'all', inplace = True)
+    df = pd.get_dummies(df, dummy_na=True)
     df = df.fillna(0)
-    df = pd.get_dummies(df)
-    # for col in COLUMNS:
-    #     if col not in df.columns:
-    #         df[col] = 0
+    for col in COLUMNS:
+        if col not in df.columns:
+            df[col] = 0
     df = df.reindex(sorted(df.columns), axis=1)  # Sort to have consistency
     return df
 

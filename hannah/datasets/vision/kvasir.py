@@ -192,8 +192,9 @@ class KvasirCapsuleDataset(ImageDatasetBase):
             train_images = split0_paths
             train_labels = split0_labels
 
-            val_images = split1_paths
-            val_labels = split1_labels
+            train_images, val_images, train_labels, val_labels = train_test_split(
+                train_images, train_labels, test_size=0.25, random_state=1
+            )
 
             test_images = split1_paths
             test_labels = split1_labels
