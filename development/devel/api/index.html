@@ -1362,6 +1362,8 @@ a scalar.</p>
 <h1 id="hannahnasevalextract">hannah.nas.eval.extract</h1>
 <p><a id="hannah.nas.test.test_z3"></a></p>
 <h1 id="hannahnastesttest_z3">hannah.nas.test.test_z3</h1>
+<p><a id="hannah.nas.test.test_nas_graph_dataset_for_predictor"></a></p>
+<h1 id="hannahnastesttest_nas_graph_dataset_for_predictor">hannah.nas.test.test_nas_graph_dataset_for_predictor</h1>
 <p><a id="hannah.nas.test.test_lazy_torch"></a></p>
 <h1 id="hannahnastesttest_lazy_torch">hannah.nas.test.test_lazy_torch</h1>
 <p><a id="hannah.nas.test.test_op_to_torch_conversion"></a></p>
@@ -1382,6 +1384,8 @@ a scalar.</p>
 <h1 id="hannahnastesttest_parameters">hannah.nas.test.test_parameters</h1>
 <p><a id="hannah.nas.test.test_mobilenet"></a></p>
 <h1 id="hannahnastesttest_mobilenet">hannah.nas.test.test_mobilenet</h1>
+<p><a id="hannah.nas.test.test_random_walk_constrainer"></a></p>
+<h1 id="hannahnastesttest_random_walk_constrainer">hannah.nas.test.test_random_walk_constrainer</h1>
 <p><a id="hannah.nas.test.test_repeat"></a></p>
 <h1 id="hannahnastesttest_repeat">hannah.nas.test.test_repeat</h1>
 <p><a id="hannah.nas.test.test_constraint_model"></a></p>
@@ -1428,6 +1432,8 @@ a scalar.</p>
 <h1 id="hannahnastesttest_conditions">hannah.nas.test.test_conditions</h1>
 <p><a id="hannah.nas.test.test_darts_space"></a></p>
 <h1 id="hannahnastesttest_darts_space">hannah.nas.test.test_darts_space</h1>
+<p><a id="hannah.nas.test.test_parameter_scopes"></a></p>
+<h1 id="hannahnastesttest_parameter_scopes">hannah.nas.test.test_parameter_scopes</h1>
 <p><a id="hannah.nas.test.test_add"></a></p>
 <h1 id="hannahnastesttest_add">hannah.nas.test.test_add</h1>
 <p><a id="hannah.nas.fx.tracer"></a></p>
@@ -1514,8 +1520,7 @@ the respective axis sizes</p>
 </ul>
 <p><a id="hannah.nas.performance_prediction.protocol.FitablePredictor"></a></p>
 <h2 id="fitablepredictor-objects">FitablePredictor Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="nd">@runtime_checkable</span>
-<span class="k">class</span> <span class="nc">FitablePredictor</span><span class="p">(</span><span class="n">Predictor</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">FitablePredictor</span><span class="p">(</span><span class="n">Predictor</span><span class="p">)</span>
 </code></pre></div>
 
 <p><a id="hannah.nas.performance_prediction.protocol.FitablePredictor.load"></a></p>
@@ -1877,6 +1882,22 @@ validation : bool, optional
 <h1 id="hannahnasfunctional_operatorstorch_conversion">hannah.nas.functional_operators.torch_conversion</h1>
 <p><a id="hannah.nas.functional_operators.op"></a></p>
 <h1 id="hannahnasfunctional_operatorsop">hannah.nas.functional_operators.op</h1>
+<p><a id="hannah.nas.functional_operators.op.scope"></a></p>
+<h4 id="scope">scope</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">scope</span><span class="p">(</span><span class="n">function</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Decorator defining a scope in a search space. The id of every subcomponent (operators or lower-hierarchy scopes)
+enclosed in a function decorated with this will be prefixed with the name of the function, creating a
+hierarchical scope.</p>
+<p><a id="hannah.nas.functional_operators.op.search_space"></a></p>
+<h4 id="search_space">search_space</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">search_space</span><span class="p">(</span><span class="n">function</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Decorator to define a search space. For correct scoping,
+a search space containing functional ops must be enclosed by
+a function decorated with @search_space.</p>
 <p><a id="hannah.nas.functional_operators.op.Bypass"></a></p>
 <h2 id="bypass-objects">Bypass Objects</h2>
 <div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">Bypass</span><span class="p">(</span><span class="n">Op</span><span class="p">)</span>
