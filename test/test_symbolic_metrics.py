@@ -1,6 +1,6 @@
 from omegaconf import OmegaConf
 import torch
-from hannah.models.embedded_vision_net.models import search_space
+from hannah.models.embedded_vision_net.models import embedded_vision_net
 from hannah.nas.functional_operators.executor import BasicExecutor
 from hannah.nas.functional_operators.op import Tensor
 from hannah.callbacks.summaries import FxMACSummaryCallback
@@ -597,7 +597,7 @@ def test_symbolic_metrics():
     input_shape = [1, 3, 32, 32]
     input = Tensor(name="input", shape=input_shape, axis=("N", "C", "H", "W"))
     cons = OmegaConf.create([{"name": "weights"}, {"name": "macs"}])
-    space = search_space(name="evn", input=input, num_classes=10, constraints=cons)
+    space = embedded_vision_net(name="evn", input=input, num_classes=10, constraints=cons)
     set_parametrization(PARAMS, space.parametrization())
 
     model = BasicExecutor(space)

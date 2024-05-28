@@ -146,7 +146,7 @@
 
         {
             "name": "AgingEvolution",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "hannah.tools.train",
             "justMyCode": false,
@@ -162,12 +162,26 @@
                 "trainer.overfit_batches=1",
                 "nas.n_jobs=1",
                 "nas.budget=100",
-                "nas.total_candidates=50",
-                "nas.num_selected_candidates=20",
-                "nas.sampler.population_size=20",
-                // "nas.predictor.model.input_feature_size=31",
+                "nas.total_candidates=5",
+                "nas.num_selected_candidates=2",
+                "nas.sampler.population_size=2",
+                // "nas.predictor.model.input_feature_size=35",
                 "module.num_workers=8",
-                "experiment_id=test_constraint_config",
+                "experiment_id=test_merge",
+                "fx_mac_summary=True",
+                // "~nas.predictor",
+                "~normalizer"
+            ]
+        },
+        {
+            "name": "ChainedLinear",
+            "type": "python",
+            "request": "launch",
+            "module": "hannah.tools.train",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/experiments/kws",
+            "args": [
+                "+experiment=ae_nas"
                 "fx_mac_summary=True",
                 // "~nas.predictor",
                 "~normalizer"

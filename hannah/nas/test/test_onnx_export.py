@@ -21,7 +21,7 @@ import time
 
 import onnx
 
-from hannah.models.embedded_vision_net.models import search_space
+from hannah.models.embedded_vision_net.models import embedded_vision_net, search_space
 from hannah.nas.constraints.random_walk import RandomWalkConstraintSolver
 from hannah.nas.export import to_onnx
 from hannah.nas.functional_operators.op import ChoiceOp, Tensor, scope
@@ -31,7 +31,7 @@ from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.sampler.random_sampler import RandomSampler
 
 
-@scope
+@search_space
 def conv3x3_relu(input):
     out_channels = 48
     weight = Tensor(
@@ -45,7 +45,7 @@ def conv3x3_relu(input):
     return relu
 
 
-@scope
+@search_space
 def op_choice(input):
     conv = Conv2d()(
         input,
@@ -100,7 +100,7 @@ def test_export_embedded_vision_net():
     print("Init search space")
     input = Tensor("input", (1, 3, 32, 32), axis=["N", "C", "H", "W"], grad=False)
 
-    graph = search_space("test", input, num_classes=10, max_blocks=2)
+    graph = embedded_vision_net("test", input, num_classes=10, max_blocks=2)
     print(graph)
 
     print("Init sampler")
@@ -127,3 +127,10 @@ def test_export_embedded_vision_net():
 
     print("")
     print("Done")
+
+
+if __name__ == "__main__":
+    test_deepcopy()
+    test_export_choice()
+    test_export_conv2d()
+    test_export_embedded_vision_net()

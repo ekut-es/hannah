@@ -20,6 +20,16 @@ from hannah.nas.functional_operators.operators import Conv2d
 
 ## Basic Building Blocks
 
+### Search Space Wrapper
+To define the beginning and end of a search space, the definition has to be enclosed in a function returning the (last node of the) search space graph. 
+This function must use the `@search_space` decorator to indicate that this is the main search space enclosing function. 
+
+
+
+```python
+from hannah.nas.functional_operators.op import search_space
+```
+
 ### Ops & Tensors
 
 **Op** nodes represent the operators used in the networks of the search space. Their basic syntax is
@@ -38,18 +48,22 @@ defines attributes that the data has at this point in the graph (e.g., shape, ax
 from hannah.nas.functional_operators.operators import Conv2d
 from hannah.nas.functional_operators.op import Tensor
 
-input = Tensor(name='input', shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
-weight = Tensor(name='weight', shape=(32, 3, 1, 1), axis=("O", "I", "kH", "kW"))
+@search_space
+def simple_search_space():
+    input = Tensor(name='input', shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+    weight = Tensor(name='weight', shape=(32, 3, 1, 1), axis=("O", "I", "kH", "kW"))
 
-conv = Conv2d(stride=2, dilation=1)   # Define operator and parametrization
-graph = conv(input, weight)           # Define/create/extend graph
+    conv = Conv2d(stride=2, dilation=1)   # Define operator and parametrization
+    graph = conv(input, weight)           # Define/create/extend graph
+    return graph
+graph = simple_search_space()
 graph
 ```
 
 
 
 
-    Conv2d(Conv2d_0)
+    Conv2d(simple_search_space_0.Conv2d_0)
 
 
 
@@ -76,19 +90,23 @@ To build a search space it is not sufficient to feed scalar values to operator p
 ```python
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 
-input = Tensor(name='input', shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
-weight = Tensor(name='weight', shape=(IntScalarParameter(min=8, max=64, name='out_channels'), 3, 1, 1), axis=("O", "I", "kH", "kW"))
+@search_space
+def simple_parametrized_search_space():
+    input = Tensor(name='input', shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+    weight = Tensor(name='weight', shape=(IntScalarParameter(min=8, max=64, name='out_channels'), 3, 1, 1), axis=("O", "I", "kH", "kW"))
 
-# a search space with stride 1 and stride 2 convolutions
-graph = Conv2d(stride=CategoricalParameter(name='stride', choices=[1, 2]))(input, weight)
+    # a search space with stride 1 and stride 2 convolutions
+    graph = Conv2d(stride=CategoricalParameter(name='stride', choices=[1, 2]))(input, weight)
+    return graph
+graph = simple_parametrized_search_space()
 graph.parametrization(flatten=True)
 ```
 
 
 
 
-    {'Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
-     None: CategoricalParameter(rng = Generator(PCG64), name = stride, id = None, choices = [1, 2], current_value = 1)}
+    {'simple_parametrized_search_space_0.Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = simple_parametrized_search_space_0.Conv2d_0.stride, _registered = True, choices = [1, 2], current_value = 2),
+     'simple_parametrized_search_space_0.Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = simple_parametrized_search_space_0.Conv2d_0.weight.out_channels, _registered = True, min = 8, max = 64, step_size = 1, current_value = 8)}
 
 
 
@@ -97,16 +115,20 @@ encoding properties of the search space symbolically. One common use-case is sym
 
 
 ```python
-in_channel = 3 
+in_channel = 3
 kernel_size = 1
 input = Tensor(name='input',
                shape=(1, in_channel, 32, 32),
                axis=('N', 'C', 'H', 'W'))
 
-weight_0 = Tensor(name='weight', 
-                  shape=(IntScalarParameter(min=8, max=64, name='out_channels'), in_channel, kernel_size, kernel_size), 
-                  axis=("O", "I", "kH", "kW"))
-conv_0 = Conv2d(stride=CategoricalParameter(name='stride', choices=[1, 2]))(input, weight_0)
+@search_space
+def simple_search_space(input):
+    weight_0 = Tensor(name='weight',
+                      shape=(IntScalarParameter(min=8, max=64, name='out_channels'), in_channel, kernel_size, kernel_size),
+                      axis=("O", "I", "kH", "kW"))
+    conv_0 = Conv2d(stride=CategoricalParameter(name='stride', choices=[1, 2]))(input, weight_0)
+    return conv_0
+out = simple_search_space(input)
 ```
 
 How can we know the output shape of `conv_0`, e.g., to put it into the weight tensor of a following convolution, without knowing what value 
@@ -117,13 +139,13 @@ are then only evaluated at sampling and during the forward.
 
 ```python
 print("Input shape: ", input.shape())
-print("Weight shape: ", weight_0.shape())
-print("Convolution output shape:", conv_0.shape())
+print("Weight shape: ", out.operands[1].shape())
+print("Convolution output shape:", out.shape())
 ```
 
     Input shape:  (1, 3, 32, 32)
-    Weight shape:  (IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8), 3, 1, 1)
-    Convolution output shape: (1, IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8), <hannah.nas.expressions.arithmetic.Floor object at 0x7ff93a6ce8c0>, <hannah.nas.expressions.arithmetic.Floor object at 0x7ff93a6ce7a0>)
+    Weight shape:  (IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = simple_search_space_0.Conv2d_0.weight.out_channels, _registered = True, min = 8, max = 64, step_size = 1, current_value = 8), 3, 1, 1)
+    Convolution output shape: (1, IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = simple_search_space_0.Conv2d_0.weight.out_channels, _registered = True, min = 8, max = 64, step_size = 1, current_value = 8), <hannah.nas.expressions.arithmetic.Floor object at 0x7fcaff5b3d60>, <hannah.nas.expressions.arithmetic.Floor object at 0x7fcaff5b2560>)
 
 
 The `lazy` keyword can be used to evaluate values which *might* be parameters (but could also be `int` or else).
@@ -134,8 +156,8 @@ from hannah.nas.functional_operators.lazy import lazy
 
 
 print("Input shape: ", [lazy(i) for i in input.shape()])
-print("Weight shape: ", [lazy(i) for i in weight_0.shape()])
-print("Convolution output shape:", [lazy(i) for i in conv_0.shape()])
+print("Weight shape: ", [lazy(i) for i in out.operands[1].shape()])
+print("Convolution output shape:", [lazy(i) for i in out.shape()])
 ```
 
     Input shape:  [1, 3, 32, 32]
@@ -153,33 +175,38 @@ As seen in the simple examples above, we can chain op and tensor nodes together 
 ```python
 from hannah.nas.functional_operators.operators import Relu
 
-input = Tensor(name='input',
-               shape=(1, 3, 32, 32),
-               axis=('N', 'C', 'H', 'W'))
 
-weight_0 = Tensor(name='weight', shape=(IntScalarParameter(min=8, max=64, name='out_channels'), 3, 1, 1), axis=("O", "I", "kH", "kW"))
+@search_space
+def simple_search_space():
+    input = Tensor(name='input',
+                   shape=(1, 3, 32, 32),
+                   axis=('N', 'C', 'H', 'W'))
 
-conv_0 = Conv2d(stride=CategoricalParameter(name='stride', choices=[1, 2]))(input, weight_0)
-relu_0 = Relu()(conv_0)
+    weight_0 = Tensor(name='weight', shape=(IntScalarParameter(min=8, max=64, name='out_channels'), 3, 1, 1), axis=("O", "I", "kH", "kW"))
 
-weight_1 = Tensor(name='weight', shape=(IntScalarParameter(min=32, max=64, name='out_channels'), conv_0.shape()[1], 3, 3), axis=("O", "I", "kH", "kW"))
-conv_1 = Conv2d(stride=CategoricalParameter(name='stride', choices=[1, 2]))(relu_0, weight_1)
-relu_1 = Relu()(conv_1)
+    conv_0 = Conv2d(stride=CategoricalParameter(name='stride', choices=[1, 2]))(input, weight_0)
+    relu_0 = Relu()(conv_0)
+
+    weight_1 = Tensor(name='weight', shape=(IntScalarParameter(min=32, max=64, name='out_channels'), conv_0.shape()[1], 3, 3), axis=("O", "I", "kH", "kW"))
+    conv_1 = Conv2d(stride=CategoricalParameter(name='stride', choices=[1, 2]))(relu_0, weight_1)
+    relu_1 = Relu()(conv_1)
+    return relu_1
+out = simple_search_space()
 
 ```
 
 
 ```python
-relu_1.parametrization(flatten=True)
+out.parametrization(flatten=True)
 ```
 
 
 
 
-    {'Conv2d_1.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_1.weight.out_channels, min = 32, max = 64, step_size = 1, current_value = 32),
-     'Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
-     'Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_0.stride, choices = [1, 2], current_value = 2),
-     'Conv2d_1.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_1.stride, choices = [1, 2], current_value = 2)}
+    {'simple_search_space_0.Conv2d_1.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = simple_search_space_0.Conv2d_1.stride, _registered = True, choices = [1, 2], current_value = 2),
+     'simple_search_space_0.Conv2d_1.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = simple_search_space_0.Conv2d_1.weight.out_channels, _registered = True, min = 32, max = 64, step_size = 1, current_value = 32),
+     'simple_search_space_0.Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = simple_search_space_0.Conv2d_0.stride, _registered = True, choices = [1, 2], current_value = 2),
+     'simple_search_space_0.Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = simple_search_space_0.Conv2d_0.weight.out_channels, _registered = True, min = 8, max = 64, step_size = 1, current_value = 8)}
 
 
 
@@ -190,33 +217,33 @@ With helper functions like `get_nodes` one can iterate through all graph nodes.
 ```python
 from hannah.nas.functional_operators.op import get_nodes
 
-print("Relu Operands: ", relu_1.operands)
-print("Conv Users: ", relu_1.operands[0].users)
+print("Relu Operands: ", out.operands)
+print("Conv Users: ", out.operands[0].users)
 
 print("\nNodes:")
-for node in get_nodes(relu_1):
+for node in get_nodes(out):
     print('Node:', node)
     print('\tOperands: ', node.operands)
 
 ```
 
-    Relu Operands:  [Conv2d(Conv2d_1)]
-    Conv Users:  [Relu(Relu_1)]
+    Relu Operands:  [Conv2d(simple_search_space_0.Conv2d_1)]
+    Conv Users:  [Relu(simple_search_space_0.Relu_1)]
     
     Nodes:
-    Node: Relu(Relu_1)
-    	Operands:  [Conv2d(Conv2d_1)]
-    Node: Conv2d(Conv2d_1)
-    	Operands:  [Relu(Relu_0), Tensor(Conv2d_1.weight)]
-    Node: Tensor(Conv2d_1.weight)
+    Node: Relu(simple_search_space_0.Relu_1)
+    	Operands:  [Conv2d(simple_search_space_0.Conv2d_1)]
+    Node: Conv2d(simple_search_space_0.Conv2d_1)
+    	Operands:  [Relu(simple_search_space_0.Relu_0), Tensor(simple_search_space_0.Conv2d_1.weight)]
+    Node: Tensor(simple_search_space_0.Conv2d_1.weight)
     	Operands:  []
-    Node: Relu(Relu_0)
-    	Operands:  [Conv2d(Conv2d_0)]
-    Node: Conv2d(Conv2d_0)
-    	Operands:  [Tensor(input), Tensor(Conv2d_0.weight)]
-    Node: Tensor(Conv2d_0.weight)
+    Node: Relu(simple_search_space_0.Relu_0)
+    	Operands:  [Conv2d(simple_search_space_0.Conv2d_0)]
+    Node: Conv2d(simple_search_space_0.Conv2d_0)
+    	Operands:  [Tensor(simple_search_space_0.input), Tensor(simple_search_space_0.Conv2d_0.weight)]
+    Node: Tensor(simple_search_space_0.Conv2d_0.weight)
     	Operands:  []
-    Node: Tensor(input)
+    Node: Tensor(simple_search_space_0.input)
     	Operands:  []
 
 
@@ -243,23 +270,27 @@ def conv_relu(input, kernel_size, out_channels, stride):
 input = Tensor(name='input',
                shape=(1, 3, 32, 32),
                axis=('N', 'C', 'H', 'W'))
+@search_space
+def space(input):
+    kernel_size = CategoricalParameter(name="kernel_size", choices=[1, 3, 5])
+    stride = CategoricalParameter(name="stride", choices=[1, 2])
+    out_channels = IntScalarParameter(name="out_channels", min=8, max=64)
+    net = conv_relu(input, kernel_size=kernel_size, out_channels=out_channels, stride=stride)
+    net = conv_relu(net, kernel_size=kernel_size, out_channels=out_channels, stride=stride)
+    return net
 
-kernel_size = CategoricalParameter(name="kernel_size", choices=[1, 3, 5])
-stride = CategoricalParameter(name="stride", choices=[1, 2])
-out_channels = IntScalarParameter(name="out_channels", min=8, max=64)
-net = conv_relu(input, kernel_size=kernel_size, out_channels=out_channels, stride=stride)
-net = conv_relu(net, kernel_size=kernel_size, out_channels=out_channels, stride=stride)
+net = space(input)
 
 for n in get_nodes(net):
     print(n)
 ```
 
-    Relu(Relu_1)
-    Conv2d(Conv2d_1)
-    Tensor(Conv2d_1.weight)
-    Relu(Relu_0)
-    Conv2d(Conv2d_0)
-    Tensor(Conv2d_0.weight)
+    Relu(space_0.Relu_1)
+    Conv2d(space_0.Conv2d_1)
+    Tensor(space_0.Conv2d_1.weight)
+    Relu(space_0.Relu_0)
+    Conv2d(space_0.Conv2d_0)
+    Tensor(space_0.Conv2d_0.weight)
     Tensor(input)
 
 
@@ -271,9 +302,9 @@ net.parametrization(flatten=True)
 
 
 
-    {'Conv2d_0.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = Conv2d_0.weight.kernel_size, choices = [1, 3, 5], current_value = 5),
-     'Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
-     'Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_0.stride, choices = [1, 2], current_value = 1)}
+    {'space_0.Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = space_0.Conv2d_0.stride, _registered = True, choices = [1, 2], current_value = 1),
+     'space_0.Conv2d_0.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = space_0.Conv2d_0.weight.kernel_size, _registered = True, choices = [1, 3, 5], current_value = 1),
+     'space_0.Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = space_0.Conv2d_0.weight.out_channels, _registered = True, min = 8, max = 64, step_size = 1, current_value = 8)}
 
 
 
@@ -284,12 +315,15 @@ Note, how there is just one set of parameters. If defined this way, both blocks 
 input = Tensor(name='input',
                shape=(1, 3, 32, 32),
                axis=('N', 'C', 'H', 'W'))
-
-kernel_size = CategoricalParameter(name="kernel_size", choices=[1, 3, 5])
-stride = CategoricalParameter(name="stride", choices=[1, 2])
-out_channels = IntScalarParameter(name="out_channels", min=8, max=64)
-net = conv_relu(input, kernel_size=kernel_size.new(), out_channels=out_channels.new(), stride=stride.new())
-net = conv_relu(net, kernel_size=kernel_size.new(), out_channels=out_channels.new(), stride=stride.new())
+@search_space
+def space(input):
+    kernel_size = CategoricalParameter(name="kernel_size", choices=[1, 3, 5])
+    stride = CategoricalParameter(name="stride", choices=[1, 2])
+    out_channels = IntScalarParameter(name="out_channels", min=8, max=64)
+    net = conv_relu(input, kernel_size=kernel_size.new(), out_channels=out_channels.new(), stride=stride.new())
+    net = conv_relu(net, kernel_size=kernel_size.new(), out_channels=out_channels.new(), stride=stride.new())
+    return net
+net = space(input)
 
 net.parametrization(flatten=True)
 ```
@@ -297,12 +331,12 @@ net.parametrization(flatten=True)
 
 
 
-    {'Conv2d_1.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = Conv2d_1.weight.kernel_size, choices = [1, 3, 5], current_value = 3),
-     'Conv2d_1.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_1.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
-     'Conv2d_0.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = Conv2d_0.weight.kernel_size, choices = [1, 3, 5], current_value = 3),
-     'Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8),
-     'Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_0.stride, choices = [1, 2], current_value = 2),
-     'Conv2d_1.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = Conv2d_1.stride, choices = [1, 2], current_value = 2)}
+    {'space_0.Conv2d_1.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = space_0.Conv2d_1.stride, _registered = True, choices = [1, 2], current_value = 2),
+     'space_0.Conv2d_1.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = space_0.Conv2d_1.weight.kernel_size, _registered = True, choices = [1, 3, 5], current_value = 5),
+     'space_0.Conv2d_1.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = space_0.Conv2d_1.weight.out_channels, _registered = True, min = 8, max = 64, step_size = 1, current_value = 8),
+     'space_0.Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = space_0.Conv2d_0.stride, _registered = True, choices = [1, 2], current_value = 2),
+     'space_0.Conv2d_0.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = space_0.Conv2d_0.weight.kernel_size, _registered = True, choices = [1, 3, 5], current_value = 5),
+     'space_0.Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = space_0.Conv2d_0.weight.out_channels, _registered = True, min = 8, max = 64, step_size = 1, current_value = 8)}
 
 
 
@@ -322,31 +356,35 @@ def block(input):
 input = Tensor(name='input',
                shape=(1, 3, 32, 32),
                axis=('N', 'C', 'H', 'W'))
-net = block(input)
-net = block(net)
+@search_space
+def space(input):
+    net = block(input)
+    net = block(net)
+    return net
+net = space(input)
 
 for n in get_nodes(net):
     print(n)
 ```
 
-    Relu(Relu_5)
-    Conv2d(Conv2d_5)
-    Tensor(Conv2d_5.weight)
-    Relu(Relu_4)
-    Conv2d(Conv2d_4)
-    Tensor(Conv2d_4.weight)
-    Relu(Relu_3)
-    Conv2d(Conv2d_3)
-    Tensor(Conv2d_3.weight)
-    Relu(Relu_2)
-    Conv2d(Conv2d_2)
-    Tensor(Conv2d_2.weight)
-    Relu(Relu_1)
-    Conv2d(Conv2d_1)
-    Tensor(Conv2d_1.weight)
-    Relu(Relu_0)
-    Conv2d(Conv2d_0)
-    Tensor(Conv2d_0.weight)
+    Relu(space_0.Relu_5)
+    Conv2d(space_0.Conv2d_5)
+    Tensor(space_0.Conv2d_5.weight)
+    Relu(space_0.Relu_4)
+    Conv2d(space_0.Conv2d_4)
+    Tensor(space_0.Conv2d_4.weight)
+    Relu(space_0.Relu_3)
+    Conv2d(space_0.Conv2d_3)
+    Tensor(space_0.Conv2d_3.weight)
+    Relu(space_0.Relu_2)
+    Conv2d(space_0.Conv2d_2)
+    Tensor(space_0.Conv2d_2.weight)
+    Relu(space_0.Relu_1)
+    Conv2d(space_0.Conv2d_1)
+    Tensor(space_0.Conv2d_1.weight)
+    Relu(space_0.Relu_0)
+    Conv2d(space_0.Conv2d_0)
+    Tensor(space_0.Conv2d_0.weight)
     Tensor(input)
 
 
@@ -381,34 +419,39 @@ def block(input):
     net = conv_relu(net, kernel_size=kernel_size.new(), out_channels=out_channels.new(), stride=stride.new())
     return net
 
+
 input = Tensor(name='input',
                shape=(1, 3, 32, 32),
                axis=('N', 'C', 'H', 'W'))
-net = block(input)
-net = block(net)
+@search_space
+def space(input):
+    net = block(input)
+    net = block(net)
+    return net
+net = space(input)
 
 for n in get_nodes(net):
     print(n)
 ```
 
-    Relu(block_1.conv_relu_2.Relu_0)
-    Conv2d(block_1.conv_relu_2.Conv2d_0)
-    Tensor(block_1.conv_relu_2.Conv2d_0.weight)
-    Relu(block_1.conv_relu_1.Relu_0)
-    Conv2d(block_1.conv_relu_1.Conv2d_0)
-    Tensor(block_1.conv_relu_1.Conv2d_0.weight)
-    Relu(block_1.conv_relu_0.Relu_0)
-    Conv2d(block_1.conv_relu_0.Conv2d_0)
-    Tensor(block_1.conv_relu_0.Conv2d_0.weight)
-    Relu(block_0.conv_relu_2.Relu_0)
-    Conv2d(block_0.conv_relu_2.Conv2d_0)
-    Tensor(block_0.conv_relu_2.Conv2d_0.weight)
-    Relu(block_0.conv_relu_1.Relu_0)
-    Conv2d(block_0.conv_relu_1.Conv2d_0)
-    Tensor(block_0.conv_relu_1.Conv2d_0.weight)
-    Relu(block_0.conv_relu_0.Relu_0)
-    Conv2d(block_0.conv_relu_0.Conv2d_0)
-    Tensor(block_0.conv_relu_0.Conv2d_0.weight)
+    Relu(space_0.block_1.conv_relu_2.Relu_0)
+    Conv2d(space_0.block_1.conv_relu_2.Conv2d_0)
+    Tensor(space_0.block_1.conv_relu_2.Conv2d_0.weight)
+    Relu(space_0.block_1.conv_relu_1.Relu_0)
+    Conv2d(space_0.block_1.conv_relu_1.Conv2d_0)
+    Tensor(space_0.block_1.conv_relu_1.Conv2d_0.weight)
+    Relu(space_0.block_1.conv_relu_0.Relu_0)
+    Conv2d(space_0.block_1.conv_relu_0.Conv2d_0)
+    Tensor(space_0.block_1.conv_relu_0.Conv2d_0.weight)
+    Relu(space_0.block_0.conv_relu_2.Relu_0)
+    Conv2d(space_0.block_0.conv_relu_2.Conv2d_0)
+    Tensor(space_0.block_0.conv_relu_2.Conv2d_0.weight)
+    Relu(space_0.block_0.conv_relu_1.Relu_0)
+    Conv2d(space_0.block_0.conv_relu_1.Conv2d_0)
+    Tensor(space_0.block_0.conv_relu_1.Conv2d_0.weight)
+    Relu(space_0.block_0.conv_relu_0.Relu_0)
+    Conv2d(space_0.block_0.conv_relu_0.Conv2d_0)
+    Tensor(space_0.block_0.conv_relu_0.Conv2d_0.weight)
     Tensor(input)
 
 
@@ -433,14 +476,24 @@ def choice_block(input):
     net = ChoiceOp(identity, optional_conv)(input)
     return net
 
-    
+
 ```
 
 
 ```python
+kernel_size = CategoricalParameter(name="kernel_size", choices=[1, 3, 5])
+stride = CategoricalParameter(name="stride", choices=[1, 2])
+out_channels = IntScalarParameter(name="out_channels", min=8, max=64)
+
+
 input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
-conv = conv_relu(input, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
-net = choice_block(conv)
+
+@search_space
+def space(input, out_channels, stride, kernel_size):
+    conv = conv_relu(input, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+    net = choice_block(conv)
+    return net
+net = space(input, out_channels, stride, kernel_size)
 
 net.parametrization(flatten=True)
 
@@ -449,13 +502,13 @@ net.parametrization(flatten=True)
 
 
 
-    {'choice_block_0.ChoiceOp_0.choice': IntScalarParameter(rng = Generator(PCG64), name = choice, id = choice_block_0.ChoiceOp_0.choice, min = 0, max = 1, step_size = 1, current_value = 0),
-     'choice_block_0.conv_relu_1.Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = choice_block_0.conv_relu_1.Conv2d_0.stride, choices = [1, 2], current_value = 2),
-     'choice_block_0.conv_relu_1.Conv2d_0.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = choice_block_0.conv_relu_1.Conv2d_0.weight.kernel_size, choices = [1, 3, 5], current_value = 5),
-     'choice_block_0.conv_relu_1.Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = choice_block_0.conv_relu_1.Conv2d_0.weight.out_channels, min = 4, max = 64, step_size = 1, current_value = 4),
-     'conv_relu_0.Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = conv_relu_0.Conv2d_0.stride, choices = [1, 2], current_value = 2),
-     'conv_relu_0.Conv2d_0.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = conv_relu_0.Conv2d_0.weight.kernel_size, choices = [1, 3, 5], current_value = 3),
-     'conv_relu_0.Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = conv_relu_0.Conv2d_0.weight.out_channels, min = 8, max = 64, step_size = 1, current_value = 8)}
+    {'space_0.choice_block_0.ChoiceOp_0.choice': IntScalarParameter(rng = Generator(PCG64), name = choice, id = space_0.choice_block_0.ChoiceOp_0.choice, _registered = True, min = 0, max = 1, step_size = 1, current_value = 0),
+     'space_0.choice_block_0.conv_relu_0.Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = space_0.choice_block_0.conv_relu_0.Conv2d_0.stride, _registered = True, choices = [1, 2], current_value = 1),
+     'space_0.choice_block_0.conv_relu_0.Conv2d_0.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = space_0.choice_block_0.conv_relu_0.Conv2d_0.weight.kernel_size, _registered = True, choices = [1, 3, 5], current_value = 1),
+     'space_0.choice_block_0.conv_relu_0.Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = space_0.choice_block_0.conv_relu_0.Conv2d_0.weight.out_channels, _registered = True, min = 4, max = 64, step_size = 1, current_value = 4),
+     'space_0.conv_relu_0.Conv2d_0.stride': CategoricalParameter(rng = Generator(PCG64), name = stride, id = space_0.conv_relu_0.Conv2d_0.stride, _registered = True, choices = [1, 2], current_value = 1),
+     'space_0.conv_relu_0.Conv2d_0.weight.kernel_size': CategoricalParameter(rng = Generator(PCG64), name = kernel_size, id = space_0.conv_relu_0.Conv2d_0.weight.kernel_size, _registered = True, choices = [1, 3, 5], current_value = 3),
+     'space_0.conv_relu_0.Conv2d_0.weight.out_channels': IntScalarParameter(rng = Generator(PCG64), name = out_channels, id = space_0.conv_relu_0.Conv2d_0.weight.out_channels, _registered = True, min = 8, max = 64, step_size = 1, current_value = 8)}
 
 
 
@@ -494,9 +547,12 @@ from hannah.nas.functional_operators.executor import BasicExecutor
 input = Tensor(name='input',
                shape=(1, 3, 32, 32),
                axis=('N', 'C', 'H', 'W'))
-net = block(input)
-net = block(net)
-
+@search_space
+def space(input):
+    net = block(input)
+    net = block(net)
+    return net
+net = space(input)
 model = BasicExecutor(net)
 model.initialize()
 
@@ -507,44 +563,49 @@ model.forward(x)
 
 
 
-    tensor([[[[0.0000, 0.0000, 0.0000, 0.0000],
+    tensor([[[[0.2717, 0.0092, 0.1203, 0.1979],
+              [0.0000, 0.2005, 0.0972, 0.0256],
+              [0.1351, 0.1363, 0.0754, 0.1609],
+              [0.0000, 0.1031, 0.0446, 0.2227]],
+    
+             [[0.2462, 0.0013, 0.0224, 0.0534],
+              [0.2030, 0.1310, 0.0000, 0.0404],
+              [0.1303, 0.1276, 0.0634, 0.1498],
+              [0.1786, 0.0298, 0.0085, 0.1301]],
+    
+             [[0.0000, 0.0000, 0.0000, 0.0000],
               [0.0000, 0.0000, 0.0000, 0.0000],
               [0.0000, 0.0000, 0.0000, 0.0000],
               [0.0000, 0.0000, 0.0000, 0.0000]],
     
-             [[0.0255, 0.0000, 0.0000, 0.0000],
-              [0.0000, 0.0152, 0.0000, 0.0000],
-              [0.0000, 0.0000, 0.0898, 0.0000],
-              [0.1132, 0.0894, 0.0094, 0.0138]],
-    
-             [[0.0000, 0.0000, 0.0365, 0.0000],
-              [0.0000, 0.1532, 0.0000, 0.2529],
-              [0.0000, 0.0859, 0.0396, 0.0000],
-              [0.0000, 0.2311, 0.0757, 0.0000]],
-    
-             [[0.0000, 0.1285, 0.1754, 0.0000],
-              [0.1788, 0.1729, 0.1973, 0.1036],
-              [0.1823, 0.2994, 0.2293, 0.2580],
-              [0.0554, 0.2454, 0.1355, 0.3018]],
-    
-             [[0.0000, 0.0234, 0.0000, 0.0000],
-              [0.0725, 0.0212, 0.0615, 0.0960],
-              [0.1040, 0.0960, 0.1613, 0.0927],
-              [0.1025, 0.0846, 0.0000, 0.0424]],
-    
-             [[0.0000, 0.0000, 0.0672, 0.0818],
-              [0.0000, 0.1420, 0.0404, 0.0326],
-              [0.0000, 0.0000, 0.0000, 0.1140],
-              [0.0000, 0.1518, 0.1521, 0.2088]],
-    
-             [[0.0000, 0.0995, 0.1362, 0.0000],
-              [0.0000, 0.1206, 0.0000, 0.0000],
-              [0.0000, 0.1001, 0.0000, 0.0000],
-              [0.0000, 0.0000, 0.0000, 0.0435]],
-    
-             [[0.0000, 0.0000, 0.0000, 0.0245],
-              [0.0000, 0.0938, 0.0000, 0.0763],
+             [[0.0000, 0.0021, 0.0000, 0.0000],
+              [0.0000, 0.0000, 0.0232, 0.0000],
               [0.0000, 0.0000, 0.0000, 0.0000],
-              [0.0000, 0.0000, 0.0000, 0.0000]]]], grad_fn=<ReluBackward0>)
+              [0.0000, 0.0000, 0.0011, 0.0000]],
+    
+             [[0.7481, 0.0018, 0.2029, 0.1693],
+              [0.7117, 0.3248, 0.1578, 0.1085],
+              [0.3086, 0.3926, 0.1606, 0.3065],
+              [0.5410, 0.1157, 0.0583, 0.4534]],
+    
+             [[0.0000, 0.0000, 0.0705, 0.0628],
+              [0.0000, 0.0000, 0.1682, 0.0000],
+              [0.0000, 0.0000, 0.0000, 0.0000],
+              [0.0000, 0.0381, 0.0255, 0.0000]],
+    
+             [[0.7549, 0.0092, 0.2340, 0.1351],
+              [0.7965, 0.1582, 0.2039, 0.0925],
+              [0.2619, 0.3976, 0.1461, 0.1876],
+              [0.5799, 0.0848, 0.0732, 0.4952]],
+    
+             [[0.5984, 0.0043, 0.2075, 0.1700],
+              [0.5905, 0.1869, 0.2142, 0.0772],
+              [0.2146, 0.3152, 0.1176, 0.1768],
+              [0.4285, 0.1043, 0.0665, 0.3872]]]], grad_fn=<ReluBackward0>)
 
 
+
+
+```python
+
+```

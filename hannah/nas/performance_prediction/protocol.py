@@ -53,7 +53,6 @@ class Predictor(Protocol):
         ...
 
 
-@runtime_checkable
 class FitablePredictor(Predictor):
     def load(self, result_folder: str):
         """Load predefined model from a folder.
