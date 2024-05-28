@@ -1,7 +1,7 @@
 from hannah.nas.functional_operators.executor import BasicExecutor
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.functional_operators.operators import Conv2d, Linear, Relu
-from hannah.nas.functional_operators.op import Tensor
+from hannah.nas.functional_operators.op import Tensor, search_space
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 
 from torch.optim import SGD
@@ -42,6 +42,7 @@ def linear(input, out_features):
     return out
 
 
+@search_space
 def network(input):
     out = conv_relu(input,
                     out_channels=IntScalarParameter(32, 64, name='out_channels'),

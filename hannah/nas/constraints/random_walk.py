@@ -25,6 +25,8 @@ from typing import Any
 import numpy as np
 
 from hannah.nas.functional_operators.lazy import lazy
+from hannah.nas.functional_operators.op import ChoiceOp
+from hannah.nas.parameters.parameters import Parameter
 from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.utils import np_to_primitive
 
@@ -70,32 +72,36 @@ CHOICES = {
 }
 
 
-def get_active_parameter(params):
-    # FIXME: this needs to be generalized
-    active_params = {}
-    params = hierarchical_parameter_dict(params)
-    num_blocks = params["ChoiceOp_0"]["num_blocks"][""].value
-    active_params["num_blocks"] = num_blocks + 1
-    for i in range(num_blocks + 1):
-        current_block = f"block_{i}"
-        depth = params[current_block]["ChoiceOp_0"]["depth"].value
-        active_params[params[current_block]["ChoiceOp_0"]["depth"].name] = depth + 1
-        for j in range(depth + 1):
-            current_pattern = f"pattern_{j}"
-            choice = params[current_block][current_pattern]["ChoiceOp_0.choice"].value
-            for k, v in params[current_block][current_pattern].items():
-                if k.split(".")[0] == "Conv2d_0":
-                    active_params[v.name] = v.value
-                elif "expand_reduce" in k and choice == 1:
-                    active_params[v.name] = v.value
-                elif "reduce_expand" in k and choice == 2:
-                    active_params[v.name] = v.value
-                elif "pooling" in k and choice == 3:
-                    active_params[v.name] = v.value
-                elif "ChoiceOp" in k:
-                    active_params[v.name] = CHOICES[v.value]
+def get_active_parameter(net):
+    active_param_ids = []
+    queue = [net]
+    visited = [net.id]
 
-    return active_params
+    def extract_parameters(node):
+        ids = []
+        for k, p in node._PARAMETERS.items():
+            if isinstance(p, Parameter):
+                ids.append(p.id)
+        return ids
+
+    while queue:
+        current = queue.pop()
+        if isinstance(current, ChoiceOp):
+            # handle choices
+            active_param_ids.append(current.switch.id)
+            chosen_path = current.options[lazy(current.switch)]
+            if chosen_path.id not in visited:
+                queue.append(chosen_path)
+                visited.append(chosen_path.id)
+        else:
+            # handle all other operators & tensors
+            active_param_ids.extend(extract_parameters(current))
+            for operand in current.operands:
+                if operand.id not in visited:
+                    queue.append(operand)
+                    visited.append(operand.id)
+
+    return active_param_ids
 
 
 class RandomWalkConstraintSolver:
@@ -176,7 +182,8 @@ class RandomWalkConstraintSolver:
 
             ct = 0
             while ct < self.max_iterations:
-                active_params = get_active_parameter(params)
+                # active_params = get_active_parameter(params)
+                active_params = get_active_parameter(mod)
 
                 param_keys = [p for p in all_param_keys if p in active_params]
                 current = con.lhs.evaluate()

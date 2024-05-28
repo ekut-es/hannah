@@ -1,7 +1,7 @@
 import torch
 from hannah.callbacks.summaries import FxMACSummaryCallback
 from hannah.models.embedded_vision_net.expressions import expr_product, expr_sum
-from hannah.models.embedded_vision_net.models import search_space
+from hannah.models.embedded_vision_net.models import embedded_vision_net
 from hannah.nas.expressions.choice import Choice
 from hannah.nas.functional_operators.executor import BasicExecutor
 from hannah.nas.functional_operators.op import ChoiceOp, Tensor, Op
@@ -129,7 +129,7 @@ def test_weight_expression():
             self.example_feature_array = example_feature_array
 
     input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
-    space = search_space(name="evn", input=input, num_classes=10)
+    space = embedded_vision_net(name="evn", input=input, num_classes=10)
 
     # find a valid config
     while True:

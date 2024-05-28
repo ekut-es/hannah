@@ -75,47 +75,53 @@ def get_unique_id():
     return _id
 
 
-_id = 0
+def get_highest_scope_counter(scope, scope_dict):
+    if scope in scope_dict:
+        scope_dict[scope] += 1
+    else:
+        scope_dict[scope] = 0
+    return scope_dict[scope]
 
 
-def get_unique_id():
-    global _id
-    _id += 1
-    return _id
-
-
-# FIXME: Traverses nodes to often -> massively increases time when building
-# search spaces
-def get_highest_scope_counter(start_nodes, scope):
-    ct = -1
-    for start_node in start_nodes:
-        for n in get_nodes(start_node):
-            highest_scope = n.id.split(".")[0]
-            if scope == "_".join(highest_scope.split("_")[:-1]):
-                ct = max(int(highest_scope.split("_")[-1]), ct)
-    return ct
-
-
-# TODO: Make scopes accessible, e.g., as a list
 def scope(function):
+    """Decorator defining a scope in a search space. The id of every subcomponent (operators or lower-hierarchy scopes)
+       enclosed in a function decorated with this will be prefixed with the name of the function, creating a
+       hierarchical scope.
+    """
     @wraps(function)
     def set_scope(*args, **kwargs):
-        out = function(*args, **kwargs)
-        name = function.__name__
+        assert "global_scope_stack" in globals(), "No scope tracking found, did you wrap the search space with @search_space?"
+
         inputs = [a for a in args if isinstance(a, (Op, Tensor))] + [
             a for k, a in kwargs.items() if isinstance(a, (Op, Tensor))
         ]
-        ct = get_highest_scope_counter(inputs, name) + 1
+        name = function.__name__
+        global global_scope_stack
+        ct = get_highest_scope_counter(name, global_scope_stack[-1])
+        global_scope_stack.append({})
+        out = function(*args, **kwargs)
         for n in nodes_in_scope(out, inputs):
             n.setid(f"{name}_{ct}.{n.id}")
-            # n.id = f"{name}_{ct}.{n.id}"
-            # print(n.id)
-            # for k, p in n._PARAMETERS.items():
-            #     if isinstance(p, Expression):
-            #         p.id = f"{name}.{k}"
+        global_scope_stack.pop()
         return out
 
     return set_scope
+
+
+def search_space(function):
+    """Decorator to define a search space. For correct scoping,
+       a search space containing functional ops must be enclosed by
+       a function decorated with @search_space.
+    """
+    @wraps(function)
+    def search_space_limits(*args, **kwargs):
+        global global_scope_stack
+        global_scope_stack = [{}]
+        out = scope(function)(*args, **kwargs)
+        del global_scope_stack
+        return out
+
+    return search_space_limits
 
 
 @parametrize
@@ -133,10 +139,14 @@ class Op:
         new_op = self  # FIXME: Just use self?
         for operand in operands:
             operand.connect(new_op)
-        ct = get_highest_scope_counter(operands, self.name) + 1
+
         # Some Ops (ChoiceOp) can be called multiple times and already have a counter
         if not len(self.id.split(".")[-1].split("_")) > 1:
+            assert "global_scope_stack" in globals(), "No scope tracking found, did you wrap the search space with @search_space?"
+            global global_scope_stack
+            ct = get_highest_scope_counter(self.name, global_scope_stack[-1])
             self.id = f"{self.id}_{ct}"
+            # self.setid(f"{self.id}_{ct}")
         return new_op
 
     def connect(self, node):
@@ -318,7 +328,9 @@ class ChoiceOp(Op):
             self.options[i] = node_opt(*operands)
             if is_parametrized(self.options[i]):
                 self._PARAMETERS[self.options[i].id] = self.options[i]  # FIXME:
-        ct = get_highest_scope_counter(operands, self.name) + 1
+        assert "global_scope_stack" in globals(), "No scope tracking found, did you wrap the search space with @search_space?"
+        global global_scope_stack
+        ct = get_highest_scope_counter(self.name, global_scope_stack[-1])
         self.id = f"{self.id}_{ct}"
 
     def shape_fun(self):

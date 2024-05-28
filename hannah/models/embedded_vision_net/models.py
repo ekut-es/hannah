@@ -50,7 +50,7 @@ from hannah.nas.expressions.logic import And
 from hannah.nas.expressions.types import Int
 from hannah.nas.expressions.utils import extract_parameter_from_expression
 from hannah.nas.functional_operators.executor import BasicExecutor
-from hannah.nas.functional_operators.op import Tensor, get_nodes, scope
+from hannah.nas.functional_operators.op import Tensor, get_nodes, scope, search_space
 from hannah.nas.functional_operators.operators import Conv2d
 
 # from hannah.nas.functional_operators.visualizer import Visualizer
@@ -106,7 +106,8 @@ def backbone(input, num_classes=10, max_channels=512, max_blocks=9):
     return out
 
 
-def search_space(
+@search_space
+def embedded_vision_net(
     name,
     input,
     num_classes: int,

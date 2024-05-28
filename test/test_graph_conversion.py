@@ -87,7 +87,7 @@ def test_graph_conversion_lazy_convnet():
 
 
 def test_graph_conversion_functional_operators():
-    from hannah.models.embedded_vision_net.models import search_space
+    from hannah.models.embedded_vision_net.models import embedded_vision_net
     from hannah.nas.functional_operators.executor import BasicExecutor
     import hannah.nas.functional_operators.operators
 
@@ -97,7 +97,7 @@ def test_graph_conversion_functional_operators():
 
     # space = test_net(input)
 
-    space = search_space("net", input, num_classes=10)
+    space = embedded_vision_net("net", input, num_classes=10)
     # space.sample()
     model = BasicExecutor(space)
     model.initialize()

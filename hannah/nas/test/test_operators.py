@@ -1,6 +1,6 @@
 from hannah.models.embedded_vision_net.blocks import grouped_pointwise
 from hannah.nas.functional_operators.executor import BasicExecutor
-from hannah.nas.functional_operators.op import Tensor
+from hannah.nas.functional_operators.op import Tensor, search_space
 from torch.testing import assert_close
 import torch.nn as nn
 import torch
@@ -25,8 +25,12 @@ def test_grouped_pointwise():
             out = torch.add(out_0, out)
             return out
 
+    @search_space
+    def pw_space(input, out_channels):
+        return grouped_pointwise(input, out_channels)
+
     input = Tensor(name="input", shape=(1, 64, 32, 32), axis=("N", "C", "H", "W"))
-    grouped_pw = grouped_pointwise(input, out_channels=128)
+    grouped_pw = pw_space(input, out_channels=128)
     model = BasicExecutor(grouped_pw)
     model.initialize()
 
@@ -37,8 +41,8 @@ def test_grouped_pointwise():
 
     params = dict(model.named_parameters())
     with torch.no_grad():
-        torch_mod.pw_k.weight = params["grouped_pointwise_0_Conv2d_0_weight"]
-        torch_mod.pw_l.weight = params["grouped_pointwise_0_Conv2d_1_weight"]
+        torch_mod.pw_k.weight = params["pw_space_0_grouped_pointwise_0_Conv2d_0_weight"]
+        torch_mod.pw_l.weight = params["pw_space_0_grouped_pointwise_0_Conv2d_1_weight"]
 
     torch_out = torch_mod(x)
 
