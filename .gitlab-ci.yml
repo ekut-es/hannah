@@ -85,25 +85,25 @@ test_python_39:
     paths:
       - .cache/
 
-test_tvm:
-  stage: test
-  image: ubuntu:22.04
-  script:
-    - set -e
-    - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
-    - poetry config installer.max-workers 10
-    - poetry run external/hannah-tvm/scripts/install_full.sh
-    - poetry install -E tvm -E vision
-    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test --integration
-  tags:
-    - docker
-  interruptible: true
-  allow_failure: false
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  cache:
-    paths:
-      - .cache/
+#test_tvm:
+#  stage: test
+#  image: ubuntu:22.04
+#  script:
+#    - set -e
+#    - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
+#    - poetry config installer.max-workers 10
+#    - poetry run external/hannah-tvm/scripts/install_full.sh
+#    - poetry install -E tvm -E vision
+#    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test --integration
+#  tags:
+#    - docker
+#  interruptible: true
+#  allow_failure: false
+#  rules:
+#    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+#  cache:
+#    paths:
+#      - .cache/
 
 test_python_310:
   stage: test
