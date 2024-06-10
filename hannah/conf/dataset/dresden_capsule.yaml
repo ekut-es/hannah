@@ -25,11 +25,11 @@ dataset: dresden_capsule
 sampler: random
 weighted_loss: false
 
-task: sections # Check splits folder for other task options.
+task: section # Check splits folder for other task options.
 split: split_0
 
 downsampling:
-  enabled: true
+  enabled: false
   ratio:
     binary: 1 # ratio normal : anomaly
     # Proportions of each class that should be used.

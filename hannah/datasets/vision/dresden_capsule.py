@@ -92,9 +92,9 @@ class DresdenCapsuleDataset(ImageDatasetBase):
 
     @classmethod
     def splits(cls, config):
-        data_folder = pathlib.Path(config["data_folder"]) / "dresden-capsule"
+        data_folder = pathlib.Path(config["data_folder"]) / "galar"
         study_folder = data_folder / "images"
-        split_folder = data_folder / "splits_tuebingen" / config.task
+        split_folder = data_folder / "splits_publication" / config.task
 
         test_data = pd.read_csv(split_folder / "test.csv")
         val_data = pd.read_csv(split_folder / config.split / "val.csv")
