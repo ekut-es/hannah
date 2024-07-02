@@ -36,6 +36,7 @@ from hannah.nas.functional_operators.operators import (
     conv2d,
     linear,
     self_attention2d,
+    relu_linear_attention,
 )
 from hannah.nas.graph_conversion import GraphConversionTracer
 
@@ -532,6 +533,7 @@ class MACSummaryInterpreter(fx.Interpreter):
             linear: get_linear,
             add: get_zero_op,
             self_attention2d: get_attn2d,
+            relu_linear_attention: get_attn2d,
         }
 
         self.data = {

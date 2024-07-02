@@ -1,13 +1,30 @@
 from hannah.nas.expressions.types import Int
 from hannah.nas.functional_operators.op import ChoiceOp, Tensor, scope
 from hannah.nas.functional_operators.operators import (
-    AdaptiveAvgPooling, Add, BatchNorm, Conv2d, Linear, Relu, Identity, MaxPooling, Dropout, SelfAttention2d
+    Add,
+    BatchNorm,
+    Conv2d,
+    Linear,
+    Relu,
+    Identity,
+    AvgPooling,
+    AdaptiveAvgPooling,
+    MaxPooling,
+    MaxAvgPooling,
+    Dropout,
+    SelfAttention2d,
+    ReluLinearAttention
 )
 from hannah.models.embedded_vision_net.parameters import Groups
 
 
 def self_attention2d(q, k, v, num_heads, d_model):
     out = SelfAttention2d(num_heads=num_heads, d_model=d_model)(q, k, v)
+    return out
+
+
+def relu_linear_attention(q, k, v, num_heads, d_model):
+    out = ReluLinearAttention(num_heads=num_heads, d_model=d_model)(q, k, v)
     return out
 
 
@@ -73,6 +90,16 @@ def adaptive_avg_pooling(input):
 
 def max_pool(input, kernel_size, stride):
     out = MaxPooling(kernel_size=kernel_size, stride=stride)(input)
+    return out
+
+
+def avg_pool(input, kernel_size, stride):
+    out = AvgPooling(kernel_size=kernel_size, stride=stride)(input)
+    return out
+
+
+def combine_pool(input, kernel_size, stride):
+    out = MaxAvgPooling(kernel_size=kernel_size, stride=stride)(input)
     return out
 
 

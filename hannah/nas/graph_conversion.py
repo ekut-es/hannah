@@ -60,6 +60,7 @@ class GraphConversionTracer(SearchSpaceTracer):
         f_ops.Requantize,
         f_ops.Identity,
         f_ops.SelfAttention2d,
+        f_ops.ReluLinearAttention,
         Tensor,
     ]
 
@@ -125,6 +126,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             "interleave": self.add_nodes_relu,
             "dropout": self.add_nodes_dropout,
             "self_attention2d": self.add_nodes_attn2d,
+            "relu_linear_attention": self.add_nodes_attn2d,
         }
         self.layer_encodings = [
             "conv",
