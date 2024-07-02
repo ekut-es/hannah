@@ -1,7 +1,6 @@
 defaults:
     - base_config
-    - override nas: aging_evolution_nas
-    - override model: conv_vit
+    - experiment: optional
     - override dataset: cifar10          # Dataset configuration name
     - override features: identity        # Feature extractor configuration name (use identity for vision datasets)
     - override scheduler: 1cycle         # learning rate scheduler config name
@@ -10,28 +9,16 @@ defaults:
     - override module: image_classifier  # Lightning module config for the training loop (image classifier for image classification tasks)
     - _self_
 
-model:
-  num_classes: 10
+
+dataset:
+  data_folder: ${oc.env:HANNAH_DATA_FOLDER,${hydra:runtime.cwd}/../../datasets/}
 
 module:
   batch_size: 128
   num_workers: 4
-
-nas:
-  budget: 500
-  n_jobs: 4
-  predictor:
-    model:
-      input_feature_size: 38
 
 trainer:
   max_epochs: 10
 
 scheduler:
   max_lr: 0.001
-
-fx_mac_summary: True
-
-seed: [1234]
-
-experiment_id: "conv_vit"

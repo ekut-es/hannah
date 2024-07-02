@@ -42,6 +42,7 @@ from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarPara
 from hannah.nas.parameters.parametrize import parametrize
 
 
+
 @torch.fx.wrap
 def conv1d(input, weight, stride, padding, dilation, groups, *, id):
     return F.conv1d(
@@ -114,6 +115,13 @@ def avg_pool(input, kernel_size, stride, padding):
 
 
 @torch.fx.wrap
+def max_avg_pool(input, kernel_size, stride, padding):
+    avg_out = F.avg_pool2d(input, kernel_size, stride, padding)
+    max_out = F.max_pool2d(input, kernel_size, stride, padding, dilation=1)
+    return 0.5 * avg_out + 0.5 * max_out
+
+
+@torch.fx.wrap
 def interleave(input, step_size):
     # Assuming NCHW layout!! Maybe change later to use named axis of Tensor?
     return torch.concat(
@@ -146,6 +154,70 @@ def self_attention2d(q, k, v, num_heads, d_model, *, id):
     attn = F.softmax(attn, dim=-1)
     score = v @ attn  # [B, h, d, H*W]
     out = score.reshape(b, -1, h, w)  # [B, h*d, H, W]
+
+    return out
+
+
+@torch.fx.wrap
+def dropout(input, p, *, id):
+    return F.dropout(input, p)
+
+
+@torch.fx.wrap
+def self_attention2d(q, k, v, num_heads, d_model, *, id):
+    """
+    Arguments:
+        q: Tensor, shape ``[B, h*d, H, W]``
+        k: Tensor, shape ``[B, h*d, H, W]``
+        v: Tensor, shape ``[B, h*d, H, W]``
+    """
+    scale = d_model ** -0.5
+    b, _, h, w = q.shape
+    q = q.view(b, num_heads, d_model, h * w)
+    k = k.view(b, num_heads, d_model, h * w)
+    v = v.view(b, num_heads, d_model, h * w)
+    # [B, h, d, H*W]
+
+    q *= scale
+    attn = q.transpose(-2, -1) @ k  # [B, h, H*W, H*W]
+    attn = F.softmax(attn, dim=-1)
+    score = v @ attn  # [B, h, d, H*W]
+    out = score.reshape(b, -1, h, w)  # [B, h*d, H, W]
+
+    return out
+
+
+@torch.fx.wrap
+def relu_linear_attention(q, k, v, num_heads, d_model, *, id):
+    """
+    Adapted from EfficientViT.
+    Arguments:
+        q: Tensor, shape ``[B, h*d, H, W]``
+        k: Tensor, shape ``[B, h*d, H, W]``
+        v: Tensor, shape ``[B, h*d, H, W]``
+    """
+    b, _, h, w = q.shape
+    q = q.view(b, num_heads, d_model, h * w)
+    k = k.view(b, num_heads, d_model, h * w)
+    v = v.view(b, num_heads, d_model, h * w)
+    # [B, h, d, H*W]
+
+    # lightweight linear attention
+    q = F.relu(q, inplace=False)
+    k = F.relu(k, inplace=False)
+
+    # linear matmul
+    v = F.pad(v, (0, 0, 0, 1), mode="constant", value=1)
+    # [B, h, d+1, H*W]
+    kv = torch.matmul(v, k.transpose(-1, -2))
+    # [B, h, d+1, d]
+    out = torch.matmul(kv, q)
+    # [B, h, d+1, H*W]
+    out = out[:, :, :-1] / (out[:, :, -1:] + 1.0e-15)
+    # [B, h, d, H*W]
+
+    out = out.reshape(b, -1, h, w) 
+    # [B, h*d, H, W]
 
     return out
 
@@ -439,6 +511,34 @@ class AvgPooling(Op):
 
 
 @parametrize
+class MaxAvgPooling(Op):
+    def __init__(self, kernel_size, stride, dilation=1) -> None:
+        super().__init__(name="MaxAvgPooling")
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.dilation = dilation
+        self.padding = padding_expression(self.kernel_size, self.stride, self.dilation)
+
+    def shape_fun(self):
+        return pool_shape(
+            *self.operands,
+            dims=2,
+            kernel_size=self.kernel_size,
+            stride=self.stride,
+            padding=self.padding,
+            dilation=self.dilation,
+        )
+
+    def _forward_implementation(self, *operands):
+        return max_avg_pool(
+            operands[0],
+            kernel_size=lazy(self.kernel_size),
+            stride=lazy(self.stride),
+            padding=lazy(self.padding),
+        )
+
+
+@parametrize
 class AdaptiveAvgPooling(Op):
     def __init__(self, output_size=(1, 1)) -> None:
         super().__init__(name="AdaptiveAvgPooling")
@@ -468,6 +568,23 @@ class AdaptiveAvgPooling(Op):
 class Dropout(Op):
     def __init__(self, p) -> None:
         super().__init__(name="Dropout", p=p)
+        self.p = p
+
+    def __call__(self, *operands) -> Any:
+        op = super().__call__(*operands)
+        return op
+
+    def _forward_implementation(self, input):
+        return dropout(input, p=self.p, id=self.id)
+
+    def shape_fun(self):
+        return identity_shape(*self.operands)
+
+
+@parametrize
+class Dropout(Op):
+    def __init__(self, p) -> None:
+        super().__init__(name='Dropout', p=p)
         self.p = p
 
     def __call__(self, *operands) -> Any:
@@ -514,6 +631,49 @@ class SelfAttention2d(Op):
         k = operands[1]
         v = operands[2]
         out = self_attention2d(
+            q,
+            k,
+            v,
+            num_heads=lazy(self.num_heads),
+            d_model=lazy(self.d_model),
+            id=self.id,
+        )
+
+        return out
+
+    def shape_fun(self):
+        input_shape = self.operands[0].shape()
+        batch = input_shape[0]
+        height = input_shape[-2]
+        width = input_shape[-1]
+        out_dim = self.num_heads * self.d_model
+
+        return (batch, out_dim, height, width)
+    
+
+@parametrize
+class ReluLinearAttention(Op):
+    """
+    Adapted from EfficientViT
+    """
+    def __init__(self, num_heads, d_model) -> None:
+        super().__init__(name="ReluLinearAttention", num_heads=num_heads, d_model=d_model)
+        self.num_heads = num_heads
+        self.d_model = d_model
+
+    # def _verify_operands(self, operands):
+    #     assert len(operands) == 3
+
+    def __call__(self, *operands) -> Any:
+        new_attn = super().__call__(*operands)
+        # self._verify_operands(new_attn.operands)
+        return new_attn
+
+    def _forward_implementation(self, *operands):
+        q = operands[0]
+        k = operands[1]
+        v = operands[2]
+        out = relu_linear_attention(
             q,
             k,
             v,

@@ -1,0 +1,30 @@
+# @package _global_
+defaults:
+  - override /nas: aging_evolution_nas
+  - override /model: conv_vit
+  - override /dataset: cifar10
+
+model:
+  num_classes: 10
+  use_lin_attn: False
+
+module:
+  batch_size: 128
+  num_workers: 4
+
+nas:
+  budget: 10
+  n_jobs: 4
+  predictor:
+    gcn:
+      model:
+        input_feature_size: 38
+
+trainer:
+  max_epochs: 10
+
+fx_mac_summary: True
+
+seed: [1234]
+
+experiment_id: "ae_conv_vit"
