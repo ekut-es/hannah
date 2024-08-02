@@ -84,6 +84,7 @@ mkdocstrings = {version = ">=0.19.0", extras = ["python"]}
 mkdocs-gen-files = ">=0.3.4"
 mkdocs-literate-nav = ">=0.4.1"
 flaky = ">=3.7.0"
+ruff = "^0.5.5"
 
 
 [tool.poetry.extras]
@@ -103,6 +104,7 @@ hannah-nas-eval = "hannah.nas.eval.__main__:main"
 pyre-check = "^0.9.17"
 pytest-xdist = "^3.1.0"
 ipykernel = "^6.29.4"
+ruff = "^0.5.5"
 
 
 [build-system]
@@ -111,3 +113,92 @@ build-backend = "poetry.masonry.api"
 
 [tool.isort]
 profile = "black"
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "staticfiles/*",
+    "test/data/*",
+    "__pycache__", # from .flake8
+    "hannah/models/tc_snn", # from .flake8
+    "SNNLayers.py", # from .flake8
+    "external/*", # not hannah-tvm or other external modules
+    "hannah/nas/test/test_z3.py",
+    "scripts/eeg/eeg_dataset_creator.py",
+]
+
+line-length = 120
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+  "F", # pyflakes
+  "E", # errors
+  # "W", # warnings
+  # "C90", # complexity warnings
+  # "I", # imports
+  # "N", # naming
+  # "UP", # pyupgrade, use language features correctly
+]
+ignore = [
+  "S101", # Use of assert detected https://docs.astral.sh/ruff/rules/assert/
+  "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+  "SIM102", # sometimes it's better to nest
+  "UP038", # Checks for uses of isinstance/issubclass that take a tuple
+          # of types for comparison.
+          # Deactivated because it can make the code slow:
+          # https://github.com/astral-sh/ruff/issues/7871
+  "E203", # whitespace before symbol
+  "E401", # multiple import statements
+  "E402", # import shadow
+  "E501", # line too long
+  "E701", # multi statements
+  "E713", # not in test
+  "E721", # use is
+  "E722", # bare except
+  "E741", # ambiguous-variable-name
+  "F401", # unused imports
+  "F403", # import *
+  "F841", # unused var
+]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+# The fixes in extend-unsafe-fixes will require
+# provide the `--unsafe-fixes` flag when fixing.
+extend-unsafe-fixes = [
+    "UP038"
+]
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+force-single-line = false
