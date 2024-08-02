@@ -14,7 +14,7 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.9 <3.12"
+python = ">=3.9 <3.13"
 pwlf = "^2.0.0"
 gitdb2 = "2.0.6"
 chainmap = "^1.0.3"
