@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -22,7 +22,7 @@ from collections import defaultdict
 
 import torch
 
-from ..utils.utils import extract_from_download_cache, list_all_files
+from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
 from .speech import load_audio
 
@@ -90,7 +90,6 @@ class EmergencySirenDataset(AbstractDataset):
         )
 
     def __getitem__(self, index):
-
         index = self.random_order[index]
 
         label = torch.Tensor([self.audio_labels[index]])
@@ -110,7 +109,6 @@ class EmergencySirenDataset(AbstractDataset):
 
     @classmethod
     def splits(cls, config):
-
         dev_pct = config["dev_pct"]
         test_pct = config["test_pct"]
 

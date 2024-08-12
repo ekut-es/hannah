@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -24,7 +24,7 @@ import numpy as np
 import torch
 import torchvision
 
-from ..utils.utils import extract_from_download_cache, list_all_files
+from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
 
 

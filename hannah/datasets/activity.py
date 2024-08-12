@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import h5py
 import numpy as np
 import torch
 
-from ..utils.utils import extract_from_download_cache, list_all_files
+from ..utils import extract_from_download_cache, list_all_files
 from .base import AbstractDataset, DatasetType
 
 msglogger = logging.getLogger()
@@ -140,7 +140,6 @@ class PAMAP2_DataPoint:
     def __init__(
         self, timestamp, activityID, heart_rate, imu_hand, imu_chest, imu_ankle
     ):
-
         if timestamp is None:
             raise Exception("timestamp must not be NaN")
         self.timestamp = float(timestamp)
@@ -320,7 +319,6 @@ class PAMAP2_Dataset(AbstractDataset):
 
     @classmethod
     def splits_cv(cls, config):
-
         input_length = config["input_length"]
 
         folder = os.path.join(config["data_folder"], "pamap2", "pamap2_prepared")
@@ -419,7 +417,6 @@ class PAMAP2_Dataset(AbstractDataset):
                 if not os.path.isdir(subject_folder):
                     os.mkdir(subject_folder)
                 for nr, group in enumerate(groups):
-
                     subfolder = (
                         f"label_{str(group[0].to_label()).zfill(2)}"
                         f"_activityID_{str(group[0].activityID).zfill(2)}"

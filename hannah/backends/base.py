@@ -48,6 +48,11 @@ class ProfilingResult(NamedTuple):
 
 
 class AbstractBackend(ABC):
+    
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__.lower().replace("backend", "")
+    
     @abstractmethod
     def prepare(self, module: ClassifierModule):
         """
