@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import copy
 import io
 import json
@@ -23,6 +24,7 @@ import logging
 import math
 import os
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import (
     Any,
     Callable,
@@ -48,6 +50,8 @@ from pytorch_lightning.loggers import Logger, TensorBoardLogger
 from pytorch_lightning.utilities import CombinedLoader, rank_zero_only
 from torchmetrics import AUROC, MetricCollection
 
+from hannah.nas.export.onnx import to_onnx
+
 from ..models.factory.qat import QAT_MODULE_MAPPINGS
 from ..utils.utils import fullname
 from .metrics import plot_confusion_matrix
@@ -57,18 +61,17 @@ try:
 except ModuleNotFoundError:
     export_relay = None
 
-
 msglogger: logging.Logger = logging.getLogger(__name__)
 
 
 class ClassifierModule(LightningModule, ABC):
     def __init__(
         self,
-        dataset: DictConfig,
-        model: Union[DictConfig, nn.Module],
-        optimizer: DictConfig,
-        features: DictConfig,
-        num_workers: int = 0,
+        dataset: Optional[DictConfig] = None,
+        model: Union[DictConfig, nn.Module, None] = None,
+        optimizer: Optional[DictConfig] = None,
+        features: Optional[DictConfig] = None,
+        num_workers: Optional[int] = 0,
         batch_size: int = 128,
         time_masking: int = 0,
         frequency_masking: int = 0,
@@ -86,11 +89,10 @@ class ClassifierModule(LightningModule, ABC):
         super().__init__()
 
         self.model = None
-        self.model = None
-        ignore = None
+        ignore = []
         if isinstance(model, nn.Module):
             self.model = model
-            ignore = ["model"]
+            ignore.append("model")
 
         self.save_hyperparameters(ignore=ignore)
         self.initialized = False
@@ -103,7 +105,7 @@ class ClassifierModule(LightningModule, ABC):
         self.dev_set_unlabeled = None
 
         self.logged_samples = 0
-        self.export_onnx = export_onnx
+        self._export_onnx = export_onnx
         self.export_relay = export_relay
         self.shuffle_all_dataloaders = shuffle_all_dataloaders
 
@@ -218,8 +220,12 @@ class ClassifierModule(LightningModule, ABC):
     def on_train_start(self) -> None:
         super().on_train_start()
 
-    def configure_optimizers(self) -> torch.optim.Optimizer:
-        optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
+    def configure_optimizers(self) -> Any:
+        if self.hparams.optimizer is not None:
+            optimizer = instantiate(self.hparams.optimizer, params=self.parameters())
+        else:
+            msglogger.warning("No optimizer found in hyperparameters")
+            optimizer = torch.optim.SGD(self.parameters(), lr=0.01, momentum=0.9)
 
         retval = {}
         retval["optimizer"] = optimizer
@@ -283,33 +289,58 @@ class ClassifierModule(LightningModule, ABC):
         quantized_model.cpu()
         quantized_model.train(False)
 
-        if self.export_relay and export_relay:
-            logging.info("Exporting relay model ...")
-            export_relay(quantized_model, self.example_feature_array.cpu())
-        elif self.export_relay:
-            raise Exception(
-                "Could not export relay due to missing hannah_tvm please install with `poetry install -E tvm`"
-            )
+        if self.export_relay:
+            self._do_export_relay(quantized_model)
 
         if hasattr(self.model, "qconfig") and self.model.qconfig:
             quantized_model = torch.quantization.convert(
                 quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
             )
 
-        if self.export_onnx:
-            logging.info("saving onnx...")
-            try:
-                dummy_input = self.example_feature_array.cpu()
+        if self._export_onnx:
+            self._do_export_onnx(output_dir, quantized_model)
 
-                torch.onnx.export(
-                    quantized_model,
-                    dummy_input,
-                    os.path.join(output_dir, "model.onnx"),
-                    verbose=False,
-                    opset_version=11,
-                )
-            except Exception as e:
-                logging.error("Could not export onnx model ...\n {}".format(str(e)))
+    def _do_export_relay(self, quantized_model):
+        if export_relay:
+            logging.info("Exporting relay model ...")
+            export_relay(quantized_model, self.example_feature_array.cpu())
+        else:
+            raise Exception(
+                "Could not export relay due to missing hannah_tvm please install with `poetry install -E tvm`"
+            )
+
+    def _do_export_onnx(self, output: Union[io.BytesIO, str, Path], quantized_model):
+        logging.info("saving onnx...")
+
+        if not isinstance(output, io.BytesIO):
+            output = Path(output)
+
+            if output.suffix != ".onnx":
+                output = output / "model.onnx"
+
+        try:
+            dummy_input = self.example_feature_array.cpu()
+            torch.onnx.export(
+                quantized_model,
+                dummy_input,
+                output,
+                verbose=False,
+                opset_version=11,
+            )
+        except Exception as e:
+            logging.error("Could not export onnx model ...\n {}".format(str(e)))
+
+    def export_onnx(self, output: Union[io.BytesIO, str, Path]):
+        quantized_model = copy.deepcopy(self.model)
+        quantized_model.cpu()
+        quantized_model.train(False)
+
+        if hasattr(self.model, "qconfig") and self.model.qconfig:
+            quantized_model = torch.quantization.convert(
+                quantized_model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
+            )
+
+        self._do_export_onnx(output, quantized_model)
 
     def on_load_checkpoint(self, checkpoint) -> None:
         # Calling self setup to make sure that the model is instantiated
@@ -462,6 +493,9 @@ class ClassifierModule(LightningModule, ABC):
 
     def _setup_loss_weights(self):
         """Calculate loss weights depending on class frequencies in training set"""
+        if not self.hparams.dataset:
+            return None
+
         if self.hparams.dataset.get("weighted_loss", False) is True:
             loss_weights = torch.tensor(self.train_set.weights)
             loss_weights *= len(self.train_set) / self.num_classes

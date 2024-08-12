@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,6 @@ def test_sinc():
         orig_parameters[name] = copy.deepcopy(parameter.detach())
 
     for epoch in range(20):
-
         input = torch.rand(16, 1, 1600)
         target = torch.rand(16, 40, 1600)
         optimizer.zero_grad()

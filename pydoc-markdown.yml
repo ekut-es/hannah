@@ -101,6 +101,9 @@ renderer:
           source: doc/nas/metrics.md
     - title: Deployment
       children:
+        - title: Overview
+          name: deployment/overview
+          source: doc/deployment/overview.md
         - title: Torch Mobile
           name: deployment/torchmobile
           source: doc/deployment/torchmobile.md

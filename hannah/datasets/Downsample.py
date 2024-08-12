@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import numpy as np
 import torchaudio
 from torchvision.datasets.utils import list_dir, list_files
 
-from ..utils.utils import list_all_files
+from ..utils import list_all_files
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class Downsample:
                 for filename in parts:
                     tmp_files.append(torchaudio.load(filename))
 
-                for (data, sr) in tmp_files:
+                for data, sr in tmp_files:
                     data = torchaudio.transforms.Resample(sr, samplerate).forward(data)
                     output_files.append(data)
 

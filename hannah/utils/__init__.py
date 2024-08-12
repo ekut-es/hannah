@@ -21,12 +21,15 @@ from .tuple import pair, quadruple, single, triple
 from .utils import (
     clear_outputs,
     common_callbacks,
-    extract_from_download_cache,
     fullname,
     git_version,
-    list_all_files,
     log_execution_env_state,
     set_deterministic,
+)
+
+from .datasets import (
+    extract_from_download_cache,
+    list_all_files,
 )
 
 __all__ = [
