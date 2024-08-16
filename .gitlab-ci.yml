@@ -33,22 +33,6 @@ variables:
 cache:
   key: "$CI_JOB_NAME"
 
-before_script:
-  - apt update
-  - apt -y install git mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3
-
-
-  # Install poetry using recommended method
-  - curl -sSL https://install.python-poetry.org/ | python3
-  - export PATH=${POETRY_HOME}/bin:${PATH}
-
-  # install and manage dependencies with poetry
-  - poetry config installer.max-workers 10
-  - poetry install --all-extras
-
-  # Show limits
-  - ulimit -a
-
 test_prebuilt_docker:
   stage: test
   image: cgerum/hannah:latest
@@ -69,21 +53,36 @@ test_prebuilt_docker:
   dependencies: []
 
 
+build_testcontainers:
+  stage: build
+  image: gitlab/gitlab-runner:latest
+  tags:
+    - dind
+  before_script:
+    - apk add --no-cache bash
+  script:
+    - bash ./build_testcontainer.sh all
+  allow_failure: false
+  when: manual
+
 test_python_39:
   stage: test
-  image: python:3.9
+  image: es-git-registry.cs.uni-tuebingen.de/es/ai/hannah/hannah/testing/python:3.9
   script:
     - set -e
+    - poetry config installer.max-workers 10
+    - poetry install -E vision
     - poetry run python3 -m pytest  -v --cov=hannah test hannah --integration
   tags:
     - docker
   interruptible: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   dependencies: []
   cache:
     paths:
       - .cache/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - when: manual
 
 #test_tvm:
 #  stage: test
@@ -107,9 +106,11 @@ test_python_39:
 
 test_python_310:
   stage: test
-  image: python:3.10
+  image: es-git-registry.cs.uni-tuebingen.de/es/ai/hannah/hannah/testing/python:3.10
   script:
     - set -e
+    - poetry config installer.max-workers 10
+    - poetry install -E vision
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
@@ -132,12 +133,15 @@ test_python_310:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - when: manual
 
 test_python_311:
   stage: test
-  image: python:3.11
+  image: es-git-registry.cs.uni-tuebingen.de/es/ai/hannah/hannah/es/ai/hannah/hannah/testing/python:3.11
   script:
     - set -e
+    - poetry config installer.max-workers 10
+    - poetry install -E vision
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
@@ -160,35 +164,7 @@ test_python_311:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-test_python_312:
-  stage: test
-  image: python:3.12
-  script:
-    - set -e
-    - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
-    - export PYTHONPATH=$PWD
-    - export COVERAGE_PROCESS_START=$PWD/.coveragerc
-    - poetry run coverage run --source hannah -m pytest test
-    - unset PYTHONPATH
-    - unset COVERAGE_PROCESS_START
-    - poetry run coverage report
-    - poetry run coverage xml
-  tags:
-    - gpu
-  interruptible: true
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-  dependencies: []
-  cache:
-    paths:
-      - .cache/
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
+    - when: manual
 
 build_docs:
   stage: test
