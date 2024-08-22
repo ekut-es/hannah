@@ -38,7 +38,7 @@ jobs:
     matrix:
         image_name: 
           - python
-        - python_version:
+        python_version:
           - 3.9
           - 3.10
           - 3.11
