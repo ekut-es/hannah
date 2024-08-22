@@ -64,8 +64,8 @@ test_prebuilt_docker:
   tags:
     - docker
   interruptible: true
-  only:
-    - merge_requests
+  #only:
+  #  - merge_requests
   dependencies: []
 
 
