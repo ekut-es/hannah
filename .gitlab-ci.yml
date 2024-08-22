@@ -64,8 +64,10 @@ test_prebuilt_docker:
   tags:
     - docker
   interruptible: true
-  #only:
-  #  - merge_requests
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"  
+  allow_failure: false
   dependencies: []
 
 
@@ -80,7 +82,7 @@ test_python_39:
   interruptible: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /.*python3\.?9.*/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_BRANCH =~ /.*python3\.?9.*/
   dependencies: []
   cache:
     paths:
@@ -133,7 +135,7 @@ test_python_310:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /.*python3\.?10.*/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_BRANCH =~ /.*python3\.?10.*/
 
 test_python_311:
   stage: test
@@ -162,7 +164,7 @@ test_python_311:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /.*python3\.?11.*/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_BRANCH =~ /.*python3\.?11.*/
 
 test_python_312:
   stage: test
@@ -191,7 +193,7 @@ test_python_312:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /.*python3\.?12.*/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_BRANCH =~ /.*python3\.?12.*/
 
 
 build_docs:
