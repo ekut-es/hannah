@@ -168,7 +168,7 @@ test_python_311:
 
 build_docs:
   stage: test
-  image: ubuntu:22.04
+  image: ubuntu:20.04
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
