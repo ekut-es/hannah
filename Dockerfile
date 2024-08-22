@@ -35,8 +35,11 @@ FROM python:${PYTHON_VERSION} as python
 FROM ${target}
 
 
-RUN  apt-get update -y && apt-get -y install git mesa-utils python3-pip python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3
-
+RUN  if [ "$target" == hannah ] || [ "$IMAGE_NAME" = "mlonmcu" ]; then\
+        apt-get update -y && apt-get -y install git mesa-utils python3-pip python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3 \
+      else \
+        apt-get update -y && apt-get -y install git mesa-utils  libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential  \
+      fi
 
 # Install poetry using recommended method
 RUN  pip install poetry
