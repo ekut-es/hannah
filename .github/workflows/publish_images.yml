@@ -71,8 +71,12 @@ jobs:
       # This step uses [docker/metadata-action](https://github.com/docker/metadata-action#about) to extract tags and labels that will be applied to the specified image. The `id` "meta" allows the output of this step to be referenced in a subsequent step. The `images` value provides the base name for the tags and labels.
       - name: Set image name
         id: set_image_name
-        run: echo "image_name=${{ matrix.target }}${{ matrix.target == 'python' && '_${{ matrix.target }}' || '' }}" >> $GITHUB_ENV
-
+        run: |
+          if [ "${{ matrix.target }}" = "python" ]; then
+            echo "image_name=${{ matrix.target }}_${{ matrix.python_version }}" >> $GITHUB_ENV
+          else
+            echo "image_name=${{ matrix.target }}" >> $GITHUB_ENV
+          fi
       
       - name: Extract metadata (tags, labels) for Docker
         id: meta
