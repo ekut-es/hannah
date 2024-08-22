@@ -80,6 +80,7 @@ test_python_39:
   interruptible: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /.*python3\.?9.*/
   dependencies: []
   cache:
     paths:
@@ -188,6 +189,7 @@ test_python_312:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /.*python3\.?12.*/
 
 
 build_docs:
