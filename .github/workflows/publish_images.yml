@@ -35,14 +35,15 @@ env:
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
-    matrix:
-        image_name: 
-          - python
-        python_version:
-          - 3.9
-          - 3.10
-          - 3.11
-          - 3.12
+    strategy:
+      matrix:
+          image_name: 
+            - python
+          python_version:
+            - 3.9
+            - 3.10
+            - 3.11
+            - 3.12
 
 
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
