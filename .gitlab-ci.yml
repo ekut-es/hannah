@@ -133,6 +133,7 @@ test_python_310:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /.*python3\.?10.*/
 
 test_python_311:
   stage: test
@@ -161,6 +162,7 @@ test_python_311:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /.*python3\.?11.*/
 
 test_python_312:
   stage: test
