@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -23,7 +23,7 @@ import sys
 
 from torchvision.datasets.utils import extract_archive
 
-from ..utils.utils import extract_from_download_cache, list_all_files
+from ..utils import extract_from_download_cache, list_all_files
 
 
 class NoiseDataset:
@@ -71,7 +71,6 @@ class NoiseDataset:
         noise_folder = os.path.join(data_folder, "noise_files")
         kaggle_folder = os.path.join(noise_folder, "FSDKaggle")
         if os.path.isdir(kaggle_folder):
-
             test = NoiseDataset.read_dataset_specific(
                 os.path.join(kaggle_folder, "FSDKaggle2018.audio_test")
             )
@@ -91,7 +90,6 @@ class NoiseDataset:
         noise_folder = os.path.join(data_folder, "noise_files")
         kaggle_folder = os.path.join(noise_folder, "FSD50K")
         if os.path.isdir(kaggle_folder):
-
             train = NoiseDataset.read_dataset_specific(
                 os.path.join(kaggle_folder, "FSD50K.dev_audio")
             )
@@ -167,7 +165,6 @@ class NoiseDataset:
                 quttimit_target = os.path.join(noise_folder, "QUT-Timit")
 
                 if not os.path.exists(quttimit_target):
-
                     target_cache = os.path.join(downloadfolder_tmp, "QUT-Timit")
                     base_url = "https://data.researchdatafinder.qut.edu.au/dataset/a0eed5af-abd8-441b-b14a-8e064bc3d732/resource/"
                     url_ends = [
@@ -207,7 +204,6 @@ class NoiseDataset:
                 )
 
                 if not os.path.exists(tut_target):
-
                     target_cache = os.path.join(downloadfolder_tmp, "TUT")
 
                     for i in range(1, 10):

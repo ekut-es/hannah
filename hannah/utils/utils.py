@@ -45,12 +45,7 @@ from pytorch_lightning.callbacks import (
 )
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from torchvision.datasets.utils import (
-    download_and_extract_archive,
-    extract_archive,
-    list_dir,
-    list_files,
-)
+
 
 from ..callbacks.clustering import kMeans
 from ..callbacks.dump_layers import TestDumperCallback
@@ -60,12 +55,6 @@ from ..callbacks.pruning import PruningAmountScheduler
 from ..callbacks.summaries import FxMACSummaryCallback, MacSummaryCallback
 from ..callbacks.svd_compress import SVD
 
-try:
-    import lsb_release  # pytype: disable=import-error
-
-    HAVE_LSB: bool = True
-except ImportError:
-    HAVE_LSB: bool = False
 
 msglogger = logging.getLogger(__name__)
 
@@ -105,11 +94,6 @@ def log_execution_env_state() -> None:
     logger.info("  CUDA version: %s", torch.version.cuda)
     logger.info("  CUDNN version: %s", torch.backends.cudnn.version())
     logger.info("  Kernel: %s", platform.release())
-    if HAVE_LSB:
-        try:
-            logger.info("  OS: %s", lsb_release.get_lsb_information()["DESCRIPTION"])
-        except Exception:
-            pass
 
     logger.info("  Python: %s", sys.version.replace("\n", "").replace("\r", ""))
     logger.info("  PyTorch: %s", torch.__version__)
@@ -141,76 +125,6 @@ def git_version(short=True):
         .decode("utf8")
         .strip()
     )
-
-
-def list_all_files(
-    path, file_suffix, file_prefix=False, remove_file_beginning=""
-) -> Any:
-    subfolder = list_dir(path, prefix=True)
-    files_in_folder = list_files(path, file_suffix, prefix=file_prefix)
-    for subfold in subfolder:
-        subfolder.extend(list_dir(subfold, prefix=True))
-        if len(remove_file_beginning):
-            tmp = list_files(subfold, file_suffix, prefix=False)
-            tmp = [
-                element
-                for element in tmp
-                if not element.startswith(remove_file_beginning)
-            ]
-            for filename in tmp:
-                files_in_folder.append(os.path.join(subfold, filename))
-        else:
-            files_in_folder.extend(list_files(subfold, file_suffix, prefix=file_prefix))
-
-    return files_in_folder
-
-
-def extract_from_download_cache(
-    filename,
-    url,
-    cached_files,
-    target_cache,
-    target_folder,
-    target_test_folder="",
-    clear_download=False,
-    no_exist_check=False,
-) -> None:
-    """extracts given file from cache or donwloads first from url
-
-    Args:
-        filename (str): name of the file to download or extract
-        url (str): possible url to download the file
-        cached_files (list(str)): cached files in download cache
-        target_cache (str): path to the folder to cache file if download necessary
-        target_folder (str): path where to extract file
-        target_test_folder (str, optional): folder to check if data are already there
-        clear_download (bool): clear download after usage
-        no_exist_check (bool): disables the check if folder exists
-    """
-    if len(target_test_folder) == 0:
-        target_test_folder = target_folder
-    if filename not in cached_files and (
-        not os.path.isdir(target_test_folder) or no_exist_check
-    ):
-        logger.info("download and extract: %s", str(filename))
-
-        download_and_extract_archive(
-            url,
-            target_cache,
-            target_folder,
-            filename=filename,
-            remove_finished=clear_download,
-        )
-    elif filename in cached_files and (
-        not os.path.isdir(target_test_folder) or no_exist_check
-    ):
-        logger.info("extract from download_cache: %s", str(filename))
-
-        extract_archive(
-            os.path.join(target_cache, filename),
-            target_folder,
-            remove_finished=clear_download,
-        )
 
 
 def common_callbacks(config: DictConfig) -> list:

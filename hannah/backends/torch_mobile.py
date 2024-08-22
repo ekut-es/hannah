@@ -58,7 +58,7 @@ class TorchMobileBackend(InferenceBackendBase):
 
         return ProfilingResult(
             outputs=results,
-            metrics={"duration": self.repeat},
+            metrics={"duration": duration},
             profile=None,
         )
 

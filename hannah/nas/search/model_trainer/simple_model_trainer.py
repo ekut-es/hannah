@@ -94,12 +94,12 @@ class SimpleModelTrainer:
                 print(traceback.format_exc())
                 sys.exit(1)
 
-                res = {}
-                for monitor in opt_monitor:
-                    # res[monitor] = float("inf")
-                    res[
-                        monitor
-                    ] = 1  # FIXME: "inf" causes errors in performance prediction. Find "worst" value for each respective metric?
+            res = {}
+            for monitor in opt_monitor:
+                # res[monitor] = float("inf")
+                res[monitor] = (
+                    1  # FIXME: "inf" causes errors in performance prediction. Find "worst" value for each respective metric?
+                )
 
             return res
         finally:

@@ -59,41 +59,24 @@ class VisionBaseModule(ClassifierModule):
 
         self.initialized = True
 
-        dataset_cls = get_class(self.hparams.dataset.cls)
-        data_splits: Tuple[Any] = dataset_cls.splits(self.hparams.dataset)
+        self._setup_datasets()
 
-        if len(data_splits) == 3:
-            warnings.warn(
-                "Vision datasets should return a length 4 tuple, will assume unlabeled data is None"
+        if self.train_set and self.test_set and self.test_set:
+            # Logger datasets
+            msglogger.info("Dataset lengths:")
+            msglogger.info("  Train Set (Labeled): %d", len(self.train_set))
+            msglogger.info(
+                "  Train Set (Unlabled): %d",
+                len(self.train_set_unlabeled) if self.train_set_unlabeled is not None else 0,
             )
-            data_splits = (data_splits[0], None, data_splits[1], data_splits[2])
+            msglogger.info("  Dev Set: %d", len(self.dev_set))
+            msglogger.info("  Test Set: %d", len(self.test_set))
 
-        (
-            self.train_set,
-            self.train_set_unlabeled,
-            self.dev_set,
-            self.test_set,
-        ) = data_splits
-
-        if self.hparams.unlabeled_data:
-            unlabeled_cls = get_class(self.hparams.unlabeled_data.cls)
-            self.train_set_unlabeled, _, _ = unlabeled_cls.splits(
-                self.hparams.unlabeled_data
-            )
-
-        # Logger datasets
-        msglogger.info("Dataset lengths:")
-        msglogger.info("  Train Set (Labeled): %d", len(self.train_set))
-        msglogger.info(
-            "  Train Set (Unlabled): %d",
-            len(self.train_set_unlabeled)
-            if self.train_set_unlabeled is not None
-            else 0,
-        )
-        msglogger.info("  Dev Set: %d", len(self.dev_set))
-        msglogger.info("  Test Set: %d", len(self.test_set))
-
-        example_data = self._decode_batch(self.test_set[0])["data"].unsqueeze(0)
+        if self.test_set is not None:
+            example_data = self._decode_batch(self.test_set[0])["data"].unsqueeze(0)
+        else:
+            msglogger.warning("No test set found, using random data as example input array")
+            example_data = torch.randn(1, 3, 224, 224, device=self.device)
 
         if not isinstance(example_data, torch.Tensor):
             example_data = torch.tensor(example_data, device=self.device)
@@ -102,7 +85,7 @@ class VisionBaseModule(ClassifierModule):
         self.example_feature_array = example_data.clone().detach()
 
         self.num_classes = 0
-        if self.train_set.class_names:
+        if self.train_set and self.train_set.class_names:
             self.num_classes = len(self.train_set.class_names)
 
         input_shape = self.example_input_array.shape
@@ -126,14 +109,13 @@ class VisionBaseModule(ClassifierModule):
         self.test_losses = list()
         self.encodings = dict()
 
-        msglogger.info(
-            "Instantiating input Normalizer with mean: %s, std: %s",
-            self.train_set.mean,
-            self.train_set.std,
-        )
-        self.input_normalizer = kornia.enhance.Normalize(
-            self.train_set.mean, self.train_set.std
-        )
+        if self.train_set:
+            msglogger.info(
+                "Instantiating input Normalizer with mean: %s, std: %s",
+                self.train_set.mean,
+                self.train_set.std,
+            )
+            self.input_normalizer = kornia.enhance.Normalize(self.train_set.mean, self.train_set.std)
 
         # Setup Augmentations
         self.default_augmentation = torch.nn.Identity()
@@ -144,35 +126,21 @@ class VisionBaseModule(ClassifierModule):
         # Setup Metrics
         metrics = {}
         if self.num_classes > 0:
-            self.test_confusion = ConfusionMatrix(
-                "multiclass", num_classes=self.num_classes
-            )
+            self.test_confusion = ConfusionMatrix("multiclass", num_classes=self.num_classes)
 
-            self.test_roc = ROC(
-                "multiclass", num_classes=self.num_classes, thresholds=10
-            )
-            self.test_pr_curve = PrecisionRecallCurve(
-                "multiclass", num_classes=self.num_classes, thresholds=10
-            )
+            self.test_roc = ROC("multiclass", num_classes=self.num_classes, thresholds=10)
+            self.test_pr_curve = PrecisionRecallCurve("multiclass", num_classes=self.num_classes, thresholds=10)
 
             for step_name in ["train", "val", "test"]:
                 step_metrics = MetricCollection(
                     {
-                        f"{step_name}_accuracy": Accuracy(
-                            "multiclass", num_classes=self.num_classes
-                        ),
-                        f"{step_name}_error": Error(
-                            "multiclass", num_classes=self.num_classes
-                        ),
+                        f"{step_name}_accuracy": Accuracy("multiclass", num_classes=self.num_classes),
+                        f"{step_name}_error": Error("multiclass", num_classes=self.num_classes),
                         f"{step_name}_precision": Precision(
                             "multiclass", num_classes=self.num_classes, average="macro"
                         ),
-                        f"{step_name}_recall": Recall(
-                            "multiclass", num_classes=self.num_classes, average="macro"
-                        ),
-                        f"{step_name}_f1": F1Score(
-                            "multiclass", num_classes=self.num_classes, average="macro"
-                        ),
+                        f"{step_name}_recall": Recall("multiclass", num_classes=self.num_classes, average="macro"),
+                        f"{step_name}_f1": F1Score("multiclass", num_classes=self.num_classes, average="macro"),
                     }
                 )
                 metrics[f"{step_name}_metrics"] = step_metrics
@@ -198,6 +166,29 @@ class VisionBaseModule(ClassifierModule):
         self(self.example_input_array)
         self.train()
 
+    def _setup_datasets(self):
+        if self.hparams.dataset is None:
+            msglogger.critical("No datasets provided, will use dummy values")
+            return
+
+        dataset_cls = get_class(self.hparams.dataset.cls)
+        data_splits: Tuple[Any] = dataset_cls.splits(self.hparams.dataset)
+
+        if len(data_splits) == 3:
+            warnings.warn("Vision datasets should return a length 4 tuple, will assume unlabeled data is None")
+            data_splits = (data_splits[0], None, data_splits[1], data_splits[2])
+
+        (
+            self.train_set,
+            self.train_set_unlabeled,
+            self.dev_set,
+            self.test_set,
+        ) = data_splits
+
+        if self.hparams.unlabeled_data:
+            unlabeled_cls = get_class(self.hparams.unlabeled_data.cls)
+            self.train_set_unlabeled, _, _ = unlabeled_cls.splits(self.hparams.unlabeled_data)
+
     def _decode_batch(self, batch):
         if isinstance(batch, Sequence):
             assert len(batch) == 2
@@ -208,7 +199,10 @@ class VisionBaseModule(ClassifierModule):
         return ret
 
     def get_class_names(self):
-        return self.train_set.class_names
+        if self.train_set:
+            return self.train_set.class_names
+        else:
+            return []
 
     def prepare_data(self):
         # get all the necessary data stuff
@@ -260,9 +254,7 @@ class VisionBaseModule(ClassifierModule):
 
         if batch_idx == 0:
             pipeline_name = pipeline if pipeline is not None else "default"
-            self._log_batch_images(
-                f"augmented_{pipeline_name}", batch_idx, augmented_norm_data
-            )
+            self._log_batch_images(f"augmented_{pipeline_name}", batch_idx, augmented_norm_data)
 
         return augmented_norm_data, images
 
@@ -271,9 +263,7 @@ class VisionBaseModule(ClassifierModule):
         augmentations = defaultdict(list)
 
         if pipeline_configs is None:
-            msglogger.warning(
-                "No data augmentations have been defined, make sure that this is intentional"
-            )
+            msglogger.warning("No data augmentations have been defined, make sure that this is intentional")
             self.default_augmentation = torch.nn.Identity()
             return
 
