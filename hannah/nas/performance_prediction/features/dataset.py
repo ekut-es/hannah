@@ -149,14 +149,13 @@ def get_features(nx_graph):
         df = unfold_columns(df, columns=get_list_columns(df))
         dataframes.append(df)
     df = pd.concat(dataframes)
-    # df.dropna(axis = 0, how = 'all', inplace = True)
     df = pd.get_dummies(df, dummy_na=True)
     df = df.fillna(0)
     for col in COLUMNS:
         if col not in df.columns:
             df[col] = 0
     df = df.reindex(sorted(df.columns), axis=1)  # Sort to have consistency
-    return df.astype(np.float32)
+    return df
 
 def get_list_columns(df):
     list_cols = []
