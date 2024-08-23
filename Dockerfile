@@ -24,13 +24,8 @@ ARG target="hannah"
 ARG python_version=3.12
 
 FROM ubuntu:22.04 as hannah
-
 FROM tumeda/mlonmcu-bench:latest as mlonmcu
-
-
-# Use specified Python version as the base image
 FROM python:${python_version} as python
-
 
 FROM ${target}
 
