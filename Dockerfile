@@ -33,6 +33,9 @@ FROM ${target}
 ARG python_version
 ARG target
 
+ENV POETRY_CACHE_DIR="/tmp/poetry_cache"
+
+
 RUN  if [ "$target" = "hannah" ] || [ "$target" = "mlonmcu" ]; then\
         apt-get update -y && apt-get -y install git mesa-utils python3 python3-pip python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3; \
       else \
@@ -51,5 +54,6 @@ COPY poetry.lock pyproject.toml /deps/
 
 # Install dependencies
 RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi --all-extras --no-root
+  && poetry install --no-interaction --no-ansi --all-extras --no-root \
+  && rm -rf $POETRY_CACHE_DIR
 

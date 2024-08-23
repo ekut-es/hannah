@@ -53,21 +53,9 @@ test_prebuilt_docker:
   dependencies: []
 
 
-build_testcontainers:
-  stage: build
-  image: gitlab/gitlab-runner:latest
-  tags:
-    - dind
-  before_script:
-    - apk add --no-cache bash
-  script:
-    - bash ./build_testcontainer.sh all
-  allow_failure: false
-  when: manual
-
 test_python_39:
   stage: test
-  image: es-git-registry.cs.uni-tuebingen.de/es/ai/hannah/hannah/testing/python:3.9
+  image: ghcr.io/ekut-es/hannah_python_3.9:latest
   script:
     - set -e
     - poetry config installer.max-workers 10
@@ -84,29 +72,9 @@ test_python_39:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - when: manual
 
-#test_tvm:
-#  stage: test
-#  image: ubuntu:22.04
-#  script:
-#    - set -e
-#    - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
-#    - poetry config installer.max-workers 10
-#    - poetry run external/hannah-tvm/scripts/install_full.sh
-#    - poetry install -E tvm -E vision
-#    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test --integration
-#  tags:
-#    - docker
-#  interruptible: true
-#  allow_failure: false
-#  rules:
-#    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-#  cache:
-#    paths:
-#      - .cache/
-
 test_python_310:
   stage: test
-  image: es-git-registry.cs.uni-tuebingen.de/es/ai/hannah/hannah/testing/python:3.10
+  image: ghcr.io/ekut-es/hannah_python_3.10:latest
   script:
     - set -e
     - poetry config installer.max-workers 10
@@ -137,7 +105,7 @@ test_python_310:
 
 test_python_311:
   stage: test
-  image: es-git-registry.cs.uni-tuebingen.de/es/ai/hannah/hannah/es/ai/hannah/hannah/testing/python:3.11
+  image: ghcr.io/ekut-es/hannah_python_3.11:latest
   script:
     - set -e
     - poetry config installer.max-workers 10
