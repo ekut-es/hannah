@@ -27,6 +27,7 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pypoetry"
+  POETRY_VIRTUALENVS_CREATE: false
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
 
@@ -36,12 +37,6 @@ cache:
 test_prebuilt_docker:
   stage: test
   image: cgerum/hannah:latest
-  before_script:
-    - export POETRY_HOME=/root/.local
-    - export PATH=${POETRY_HOME}/bin:${PATH}
-    - poetry config installer.max-workers 10
-    - poetry install -E vision
-    - ulimit -a
   script:
     - set -e
     - poetry run python3 -m pytest  -v --cov=hannah test hannah
