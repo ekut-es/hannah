@@ -21,7 +21,7 @@
 ARG target="hannah"
 
 # ARG for Python version, defaulting to 3.12 only used if python target is selected
-ARG PYTHON_VERSION=3.12
+ARG python_version=3.12
 
 FROM ubuntu:22.04 as hannah
 
@@ -29,7 +29,7 @@ FROM tumeda/mlonmcu-bench:latest as mlonmcu
 
 
 # Use specified Python version as the base image
-FROM python:${PYTHON_VERSION} as python
+FROM python:${python_version} as python
 
 
 FROM ${target}
