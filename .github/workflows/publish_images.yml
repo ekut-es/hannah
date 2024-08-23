@@ -88,7 +88,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.image_name }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.image_name }}:latest
           build-args: |
             python_version=${{ matrix.python_version }}
             target=${{ matrix.target }}

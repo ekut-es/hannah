@@ -39,7 +39,6 @@ RUN  if [ "$target" = "hannah" ] || [ "$target" = "mlonmcu" ]; then\
         apt-get update -y && apt-get -y install git mesa-utils  libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential;  \
       fi
 
-RUN echo "Target: $target"
 
 # Install poetry using recommended method
 RUN  pip install poetry

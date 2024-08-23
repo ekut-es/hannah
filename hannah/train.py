@@ -120,9 +120,6 @@ def train(
         logger.append(CSVLogger(".", version="logs", name=""))
         logger.append(JSONLogger(".", version="logs", name=""))
 
-        # if DVCLIVE_AVAILABLE:
-        #    logger.append(DVCLogger())
-
         callbacks = []
 
         callbacks.extend(list(common_callbacks(config)))
