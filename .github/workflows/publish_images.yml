@@ -89,6 +89,7 @@ jobs:
           context: .
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}_${{ env.image_name }}:latest
+          labels: org.opencontainers.image.source=${{ github.repositoryUrl }}, org.opencontainers.image.version=${{ github.sha }}
           build-args: |
             python_version=${{ matrix.python_version }}
             target=${{ matrix.target }}
