@@ -29,8 +29,7 @@ FROM python:${python_version} as python
 
 FROM ${target}
 
-
-RUN  if [ "$target" == hannah ] || [ "$target" = "mlonmcu" ]; then\
+RUN  if [ "$target" = "hannah" ] || [ "$target" = "mlonmcu" ]; then\
         apt-get update -y && apt-get -y install git mesa-utils python3 python3-pip python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3; \
       else \
         apt-get update -y && apt-get -y install git mesa-utils  libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential;  \
