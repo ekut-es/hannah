@@ -27,39 +27,16 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pypoetry"
+  POETRY_VIRTUALENVS_CREATE: false
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
 
-cache:
-  key: "$CI_JOB_NAME"
-
-before_script:
-  - apt update
-  - apt -y install git mesa-utils python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3
-
-
-  # Install poetry using recommended method
-  - curl -sSL https://install.python-poetry.org/ | python3
-  - export PATH=${POETRY_HOME}/bin:${PATH}
-
-  # install and manage dependencies with poetry
-  - poetry config installer.max-workers 10
-  - poetry install --all-extras
-
-  # Show limits
-  - ulimit -a
-
 test_prebuilt_docker:
   stage: test
-  image: cgerum/hannah:latest
-  before_script:
-    - export POETRY_HOME=/root/.local
-    - export PATH=${POETRY_HOME}/bin:${PATH}
-    - poetry config installer.max-workers 10
-    - poetry install -E vision
-    - ulimit -a
+  image: ghcr.io/ekut-es/hannah_hannah:latest
   script:
     - set -e
+    - poetry install --all-extras
     - poetry run python3 -m pytest  -v --cov=hannah test hannah
   tags:
     - docker
@@ -70,49 +47,28 @@ test_prebuilt_docker:
   allow_failure: false
   dependencies: []
 
-
 test_python_39:
   stage: test
-  image: python:3.9
+  image: ghcr.io/ekut-es/hannah_python_3.9:latest
   script:
     - set -e
+    - poetry config installer.max-workers 10
+    - poetry install --all-extras
     - poetry run python3 -m pytest  -v --cov=hannah test hannah --integration
   tags:
     - docker
   interruptible: true
+  dependencies: []
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-  dependencies: []
-  cache:
-    paths:
-      - .cache/
-
-#test_tvm:
-#  stage: test
-#  image: ubuntu:22.04
-#  script:
-#    - set -e
-#    - apt-get install -y llvm-dev libclang-dev g++ python-is-python3
-#    - poetry config installer.max-workers 10
-#    - poetry run external/hannah-tvm/scripts/install_full.sh
-#    - poetry install -E tvm -E vision
-#    - poetry run python -m pytest  -v --cov=hannah --cov external/hannah-tvm test --integration
-#  tags:
-#    - docker
-#  interruptible: true
-#  allow_failure: false
-#  rules:
-#    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-#  cache:
-#    paths:
-#      - .cache/
 
 test_python_310:
   stage: test
-  image: python:3.10
+  image: ghcr.io/ekut-es/hannah_python_3.10:latest
   script:
     - set -e
+    - poetry config installer.max-workers 10
+    - poetry install --all-extras
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
@@ -130,16 +86,39 @@ test_python_310:
         coverage_format: cobertura
         path: coverage.xml
   dependencies: []
-  cache:
-    paths:
-      - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-
+    
 test_python_311:
   stage: test
-  image: python:3.11
+  image: ghcr.io/ekut-es/hannah_python_3.11:latest
+  script:
+    - set -e
+    - poetry config installer.max-workers 10
+    - poetry install --all-extras
+    - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
+    - export PYTHONPATH=$PWD
+    - export COVERAGE_PROCESS_START=$PWD/.coveragerc
+    - poetry run coverage run --source hannah -m pytest test
+    - unset PYTHONPATH
+    - unset COVERAGE_PROCESS_START
+    - poetry run coverage report
+    - poetry run coverage xml
+  tags:
+    - docker
+  interruptible: true
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+  dependencies: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+   
+test_python_312:
+  stage: test
+  image: ghcr.io/ekut-es/hannah_python_3.11:latest
   script:
     - set -e
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
@@ -164,40 +143,11 @@ test_python_311:
       - .cache/
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
-test_python_312:
-  stage: test
-  image: python:3.12
-  script:
-    - set -e
-    - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
-    - export PYTHONPATH=$PWD
-    - export COVERAGE_PROCESS_START=$PWD/.coveragerc
-    - poetry run coverage run --source hannah -m pytest test
-    - unset PYTHONPATH
-    - unset COVERAGE_PROCESS_START
-    - poetry run coverage report
-    - poetry run coverage xml
-  tags:
-    - gpu
-  interruptible: true
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-  dependencies: []
-  cache:
-    paths:
-      - .cache/
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 build_docs:
   stage: test
-  image: ubuntu:22.04
+  image: ubuntu:20.04
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
@@ -219,7 +169,6 @@ build_docs:
   # Empty dependencies to disable artifacts passing
   dependencies: []
 
-
 run_sca:
   stage: test
   image: cgerum/hannah:latest
@@ -238,27 +187,6 @@ run_sca:
     - docker
   interruptible: true
   allow_failure: true
-
-#ml_cloud_integration:
-#  stage: build
-#  image: ubuntu:latest
-#  dependencies: []
-#  before_script:
-#    - apt update
-#    - apt -y install openssh-client
-#    - eval $(ssh-agent -s)
-#    - mkdir -p ~/.ssh
-#    - echo "$ML_CLOUD_KEY" > ~/.ssh/ml_cloud.key
-#    - chmod -R  0600 ~/.ssh
-#    - ssh-add ~/.ssh/ml_cloud.key
-#    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-#  script:
-#    - set -e
-#    - scp scripts/ml_cloud_ci.sh cgerum05@134.2.168.52:/home/bringmann/cgerum05/ci/ml_cloud_ci.sh
-#    - ssh cgerum05@134.2.168.52  /home/bringmann/cgerum05/ci/ml_cloud_ci.sh
-#  rules:
-#    - if: $CI_PIPELINE_SOURCE == "schedule"
-
 
 deploy to github:
   stage: build
