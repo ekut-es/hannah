@@ -18,7 +18,6 @@ def test_online_dataset():
     nx_graph = model_to_graph(model, x)
     fea = get_features(nx_graph)
     
-    fea = fea.astype('float32')
     for i, n in enumerate(nx_graph.nodes):
         nx_graph.nodes[n]['features'] = fea.iloc[i].to_numpy()
     dgl_graph = to_dgl_graph(nx_graph)

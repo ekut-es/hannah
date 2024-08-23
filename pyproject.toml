@@ -61,8 +61,19 @@ lightning = "^2.4.0"
 onnx = "^1.16.0"
 spox = "^0.12.0"
 optree = "^0.11.0"
-dgl = {version = "^2.3.0", source = "dgl-cu"}
 pydantic = "^2.8.2"
+dgl = [
+  {platform = 'linux', python='~3.9', url = "https://data.dgl.ai/wheels/torch-2.3/cu121/dgl-2.3.0%2Bcu121-cp39-cp39-manylinux1_x86_64.whl"},
+  {platform = 'linux', python='~3.10', url = "https://data.dgl.ai/wheels/torch-2.3/cu121/dgl-2.3.0%2Bcu121-cp310-cp310-manylinux1_x86_64.whl"},
+  {platform = 'linux', python='~3.11', url = "https://data.dgl.ai/wheels/torch-2.3/cu121/dgl-2.3.0%2Bcu121-cp311-cp311-manylinux1_x86_64.whl"},
+  {platform = 'linux', python='~3.12', url = "https://data.dgl.ai/wheels/torch-2.3/cu121/dgl-2.3.0%2Bcu121-cp312-cp312-manylinux1_x86_64.whl"},
+
+]
+
+
+
+
+
 
 [tool.poetry.dev-dependencies]
 pytest = ">=7.2.0"
@@ -102,10 +113,6 @@ ipykernel = "^6.29.4"
 ruff = "^0.5.5"
 
 
-[[tool.poetry.source]]
-name = "dgl-cu"
-url = "https://data.dgl.ai/wheels/torch-2.3/cu121/repo.html"
-priority = "explicit"
 
 [build-system]
 requires = ["poetry>=0.12"]
