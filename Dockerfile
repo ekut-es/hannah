@@ -42,7 +42,7 @@ RUN  if [ "$target" == hannah ] || [ "$target" = "mlonmcu" ]; then\
       fi
 
 # Install poetry using recommended method
-RUN  pip install poetry
+RUN  pip3 install poetry
 
 
 # Copy only requirements to cache them in docker layer
