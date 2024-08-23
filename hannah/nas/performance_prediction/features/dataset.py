@@ -156,7 +156,7 @@ def get_features(nx_graph):
         if col not in df.columns:
             df[col] = 0
     df = df.reindex(sorted(df.columns), axis=1)  # Sort to have consistency
-    return df
+    return df.astype(np.float32)
 
 def get_list_columns(df):
     list_cols = []

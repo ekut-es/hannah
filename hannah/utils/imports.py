@@ -16,21 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import functools
 import importlib
 import operator
-import os
 import types
 from importlib.util import find_spec
-from typing import Callable, List, Tuple, Union
 
-import pkg_resources
-from pkg_resources import DistributionNotFound
-
-try:
-    from packaging.version import Version
-except (ModuleNotFoundError, DistributionNotFound):
-    Version = None
 
 
 def _module_available(module_path: str) -> bool:
@@ -51,34 +41,6 @@ def _module_available(module_path: str) -> bool:
     except ValueError:
         # Sometimes __spec__ can be None and gives a ValueError
         return True
-
-
-def _compare_version(
-    package: str, op: Callable, version: str, use_base_version: bool = False
-) -> bool:
-    """Compare package version with some requirements.
-    >>> _compare_version("torch", operator.ge, "0.1")
-    True
-    >>> _compare_version("does_not_exist", operator.ge, "0.0")
-    False
-    """
-    try:
-        pkg = importlib.import_module(package)
-    except (ImportError, DistributionNotFound):
-        return False
-    try:
-        if hasattr(pkg, "__version__"):
-            pkg_version = Version(pkg.__version__)
-        else:
-            # try pkg_resources to infer version
-            pkg_version = Version(pkg_resources.get_distribution(package).version)
-    except TypeError:
-        # this is mocked by Sphinx, so it should return True to generate all summaries
-        return True
-    if use_base_version:
-        pkg_version = Version(pkg_version.base_version)
-    return op(pkg_version, Version(version))
-
 
 _TORCH_AVAILABLE = _module_available("torch")
 _KORNIA_AVAILABLE = _module_available("kornia")
