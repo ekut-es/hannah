@@ -58,8 +58,7 @@ gdown = {version = "^4.5.3", optional = true}
 albumentations = {version = "^1.4.3", optional = true}
 kornia = {version = "^0.7.1", optional = true}
 lightning = "^2.4.0"
-dgl = "1.1.3"
-pytorch-lightning = "^2.1.3"
+dgl = "2.1.0"
 onnx = "^1.16.0"
 spox = "^0.12.0"
 optree = "^0.11.0"

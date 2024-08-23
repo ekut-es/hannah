@@ -46,7 +46,7 @@ jobs:
             - '3.12'
           include:
             - target: hannah
-              python_version: 3.10 # THis is ignored
+              python_version: 3.10 # This is ignored
 
 
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
