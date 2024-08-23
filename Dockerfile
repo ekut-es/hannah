@@ -29,6 +29,7 @@ FROM python:${python_version} as python
 
 FROM ${target}
 
+# These need to be set here again, as the FROM directive resets the ARGs on use
 ARG python_version
 ARG target
 
