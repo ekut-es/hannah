@@ -9,6 +9,7 @@ authors = [
     "Tobias Hald <tobias.hald@student.uni-tuebingen.de>"
 ]
 packages = [
+    {include='hannah'},
     {include='hydra_plugins'}
 ]
 
