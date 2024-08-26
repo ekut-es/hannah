@@ -104,7 +104,7 @@ ruff = "^0.5.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.masonry.api"
+build-backend = "poetry.core.masonry.api"
 
 [tool.isort]
 profile = "black"
