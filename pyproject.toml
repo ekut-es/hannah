@@ -103,7 +103,7 @@ ruff = "^0.5.5"
 
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.masonry.api"
 
 [tool.isort]
