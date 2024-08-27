@@ -417,6 +417,7 @@ dilation : Union[int, Expression], optional
 <h1 id="hannahnasspacesdartsdarts_space">hannah.nas.spaces.darts.darts_space</h1>
 <p><a id="hannah.nas.parametrization"></a></p>
 <h1 id="hannahnasparametrization">hannah.nas.parametrization</h1>
+<p>LEGAZY CODE: this code is part of our legacy nas implementation and should not be used anymore</p>
 <p><a id="hannah.nas.parametrization.ScalarParameterState"></a></p>
 <h2 id="scalarparameterstate-objects">ScalarParameterState Objects</h2>
 <div class="codehilite"><pre><span></span><code><span class="nd">@dataclass</span>
@@ -454,6 +455,19 @@ dilation : Union[int, Expression], optional
 <p>Tell the result of a task</p>
 <p><a id="hannah.nas.search.presampler.simple"></a></p>
 <h1 id="hannahnassearchpresamplersimple">hannah.nas.search.presampler.simple</h1>
+<p><a id="hannah.nas.search.sampler.pymoo"></a></p>
+<h1 id="hannahnassearchsamplerpymoo">hannah.nas.search.sampler.pymoo</h1>
+<p><a id="hannah.nas.search.sampler.pymoo.PyMOOSampler"></a></p>
+<h2 id="pymoosampler-objects">PyMOOSampler Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">PyMOOSampler</span><span class="p">(</span><span class="n">Sampler</span><span class="p">)</span>
+</code></pre></div>
+
+<p><a id="hannah.nas.search.sampler.pymoo.PyMOOSampler.tell_result"></a></p>
+<h4 id="tell_result_1">tell_result</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">tell_result</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Tell the result of a task</p>
 <p><a id="hannah.nas.search.sampler.defined_space_sampler"></a></p>
 <h1 id="hannahnassearchsamplerdefined_space_sampler">hannah.nas.search.sampler.defined_space_sampler</h1>
 <p><a id="hannah.nas.search.sampler.random_sampler"></a></p>
@@ -466,7 +480,7 @@ dilation : Union[int, Expression], optional
 </code></pre></div>
 
 <p><a id="hannah.nas.search.sampler.base_sampler.Sampler.tell_result"></a></p>
-<h4 id="tell_result_1">tell_result</h4>
+<h4 id="tell_result_2">tell_result</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">tell_result</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
 </code></pre></div>
 
@@ -488,13 +502,11 @@ dilation : Union[int, Expression], optional
 
 <p>Returns a list of current tasks</p>
 <p><a id="hannah.nas.search.sampler.aging_evolution.AgingEvolutionSampler.tell_result"></a></p>
-<h4 id="tell_result_2">tell_result</h4>
+<h4 id="tell_result_3">tell_result</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">tell_result</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
 </code></pre></div>
 
 <p>Tell the result of a task</p>
-<p><a id="hannah.nas.search.weight_sharing"></a></p>
-<h1 id="hannahnassearchweight_sharing">hannah.nas.search.weight_sharing</h1>
 <p><a id="hannah.nas"></a></p>
 <h1 id="hannahnas">hannah.nas</h1>
 <p><a id="hannah.nas.plotter"></a></p>
@@ -1152,6 +1164,8 @@ https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring</p>
 <p>Emergency Dataset</p>
 <p><a id="hannah.datasets.vision.fake"></a></p>
 <h1 id="hannahdatasetsvisionfake">hannah.datasets.vision.fake</h1>
+<p><a id="hannah.datasets.vision.mnist"></a></p>
+<h1 id="hannahdatasetsvisionmnist">hannah.datasets.vision.mnist</h1>
 <p><a id="hannah.datasets.vision.ri_capsule"></a></p>
 <h1 id="hannahdatasetsvisionri_capsule">hannah.datasets.vision.ri_capsule</h1>
 <p>Rhode island gastroenterology video capsule endoscopy dataset</p>
@@ -1163,6 +1177,8 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 </code></pre></div>
 
 <p>Split train set in two and save as separate csv files.</p>
+<p><a id="hannah.datasets.vision.svhn"></a></p>
+<h1 id="hannahdatasetsvisionsvhn">hannah.datasets.vision.svhn</h1>
 <p><a id="hannah.datasets.vision.utils.naneye"></a></p>
 <h1 id="hannahdatasetsvisionutilsnaneye">hannah.datasets.vision.utils.naneye</h1>
 <p><a id="hannah.datasets.vision.utils.naneye.read_naneye"></a></p>
