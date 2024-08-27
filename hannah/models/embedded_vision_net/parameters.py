@@ -59,3 +59,11 @@ class Groups(Parameter):
             self.current_value = int(possible_values[np.argmin(diff)])
         else:
             self.current_value = int(x)
+            
+            
+    def from_float(self, val):
+        
+        possible_values = self.get_possible_values()
+        val = int(val * (len(possible_values) - 1))
+        
+        return possible_values[val]

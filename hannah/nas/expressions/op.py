@@ -20,6 +20,7 @@ import textwrap
 from abc import abstractmethod
 from typing import Any
 
+
 from hannah.nas.expressions.placeholder import Placeholder
 from hannah.nas.parameters.parameters import Parameter
 
@@ -29,12 +30,10 @@ from ..core.parametrized import is_parametrized
 
 class Op(Expression):
     @abstractmethod
-    def evaluate(self):
-        ...
+    def evaluate(self): ...
 
     @abstractmethod
-    def format(self, indent=2, length=80) -> str:
-        ...
+    def format(self, indent=2, length=80) -> str: ...
 
     def _evaluate_operand(self, current_lhs):
         if isinstance(current_lhs, Expression):
@@ -105,8 +104,7 @@ class BinaryOp(Op):
         return self.concrete_impl(current_lhs, current_rhs)
 
     @abstractmethod
-    def concrete_impl(self, lhs, rhs):
-        ...
+    def concrete_impl(self, lhs, rhs): ...
 
 
 class UnaryOp(Op):
@@ -123,8 +121,7 @@ class UnaryOp(Op):
         return self.concrete_impl(current_operand)
 
     @abstractmethod
-    def concrete_impl(self, operand):
-        ...
+    def concrete_impl(self, operand): ...
 
     def format(self, indent=2, length=80):
         ret = "(" + self.symbol
