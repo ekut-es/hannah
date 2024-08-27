@@ -53,7 +53,5 @@ COPY poetry.lock pyproject.toml /deps/
 
 
 # Install dependencies
-RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi --all-extras --no-root \
+RUN poetry install --no-interaction --no-ansi --all-extras --no-root \
   && rm -rf $POETRY_CACHE_DIR
-

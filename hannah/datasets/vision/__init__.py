@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -16,18 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .cifar import Cifar10Dataset
+from .cifar import Cifar10Dataset, Cifar100Dataset
 from .dresden_capsule import DresdenCapsuleDataset
 from .fake import FakeDataset
 from .kvasir import KvasirCapsuleDataset
 from .kvasir_unlabeled import KvasirCapsuleUnlabeled
 from .ri_capsule import RICapsuleDataset
+from .mnist import MNISTDataset
+from .svhn import SVHNDataset
 
 __all__ = [
     "DresdenCapsuleDataset",
     "KvasirCapsuleDataset",
     "FakeDataset",
     "Cifar10Dataset",
+    "Cifar100Dataset",
     "KvasirCapsuleUnlabeled",
     "RICapsuleDataset",
+    "MNISTDataset",
+    "SVHNDataset",
 ]

@@ -27,7 +27,6 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pypoetry"
-  POETRY_VIRTUALENVS_CREATE: false
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
 
@@ -36,7 +35,7 @@ test_prebuilt_docker:
   image: ghcr.io/ekut-es/hannah_hannah:latest
   script:
     - set -e
-    - poetry install -E vision
+    - poetry install --all-extras
     - poetry run python3 -m pytest  -v --cov=hannah test hannah
   tags:
     - docker
@@ -51,7 +50,7 @@ test_python_39:
   script:
     - set -e
     - poetry config installer.max-workers 10
-    - poetry install -E vision
+    - poetry install --all-extras
     - poetry run python3 -m pytest  -v --cov=hannah test hannah --integration
   tags:
     - docker
@@ -66,7 +65,7 @@ test_python_310:
   script:
     - set -e
     - poetry config installer.max-workers 10
-    - poetry install -E vision
+    - poetry install --all-extras
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
@@ -93,7 +92,7 @@ test_python_311:
   script:
     - set -e
     - poetry config installer.max-workers 10
-    - poetry install -E vision
+    - poetry install --all-extras
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
@@ -146,7 +145,7 @@ run_sca:
     - export POETRY_HOME=/root/.local
     - export PATH=${POETRY_HOME}/bin:${PATH}
     - poetry config installer.max-workers 10
-    - poetry install -E vision
+    - poetry install --all-extras
     - ulimit -a
   script:
     - set -e

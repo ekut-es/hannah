@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -82,3 +82,143 @@ class Cifar10Dataset(TorchvisionDatasetBase):
     @property
     def mean(self):
         return (0.491, 0.482, 0.446)
+
+
+class Cifar100Dataset(Cifar10Dataset):
+    _class_names = []
+
+    @classmethod
+    def prepare(cls, config):
+        data_folder = config.data_folder
+        root_folder = os.path.join(data_folder, "CIFAR100")
+        _ = datasets.CIFAR100(root_folder, train=False, download=True)
+
+    @classmethod
+    def splits(cls, config):
+        data_folder = config.data_folder
+        root_folder = os.path.join(data_folder, "CIFAR100")
+        test_set = torchvision.datasets.CIFAR100(
+            root_folder, train=False, download=False
+        )
+
+        train_val_set = torchvision.datasets.CIFAR100(
+            root_folder, train=True, download=False
+        )
+        train_val_len = len(train_val_set)
+
+        split_sizes = [
+            int(train_val_len * (1.0 - config.val_percent)),
+            int(train_val_len * config.val_percent),
+        ]
+        train_set, val_set = data.random_split(train_val_set, split_sizes)
+
+        return (
+            cls(config, train_set),
+            cls(config, val_set),
+            cls(config, test_set),
+        )
+
+    @property
+    def class_names(self):
+        return [
+            "apple",
+            "aquarium_fish",
+            "baby",
+            "bear",
+            "beaver",
+            "bed",
+            "bee",
+            "beetle",
+            "bicycle",
+            "bottle",
+            "bowl",
+            "boy",
+            "bridge",
+            "bus",
+            "butterfly",
+            "camel",
+            "can",
+            "castle",
+            "caterpillar",
+            "cattle",
+            "chair",
+            "chimpanzee",
+            "clock",
+            "cloud",
+            "cockroach",
+            "couch",
+            "crab",
+            "crocodile",
+            "cup",
+            "dinosaur",
+            "dolphin",
+            "elephant",
+            "flatfish",
+            "forest",
+            "fox",
+            "girl",
+            "hamster",
+            "house",
+            "kangaroo",
+            "keyboard",
+            "lamp",
+            "lawn_mower",
+            "leopard",
+            "lion",
+            "lizard",
+            "lobster",
+            "man",
+            "maple_tree",
+            "motorcycle",
+            "mountain",
+            "mouse",
+            "mushroom",
+            "oak_tree",
+            "orange",
+            "orchid",
+            "otter",
+            "palm_tree",
+            "pear",
+            "pickup_truck",
+            "pine_tree",
+            "plain",
+            "plate",
+            "poppy",
+            "porcupine",
+            "possum",
+            "rabbit",
+            "raccoon",
+            "ray",
+            "road",
+            "rocket",
+            "rose",
+            "sea",
+            "seal",
+            "shark",
+            "shrew",
+            "skunk",
+            "skyscraper",
+            "snail",
+            "snake",
+            "spider",
+            "squirrel",
+            "streetcar",
+            "sunflower",
+            "sweet_pepper",
+            "table",
+            "tank",
+            "telephone",
+            "television",
+            "tiger",
+            "tractor",
+            "train",
+            "trout",
+            "tulip",
+            "turtle",
+            "wardrobe",
+            "whale",
+            "willow_tree",
+            "wolf",
+            "woman",
+            "worm",
+        ]
