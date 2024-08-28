@@ -16,34 +16,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .imports import lazy_import
-from .tuple import pair, quadruple, single, triple
-from .utils import (
-    clear_outputs,
-    common_callbacks,
-    fullname,
-    git_version,
-    log_execution_env_state,
-    set_deterministic,
-)
+from hydra.utils import instantiate
 
-from .datasets import (
-    extract_from_download_cache,
-    list_all_files,
-)
 
-__all__ = [
-    "log_execution_env_state",
-    "list_all_files",
-    "extract_from_download_cache",
-    "common_callbacks",
-    "clear_outputs",
-    "fullname",
-    "set_deterministic",
-    "lazy_import",
-    "git_version",
-    "single",
-    "pair",
-    "triple",
-    "quadruple",
-]
+def profile_backend(config, lit_module):
+    metrics = {}
+    if config.get("backend"):
+        backend = instantiate(config.backend)
+        backend.prepare(lit_module)
+
+        backend_results = backend.profile(lit_module.example_input_array)  # noqa
+
+        metrics = backend_results.metrics
+
+    return metrics

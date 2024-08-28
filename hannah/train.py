@@ -31,7 +31,7 @@ import torch.nn as nn
 from hydra.utils import get_class, get_original_cwd, instantiate
 from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning import Trainer
+from pytorch_lightning import Trainer, LightningModule
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
@@ -41,6 +41,7 @@ from .callbacks.prediction_logger import PredictionLogger
 from .utils import clear_outputs, common_callbacks, git_version, log_execution_env_state
 from .utils.dvclive import DVCLIVE_AVAILABLE, DVCLogger
 from .utils.logger import JSONLogger
+from .backends.profile import profile_backend
 
 msglogger: logging.Logger = logging.getLogger(__name__)
 
@@ -60,12 +61,41 @@ def handle_dataset(config=DictConfig):
     lit_module.prepare_data()
 
 
+def instantiate_module(config) -> LightningModule:
+    torch.set_float32_matmul_precision("high")
+
+    if config.get("input_file", None):
+        msglogger.info("Loading initial weights from model %s", config.input_file)
+        lit_module = get_class(config.module._target_).load_from_checkpoint(
+            config.input_file
+        )
+    else:
+        lit_module = instantiate(
+            config.module,
+            dataset=config.dataset,
+            model=config.model,
+            optimizer=config.optimizer,
+            features=config.get("features", None),
+            augmentation=config.get("augmentation", None),
+            scheduler=config.get("scheduler", None),
+            normalizer=config.get("normalizer", None),
+            unlabeled_data=config.get("unlabeled_data"),
+            pseudo_labeling=config.get("pseudo_labeling", None),
+            _recursive_=False,
+        )
+
+    return lit_module
+
+
 def train(
     config: DictConfig,
 ) -> Union[float, Dict[Any, float], List[Union[float, Dict[Any, float]]]]:
     test_output = []
     val_output = []
     results = []
+
+    backend_output = []
+
     if isinstance(config.seed, int):
         config.seed = [config.seed]
     validate_output = False
@@ -73,6 +103,10 @@ def train(
         validate_output = config.validate_output
 
     torch.set_float32_matmul_precision("high")
+
+    logging.info("Configuration: ")
+    logging.info(OmegaConf.to_yaml(config))
+    logging.info("Current working directory %s", os.getcwd())
 
     for seed in config.seed:
         seed_everything(seed, workers=True)
@@ -84,25 +118,7 @@ def train(
         logging.info(OmegaConf.to_yaml(config))
         logging.info("Current working directory %s", os.getcwd())
 
-        if config.get("input_file", None):
-            msglogger.info("Loading initial weights from model %s", config.input_file)
-            lit_module = get_class(config.module._target_).load_from_checkpoint(
-                config.input_file
-            )
-        else:
-            lit_module = instantiate(
-                config.module,
-                dataset=config.dataset,
-                model=config.model,
-                optimizer=config.optimizer,
-                features=config.get("features", None),
-                augmentation=config.get("augmentation", None),
-                scheduler=config.get("scheduler", None),
-                normalizer=config.get("normalizer", None),
-                unlabeled_data=config.get("unlabeled_data"),
-                pseudo_labeling=config.get("pseudo_labeling", None),
-                _recursive_=False,
-            )
+        lit_module = instantiate_module(config)
 
         profiler = None
         if config.get("profiler", None):
@@ -119,9 +135,6 @@ def train(
         ]
         logger.append(CSVLogger(".", version="logs", name=""))
         logger.append(JSONLogger(".", version="logs", name=""))
-
-        # if DVCLIVE_AVAILABLE:
-        #    logger.append(DVCLogger())
 
         callbacks = []
 
@@ -144,18 +157,6 @@ def train(
             logger=logger,
             _convert_="partial",
         )
-
-        if config["auto_lr"]:
-            # run lr finder (counts as one epoch)
-            lr_finder = lit_trainer.lr_find(lit_module)
-
-            # inspect results
-            fig = lr_finder.plot()
-            fig.savefig("./learning_rate.png")
-
-            # recreate module with updated config
-            suggested_lr = lr_finder.suggestion()
-            config["lr"] = suggested_lr
 
         logging.info("Starting training")
         # PL TRAIN
@@ -191,6 +192,10 @@ def train(
                 test_output.append(opt_callback.test_result())
 
             results.append(opt_callback.result())
+
+        # Final inference run if a backend is given
+        if "backend" in config:
+            backend_output.append(profile_backend(config, lit_module))
 
     @rank_zero_only
     def summarize_stage(stage: str, output: Mapping["str", float]) -> None:
@@ -245,6 +250,9 @@ def train(
 
     summarize_stage("test", test_output)
     summarize_stage("val", val_output)
+
+    if len(backend_output) > 0:
+        summarize_stage("backend", backend_output)
 
     if len(results) == 1:
         return results[0]

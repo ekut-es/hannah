@@ -22,6 +22,7 @@ import logging
 from pathlib import Path
 
 import dgl
+import lightning as L
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -31,6 +32,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from tabulate import tabulate
 
+from hannah.backends.base import InferenceBackendBase
 from hannah.callbacks.summaries import FxMACSummaryCallback, MacSummaryCallback
 from hannah.modules.base import ClassifierModule
 from hannah.nas.graph_conversion import GraphConversionTracer, model_to_graph
@@ -155,3 +157,22 @@ class GCNPredictor:
             dataset, batch_size=32, train_test_split=1
         )
         self.predictor.train_and_fit(train_dataloader, num_epochs=20, verbose=25)
+
+
+class BackendPredictor:
+    """A predictor class that uses a backend to predict performance metrics"""
+
+    def __init__(self, backend: InferenceBackendBase = None) -> None:
+        self.backend = backend
+
+    def predict(self, module: L.LightningModule, input=None):
+        metrics = {}
+        if self.backend:
+            if module.example_input_array is None:
+                module.example_input_array = (
+                    input if input is not None else module.get_example_input_array()
+                )
+            self.backend.prepare(module)
+            profile_result = self.backend.profile(input if input is not None else [])
+            metrics.update(profile_result.metrics)
+        return metrics

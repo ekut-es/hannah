@@ -17,16 +17,30 @@
 ## limitations under the License.
 ##
 
+# Target for python/mlonmcu/python
 ARG target="hannah"
 
-FROM ubuntu:22.04 as hannah
+# ARG for Python version, defaulting to 3.12 only used if python target is selected
+ARG python_version=3.12
 
+FROM ubuntu:22.04 as hannah
 FROM tumeda/mlonmcu-bench:latest as mlonmcu
+FROM python:${python_version} as python
 
 FROM ${target}
 
+# These need to be set here again, as the FROM directive resets the ARGs on use
+ARG python_version
+ARG target
 
-RUN  apt-get update -y && apt-get -y install git mesa-utils python3-pip python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3
+ENV POETRY_CACHE_DIR="/tmp/poetry_cache"
+
+
+RUN  if [ "$target" = "hannah" ] || [ "$target" = "mlonmcu" ]; then\
+        apt-get update -y && apt-get -y install git mesa-utils python3 python3-pip python3-dev libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential python-is-python3; \
+      else \
+        apt-get update -y && apt-get -y install git mesa-utils  libblas-dev liblapack-dev libsndfile1-dev libsox-dev cmake ninja-build curl build-essential;  \
+      fi
 
 
 # Install poetry using recommended method
@@ -39,5 +53,5 @@ COPY poetry.lock pyproject.toml /deps/
 
 
 # Install dependencies
-RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi --all-extras --no-root
+RUN poetry install --no-interaction --no-ansi --all-extras --no-root \
+  && rm -rf $POETRY_CACHE_DIR

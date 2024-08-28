@@ -21,24 +21,24 @@ class BasicExecutor(torch.nn.Module):
         self.nodes = []
 
     def initialize(self):
-        # FIXME: Only initialize used tensors
-        for node in get_nodes(self.output):
-            if isinstance(node, Tensor):
-                node_name = node.id.replace(".", "_")
-                if node.grad:
-                    data = torch.empty(node.current_shape())
-                    data = torch.nn.Parameter(self.init(data))
-                    self.register_parameter(node_name, data)
-                if node.name == self.input_node_name:
-                    self.input = node
-                if node.name == 'running_mean':
-                    data = torch.zeros(node.current_shape())
-                    self.register_buffer(node_name, data)
-                if node.name == 'running_std':
-                    data = torch.ones(node.current_shape())
-                    self.register_buffer(node_name, data)
-                node.executor = self
         self.find_execution_order()
+
+    def initialize_tensor(self, node):
+        if isinstance(node, Tensor):
+            node_name = node.id.replace(".", "_")
+            if node.grad:
+                data = torch.empty(node.current_shape())
+                data = torch.nn.Parameter(self.init(data))
+                self.register_parameter(node_name, data)
+            if node.name == self.input_node_name:
+                self.input = node
+            if node.name == 'running_mean':
+                data = torch.zeros(node.current_shape())
+                self.register_buffer(node_name, data)
+            if node.name == 'running_std':
+                data = torch.ones(node.current_shape())
+                self.register_buffer(node_name, data)
+            node.executor = self
 
     def get_data(self, id):
         if id == 'input':
@@ -92,6 +92,7 @@ class BasicExecutor(torch.nn.Module):
 
         while queue:
             node = queue.pop(0)
+            self.initialize_tensor(node)
             self.node_dict[node.id] = node
             dependency_dict[node.id] = []
 

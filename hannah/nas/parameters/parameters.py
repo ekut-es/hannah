@@ -65,6 +65,10 @@ class Parameter(Expression):
     def check(self, value):
         ...
 
+    @abstractmethod
+    def from_float(self, value):
+        ...
+
     # FIXME: evaluate and instantiate?
     def evaluate(self):
         return self.instantiate()
@@ -97,6 +101,8 @@ class Parameter(Expression):
             + ", ".join((f"{k} = {v}" for k, v in self.__dict__.items()))
             + ")"
         )
+        
+    
 
 
 class IntScalarParameter(Parameter):
@@ -154,6 +160,8 @@ class IntScalarParameter(Parameter):
         self.check(value)
         self.current_value = value
 
+    def from_float(self, val):
+        return int(val * (self.max - self.min) + self.min)
 
 class FloatScalarParameter(Parameter):
     def __init__(
@@ -191,6 +199,8 @@ class FloatScalarParameter(Parameter):
         self.check(value)
         self.current_value = value
 
+    def from_float(self, val):
+        return val * (self.max - self.min) + self.min
 
 class CategoricalParameter(Parameter):
     def __init__(
@@ -233,6 +243,9 @@ class CategoricalParameter(Parameter):
 
     def __iter__(self):
         yield from iter(self.choices)
+        
+    def from_float(self, val):
+        return self.choices[int(val * len(self.choices))]
 
 
 class SubsetParameter(Parameter):
@@ -288,3 +301,7 @@ class SubsetParameter(Parameter):
     def set_current(self, value):
         self.check(value)
         self.current_value = value
+
+    def from_float(self, val):
+        raise NotImplementedError("SubsetParameter does not support from_float")
+    

@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2024 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import torch
 from hannah.callbacks.summaries import FxMACSummaryCallback
 from hannah.models.embedded_vision_net.expressions import expr_product, expr_sum
@@ -42,8 +60,6 @@ def active_weights(node):
                     queue.append(operand)
                     visited.append(operand)
     return s
-
-
 
 
 def extract_weights(graph):
@@ -120,9 +136,10 @@ def extract_weights_recursive(node, visited, stack=[]):
 
 def test_weight_expression():
     class DummyModule:
-        """ Dummy module with relevant fields to demonstrate usage of
+        """Dummy module with relevant fields to demonstrate usage of
         MacSummaryCallback without the need for an actual ImageClassifierModule
         """
+
         def __init__(self, model, device, example_feature_array) -> None:
             self.model = model
             self.device = device
@@ -149,7 +166,7 @@ def test_weight_expression():
     x = torch.randn(input.shape())
     # out = model.forward(x)
 
-    module = DummyModule(model, 'cpu', x)
+    module = DummyModule(model, "cpu", x)
     cb = FxMACSummaryCallback()
     time.perf_counter
     res = cb._do_summary(module, x)

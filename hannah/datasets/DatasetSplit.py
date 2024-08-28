@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import torchaudio
 from pandas import DataFrame
 from torchvision.datasets.utils import list_dir
 
-from ..utils.utils import extract_from_download_cache, list_all_files
+from ..utils import extract_from_download_cache, list_all_files
 from .Downsample import Downsample
 from .NoiseDataset import NoiseDataset
 
@@ -380,7 +380,6 @@ class DatasetSplit:
         uwnu_folder = os.path.join(speech_folder, "uwnu-v2")
 
         if os.path.isdir(uwnu_folder):
-
             output = list_all_files(uwnu_folder, ".wav", True, ".")
             output.extend(list_all_files(uwnu_folder, ".mp3", True, "."))
 
@@ -397,7 +396,6 @@ class DatasetSplit:
         train_folder = os.path.join(timit_data_folder, "TRAIN")
 
         if os.path.isdir(timit_data_folder):
-
             test = list_all_files(test_folder, ".WAV", True, ".")
 
             train = list_all_files(train_folder, ".WAV", True, ".")

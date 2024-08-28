@@ -16,6 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+"LEGAZY CODE: this code is part of our legacy nas implementation and should not be used anymore"
+
 import math
 from copy import deepcopy
 from dataclasses import dataclass

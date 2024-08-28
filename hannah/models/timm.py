@@ -27,7 +27,7 @@ import timm
 import torch
 import torch.nn as nn
 
-from ._vendor import focalnet, resnet_mc_dropout
+from ._vendor import resnet_mc_dropout
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +65,7 @@ class DefaultClassifierHead(nn.Module):
     def __init__(self, latent_shape, num_classes):
         super().__init__()
 
-        self.pooling = (
-            nn.AdaptiveAvgPool2d((1, 1)) if len(latent_shape) == 4 else nn.Identity()
-        )
+        self.pooling = nn.AdaptiveAvgPool2d((1, 1)) if len(latent_shape) == 4 else nn.Identity()
         self.flatten = nn.Flatten()
         self.linear = nn.LazyLinear(num_classes)
 
@@ -215,36 +213,28 @@ class TimmModel(nn.Module):
         projector: Union[Mapping[str, Any], bool] = False,
         stem: str = "auto",
         labels: int = 0,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.name = name
 
         dummy_input = torch.randn(tuple(input_shape))
 
-        self.encoder = timm.create_model(
-            name, num_classes=0, global_pool="", pretrained=pretrained, **kwargs
-        )
+        self.encoder = timm.create_model(name, num_classes=0, global_pool="", pretrained=pretrained, **kwargs)
         _, input_channels, input_x, input_y = dummy_input.shape
         if stem == "auto":
             logger.info("""Using default logger for automatic stem creation""")
             if input_channels != 3 or input_x < 160 or input_y < 160:
-                logger.info(
-                    "Small input size detected trying to adopt small input size"
-                )
+                logger.info("Small input size detected trying to adopt small input size")
                 if hasattr(self.encoder, "conv1"):
                     input_conv = self.encoder.conv1
                     out_channels = input_conv.out_channels
-                    new_conv = torch.nn.Conv2d(
-                        input_channels, out_channels, 3, 1, padding=1
-                    )
+                    new_conv = torch.nn.Conv2d(input_channels, out_channels, 3, 1, padding=1)
                     self.encoder.conv1 = new_conv
                 elif hasattr(self.encoder, "conv_stem"):
                     input_conv = self.encoder.conv_stem
                     out_channels = input_conv.out_channels
-                    new_conv = torch.nn.Conv2d(
-                        input_channels, out_channels, 3, 1, padding=1
-                    )
+                    new_conv = torch.nn.Conv2d(input_channels, out_channels, 3, 1, padding=1)
                     self.encoder.conv_stem = new_conv
                 else:
                     logger.critical(
@@ -268,28 +258,20 @@ class TimmModel(nn.Module):
         if decoder is True:
             self.decoder = DefaultDecoderHead(dummy_latent.shape, input_shape)
         elif decoder:
-            decoder = hydra.utils.instantiate(
-                decoder, input_shape=input_shape, latent_shape=dummy_latent.shape
-            )
+            decoder = hydra.utils.instantiate(decoder, input_shape=input_shape, latent_shape=dummy_latent.shape)
 
         self.classifier = None
         if labels > 0:
             if classifier is True:
-                self.classifier = DefaultClassifierHead(
-                    latent_shape=dummy_latent.shape, num_classes=labels
-                )
+                self.classifier = DefaultClassifierHead(latent_shape=dummy_latent.shape, num_classes=labels)
             elif classifier:
-                self.classifier = hydra.utils.instantiate(
-                    latent_shape=dummy_latent.shape, num_classes=labels
-                )
+                self.classifier = hydra.utils.instantiate(latent_shape=dummy_latent.shape, num_classes=labels)
 
         self.projector = None
         if projector is True:
             self.projector = DefaultProjectionHead(dummy_latent.shape, 1024, 256)
         elif projector:
-            self.projector = hydra.utils.instantiate(
-                projector, latent_shape=dummy_latent.shape
-            )
+            self.projector = hydra.utils.instantiate(projector, latent_shape=dummy_latent.shape)
 
         self.input_shape = input_shape
 
@@ -321,8 +303,6 @@ class TimmModel(nn.Module):
         if self.projector is not None:
             projection = self.projector(latent)
 
-        result = ModelResult(
-            latent=latent, decoded=decoded, projection=projection, logits=logits
-        )
+        result = ModelResult(latent=latent, decoded=decoded, projection=projection, logits=logits)
 
         return result

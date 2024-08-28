@@ -112,6 +112,8 @@ class HydraOptCallback(Callback):
                 monitor_val = callback_metrics[monitor] * direction
                 if monitor.startswith("train"):
                     self._curves[monitor][trainer.global_step] = monitor_val
+                    
+                    self.values[monitor] = monitor_val
 
     def on_test_end(self, trainer, pl_module):
         """
@@ -151,6 +153,10 @@ class HydraOptCallback(Callback):
         Returns:
 
         """
+        # Skip evaluation of validation metrics during sanity check
+        if trainer.sanity_checking:
+            return
+        
         callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
@@ -162,11 +168,8 @@ class HydraOptCallback(Callback):
                 try:
                     monitor_val = float(callback_metrics[monitor])
                     directed_monitor_val = monitor_val * direction
-                    if (
-                        monitor not in self.values
-                        or directed_monitor_val < self.values[monitor]
-                    ):
-                        self.values[monitor] = directed_monitor_val
+                   
+                    self.values[monitor] = directed_monitor_val
                     self._curves[monitor][trainer.global_step] = directed_monitor_val
                 except Exception:
                     pass

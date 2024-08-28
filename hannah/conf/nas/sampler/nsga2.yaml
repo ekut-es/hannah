@@ -1,0 +1,3 @@
+_target_: hannah.nas.search.sampler.pymoo.PyMOOSampler
+algorithm: nsga2
+population_size: 100

@@ -33,16 +33,18 @@ repos:
     hooks:
         - id: licenseheaders
           args: ["-x", '*.yaml', "-t", ".copyright.tmpl", "-n", "hannah", "-u", "https://github.com/ekut-es/hannah", "-o", "Hannah contributors", "-cy", "-f"]
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.2
     hooks:
-    -   id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+      # Linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      # Formatter
+      - id: ruff-format
+  - repo: https://github.com/python-poetry/poetry
+    rev: '1.8'
     hooks:
-      - id: isort
-        name: isort (python
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
-    hooks:
-      - id: flake8
+      - id: poetry-check
+      # - id: poetry-lock
+      #   args: ['--no-update']

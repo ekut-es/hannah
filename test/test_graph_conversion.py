@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -72,14 +72,18 @@ def test_graph_conversion():
 def test_graph_conversion_lazy_convnet():
     from omegaconf import OmegaConf
 
-    params = {'depth': {'min': 3, 'max': 3},
-              'conv': {'kernel_size': {'choices': [3, 5, 7]},
-                        'stride': {'choices': [1, 2]},
-                        'out_channels': {'min': 16, 'max': 64, 'step': 4}}}
+    params = {
+        "depth": {"min": 3, "max": 3},
+        "conv": {
+            "kernel_size": {"choices": [3, 5, 7]},
+            "stride": {"choices": [1, 2]},
+            "out_channels": {"min": 16, "max": 64, "step": 4},
+        },
+    }
 
     config = OmegaConf.merge(params)
 
-    model = ConvNet(name='cnn', params=config, input_shape=[1, 3, 32, 32], labels=10)
+    model = ConvNet(name="cnn", params=config, input_shape=[1, 3, 32, 32], labels=10)
     model.sample()
     model.initialize()
     test_output = model(torch.rand((1, 3, 32, 32), dtype=torch.float32))
@@ -91,9 +95,7 @@ def test_graph_conversion_functional_operators():
     from hannah.nas.functional_operators.executor import BasicExecutor
     import hannah.nas.functional_operators.operators
 
-    input = Tensor(name='input',
-                   shape=(1, 3, 32, 32),
-                   axis=('N', 'C', 'H', 'W'))
+    input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
 
     # space = test_net(input)
 
