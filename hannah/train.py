@@ -41,6 +41,7 @@ from .callbacks.prediction_logger import PredictionLogger
 from .utils import clear_outputs, common_callbacks, git_version, log_execution_env_state
 from .utils.dvclive import DVCLIVE_AVAILABLE, DVCLogger
 from .utils.logger import JSONLogger
+from .backends.profile import profile_backend
 
 msglogger: logging.Logger = logging.getLogger(__name__)
 
@@ -89,13 +90,12 @@ def instantiate_module(config) -> LightningModule:
 def train(
     config: DictConfig,
 ) -> Union[float, Dict[Any, float], List[Union[float, Dict[Any, float]]]]:
-    
     test_output = []
     val_output = []
     results = []
-    
+
     backend_output = []
-    
+
     if isinstance(config.seed, int):
         config.seed = [config.seed]
     validate_output = False
@@ -192,17 +192,10 @@ def train(
                 test_output.append(opt_callback.test_result())
 
             results.append(opt_callback.result())
-            
-        # Final inference run if a backend is given    
+
+        # Final inference run if a backend is given
         if "backend" in config:
-            backend = instantiate(config.backend)
-            backend.prepare(lit_module)
-            
-            backend_results = backend.profile(lit_module.example_input_array) # noqa
-            
-            metrics = backend_results.metrics
-            
-            backend_output.append(metrics)
+            backend_output.append(profile_backend(config, lit_module))
 
     @rank_zero_only
     def summarize_stage(stage: str, output: Mapping["str", float]) -> None:
@@ -257,9 +250,9 @@ def train(
 
     summarize_stage("test", test_output)
     summarize_stage("val", val_output)
-    
+
     if len(backend_output) > 0:
-        summarize_stage("backend", backend_output) 
+        summarize_stage("backend", backend_output)
 
     if len(results) == 1:
         return results[0]

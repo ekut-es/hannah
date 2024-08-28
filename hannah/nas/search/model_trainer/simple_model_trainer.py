@@ -31,6 +31,7 @@ from lightning.fabric.utilities.seed import reset_seed, seed_everything
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 
+from hannah.backends.profile import profile_backend
 from hannah.nas.functional_operators.executor import BasicExecutor
 from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.utils import save_graph_to_file, setup_callbacks
@@ -86,20 +87,24 @@ class SimpleModelTrainer:
 
                 reset_seed()
                 trainer.validate(ckpt_path=ckpt_path, verbose=False)
+
+                backend_metrics = profile_backend(config, module)
+
                 res = opt_callback.result(dict=True)
+
+                res.update(backend_metrics)
                 save_graph_to_file(global_num, res, module)
             except Exception as e:
                 msglogger.critical("Training failed with exception")
                 msglogger.critical(str(e))
                 print(traceback.format_exc())
-                sys.exit(1)
 
-            res = {}
-            for monitor in opt_monitor:
-                # res[monitor] = float("inf")
-                res[monitor] = (
-                    1  # FIXME: "inf" causes errors in performance prediction. Find "worst" value for each respective metric?
-                )
+                res = {}
+                for monitor in opt_monitor:
+                    # res[monitor] = float("inf")
+                    res[monitor] = (
+                        1  # FIXME: "inf" causes errors in performance prediction. Find "worst" value for each respective metric?
+                    )
 
             return res
         finally:
