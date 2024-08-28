@@ -18,7 +18,7 @@ module:
 
 trainer:
   max_epochs: 50
-  precision: 16
+  precision: 16-mixed
 
 optimizer:
   lr: 0.3
