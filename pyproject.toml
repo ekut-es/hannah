@@ -43,7 +43,7 @@ nvsmi = "^0.4.2"
 libsvm="^3.23.0.4"
 fairscale = "^0.4.5"
 numpy = {version = "^1.26.4", optional = true}
-scikit-learn = "^1.5.1"
+scikit-learn = "~1.2.2"
 hydra-colorlog = "^1.2.0"
 z3-solver = "^4.11.2.0"
 xgboost = "^1.5.2"
