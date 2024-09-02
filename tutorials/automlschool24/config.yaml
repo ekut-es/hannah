@@ -35,8 +35,13 @@ module:
   batch_size: 128
   num_workers: 0
 
+nas:
+  budget: 5
+  total_candidates: 5
+  num_selected_candidates: 10
+
 trainer:
-  max_epochs: 10
+  max_epochs: 2
 
 scheduler:
   max_lr: 0.001
