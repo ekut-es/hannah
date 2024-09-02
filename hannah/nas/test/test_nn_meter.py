@@ -104,7 +104,7 @@ def network(input):
     [
         "cortexA76cpu_tflite21",
         "adreno640gpu_tflite21",
-        "adreno630_gpu",
+        "adreno630gpu_tflite21",
         "myriadvpu_openvino2019r2",
     ],
 )

@@ -55,4 +55,6 @@ class NNMeterPredictor:
         # Save the onnx model
         onnx.save(onnx_model, tmp_dir / "model_opt.onnx")
 
-        return self._predictor.predict(str(tmp_dir / "model_opt.onnx"), "onnx")
+        latency = self._predictor.predict(str(tmp_dir / "model_opt.onnx"), "onnx")
+
+        return {"duration": latency}
