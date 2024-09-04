@@ -80,16 +80,13 @@ class NASBase(ABC):
         self.after_search()
 
     @abstractmethod
-    def before_search(self):
-        ...
+    def before_search(self): ...
 
     @abstractmethod
-    def search(self):
-        ...
+    def search(self): ...
 
     @abstractmethod
-    def after_search(self):
-        ...
+    def after_search(self): ...
 
     def add_model_trainer(self, trainer):
         self.model_trainer = trainer
@@ -373,9 +370,9 @@ class DirectNAS(NASBase):
         for name, predictor in self.predictors.items():
             metrics = predictor.predict(model, self.example_input_array)
 
-            print(f"Predicted metrics for {name}:")
+            msglogger.info(f"Predicted metrics from {name} predictor:")
             for k, v in metrics.items():
-                print(f"  {k}: {v:.8f}")
+                msglogger.info(f"  {k}: {v:.8f}")
 
             estimated_metrics.update(metrics)
 
