@@ -55,7 +55,7 @@ class SimpleModelTrainer:
         return mod
 
     def run_training(self, model, num, global_num, config):
-        print("Running training:", num)
+        msglogger.info("Running training: %d", num)
 
         # num is the number of jobs global_num is the number of models to be created
         if os.path.exists(str(num)):

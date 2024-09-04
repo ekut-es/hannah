@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -90,9 +90,9 @@ def extract_models(parameters, metrics, config_metrics, extract_config):
                 f.write("act:\n")
                 f.write("  target: relu\n")
 
-                model_parameters["qconfig"][
-                    "_target_"
-                ] = "speech_recognition.models.factory.qconfig.get_trax_qat_qconfig"
+                model_parameters["qconfig"]["_target_"] = (
+                    "speech_recognition.models.factory.qconfig.get_trax_qat_qconfig"
+                )
                 model_parameters["qconfig"]["config"]["power_of_2"] = False
                 model_parameters["qconfig"]["config"]["noise_prob"] = 0.7
 

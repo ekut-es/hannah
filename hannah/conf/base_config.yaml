@@ -38,7 +38,7 @@ defaults:
     - optional dataset/features: ${dataset}_${features}
     - nas: null
     - pseudo_labeling: null
-    - override hydra/job_logging: silent
+    #- override hydra/job_logging: silent
     - _self_
 
 experiment_id: test
@@ -52,11 +52,11 @@ skip_val: False  # skip final validation (After full model training, usually run
 seed: [1234]
 validate_output: False
 
-hydra:
-    job:
-      chdir: true
-    run:
-      dir: ${output_dir}/${experiment_id}/${model.name}/
-    sweep:
-      dir: ${output_dir}/${experiment_id}/
-      subdir: ${model.name}/${hydra.job.num}
+#hydra:
+#    job:
+#      chdir: true
+#    run:
+#      dir: ${output_dir}/${experiment_id}/${model.name}/
+#    sweep:
+#      dir: ${output_dir}/${experiment_id}/
+#      subdir: ${model.name}/${hydra.job.num}

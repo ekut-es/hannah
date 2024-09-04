@@ -17,7 +17,7 @@
 ## limitations under the License.
 ##
 data:
-  nas: trained_models/test/cnn_search_space
+  nas: .
 
 
 
@@ -57,9 +57,7 @@ plots:
 extract:
   nas:
     bounds:
-        val_error: 0.20
-        total_macs: 100000000
-        total_weights: 1000000
+        val_error: 0.02
 
 
 experiment: test
