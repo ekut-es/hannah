@@ -126,11 +126,14 @@ class SimpleModelTrainer:
                 device = num % num_devices
             elif len(config.trainer.devices) == 0:
                 num_devices = torch.cuda.device_count()
-                device = num % num_devices
+                if num_devices > 0:
+                    device = num % num_devices
+                else:
+                    device = None
             else:
                 device = config.trainer.devices[num % len(config.trainer.devices)]
 
-            if device >= torch.cuda.device_count():
+            if device >= torch.cuda.device_count() and torch.cuda.device_count() > 0:
                 msglogger.warning(
                     "GPU %d is not available on this device using GPU %d instead",
                     device,
@@ -138,9 +141,9 @@ class SimpleModelTrainer:
                 )
                 device = device % torch.cuda.device_count()
 
-            if self.per_process_memory_fraction:
-                torch.cuda.set_per_process_memory_fraction(
-                    self.per_process_memory_fraction, device=device
-                )
+            # if self.per_process_memory_fraction:
+            #    torch.cuda.set_per_process_memory_fraction(
+            #        self.per_process_memory_fraction, device=device
+            #    )
 
             config.trainer.devices = [device]
