@@ -249,6 +249,7 @@ class DirectNAS(NASBase):
         candidates = []
         skip_ct = 0
         while len(candidates) < num_total:
+            msglogger.info(f"Sampling candidate {len(candidates)}")
             parameters = self.sample(constrain)
             model = self.build_model(parameters)
             estimated_metrics, satisfied_bounds = self.estimate_metrics(

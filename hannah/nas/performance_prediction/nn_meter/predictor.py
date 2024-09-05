@@ -41,12 +41,12 @@ class NNMeterPredictor:
             hardware_name, predictor_version
         )
 
-    def predict(self, model):
+    def predict(self, model, input=None):
         self.tmp_dir = TemporaryDirectory()
         tmp_dir = Path(self.tmp_dir.name)
 
         logging.info("transfering model to onnx")
-        dummy_input = model.example_input_array
+        dummy_input = model.example_input_array if input is None else input
         torch.onnx.export(model, dummy_input, tmp_dir / "model.onnx", verbose=False)
         logging.info("Creating onnxrt-model")
         onnx_model = onnx.load(tmp_dir / "model.onnx")

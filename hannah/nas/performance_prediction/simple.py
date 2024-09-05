@@ -129,8 +129,6 @@ class GCNPredictor:
 
         result, std_dev = self.predictor.predict(dgl_graph)
 
-        print(result, std_dev)
-
         metrics = {"val_error": result.item()}
 
         logger.info("Predicted performance metrics")
