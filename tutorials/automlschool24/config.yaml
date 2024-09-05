@@ -25,6 +25,9 @@ nas:
 
 trainer:
   max_epochs: 2
+  devices: null
+  accelerator: cpu
+  enable_progress_bar: False
 
 scheduler:
   max_lr: 0.001

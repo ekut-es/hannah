@@ -147,3 +147,5 @@ class SimpleModelTrainer:
             #    )
 
             config.trainer.devices = [device]
+        else:
+            config.trainer.devices = 1
