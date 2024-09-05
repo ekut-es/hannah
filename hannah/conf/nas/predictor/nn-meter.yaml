@@ -1,0 +1,4 @@
+nn_meter:
+  _target_: hannah.nas.performance_prediction.nn_meter.NNMeterPredictor
+  hardware_name: adreno630gpu_tflite21
+  predictor_version: null
