@@ -25,9 +25,10 @@ nas:
 
 trainer:
   max_epochs: 2
-  devices: null
-  accelerator: cpu
+  #devices: null
+  #accelerator: cpu
   enable_progress_bar: False
+  limit_train_batches: 0.1
 
 scheduler:
   max_lr: 0.001
