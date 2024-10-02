@@ -61,21 +61,21 @@ def _create_parametrize_wrapper(params, cls):
                 for p in params:
                     n = name + f"_{idx}"
                     self._PARAMETERS[n] = p
-            elif isinstance(arg, Sequence):
+            elif isinstance(arg, Sequence):  # FIXME: Strings are registered as sequence
                 for idx, param in enumerate(arg):
                     if is_parametrized(param):
                         if isinstance(param, Parameter):
                             if not param.is_registered():
                                 param.register()
-                        n = f"{name}_{idx}"
-                        self._PARAMETERS[n] = param
+                                n = f"{name}_{idx}"
+                                self._PARAMETERS[n] = param
                     if isinstance(param, Expression):
                         params = extract_parameter_from_expression(param)
                         for idx2, p in enumerate(params):
                             if not p.is_registered():
                                 p.register()
-                            n = f"{name}_{idx}_{idx2}"
-                            self._PARAMETERS[n] = p
+                                n = f"{name}_{idx}_{idx2}"
+                                self._PARAMETERS[n] = p
 
         for name, arg in kwargs.items():
             if isinstance(arg, (list, tuple)):
