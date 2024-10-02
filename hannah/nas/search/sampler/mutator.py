@@ -44,7 +44,7 @@ class ParameterMutator:
         return chosen_mutation(parameter)
 
     def mutate_int_scalar(self, parameter):
-        mutations = self.get_int_mutations()
+        mutations = self.get_int_mutations(parameter)
         chosen_mutation = self.rng.choice(mutations)
         return int(chosen_mutation(parameter))
 
@@ -62,8 +62,13 @@ class ParameterMutator:
     def get_choice_mutations(self):
         return [self.random_choice, self.increase_choice, self.decrease_choice]
 
-    def get_int_mutations(self):
-        return [self.random_int_scalar, self.increase_int_scalar, self.decrease_int_scalar]
+    def get_int_mutations(self, parameter):
+        possible_mutations = [self.random_int_scalar]
+        if parameter.current_value + parameter.step_size <= parameter.max:
+            possible_mutations.append(self.increase_int_scalar)
+        if parameter.current_value - parameter.step_size >= parameter.min:
+            possible_mutations.append(self.decrease_int_scalar)
+        return possible_mutations
 
     def get_float_mutations(self):
         return [self.random_float_scalar]
@@ -87,22 +92,23 @@ class ParameterMutator:
         return parameter.choices[index - 1]
 
     def random_int_scalar(self, parameter):
-        return parameter.rng.integers(parameter.min, parameter.max+1)
+        return int(parameter.rng.choice(range(parameter.min, parameter.max+1, parameter.step_size)))
 
     def increase_int_scalar(self, parameter):
-        if parameter.current_value < parameter.max:
-            return parameter.current_value + 1
+        if parameter.current_value + parameter.step_size < parameter.max:
+            return parameter.current_value + parameter.step_size
         else:
-            return parameter.rng.integers(parameter.min, parameter.max+1)
+            return parameter.current_value
 
     def decrease_int_scalar(self, parameter):
-        if parameter.current_value > parameter.min:
-            return parameter.current_value - 1
+        if parameter.current_value - parameter.step_size > parameter.min:
+            return parameter.current_value - parameter.step_size
         else:
-            return parameter.rng.integers(parameter.min, parameter.max+1)
+            return parameter.current_value
 
     def random_float_scalar(self, parameter):
         return parameter.rng.uniform(parameter.min, parameter.max)
+
 
 if __name__ == '__main__':
     mutator = ParameterMutator(0.1)
