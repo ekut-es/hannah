@@ -32,7 +32,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from tabulate import tabulate
 
-from hannah.backends.base import InferenceBackendBase
+from hannah.backends.base import AbstractBackend
 from hannah.callbacks.summaries import FxMACSummaryCallback, MacSummaryCallback
 from hannah.modules.base import ClassifierModule
 from hannah.nas.graph_conversion import GraphConversionTracer, model_to_graph
@@ -162,7 +162,7 @@ class GCNPredictor:
 class BackendPredictor:
     """A predictor class that uses a backend to predict performance metrics"""
 
-    def __init__(self, backend: InferenceBackendBase = None) -> None:
+    def __init__(self, backend: AbstractBackend = None) -> None:
         self.backend = backend
 
     def predict(self, module: L.LightningModule, input=None):

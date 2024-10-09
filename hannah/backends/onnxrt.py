@@ -24,7 +24,7 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from .base import InferenceBackendBase, ProfilingResult
+from .base import AbstractBackend, ProfilingResult
 from .utils import symbolic_batch_dim
 
 try:
@@ -35,7 +35,7 @@ except ImportError:
     onnxruntime = None
 
 
-class OnnxruntimeBackend(InferenceBackendBase):
+class OnnxruntimeBackend(AbstractBackend):
     """Inference Backend for tensorflow"""
 
     def __init__(

@@ -34,7 +34,7 @@ except ModuleNotFoundError:
     cuda = None
     cudart = None
 
-from .base import InferenceBackendBase, ProfilingResult
+from .base import AbstractBackend, ProfilingResult
 
 
 # Wrapper for cudaMemcpy which infers copy size and does error checking
@@ -76,7 +76,7 @@ def cuda_call(call):
     return res
 
 
-class TensorRTBackend(InferenceBackendBase):
+class TensorRTBackend(AbstractBackend):
     def __init__(self, warmup=10, repeat=30):
         if trt is None or cuda is None or cudart is None:
             raise RuntimeError(

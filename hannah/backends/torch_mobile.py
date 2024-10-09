@@ -19,10 +19,10 @@
 import logging
 import time
 
-from .base import InferenceBackendBase, ProfilingResult
+from .base import AbstractBackend, ProfilingResult
 
 
-class TorchMobileBackend(InferenceBackendBase):
+class TorchMobileBackend(AbstractBackend):
     """Inference backend for torch mobile"""
 
     def __init__(self, warmup=2, repeat=10):

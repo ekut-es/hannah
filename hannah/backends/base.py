@@ -48,11 +48,10 @@ class ProfilingResult(NamedTuple):
 
 
 class AbstractBackend(ABC):
-    
     @property
     def name(self) -> str:
         return self.__class__.__name__.lower().replace("backend", "")
-    
+
     @abstractmethod
     def prepare(self, module: ClassifierModule):
         """
@@ -105,9 +104,3 @@ class AbstractBackend(ABC):
         """
 
         logger.critical("Exporting model is not implemented for this backend")
-
-
-class InferenceBackendBase(AbstractBackend):
-    """Base class for backends, it is only here for backwards compatibility reasons, use AbstractBackend instead"""
-
-    pass
