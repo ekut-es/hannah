@@ -159,6 +159,16 @@ class RandomWalkConstraintSolver:
                 return True
             else:
                 return False
+        elif direction == ">=":
+            if new > current:
+                return True
+            else:
+                return False
+        elif direction == "<=":
+            if new < current:
+                return True
+            else:
+                return False
 
     def solve(self, module, parameters, fix_vars=[]):
         print("Start constraint solving")

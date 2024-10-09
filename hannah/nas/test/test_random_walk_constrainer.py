@@ -1,5 +1,5 @@
 from hannah.nas.functional_operators.op import Tensor, scope, search_space
-from hannah.nas.constraints.random_walk import get_active_parameter
+from hannah.nas.constraints.random_walk import get_active_parameter, RandomWalkConstraintSolver
 from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv_relu, dynamic_depth, linear
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 
@@ -58,6 +58,26 @@ def test_get_active_params():
     assert len(active_params) == 13
 
 
+def test_right_direction():
+    rw_solver = RandomWalkConstraintSolver()
+    dir = "<"
+    assert not rw_solver.right_direction(10, 15, dir)
+    assert rw_solver.right_direction(26, 17, dir)
+
+    dir = ">"
+    assert rw_solver.right_direction(10, 15, dir)
+    assert not rw_solver.right_direction(26, 17, dir)
+
+    dir = "<="
+    assert not rw_solver.right_direction(10, 15, dir)
+    assert rw_solver.right_direction(26, 17, dir)
+
+    dir = ">="
+    assert rw_solver.right_direction(10, 15, dir)
+    assert not rw_solver.right_direction(26, 17, dir)
+
+
 if __name__ == '__main__':
     test_get_active_params()
+    test_right_direction()
 
