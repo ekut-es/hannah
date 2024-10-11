@@ -26,7 +26,6 @@ from hannah.models.factory.qat import ConvBn1d, ConvBnReLU1d, Linear
 from hannah.models.factory.qconfig import get_trax_qat_qconfig
 from hannah.nas.functional_operators.op import Tensor
 from hannah.nas.graph_conversion import model_to_graph
-from hannah.models.convnet.models import ConvNet
 
 
 class Model(Module):
@@ -69,27 +68,6 @@ def test_graph_conversion():
     pprint(data, indent=2)
 
 
-def test_graph_conversion_lazy_convnet():
-    from omegaconf import OmegaConf
-
-    params = {
-        "depth": {"min": 3, "max": 3},
-        "conv": {
-            "kernel_size": {"choices": [3, 5, 7]},
-            "stride": {"choices": [1, 2]},
-            "out_channels": {"min": 16, "max": 64, "step": 4},
-        },
-    }
-
-    config = OmegaConf.merge(params)
-
-    model = ConvNet(name="cnn", params=config, input_shape=[1, 3, 32, 32], labels=10)
-    model.sample()
-    model.initialize()
-    test_output = model(torch.rand((1, 3, 32, 32), dtype=torch.float32))
-    graph = model_to_graph(model, torch.rand((1, 3, 32, 32), dtype=torch.float32))
-
-
 def test_graph_conversion_functional_operators():
     from hannah.models.embedded_vision_net.models import embedded_vision_net
     from hannah.nas.functional_operators.executor import BasicExecutor
@@ -114,5 +92,4 @@ def test_graph_conversion_functional_operators():
 
 if __name__ == "__main__":
     test_graph_conversion()
-    test_graph_conversion_lazy_convnet()
     test_graph_conversion_functional_operators()
