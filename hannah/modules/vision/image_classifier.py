@@ -87,13 +87,13 @@ class ImageClassifierModule(VisionBaseModule):
 
             # For HMM and Viterbi Post-Processing
             if ((step_name is "train") or (step_name is 'val')) and self.current_epoch == self.trainer.max_epochs-1:
-                metadata = batch['metadata'].copy()
+                metadata = batch.get('metadata', {}).copy()
                 metadata.update({'preds_cnn': preds.cpu().numpy(), 'labels': labels.cpu().numpy()})
                 df = pd.DataFrame(metadata)
                 df.to_csv(os.getcwd() + f'_cnn_{step_name}_output', mode='a', index=False, header=True)
 
             if step_name is 'test':
-                metadata = batch['metadata'].copy()
+                metadata = batch.get('metadata', {}).copy()
                 metadata.update({'preds_cnn': preds.cpu().numpy(), 'labels': labels.cpu().numpy()})
                 df = pd.DataFrame(metadata)
                 df.to_csv(os.getcwd() + '_cnn_test_output', mode='a', index=False, header=True)
