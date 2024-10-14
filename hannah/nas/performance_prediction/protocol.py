@@ -53,7 +53,7 @@ class Predictor(Protocol):
         ...
 
 
-class FitablePredictor(Predictor):
+class FitablePredictor(Predictor, Protocol):
     def load(self, result_folder: str):
         """Load predefined model from a folder.
 

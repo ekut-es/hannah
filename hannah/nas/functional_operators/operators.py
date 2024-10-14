@@ -28,6 +28,7 @@ import torch.nn.functional as F
 from torch.ao.quantization.fake_quantize import FakeQuantize
 
 from hannah.nas.core.parametrized import is_parametrized
+from hannah.nas.expressions.utils import prod
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.functional_operators.op import Choice, Op, Tensor
 from hannah.nas.functional_operators.shapes import (
@@ -40,7 +41,6 @@ from hannah.nas.functional_operators.shapes import (
 )
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 from hannah.nas.parameters.parametrize import parametrize
-
 
 
 @torch.fx.wrap
@@ -159,35 +159,6 @@ def self_attention2d(q, k, v, num_heads, d_model, *, id):
 
 
 @torch.fx.wrap
-def dropout(input, p, *, id):
-    return F.dropout(input, p)
-
-
-@torch.fx.wrap
-def self_attention2d(q, k, v, num_heads, d_model, *, id):
-    """
-    Arguments:
-        q: Tensor, shape ``[B, h*d, H, W]``
-        k: Tensor, shape ``[B, h*d, H, W]``
-        v: Tensor, shape ``[B, h*d, H, W]``
-    """
-    scale = d_model ** -0.5
-    b, _, h, w = q.shape
-    q = q.view(b, num_heads, d_model, h * w)
-    k = k.view(b, num_heads, d_model, h * w)
-    v = v.view(b, num_heads, d_model, h * w)
-    # [B, h, d, H*W]
-
-    q *= scale
-    attn = q.transpose(-2, -1) @ k  # [B, h, H*W, H*W]
-    attn = F.softmax(attn, dim=-1)
-    score = v @ attn  # [B, h, d, H*W]
-    out = score.reshape(b, -1, h, w)  # [B, h*d, H, W]
-
-    return out
-
-
-@torch.fx.wrap
 def relu_linear_attention(q, k, v, num_heads, d_model, *, id):
     """
     Adapted from EfficientViT.
@@ -216,10 +187,20 @@ def relu_linear_attention(q, k, v, num_heads, d_model, *, id):
     out = out[:, :, :-1] / (out[:, :, -1:] + 1.0e-15)
     # [B, h, d, H*W]
 
-    out = out.reshape(b, -1, h, w) 
+    out = out.reshape(b, -1, h, w)
     # [B, h*d, H, W]
 
     return out
+
+
+@torch.fx.wrap
+def reshape(input, new_shape):
+    return input.view(new_shape)
+
+
+@torch.fx.wrap
+def permute(input, dims):
+    return input.permute(dims)
 
 
 @parametrize
@@ -582,23 +563,6 @@ class Dropout(Op):
 
 
 @parametrize
-class Dropout(Op):
-    def __init__(self, p) -> None:
-        super().__init__(name='Dropout', p=p)
-        self.p = p
-
-    def __call__(self, *operands) -> Any:
-        op = super().__call__(*operands)
-        return op
-
-    def _forward_implementation(self, input):
-        return dropout(input, p=self.p, id=self.id)
-
-    def shape_fun(self):
-        return identity_shape(*self.operands)
-
-
-@parametrize
 class InterleaveChannels(Op):
     def __init__(self, step_size) -> None:
         super().__init__(name="InterleaveChannels")
@@ -649,15 +613,18 @@ class SelfAttention2d(Op):
         out_dim = self.num_heads * self.d_model
 
         return (batch, out_dim, height, width)
-    
+
 
 @parametrize
 class ReluLinearAttention(Op):
     """
     Adapted from EfficientViT
     """
+
     def __init__(self, num_heads, d_model) -> None:
-        super().__init__(name="ReluLinearAttention", num_heads=num_heads, d_model=d_model)
+        super().__init__(
+            name="ReluLinearAttention", num_heads=num_heads, d_model=d_model
+        )
         self.num_heads = num_heads
         self.d_model = d_model
 
@@ -692,3 +659,54 @@ class ReluLinearAttention(Op):
         out_dim = self.num_heads * self.d_model
 
         return (batch, out_dim, height, width)
+
+
+@parametrize
+class Reshape(Op):
+    def __init__(self, shape) -> None:
+        super().__init__(name="Reshape")
+        self.new_shape = shape
+
+    def __call__(self, *operands) -> Any:
+        new_reshape = super().__call__(*operands)
+        return new_reshape
+
+    def _forward_implementation(self, input):
+        return reshape(input, self.new_shape)
+
+    def shape_fun(self):
+        if -1 in self.new_shape:
+            input_shape = self.operands[0].shape()
+            shape = list(self.new_shape)
+
+            # Calculate the product of the input shape
+            input_shape_prod = prod(input_shape)
+
+            # Calculate the product of the shape dimensions excluding -1
+            shape_prod = prod([dim for dim in shape if dim != -1])
+
+            # Replace -1 with the calculated dimension
+            shape[shape.index(-1)] = input_shape_prod // shape_prod
+
+            return tuple(shape)
+
+        return tuple(self.new_shape)
+
+
+@parametrize
+class Permute(Op):
+    def __init__(self, dims) -> None:
+        super().__init__(name="Permute")
+        self.dims = dims
+
+    def __call__(self, *operands) -> Any:
+        new_permute = super().__call__(*operands)
+        return new_permute
+
+    def _forward_implementation(self, input):
+        return permute(input, self.dims)
+
+    def shape_fun(self):
+        old_shape = self.operands[0].shape()
+        new_shape = [old_shape[dim] for dim in self.dims]
+        return new_shape

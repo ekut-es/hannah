@@ -1,0 +1,12 @@
+# @package _global_
+defaults:
+  - override /nas: aging_evolution_nas
+  - override /model: medge_net
+
+nas:
+  n_jobs: 1
+  budget: 20
+
+
+experiment_id: "medge_net_nas"
+fx_mac_summary: true

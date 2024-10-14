@@ -19,10 +19,11 @@
 """Rhode island gastroenterology video capsule endoscopy dataset
 
 
-    https://www.nature.com/articles/s41597-022-01726-3
-    https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation
+https://www.nature.com/articles/s41597-022-01726-3
+https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation
 """
 
+from functools import partial
 import logging
 import pathlib
 import shutil
@@ -32,6 +33,8 @@ import pandas as pd
 import torchvision
 import tqdm
 from albumentations.pytorch import ToTensorV2
+
+from hannah.datasets.vision.utils.bayer import rgb_to_bayer
 
 from .base import ImageDatasetBase
 
@@ -196,6 +199,8 @@ class RICapsuleDataset(ImageDatasetBase):
         train_transform = A.Compose(
             [
                 A.RandomCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
+                A.Lambda(image=partial(rgb_to_bayer, pattern="RGGB")),
+                A.GaussNoise(),
                 ToTensorV2(),
             ]
         )
@@ -203,6 +208,7 @@ class RICapsuleDataset(ImageDatasetBase):
         test_transform = A.Compose(
             [
                 A.CenterCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
+                A.Lambda(image=partial(rgb_to_bayer, pattern="RGGB")),
                 ToTensorV2(),
             ]
         )
@@ -224,3 +230,11 @@ class RICapsuleDataset(ImageDatasetBase):
             val_set,
             test_set,
         )
+
+    @property
+    def mean(self):
+        return [0.5]
+
+    @property
+    def std(self):
+        return [0.5]

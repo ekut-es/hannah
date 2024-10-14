@@ -1,0 +1,5 @@
+_target_: hannah.models.medge_net.model.medge_net
+name: medge_net
+num_classes: 10
+max_channels: 128
+max_blocks: 4

@@ -65,3 +65,4 @@ experiments/datasets/
 experiments/**/datasets/
 hannah/datasets/downloads
 trained_models/
+*.ckpt
