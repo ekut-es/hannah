@@ -1389,6 +1389,8 @@ Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/o
 <p><a id="hannah.models.ai8x.models"></a></p>
 <h1 id="hannahmodelsai8xmodels">hannah.models.ai8x.models</h1>
 <p>A search space based on the cifar 10 NASNet search space for ai85x devices from: htt</p>
+<p><a id="hannah.models.medge_net.model"></a></p>
+<h1 id="hannahmodelsmedge_netmodel">hannah.models.medge_net.model</h1>
 <p><a id="hannah.models.simple1d"></a></p>
 <h1 id="hannahmodelssimple1d">hannah.models.simple1d</h1>
 <p><a id="hannah.models.resnet.blocks"></a></p>
@@ -3394,6 +3396,19 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 <ul>
 <li><code>np.ndarray</code> - uint8 array of decoded image data</li>
 </ul>
+<p><a id="hannah.datasets.vision.utils.bayer"></a></p>
+<h1 id="hannahdatasetsvisionutilsbayer">hannah.datasets.vision.utils.bayer</h1>
+<p><a id="hannah.datasets.vision.utils.bayer.rgb_to_bayer"></a></p>
+<h4 id="rgb_to_bayer">rgb_to_bayer</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">rgb_to_bayer</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="s2">&quot;RGGB&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Convert an RGB image to a Bayer pattern.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>image</code> <em>np.ndarray</em> - The input RGB image.</li>
+<li><code>pattern</code> <em>str</em> - The Bayer pattern to use. Can be one of 'RGGB', 'GBRG', 'GRBG', 'BGGR'.</li>
+</ul>
 <p><a id="hannah.datasets.vision.kvasir"></a></p>
 <h1 id="hannahdatasetsvisionkvasir">hannah.datasets.vision.kvasir</h1>
 <p><a id="hannah.datasets.emergency"></a></p>
@@ -3924,7 +3939,7 @@ size: int
 </ul>
 <p><a id="hannah.nas.performance_prediction.protocol.FitablePredictor"></a></p>
 <h2 id="fitablepredictor-objects">FitablePredictor Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">FitablePredictor</span><span class="p">(</span><span class="n">Predictor</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">FitablePredictor</span><span class="p">(</span><span class="n">Predictor</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">)</span>
 </code></pre></div>
 
 <p><a id="hannah.nas.performance_prediction.protocol.FitablePredictor.load"></a></p>
@@ -4560,18 +4575,6 @@ a function decorated with @search_space.</p>
 <h1 id="hannahnasfunctional_operatorsoperators">hannah.nas.functional_operators.operators</h1>
 <p><a id="hannah.nas.functional_operators.operators.self_attention2d"></a></p>
 <h4 id="self_attention2d">self_attention2d</h4>
-<div class="codehilite"><pre><span></span><code><span class="nd">@torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">wrap</span>
-<span class="k">def</span> <span class="nf">self_attention2d</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">num_heads</span><span class="p">,</span> <span class="n">d_model</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>q</code> - Tensor, shape <code>[B, h*d, H, W]</code></li>
-<li><code>k</code> - Tensor, shape <code>[B, h*d, H, W]</code></li>
-<li><code>v</code> - Tensor, shape <code>[B, h*d, H, W]</code></li>
-</ul>
-<p><a id="hannah.nas.functional_operators.operators.self_attention2d"></a></p>
-<h4 id="self_attention2d_1">self_attention2d</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">wrap</span>
 <span class="k">def</span> <span class="nf">self_attention2d</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">num_heads</span><span class="p">,</span> <span class="n">d_model</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">)</span>
 </code></pre></div>
