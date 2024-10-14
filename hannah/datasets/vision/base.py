@@ -76,7 +76,7 @@ class TorchvisionDatasetBase(VisionDatasetBase):
 
 
 class ImageDatasetBase(VisionDatasetBase):
-    def __init__(self, X, y, classes, bbox=None, transform=None):
+    def __init__(self, X, y, classes, bbox=None, transform=None, metadata=None):
         """Initialize vision dataset
 
         Args:
@@ -92,19 +92,27 @@ class ImageDatasetBase(VisionDatasetBase):
         self.transform = transform if transform else A.Compose([ToTensorV2()])
         self.label_to_index = {k: v for v, k in enumerate(classes)}
         self.bbox = bbox
+        self.metadata = metadata
 
     def __getitem__(self, index):
+        id_study = ""
         image = cv2.imread(str(self.X[index]))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255
         label = self.y[index]
-
         bbox = []
+        metadata = {}
+
         X_filename = re.search(r"([^\/]+).$", str(self.X[index]))[0]
-        if self.bbox and X_filename in self.bbox:
+        if self.metadata: 
+            metadata = {key: self.metadata[key][index] for key in self.metadata}
+        if (
+            self.bbox and X_filename in self.bbox
+        ):  # bounding box for anomaly detection tasks
             bbox = self.bbox[X_filename]
+
         data = self.transform(image=image)["image"]
         target = self.label_to_index[label]
-        return {"data": data, "labels": target, "bbox": bbox}
+        return {"data": data, "labels": target, "bbox": bbox, "metadata": metadata}
 
     def size(self):
         dim = self[0]["data"].shape

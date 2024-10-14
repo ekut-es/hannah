@@ -33,8 +33,11 @@ class EEGDataset(AbstractDataset):
         super().__init__()
         self.config = config
         dataset = h5py.File(file, "r")
-        self.X = dataset[set]["x"]
-        self.y = dataset[set]["y"]
+        self.X = dataset[set]["x"][:]
+        self.y = dataset[set]["y"][:]
+        self.metadata = {}
+        if 'id' in dataset[set]: # only in test set
+            self.metadata['study_id'] = dataset[set]['id'][:]
         # print(np.unique(dataset[set]["y"], return_counts=True))
 
         self._class_counts = {
@@ -45,8 +48,10 @@ class EEGDataset(AbstractDataset):
         x = self.X[index] / self.max_value  # normalize
         data = torch.tensor(x)
         label = torch.tensor([self.y[index]]).long()
-
-        return data, data.shape[0], label, label.shape[0]
+        metadata = {}
+        if hasattr(self,'metadata') and 'study_id' in self.metadata:
+            metadata['study_id'] = self.metadata['study_id'][index]
+        return data, data.shape[0], label, label.shape[0], metadata
 
     def __len__(self):
         return len(self.X)
@@ -56,7 +61,7 @@ class EEGDataset(AbstractDataset):
         dataset_name = config.get("dataset_name", None)
         if dataset_name is None:
             raise AttributeError(
-                "Please provide the dataset name in /home/kohlibha/exploration/data/---"
+                "Please provide the dataset name, e.g. 'chbmit_final'"
             )
 
         train_set = EEGDataset(

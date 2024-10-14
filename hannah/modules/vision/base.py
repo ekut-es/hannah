@@ -270,7 +270,6 @@ class VisionBaseModule(ClassifierModule):
         for pipeline_id, pipeline_config in pipeline_configs.items():
             pipeline_name = pipeline_config.get("pipeline", None)
             pipeline_transforms = BatchAugmentationPipeline(pipeline_config.transforms)
-
             if pipeline_name:
                 augmentations[pipeline_name].append(pipeline_transforms)
             else:

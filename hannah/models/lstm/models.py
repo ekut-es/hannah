@@ -45,7 +45,7 @@ class LSTMModel(nn.Module):
 
         """
         x = x.permute(0, 2, 1)
-        _, (ht, _) = self.lstm(x)
+        sequence, (ht, _) = self.lstm(x)
         x = self.dropout(ht[-1])
         x = self.fc(x)
-        return x
+        return sequence, x

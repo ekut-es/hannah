@@ -21,4 +21,4 @@ dataset: chbmit
 split: common_channels_simple
 data_folder: ${hydra:runtime.cwd}/datasets/
 samplingrate: 256
-dataset_name: 16c_retrain_id
+dataset_name: chbmit_final

@@ -1,0 +1,16 @@
+batch_augment:
+  pipeline: dresden_capsule
+  transforms:
+    RandomAffine:
+      scale: [0.05, 0.05]
+      degrees: 15
+      p: 0.3
+    RandomRGBShift:
+      r_shift_limit: 15
+      g_shift_limit: 15
+      b_shift_limit: 15
+      p: 0.3
+    RandomGaussianNoise:
+      p: 0.3
+    RandomPlasmaContrast:
+      p: 0.3
