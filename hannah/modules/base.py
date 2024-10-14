@@ -142,7 +142,9 @@ class ClassifierModule(LightningModule, ABC):
 
     def train_dataloader(self):
         return self._get_dataloader(
-            self.train_set, self.train_set_unlabeled, shuffle=True
+            self.train_set,
+            self.train_set_unlabeled,
+            shuffle=True,
         )
 
     def test_dataloader(self):
