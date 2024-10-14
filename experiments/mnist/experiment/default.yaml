@@ -1,0 +1,6 @@
+# @package _global_
+defaults:
+  - override /model: kakao_resnet8
+
+
+experiment: default

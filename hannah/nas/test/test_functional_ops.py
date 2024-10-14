@@ -1,15 +1,49 @@
+#
+# Copyright (c) 2024 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from hannah.nas.expressions.arithmetic import Ceil
 from hannah.nas.expressions.types import Int
-from hannah.nas.functional_operators.op import ChoiceOp, OptionalOp, Tensor, scope, nodes_in_scope, search_space
-from hannah.nas.functional_operators.operators import Add, Conv2d, Relu, Identity
+from hannah.nas.functional_operators.executor import BasicExecutor
+from hannah.nas.functional_operators.op import (
+    ChoiceOp,
+    OptionalOp,
+    Tensor,
+    scope,
+    nodes_in_scope,
+    search_space,
+)
+from hannah.nas.functional_operators.operators import (
+    Add,
+    Conv2d,
+    Permute,
+    Relu,
+    Identity,
+    Reshape,
+)
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 from functools import partial
 
 
 def conv_relu(input, out_channels, kernel_size, stride):
-    """ Example for a functional block containing conv and relu
-    """
-    out = conv2d(input, out_channels=out_channels, stride=stride, kernel_size=kernel_size)
+    """Example for a functional block containing conv and relu"""
+    out = conv2d(
+        input, out_channels=out_channels, stride=stride, kernel_size=kernel_size
+    )
     out = relu(out)
     return out
 
@@ -20,9 +54,11 @@ def add(input, other):
 
 def conv2d(input, out_channels, kernel_size=1, stride=1, dilation=1):
     in_channels = input.shape()[1]
-    weight = Tensor(name='weight',
-                    shape=(out_channels, in_channels, kernel_size, kernel_size),
-                    axis=('O', 'I', 'kH', 'kW'))
+    weight = Tensor(
+        name="weight",
+        shape=(out_channels, in_channels, kernel_size, kernel_size),
+        axis=("O", "I", "kH", "kW"),
+    )
 
     conv = Conv2d(stride, dilation)(input, weight)
     return conv
@@ -34,12 +70,22 @@ def relu(input):
 
 @scope
 def double_conv(input):
-    kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-    out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
-    stride = CategoricalParameter([1, 2], name='stride')
+    kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+    out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
+    stride = CategoricalParameter([1, 2], name="stride")
 
-    net = conv_relu(input, out_channels=out_channels.new(), kernel_size=kernel_size.new(), stride=stride.new())
-    net = conv_relu(net, out_channels=out_channels.new(), kernel_size=kernel_size.new(), stride=stride.new())
+    net = conv_relu(
+        input,
+        out_channels=out_channels.new(),
+        kernel_size=kernel_size.new(),
+        stride=stride.new(),
+    )
+    net = conv_relu(
+        net,
+        out_channels=out_channels.new(),
+        kernel_size=kernel_size.new(),
+        stride=stride.new(),
+    )
     return net
 
 
@@ -52,14 +98,23 @@ def residual(input, out_channels, in_size, out_size):
 
 @scope
 def res_block(input):
-    kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-    out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
-    stride = CategoricalParameter([1, 2], name='stride')
+    kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+    out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
+    stride = CategoricalParameter([1, 2], name="stride")
 
-    net = conv_relu(input, out_channels=out_channels.new(), kernel_size=kernel_size.new(), stride=2)
+    net = conv_relu(
+        input, out_channels=out_channels.new(), kernel_size=kernel_size.new(), stride=2
+    )
     block_channels = out_channels.new()
-    main_branch = conv_relu(net, out_channels=block_channels, kernel_size=kernel_size, stride=stride)
-    res = residual(net, out_channels=block_channels, in_size=net.shape()[2], out_size=main_branch.shape()[2])
+    main_branch = conv_relu(
+        net, out_channels=block_channels, kernel_size=kernel_size, stride=stride
+    )
+    res = residual(
+        net,
+        out_channels=block_channels,
+        in_size=net.shape()[2],
+        out_size=main_branch.shape()[2],
+    )
 
     net = add(main_branch, res)
     return net
@@ -68,41 +123,49 @@ def res_block(input):
 def test_functional_ops():
     @search_space
     def test_space():
-        kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-        out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
-        stride = CategoricalParameter([1, 2], name='stride')
+        kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+        out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
+        stride = CategoricalParameter([1, 2], name="stride")
 
-        input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
-        weight = Tensor(name='weight',
-                        shape=(out_channels, 3, kernel_size, kernel_size),
-                        axis=('O', 'I', 'kH', 'kW'))
+        input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+        weight = Tensor(
+            name="weight",
+            shape=(out_channels, 3, kernel_size, kernel_size),
+            axis=("O", "I", "kH", "kW"),
+        )
         net = Conv2d(stride=stride)(input, weight)
         net = Relu()(net)
         return net
+
     net = test_space()
 
 
 def test_functional_ops_chained():
     @search_space
     def test_space():
-        kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-        out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
-        stride = CategoricalParameter([1, 2], name='stride')
+        kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+        out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
+        stride = CategoricalParameter([1, 2], name="stride")
 
-        input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
-        weight0 = Tensor(name='weight',
-                         shape=(out_channels, 3, kernel_size, kernel_size),
-                         axis=('O', 'I', 'kH', 'kW'))
+        input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+        weight0 = Tensor(
+            name="weight",
+            shape=(out_channels, 3, kernel_size, kernel_size),
+            axis=("O", "I", "kH", "kW"),
+        )
         net = Conv2d(stride=stride)(input, weight0)
         net = Relu()(net)
 
-        weight1 = Tensor(name='weight',
-                         shape=(out_channels, 3, kernel_size, kernel_size),
-                         axis=('O', 'I', 'kH', 'kW'))
+        weight1 = Tensor(
+            name="weight",
+            shape=(out_channels, 3, kernel_size, kernel_size),
+            axis=("O", "I", "kH", "kW"),
+        )
 
         net = Conv2d(stride=stride.new())(net, weight1)
         net = Relu()(net)
         return net
+
     net = test_space()
 
     # print(net.parametrization(flatten=True))
@@ -111,24 +174,40 @@ def test_functional_ops_chained():
 def test_shape_propagation():
     @search_space
     def test_space():
-        kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-        out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
-        stride = CategoricalParameter([1, 2], name='stride')
+        kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+        out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
+        stride = CategoricalParameter([1, 2], name="stride")
         stride.current_value = 1
 
-        input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
-        net = conv2d(input, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+        input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+        net = conv2d(
+            input,
+            out_channels=out_channels.new(),
+            stride=stride.new(),
+            kernel_size=kernel_size.new(),
+        )
         net = relu(net)
 
-        net = conv2d(net, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+        net = conv2d(
+            net,
+            out_channels=out_channels.new(),
+            stride=stride.new(),
+            kernel_size=kernel_size.new(),
+        )
         net = relu(net)
 
         stride.current_value = 2
         out_channels.current_value = 48
 
-        net = conv2d(net, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+        net = conv2d(
+            net,
+            out_channels=out_channels.new(),
+            stride=stride.new(),
+            kernel_size=kernel_size.new(),
+        )
         net = relu(net)
         return net
+
     net = test_space()
 
     shape = net.shape()
@@ -141,14 +220,20 @@ def test_shape_propagation():
 def test_blocks():
     @search_space
     def test_space():
-        kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-        out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
+        kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+        out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
 
-        input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
-        net = conv_relu(input, out_channels=out_channels.new(), kernel_size=kernel_size.new(), stride=1)
+        input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+        net = conv_relu(
+            input,
+            out_channels=out_channels.new(),
+            kernel_size=kernel_size.new(),
+            stride=1,
+        )
 
         net = conv_relu(net, out_channels=32, kernel_size=kernel_size.new(), stride=2)
         return net
+
     net = test_space()
 
 
@@ -160,27 +245,39 @@ def test_operators():
 def test_multibranches():
     @search_space
     def test_space():
-        kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-        out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
+        kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+        out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
 
-        input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
-        net = conv_relu(input, out_channels=out_channels.new(), kernel_size=kernel_size.new(), stride=2)
+        input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+        net = conv_relu(
+            input,
+            out_channels=out_channels.new(),
+            kernel_size=kernel_size.new(),
+            stride=2,
+        )
 
-        stride = CategoricalParameter([1, 2], name='stride')
+        stride = CategoricalParameter([1, 2], name="stride")
         stride.current_value = 1
         block_channels = out_channels.new()
         block_channels.current_value = 48
-        main_branch = conv_relu(net, out_channels=block_channels, kernel_size=kernel_size, stride=stride)
-        res = residual(net, out_channels=block_channels, in_size=net.shape()[2], out_size=main_branch.shape()[2])
+        main_branch = conv_relu(
+            net, out_channels=block_channels, kernel_size=kernel_size, stride=stride
+        )
+        res = residual(
+            net,
+            out_channels=block_channels,
+            in_size=net.shape()[2],
+            out_size=main_branch.shape()[2],
+        )
         net = add(main_branch, res)
         stride.current_value = 2
         return net
+
     net = test_space()
 
 
 def test_scoping():
-
-    input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
+    input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
 
     @search_space
     def test_space(input):
@@ -188,9 +285,10 @@ def test_scoping():
         net = double_conv(net)
         net = double_conv(net)
         return net
+
     net = test_space(input)
 
-    test_scope = 'test_space_0.double_conv_1.Conv2d_0'
+    test_scope = "test_space_0.double_conv_1.Conv2d_0"
     scopes = []
     for node in nodes_in_scope(net, [input]):
         scopes.append(node.id)
@@ -206,17 +304,32 @@ def test_parametrization():
 def test_choice():
     @scope
     def choice_block():
-        kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-        out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
-        stride = CategoricalParameter([1, 2], name='stride')
+        kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+        out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
+        stride = CategoricalParameter([1, 2], name="stride")
 
-        input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
-        conv = conv2d(input, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+        input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+        conv = conv2d(
+            input,
+            out_channels=out_channels.new(),
+            stride=stride.new(),
+            kernel_size=kernel_size.new(),
+        )
         identity = Identity()
         relu = Relu()
-        optional_conv = partial(conv2d, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+        optional_conv = partial(
+            conv2d,
+            out_channels=out_channels.new(),
+            stride=stride.new(),
+            kernel_size=kernel_size.new(),
+        )
         net = ChoiceOp(identity, relu, optional_conv)(conv)
-        net = conv2d(net, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+        net = conv2d(
+            net,
+            out_channels=out_channels.new(),
+            stride=stride.new(),
+            kernel_size=kernel_size.new(),
+        )
         return net
 
     @search_space
@@ -224,23 +337,41 @@ def test_choice():
         return choice_block()
 
     net = test_space()
-    assert 'test_space_0.choice_block_0.ChoiceOp_0.choice' in net.parametrization(flatten=True)
-    net.parametrization(flatten=True)['test_space_0.choice_block_0.ChoiceOp_0.choice'].set_current(0)
-    net.parametrization(flatten=True)['test_space_0.choice_block_0.ChoiceOp_0.choice'].set_current(1)
-    net.parametrization(flatten=True)['test_space_0.choice_block_0.ChoiceOp_0.choice'].set_current(2)
+    assert "test_space_0.choice_block_0.ChoiceOp_0.choice" in net.parametrization(
+        flatten=True
+    )
+    net.parametrization(flatten=True)[
+        "test_space_0.choice_block_0.ChoiceOp_0.choice"
+    ].set_current(0)
+    net.parametrization(flatten=True)[
+        "test_space_0.choice_block_0.ChoiceOp_0.choice"
+    ].set_current(1)
+    net.parametrization(flatten=True)[
+        "test_space_0.choice_block_0.ChoiceOp_0.choice"
+    ].set_current(2)
 
 
 def test_optional_op():
     @scope
     def optional_block():
-        kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-        out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
-        stride = CategoricalParameter([1, 2], name='stride')
+        kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+        out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
+        stride = CategoricalParameter([1, 2], name="stride")
 
-        input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
-        net = conv2d(input, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+        input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+        net = conv2d(
+            input,
+            out_channels=out_channels.new(),
+            stride=stride.new(),
+            kernel_size=kernel_size.new(),
+        )
         net = OptionalOp(Relu())(net)
-        net = conv2d(net, out_channels=out_channels.new(), stride=stride.new(), kernel_size=kernel_size.new())
+        net = conv2d(
+            net,
+            out_channels=out_channels.new(),
+            stride=stride.new(),
+            kernel_size=kernel_size.new(),
+        )
         return net
 
     @search_space
@@ -253,8 +384,8 @@ def test_optional_op():
 def test_dynamic_depth():
     @scope
     def dynamic_depth_block(input, depth):
-        kernel_size = CategoricalParameter([1, 3, 5], name='kernel_size')
-        out_channels = IntScalarParameter(min=4, max=64, name='out_channels')
+        kernel_size = CategoricalParameter([1, 3, 5], name="kernel_size")
+        out_channels = IntScalarParameter(min=4, max=64, name="out_channels")
 
         exit0 = conv_relu(input, out_channels.new(), kernel_size.new(), 2)
         exit1 = conv_relu(exit0, out_channels.new(), kernel_size.new(), 2)
@@ -267,7 +398,7 @@ def test_dynamic_depth():
 
     @search_space
     def test_space():
-        input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
+        input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
         depth_choice = IntScalarParameter(min=0, max=2, name="depth_choice")
         depth_choice.current_value = 2
 
@@ -278,7 +409,65 @@ def test_dynamic_depth():
     # net = conv_relu(net, 32, 1, 1)
 
 
-if __name__ == '__main__':
+def test_reshape():
+    input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+
+    @search_space
+    def space(input):
+        input = Reshape((-1, 32, 32))(input)
+        return input
+
+    net = space(input)
+
+    shape = net.shape()
+    assert shape == (3, 32, 32)
+
+    input = Tensor(name="input", shape=(4,), axis=("N",))
+
+    @search_space
+    def space2(input):
+        input = Reshape((2, 2))(input)
+        return input
+
+    net = space2(input)
+
+    shape = net.shape()
+
+    assert shape == (2, 2)
+
+    import torch
+
+    input = torch.tensor([1, 2, 3, 4])
+    executor = BasicExecutor(net)
+    executor.initialize()
+    res = executor.forward(input)
+    assert torch.all(res == torch.tensor([[1, 2], [3, 4]]))
+
+
+def test_permute():
+    input = Tensor(name="input", shape=(1, 3, 32, 32), axis=("N", "C", "H", "W"))
+
+    @search_space
+    def space(input):
+        input = Permute((0, 2, 3, 1))(input)
+        return input
+
+    net = space(input)
+
+    shape = net.shape()
+    assert tuple(shape) == (1, 32, 32, 3)
+
+    import torch
+
+    input_tensor = torch.rand((1, 3, 32, 32))
+    executor = BasicExecutor(net)
+    executor.initialize()
+    res = executor.forward(input_tensor)
+
+    assert res.shape == (1, 32, 32, 3)
+
+
+if __name__ == "__main__":
     test_functional_ops()
     test_functional_ops_chained()
     test_shape_propagation()
@@ -290,4 +479,4 @@ if __name__ == '__main__':
     test_choice()
     test_optional_op()
     test_dynamic_depth()
-    # test_visualization()
+    test_reshape()

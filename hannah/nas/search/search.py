@@ -80,16 +80,13 @@ class NASBase(ABC):
         self.after_search()
 
     @abstractmethod
-    def before_search(self):
-        ...
+    def before_search(self): ...
 
     @abstractmethod
-    def search(self):
-        ...
+    def search(self): ...
 
     @abstractmethod
-    def after_search(self):
-        ...
+    def after_search(self): ...
 
     def add_model_trainer(self, trainer):
         self.model_trainer = trainer
@@ -254,9 +251,12 @@ class DirectNAS(NASBase):
         while len(candidates) < num_total:
             parameters = self.sample(constrain)
             model = self.build_model(parameters)
-            estimated_metrics, satisfied_bounds = self.estimate_metrics(
-                copy.deepcopy(model)
-            )
+            try:
+                estimated_metrics, satisfied_bounds = self.estimate_metrics(
+                    copy.deepcopy(model)
+                )
+            except:
+                msglogger.critical("Could not estimate performance for model")
             if presample:
                 if not self.presampler.check(model, estimated_metrics):
                     skip_ct += 1
@@ -416,21 +416,3 @@ class DirectNAS(NASBase):
                 },
                 res_file,
             )
-
-
-class WeightSharingNAS(NASBase):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-    def before_search(self):
-        self.model_trainer = instantiate(
-            self.config.nas.model_trainer, parent_config=self.config, _recursive_=False
-        )
-        model = self.model_trainer.build_model()
-        self.model_trainer.run_training(model)
-
-    def search(self):
-        print("TODO: Implement search")
-
-    def after_search(self):
-        pass

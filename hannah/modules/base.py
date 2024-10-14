@@ -191,7 +191,7 @@ class ClassifierModule(LightningModule, ABC):
                 multiprocessing_context="fork" if num_workers > 0 else None,
                 persistent_workers=True if num_workers > 0 else False,
                 prefetch_factor=2 if num_workers > 0 else None,
-                pin_memory=True,
+                # pin_memory=True,
             )
 
         self.batches_per_epoch = len(loader)

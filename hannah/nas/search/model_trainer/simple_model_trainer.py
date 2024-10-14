@@ -49,6 +49,7 @@ class SimpleModelTrainer:
         set_parametrization(parameters, model.parametrization(flatten=True))
         # model_instance.initialize()
         # model = model_instance
+
         mod = BasicExecutor(model)
         mod.initialize()
 

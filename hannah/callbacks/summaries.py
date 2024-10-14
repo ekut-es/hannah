@@ -549,10 +549,8 @@ class MACSummaryInterpreter(fx.Interpreter):
         }
 
     def run_node(self, n: torch.fx.Node):
-        try:
-            out = super().run_node(n)
-        except Exception as e:
-            print(str(e))
+        out = None
+        out = super().run_node(n)
         if n.op == "call_function":
             try:
                 args, kwargs = self.fetch_args_kwargs_from_env(n)
