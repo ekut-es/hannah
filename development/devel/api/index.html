@@ -3348,9 +3348,7 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 <h1 id="hannahdatasetsvisioncifar">hannah.datasets.vision.cifar</h1>
 <p><a id="hannah.datasets.vision.dresden_capsule"></a></p>
 <h1 id="hannahdatasetsvisiondresden_capsule">hannah.datasets.vision.dresden_capsule</h1>
-<p>Rhode island gastroenterology video capsule endoscopy dataset</p>
-<p>https://www.nature.com/articles/s41597-022-01726-3
-https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
+<p>Dresden Capsule Dataset.</p>
 <p><a id="hannah.datasets.vision.base"></a></p>
 <h1 id="hannahdatasetsvisionbase">hannah.datasets.vision.base</h1>
 <p><a id="hannah.datasets.vision.base.TorchvisionDatasetBase"></a></p>
@@ -3366,7 +3364,7 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 
 <p><a id="hannah.datasets.vision.base.ImageDatasetBase.__init__"></a></p>
 <h4 id="__init___3">__init__</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
 <p>Initialize vision dataset</p>
@@ -3630,6 +3628,52 @@ orientation (invalid in this data collection)</p>
 https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring</p>
 <p><a id="hannah.datasets.DatasetSplit"></a></p>
 <h1 id="hannahdatasetsdatasetsplit">hannah.datasets.DatasetSplit</h1>
+<p><a id="hannah.sequential_analysis.hmm.window_size_sweep"></a></p>
+<h1 id="hannahsequential_analysishmmwindow_size_sweep">hannah.sequential_analysis.hmm.window_size_sweep</h1>
+<p><a id="hannah.sequential_analysis.hmm.viterbi"></a></p>
+<h1 id="hannahsequential_analysishmmviterbi">hannah.sequential_analysis.hmm.viterbi</h1>
+<p><a id="hannah.sequential_analysis.hmm.viterbi.viterbi"></a></p>
+<h4 id="viterbi">viterbi</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">viterbi</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">logP</span><span class="p">,</span> <span class="n">logA</span><span class="p">,</span> <span class="n">logB</span><span class="p">)</span>
+</code></pre></div>
+
+<p>See https://en.wikipedia.org/wiki/Viterbi_algorithm</p>
+<h2 id="parameters_6">Parameters</h2>
+<p>Y : 1D array
+    Observations (integer states)
+logP : array shape = (nStates ,)
+    1D array of priors for initial state
+    given in log probability
+logA : array (nStates,nStates)
+    State transition matrix given in log probability
+logB : ndarray K x N
+    conditional probability matrix
+    log probabilty of each observation given each state</p>
+<p><a id="hannah.sequential_analysis.hmm.viterbi.viterbi_window"></a></p>
+<h4 id="viterbi_window">viterbi_window</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">viterbi_window</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">logP</span><span class="p">,</span> <span class="n">logA</span><span class="p">,</span> <span class="n">logB</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">class_of_interest</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+
+<p>See https://en.wikipedia.org/wiki/Viterbi_algorithm</p>
+<h2 id="parameters_7">Parameters</h2>
+<p>Y : 1D array
+    Observations (integer states)
+logP : array shape = (nStates ,)
+    1D array of priors for initial state
+    given in log probability
+logA : array (nStates,nStates)
+    State transition matrix given in log probability
+logB : ndarray K x N
+    conditional probability matrix
+    log probabilty of each observation given each state
+size: int
+    Specifying the window size</p>
+<p><a id="hannah.sequential_analysis.hmm.hmm_visualization"></a></p>
+<h1 id="hannahsequential_analysishmmhmm_visualization">hannah.sequential_analysis.hmm.hmm_visualization</h1>
+<p><a id="hannah.sequential_analysis.hmm.grid_search_trans"></a></p>
+<h1 id="hannahsequential_analysishmmgrid_search_trans">hannah.sequential_analysis.hmm.grid_search_trans</h1>
+<p><a id="hannah.sequential_analysis.hmm.hmm_window"></a></p>
+<h1 id="hannahsequential_analysishmmhmm_window">hannah.sequential_analysis.hmm.hmm_window</h1>
 <p><a id="hannah.features"></a></p>
 <h1 id="hannahfeatures">hannah.features</h1>
 <p><a id="hannah.features.MFCC"></a></p>
@@ -3914,7 +3958,7 @@ https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring</p>
 </code></pre></div>
 
 <p>Parent method for different predictor classes.</p>
-<h2 id="parameters_6">Parameters</h2>
+<h2 id="parameters_8">Parameters</h2>
 <p>fea_name : str, optional
     internal name for features in the graph, as in graph.ndata[fea_name], by default 'features'</p>
 <p><a id="hannah.nas.performance_prediction.gcn.predictor.Predictor.train"></a></p>
@@ -3927,7 +3971,7 @@ https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring</p>
 </code></pre></div>
 
 <p>Train GCN model</p>
-<h2 id="parameters_7">Parameters</h2>
+<h2 id="parameters_9">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -3944,7 +3988,7 @@ verbose : int
 </code></pre></div>
 
 <p>predict cost of graph</p>
-<h2 id="parameters_8">Parameters</h2>
+<h2 id="parameters_10">Parameters</h2>
 <p>graph : dgl.Graph</p>
 <h2 id="returns_4">Returns</h2>
 <p>torch.Tensor
@@ -3963,7 +4007,7 @@ verbose : int
 </code></pre></div>
 
 <p>G(raph)CN based network latency/cost predictor. End-to-end from graph to score.</p>
-<h2 id="parameters_9">Parameters</h2>
+<h2 id="parameters_11">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -3982,7 +4026,7 @@ fea_name : str, optional
 </code></pre></div>
 
 <p>Train GCN model</p>
-<h2 id="parameters_10">Parameters</h2>
+<h2 id="parameters_12">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -3999,7 +4043,7 @@ verbose : int
 </code></pre></div>
 
 <p>predict cost of graph</p>
-<h2 id="parameters_11">Parameters</h2>
+<h2 id="parameters_13">Parameters</h2>
 <p>graph : dgl.Graph</p>
 <h2 id="returns_5">Returns</h2>
 <p>torch.Tensor
@@ -4021,7 +4065,7 @@ verbose : int
 </code></pre></div>
 
 <p>Predictor that generates a graph embedding that is used as input for a gaussian process predictor.</p>
-<h2 id="parameters_12">Parameters</h2>
+<h2 id="parameters_14">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -4046,7 +4090,7 @@ kernel : str, sklearn.gaussian_process.kernels.Kernel, optional
 </code></pre></div>
 
 <p>Train GCN model, generate embeddings for training data and fit the predictor with embeddings.</p>
-<h2 id="parameters_13">Parameters</h2>
+<h2 id="parameters_15">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -4066,7 +4110,7 @@ verbose : int
 </code></pre></div>
 
 <p>Predict cost/latency of graphs.</p>
-<h2 id="parameters_14">Parameters</h2>
+<h2 id="parameters_16">Parameters</h2>
 <p>X : dgl.DGLGraph, list[DGLGraph], dgl.dataloading.GraphDataLoader
     Input graph(s)
 return_std : bool, optional
@@ -4090,7 +4134,7 @@ return_std : bool, optional
 </code></pre></div>
 
 <p>Predictor that generates a graph embedding that is used as input for a xgb based predictor.</p>
-<h2 id="parameters_15">Parameters</h2>
+<h2 id="parameters_17">Parameters</h2>
 <p>input_feature_size : [type]
     length of feature vector of a graph node (graph G with n nodes, each with features of length m, i.e. feature matrix F = n x m)
 hidden_units : int, list, optional
@@ -4115,7 +4159,7 @@ xgb_param : str, dict, optional
 </code></pre></div>
 
 <p>Train GCN model, generate embeddings for training data and fit the predictor with embeddings.</p>
-<h2 id="parameters_16">Parameters</h2>
+<h2 id="parameters_18">Parameters</h2>
 <p>dataloader : GraphDataLoader
     training data
 learning_rate : [type], optional
@@ -4134,7 +4178,7 @@ verbose : int
 </code></pre></div>
 
 <p>Predict cost/latency of graphs.</p>
-<h2 id="parameters_17">Parameters</h2>
+<h2 id="parameters_19">Parameters</h2>
 <p>X : dgl.DGLGraph, list[DGLGraph], dgl.dataloading.GraphDataLoader
     Input graph(s)
 Returns</p>
@@ -4152,7 +4196,7 @@ Returns</p>
 </code></pre></div>
 
 <p>helper function to construct dataloaders from NASGraphDataset</p>
-<h2 id="parameters_18">Parameters</h2>
+<h2 id="parameters_20">Parameters</h2>
 <p>dataset : NASGraphDataset</p>
 <p>batch_size : int, optional
     by default 50
@@ -4198,7 +4242,7 @@ validation : bool, optional
 <p>Extracts the constraints based on the type of op.
 New variables are added to self.vars and the constraints
 are added to the solver.</p>
-<h2 id="parameters_19">Parameters</h2>
+<h2 id="parameters_21">Parameters</h2>
 <p>op : OpType</p>
 <p><a id="hannah.nas.constraints.dfg_constraint_model.ConstraintModel.process_tensor"></a></p>
 <h4 id="process_tensor">process_tensor</h4>
@@ -4207,7 +4251,7 @@ are added to the solver.</p>
 
 <p>Goes through all axis and extracts the constraints for
 the respective axis sizes</p>
-<h2 id="parameters_20">Parameters</h2>
+<h2 id="parameters_22">Parameters</h2>
 <p>tensor : Tensor</p>
 <p><a id="hannah.nas.constraints.constraint_model"></a></p>
 <h1 id="hannahnasconstraintsconstraint_model">hannah.nas.constraints.constraint_model</h1>
@@ -4336,7 +4380,7 @@ all users (including users from subsequent nodes).
 If a node_b is NOT in collect_users(node_a), this means
 that node_b is either BEFORE node_a in the graph OR it is
 in a parallel branch.</p>
-<h2 id="parameters_21">Parameters</h2>
+<h2 id="parameters_23">Parameters</h2>
 <p>node : <em>type</em>
     <em>description</em></p>
 <h2 id="returns_9">Returns</h2>
@@ -4351,7 +4395,7 @@ in a parallel branch.</p>
 back to its first input. NOTE: The traversal is via OPERANDS
 and not OUTPUT, meaning that e.g. weight Tensors that are
 included in Ops in a DFG are not returned</p>
-<h2 id="parameters_22">Parameters</h2>
+<h2 id="parameters_24">Parameters</h2>
 <p>node : <em>type</em>
     <em>description</em></p>
 <h2 id="returns_10">Returns</h2>
@@ -4477,7 +4521,7 @@ included in Ops in a DFG are not returned</p>
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_23">Parameters</h2>
+<h2 id="parameters_25">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
