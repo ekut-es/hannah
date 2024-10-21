@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../../img/favicon.ico" />
-    <title>Seizure Detection - HANNAH</title>
+    <title>Viterbi Decoding - HANNAH</title>
     <link rel="stylesheet" href="../../../css/theme.css" />
     <link rel="stylesheet" href="../../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Seizure Detection";
-        var mkdocs_page_input_path = "specific-applications/applications/seizure_detection.md";
+        var mkdocs_page_name = "Viterbi Decoding";
+        var mkdocs_page_input_path = "applications/applications/viterbi_decoding.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -115,10 +115,18 @@
                   <li class="toctree-l1"><a class="reference internal" href="../../../evaluation/eval/">Evaluation</a>
                   </li>
               </ul>
-              <p class="caption"><span class="caption-text">Specific applications</span></p>
+              <p class="caption"><span class="caption-text">applications</span></p>
               <ul class="current">
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Seizure Detection</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../seizure_detection/">Seizure Detection</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Viterbi Decoding</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#window-size">Window size</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#visualization">Visualization</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#grid-search">Grid Search</a>
+    </li>
     </ul>
                   </li>
               </ul>
@@ -147,8 +155,8 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
-          <li class="breadcrumb-item">Specific applications</li>
-      <li class="breadcrumb-item active">Seizure Detection</li>
+          <li class="breadcrumb-item">applications</li>
+      <li class="breadcrumb-item active">Viterbi Decoding</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -157,44 +165,64 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="dataset-creation">Dataset creation</h1>
-<p>The current used dataset was generated with the 16 channels with the highest variance within the ictal data from the <cite><strong>CHB-MIT Scalp EEG Database</strong> [1]</cite>. If a new preprocessed dataset should be created, the <code>scripts/eeg/eeg_dataset_creator.py</code> file can be used. This takes the edf files from the CHB-MIT dataset as an input and performs a basic preprocessing including a band-pass filtering (0.1 Hz and 50  Hz) to remove DC components as well as the noisy component from the EEG measurement device. It finally creates binary labels for each data fragment.</p>
-<p>Parameters that can be specified are amongst others:</p>
+                <h1 id="post-processing-with-viterbi-decoding">Post-Processing with Viterbi Decoding</h1>
+<p>This implementation for the Post-Processing of CNN evaluations with a Hidden Markov Model (HMM) and Viterbi decoding in HANNAH is based on <cite><strong>Precise Localization within the GI Tract</strong> [1]</cite> and <cite><strong>Energy-efficient Seizure Detection</strong> [2]</cite>. The datasets used in those two publications, Video Capsule Endoscopy (VCE) datasets (Rhode Island and Galar) and EEG datasets (CHB-MIT), are supported. However, in general, the main criteria is that the test set is ordered in time and thus, this can be applied to many other applications and datasets as well. For the Rhode Island, the Galar and the CHB-MIT dataset, the ordering is ensured within the dataset files in HANNAH. Additionally, we combined the usage of neural networks with a HMM. After a network is trained on the given datasets, the evaluations of the CNN can be used as a direct input as observations for a HMM and subsequent Viterbi Decoding.</p>
+<p>Next, the Viterbi Decoding computes the most likely sequence of hidden states (or classes in this case) based on the provided observations given by the neural network. For applications such as the VCE, a HMM in combination with Viterbi Decoding is a very reasonable choice as there is some preknowledge about this application. For example, we can leverage the knowledge in which order the capsule traverses the gastrointestinal tract. Furthermore, we know that the capsule cannot move back to a preceding organ after it has entered the next one. This can be encoded in the transition probabilities of the HMM.</p>
+<p>As a first step, one needs to invoke a training with HANNAH for one of the supported datasets. This generates two output files named as <code>{model_name}_cnn_train_output</code> and <code>{model_name}_cnn_train_output</code>. Both are CSV Files, containing for each input one row, where the columns indicate the study id, the CNN evaluation and the true label (e.g. <code>100,0,1</code> for study ID=100, prediction of CNN = 0, true label = 1). Subsequently, they can be read into <code>hmm_window.py</code> (which allows to compute the Viterbi algorithm with a predefined window size).</p>
+<p>Thus, the Viterbi Decoding can be invoked by:</p>
+<div class="codehilite"><pre><span></span><code>python hannah/sequential_analysis/hmm/hmm_window.py --cnn_output_dir &#39;/PATH/TO/TRAINED_MODELS/DIR/&#39; --class_of_interest 2
+</code></pre></div>
+
+<p>Parameters that can be specified are:</p>
 <dl>
-<dt>class_ratio</dt>
-<dd>default = 5, Ratio of zeros:ones in the final <code>dev</code> and <code>retrain</code> datasets to account for the scarcity of the ictal data</dd>
-<dt>data_length</dt>
-<dd>default = 1, Number of seconds per data point. For a sample rate of 256, the final data will be of the shape (D,C,256xdata_length)</dd>
-<dt>samp_rate</dt>
-<dd>default = 256, Sampling rate for the dataset. The data is already sampled at 256 Hz, use this argument only when the rate needed differs from this</dd>
+<dt><code>cnn_output_dir</code></dt>
+<dd>type = str, Path to the output of the trained CNN.</dd>
+<dt><code>model_name</code></dt>
+<dd>default = "mobilenetv3_small_075", Name of the CNN used for training.</dd>
+<dt><code>window_size</code></dt>
+<dd>default = 300, Window size used during Viterbi Decoding.</dd>
+<dt><code>window_size_sweep</code></dt>
+<dd>default = False, type=bool, Whether to perform a window size sweep first.</dd>
+<dt><code>class_of_interest</code></dt>
+<dd>type = int, must be provided - the class number for which the delay should be tracked, e.g. 1 for seizure detection, 2 for small intestine in RI dataset, 3 for small intestine in Galar dataset.</dd>
 </dl>
-<p>The dataset creation can be invoked by:</p>
-<div class="codehilite"><pre><span></span><code>python eeg_dataset_creator.py --output_dir &quot;./data/&quot; --class_ratio 4 --data_length 0.5
+<p>This reads the CSV files into Pandas Dataframes with the following columns <code>["id", "preds", "labels"]</code> for both the train and the test set.
+The CNN output evaluated on the train set is used to compute the confusion matrix for the train set. This naturally encodes the emission probabilities. Thus, this is used to generate the emission matrix for the HMM. </p>
+<h2 id="window-size">Window size</h2>
+<p>The precise value of this parameter is not too crucial for the discussed settings. However, if one considers the final hardware architecture, this should be kept in mind. With the given files, a window size search can be performed, if the window_size_sweep parameter is set to True. It performs a simple grid search by running the Viterbi decoding with the same samples for different window sizes. The window sizes are currently encoded in <code>window_size_sweep.py</code> and can be adjusted. The file outputs two additional plots <code>boxplot_window_sweep.pdf</code> and <code>window_size_sweep.pdf</code>. </p>
+<h2 id="visualization">Visualization</h2>
+<p>For all test studies, one final confusion matrix is generated as well as a plot with the total error percentages. Furthermore, for a single study (default is the first one of the test set), the predictions for the CNN only, the true labels and the Viterbi predictions are plotted. This serves as a comparison to visualize the flaws and strengths of both methods (or their combination).
+All figures are saved to <code>hannah/hannah/sequential_analysis/hmm/figures_hmm</code>.</p>
+<h2 id="grid-search">Grid Search</h2>
+<p>A simple grid search can be performed to search for the best transition probabilities (the emission probabalities are directly encoded in the confusion matrix of the CNN evaluated on the train set) by running:</p>
+<div class="codehilite"><pre><span></span><code>python hannah/sequential_analysis/hmm/grid_search_trans.py --cnn_output_dir &#39;/PATH/TO/TRAINED_MODELS/DIR/&#39;
 </code></pre></div>
 
-<p>Currently, the <code>16c_retrain_id</code> preprocessed dataset is configured as the default dataset in HANNAH if someone works with the CHB-MIT dataset. This was generated with a <code>class_ratio</code> of 4, a <code>data_length</code> of 0.5 and a <code>sampling_rate</code> of 256.</p>
-<p>[1] Goldberger, A., Amaral, L., Glass, L., Hausdorff, J., Ivanov, P. C., Mark, R., ... &amp; Stanley, H. E. (2000). PhysioBank, PhysioToolkit, and PhysioNet: Components of a new research resource for complex physiologic signals. Circulation [Online]. 101 (23), pp. e215–e220.</p>
-<h1 id="training-a-base-model-with-the-chb-mit-dataset">Training a base model with the CHB-MIT dataset</h1>
-<p>The training with the preprocessed CHB-MIT dataset can be invoked with:</p>
-<div class="codehilite"><pre><span></span><code>hannah-train dataset=chbmit features=identity ~normalizer
-</code></pre></div>
-
-<p>The data is normalized directly when loaded and does not need additional normalization during training. <code>~normalizer</code> is used to turn additional normalization off. Adding <code>+dataset.weighted_loss=True</code> improves the results notably (same applies for the retraining). The trained model can function as a base model which can be fine-tuned for each patient by subsequent retraining.</p>
-<h1 id="retraining">Retraining</h1>
-<p>The main idea of retraining is to account for individual differences within the data. To perform subsequent retraining, for each patient a new model needs to be trained based on the checkpoint of the best model trained on all patients. The prior trained base model is loaded and retrained on patient-specific data. To invoke this training the dataset <code>chbmitrt</code> needs to be used as this specifically loads patient-specific data only. For a single patient, the retraining can be invoked by:</p>
-<div class="codehilite"><pre><span></span><code>hannah-train dataset=chbmitrt trainer.max_epochs=10 model=tc-res8 module.batch_size=8 input_file=/PATH/TO/BASE_MODEL/best.ckpt ~normalizer
-</code></pre></div>
-
-<p>Alternatively, if the retraining should be performed for all patients, <code>scripts/eeg/run_patient_retraining_complete.py</code> can be used. To execute this script, one can use</p>
-<div class="codehilite"><pre><span></span><code>python run_patient_retraining_complete.py &#39;model-name&#39; &#39;dataset_name&#39;
-</code></pre></div>
-
-<p>A model which has been successfully used for this application is for example the TC-ResNet8 <code>tc-res8</code> and it is recommended to use <code>16c_retrain_id</code> as a dataset name, which names the preprocessd CHB-MIT dataset with balanced class samples. During the retraining, for each patient a results folder is generated.</p>
+<p>Parameters that can be specified are:</p>
+<dl>
+<dt><code>cnn_output_dir</code></dt>
+<dd>type = str, Path to the output of the trained CNN.</dd>
+<dt><code>model_name</code></dt>
+<dd>default = "mobilenetv3_small_075", type=str, Name of the CNN used for training.</dd>
+<dt><code>values</code></dt>
+<dd>default = [0.9, 0.95, 0.99, 0.999], type=list of floats, A list of possible non-logarithmic values to choose from during the grid search. A Permutation of all combinations is performed</dd>
+</dl>
+<p>For each combination of transition probabilities, the Viterbi Decoding is performed and the resulting accuracies plotted (<code>acc_grid_search.pdf</code>).</p>
+<p><strong>Note:</strong> A setting such as given in VCE studies is assumed here (from one state only transitioning to the succeeding state is possible <strong>and</strong> once the last state is reached, there is no possibility to transfer to another state.)</p>
+<h1 id="examples">Examples</h1>
+<p>Below, for three patients exemplarily (one of each of the integrated datasets) the predictions of the CNN only vs the combinatorial approach of CNN and HMM/Viterbi decoding are visualized.</p>
+<h3 id="galar-and-rhode-island-dataset-vce-images-as-input">Galar and Rhode Island dataset (VCE - images as input)</h3>
+<p><img src="/../assets/VCE_single_patient_Gal.png" alt="Single patient of Galar dataset" width="500"/>    <img src="/../assets/VCE_single_patient_RI.png" alt="Single patient of Rhode Island dataset" width="500"/></p>
+<h3 id="chbmit-dataset-eeg-data-as-input">CHBMIT dataset (EEG data as input)</h3>
+<p><img src="/../assets/CHBMIT_single_patient_HMM.png" alt="Single patient of EEG dataset" width="500"/></p>
+<h1 id="references">References</h1>
+<p>[1] Werner, J., Gerum, C., Reiber, M., Nick, J., &amp; Bringmann, O. (2023, October). Precise localization within the GI tract by combining classification of CNNs and time-series analysis of HMMs. In International Workshop on Machine Learning in Medical Imaging (pp. 174-183). Cham: Springer Nature Switzerland.</p>
+<p>[2] Werner, J., Kohli, B., Bernardo, P. P., Gerum, C., &amp; Bringmann, O. (2024, June). Energy-Efficient Seizure Detection Suitable for Low-Power Applications. In 2024 International Joint Conference on Neural Networks (IJCNN) (pp. 1-8). IEEE.</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../../../evaluation/eval/" class="btn btn-neutral float-left" title="Evaluation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../seizure_detection/" class="btn btn-neutral float-left" title="Seizure Detection"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../../../development/devel/overview/" class="btn btn-neutral float-right" title="Overview">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -218,7 +246,7 @@
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../../../evaluation/eval/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../seizure_detection/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../../../development/devel/overview/" style="color: #fcfcfc">Next &raquo;</a></span>
