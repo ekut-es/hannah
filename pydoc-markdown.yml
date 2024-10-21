@@ -121,11 +121,14 @@ renderer:
         - title: "Evaluation"
           name: eval
           source: doc/eval.md
-    - title: "Specific applications"
+    - title: "applications"
       children:
         - title: Seizure Detection
           name: applications/seizure_detection
           source: doc/applications/seizure_detection.md
+        - title: Viterbi Decoding
+          name: applications/viterbi_decoding
+          source: doc/applications/viterbi_decoding.md
     - title: Development
       children:
         - title: Overview

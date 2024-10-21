@@ -196,22 +196,24 @@ class RICapsuleDataset(ImageDatasetBase):
         )
         X_test, y_test, metadata_test = read_official_test(study_folder, DATA_PATH / "path_test.csv")
 
-        train_transform = A.Compose(
-            [
-                A.RandomCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
-                A.Lambda(image=partial(rgb_to_bayer, pattern="RGGB")),
-                A.GaussNoise(),
-                ToTensorV2(),
-            ]
-        )
 
-        test_transform = A.Compose(
-            [
-                A.CenterCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
-                A.Lambda(image=partial(rgb_to_bayer, pattern="RGGB")),
-                ToTensorV2(),
-            ]
-        )
+        train_transforms = [
+            A.RandomCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
+        ]
+        test_transforms = [
+            A.RandomCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
+        ]
+
+        if 'pattern' in config.sensor:
+            train_transforms.append(A.Lambda(image=partial(rgb_to_bayer, pattern=config.sensor.pattern)))
+            test_transforms.append(A.Lambda(image=partial(rgb_to_bayer, pattern=config.sensor.pattern)))
+
+        train_transforms.append(ToTensorV2())
+        test_transforms.append(ToTensorV2())
+
+        train_transform = A.Compose(train_transforms)
+        test_transform = A.Compose(test_transforms)
+
 
         train_set = cls(
             X_train, y_train, list(LABELS.keys()), transform=train_transform, metadata=metadata_train)

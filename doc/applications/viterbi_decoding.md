@@ -65,10 +65,11 @@ For each combination of transition probabilities, the Viterbi Decoding is perfor
 Below, for three patients exemplarily (one of each of the integrated datasets) the predictions of the CNN only vs the combinatorial approach of CNN and HMM/Viterbi decoding are visualized.
 
 ### Galar and Rhode Island dataset (VCE - images as input)
-<img src="../assets/VCE_single_patient_Gal.png" alt="Single patient of Galar dataset" width="500"/>   	<img src="../assets/VCE_single_patient_RI.png" alt="Single patient of Rhode Island dataset" width="500"/>
+<img src="/../assets/VCE_single_patient_Gal.png" alt="Single patient of Galar dataset" width="500"/>   	<img src="/../assets/VCE_single_patient_RI.png" alt="Single patient of Rhode Island dataset" width="500"/>
 
 ### CHBMIT dataset (EEG data as input)
-<img src="../assets/CHBMIT_single_patient_HMM.png" alt="Single patient of EEG dataset" width="500"/>
+<img src="/../assets/CHBMIT_single_patient_HMM.png" alt="Single patient of EEG dataset" width="500"/>
+
 
 
 # References 
