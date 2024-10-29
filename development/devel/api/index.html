@@ -2970,6 +2970,45 @@ On sparse problems both weight_decay and momentum should be set to 0.</p>
 <li><code>closure</code> <em>callable, optional</em> - A closure that reevaluates the model
   and returns the loss.</li>
 </ul>
+<p><a id="hannah.quantization.utils"></a></p>
+<h1 id="hannahquantizationutils">hannah.quantization.utils</h1>
+<p><a id="hannah.quantization.utils.quantize"></a></p>
+<h4 id="quantize">quantize</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">quantize</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">zero_point</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Range-based Linear Quantization</p>
+<p><a id="hannah.quantization.utils.dequantize"></a></p>
+<h4 id="dequantize">dequantize</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">dequantize</span><span class="p">(</span><span class="n">q_input</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">zero_point</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Dequantization of linear-quantized input</p>
+<p><a id="hannah.quantization.utils.calculate_qparams"></a></p>
+<h4 id="calculate_qparams">calculate_qparams</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">calculate_qparams</span><span class="p">(</span><span class="n">bits</span><span class="p">,</span>
+                      <span class="n">min_range</span><span class="p">,</span>
+                      <span class="n">max_range</span><span class="p">,</span>
+                      <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;symmetric&#39;</span><span class="p">,</span>
+                      <span class="n">per_channel</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Calculate scaling factor and zero-point</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>bits</code> - number of bits for quantization</li>
+<li><code>min_range</code> - min quantization range</li>
+<li><code>quant_max</code> - max quantization range</li>
+<li><code>mode</code> - symmetric or asymmetric quantization</li>
+<li><code>per_channel</code> - calculate scaling factor per channel</li>
+</ul>
+<p><a id="hannah.quantization.utils.SymmetricQuantization"></a></p>
+<h2 id="symmetricquantization-objects">SymmetricQuantization Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">SymmetricQuantization</span><span class="p">(</span><span class="n">autograd</span><span class="o">.</span><span class="n">Function</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Symmetric quantization of floating-point values,
+given quantization bits and scale.</p>
 <p><a id="hannah.quantization.qconfig"></a></p>
 <h1 id="hannahquantizationqconfig">hannah.quantization.qconfig</h1>
 <p><a id="hannah.quantization.rounding"></a></p>
