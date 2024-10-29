@@ -86,13 +86,13 @@ class ImageClassifierModule(VisionBaseModule):
             provs = torch.softmax(logits, dim=1)
 
             # For HMM and Viterbi Post-Processing
-            if ((step_name is "train") or (step_name is 'val')) and self.current_epoch == self.trainer.max_epochs-1:
+            if ((step_name == "train") or (step_name == 'val')) and self.current_epoch == self.trainer.max_epochs-1:
                 metadata = batch.get('metadata', {}).copy()
                 metadata.update({'preds_cnn': preds.cpu().numpy(), 'labels': labels.cpu().numpy()})
                 df = pd.DataFrame(metadata)
                 df.to_csv(os.getcwd() + f'_cnn_{step_name}_output', mode='a', index=False, header=True)
 
-            if step_name is 'test':
+            if step_name == 'test':
                 metadata = batch.get('metadata', {}).copy()
                 metadata.update({'preds_cnn': preds.cpu().numpy(), 'labels': labels.cpu().numpy()})
                 df = pd.DataFrame(metadata)
