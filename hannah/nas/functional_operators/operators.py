@@ -56,10 +56,11 @@ def conv1d(input, weight, stride, padding, dilation, groups, *, id):
 
 
 @torch.fx.wrap
-def conv2d(input, weight, stride=1, padding=1, dilation=1, groups=1, *, id):
+def conv2d(input, weight, bias, stride=1, padding=1, dilation=1, groups=1, *, id):
     return F.conv2d(
         input=input,
         weight=weight,
+        bias=bias,
         stride=lazy(stride),
         padding=lazy(padding),
         dilation=lazy(dilation),
@@ -68,8 +69,8 @@ def conv2d(input, weight, stride=1, padding=1, dilation=1, groups=1, *, id):
 
 
 @torch.fx.wrap
-def linear(input, weight, *, id):
-    return F.linear(input=input, weight=weight.T)
+def linear(input, weight, bias, *, id):
+    return F.linear(input=input, weight=weight.T, bias=bias)
 
 
 @torch.fx.wrap
@@ -105,12 +106,12 @@ def adaptive_avg_pooling1d(input, output_size=(1, 1), *, id):
 
 
 @torch.fx.wrap
-def max_pool(input, kernel_size, stride, padding, dilation):
+def max_pool(input, kernel_size, stride, padding, dilation, *, id):
     return F.max_pool2d(input, kernel_size, stride, padding, dilation)
 
 
 @torch.fx.wrap
-def avg_pool(input, kernel_size, stride, padding):
+def avg_pool(input, kernel_size, stride, padding, *, id):
     return F.avg_pool2d(input, kernel_size, stride, padding)
 
 
@@ -142,7 +143,7 @@ def self_attention2d(q, k, v, num_heads, d_model, *, id):
         k: Tensor, shape ``[B, h*d, H, W]``
         v: Tensor, shape ``[B, h*d, H, W]``
     """
-    scale = d_model**-0.5
+    scale = d_model ** -0.5
     b, _, h, w = q.shape
     q = q.view(b, num_heads, d_model, h * w)
     k = k.view(b, num_heads, d_model, h * w)
@@ -253,7 +254,9 @@ class Conv1d(Op):
 @parametrize
 class Conv2d(Op):
     def __init__(self, stride=1, dilation=1, groups=1, padding=None) -> None:
-        super().__init__(name="Conv2d", stride=stride, dilation=dilation, groups=groups)
+        super().__init__(
+            name="Conv2d", stride=stride, dilation=dilation, groups=groups,
+        )
         self.stride = stride
         self.dilation = dilation
         self.groups = groups
@@ -264,6 +267,8 @@ class Conv2d(Op):
         input_shape = operands[0].shape()
         weight_shape = operands[1].shape()
         operands[1].id = f"{new_conv.id}.{operands[1].id}"
+        if len(operands) >= 3:
+            operands[2].id = f"{new_conv.id}.{operands[2].id}"
 
         new_conv.in_channels = input_shape[1]
         new_conv.out_channels = weight_shape[0]
@@ -275,10 +280,11 @@ class Conv2d(Op):
 
         return new_conv
 
-    def _forward_implementation(self, x, weight):
+    def _forward_implementation(self, input, weight, bias=None):
         return conv2d(
-            x,
+            input,
             weight,
+            bias,
             stride=lazy(self.stride),
             padding=lazy(self.padding),
             dilation=lazy(self.dilation),
@@ -306,14 +312,19 @@ class Linear(Op):
         new_linear.in_features = operands[1].shape()[0]
         new_linear.out_features = operands[1].shape()[1]
         operands[1].id = f"{new_linear.id}.{operands[1].id}"
+        if len(operands) >= 3:
+            operands[2].id = f"{new_linear.id}.{operands[2].id}"
         return new_linear
 
     def shape_fun(self):
         return linear_shape(*self.operands)
 
-    def _forward_implementation(self, input, weight):
+    def _forward_implementation(self, input, weight, bias=None):
         input = torch.flatten(input, start_dim=1)
-        return linear(input, weight, id=self.id)
+        return linear(
+            input, weight, bias,
+            id=self.id
+        )
 
 
 @parametrize
@@ -376,7 +387,6 @@ class Identity(Op):
 class Requantize(Op):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(name="Quantize")
-
         self.quantize = FakeQuantize()
 
     @property
@@ -460,6 +470,7 @@ class MaxPooling(Op):
             stride=lazy(self.stride),
             padding=lazy(self.padding),
             dilation=lazy(self.dilation),
+            id=self.id
         )
 
 
@@ -488,6 +499,7 @@ class AvgPooling(Op):
             kernel_size=lazy(self.kernel_size),
             stride=lazy(self.stride),
             padding=lazy(self.padding),
+            id=self.id
         )
 
 
@@ -516,6 +528,7 @@ class MaxAvgPooling(Op):
             kernel_size=lazy(self.kernel_size),
             stride=lazy(self.stride),
             padding=lazy(self.padding),
+            id=self.id
         )
 
 

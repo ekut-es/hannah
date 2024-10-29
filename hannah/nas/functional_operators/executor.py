@@ -1,5 +1,6 @@
 from copy import deepcopy
 from typing import Iterator, Tuple
+import math
 import torch
 from hannah.nas.functional_operators.op import ChoiceOp, Op, Tensor, get_nodes
 from collections import defaultdict
@@ -17,7 +18,7 @@ class BasicExecutor(torch.nn.Module):
         if init is not None:
             self.init = init
         else:
-            self.init = torch.nn.init.xavier_uniform_
+            self.init = torch.nn.init.kaiming_uniform_
         self.nodes = []
 
     def initialize(self):
@@ -27,9 +28,21 @@ class BasicExecutor(torch.nn.Module):
         if isinstance(node, Tensor):
             node_name = node.id.replace(".", "_")
             if node.grad:
-                data = torch.empty(node.current_shape())
-                data = torch.nn.Parameter(self.init(data))
-                self.register_parameter(node_name, data)
+                if node.name == 'bias':
+                    # get weight data
+                    weight_name = node_name.replace('bias', 'weight')
+                    weight_param = self.get_parameter(weight_name)
+                    fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(weight_param.data)
+                    # register bias
+                    if fan_in != 0:
+                        bound = 1 / math.sqrt(fan_in)
+                        data = torch.empty(node.current_shape())
+                        data = torch.nn.Parameter(torch.nn.init.uniform_(data, -bound, bound))
+                        self.register_parameter(node_name, data)
+                else:  # weight tensor
+                    data = torch.empty(node.current_shape())
+                    data = torch.nn.Parameter(self.init(data, a=math.sqrt(5)))
+                    self.register_parameter(node_name, data)
             if node.name == self.input_node_name:
                 self.input = node
             if node.name == 'running_mean':
