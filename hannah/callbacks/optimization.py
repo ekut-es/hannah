@@ -94,7 +94,7 @@ class HydraOptCallback(Callback):
         else:
             self.directions.append(-1.0)
 
-    def on_train_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule",  outputs: 'STEP_OUTPUT', batch: Any, batch_idx: int) -> None:
+    def on_train_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule",  outputs: 'STEP_OUTPUT', batch: Any, batch_idx: int) -> None:  # noqa: F821
         callback_metrics =  trainer.callback_metrics
 
         for k, v in callback_metrics.items():
