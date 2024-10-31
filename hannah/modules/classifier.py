@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Hannah contributors.
+# Copyright (c) 2023 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -32,6 +32,8 @@ from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
 from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
+import pandas as pd
+import os
 from torchmetrics import (
     AUROC,
     ROC,
@@ -124,6 +126,8 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         # loss function
         loss_weights = self._setup_loss_weights()
+        if loss_weights is not None:
+            loss_weights = loss_weights.float()
         self.criterion = get_loss_function(
             self.model, self.hparams, weights=loss_weights
         )
@@ -261,13 +265,26 @@ class BaseStreamClassifierModule(ClassifierModule):
 
     # TRAINING CODE
     def training_step(self, batch, batch_idx):
-        x, x_lenght, y, y_lenght = self._decode_batch(batch)
+        x, x_length, y, y_length, metadata = self._decode_batch(batch)
 
         output = self(x)
         y = y.view(-1)
         loss = self.criterion(output, y)
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.train_metrics, "train")
+
+        # For Post-Processing with HMM
+        if self.trainer.current_epoch == self.trainer.max_epochs - 1:
+            metadata = metadata.copy()
+            metadata.update({'preds_cnn': torch.argmax(output, dim=1), 'labels': y})
+            metadata = {k: v.cpu().numpy() for k,v in metadata.items()}
+            df = pd.DataFrame(metadata)
+            df.to_csv(
+                os.getcwd() + "_cnn_train_output",
+                mode="a",
+                index=False,
+                header=True,
+            )
 
         return loss
 
@@ -279,7 +296,7 @@ class BaseStreamClassifierModule(ClassifierModule):
     # VALIDATION CODE
     def validation_step(self, batch, batch_idx):
         # dataloader provides these four entries per batch
-        x, x_length, y, y_length = self._decode_batch(batch)
+        x, x_length, y, y_length, metadata = self._decode_batch(batch)
 
         # INFERENCE
         output = self(x)
@@ -287,19 +304,35 @@ class BaseStreamClassifierModule(ClassifierModule):
         y = y.view(-1)
         loss = self.criterion(output, y)
 
+        if self.trainer.current_epoch == self.trainer.max_epochs - 1:
+            metadata = metadata.copy() 
+            metadata.update({'preds_cnn': torch.argmax(output, dim=1), 'labels': y})
+            metadata = {k: v.cpu().numpy() for k,v in metadata.items()}
+            df = pd.DataFrame(metadata)
+            df.to_csv(
+                os.getcwd() + "_cnn_val_output",
+                mode="a",
+                index=False,
+                header=True,
+            )
+
         # METRICS
         self.calculate_batch_metrics(output, y, loss, self.val_metrics, "val")
         return loss
 
     def _decode_batch(self, batch):
+        metadata = {}
         if len(batch) == 4:
             x, x_length, y, y_length = batch
+            patient_id = torch.zeros_like(y)
+        elif len(batch) == 5:
+            x, x_length, y, y_length, metadata = batch
         elif len(batch) == 2:
             x, y = batch
             x_length = torch.ones_like(x)
             y_length = torch.ones_like(y)
 
-        return x, x_length, y, y_length
+        return x, x_length, y, y_length, metadata
 
     @abstractmethod
     def val_dataloader(self):
@@ -320,7 +353,7 @@ class BaseStreamClassifierModule(ClassifierModule):
     # TEST CODE
     def test_step(self, batch, batch_idx):
         # dataloader provides these four entries per batch
-        x, x_length, y, y_length = self._decode_batch(batch)
+        x, x_length, y, y_length, metadata = self._decode_batch(batch)
 
         output = self(x)
         y = y.view(-1)
@@ -332,12 +365,25 @@ class BaseStreamClassifierModule(ClassifierModule):
 
         logits = torch.nn.functional.softmax(output, dim=1)
         with set_deterministic(False):
+            preds = logits
             if self.dataset_type == "binary":
-                logits = logits.argmax(dim=1)
-            self.test_confusion(logits, y)
+                preds = logits.argmax(dim=1)
+            self.test_confusion(preds, y)
 
         if isinstance(self.test_set, SpeechDataset):
             self._log_audio(x, logits, y)
+
+        # For Post-Processing with HMM
+        metadata = metadata.copy()
+        metadata.update({'preds_cnn': torch.argmax(logits, dim=1), 'labels': y})
+        metadata = {k: v.cpu().numpy() for k,v in metadata.items()}
+        df = pd.DataFrame(metadata)
+        df.to_csv(
+            os.getcwd() + "_cnn_test_output",
+            mode="a",
+            index=False,
+            header=True,
+        )
 
         return loss
 
@@ -395,9 +441,6 @@ class BaseStreamClassifierModule(ClassifierModule):
                             self.test_set.samplingrate,
                         )
                 self.logged_samples += 1
-
-    def collate_fn(self, batch):
-        return ctc_collate_fn(batch)
 
 
 class StreamClassifierModule(BaseStreamClassifierModule):

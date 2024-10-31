@@ -495,10 +495,16 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         attrs["padding"] = to_int(kwargs["padding"])
 
         # FIXME: How to handle quantization
-        weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
+        qconfig = kwargs.get("qconfig", None)
+        weight_quant_attrs = qconfig["weight"] if qconfig else None
+        weight_attrs = {"quant": weight_quant_attrs, "shape": args[1].tensor.shape}
+        # weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
 
-        bias_attrs = None
         # FIXME: Bias missing
+        if hasattr(args[2], 'tensor'):
+            bias_attrs = {"quant": None, "shape": args[2].tensor.shape}
+        else:
+            bias_attrs = None
 
         name = target + "_conv"
         input_attrs = self.extract_input_attrs([args[0]])
@@ -514,7 +520,10 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             output=output_attr,
         )
 
-        input_names = [arg.name for arg in args]
+        input_names = list()
+        for arg in args:
+            if hasattr(arg, 'name'):
+                input_names.append(arg.name)
         for input_name in input_names:
             self.nx_graph.add_edge(input_name, name)
 
@@ -530,10 +539,18 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         attrs["in_features"] = args[1].tensor.shape[0]
         attrs["out_features"] = args[1].tensor.shape[0]
 
-        weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
-        bias_attrs = None
+        qconfig = kwargs.get("qconfig", None)
+        weight_quant_attrs = qconfig["weight"] if qconfig else None
+        weight_attrs = {"quant": weight_quant_attrs, "shape": args[1].tensor.shape}
+        # weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
+
+        if hasattr(args[2], 'tensor'):
+            bias_attrs = {"quant": None, "shape": args[2].tensor.shape}
+        else:
+            bias_attrs = None
+
         name = target + "_linear"
-        input_attrs = self.extract_input_attrs(args)
+        input_attrs = self.extract_input_attrs([args[0]])
         output_quant = {"dtype": "float", "bits": 32, "method": "none"}
         output_attr = {"name": name, "quant": output_quant, "shape": output.shape}
         self.nx_graph.add_node(
@@ -546,7 +563,10 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             output=output_attr,
         )
 
-        input_names = [arg.name for arg in args]
+        input_names = list()
+        for arg in args:
+            if hasattr(arg, 'name'):
+                input_names.append(arg.name)
         for input_name in input_names:
             self.nx_graph.add_edge(input_name, name)
         quantization = None

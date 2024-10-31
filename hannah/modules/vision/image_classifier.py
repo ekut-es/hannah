@@ -16,9 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import csv
 import logging
+import os
 from typing import Sequence
 
+import pandas as pd
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
@@ -79,9 +82,22 @@ class ImageClassifierModule(VisionBaseModule):
                 batch_size=self.batch_size,
             )
             loss += classifier_loss
-
             preds = torch.argmax(logits, dim=1)
             provs = torch.softmax(logits, dim=1)
+
+            # For HMM and Viterbi Post-Processing
+            if ((step_name == "train") or (step_name == 'val')) and self.current_epoch == self.trainer.max_epochs-1:
+                metadata = batch.get('metadata', {}).copy()
+                metadata.update({'preds_cnn': preds.cpu().numpy(), 'labels': labels.cpu().numpy()})
+                df = pd.DataFrame(metadata)
+                df.to_csv(os.getcwd() + f'_cnn_{step_name}_output', mode='a', index=False, header=True)
+
+            if step_name == 'test':
+                metadata = batch.get('metadata', {}).copy()
+                metadata.update({'preds_cnn': preds.cpu().numpy(), 'labels': labels.cpu().numpy()})
+                df = pd.DataFrame(metadata)
+                df.to_csv(os.getcwd() + '_cnn_test_output', mode='a', index=False, header=True)
+
             self.metrics[f"{step_name}_metrics"](preds, labels)
 
             self.log_dict(

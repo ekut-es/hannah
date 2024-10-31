@@ -18,6 +18,10 @@ limitations under the License.
 -->
 # Related Publications
 
+Energy-Efficient Seizure Detection Suitable for Low-Power Applications
+by Julia Werner, Bhavya Kohli, Paul Palomero Bernardo, Christoph Gerum, Oliver Bringmann
+In 2024 IEEE International Joint Conference on Neural Networks (IJCNN)
+
 
 Precise localization within the GI tract by combining classification of CNNs and time-series analysis of HMMs.
 by Julia Werner, Christoph Gerum, Moritz Reiber, Jörg Nick, Oliver Bringmann

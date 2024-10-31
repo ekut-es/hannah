@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,16 +24,13 @@ T = TypeVar("T")
 
 class Expression(ABC, Generic[T]):
     @abstractmethod
-    def evaluate(self):
-        ...
+    def evaluate(self): ...
 
     @abstractmethod
-    def format(self, indent=2, length=80) -> str:
-        ...
+    def format(self, indent=2, length=80) -> str: ...
 
     @abstractmethod
-    def get_children(self):
-        ...
+    def get_children(self): ...
 
     def __str__(self) -> str:
         return self.format()
@@ -108,16 +105,25 @@ class Expression(ABC, Generic[T]):
 
         return Truediv(other, self)
 
-
     def __floordiv__(self, other):
         from ..expressions.arithmetic import Floordiv
 
         return Floordiv(self, other)
 
+    def __rfloordiv__(self, other):
+        from ..expressions.arithmetic import Floordiv
+
+        return Floordiv(other, self)
+
     def __mod__(self, other):
         from ..expressions.arithmetic import Mod
 
         return Mod(self, other)
+
+    def __rmod__(self, other):
+        from ..expressions.arithmetic import Mod
+
+        return Mod(other, self)
 
     def __divmod__(self, other):
         raise NotImplementedError()

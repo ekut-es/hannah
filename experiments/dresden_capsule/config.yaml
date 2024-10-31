@@ -25,6 +25,7 @@ defaults:
     - override optimizer: adamw          # Optimizer config name
     - override normalizer: null          # Feature normalizer (used for quantized neural networks)
     - override module: image_classifier  # Lightning module config for the training loop (image classifier for image classification tasks)
+    - override augmentation: dresden_augment
     - _self_
 
 dataset:

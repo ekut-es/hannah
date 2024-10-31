@@ -16,11 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Rhode island gastroenterology video capsule endoscopy dataset
-
-
-    https://www.nature.com/articles/s41597-022-01726-3
-    https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation
+"""Dresden Capsule Dataset.
 """
 
 import logging
@@ -39,8 +35,10 @@ logger = logging.getLogger(__name__)
 
 def prepare_data(study_folder: pathlib.Path, data: pd.DataFrame):
 
+    metadata = {}
     label_names = list(data.columns)[:-1]
     files = [study_folder / image for image in data["path"].to_list()]
+    studies = [path[:3] for path in data['path'].to_list()]
 
     if len(label_names) > 1: # True for section and technical tasks
         labels = np.argmax(data.iloc[:, :-1].values, axis=1)
@@ -51,12 +49,17 @@ def prepare_data(study_folder: pathlib.Path, data: pd.DataFrame):
     
     labels = [label_names[x] for x in labels]
 
-    return files, labels, label_names
+    assert len(studies) == len(labels)
+    metadata['study_id'] = studies
 
-def downsampling(X: list, y: list, labels: list, config: dict):
+    return files, labels, label_names, metadata
+
+
+def downsampling(X: list, y: list, labels: list, studies: list, config: dict):
     
     task = config.task
     seed = config.seed
+    metadata = {}
 
     if task == 'sections' or task == 'technical_multiclass_view' or task == 'technical_multilabel_bubbles_dirt':
         idx_resampled = np.empty(0, dtype=int)
@@ -80,9 +83,13 @@ def downsampling(X: list, y: list, labels: list, config: dict):
     ordered_idx_resampled = np.sort(idx_resampled)
     y = y[ordered_idx_resampled]
     X = np.array(X)[ordered_idx_resampled]
-    assert len(X) == len(y)
+    studies = list(np.array(studies)[ordered_idx_resampled]) # needs to be a list for dataloader get_item function
 
-    return X, y
+    assert len(X) == len(y)
+    assert len(X) == len(studies)
+    metadata['study_id'] = studies
+
+    return X, y, metadata
 
 
 class DresdenCapsuleDataset(ImageDatasetBase):
@@ -100,20 +107,22 @@ class DresdenCapsuleDataset(ImageDatasetBase):
         val_data = pd.read_csv(split_folder / config.split / "val.csv")
         train_data = pd.read_csv(split_folder / config.split / "train.csv")
 
-        X_train, y_train, labels = prepare_data(study_folder, train_data)
-        X_val, y_val, labels = prepare_data(study_folder, val_data)
-        X_test, y_test, labels = prepare_data(study_folder, test_data)
+        X_train, y_train, labels, metadata_train = prepare_data(study_folder, train_data)
+        X_val, y_val, labels, metadata_val = prepare_data(study_folder, val_data)
+        X_test, y_test, labels, metadata_test = prepare_data(study_folder, test_data)
 
         # Resampling
         if config.downsampling.enabled:
-            X_train, y_train = downsampling(X_train, y_train, labels, config)
-            X_val, y_val = downsampling(X_val, y_val, labels, config)
+            X_train, y_train, metadata_train = downsampling(X_train, y_train, labels, metadata_train, config)
+            X_val, y_val, metadata_val = downsampling(X_val, y_val, labels, metadata_val, config)
 
+        # Transformation, test_transform to ensure same size of all images.
         transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
         test_transform = A.Compose([A.augmentations.geometric.resize.Resize(config.sensor.resolution[0], config.sensor.resolution[1]), ToTensorV2()])
-        train_set = cls(X_train, y_train, labels, transform=transform)
-        val_set = cls(X_val, y_val, labels, transform=test_transform)
-        test_set = cls(X_test, y_test, labels, transform=test_transform)
+
+        train_set = cls(X_train, y_train, labels, transform=transform, metadata=metadata_train)
+        val_set = cls(X_val, y_val, labels, transform=test_transform, metadata=metadata_val)
+        test_set = cls(X_test, y_test, labels, transform=test_transform, metadata=metadata_test)
 
         return (
             train_set,

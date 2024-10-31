@@ -512,6 +512,53 @@ def get_attn2d(node, output, args, kwargs):
     return num_weights, macs, attrs
 
 
+# quantized conv
+def get_qconv(node, output, args, kwargs):
+    weight_bits = kwargs["qconfig"]["weight"]["bits"]
+    activation_bits = kwargs["qconfig"]["activation"]["bits"]
+
+    volume_ofm = prod(output.shape)
+    weight = args[1]
+    out_channels = weight.shape[0]
+    in_channels = weight.shape[1]
+    kernel_size = weight.shape[2]
+
+    # default weights and macs in 32 bits
+    num_weights = np.prod(weight.shape)
+    macs = volume_ofm * in_channels * kernel_size**2
+
+    # convert to lower bits
+    num_weights = (num_weights / 32) * weight_bits
+    macs = (macs / 32) * activation_bits
+
+    attrs = "k=" + "(%d, %d)" % (kernel_size, kernel_size)
+    attrs += ", s=" + "(%d, %d)" % (kwargs["stride"], kwargs["stride"])
+    attrs += ", g=(%d)" % kwargs["groups"]
+    attrs += ", dsc=(%s)" % str(in_channels == out_channels == kwargs["groups"])
+    attrs += ", d=" + "(%d, %d)" % (kwargs["dilation"], kwargs["dilation"])
+    return num_weights, macs, attrs
+
+
+# quantized linear
+def get_qlinear(node, output, args, kwargs):
+    weight_bits = kwargs["qconfig"]["weight"]["bits"]
+    activation_bits = kwargs["qconfig"]["activation"]["bits"]
+
+    weight = args[1]
+    in_features = weight.shape[0]
+    out_features = weight.shape[1]
+
+    # default weights and macs in 32 bits
+    num_weights = macs = in_features * out_features
+
+    # convert to lower bits
+    num_weights = (num_weights / 32) * weight_bits
+    macs = (macs / 32) * activation_bits
+
+    attrs = ""
+    return num_weights, macs, attrs
+
+
 def get_type(node):
     try:
         return node.name.split("_")[-2]
@@ -549,10 +596,8 @@ class MACSummaryInterpreter(fx.Interpreter):
         }
 
     def run_node(self, n: torch.fx.Node):
-        try:
-            out = super().run_node(n)
-        except Exception as e:
-            print(str(e))
+        out = None
+        out = super().run_node(n)
         if n.op == "call_function":
             try:
                 args, kwargs = self.fetch_args_kwargs_from_env(n)

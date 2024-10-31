@@ -13,7 +13,7 @@ def residual(input):
 
 
 @dataflow
-def add(input, other):
+def add(input, other): # noqa: F811
     return op("Add", input, other)
 
 

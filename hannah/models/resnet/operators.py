@@ -10,8 +10,11 @@ def conv2d(input, out_channels, kernel_size=1, stride=1, dilation=1, groups=1, p
                     shape=(out_channels, in_channels, kernel_size, kernel_size),
                     axis=('O', 'I', 'kH', 'kW'),
                     grad=True)
+    bias = Tensor(name='bias', shape=(out_channels,), axis=('O',), grad=True)
 
-    conv = Conv2d(stride=stride, dilation=dilation, groups=groups, padding=padding)(input, weight)
+    conv = Conv2d(stride=stride, dilation=dilation, groups=groups, padding=padding)(
+        input, weight, bias
+    )
     return conv
 
 
@@ -22,8 +25,9 @@ def linear(input, out_features):
                     shape=(in_features, out_features),
                     axis=('in_features', 'out_features'),
                     grad=True)
+    bias = Tensor(name='bias', shape=(out_features,), axis=('O',), grad=True)
 
-    out = Linear()(input, weight)
+    out = Linear()(input, weight, bias)
     return out
 
 

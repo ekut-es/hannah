@@ -19,10 +19,11 @@
 """Rhode island gastroenterology video capsule endoscopy dataset
 
 
-    https://www.nature.com/articles/s41597-022-01726-3
-    https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation
+https://www.nature.com/articles/s41597-022-01726-3
+https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation
 """
 
+from functools import partial
 import logging
 import pathlib
 import shutil
@@ -32,6 +33,8 @@ import pandas as pd
 import torchvision
 import tqdm
 from albumentations.pytorch import ToTensorV2
+
+from hannah.datasets.vision.utils.bayer import rgb_to_bayer
 
 from .base import ImageDatasetBase
 
@@ -51,11 +54,14 @@ logger = logging.getLogger(__name__)
 
 def read_official_val_train(study_folder: pathlib.Path, csv_file: pathlib.Path):
     data = pd.read_csv(csv_file)
+    metadata = {}
 
     files = [str(study_folder / path) for path in data["path"].to_list()]
+    studies = [str(path)[:4] for path in data["path"].to_list()]
     labels = [label[2:] for label in data["organ"]]
+    metadata['study_id'] = studies
 
-    return files, labels
+    return files, labels, metadata
 
 
 def read_official_test(study_folder: pathlib.Path, csv_file: pathlib.Path):
@@ -65,20 +71,25 @@ def read_official_test(study_folder: pathlib.Path, csv_file: pathlib.Path):
 
     files = []
     labels = []
+    studies = []
+    metadata = {}
 
     for study in test_studies:
         current_study_folder = study_folder / study
         assert current_study_folder.exists(), "Dataset download not complete"
 
-        for label_folder in current_study_folder.iterdir():
+        for label_folder in sorted(current_study_folder.iterdir()):
             if label_folder.is_dir():
                 label = label_folder.name[2:]
 
-                for image_file in label_folder.glob("*.png"):
+                for image_file in sorted(label_folder.glob("*.png")):
                     files.append(image_file)
                     labels.append(label)
+                    studies.append(study)
 
-    return files, labels
+    metadata['study_id'] = studies
+
+    return files, labels, metadata
 
 
 def split_train_set(csv_file: pathlib.Path, drop_rate: float):
@@ -178,41 +189,42 @@ class RICapsuleDataset(ImageDatasetBase):
             X_train_unlabeled = []
             y_train_unlabeled = []
 
-        X_train, y_train = read_official_val_train(study_folder, train_csv)
+        X_train, y_train, metadata_train = read_official_val_train(study_folder, train_csv)
 
-        X_val, y_val = read_official_val_train(
+        X_val, y_val, metadata_val = read_official_val_train(
             study_folder, DATA_PATH / "path_valid.csv"
         )
-        X_test, y_test = read_official_test(study_folder, DATA_PATH / "path_test.csv")
+        X_test, y_test, metadata_test = read_official_test(study_folder, DATA_PATH / "path_test.csv")
 
-        train_transform = A.Compose(
-            [
-                A.RandomCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
-                ToTensorV2(),
-            ]
-        )
 
-        test_transform = A.Compose(
-            [
-                A.CenterCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
-                ToTensorV2(),
-            ]
-        )
+        train_transforms = [
+            A.RandomCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
+        ]
+        test_transforms = [
+            A.RandomCrop(config.sensor.resolution[0], config.sensor.resolution[1]),
+        ]
+
+        if 'pattern' in config.sensor:
+            train_transforms.append(A.Lambda(image=partial(rgb_to_bayer, pattern=config.sensor.pattern)))
+            test_transforms.append(A.Lambda(image=partial(rgb_to_bayer, pattern=config.sensor.pattern)))
+
+        train_transforms.append(ToTensorV2())
+        test_transforms.append(ToTensorV2())
+
+        train_transform = A.Compose(train_transforms)
+        test_transform = A.Compose(test_transforms)
+
 
         train_set = cls(
-            X_train, y_train, list(LABELS.keys()), transform=train_transform
-        )
+            X_train, y_train, list(LABELS.keys()), transform=train_transform, metadata=metadata_train)
         train_set_unlabeled = cls(
             X_train_unlabeled,
             y_train_unlabeled,  # FIXME labels must not be used
             list(LABELS.keys()),
             transform=train_transform,
         )
-        val_set = cls(X_val, y_val, list(LABELS.keys()), test_transform)
-        test_set = cls(X_test, y_test, list(LABELS.keys()), transform=test_transform)
-
-        # RANDOM, RANDOM_PER_STUDY Splits
-        # preprocessing,
+        val_set = cls(X_val, y_val, list(LABELS.keys()), transform=test_transform, metadata=metadata_val)
+        test_set = cls(X_test, y_test, list(LABELS.keys()), transform=test_transform, metadata=metadata_test)
 
         return (
             train_set,
@@ -220,3 +232,11 @@ class RICapsuleDataset(ImageDatasetBase):
             val_set,
             test_set,
         )
+
+    @property
+    def mean(self):
+        return [0.5]
+
+    @property
+    def std(self):
+        return [0.5]

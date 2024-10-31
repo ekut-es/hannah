@@ -1,0 +1,3 @@
+_target_: hannah.models.convnet.models.convnet
+name: simple_conv_space
+num_classes: 10

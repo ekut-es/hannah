@@ -28,6 +28,7 @@ import torch.nn.functional as F
 from torch.ao.quantization.fake_quantize import FakeQuantize
 
 from hannah.nas.core.parametrized import is_parametrized
+from hannah.nas.expressions.utils import prod
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.functional_operators.op import Choice, Op, Tensor
 from hannah.nas.functional_operators.shapes import (
@@ -40,7 +41,6 @@ from hannah.nas.functional_operators.shapes import (
 )
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 from hannah.nas.parameters.parametrize import parametrize
-
 
 
 @torch.fx.wrap
@@ -56,10 +56,11 @@ def conv1d(input, weight, stride, padding, dilation, groups, *, id):
 
 
 @torch.fx.wrap
-def conv2d(input, weight, stride=1, padding=1, dilation=1, groups=1, *, id):
+def conv2d(input, weight, bias, stride=1, padding=1, dilation=1, groups=1, *, id):
     return F.conv2d(
         input=input,
         weight=weight,
+        bias=bias,
         stride=lazy(stride),
         padding=lazy(padding),
         dilation=lazy(dilation),
@@ -68,8 +69,8 @@ def conv2d(input, weight, stride=1, padding=1, dilation=1, groups=1, *, id):
 
 
 @torch.fx.wrap
-def linear(input, weight, *, id):
-    return F.linear(input=input, weight=weight.T)
+def linear(input, weight, bias, *, id):
+    return F.linear(input=input, weight=weight.T, bias=bias)
 
 
 @torch.fx.wrap
@@ -105,12 +106,12 @@ def adaptive_avg_pooling1d(input, output_size=(1, 1), *, id):
 
 
 @torch.fx.wrap
-def max_pool(input, kernel_size, stride, padding, dilation):
+def max_pool(input, kernel_size, stride, padding, dilation, *, id):
     return F.max_pool2d(input, kernel_size, stride, padding, dilation)
 
 
 @torch.fx.wrap
-def avg_pool(input, kernel_size, stride, padding):
+def avg_pool(input, kernel_size, stride, padding, *, id):
     return F.avg_pool2d(input, kernel_size, stride, padding)
 
 
@@ -127,35 +128,6 @@ def interleave(input, step_size):
     return torch.concat(
         [input[:, shift_pos::step_size, :, :] for shift_pos in range(step_size)], dim=1
     )
-
-
-@torch.fx.wrap
-def dropout(input, p, *, id):
-    return F.dropout(input, p)
-
-
-@torch.fx.wrap
-def self_attention2d(q, k, v, num_heads, d_model, *, id):
-    """
-    Arguments:
-        q: Tensor, shape ``[B, h*d, H, W]``
-        k: Tensor, shape ``[B, h*d, H, W]``
-        v: Tensor, shape ``[B, h*d, H, W]``
-    """
-    scale = d_model**-0.5
-    b, _, h, w = q.shape
-    q = q.view(b, num_heads, d_model, h * w)
-    k = k.view(b, num_heads, d_model, h * w)
-    v = v.view(b, num_heads, d_model, h * w)
-    # [B, h, d, H*W]
-
-    q *= scale
-    attn = q.transpose(-2, -1) @ k  # [B, h, H*W, H*W]
-    attn = F.softmax(attn, dim=-1)
-    score = v @ attn  # [B, h, d, H*W]
-    out = score.reshape(b, -1, h, w)  # [B, h*d, H, W]
-
-    return out
 
 
 @torch.fx.wrap
@@ -216,10 +188,20 @@ def relu_linear_attention(q, k, v, num_heads, d_model, *, id):
     out = out[:, :, :-1] / (out[:, :, -1:] + 1.0e-15)
     # [B, h, d, H*W]
 
-    out = out.reshape(b, -1, h, w) 
+    out = out.reshape(b, -1, h, w)
     # [B, h*d, H, W]
 
     return out
+
+
+@torch.fx.wrap
+def reshape(input, new_shape):
+    return input.view(new_shape)
+
+
+@torch.fx.wrap
+def permute(input, dims):
+    return input.permute(dims)
 
 
 @parametrize
@@ -272,7 +254,9 @@ class Conv1d(Op):
 @parametrize
 class Conv2d(Op):
     def __init__(self, stride=1, dilation=1, groups=1, padding=None) -> None:
-        super().__init__(name="Conv2d", stride=stride, dilation=dilation, groups=groups)
+        super().__init__(
+            name="Conv2d", stride=stride, dilation=dilation, groups=groups,
+        )
         self.stride = stride
         self.dilation = dilation
         self.groups = groups
@@ -283,6 +267,8 @@ class Conv2d(Op):
         input_shape = operands[0].shape()
         weight_shape = operands[1].shape()
         operands[1].id = f"{new_conv.id}.{operands[1].id}"
+        if len(operands) >= 3:
+            operands[2].id = f"{new_conv.id}.{operands[2].id}"
 
         new_conv.in_channels = input_shape[1]
         new_conv.out_channels = weight_shape[0]
@@ -294,10 +280,11 @@ class Conv2d(Op):
 
         return new_conv
 
-    def _forward_implementation(self, x, weight):
+    def _forward_implementation(self, input, weight, bias=None):
         return conv2d(
-            x,
+            input,
             weight,
+            bias,
             stride=lazy(self.stride),
             padding=lazy(self.padding),
             dilation=lazy(self.dilation),
@@ -325,14 +312,19 @@ class Linear(Op):
         new_linear.in_features = operands[1].shape()[0]
         new_linear.out_features = operands[1].shape()[1]
         operands[1].id = f"{new_linear.id}.{operands[1].id}"
+        if len(operands) >= 3:
+            operands[2].id = f"{new_linear.id}.{operands[2].id}"
         return new_linear
 
     def shape_fun(self):
         return linear_shape(*self.operands)
 
-    def _forward_implementation(self, input, weight):
+    def _forward_implementation(self, input, weight, bias=None):
         input = torch.flatten(input, start_dim=1)
-        return linear(input, weight, id=self.id)
+        return linear(
+            input, weight, bias,
+            id=self.id
+        )
 
 
 @parametrize
@@ -395,7 +387,6 @@ class Identity(Op):
 class Requantize(Op):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(name="Quantize")
-
         self.quantize = FakeQuantize()
 
     @property
@@ -479,6 +470,7 @@ class MaxPooling(Op):
             stride=lazy(self.stride),
             padding=lazy(self.padding),
             dilation=lazy(self.dilation),
+            id=self.id
         )
 
 
@@ -507,6 +499,7 @@ class AvgPooling(Op):
             kernel_size=lazy(self.kernel_size),
             stride=lazy(self.stride),
             padding=lazy(self.padding),
+            id=self.id
         )
 
 
@@ -535,6 +528,7 @@ class MaxAvgPooling(Op):
             kernel_size=lazy(self.kernel_size),
             stride=lazy(self.stride),
             padding=lazy(self.padding),
+            id=self.id
         )
 
 
@@ -568,23 +562,6 @@ class AdaptiveAvgPooling(Op):
 class Dropout(Op):
     def __init__(self, p) -> None:
         super().__init__(name="Dropout", p=p)
-        self.p = p
-
-    def __call__(self, *operands) -> Any:
-        op = super().__call__(*operands)
-        return op
-
-    def _forward_implementation(self, input):
-        return dropout(input, p=self.p, id=self.id)
-
-    def shape_fun(self):
-        return identity_shape(*self.operands)
-
-
-@parametrize
-class Dropout(Op):
-    def __init__(self, p) -> None:
-        super().__init__(name='Dropout', p=p)
         self.p = p
 
     def __call__(self, *operands) -> Any:
@@ -649,15 +626,18 @@ class SelfAttention2d(Op):
         out_dim = self.num_heads * self.d_model
 
         return (batch, out_dim, height, width)
-    
+
 
 @parametrize
 class ReluLinearAttention(Op):
     """
     Adapted from EfficientViT
     """
+
     def __init__(self, num_heads, d_model) -> None:
-        super().__init__(name="ReluLinearAttention", num_heads=num_heads, d_model=d_model)
+        super().__init__(
+            name="ReluLinearAttention", num_heads=num_heads, d_model=d_model
+        )
         self.num_heads = num_heads
         self.d_model = d_model
 
@@ -692,3 +672,54 @@ class ReluLinearAttention(Op):
         out_dim = self.num_heads * self.d_model
 
         return (batch, out_dim, height, width)
+
+
+@parametrize
+class Reshape(Op):
+    def __init__(self, shape) -> None:
+        super().__init__(name="Reshape")
+        self.new_shape = shape
+
+    def __call__(self, *operands) -> Any:
+        new_reshape = super().__call__(*operands)
+        return new_reshape
+
+    def _forward_implementation(self, input):
+        return reshape(input, self.new_shape)
+
+    def shape_fun(self):
+        if -1 in self.new_shape:
+            input_shape = self.operands[0].shape()
+            shape = list(self.new_shape)
+
+            # Calculate the product of the input shape
+            input_shape_prod = prod(input_shape)
+
+            # Calculate the product of the shape dimensions excluding -1
+            shape_prod = prod([dim for dim in shape if dim != -1])
+
+            # Replace -1 with the calculated dimension
+            shape[shape.index(-1)] = input_shape_prod // shape_prod
+
+            return tuple(shape)
+
+        return tuple(self.new_shape)
+
+
+@parametrize
+class Permute(Op):
+    def __init__(self, dims) -> None:
+        super().__init__(name="Permute")
+        self.dims = dims
+
+    def __call__(self, *operands) -> Any:
+        new_permute = super().__call__(*operands)
+        return new_permute
+
+    def _forward_implementation(self, input):
+        return permute(input, self.dims)
+
+    def shape_fun(self):
+        old_shape = self.operands[0].shape()
+        new_shape = [old_shape[dim] for dim in self.dims]
+        return new_shape

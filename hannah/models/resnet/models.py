@@ -1,10 +1,12 @@
 from hannah.models.embedded_vision_net.expressions import expr_product
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
+from hannah.nas.functional_operators.op import search_space
 from hannah.models.resnet.operators import dynamic_depth
 from hannah.models.resnet.blocks import block, conv_relu_bn, classifier_head
 
 
-def search_space(name, input, num_classes=10):
+@search_space
+def resnet(name, input, num_classes=10):
     out_channels = IntScalarParameter(16, 64, step_size=4, name='out_channels')
     kernel_size = CategoricalParameter([3, 5, 7, 9], name='kernel_size')
     stride = CategoricalParameter([1, 2], name='stride')
