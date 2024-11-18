@@ -18,10 +18,12 @@
 #
 import copy
 import time
+from pathlib import Path
 
 import onnx
 
 from hannah.models.embedded_vision_net.models import embedded_vision_net, search_space
+from hannah.models.ai8x.models import ai8x_search_space
 from hannah.nas.constraints.random_walk import RandomWalkConstraintSolver
 from hannah.nas.export import to_onnx
 from hannah.nas.functional_operators.op import ChoiceOp, Tensor, scope
@@ -129,8 +131,53 @@ def test_export_embedded_vision_net():
     print("Done")
 
 
+def test_export_ai8x_net():
+    print("Start time: ", time.time())
+
+    print("Init search space")
+    input = Tensor("input", (1, 3, 32, 32), axis=["N", "C", "H", "W"], grad=False)
+
+    graph = ai8x_search_space("test", input, num_classes=10, max_blocks=1)
+    print(graph)
+
+    print("Init sampler")
+    sampler = RandomSampler(None, graph.parametrization(flatten=True))
+
+    print("Init solver")
+    solver = RandomWalkConstraintSolver()
+
+    print("Sampling:", end="")
+    # for _ in range(10):
+    for i in range(1):
+        print(".", end="")
+
+        sampled_params, keys = sampler.next_parameters()
+
+        solver.solve(graph, sampled_params)
+
+        parameters = solver.get_constrained_params(sampled_params)
+
+        set_parametrization(parameters, graph.parametrization(flatten=True))
+
+        onnx_model = to_onnx(graph)
+
+        this_dir = Path(
+            __file__
+        ).parent.parent.parent.parent  # hannah/nas/test/../../../../ => /
+        path = this_dir / f"ai8x_net_{i}_20240907.onnx"
+
+        print(onnx.printer.to_text(onnx_model))
+
+        print("saving to location:", path)
+        onnx.save(onnx_model, path)
+
+    print("")
+    print("Done")
+
+
 if __name__ == "__main__":
-    test_deepcopy()
-    test_export_choice()
-    test_export_conv2d()
-    test_export_embedded_vision_net()
+    # test_deepcopy()
+    # test_export_choice()
+    # test_export_conv2d()
+    # test_export_embedded_vision_net()
+    test_export_ai8x_net()

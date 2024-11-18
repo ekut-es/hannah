@@ -21,9 +21,11 @@
 from .onnxrt import OnnxruntimeBackend
 from .tensorrt import TensorRTBackend
 from .torch_mobile import TorchMobileBackend
+from .grpc import GRPCBackend
 
 __all__ = [
     "OnnxruntimeBackend",
     "TorchMobileBackend",
     "TensorRTBackend",
+    "GRPCBackend",
 ]

@@ -111,6 +111,7 @@ class DirectNAS(NASBase):
         bounds=None,
         total_candidates=100,
         num_selected_candidates=10,
+        constrained_sampling_on_search=False,
         *args,
         **kwargs,
     ) -> None:
@@ -120,6 +121,7 @@ class DirectNAS(NASBase):
         self.bounds = bounds
         self.total_candidates = total_candidates
         self.num_selected_candidates = num_selected_candidates
+        self.constrained_sampling_on_search = constrained_sampling_on_search
 
     def before_search(self):
         self.initialize_dataset()
@@ -165,7 +167,7 @@ class DirectNAS(NASBase):
                 remaining_candidates,
                 remaining_candidates,
                 presample=self.presample,
-                constrain=False,
+                constrain=False,  # FIXME: shouldn't this be true?
             )
 
     def search(self):
@@ -195,6 +197,7 @@ class DirectNAS(NASBase):
                         self.total_candidates,
                         self.num_selected_candidates,
                         presample=self.presample,
+                        constrain=self.constrained_sampling_on_search,
                     )
 
                 while len(self.worklist) < self.n_jobs and len(self.candidates) > 0:
@@ -251,12 +254,9 @@ class DirectNAS(NASBase):
         while len(candidates) < num_total:
             parameters = self.sample(constrain)
             model = self.build_model(parameters)
-            try:
-                estimated_metrics, satisfied_bounds = self.estimate_metrics(
-                    copy.deepcopy(model)
-                )
-            except:
-                msglogger.critical("Could not estimate performance for model")
+            estimated_metrics, satisfied_bounds = self.estimate_metrics(
+                copy.deepcopy(model)
+            )
             if presample:
                 if not self.presampler.check(model, estimated_metrics):
                     skip_ct += 1

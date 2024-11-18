@@ -62,6 +62,7 @@ class GraphConversionTracer(SearchSpaceTracer):
         f_ops.SelfAttention2d,
         f_ops.ReluLinearAttention,
         Tensor,
+        torch.ao.quantization.fake_quantize.FakeQuantize,
     ]
 
     def is_leaf_module(self, module, module_qualified_name):
@@ -127,6 +128,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
             "dropout": self.add_nodes_dropout,
             "self_attention2d": self.add_nodes_attn2d,
             "relu_linear_attention": self.add_nodes_attn2d,
+            torch.ao.quantization.fake_quantize.FakeQuantize: self.add_nodes_quantize,
         }
         self.layer_encodings = [
             "conv",
@@ -143,6 +145,9 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         self.func_num = 0
 
     def extract_quant_attrs(self, quantizer):
+        if isinstance(quantizer, torch.ao.quantization.fake_quantize.FakeQuantize):
+            return {"dtype": "int", "bits": 8, "method": "symmetric"}
+
         if quantizer:
             quant_attrs = {
                 "dtype": quantizer.dtype,
@@ -164,6 +169,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
     def add_nodes_quantize(self, target, mod, args, kwargs, output):
         type_onehot = to_one_hot("quantize", self.layer_encodings)
+
         quant_attrs = self.extract_quant_attrs(mod)
 
         input_attrs = self.extract_input_attrs(args)
