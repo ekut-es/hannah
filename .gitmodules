@@ -1,6 +1,6 @@
 [submodule "external/hannah-tvm"]
 	path = external/hannah-tvm
-	url = ../hannah-tvm
+	url = ../hannah-tvm.git
 [submodule "external/netdeployonnx"]
 	path = external/netdeployonnx
-	url = ../netdeployonnx
+	url = ../netdeployonnx.git
