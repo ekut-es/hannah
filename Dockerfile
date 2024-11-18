@@ -54,6 +54,8 @@ COPY external/ /deps/external/
 WORKDIR /deps
 
 
+RUN tree -L 3 -d
+
 # Install dependencies
 RUN poetry install --no-interaction --no-ansi --all-extras --no-root \
   && rm -rf $POETRY_CACHE_DIR

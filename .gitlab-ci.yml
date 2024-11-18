@@ -46,21 +46,6 @@ test_prebuilt_docker:
     - merge_requests
   dependencies: []
 
-test_python_39:
-  stage: test
-  image: ghcr.io/ekut-es/hannah_python_3.9:latest
-  script:
-    - set -e
-    - poetry config installer.max-workers 10
-    - poetry install --all-extras
-    - poetry run python -m netdeployonnx.cli server --configfile external/netdeployonnx/netdeployonnx.yaml &
-    - poetry run python3 -m pytest  -v --cov=hannah test hannah --integration
-  tags:
-    - docker
-  interruptible: true
-  dependencies: []
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 test_python_310:
   stage: test
