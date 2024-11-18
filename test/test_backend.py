@@ -33,7 +33,7 @@ def backends():
     """Iterates over the backends"""
     for item in inspect.getmembers(hannah.backends):
         if inspect.isclass(item[1]) and item[0] != "InferenceBackendBase":
-            if item[1].available():
+            if item[1].available() and item[0] != "GRPCBackend":
                 yield item[1]
             else:
                 print(f"Skipping {item[0]} because it is not available")

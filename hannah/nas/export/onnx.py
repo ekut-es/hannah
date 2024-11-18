@@ -130,13 +130,14 @@ def eval(exp_tree: Any) -> Any:
 
 def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelProto:
     if isinstance(model, BasicExecutor):
-        worklist = [(model.output, False)]
-    else:
-        worklist = [(model, False)]
+        model = model.output
+
+    worklist = [(model, False)]
 
     visited = set()
 
     input_tensors = []
+    intializer_tensors = []
 
     node_cache = {}
     while worklist:
@@ -147,9 +148,13 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
             visited.add(node)
             if isinstance(node, Tensor):
                 res = spox.argument(
-                    spox.Tensor(eval(node.dtype).as_numpy(), eval(node.shape()))
+                    spox.Tensor(eval(node.dtype).as_numpy(), eval(node.shape())),
                 )
                 input_tensors.append(node)
+                if node.grad:
+                    # create an initializer instead of input
+                    # call hannah.nas
+                    intializer_tensors.append(node)
             elif isinstance(node, Relu):
                 res = op.relu(node_cache[node.operands[0]])
             elif isinstance(node, Conv1d):
@@ -160,6 +165,9 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
                     group=eval(node.groups),
                     pads=triple(eval(node.padding)),
                     strides=single(eval(node.stride)),
+                    kernel_shape=pair(
+                        eval(node.kernel_size)
+                    ),  # its weird that it is a pair?
                 )
             elif isinstance(node, Conv2d):
                 res = op.conv(
@@ -169,6 +177,7 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
                     group=eval(node.groups),
                     pads=quadruple(eval(node.padding)),
                     strides=pair(eval(node.stride)),
+                    kernel_shape=pair(eval(node.kernel_size)),
                 )
             elif isinstance(node, Linear):
                 input_shape = eval(node.operands[0].shape_fun())
@@ -223,7 +232,7 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
                 mean = node_cache[node.operands[1]]
                 var = node_cache[node.operands[2]]
 
-                print(mean, var)
+                # print(mean, var)
 
                 epsilon = 1e-5
 
@@ -322,5 +331,10 @@ def to_onnx(model: Union[BasicExecutor, Op], filename: str = "") -> onnx.ModelPr
         inputs[node_id] = node_cache[node]
     outputs = {}
     outputs[model.id] = node_cache[model]
+
+    initializers = {}
+    for idx, node in enumerate(intializer_tensors):
+        node_id = f"{node.id}_{idx}"
+        initializers[node_id] = node_cache[node]
 
     return spox.build(inputs=inputs, outputs=outputs)

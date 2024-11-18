@@ -1,3 +1,6 @@
 [submodule "external/hannah-tvm"]
 	path = external/hannah-tvm
 	url = ../hannah-tvm
+[submodule "external/netdeployonnx"]
+	path = external/netdeployonnx
+	url = ../netdeployonnx

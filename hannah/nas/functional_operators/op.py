@@ -85,12 +85,15 @@ def get_highest_scope_counter(scope, scope_dict):
 
 def scope(function):
     """Decorator defining a scope in a search space. The id of every subcomponent (operators or lower-hierarchy scopes)
-       enclosed in a function decorated with this will be prefixed with the name of the function, creating a
-       hierarchical scope.
+    enclosed in a function decorated with this will be prefixed with the name of the function, creating a
+    hierarchical scope.
     """
+
     @wraps(function)
     def set_scope(*args, **kwargs):
-        assert "global_scope_stack" in globals(), "No scope tracking found, did you wrap the search space with @search_space?"
+        assert (
+            "global_scope_stack" in globals()
+        ), "No scope tracking found, did you wrap the search space with @search_space?"
 
         inputs = [a for a in args if isinstance(a, (Op, Tensor))] + [
             a for k, a in kwargs.items() if isinstance(a, (Op, Tensor))
@@ -110,9 +113,10 @@ def scope(function):
 
 def search_space(function):
     """Decorator to define a search space. For correct scoping,
-       a search space containing functional ops must be enclosed by
-       a function decorated with @search_space.
+    a search space containing functional ops must be enclosed by
+    a function decorated with @search_space.
     """
+
     @wraps(function)
     def search_space_limits(*args, **kwargs):
         global global_scope_stack
@@ -125,7 +129,7 @@ def search_space(function):
 
 
 @parametrize
-class Op:
+class Op(torch.nn.Module):
     def __init__(self, name, *args, **kwargs) -> None:
         super().__init__()
         self.operands = []
@@ -142,7 +146,9 @@ class Op:
 
         # Some Ops (ChoiceOp) can be called multiple times and already have a counter
         if not len(self.id.split(".")[-1].split("_")) > 1:
-            assert "global_scope_stack" in globals(), "No scope tracking found, did you wrap the search space with @search_space?"
+            assert (
+                "global_scope_stack" in globals()
+            ), "No scope tracking found, did you wrap the search space with @search_space?"
             global global_scope_stack
             ct = get_highest_scope_counter(self.name, global_scope_stack[-1])
             self.id = f"{self.id}_{ct}"
@@ -186,8 +192,7 @@ class Op:
         return self._shape
 
     @abstractmethod
-    def _forward_implementation(self, *operands):
-        ...
+    def _forward_implementation(self, *operands): ...
 
     def shape_fun(self):
         raise NotImplementedError
@@ -328,7 +333,9 @@ class ChoiceOp(Op):
             self.options[i] = node_opt(*operands)
             if is_parametrized(self.options[i]):
                 self._PARAMETERS[self.options[i].id] = self.options[i]  # FIXME:
-        assert "global_scope_stack" in globals(), "No scope tracking found, did you wrap the search space with @search_space?"
+        assert (
+            "global_scope_stack" in globals()
+        ), "No scope tracking found, did you wrap the search space with @search_space?"
         global global_scope_stack
         ct = get_highest_scope_counter(self.name, global_scope_stack[-1])
         self.id = f"{self.id}_{ct}"

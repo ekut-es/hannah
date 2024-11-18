@@ -195,6 +195,11 @@ def relu_linear_attention(q, k, v, num_heads, d_model, *, id):
 
 
 @torch.fx.wrap
+def quantize(input, quantizer):
+    return quantizer(input)
+
+
+@torch.fx.wrap
 def reshape(input, new_shape):
     return input.view(new_shape)
 

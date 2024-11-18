@@ -36,6 +36,8 @@ test_prebuilt_docker:
   script:
     - set -e
     - poetry install --all-extras
+    - poetry run python -m netdeployonnx.cli server --configfile external/netdeployonnx/netdeployonnx.yaml &
+    - sleep 30
     - poetry run python3 -m pytest  -v --cov=hannah test hannah
   tags:
     - docker
@@ -51,6 +53,7 @@ test_python_39:
     - set -e
     - poetry config installer.max-workers 10
     - poetry install --all-extras
+    - poetry run python -m netdeployonnx.cli server --configfile external/netdeployonnx/netdeployonnx.yaml &
     - poetry run python3 -m pytest  -v --cov=hannah test hannah --integration
   tags:
     - docker
@@ -69,7 +72,8 @@ test_python_310:
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
-    - poetry run coverage run --source hannah -m pytest test
+    - poetry run python -m netdeployonnx.cli server --configfile external/netdeployonnx/netdeployonnx.yaml &
+    - poetry run coverage run --source hannah -m pytest test hannah/nas/tests --integration
     - unset PYTHONPATH
     - unset COVERAGE_PROCESS_START
     - poetry run coverage report
@@ -96,7 +100,8 @@ test_python_311:
     - "echo 'import coverage; coverage.process_startup()' > sitecustomize.py"
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
-    - poetry run coverage run --source hannah -m pytest test
+    - poetry run python -m netdeployonnx.cli server --configfile external/netdeployonnx/netdeployonnx.yaml &
+    - poetry run coverage run --source hannah -m pytest test hannah/nas/tests --integration
     - unset PYTHONPATH
     - unset COVERAGE_PROCESS_START
     - poetry run coverage report
