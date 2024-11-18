@@ -58,7 +58,7 @@ test_python_310:
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
     - poetry run python -m netdeployonnx.cli server --configfile external/netdeployonnx/netdeployonnx.yaml &
-    - poetry run coverage run --source hannah -m pytest test hannah/nas/tests --integration
+    - poetry run coverage run --source hannah -m pytest test hannah --integration
     - unset PYTHONPATH
     - unset COVERAGE_PROCESS_START
     - poetry run coverage report
@@ -86,7 +86,7 @@ test_python_311:
     - export PYTHONPATH=$PWD
     - export COVERAGE_PROCESS_START=$PWD/.coveragerc
     - poetry run python -m netdeployonnx.cli server --configfile external/netdeployonnx/netdeployonnx.yaml &
-    - poetry run coverage run --source hannah -m pytest test hannah/nas/tests --integration
+    - poetry run coverage run --source hannah -m pytest test hannah --integration
     - unset PYTHONPATH
     - unset COVERAGE_PROCESS_START
     - poetry run coverage report
