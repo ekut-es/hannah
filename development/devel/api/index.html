@@ -1386,6 +1386,9 @@ Paper: Revisiting ResNets - https://arxiv.org/abs/2103.07579
 Pretrained weights from https://github.com/tensorflow/tpu/tree/bee9c4f6/models/official/resnet/resnet_rs</p>
 <p><a id="hannah.models._vendor"></a></p>
 <h1 id="hannahmodels_vendor">hannah.models._vendor</h1>
+<p><a id="hannah.models.ai8x.models_simplified"></a></p>
+<h1 id="hannahmodelsai8xmodels_simplified">hannah.models.ai8x.models_simplified</h1>
+<p>A search space based on the cifar 10 NASNet search space for ai85x devices from: htt</p>
 <p><a id="hannah.models.ai8x"></a></p>
 <h1 id="hannahmodelsai8x">hannah.models.ai8x</h1>
 <p><a id="hannah.models.ai8x.models"></a></p>
@@ -2687,7 +2690,7 @@ activation functions.</p>
 <h1 id="hannahbackendstensorrt">hannah.backends.tensorrt</h1>
 <p><a id="hannah.backends.tensorrt.TensorRTBackend"></a></p>
 <h2 id="tensorrtbackend-objects">TensorRTBackend Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">TensorRTBackend</span><span class="p">(</span><span class="n">InferenceBackendBase</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">TensorRTBackend</span><span class="p">(</span><span class="n">AbstractBackend</span><span class="p">)</span>
 </code></pre></div>
 
 <p><a id="hannah.backends.tensorrt.TensorRTBackend.output_spec"></a></p>
@@ -2700,11 +2703,66 @@ activation functions.</p>
 <p>Two items, the shape of the output tensor and its (numpy) datatype.</p>
 <p><a id="hannah.backends.profile"></a></p>
 <h1 id="hannahbackendsprofile">hannah.backends.profile</h1>
+<p><a id="hannah.backends.grpc"></a></p>
+<h1 id="hannahbackendsgrpc">hannah.backends.grpc</h1>
+<p><a id="hannah.backends.grpc.GRPCBackend"></a></p>
+<h2 id="grpcbackend-objects">GRPCBackend Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">GRPCBackend</span><span class="p">(</span><span class="n">InferenceBackendBase</span><span class="p">)</span>
+</code></pre></div>
+
+<p><a id="hannah.backends.grpc.GRPCBackend.prepare"></a></p>
+<h4 id="prepare">prepare</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="n">ClassifierModule</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Prepare the model for execution on the target device</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>module</code> - the classifier module to be exported</li>
+</ul>
+<p><a id="hannah.backends.grpc.GRPCBackend.run"></a></p>
+<h4 id="run">run</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]</span>
+</code></pre></div>
+
+<p>Run a batch on the target device</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li>
+<p><code>inputs</code> - a list of torch tensors representing the inputs to be run on the target device, each tensor represents a whole batched input, so for models taking 1 parameter, the list will contain 1 tensor of shape (batch_size, *input_shape)</p>
+</li>
+<li>
+<p><code>Returns</code> - the output(s) of the model as a torch tensor or a Sequence of torch tensors for models producing multiple outputs</p>
+</li>
+</ul>
+<p><a id="hannah.backends.grpc.GRPCBackend.profile"></a></p>
+<h4 id="profile">profile</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">profile</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProfilingResult</span>
+</code></pre></div>
+
+<p>Do a profiling run on the target device</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li>
+<p><code>inputs</code> - a list of torch tensors representing the inputs to be run on the target device, each tensor represents a whole batched input, so for models taking 1 parameter, the list will contain 1 tensor of shape (batch_size, *input_shape)</p>
+</li>
+<li>
+<p><code>Returns</code> - a ProfilingResult object containing the outputs of the model, the metrics obtained from the profiling run and the raw profile in a backend-specific format</p>
+</li>
+</ul>
+<p><a id="hannah.backends.grpc.GRPCBackend.available"></a></p>
+<h4 id="available">available</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="k">def</span> <span class="nf">available</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+
+<p>Check if the backend is available</p>
+<p>Returns: True if the backend is available, False otherwise</p>
 <p><a id="hannah.backends.onnxrt"></a></p>
 <h1 id="hannahbackendsonnxrt">hannah.backends.onnxrt</h1>
 <p><a id="hannah.backends.onnxrt.OnnxruntimeBackend"></a></p>
 <h2 id="onnxruntimebackend-objects">OnnxruntimeBackend Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">OnnxruntimeBackend</span><span class="p">(</span><span class="n">InferenceBackendBase</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">OnnxruntimeBackend</span><span class="p">(</span><span class="n">AbstractBackend</span><span class="p">)</span>
 </code></pre></div>
 
 <p>Inference Backend for tensorflow</p>
@@ -2730,7 +2788,7 @@ activation functions.</p>
 </code></pre></div>
 
 <p><a id="hannah.backends.base.AbstractBackend.prepare"></a></p>
-<h4 id="prepare">prepare</h4>
+<h4 id="prepare_1">prepare</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="n">ClassifierModule</span><span class="p">)</span>
 </code></pre></div>
@@ -2741,7 +2799,7 @@ activation functions.</p>
 <li><code>module</code> - the classifier module to be exported</li>
 </ul>
 <p><a id="hannah.backends.base.AbstractBackend.run"></a></p>
-<h4 id="run">run</h4>
+<h4 id="run_1">run</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]</span>
 </code></pre></div>
@@ -2757,7 +2815,7 @@ activation functions.</p>
 </li>
 </ul>
 <p><a id="hannah.backends.base.AbstractBackend.profile"></a></p>
-<h4 id="profile">profile</h4>
+<h4 id="profile_1">profile</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">profile</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProfilingResult</span>
 </code></pre></div>
@@ -2773,7 +2831,7 @@ activation functions.</p>
 </li>
 </ul>
 <p><a id="hannah.backends.base.AbstractBackend.available"></a></p>
-<h4 id="available">available</h4>
+<h4 id="available_1">available</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">available</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
@@ -2787,17 +2845,11 @@ activation functions.</p>
 </code></pre></div>
 
 <p>Export the model through the target backend</p>
-<p><a id="hannah.backends.base.InferenceBackendBase"></a></p>
-<h2 id="inferencebackendbase-objects">InferenceBackendBase Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">InferenceBackendBase</span><span class="p">(</span><span class="n">AbstractBackend</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Base class for backends, it is only here for backwards compatibility reasons, use AbstractBackend instead</p>
 <p><a id="hannah.backends.torch_mobile"></a></p>
 <h1 id="hannahbackendstorch_mobile">hannah.backends.torch_mobile</h1>
 <p><a id="hannah.backends.torch_mobile.TorchMobileBackend"></a></p>
 <h2 id="torchmobilebackend-objects">TorchMobileBackend Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">TorchMobileBackend</span><span class="p">(</span><span class="n">InferenceBackendBase</span><span class="p">)</span>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">TorchMobileBackend</span><span class="p">(</span><span class="n">AbstractBackend</span><span class="p">)</span>
 </code></pre></div>
 
 <p>Inference backend for torch mobile</p>
@@ -3300,7 +3352,7 @@ it may return None</p>
 
 <p>Return the data loader for the dataset</p>
 <p><a id="hannah.datasets.pickle_set.PickleDataset.prepare"></a></p>
-<h4 id="prepare_1">prepare</h4>
+<h4 id="prepare_2">prepare</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 </code></pre></div>
 
@@ -3478,7 +3530,7 @@ https://github.com/acharoen/Rhode-Island-GI-VCE-Technical-Validation</p>
 </code></pre></div>
 
 <p><a id="hannah.datasets.base.AbstractDataset.prepare"></a></p>
-<h4 id="prepare_2">prepare</h4>
+<h4 id="prepare_3">prepare</h4>
 <div class="codehilite"><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="nd">@abstractmethod</span>
 <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span>
@@ -3828,6 +3880,8 @@ size: int
 <p>Example for a functional block containing conv and relu</p>
 <p><a id="hannah.nas.test.test_random_walk_constrainer"></a></p>
 <h1 id="hannahnastesttest_random_walk_constrainer">hannah.nas.test.test_random_walk_constrainer</h1>
+<p><a id="hannah.nas.test.test_searchspace_to_graph"></a></p>
+<h1 id="hannahnastesttest_searchspace_to_graph">hannah.nas.test.test_searchspace_to_graph</h1>
 <p><a id="hannah.nas.test.test_conv2d"></a></p>
 <h1 id="hannahnastesttest_conv2d">hannah.nas.test.test_conv2d</h1>
 <p><a id="hannah.nas.test.test_graph_transformer"></a></p>
@@ -3866,6 +3920,14 @@ size: int
 <h1 id="hannahnastesttest_lazy_torch">hannah.nas.test.test_lazy_torch</h1>
 <p><a id="hannah.nas.test.test_functional_executor"></a></p>
 <h1 id="hannahnastesttest_functional_executor">hannah.nas.test.test_functional_executor</h1>
+<p><a id="hannah.nas.test.test_max78000_backend"></a></p>
+<h1 id="hannahnastesttest_max78000_backend">hannah.nas.test.test_max78000_backend</h1>
+<p><a id="hannah.nas.test.test_max78000_backend.SimpleTestModule"></a></p>
+<h2 id="simpletestmodule-objects">SimpleTestModule Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">SimpleTestModule</span><span class="p">(</span><span class="n">ClassifierModule</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Simple test module for the backends</p>
 <p><a id="hannah.nas.test.test_operators"></a></p>
 <h1 id="hannahnastesttest_operators">hannah.nas.test.test_operators</h1>
 <p><a id="hannah.nas.test.test_description_ultratrail"></a></p>
