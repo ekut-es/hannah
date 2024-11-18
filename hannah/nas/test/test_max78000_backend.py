@@ -28,8 +28,6 @@ import torch
 from hannah.backends import GRPCBackend
 from hannah.backends.base import (
     ClassifierModule,
-    InferenceBackendBase,
-    ProfilingResult,
 )
 from hannah.models.ai8x.models_simplified import ai8x_search_space
 from hannah.models.embedded_vision_net.models import embedded_vision_net, search_space
