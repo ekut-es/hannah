@@ -48,9 +48,10 @@ RUN  pip install poetry
 
 
 # Copy only requirements to cache them in docker layer
-WORKDIR /deps
 COPY poetry.lock pyproject.toml /deps/
-COPY external /deps/external
+COPY external/ /deps/external/
+
+WORKDIR /deps
 
 
 # Install dependencies
