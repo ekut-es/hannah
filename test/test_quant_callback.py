@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -22,7 +22,7 @@ from hannah.modules.vision.image_classifier import ImageClassifierModule
 from hannah.quantization.callback import QuantizationCallback
 
 
-class TestModel(torch.nn.Module):
+class MyModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.conv = torch.nn.Conv2d(3, 3, 3)
@@ -39,7 +39,7 @@ class TestModel(torch.nn.Module):
 def test_quant_callback():
     callback = QuantizationCallback()
 
-    model = TestModel()
+    model = MyModel()
 
     module = ImageClassifierModule(
         None,

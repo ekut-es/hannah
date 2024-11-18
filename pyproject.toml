@@ -64,6 +64,7 @@ pytorch-lightning = "^2.1.3"
 onnx = "^1.16.0"
 spox = "^0.12.0"
 optree = "^0.11.0"
+netdeployonnx = {path = "external/netdeployonnx", develop = true}
 tensorboard = "^2.17.1"
 pymoo = {version = "^0.6.1.3", optional = true}
 zigzag-dse = {version = "^3.6.1", optional = true, python = ">=3.11"}
@@ -107,6 +108,7 @@ pyre-check = "^0.9.17"
 pytest-xdist = "^3.1.0"
 ipykernel = "^6.29.4"
 ruff = "^0.5.5"
+pytest-asyncio = "^0.24.0"
 
 
 [build-system]

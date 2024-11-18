@@ -1,0 +1,47 @@
+defaults:
+    - base_config
+    - override nas: random_nas
+    - override backend: max78000
+    - override dataset: cifar10          # Dataset configuration name
+    - override features: identity        # Feature extractor configuration name (use identity for vision datasets)
+    - override optimizer: sgd            # Optimizer config name
+    - override scheduler: 1cycle         # learning rate scheduler config name
+    - override normalizer: null          # Feature normalizer (used for quantized neural networks)
+    - override module: image_classifier  # Lightning module config for the training loop (image classifier for image classification tasks)
+    - override augmentation: weak_augment
+    - _self_
+    - override model: ai8x_net_simple           # Neural network name (only working with @search_space)
+    - override /nas/constraint_model: random_walk
+
+backend: # this should be max78000 / grpc backend
+  client_connect: localhost:28329
+  should_reraise: False
+  keepalive_timeout: 4 # maybe increase, if the connection is bad?
+  device_filter:
+  - model: VirtualDevice
+
+nas:
+  constrained_sampling_on_search: True
+  budget: 1
+  n_jobs: 1
+  predictor:
+    backend:
+      _target_: hannah.nas.performance_prediction.simple.BackendPredictor
+      # model_name: ${model.name}
+      backend: ${backend}
+
+  metrics:
+    uJ_per_weights_loading:
+      name: uJ per Weights loading
+    total_weights:
+      name: Weights
+  presample: false # presampling disable allows for faster candidates with more trash potential
+
+experiment: test_max78000_backend
+
+trainer:
+  max_epochs: 1
+  # precision: 8 # precision 8 is invalid
+
+optimizer:
+  lr: 0.3

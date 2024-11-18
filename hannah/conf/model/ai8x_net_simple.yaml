@@ -1,0 +1,12 @@
+_target_: hannah.models.ai8x.models_simplified.ai8x_search_space
+name: ai8x_net_simple
+num_classes: 10
+max_blocks: 4
+
+# constraints:
+#   - name: weights
+#     upper: 550000
+#     # lower: 250000
+#   - name: macs
+#     upper: 128000000
+#     # lower: 60000000

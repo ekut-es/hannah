@@ -1,14 +1,33 @@
+#
+# Copyright (c) 2024 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 from copy import deepcopy
 from typing import Iterator, Tuple
 import math
 import torch
+from torch.nn.modules.module import Module
 from hannah.nas.functional_operators.op import ChoiceOp, Op, Tensor, get_nodes
 from collections import defaultdict
 from torch.nn.parameter import Parameter
 
 
 class BasicExecutor(torch.nn.Module):
-    def __init__(self, net, input_node_name='input', init=None) -> None:
+    def __init__(self, net, input_node_name="input", init=None) -> None:
         super().__init__()
         self.output = deepcopy(net)
         self.input_node_name = input_node_name
@@ -23,6 +42,13 @@ class BasicExecutor(torch.nn.Module):
 
     def initialize(self):
         self.find_execution_order()
+        self.register_modules()
+
+    def register_modules(self) -> None:
+        for node in self.nodes:
+            op = self.node_dict[node]
+            if isinstance(op, torch.nn.Module):
+                self.add_module(node.replace(".", "_"), op)
 
     def initialize_tensor(self, node):
         if isinstance(node, Tensor):
@@ -45,16 +71,16 @@ class BasicExecutor(torch.nn.Module):
                     self.register_parameter(node_name, data)
             if node.name == self.input_node_name:
                 self.input = node
-            if node.name == 'running_mean':
+            if node.name == "running_mean":
                 data = torch.zeros(node.current_shape())
                 self.register_buffer(node_name, data)
-            if node.name == 'running_std':
+            if node.name == "running_std":
                 data = torch.ones(node.current_shape())
                 self.register_buffer(node_name, data)
             node.executor = self
 
     def get_data(self, id):
-        if id == 'input':
+        if id == "input":
             return self.input_data
         else:
             name = id.replace(".", "_")
@@ -139,15 +165,17 @@ class BasicExecutor(torch.nn.Module):
                 queue = [node] + queue
             else:
                 nodes.append(node)
-                dependency_dict = self.remove_from_dependency_dict(dependency_dict, node)
+                dependency_dict = self.remove_from_dependency_dict(
+                    dependency_dict, node
+                )
         self.nodes = nodes
-        self.nodes.remove('input')
+        self.nodes.remove("input")
 
     def find_active_modules(self):
         pass
 
     def forward(self, x):
-        out = {'input': x}
+        out = {"input": x}
         for node in self.nodes:
             operands = [out[n] for n in self.forward_dict[node]]
             out[node] = self.node_dict[node].forward(*operands)
