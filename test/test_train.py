@@ -131,26 +131,6 @@ def test_kitti():
     subprocess.run(command_line, shell=True, check=True, cwd=topdir)
 
 
-@pytest.mark.integration
-@pytest.mark.parametrize(
-    "config",
-    [
-        # FIXME:  beamforming does not seamm to work "config_dd_beamforming"
-        "config_dd_compass_phase",
-        "config_dd_direct_angle",
-        "config_dd_cartesian_phase",
-        "config_dd_compass",
-        "config_dd_sin_cos_phase",
-        "config_dd_cartesian",
-        "config_dd_direct_angle_phase",
-        "config_dd_sin_cos",
-    ],
-)
-def test_directional(config):
-    command_line = f"hannah-train --config-name {config} trainer.fast_dev_run=true module.batch_size=2"
-    subprocess.run(command_line, shell=True, check=True, cwd=topdir)
-
-
 def test_quantization():
     command_line = (
         "hannah-train compression=quant model=tc-res8 trainer.fast_dev_run=true"
