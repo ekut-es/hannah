@@ -219,8 +219,6 @@ def <strong>init</strong>(self, percentile, nan_strategy="warn", <strong>kwargs)
 <h1 id="hannahmodulesvisionbase">hannah.modules.vision.base</h1>
 <p><a id="hannah.modules"></a></p>
 <h1 id="hannahmodules">hannah.modules</h1>
-<p><a id="hannah.modules.angle_classifier"></a></p>
-<h1 id="hannahmodulesangle_classifier">hannah.modules.angle_classifier</h1>
 <p><a id="hannah.modules.base"></a></p>
 <h1 id="hannahmodulesbase">hannah.modules.base</h1>
 <p><a id="hannah.modules.base.ClassifierModule"></a></p>
@@ -2024,7 +2022,7 @@ interface.</p>
            <span class="n">groups</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
            <span class="n">norm</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">BNConfig</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
            <span class="n">act</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">ActConfig</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-           <span class="n">bias</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+           <span class="n">bias</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span>
 </code></pre></div>
 
 <p><strong>Arguments</strong>:</p>
@@ -2101,12 +2099,12 @@ interface.</p>
 <h4 id="conv1d">conv1d</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">conv1d</span><span class="p">(</span><span class="n">input_shape</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
            <span class="n">out_channels</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-           <span class="n">kernel_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-           <span class="n">stride</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+           <span class="n">kernel_size</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+           <span class="n">stride</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
            <span class="n">bias</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-           <span class="n">padding</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-           <span class="n">dilation</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-           <span class="n">groups</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+           <span class="n">padding</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+           <span class="n">dilation</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+           <span class="n">groups</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
            <span class="n">norm</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">BNConfig</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
            <span class="n">act</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">ActConfig</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
            <span class="n">out_quant</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">]</span>
@@ -3882,24 +3880,16 @@ size: int
 <h1 id="hannahnastesttest_random_walk_constrainer">hannah.nas.test.test_random_walk_constrainer</h1>
 <p><a id="hannah.nas.test.test_searchspace_to_graph"></a></p>
 <h1 id="hannahnastesttest_searchspace_to_graph">hannah.nas.test.test_searchspace_to_graph</h1>
-<p><a id="hannah.nas.test.test_conv2d"></a></p>
-<h1 id="hannahnastesttest_conv2d">hannah.nas.test.test_conv2d</h1>
-<p><a id="hannah.nas.test.test_graph_transformer"></a></p>
-<h1 id="hannahnastesttest_graph_transformer">hannah.nas.test.test_graph_transformer</h1>
 <p><a id="hannah.nas.test.test_mutator"></a></p>
 <h1 id="hannahnastesttest_mutator">hannah.nas.test.test_mutator</h1>
-<p><a id="hannah.nas.test.test_darts_space"></a></p>
-<h1 id="hannahnastesttest_darts_space">hannah.nas.test.test_darts_space</h1>
+<p><a id="hannah.nas.test.test_target_desc_markdown"></a></p>
+<h1 id="hannahnastesttest_target_desc_markdown">hannah.nas.test.test_target_desc_markdown</h1>
 <p><a id="hannah.nas.test.test_nas_graph_dataset_for_predictor"></a></p>
 <h1 id="hannahnastesttest_nas_graph_dataset_for_predictor">hannah.nas.test.test_nas_graph_dataset_for_predictor</h1>
 <p><a id="hannah.nas.test.test_conditions"></a></p>
 <h1 id="hannahnastesttest_conditions">hannah.nas.test.test_conditions</h1>
-<p><a id="hannah.nas.test.test_adjacency"></a></p>
-<h1 id="hannahnastesttest_adjacency">hannah.nas.test.test_adjacency</h1>
 <p><a id="hannah.nas.test.test_functional_training"></a></p>
 <h1 id="hannahnastesttest_functional_training">hannah.nas.test.test_functional_training</h1>
-<p><a id="hannah.nas.test.test_dataflow"></a></p>
-<h1 id="hannahnastesttest_dataflow">hannah.nas.test.test_dataflow</h1>
 <p><a id="hannah.nas.test.test_arithmetic"></a></p>
 <h1 id="hannahnastesttest_arithmetic">hannah.nas.test.test_arithmetic</h1>
 <p><a id="hannah.nas.test.test_arithmetic.test_unimplemeted"></a></p>
@@ -3930,34 +3920,20 @@ size: int
 <p>Simple test module for the backends</p>
 <p><a id="hannah.nas.test.test_operators"></a></p>
 <h1 id="hannahnastesttest_operators">hannah.nas.test.test_operators</h1>
-<p><a id="hannah.nas.test.test_description_ultratrail"></a></p>
-<h1 id="hannahnastesttest_description_ultratrail">hannah.nas.test.test_description_ultratrail</h1>
 <p><a id="hannah.nas.test.test_parameter_scopes"></a></p>
 <h1 id="hannahnastesttest_parameter_scopes">hannah.nas.test.test_parameter_scopes</h1>
-<p><a id="hannah.nas.test.test_repeat"></a></p>
-<h1 id="hannahnastesttest_repeat">hannah.nas.test.test_repeat</h1>
-<p><a id="hannah.nas.test.test_op_to_torch_conversion"></a></p>
-<h1 id="hannahnastesttest_op_to_torch_conversion">hannah.nas.test.test_op_to_torch_conversion</h1>
-<p><a id="hannah.nas.test.test_z3"></a></p>
-<h1 id="hannahnastesttest_z3">hannah.nas.test.test_z3</h1>
 <p><a id="hannah.nas.test.test_onnx_export"></a></p>
 <h1 id="hannahnastesttest_onnx_export">hannah.nas.test.test_onnx_export</h1>
 <p><a id="hannah.nas.test.test_parameters"></a></p>
 <h1 id="hannahnastesttest_parameters">hannah.nas.test.test_parameters</h1>
 <p><a id="hannah.nas.test.test_parametrize"></a></p>
 <h1 id="hannahnastesttest_parametrize">hannah.nas.test.test_parametrize</h1>
-<p><a id="hannah.nas.test.test_mobilenet"></a></p>
-<h1 id="hannahnastesttest_mobilenet">hannah.nas.test.test_mobilenet</h1>
-<p><a id="hannah.nas.test.test_dfg_removal"></a></p>
-<h1 id="hannahnastesttest_dfg_removal">hannah.nas.test.test_dfg_removal</h1>
-<p><a id="hannah.nas.test.test_constraint_model"></a></p>
-<h1 id="hannahnastesttest_constraint_model">hannah.nas.test.test_constraint_model</h1>
-<p><a id="hannah.nas.test.test_scoping"></a></p>
-<h1 id="hannahnastesttest_scoping">hannah.nas.test.test_scoping</h1>
-<p><a id="hannah.nas.test.test_add"></a></p>
-<h1 id="hannahnastesttest_add">hannah.nas.test.test_add</h1>
-<p><a id="hannah.nas.test.network"></a></p>
-<h1 id="hannahnastestnetwork">hannah.nas.test.network</h1>
+<p><a id="hannah.nas.test.test_fake_quantize"></a></p>
+<h1 id="hannahnastesttest_fake_quantize">hannah.nas.test.test_fake_quantize</h1>
+<p><a id="hannah.nas.test.test_tvm_backend"></a></p>
+<h1 id="hannahnastesttest_tvm_backend">hannah.nas.test.test_tvm_backend</h1>
+<p><a id="hannah.nas.test.test_target_desc_search_space"></a></p>
+<h1 id="hannahnastesttest_target_desc_search_space">hannah.nas.test.test_target_desc_search_space</h1>
 <p><a id="hannah.nas.test.test_nn_meter"></a></p>
 <h1 id="hannahnastesttest_nn_meter">hannah.nas.test.test_nn_meter</h1>
 <p><a id="hannah.nas.utils"></a></p>
@@ -4341,36 +4317,8 @@ validation : bool, optional
 <p>This generates a standard pytorch.fx graph module containing only replacing the search space parametrizable functions with their equivalent form torch.functional`</p>
 <p><a id="hannah.nas"></a></p>
 <h1 id="hannahnas">hannah.nas</h1>
-<p><a id="hannah.nas.spaces.darts.darts_space"></a></p>
-<h1 id="hannahnasspacesdartsdarts_space">hannah.nas.spaces.darts.darts_space</h1>
 <p><a id="hannah.nas.spaces.mobilenet.mobilenet"></a></p>
 <h1 id="hannahnasspacesmobilenetmobilenet">hannah.nas.spaces.mobilenet.mobilenet</h1>
-<p><a id="hannah.nas.constraints.dfg_constraint_model"></a></p>
-<h1 id="hannahnasconstraintsdfg_constraint_model">hannah.nas.constraints.dfg_constraint_model</h1>
-<p><a id="hannah.nas.constraints.dfg_constraint_model.ConstraintModel"></a></p>
-<h2 id="constraintmodel-objects">ConstraintModel Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">ConstraintModel</span><span class="p">()</span>
-</code></pre></div>
-
-<p><a id="hannah.nas.constraints.dfg_constraint_model.ConstraintModel.process_optype"></a></p>
-<h4 id="process_optype">process_optype</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">process_optype</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="n">OpType</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Extracts the constraints based on the type of op.
-New variables are added to self.vars and the constraints
-are added to the solver.</p>
-<h2 id="parameters_21">Parameters</h2>
-<p>op : OpType</p>
-<p><a id="hannah.nas.constraints.dfg_constraint_model.ConstraintModel.process_tensor"></a></p>
-<h4 id="process_tensor">process_tensor</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">process_tensor</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Goes through all axis and extracts the constraints for
-the respective axis sizes</p>
-<h2 id="parameters_22">Parameters</h2>
-<p>tensor : Tensor</p>
 <p><a id="hannah.nas.constraints.constraint_model"></a></p>
 <h1 id="hannahnasconstraintsconstraint_model">hannah.nas.constraints.constraint_model</h1>
 <p><a id="hannah.nas.constraints.random_walk"></a></p>
@@ -4467,115 +4415,6 @@ the respective axis sizes</p>
 </code></pre></div>
 
 <p>Tell the result of a task</p>
-<p><a id="hannah.nas.dataflow.scoping_utils"></a></p>
-<h1 id="hannahnasdataflowscoping_utils">hannah.nas.dataflow.scoping_utils</h1>
-<p><a id="hannah.nas.dataflow.quantization_type"></a></p>
-<h1 id="hannahnasdataflowquantization_type">hannah.nas.dataflow.quantization_type</h1>
-<p><a id="hannah.nas.dataflow.compression_type"></a></p>
-<h1 id="hannahnasdataflowcompression_type">hannah.nas.dataflow.compression_type</h1>
-<p><a id="hannah.nas.dataflow.dataflow_graph"></a></p>
-<h1 id="hannahnasdataflowdataflow_graph">hannah.nas.dataflow.dataflow_graph</h1>
-<p><a id="hannah.nas.dataflow.dataflow_graph.DataFlowGraph"></a></p>
-<h2 id="dataflowgraph-objects">DataFlowGraph Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="nd">@parametrize</span>
-<span class="k">class</span> <span class="nc">DataFlowGraph</span><span class="p">(</span><span class="n">TensorExpression</span><span class="p">)</span>
-</code></pre></div>
-
-<p><a id="hannah.nas.dataflow.dataflow_graph.DataFlowGraph.link_users"></a></p>
-<h4 id="link_users">link_users</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">link_users</span><span class="p">()</span>
-</code></pre></div>
-
-<p>Link the DFG to its users and the users of the DFG to
-the DFG</p>
-<p><a id="hannah.nas.dataflow.dataflow_graph.collect_users"></a></p>
-<h4 id="collect_users">collect_users</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">collect_users</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Traverse graph starting from <code>node</code> and collect
-all users (including users from subsequent nodes).
-If a node_b is NOT in collect_users(node_a), this means
-that node_b is either BEFORE node_a in the graph OR it is
-in a parallel branch.</p>
-<h2 id="parameters_23">Parameters</h2>
-<p>node : <em>type</em>
-    <em>description</em></p>
-<h2 id="returns_9">Returns</h2>
-<p><em>type</em>
-    <em>description</em></p>
-<p><a id="hannah.nas.dataflow.dataflow_graph.find_first_input"></a></p>
-<h4 id="find_first_input">find_first_input</h4>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">find_first_input</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
-</code></pre></div>
-
-<p>Recusively traverses the graph from the given node
-back to its first input. NOTE: The traversal is via OPERANDS
-and not OUTPUT, meaning that e.g. weight Tensors that are
-included in Ops in a DFG are not returned</p>
-<h2 id="parameters_24">Parameters</h2>
-<p>node : <em>type</em>
-    <em>description</em></p>
-<h2 id="returns_10">Returns</h2>
-<p><em>type</em>
-    <em>description</em></p>
-<p><a id="hannah.nas.dataflow.tensor_expression"></a></p>
-<h1 id="hannahnasdataflowtensor_expression">hannah.nas.dataflow.tensor_expression</h1>
-<p><a id="hannah.nas.dataflow.transformations.graph_tranformer"></a></p>
-<h1 id="hannahnasdataflowtransformationsgraph_tranformer">hannah.nas.dataflow.transformations.graph_tranformer</h1>
-<p><a id="hannah.nas.dataflow.registry"></a></p>
-<h1 id="hannahnasdataflowregistry">hannah.nas.dataflow.registry</h1>
-<p><a id="hannah.nas.dataflow.register_ops"></a></p>
-<h1 id="hannahnasdataflowregister_ops">hannah.nas.dataflow.register_ops</h1>
-<p><a id="hannah.nas.dataflow"></a></p>
-<h1 id="hannahnasdataflow">hannah.nas.dataflow</h1>
-<p><a id="hannah.nas.dataflow.dataflow_utils"></a></p>
-<h1 id="hannahnasdataflowdataflow_utils">hannah.nas.dataflow.dataflow_utils</h1>
-<p><a id="hannah.nas.dataflow.axis_type"></a></p>
-<h1 id="hannahnasdataflowaxis_type">hannah.nas.dataflow.axis_type</h1>
-<p><a id="hannah.nas.dataflow.axis_type.AxisTuple"></a></p>
-<h2 id="axistuple-objects">AxisTuple Objects</h2>
-<div class="codehilite"><pre><span></span><code><span class="nd">@parametrize</span>
-<span class="k">class</span> <span class="nc">AxisTuple</span><span class="p">()</span>
-</code></pre></div>
-
-<p>Used to have the axis dict as a parametrized object</p>
-<p><a id="hannah.nas.dataflow.tensor_type"></a></p>
-<h1 id="hannahnasdataflowtensor_type">hannah.nas.dataflow.tensor_type</h1>
-<p><a id="hannah.nas.dataflow.tensor"></a></p>
-<h1 id="hannahnasdataflowtensor">hannah.nas.dataflow.tensor</h1>
-<p><a id="hannah.nas.dataflow.optional_op"></a></p>
-<h1 id="hannahnasdataflowoptional_op">hannah.nas.dataflow.optional_op</h1>
-<p><a id="hannah.nas.dataflow.analysis.dataflow_analysis"></a></p>
-<h1 id="hannahnasdataflowanalysisdataflow_analysis">hannah.nas.dataflow.analysis.dataflow_analysis</h1>
-<p><a id="hannah.nas.dataflow.ops.add"></a></p>
-<h1 id="hannahnasdataflowopsadd">hannah.nas.dataflow.ops.add</h1>
-<p><a id="hannah.nas.dataflow.ops.conv2d"></a></p>
-<h1 id="hannahnasdataflowopsconv2d">hannah.nas.dataflow.ops.conv2d</h1>
-<p><a id="hannah.nas.dataflow.ops.dropout"></a></p>
-<h1 id="hannahnasdataflowopsdropout">hannah.nas.dataflow.ops.dropout</h1>
-<p><a id="hannah.nas.dataflow.ops"></a></p>
-<h1 id="hannahnasdataflowops">hannah.nas.dataflow.ops</h1>
-<p><a id="hannah.nas.dataflow.ops.batch_nom"></a></p>
-<h1 id="hannahnasdataflowopsbatch_nom">hannah.nas.dataflow.ops.batch_nom</h1>
-<p><a id="hannah.nas.dataflow.ops.identity"></a></p>
-<h1 id="hannahnasdataflowopsidentity">hannah.nas.dataflow.ops.identity</h1>
-<p><a id="hannah.nas.dataflow.ops.linear"></a></p>
-<h1 id="hannahnasdataflowopslinear">hannah.nas.dataflow.ops.linear</h1>
-<p><a id="hannah.nas.dataflow.ops.sum"></a></p>
-<h1 id="hannahnasdataflowopssum">hannah.nas.dataflow.ops.sum</h1>
-<p><a id="hannah.nas.dataflow.ops.pooling"></a></p>
-<h1 id="hannahnasdataflowopspooling">hannah.nas.dataflow.ops.pooling</h1>
-<p><a id="hannah.nas.dataflow.ops.concat"></a></p>
-<h1 id="hannahnasdataflowopsconcat">hannah.nas.dataflow.ops.concat</h1>
-<p><a id="hannah.nas.dataflow.ops.relu"></a></p>
-<h1 id="hannahnasdataflowopsrelu">hannah.nas.dataflow.ops.relu</h1>
-<p><a id="hannah.nas.dataflow.data_type"></a></p>
-<h1 id="hannahnasdataflowdata_type">hannah.nas.dataflow.data_type</h1>
-<p><a id="hannah.nas.dataflow.op_type"></a></p>
-<h1 id="hannahnasdataflowop_type">hannah.nas.dataflow.op_type</h1>
-<p><a id="hannah.nas.dataflow.repeat"></a></p>
-<h1 id="hannahnasdataflowrepeat">hannah.nas.dataflow.repeat</h1>
 <p><a id="hannah.nas.parameters.parameters"></a></p>
 <h1 id="hannahnasparametersparameters">hannah.nas.parameters.parameters</h1>
 <p><a id="hannah.nas.parameters"></a></p>
@@ -4608,26 +4447,182 @@ included in Ops in a DFG are not returned</p>
 <h1 id="hannahnasexpressionsconditions">hannah.nas.expressions.conditions</h1>
 <p><a id="hannah.nas.expressions.metrics"></a></p>
 <h1 id="hannahnasexpressionsmetrics">hannah.nas.expressions.metrics</h1>
-<p><a id="hannah.nas.hardware_description.ultratrail"></a></p>
-<h1 id="hannahnashardware_descriptionultratrail">hannah.nas.hardware_description.ultratrail</h1>
-<p><a id="hannah.nas.hardware_description.description"></a></p>
-<h1 id="hannahnashardware_descriptiondescription">hannah.nas.hardware_description.description</h1>
+<p><a id="hannah.nas.hardware_description.testing"></a></p>
+<h1 id="hannahnashardware_descriptiontesting">hannah.nas.hardware_description.testing</h1>
+<p><a id="hannah.nas.hardware_description.testing.device"></a></p>
+<h1 id="hannahnashardware_descriptiontestingdevice">hannah.nas.hardware_description.testing.device</h1>
+<p>A very simple device description containing supporting only conv2d -&gt; relu -&gt; max_pool2d</p>
+<p><a id="hannah.nas.hardware_description.registry"></a></p>
+<h1 id="hannahnashardware_descriptionregistry">hannah.nas.hardware_description.registry</h1>
+<p><a id="hannah.nas.hardware_description.devices.eyeriss"></a></p>
+<h1 id="hannahnashardware_descriptiondeviceseyeriss">hannah.nas.hardware_description.devices.eyeriss</h1>
+<p><a id="hannah.nas.hardware_description.devices.simple"></a></p>
+<h1 id="hannahnashardware_descriptiondevicessimple">hannah.nas.hardware_description.devices.simple</h1>
+<p><a id="hannah.nas.hardware_description.devices"></a></p>
+<h1 id="hannahnashardware_descriptiondevices">hannah.nas.hardware_description.devices</h1>
+<p><a id="hannah.nas.hardware_description.devices.vanilla"></a></p>
+<h1 id="hannahnashardware_descriptiondevicesvanilla">hannah.nas.hardware_description.devices.vanilla</h1>
 <p><a id="hannah.nas.hardware_description"></a></p>
 <h1 id="hannahnashardware_description">hannah.nas.hardware_description</h1>
 <p><a id="hannah.nas.hardware_description.device"></a></p>
 <h1 id="hannahnashardware_descriptiondevice">hannah.nas.hardware_description.device</h1>
+<p><a id="hannah.nas.hardware_description.device.Device"></a></p>
+<h2 id="device-objects">Device Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">Device</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">DeviceMeta</span><span class="p">)</span>
+</code></pre></div>
+
+<p><a id="hannah.nas.hardware_description.device.Device.add_op"></a></p>
+<h4 id="add_op">add_op</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">add_op</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+           <span class="n">graph</span><span class="p">:</span> <span class="n">DataFlowGraph</span><span class="p">,</span>
+           <span class="n">constraints</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Constraint</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Adds an operation to the device.</p>
+<p><a id="hannah.nas.hardware_description.backend.utils"></a></p>
+<h1 id="hannahnashardware_descriptionbackendutils">hannah.nas.hardware_description.backend.utils</h1>
+<p>Utilities for the hardware description backend generation.</p>
+<p>Most of them should be moved to the general search space module.</p>
+<p><a id="hannah.nas.hardware_description.backend.utils.all_nodes"></a></p>
+<h4 id="all_nodes">all_nodes</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">all_nodes</span><span class="p">(</span><span class="n">search_space</span><span class="p">:</span> <span class="n">BaseNode</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Return all nodes in the search space.</p>
+<p><a id="hannah.nas.hardware_description.backend"></a></p>
+<h1 id="hannahnashardware_descriptionbackend">hannah.nas.hardware_description.backend</h1>
+<p>Backends for the hannah target descriptions.</p>
+<p>These backend descritptions can be used to generate translate the target descritption to different data formats.</p>
+<p><a id="hannah.nas.hardware_description.backend.markdown"></a></p>
+<h1 id="hannahnashardware_descriptionbackendmarkdown">hannah.nas.hardware_description.backend.markdown</h1>
+<p>Translating target descriptions to markdown data sheets.</p>
+<p><a id="hannah.nas.hardware_description.backend.markdown.MarkdownBackend"></a></p>
+<h2 id="markdownbackend-objects">MarkdownBackend Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">MarkdownBackend</span><span class="p">(</span><span class="n">DescriptionBackend</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Generator for markdown data sheets from target devices.</p>
+<p><a id="hannah.nas.hardware_description.backend.markdown.MarkdownBackend.generate"></a></p>
+<h4 id="generate">generate</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">device</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+
+<p>Generates a markdown description from a target device meta model.</p>
+<p><a id="hannah.nas.hardware_description.backend.base"></a></p>
+<h1 id="hannahnashardware_descriptionbackendbase">hannah.nas.hardware_description.backend.base</h1>
+<p><a id="hannah.nas.hardware_description.backend.base.DescriptionBackend"></a></p>
+<h2 id="descriptionbackend-objects">DescriptionBackend Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">DescriptionBackend</span><span class="p">(</span><span class="n">ABC</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Abstract base class for generating tool specific descriptions from target devices.</p>
+<p><a id="hannah.nas.hardware_description.backend.base.DescriptionBackend.generate"></a></p>
+<h4 id="generate_1">generate</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">device</span><span class="p">:</span> <span class="n">Device</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span>
+</code></pre></div>
+
+<p>Generates a tool specific description from a target device meta model.</p>
+<p><a id="hannah.nas.hardware_description.backend.base.DescriptionBackend.save"></a></p>
+<h4 id="save">save</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">device</span><span class="p">:</span> <span class="n">Device</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Saves a tool specific description to a file. if supported by the backend.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah"></a></p>
+<h1 id="hannahnashardware_descriptionbackendhannah">hannah.nas.hardware_description.backend.hannah</h1>
+<p>Translates target patterns to be applied on the hannah neural network search space descriptions.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah.MatchedRegion"></a></p>
+<h2 id="matchedregion-objects">MatchedRegion Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">MatchedRegion</span><span class="p">()</span>
+</code></pre></div>
+
+<p>A matched region of a hannah pattern.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah.HannahPattern"></a></p>
+<h2 id="hannahpattern-objects">HannahPattern Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">HannahPattern</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Pattern for hannah search space descriptions.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah.HannahPattern.match"></a></p>
+<h4 id="match">match</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Matches the pattern on a search space.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah.HannahMatcher"></a></p>
+<h2 id="hannahmatcher-objects">HannahMatcher Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">HannahMatcher</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Matcher for hannah patterns.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah.HannahMatcher.run"></a></p>
+<h4 id="run_2">run</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="n">search_space</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Runs the matcher on a search space.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah.HannahMatcher.matches"></a></p>
+<h4 id="matches">matches</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span> <span class="nf">matches</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">MatchedRegion</span><span class="p">]</span>
+</code></pre></div>
+
+<p>Returns the matched regions.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah.HannahBackend"></a></p>
+<h2 id="hannahbackend-objects">HannahBackend Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">HannahBackend</span><span class="p">(</span><span class="n">DescriptionBackend</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Generator for hannah data sheets from target devices.</p>
+<p><a id="hannah.nas.hardware_description.backend.hannah.HannahBackend.generate"></a></p>
+<h4 id="generate_2">generate</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">device</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HannahMatcher</span>
+</code></pre></div>
+
+<p>Generates a hannah description from a target device meta model.</p>
+<p><a id="hannah.nas.hardware_description.backend.tvm"></a></p>
+<h1 id="hannahnashardware_descriptionbackendtvm">hannah.nas.hardware_description.backend.tvm</h1>
+<p><a id="hannah.nas.hardware_description.__main__"></a></p>
+<h1 id="hannahnashardware_description__main__">hannah.nas.hardware_description.__main__</h1>
+<p>Implementation of hannah tooling for handling hardware descriptions, and generating backends.</p>
+<p><a id="hannah.nas.hardware_description.performance_prediction"></a></p>
+<h1 id="hannahnashardware_descriptionperformance_prediction">hannah.nas.hardware_description.performance_prediction</h1>
 <p><a id="hannah.nas.hardware_description.memory_type"></a></p>
 <h1 id="hannahnashardware_descriptionmemory_type">hannah.nas.hardware_description.memory_type</h1>
 <p><a id="hannah.nas.__main__"></a></p>
 <h1 id="hannahnas__main__">hannah.nas.__main__</h1>
 <p><a id="hannah.nas.graph_conversion"></a></p>
 <h1 id="hannahnasgraph_conversion">hannah.nas.graph_conversion</h1>
+<p><a id="hannah.nas.graph_conversion.NamedTensor"></a></p>
+<h2 id="namedtensor-objects">NamedTensor Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">NamedTensor</span><span class="p">()</span>
+</code></pre></div>
+
+<p><a id="hannah.nas.graph_conversion.NamedTensor.tensor"></a></p>
+<h4 id="tensor">tensor</h4>
+<p>FIXME: this probably is not the intended type</p>
 <p><a id="hannah.nas.core.parametrized"></a></p>
 <h1 id="hannahnascoreparametrized">hannah.nas.core.parametrized</h1>
 <p><a id="hannah.nas.core"></a></p>
 <h1 id="hannahnascore">hannah.nas.core</h1>
 <p><a id="hannah.nas.core.expression"></a></p>
 <h1 id="hannahnascoreexpression">hannah.nas.core.expression</h1>
+<p><a id="hannah.nas.functional_operators.quant"></a></p>
+<h1 id="hannahnasfunctional_operatorsquant">hannah.nas.functional_operators.quant</h1>
+<p><a id="hannah.nas.functional_operators.quant.FixedQuantize"></a></p>
+<h2 id="fixedquantize-objects">FixedQuantize Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">FixedQuantize</span><span class="p">(</span><span class="n">BaseQuantize</span><span class="p">)</span>
+</code></pre></div>
+
+<p>A fixed quantizer that quantizes the input tensor to a fixed scale and zero point.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>scale</code> <em>float</em> - The scale of the quantized values.</li>
+<li><code>zero_point</code> <em>float</em> - The zero point of the quantized values.</li>
+<li><code>dtype</code> <em>DataType</em> - The datatype of the quantized values.</li>
+</ul>
 <p><a id="hannah.nas.functional_operators.shapes"></a></p>
 <h1 id="hannahnasfunctional_operatorsshapes">hannah.nas.functional_operators.shapes</h1>
 <p><a id="hannah.nas.functional_operators.shapes.padding_expression"></a></p>
@@ -4639,12 +4634,12 @@ included in Ops in a DFG are not returned</p>
 the padding is such that the output dimension is kept the same(stride=1) or halved(stride=2).
 Note: If the input dimension is 1 and stride = 2, the calculated padding will result in
 an output with also dimension 1.</p>
-<h2 id="parameters_25">Parameters</h2>
+<h2 id="parameters_21">Parameters</h2>
 <p>kernel_size : Union[int, Expression]
 stride : Union[int, Expression]
 dilation : Union[int, Expression], optional
 <em>description</em>, by default 1</p>
-<h2 id="returns_11">Returns</h2>
+<h2 id="returns_9">Returns</h2>
 <p>Expression</p>
 <p><a id="hannah.nas.functional_operators.op"></a></p>
 <h1 id="hannahnasfunctional_operatorsop">hannah.nas.functional_operators.op</h1>
@@ -4656,6 +4651,13 @@ dilation : Union[int, Expression], optional
 <p>Decorator defining a scope in a search space. The id of every subcomponent (operators or lower-hierarchy scopes)
 enclosed in a function decorated with this will be prefixed with the name of the function, creating a
 hierarchical scope.</p>
+<p><a id="hannah.nas.functional_operators.op.context"></a></p>
+<h4 id="context">context</h4>
+<div class="codehilite"><pre><span></span><code><span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">context</span><span class="p">()</span>
+</code></pre></div>
+
+<p>A contextmanager to provide a global scope stack for the hannah ir</p>
 <p><a id="hannah.nas.functional_operators.op.search_space"></a></p>
 <h4 id="search_space">search_space</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">search_space</span><span class="p">(</span><span class="n">function</span><span class="p">)</span>
@@ -4664,6 +4666,15 @@ hierarchical scope.</p>
 <p>Decorator to define a search space. For correct scoping,
 a search space containing functional ops must be enclosed by
 a function decorated with @search_space.</p>
+<p><a id="hannah.nas.functional_operators.op.BaseNode"></a></p>
+<h2 id="basenode-objects">BaseNode Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">BaseNode</span><span class="p">(</span><span class="n">ABC</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Base class for all nodes in the operator description, it defines the basic inteface used by all members of the data flow graph.</p>
+<p><a id="hannah.nas.functional_operators.op.BaseNode.id"></a></p>
+<h4 id="id">id</h4>
+<p>Fully qualified name of the node, e.g., "net.res.conv1" or "net.res.conv1.weight"</p>
 <p><a id="hannah.nas.functional_operators.op.Bypass"></a></p>
 <h2 id="bypass-objects">Bypass Objects</h2>
 <div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">Bypass</span><span class="p">(</span><span class="n">Op</span><span class="p">)</span>
@@ -4712,8 +4723,67 @@ a function decorated with @search_space.</p>
 <h1 id="hannahnasfunctional_operatorsexecutor">hannah.nas.functional_operators.executor</h1>
 <p><a id="hannah.nas.functional_operators.lazy"></a></p>
 <h1 id="hannahnasfunctional_operatorslazy">hannah.nas.functional_operators.lazy</h1>
-<p><a id="hannah.nas.functional_operators.visualizer"></a></p>
-<h1 id="hannahnasfunctional_operatorsvisualizer">hannah.nas.functional_operators.visualizer</h1>
+<p><a id="hannah.nas.functional_operators.data_type"></a></p>
+<h1 id="hannahnasfunctional_operatorsdata_type">hannah.nas.functional_operators.data_type</h1>
+<p><a id="hannah.nas.functional_operators.data_type.IntType"></a></p>
+<h2 id="inttype-objects">IntType Objects</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">IntType</span><span class="p">(</span><span class="n">DataType</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Describe the properties of an integer datatype.add()</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>signed</code> <em>bool, optional</em> - Whether the integer is signed or not. Defaults to True.</li>
+<li><code>bits</code> <em>int, optional</em> - The number of bits used to represent the integer. Defaults to 8.</li>
+<li><code>reduce_range</code> <em>bool, optional</em> - Whether to reduce the range of the integer to make the dataranges symmetric around zero.  Only applies to signed datatypes. Defaults to Fa
+  lse.</li>
+</ul>
+<p><a id="hannah.nas.functional_operators.utils.visit"></a></p>
+<h1 id="hannahnasfunctional_operatorsutilsvisit">hannah.nas.functional_operators.utils.visit</h1>
+<p><a id="hannah.nas.functional_operators.utils.visit.post_order"></a></p>
+<h4 id="post_order">post_order</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">post_order</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="n">BaseNode</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Visits the operator graph in post order</p>
+<p><a id="hannah.nas.functional_operators.utils.visit.reverse_post_order"></a></p>
+<h4 id="reverse_post_order">reverse_post_order</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">reverse_post_order</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="n">BaseNode</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Visits the operator graph in reverse post order</p>
+<p><a id="hannah.nas.functional_operators.utils.viz"></a></p>
+<h1 id="hannahnasfunctional_operatorsutilsviz">hannah.nas.functional_operators.utils.viz</h1>
+<p><a id="hannah.nas.functional_operators.utils.viz.as_nx_graph"></a></p>
+<h4 id="as_nx_graph">as_nx_graph</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">as_nx_graph</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="s2">&quot;BaseNode&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span>
+</code></pre></div>
+
+<p>Returns a networkx graph representation of the operator graph</p>
+<p><a id="hannah.nas.functional_operators.utils.viz.as_string"></a></p>
+<h4 id="as_string">as_string</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">as_string</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="s2">&quot;BaseNode&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+
+<p>Returns a string representation of the operator graph</p>
+<p><a id="hannah.nas.functional_operators.utils.viz.as_dot"></a></p>
+<h4 id="as_dot">as_dot</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">as_dot</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="s2">&quot;BaseNode&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+
+<p>Returns a dot representation of the operator graph</p>
+<p><a id="hannah.nas.functional_operators.utils.viz.write_png"></a></p>
+<h4 id="write_png">write_png</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">write_png</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="s2">&quot;BaseNode&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Writes a png file of the operator graph</p>
+<p><a id="hannah.nas.functional_operators.utils.viz.write_pdf"></a></p>
+<h4 id="write_pdf">write_pdf</h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">write_pdf</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="s2">&quot;BaseNode&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Writes a pdf file of the operator graph</p>
 <p><a id="hannah.nas.config"></a></p>
 <h1 id="hannahnasconfig">hannah.nas.config</h1>
 <p><a id="hannah.nas.config.Scalar"></a></p>
@@ -4724,8 +4794,6 @@ a function decorated with @search_space.</p>
 
 <p>Representation of all the options to define
 a scalar.</p>
-<p><a id="hannah.nas.ops"></a></p>
-<h1 id="hannahnasops">hannah.nas.ops</h1>
 <p><a id="hannah.nas.export.onnx"></a></p>
 <h1 id="hannahnasexportonnx">hannah.nas.export.onnx</h1>
 <p><a id="hannah.nas.export.onnx.eval"></a></p>
@@ -4809,6 +4877,8 @@ class and multi-label loss function.</p>
 </code></pre></div>
 
 <p>A contextmanager to set deterministic algorithms</p>
+<p><a id="hannah.utils.registry"></a></p>
+<h1 id="hannahutilsregistry">hannah.utils.registry</h1>
 <p><a id="hannah.utils.logger"></a></p>
 <h1 id="hannahutilslogger">hannah.utils.logger</h1>
 <p><a id="hannah.utils.logger.JSONLogger"></a></p>
@@ -4878,7 +4948,7 @@ constructor's version parameter instead of <code>None</code> or an int.</p>
 
 <p>Record metrics.</p>
 <p><a id="hannah.utils.logger._ExperimentWriter.save"></a></p>
-<h4 id="save">save</h4>
+<h4 id="save_1">save</h4>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">save</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 
