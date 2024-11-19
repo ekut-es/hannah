@@ -22,7 +22,6 @@ from collections import defaultdict
 from typing import Any, Optional, Sequence, Tuple
 
 import kornia
-import kornia.augmentation as K
 import matplotlib.pyplot as plt
 import torch
 import torch.utils.data as data
@@ -67,7 +66,9 @@ class VisionBaseModule(ClassifierModule):
             msglogger.info("  Train Set (Labeled): %d", len(self.train_set))
             msglogger.info(
                 "  Train Set (Unlabled): %d",
-                len(self.train_set_unlabeled) if self.train_set_unlabeled is not None else 0,
+                len(self.train_set_unlabeled)
+                if self.train_set_unlabeled is not None
+                else 0,
             )
             msglogger.info("  Dev Set: %d", len(self.dev_set))
             msglogger.info("  Test Set: %d", len(self.test_set))
@@ -75,7 +76,9 @@ class VisionBaseModule(ClassifierModule):
         if self.test_set is not None:
             example_data = self._decode_batch(self.test_set[0])["data"].unsqueeze(0)
         else:
-            msglogger.warning("No test set found, using random data as example input array")
+            msglogger.warning(
+                "No test set found, using random data as example input array"
+            )
             example_data = torch.randn(1, 3, 224, 224, device=self.device)
 
         if not isinstance(example_data, torch.Tensor):
@@ -115,7 +118,9 @@ class VisionBaseModule(ClassifierModule):
                 self.train_set.mean,
                 self.train_set.std,
             )
-            self.input_normalizer = kornia.enhance.Normalize(self.train_set.mean, self.train_set.std)
+            self.input_normalizer = kornia.enhance.Normalize(
+                self.train_set.mean, self.train_set.std
+            )
 
         # Setup Augmentations
         self.default_augmentation = torch.nn.Identity()
@@ -126,21 +131,35 @@ class VisionBaseModule(ClassifierModule):
         # Setup Metrics
         metrics = {}
         if self.num_classes > 0:
-            self.test_confusion = ConfusionMatrix("multiclass", num_classes=self.num_classes)
+            self.test_confusion = ConfusionMatrix(
+                "multiclass", num_classes=self.num_classes
+            )
 
-            self.test_roc = ROC("multiclass", num_classes=self.num_classes, thresholds=10)
-            self.test_pr_curve = PrecisionRecallCurve("multiclass", num_classes=self.num_classes, thresholds=10)
+            self.test_roc = ROC(
+                "multiclass", num_classes=self.num_classes, thresholds=10
+            )
+            self.test_pr_curve = PrecisionRecallCurve(
+                "multiclass", num_classes=self.num_classes, thresholds=10
+            )
 
             for step_name in ["train", "val", "test"]:
                 step_metrics = MetricCollection(
                     {
-                        f"{step_name}_accuracy": Accuracy("multiclass", num_classes=self.num_classes),
-                        f"{step_name}_error": Error("multiclass", num_classes=self.num_classes),
+                        f"{step_name}_accuracy": Accuracy(
+                            "multiclass", num_classes=self.num_classes
+                        ),
+                        f"{step_name}_error": Error(
+                            "multiclass", num_classes=self.num_classes
+                        ),
                         f"{step_name}_precision": Precision(
                             "multiclass", num_classes=self.num_classes, average="macro"
                         ),
-                        f"{step_name}_recall": Recall("multiclass", num_classes=self.num_classes, average="macro"),
-                        f"{step_name}_f1": F1Score("multiclass", num_classes=self.num_classes, average="macro"),
+                        f"{step_name}_recall": Recall(
+                            "multiclass", num_classes=self.num_classes, average="macro"
+                        ),
+                        f"{step_name}_f1": F1Score(
+                            "multiclass", num_classes=self.num_classes, average="macro"
+                        ),
                     }
                 )
                 metrics[f"{step_name}_metrics"] = step_metrics
@@ -175,7 +194,10 @@ class VisionBaseModule(ClassifierModule):
         data_splits: Tuple[Any] = dataset_cls.splits(self.hparams.dataset)
 
         if len(data_splits) == 3:
-            warnings.warn("Vision datasets should return a length 4 tuple, will assume unlabeled data is None")
+            warnings.warn(
+                "Vision datasets should return a length 4 tuple, will assume unlabeled data is None"
+            )
+
             data_splits = (data_splits[0], None, data_splits[1], data_splits[2])
 
         (
@@ -187,7 +209,9 @@ class VisionBaseModule(ClassifierModule):
 
         if self.hparams.unlabeled_data:
             unlabeled_cls = get_class(self.hparams.unlabeled_data.cls)
-            self.train_set_unlabeled, _, _ = unlabeled_cls.splits(self.hparams.unlabeled_data)
+            self.train_set_unlabeled, _, _ = unlabeled_cls.splits(
+                self.hparams.unlabeled_data
+            )
 
     def _decode_batch(self, batch):
         if isinstance(batch, Sequence):
@@ -254,7 +278,9 @@ class VisionBaseModule(ClassifierModule):
 
         if batch_idx == 0:
             pipeline_name = pipeline if pipeline is not None else "default"
-            self._log_batch_images(f"augmented_{pipeline_name}", batch_idx, augmented_norm_data)
+            self._log_batch_images(
+                f"augmented_{pipeline_name}", batch_idx, augmented_norm_data
+            )
 
         return augmented_norm_data, images
 
@@ -263,7 +289,9 @@ class VisionBaseModule(ClassifierModule):
         augmentations = defaultdict(list)
 
         if pipeline_configs is None:
-            msglogger.warning("No data augmentations have been defined, make sure that this is intentional")
+            msglogger.warning(
+                "No data augmentations have been defined, make sure that this is intentional"
+            )
             self.default_augmentation = torch.nn.Identity()
             return
 

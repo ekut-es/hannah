@@ -22,7 +22,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Type, Union
+from typing import Any, Dict, List, Mapping, Sequence, Type, Union
 
 import pandas as pd
 import tabulate
@@ -198,7 +198,7 @@ def train(
             backend_output.append(profile_backend(config, lit_module))
 
     @rank_zero_only
-    def summarize_stage(stage: str, output: Mapping["str", float]) -> None:
+    def summarize_stage(stage: str, output: Sequence[Mapping["str", float]]) -> None:
         if not output:
             return
         result_frame = pd.DataFrame.from_dict(output)

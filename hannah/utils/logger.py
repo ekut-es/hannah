@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Hannah contributors.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
 # See https://github.com/ekut-es/hannah for further info.
@@ -30,9 +30,12 @@ from lightning_fabric.utilities.cloud_io import get_filesystem
 from pytorch_lightning.loggers import Logger
 from torch import Tensor
 
+_PATH = Union[str, pathlib.Path]
+
 import fsspec
 
 log = logging.getLogger(__name__)
+
 
 def _is_dir(fs, path, strict=False):
     return fs.isdir(path) or (not strict and fs.exists(path) and not fs.isfile(path))
@@ -62,7 +65,7 @@ class JSONLogger(Logger):
 
     def __init__(
         self,
-        root_dir: pathlib.Path,
+        root_dir: _PATH,
         name: str = "lightning_logs",
         version: Optional[Union[int, str]] = None,
         prefix: str = "",

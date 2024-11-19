@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from . import registry
 from .imports import lazy_import
 from .tuple import pair, quadruple, single, triple
 from .utils import (
@@ -46,4 +47,5 @@ __all__ = [
     "pair",
     "triple",
     "quadruple",
+    "registry",
 ]

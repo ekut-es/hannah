@@ -51,7 +51,6 @@ def snr_factor(snr, psig, pnoise):
 
 def _load_audio(file_name, sr=16000, backend="torchaudio"):
     if backend == "torchaudio":
-        torchaudio.set_audio_backend("sox_io")
         try:
             data, samplingrate = torchaudio.load(file_name)
         except Exception as e:
@@ -60,7 +59,6 @@ def _load_audio(file_name, sr=16000, backend="torchaudio"):
             msglogger.warning(
                 "Could not load %s with default backend trying sndfile", str(file_name)
             )
-            torchaudio.set_audio_backend("soundfile")
             data, samplingrate = torchaudio.load(file_name)
         if samplingrate != sr:
             data = torchaudio.transforms.Resample(samplingrate, sr).forward(data)
