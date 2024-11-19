@@ -115,8 +115,8 @@ def block(
     weight1_quantized = quantize_weight(weight1)
     bias1 = Tensor(
         "b1",
-        (Int(channels)),
-        axis=["O", "I", "kH", "kW"],
+        (Int(channels),),
+        axis=["C"],
         grad=True,
     )
     bias1_quantized = quantize_weight(bias1)

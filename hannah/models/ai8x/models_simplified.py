@@ -101,7 +101,7 @@ def block(input, channels: int, kernel_size: int):
     weight_quantized = quantize_weight(weight)
     bias = Tensor(
         "b1",
-        (Int(channels)),
+        (Int(channels),),
         axis=["O", "I", "kH", "kW"],
         grad=True,
     )

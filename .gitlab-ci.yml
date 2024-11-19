@@ -27,6 +27,7 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pypoetry"
+  POETRY_VIRTUALENVS_CREATE: false
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
 

@@ -20,7 +20,8 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from copy import deepcopy
-from typing import Optional, Union
+from datetime import datetime
+from typing import Any, Optional, Sequence, Union
 
 import numpy as np
 
@@ -50,24 +51,19 @@ class Parameter(Expression):
         self._registered = True
 
     @abstractmethod
-    def sample(self):
-        ...
+    def sample(self): ...
 
     @abstractmethod
-    def instantiate(self):
-        ...
+    def instantiate(self): ...
 
     @abstractmethod
-    def set_current(self):
-        ...
+    def set_current(self): ...
 
     @abstractmethod
-    def check(self, value):
-        ...
+    def check(self, value): ...
 
     @abstractmethod
-    def from_float(self, value):
-        ...
+    def from_float(self, value): ...
 
     # FIXME: evaluate and instantiate?
     def evaluate(self):
@@ -101,8 +97,6 @@ class Parameter(Expression):
             + ", ".join((f"{k} = {v}" for k, v in self.__dict__.items()))
             + ")"
         )
-        
-    
 
 
 class IntScalarParameter(Parameter):
@@ -163,6 +157,7 @@ class IntScalarParameter(Parameter):
     def from_float(self, val):
         return int(val * (self.max - self.min) + self.min)
 
+
 class FloatScalarParameter(Parameter):
     def __init__(
         self,
@@ -177,7 +172,7 @@ class FloatScalarParameter(Parameter):
         self.current_value = self.min
 
     def sample(self):
-        self.current_value = self.rng.uniform(self.min, self.max)
+        self.current_value = float(self.rng.uniform(self.min, self.max))
         return self.current_value
 
     def instantiate(self):
@@ -202,15 +197,16 @@ class FloatScalarParameter(Parameter):
     def from_float(self, val):
         return val * (self.max - self.min) + self.min
 
+
 class CategoricalParameter(Parameter):
     def __init__(
         self,
-        choices,
+        choices: Sequence[Any],
         name: Optional[str] = "",
         rng: Optional[Union[np.random.Generator, int]] = None,
     ) -> None:
         super().__init__(name, rng)
-        self.choices = choices
+        self.choices = tuple(choices)
         self.sample()
 
     def sample(self):
@@ -243,7 +239,7 @@ class CategoricalParameter(Parameter):
 
     def __iter__(self):
         yield from iter(self.choices)
-        
+
     def from_float(self, val):
         return self.choices[int(val * len(self.choices))]
 
@@ -304,4 +300,3 @@ class SubsetParameter(Parameter):
 
     def from_float(self, val):
         raise NotImplementedError("SubsetParameter does not support from_float")
-    

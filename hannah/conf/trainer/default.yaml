@@ -34,3 +34,4 @@ plugins: null
 strategy: auto
 reload_dataloaders_every_n_epochs: 0
 precision: 32
+enable_model_summary: False

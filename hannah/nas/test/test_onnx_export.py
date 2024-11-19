@@ -23,7 +23,7 @@ from pathlib import Path
 import onnx
 
 from hannah.models.embedded_vision_net.models import embedded_vision_net, search_space
-from hannah.models.ai8x.models import ai8x_search_space
+from hannah.models.ai8x.models_simplified import ai8x_search_space
 from hannah.nas.constraints.random_walk import RandomWalkConstraintSolver
 from hannah.nas.export import to_onnx
 from hannah.nas.functional_operators.op import ChoiceOp, Tensor, scope

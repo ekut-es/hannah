@@ -143,7 +143,7 @@ def self_attention2d(q, k, v, num_heads, d_model, *, id):
         k: Tensor, shape ``[B, h*d, H, W]``
         v: Tensor, shape ``[B, h*d, H, W]``
     """
-    scale = d_model ** -0.5
+    scale = d_model**-0.5
     b, _, h, w = q.shape
     q = q.view(b, num_heads, d_model, h * w)
     k = k.view(b, num_heads, d_model, h * w)
@@ -260,7 +260,10 @@ class Conv1d(Op):
 class Conv2d(Op):
     def __init__(self, stride=1, dilation=1, groups=1, padding=None) -> None:
         super().__init__(
-            name="Conv2d", stride=stride, dilation=dilation, groups=groups,
+            name="Conv2d",
+            stride=stride,
+            dilation=dilation,
+            groups=groups,
         )
         self.stride = stride
         self.dilation = dilation
@@ -278,6 +281,9 @@ class Conv2d(Op):
         new_conv.in_channels = input_shape[1]
         new_conv.out_channels = weight_shape[0]
         new_conv.kernel_size = weight_shape[2]
+        assert (
+            weight_shape[3] == weight_shape[2]
+        ), "Only square kernels are supported, at the moment."
         if self.padding is None:
             new_conv.padding = padding_expression(
                 new_conv.kernel_size, new_conv.stride, new_conv.dilation
@@ -326,10 +332,7 @@ class Linear(Op):
 
     def _forward_implementation(self, input, weight, bias=None):
         input = torch.flatten(input, start_dim=1)
-        return linear(
-            input, weight, bias,
-            id=self.id
-        )
+        return linear(input, weight, bias, id=self.id)
 
 
 @parametrize
@@ -475,7 +478,7 @@ class MaxPooling(Op):
             stride=lazy(self.stride),
             padding=lazy(self.padding),
             dilation=lazy(self.dilation),
-            id=self.id
+            id=self.id,
         )
 
 
@@ -504,7 +507,7 @@ class AvgPooling(Op):
             kernel_size=lazy(self.kernel_size),
             stride=lazy(self.stride),
             padding=lazy(self.padding),
-            id=self.id
+            id=self.id,
         )
 
 
@@ -533,7 +536,7 @@ class MaxAvgPooling(Op):
             kernel_size=lazy(self.kernel_size),
             stride=lazy(self.stride),
             padding=lazy(self.padding),
-            id=self.id
+            id=self.id,
         )
 
 
@@ -550,6 +553,41 @@ class AdaptiveAvgPooling(Op):
     def shape_fun(self):
         return adaptive_average_pooling_shape(
             *self.operands, output_size=self.output_size
+        )
+        return adaptive_average_pooling_shape(
+            *self.operands, output_size=self.output_size
+        )
+
+    def _forward_implementation(self, *operands):
+        if self.dim == 1:
+            return adaptive_avg_pooling1d(
+                operands[0], output_size=self.output_size, id=self.id
+            )
+        else:
+            return adaptive_avg_pooling2d(
+                operands[0], output_size=self.output_size, id=self.id
+            )
+
+
+@parametrize
+class MaxPool2d(Op):
+    def __init__(
+        self, kernel_size=3, stride=1, padding=0, dilation=1, ceil_mode=False
+    ) -> None:
+        super().__init__(name="MaxPool2d")
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.ceil_mode = ceil_mode
+
+    def shape_fun(self):
+        return conv_shape(
+            *self.operands,
+            dims=2,
+            stride=self.stride,
+            padding=self.padding,
+            dilation=self.dilation,
         )
 
     def _forward_implementation(self, *operands):

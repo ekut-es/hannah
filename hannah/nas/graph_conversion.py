@@ -20,7 +20,7 @@ import copy
 import logging
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import networkx as nx
 import numpy as np
@@ -87,7 +87,9 @@ def to_one_hot(val, options):
 @dataclass
 class NamedTensor:
     name: str
-    tensor: torch.Tensor
+    tensor: Union[
+        torch.Size, torch.Tensor, int
+    ]  # FIXME: this probably is not the intended type
     quantization: Any = None
 
 
@@ -507,7 +509,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         # weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
 
         # FIXME: Bias missing
-        if hasattr(args[2], 'tensor'):
+        if hasattr(args[2], "tensor"):
             bias_attrs = {"quant": None, "shape": args[2].tensor.shape}
         else:
             bias_attrs = None
@@ -528,7 +530,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         input_names = list()
         for arg in args:
-            if hasattr(arg, 'name'):
+            if hasattr(arg, "name"):
                 input_names.append(arg.name)
         for input_name in input_names:
             self.nx_graph.add_edge(input_name, name)
@@ -550,7 +552,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
         weight_attrs = {"quant": weight_quant_attrs, "shape": args[1].tensor.shape}
         # weight_attrs = {"quant": None, "shape": args[1].tensor.shape}
 
-        if hasattr(args[2], 'tensor'):
+        if hasattr(args[2], "tensor"):
             bias_attrs = {"quant": None, "shape": args[2].tensor.shape}
         else:
             bias_attrs = None
@@ -571,7 +573,7 @@ class GraphConversionInterpreter(torch.fx.Interpreter):
 
         input_names = list()
         for arg in args:
-            if hasattr(arg, 'name'):
+            if hasattr(arg, "name"):
                 input_names.append(arg.name)
         for input_name in input_names:
             self.nx_graph.add_edge(input_name, name)

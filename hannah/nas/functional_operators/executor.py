@@ -16,14 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from collections import defaultdict
 from copy import deepcopy
 from typing import Iterator, Tuple
 import math
 import torch
 from torch.nn.modules.module import Module
-from hannah.nas.functional_operators.op import ChoiceOp, Op, Tensor, get_nodes
-from collections import defaultdict
 from torch.nn.parameter import Parameter
+
+from .op import ChoiceOp, Op, Tensor, get_nodes
 
 
 class BasicExecutor(torch.nn.Module):
@@ -54,16 +55,20 @@ class BasicExecutor(torch.nn.Module):
         if isinstance(node, Tensor):
             node_name = node.id.replace(".", "_")
             if node.grad:
-                if node.name == 'bias':
+                if node.name == "bias":
                     # get weight data
-                    weight_name = node_name.replace('bias', 'weight')
+                    weight_name = node_name.replace("bias", "weight")
                     weight_param = self.get_parameter(weight_name)
-                    fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(weight_param.data)
+                    fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(
+                        weight_param.data
+                    )
                     # register bias
                     if fan_in != 0:
                         bound = 1 / math.sqrt(fan_in)
                         data = torch.empty(node.current_shape())
-                        data = torch.nn.Parameter(torch.nn.init.uniform_(data, -bound, bound))
+                        data = torch.nn.Parameter(
+                            torch.nn.init.uniform_(data, -bound, bound)
+                        )
                         self.register_parameter(node_name, data)
                 else:  # weight tensor
                     data = torch.empty(node.current_shape())

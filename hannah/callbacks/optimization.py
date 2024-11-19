@@ -1,8 +1,8 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2024 Hannah contributors.
 #
 # This file is part of hannah.
-# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah for further info.
+# See https://github.com/ekut-es/hannah for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import logging
 from collections import defaultdict
 from typing import Any, Iterable, List, Mapping, Union
 
+import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
 from torch import Tensor
 
@@ -94,8 +95,15 @@ class HydraOptCallback(Callback):
         else:
             self.directions.append(-1.0)
 
-    def on_train_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule",  outputs: 'STEP_OUTPUT', batch: Any, batch_idx: int) -> None:  # noqa: F821
-        callback_metrics =  trainer.callback_metrics
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs: Any,
+        batch: Any,
+        batch_idx: int,
+    ) -> None:
+        callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
             if k.startswith("train"):
@@ -112,7 +120,7 @@ class HydraOptCallback(Callback):
                 monitor_val = callback_metrics[monitor] * direction
                 if monitor.startswith("train"):
                     self._curves[monitor][trainer.global_step] = monitor_val
-                    
+
                     self.values[monitor] = monitor_val
 
     def on_test_end(self, trainer, pl_module):
@@ -156,7 +164,7 @@ class HydraOptCallback(Callback):
         # Skip evaluation of validation metrics during sanity check
         if trainer.sanity_checking:
             return
-        
+
         callback_metrics = trainer.callback_metrics
 
         for k, v in callback_metrics.items():
@@ -168,7 +176,7 @@ class HydraOptCallback(Callback):
                 try:
                     monitor_val = float(callback_metrics[monitor])
                     directed_monitor_val = monitor_val * direction
-                   
+
                     self.values[monitor] = directed_monitor_val
                     self._curves[monitor][trainer.global_step] = directed_monitor_val
                 except Exception:
@@ -230,4 +238,3 @@ class HydraOptCallback(Callback):
             return list(return_values.values())[0]
 
         return return_values
-

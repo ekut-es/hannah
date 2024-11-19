@@ -16,19 +16,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from contextlib import contextmanager
 import sys
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from functools import wraps
-from typing import Any
+from typing import Any, List, Mapping
 
 import torch
 
 from hannah.nas.core.expression import Expression
 from hannah.nas.core.parametrized import is_parametrized
-from hannah.nas.dataflow.data_type import FloatType
 from hannah.nas.expressions.choice import Choice
+from hannah.nas.expressions.placeholder import UndefinedInt
 from hannah.nas.expressions.utils import extract_parameter_from_expression
+from hannah.nas.functional_operators.data_type import FloatType
 from hannah.nas.functional_operators.lazy import lazy
 from hannah.nas.parameters.parameters import (
     CategoricalParameter,
@@ -64,15 +66,6 @@ def get_nodes(node):
             if o not in visited:
                 queue.append(o)
                 visited.append(o)
-
-
-_id = 0
-
-
-def get_unique_id():
-    global _id
-    _id += 1
-    return _id
 
 
 def get_highest_scope_counter(scope, scope_dict):
@@ -111,6 +104,24 @@ def scope(function):
     return set_scope
 
 
+@contextmanager
+def context():
+    """A contextmanager to provide a global scope stack for the hannah ir"""
+
+    global global_scope_stack
+
+    old_stack = globals().get("global_scope_stack", None)
+
+    try:
+        global_scope_stack = [{}]
+        yield global_scope_stack
+    finally:
+        if old_stack is not None:
+            global_scope_stack = old_stack
+        else:
+            del global_scope_stack
+
+
 def search_space(function):
     """Decorator to define a search space. For correct scoping,
     a search space containing functional ops must be enclosed by
@@ -119,17 +130,43 @@ def search_space(function):
 
     @wraps(function)
     def search_space_limits(*args, **kwargs):
-        global global_scope_stack
-        global_scope_stack = [{}]
-        out = scope(function)(*args, **kwargs)
-        del global_scope_stack
+        with context():
+            out = scope(function)(*args, **kwargs)
+
         return out
 
     return search_space_limits
 
 
+class BaseNode(ABC):
+    """
+    Base class for all nodes in the operator description, it defines the basic inteface used by all members of the data flow graph.
+    """
+
+    operands: List["BaseNode"] = []
+    users: List["BaseNode"] = []
+    id: str = ""  # Fully qualified name of the node, e.g., "net.res.conv1" or "net.res.conv1.weight"
+
+    def size(self, axis: int):
+        return self.shape()[axis]
+
+    def attributes(self) -> Mapping[str, Any]:
+        res = {}
+        for k, v in self.__dict__.items():
+            if k.startswith("_"):
+                continue
+            if k in ["operands", "users", "id", "name", "executor"]:
+                continue
+
+            if is_parametrized(self) and k in self._PARAMETERS:
+                res[k] = v[k]
+
+            res[k] = v
+        return res
+
+
 @parametrize
-class Op(torch.nn.Module):
+class Op(torch.nn.Module, BaseNode):
     def __init__(self, name, *args, **kwargs) -> None:
         super().__init__()
         self.operands = []
@@ -227,11 +264,16 @@ def get_tensor_data(tensor):
 
 
 @parametrize
-class Tensor:
+class Tensor(BaseNode):
     def __init__(self, name, shape, axis, dtype=FloatType(), grad=False) -> None:
         super().__init__()
         self.name = name
         self.id = name
+
+        for num, (ax, size) in enumerate(zip(axis, shape)):
+            if size is None:
+                shape[num] = UndefinedInt(f"{name}_{ax}")
+
         self._shape = shape
         self.dtype = dtype
 
@@ -298,10 +340,6 @@ class Tensor:
 
     def __repr__(self):
         return f"Tensor({self.id})"
-
-
-# @torch.fx.wrap
-# def choice_forward()
 
 
 @parametrize

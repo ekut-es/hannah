@@ -26,8 +26,8 @@ defaults:
     - override normalizer: fixedpoint
     - override module: stream_classifier
     - override checkpoint: default
-    - override backend: trax_ut
-    - override nas: aging_evolution_nas
+    #- override backend: trax_ut
+    - override nas: aging_evolution_nas_legacy
     - _self_
 
 experiment_id: test
@@ -39,9 +39,9 @@ trainer:
 
 nas:
   parametrization:
-    backend:
-      cols: [2,4,6,8,16]
-      rows: null
+    #backend:
+    #  cols: [2,4,6,8,16]
+    #  rows: null
     model:
       qconfig:
         config:

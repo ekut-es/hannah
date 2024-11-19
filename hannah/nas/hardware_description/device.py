@@ -1,33 +1,179 @@
-from abc import ABC, abstractmethod
-from typing import List
+#
+# Copyright (c) 2024 Hannah contributors.
+#
+# This file is part of hannah.
+# See https://github.com/ekut-es/hannah for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+from functools import wraps
+import logging
+from abc import ABCMeta, abstractmethod
+from typing import List, NamedTuple, Sequence, Optional
 
-from ..dataflow.dataflow_graph import DataFlowGraph, dataflow
-from ..dataflow.op_type import OpType
+from hannah.nas.core.parametrized import is_parametrized
+from hannah.nas.functional_operators.op import context
+
 from ..expressions.placeholder import IntRange, UndefinedFloat, UndefinedInt
-from ..hardware_description.memory_type import MemoryType
-from ..ops import (
-    add,
-    avg_pool,
-    axis,
-    broadcast,
-    int_t,
-    optional,
-    quantization,
-    relu,
-    requantize,
-    tensor,
-)
+from ..functional_operators.utils.visit import reverse_post_order
+from ..hardware_description.memory_type import CouplingType, ManagementType, MemoryType
 from ..parameters.parametrize import parametrize
+from .registry import devices
+
+logger = logging.getLogger(__name__)
+
+Constraint = any
+DataFlowGraph = any
 
 
-class Device(ABC):
+class TargetOp(NamedTuple):
+    name: str
+    graph: DataFlowGraph
+    constraints: Sequence[Constraint]
+
+    def markdown(self) -> str:
+        res = "### " + self.name + "\n"
+
+        ids = {}
+        res += "\nGraph:\n"
+        res += "```mlir\n"
+        for num, node in enumerate(reverse_post_order(self.graph)):
+            node_list = []
+            ids[node.id] = f"%{node.id}_{num}"
+            for operand in node.operands:
+                node_list.append(ids[operand.id])
+
+            for attr, value in node.attributes().items():
+
+                def value_to_str(value):
+                    if isinstance(value, IntRange):
+                        value_str = f"{value.min}..{value.max}"
+                    elif isinstance(value, UndefinedInt):
+                        value_str = f"?{str(value.id)}"
+                    elif isinstance(value, UndefinedFloat):
+                        value_str = f"?{str(value.id)}"
+                    elif isinstance(value, Sequence) and not isinstance(value, str):
+                        value_str = (
+                            "[" + ", ".join(value_to_str(x) for x in value) + "]"
+                        )
+                    else:
+                        value_str = str(value)
+                    return value_str
+
+                value_str = value_to_str(value)
+
+                node_list.append(f"{attr}={value_str}")
+
+            node_str = f"{node.name}({', '.join(node_list)})"
+
+            res += f"%{node.id}_{num} = {node_str}\n"
+        res += "```\n"
+
+        res += "\nConstraints:\n"
+        ids = {}
+        for constraint in self.constraints:
+            res += "- " + str(constraint) + "\n"
+
+        return res
+
+
+class DeviceMeta(ABCMeta):
+    def __new__(mcls, name, bases, namespace, /, **kwargs):
+        cls = super().__new__(mcls, name, bases, namespace, **kwargs)
+        if not hasattr(cls, "name"):
+            cls.name = name
+
+        devices.register(cls)
+        return cls
+
+    def __init__(self, name, bases, namespace):
+        super().__init__(name, bases, namespace)
+
+        # Add decorator to the local init_function
+        if hasattr(self, "__init__"):
+            init_method = getattr(self, "__init__")
+
+            @wraps(init_method)
+            def init_wrapper(self, *args, **kwargs):
+                with context():
+                    init_method(self, *args, **kwargs)
+
+            setattr(self, "__init__", init_wrapper)
+
+
+class Device(metaclass=DeviceMeta):
+    name: str = ""
+    description: str = ""
+    _ops: List[TargetOp]
+    _memories: List[MemoryType]
+
     def __init__(self) -> None:
         super().__init__()
-        self._ops = []
+        self._ops: List[TargetOp] = []
         self._memories = []
 
+    def add_memory(
+        self,
+        scope: str,
+        size: int,
+        latency: int,
+        wordwidth: int = 8,
+        management: ManagementType = ManagementType.EXPLICIT,
+        coupling: CouplingType = CouplingType.COUPLED,
+        read_bw: int = 10,
+        write_bw: int = 10,
+        read_energy: int = 10,
+        write_energy: int = 10,
+        idle_energy: int = 10,
+        area: int = 10,
+        read_port: int = 10,
+        write_port: int = 10,
+        rw_port: int = 10,
+    ) -> None:
+        self._memories.append(
+            MemoryType(
+                scope=scope,
+                size=size,
+                latency=latency,
+                management=management,
+                coupling=coupling,
+                read_bw=read_bw,
+                write_bw=write_bw,
+                read_energy=read_energy,
+                write_energy=write_energy,
+                idle_energy=idle_energy,
+                area=area,
+                read_port=read_port,
+                write_port=write_port,
+                rw_port=rw_port,
+            )
+        )
+
+    def add_op(
+        self,
+        name: str,
+        graph: DataFlowGraph,
+        constraints: Optional[Sequence[Constraint]] = None,
+    ) -> None:
+        """Adds an operation to the device."""
+
+        if constraints is None:
+            constraints = []
+
+        self._ops.append(TargetOp(name, graph, constraints))
+
     @property
-    def ops(self) -> List[DataFlowGraph]:
+    def ops(self) -> Sequence[TargetOp]:
         return self._ops
 
     @property
@@ -39,151 +185,7 @@ class Device(ABC):
         res += "Ops:\n"
         for op in self.ops:
             res += str(op) + "\n"
+
         for memory in self.memories:
             res += str(memory) + "\n"
         return res
-
-
-@dataflow
-def conv(input, weight, stride):
-    return OpType("conv1d", input, weight, stride=stride)
-
-
-def ut_op(
-    weight_bits: int = 8,
-    bias_bits: int = 8,
-    activation_bits: int = 8,
-    accumulator_bits: int = 8,
-    max_weight_bits: int = 8,
-    max_kernel_size: int = 2**4,
-    max_input_length: int = 2**7,
-    max_input_channel_block: int = 2**4,
-    max_output_channel_block: int = 2**4,
-    stride_range: int = 2**3,
-):
-
-    input_data_type = int_t(signed=True, bits=activation_bits)
-    input_quantization = quantization(scale=UndefinedFloat(), zero_point=0)
-    input = tensor(
-        (
-            axis("n", size=1),
-            axis("c", size=UndefinedInt()),
-            axis("w", size=UndefinedInt()),
-        ),
-        dtype=input_data_type,
-        quantization=input_quantization,
-    )
-
-    weight_data_type = int_t(signed=True, bits=weight_bits)
-    weight_quantization = quantization(scale=UndefinedFloat(), zero_point=0)
-
-    weight = tensor(
-        (
-            axis("o", size=UndefinedInt()),
-            axis("i", size=UndefinedInt()),
-            axis("kw", size=IntRange(1, max_kernel_size)),
-        ),
-        dtype=weight_data_type,
-        quantization=weight_quantization,
-    )
-
-    res_input = tensor(
-        (
-            axis("n", size=1),
-            axis("c", size=UndefinedInt()),
-            axis("w", size=UndefinedInt()),
-        ),
-        dtype=input_data_type,
-        quantization=input_quantization,
-    )
-
-    conv_out = conv(input, weight, stride=stride_range)
-
-    accumulator_data_type = int_t(signed=True, bits=accumulator_bits)
-    accumulator_quantization = quantization(scale=UndefinedFloat(), zero_point=0)
-    quant_conv = requantize(
-        conv_out, dtype=accumulator_data_type, quantization=accumulator_quantization
-    )
-
-    bias_data_type = int_t(signed=True, bits=bias_bits)
-    bias_quantization = quantization(scale=UndefinedFloat(), zero_point=0)
-    bias = tensor(
-        (axis("c", size=UndefinedInt()),),
-        dtype=bias_data_type,
-        quantization=bias_quantization,
-    )
-
-    bias_add = optional(
-        add(quant_conv, broadcast(bias, axis=((axis("n"))))), quant_conv
-    )  # FIXME: define broadcasting
-    res_add = optional(add(bias_add, res_input), bias_add)
-    pool = optional(avg_pool(res_add), res_add)
-    activation = optional(relu(pool), pool)
-    requantization = requantize(
-        activation, dtype=input_data_type, quantization=input_quantization
-    )
-
-    return DataFlowGraph(inputs=[input, weight], output=requantization)
-
-
-class HardwareOp(DataFlowGraph):
-    ...
-    # performance & energy modelling (e.g., hints)
-    # memory mapping, alignment constraints
-    #
-
-
-@parametrize
-class Ultratrail(Device):
-    def __init__(
-        self,
-        weight_bits: int = 6,
-        bias_bits: int = 8,
-        activation_bits: int = 8,
-        accumulator_bits: int = 20,
-        max_weight_bits: int = 8,
-        rows: int = 8,
-        cols: int = 8,
-        ifmap_bits: int = 7,
-        ic_block_bits: int = 4,
-        oc_block_bits: int = 4,
-        kernel_size_bits: int = 4,
-        stride_bits: int = 3,
-    ) -> None:
-        super().__init__()
-
-        self.weight_bits = weight_bits
-        self.bias_bits = bias_bits
-        self.activation_bits = activation_bits
-        self.accumulator_bits = accumulator_bits
-        self.max_weight_bits = max_weight_bits
-        self.rows = rows
-        self.cols = cols
-        self.ifmap_bits = ifmap_bits
-        self.ic_block_bits = ic_block_bits
-        self.oc_block_bits = oc_block_bits
-        self.kernel_size_bits = kernel_size_bits
-        self.stride_bits = stride_bits
-
-        max_kernel_size = 2**self.kernel_size_bits
-        max_input_length = 2**self.ifmap_bits
-        max_input_channel_block = self.rows * 2**self.ic_block_bits
-        max_output_channel_block = self.cols * 2**self.oc_block_bits
-
-        stride_range = 2**2**stride_bits
-
-        # self.cond(stride <= 2**2**S_BIT and is_power_of_2(stride))
-
-        op = ut_op(
-            weight_bits=self.weight_bits,
-            bias_bits=self.bias_bits,
-            activation_bits=self.activation_bits,
-            accumulator_bits=self.accumulator_bits,
-            max_weight_bits=self.max_weight_bits,
-            max_kernel_size=max_kernel_size,
-            max_input_length=max_input_length,
-            max_input_channel_block=max_input_channel_block,
-            max_output_channel_block=max_output_channel_block,
-            stride_range=stride_range,
-        )
-        self._ops.append(op)
