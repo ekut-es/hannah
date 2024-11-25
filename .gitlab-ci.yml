@@ -74,7 +74,8 @@ test_python_310:
         path: coverage.xml
   dependencies: []
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    
 
 test_python_311:
   stage: test
@@ -102,7 +103,7 @@ test_python_311:
         path: coverage.xml
   dependencies: []
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 build_docs:
   stage: test
