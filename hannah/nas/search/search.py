@@ -192,7 +192,7 @@ class DirectNAS(NASBase):
                             msglogger.error("Updating predictor failed:")
                             msglogger.error(f"{str(e)}")
 
-                        self.new_points = []
+                    self.new_points = []
                     self.candidates = self.sample_candidates(
                         self.total_candidates,
                         self.num_selected_candidates,
