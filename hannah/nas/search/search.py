@@ -248,7 +248,7 @@ class DirectNAS(NASBase):
         num_candidates=None,
         sort_key="val_error",
         presample=False,
-        constrain=False,
+        constrain=True,
     ):
         candidates = []
         skip_ct = 0
