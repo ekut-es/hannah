@@ -29,6 +29,7 @@ from hannah.nas.functional_operators.op import ChoiceOp
 from hannah.nas.parameters.parameters import Parameter
 from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.utils import np_to_primitive
+from hannah.nas.functional_operators.utils import get_active_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -72,36 +73,36 @@ CHOICES = {
 }
 
 
-def get_active_parameter(net):
-    active_param_ids = []
-    queue = [net]
-    visited = [net.id]
+# def get_active_parameter(net):
+#     active_param_ids = []
+#     queue = [net]
+#     visited = [net.id]
 
-    def extract_parameters(node):
-        ids = []
-        for k, p in node._PARAMETERS.items():
-            if isinstance(p, Parameter):
-                ids.append(p.id)
-        return ids
+#     def extract_parameters(node):
+#         ids = []
+#         for k, p in node._PARAMETERS.items():
+#             if isinstance(p, Parameter):
+#                 ids.append(p.id)
+#         return ids
 
-    while queue:
-        current = queue.pop()
-        if isinstance(current, ChoiceOp):
-            # handle choices
-            active_param_ids.append(current.switch.id)
-            chosen_path = current.options[lazy(current.switch)]
-            if chosen_path.id not in visited:
-                queue.append(chosen_path)
-                visited.append(chosen_path.id)
-        else:
-            # handle all other operators & tensors
-            active_param_ids.extend(extract_parameters(current))
-            for operand in current.operands:
-                if operand.id not in visited:
-                    queue.append(operand)
-                    visited.append(operand.id)
+#     while queue:
+#         current = queue.pop()
+#         if isinstance(current, ChoiceOp):
+#             # handle choices
+#             active_param_ids.append(current.switch.id)
+#             chosen_path = current.options[lazy(current.switch)]
+#             if chosen_path.id not in visited:
+#                 queue.append(chosen_path)
+#                 visited.append(chosen_path.id)
+#         else:
+#             # handle all other operators & tensors
+#             active_param_ids.extend(extract_parameters(current))
+#             for operand in current.operands:
+#                 if operand.id not in visited:
+#                     queue.append(operand)
+#                     visited.append(operand.id)
 
-    return active_param_ids
+#     return active_param_ids
 
 
 class RandomWalkConstraintSolver:
@@ -193,7 +194,7 @@ class RandomWalkConstraintSolver:
             ct = 0
             while ct < self.max_iterations:
                 # active_params = get_active_parameter(params)
-                active_params = get_active_parameter(mod)
+                active_params = list(get_active_parameters(mod).keys())
 
                 param_keys = [p for p in all_param_keys if p in active_params]
                 current = con.lhs.evaluate()
