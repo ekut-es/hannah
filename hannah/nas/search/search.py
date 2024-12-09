@@ -129,6 +129,7 @@ class DirectNAS(NASBase):
         parametrization = self.search_space.parametrization(flatten=True)
         self.sampler = instantiate(
             self.config.nas.sampler,
+            search_space=self.search_space,
             parametrization=parametrization,
             parent_config=self.config,
             _recursive_=False,
