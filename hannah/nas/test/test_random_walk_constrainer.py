@@ -1,5 +1,6 @@
 from hannah.nas.functional_operators.op import Tensor, scope, search_space
-from hannah.nas.constraints.random_walk import get_active_parameter, RandomWalkConstraintSolver
+from hannah.nas.functional_operators.utils.visit import get_active_parameters
+from hannah.nas.constraints.random_walk import RandomWalkConstraintSolver
 from hannah.models.embedded_vision_net.operators import adaptive_avg_pooling, add, conv_relu, dynamic_depth, linear
 from hannah.nas.parameters.parameters import CategoricalParameter, IntScalarParameter
 
@@ -44,17 +45,17 @@ def space(input):
 def test_get_active_params():
     input = Tensor(name='input', shape=(1, 3, 32, 32), axis=('N', 'C', 'H', 'W'))
     out = space(input)
-    active_params = get_active_parameter(out)
+    active_params = list(get_active_parameters(out).keys())
     assert len(active_params) == 7
     for p in active_params:
         assert "parallel_blocks_1" not in p and "parallel_blocks_2" not in p
     out.parametrization()['space_0.ChoiceOp_0.depth'].set_current(1)
-    active_params = get_active_parameter(out)
+    active_params = get_active_parameters(out)
     assert len(active_params) == 10
     for p in active_params:
         assert "parallel_blocks_2" not in p
     out.parametrization()['space_0.ChoiceOp_0.depth'].set_current(2)
-    active_params = get_active_parameter(out)
+    active_params = get_active_parameters(out)
     assert len(active_params) == 13
 
 

@@ -46,7 +46,7 @@ def test_model_conversion(model):
     model.sample()
 
     print("Init sampler")
-    sampler = RandomSampler(None, model.parametrization(flatten=True))
+    sampler = RandomSampler(None, model, model.parametrization(flatten=True))
 
     print("Init solver")
     solver = RandomWalkConstraintSolver()
