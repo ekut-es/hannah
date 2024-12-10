@@ -126,7 +126,7 @@ def test_nn_meter(hardware_name):
     predictor = NNMeterPredictor(hardware_name)
 
     print("Init sampler")
-    sampler = RandomSampler(None, net.parametrization(flatten=True))
+    sampler = RandomSampler(None, net, net.parametrization(flatten=True))
 
     print("Init solver")
     solver = RandomWalkConstraintSolver()

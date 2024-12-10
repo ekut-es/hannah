@@ -17,6 +17,8 @@
 # limitations under the License.
 #
 from ..op import BaseNode
+from hannah.nas.functional_operators.op import ChoiceOp
+from hannah.nas.parameters.parameters import Parameter
 
 
 def post_order(op: BaseNode):
@@ -40,3 +42,30 @@ def post_order(op: BaseNode):
 def reverse_post_order(op: BaseNode):
     """Visits the operator graph in reverse post order"""
     return reversed(list(post_order(op)))
+
+
+def get_active_parameters(space, parametrization=None):
+    if parametrization is None:
+        parametrization = space.parametrization()
+
+    queue = [space]
+    visited = [space.id]
+    active_params = {}
+
+    while queue:
+        node = queue.pop(0)
+        for k, p in node._PARAMETERS.items():
+            if isinstance(p, Parameter):
+                active_params[p.id] = parametrization[p.id]
+        for operand in node.operands:
+            while isinstance(operand, ChoiceOp):
+                for k, p in operand._PARAMETERS.items():
+                    if isinstance(p, Parameter):
+                        active_params[p.id] = parametrization[p.id]
+                active_op_index = operand.switch.evaluate()
+                operand = operand.operands[active_op_index]
+            if operand.id not in visited:
+                queue.append(operand)
+                visited.append(operand.id)
+    return active_params
+

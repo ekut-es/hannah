@@ -106,7 +106,7 @@ def test_export_embedded_vision_net():
     print(graph)
 
     print("Init sampler")
-    sampler = RandomSampler(None, graph.parametrization(flatten=True))
+    sampler = RandomSampler(None, graph, graph.parametrization(flatten=True))
 
     print("Init solver")
     solver = RandomWalkConstraintSolver()
@@ -141,7 +141,7 @@ def test_export_ai8x_net():
     print(graph)
 
     print("Init sampler")
-    sampler = RandomSampler(None, graph.parametrization(flatten=True))
+    sampler = RandomSampler(None, graph, graph.parametrization(flatten=True))
 
     print("Init solver")
     solver = RandomWalkConstraintSolver()

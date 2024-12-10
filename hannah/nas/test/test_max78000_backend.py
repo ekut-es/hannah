@@ -96,7 +96,7 @@ def get_graph(seed):
     warnings.warn("remove this when seedable randomsampling works")
 
     print("Init sampler")
-    sampler = RandomSampler(None, graph.parametrization(flatten=True))
+    sampler = RandomSampler(None, graph, graph.parametrization(flatten=True))
 
     print("Init solver")
     solver = RandomWalkConstraintSolver()

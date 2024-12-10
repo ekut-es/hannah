@@ -27,8 +27,10 @@ class SearchResult:
 class Sampler(ABC):
     def __init__(self,
                  parent_config,
+                 search_space,
                  output_folder=".") -> None:
         self.history = []
+        self.search_space = search_space
         self.output_folder = Path(output_folder)
         self.parent_config = parent_config
 
