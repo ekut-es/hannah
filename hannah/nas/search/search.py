@@ -129,7 +129,6 @@ class DirectNAS(NASBase):
         parametrization = self.search_space.parametrization(flatten=True)
         self.sampler = instantiate(
             self.config.nas.sampler,
-            search_space=self.search_space,
             parametrization=parametrization,
             parent_config=self.config,
             _recursive_=False,
@@ -248,7 +247,7 @@ class DirectNAS(NASBase):
         num_candidates=None,
         sort_key="val_error",
         presample=False,
-        constrain=True,
+        constrain=False,
     ):
         candidates = []
         skip_ct = 0

@@ -30,9 +30,9 @@ from hannah.nas.parameters.parametrize import set_parametrization
 from hannah.nas.search.sampler.mutator import ParameterMutator
 from hannah.nas.search.utils import np_to_primitive
 
+from ...parametrization import SearchSpace
 from ...utils import is_pareto
 from .base_sampler import Sampler, SearchResult
-from hannah.nas.functional_operators.utils import get_active_parameters
 
 
 class FitnessFunction:
@@ -59,16 +59,14 @@ class AgingEvolutionSampler(Sampler):
     def __init__(
         self,
         parent_config,
-        search_space,
         parametrization: dict,
         population_size: int = 50,
         random_state = None,
         sample_size: int = 10,
-        mutation_rate: float = 0.01,
         eps: float = 0.1,
         output_folder=".",
     ):
-        super().__init__(parent_config, search_space=search_space, output_folder=output_folder)
+        super().__init__(parent_config, output_folder=output_folder)
         self.bounds = self.parent_config.nas.bounds
         self.parametrization = parametrization
 
@@ -81,7 +79,7 @@ class AgingEvolutionSampler(Sampler):
         self.population_size = population_size
         self.sample_size = sample_size
         self.eps = eps
-        self.mutator = ParameterMutator(mutation_rate)
+        self.mutator = ParameterMutator(0.1)
 
         self.history = []
         self.population = []
@@ -120,11 +118,8 @@ class AgingEvolutionSampler(Sampler):
 
             parent = sample[np.argmin(fitness)]
             parent_parametrization = set_parametrization(parent.parameters, self.parametrization)
-            parametrization = {key: param.current_value for key, param in parent_parametrization.items()}
-            active_parameters = get_active_parameters(self.search_space, parent_parametrization)
 
-            mutated_parameters, mutated_keys = self.mutator.mutate(active_parameters)
-            parametrization.update(mutated_parameters)
+            parametrization, mutated_keys = self.mutator.mutate(parent_parametrization)
 
         return parametrization, mutated_keys
 
