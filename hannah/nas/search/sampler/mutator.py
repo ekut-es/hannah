@@ -76,8 +76,10 @@ class ParameterMutator:
     ####################################
     # The individual mutations
     def random_choice(self, parameter):
-        idx = int(parameter.rng.choice(range(len(parameter.choices))))
-        return parameter.choices[idx]
+        current_idx = parameter.choices.index(parameter.current_value)
+        available_indices = [i for i in range(len(parameter.choices)) if i != current_idx]
+        selected_idx = parameter.rng.choice(available_indices)
+        return parameter.choices[selected_idx]
 
     def increase_choice(self, parameter):
         index = parameter.choices.index(parameter.current_value)
@@ -92,16 +94,17 @@ class ParameterMutator:
         return parameter.choices[index - 1]
 
     def random_int_scalar(self, parameter):
-        return int(parameter.rng.choice(range(parameter.min, parameter.max+1, parameter.step_size)))
+        possible_values = [v for v in range(parameter.min, parameter.max + 1, parameter.step_size) if v != parameter.current_value]
+        return int(parameter.rng.choice(possible_values))
 
     def increase_int_scalar(self, parameter):
-        if parameter.current_value + parameter.step_size < parameter.max:
+        if parameter.current_value + parameter.step_size <= parameter.max:
             return parameter.current_value + parameter.step_size
         else:
             return parameter.current_value
 
     def decrease_int_scalar(self, parameter):
-        if parameter.current_value - parameter.step_size > parameter.min:
+        if parameter.current_value - parameter.step_size >= parameter.min:
             return parameter.current_value - parameter.step_size
         else:
             return parameter.current_value
