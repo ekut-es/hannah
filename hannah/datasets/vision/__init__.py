@@ -24,6 +24,7 @@ from .kvasir_unlabeled import KvasirCapsuleUnlabeled
 from .ri_capsule import RICapsuleDataset
 from .mnist import MNISTDataset
 from .svhn import SVHNDataset
+from .imagenet import TinyImageNet
 
 __all__ = [
     "DresdenCapsuleDataset",
@@ -35,4 +36,5 @@ __all__ = [
     "RICapsuleDataset",
     "MNISTDataset",
     "SVHNDataset",
+    "TinyImageNet"
 ]
