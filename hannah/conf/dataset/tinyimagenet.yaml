@@ -1,0 +1,4 @@
+data_folder: ${hydra:runtime.cwd}/datasets/
+cls: hannah.datasets.vision.TinyImageNet
+dataset: tiny-imagenet-200
+val_percent: 0.1
