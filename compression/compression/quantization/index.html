@@ -219,9 +219,9 @@ for noise prob seem to be in the range of 0.7 to 0.9.</p>
     power_of_2: false  # Use power of two quantization for weights
     noise_prob: 0.7    # Probability of quantizing a value during training</p>
 <p>Aditionally standard pytorch quantization aware training is supported by using a standard pytorch qconfig.</p>
-<div class="codehilite"><pre><span></span><code><span class="n">qconfig</span><span class="o">:</span><span class="w"></span>
-<span class="w">    </span><span class="n">_target_</span><span class="o">:</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="na">quantization</span><span class="o">.</span><span class="na">get_default_qat_qconfig</span><span class="w"></span>
-<span class="w">    </span><span class="n">backend</span><span class="o">:</span><span class="w"> </span><span class="n">fbgemm</span><span class="w"></span>
+<div class="codehilite"><pre><span></span><code><span class="n">qconfig</span><span class="o">:</span>
+<span class="w">    </span><span class="n">_target_</span><span class="o">:</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="na">quantization</span><span class="o">.</span><span class="na">get_default_qat_qconfig</span>
+<span class="w">    </span><span class="n">backend</span><span class="o">:</span><span class="w"> </span><span class="n">fbgemm</span>
 </code></pre></div>
 
 <p>In this case no quantization noise is supported.</p>

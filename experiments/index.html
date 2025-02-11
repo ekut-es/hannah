@@ -208,43 +208,43 @@ a specific publication goal or project.</p>
 </code></pre></div>
 
 <p>The main configuration is found in <code>config.yaml</code>.</p>
-<div class="codehilite"><pre><span></span><code><span class="nt">defaults</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">base_config</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cifar10</span><span class="w">          </span><span class="c1"># Dataset configuration name</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override features</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">identity</span><span class="w">        </span><span class="c1"># Feature extractor configuration name (use identity for vision datasets)</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">timm_resnet18</span><span class="w">      </span><span class="c1">#timm_mobilenetv3_small_100      # Neural network name (for now timm_resnet50 or timm_efficientnet_lite1)</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override scheduler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1cycle</span><span class="w">         </span><span class="c1"># learning rate scheduler config name</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override optimizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sgd</span><span class="w">            </span><span class="c1"># Optimizer config name</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override normalizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">          </span><span class="c1"># Feature normalizer (used for quantized neural networks)</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image_classifier</span><span class="w">  </span><span class="c1"># Lightning module config for the training loop (image classifier for image classification tasks)</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override augmentation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cifar_augment</span><span class="w"></span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">_self_</span><span class="w"></span>
+<div class="codehilite"><pre><span></span><code><span class="nt">defaults</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">base_config</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cifar10</span><span class="w">          </span><span class="c1"># Dataset configuration name</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override features</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">identity</span><span class="w">        </span><span class="c1"># Feature extractor configuration name (use identity for vision datasets)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">timm_resnet18</span><span class="w">      </span><span class="c1">#timm_mobilenetv3_small_100      # Neural network name (for now timm_resnet50 or timm_efficientnet_lite1)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override scheduler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1cycle</span><span class="w">         </span><span class="c1"># learning rate scheduler config name</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override optimizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sgd</span><span class="w">            </span><span class="c1"># Optimizer config name</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override normalizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">          </span><span class="c1"># Feature normalizer (used for quantized neural networks)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image_classifier</span><span class="w">  </span><span class="c1"># Lightning module config for the training loop (image classifier for image classification tasks)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">override augmentation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cifar_augment</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">_self_</span>
 
 
-<span class="nt">monitor</span><span class="p">:</span><span class="w"></span>
-<span class="w">  </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">val_f1_micro</span><span class="w"></span>
-<span class="w">  </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maximize</span><span class="w"></span>
+<span class="nt">monitor</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">val_f1_micro</span>
+<span class="w">  </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maximize</span>
 
-<span class="nt">module</span><span class="p">:</span><span class="w"></span>
-<span class="w">  </span><span class="nt">batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span><span class="w"></span>
+<span class="nt">module</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span>
 
-<span class="nt">trainer</span><span class="p">:</span><span class="w"></span>
-<span class="w">  </span><span class="nt">max_epochs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span><span class="w"></span>
+<span class="nt">trainer</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">max_epochs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
 
-<span class="nt">scheduler</span><span class="p">:</span><span class="w"></span>
-<span class="w">  </span><span class="nt">max_lr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span><span class="w"></span>
+<span class="nt">scheduler</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">max_lr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
 </code></pre></div>
 
 <p>The configuration is composed from the standard presets in <code>base_config</code> the defaults are then using different config group presets, using the
 <code>- override &lt;groupname&gt;: &lt;presetname&gt;</code> syntax. Most of the presets are taken from the package wide configuration in <code>hannah/conf</code>. The configuration for data augmentation is defined in: <code>augmentation/cifar_augment.yaml</code>:</p>
-<div class="codehilite"><pre><span></span><code><span class="nt">batch_augment</span><span class="p">:</span><span class="w"></span>
-<span class="w">  </span><span class="nt">pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
-<span class="w">  </span><span class="nt">transforms</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">RandomVerticalFlip</span><span class="p">:</span><span class="w"></span>
-<span class="w">      </span><span class="nt">p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span><span class="w"></span>
-<span class="w">    </span><span class="nt">RandomCrop</span><span class="p">:</span><span class="w"></span>
-<span class="w">      </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">32</span><span class="p p-Indicator">,</span><span class="nv">32</span><span class="p p-Indicator">]</span><span class="w"></span>
-<span class="w">      </span><span class="nt">padding</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w"></span>
+<div class="codehilite"><pre><span></span><code><span class="nt">batch_augment</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">  </span><span class="nt">transforms</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">RandomVerticalFlip</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+<span class="w">    </span><span class="nt">RandomCrop</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">32</span><span class="p p-Indicator">,</span><span class="nv">32</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">padding</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
 </code></pre></div>
 
 <p>This file specifies the presets for data augmentation shared among the experiments in this group of experiments.</p>
@@ -252,15 +252,15 @@ a specific publication goal or project.</p>
 These experiments can be started with: <code>hannah-train +experiment=&lt;experiment_name&gt;</code>. Please note the <strong>+</strong> in front
 of the commandline argument. This is needed as <code>experiment</code> is not part of default configuration hierarchy.</p>
 <p>As an example have a look at <code>experiment/sweep_lr.yaml</code>.</p>
-<div class="codehilite"><pre><span></span><code><span class="c1"># @package _global_</span><span class="w"></span>
-<span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sweep_lr</span><span class="w"></span>
-<span class="nt">hydra</span><span class="p">:</span><span class="w"></span>
-<span class="w">  </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MULTIRUN</span><span class="w"></span>
-<span class="w">  </span><span class="nt">sweep</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">subdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lr=${scheduler.max_lr}</span><span class="w"></span>
-<span class="w">  </span><span class="nt">sweeper</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">params</span><span class="p">:</span><span class="w"></span>
-<span class="w">      </span><span class="nt">scheduler.max_lr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0001,0.001,0.01,0.1</span><span class="w"></span>
+<div class="codehilite"><pre><span></span><code><span class="c1"># @package _global_</span>
+<span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sweep_lr</span>
+<span class="nt">hydra</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MULTIRUN</span>
+<span class="w">  </span><span class="nt">sweep</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">subdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lr=${scheduler.max_lr}</span>
+<span class="w">  </span><span class="nt">sweeper</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">scheduler.max_lr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0001,0.001,0.01,0.1</span>
 </code></pre></div>
 
 <p>Experiments must start with <code># @package _global_</code> this means that overrides defined here change the global

@@ -196,33 +196,33 @@ for the default optimizer (<code>adamw</code>):</p>
 <p>Parametrization can be given on the commandline as well as using configuration files for a detailed documentation have a look at  <a href="https://hydra.cc/docs/advanced/override_grammar/basic">basic override syntax</a>  and <a href="https://hydra.cc/docs/advanced/override_grammar/extended">extended override syntax</a>.</p>
 <h2 id="optuna-options">Optuna Options</h2>
 <p>The optuna hyperparameter optimizer has the following options.</p>
-<div class="codehilite"><pre><span></span><code>hannah-train hydra/sweeper<span class="o">=</span>optuna --cfg hydra -p hydra.sweeper
+<div class="codehilite"><pre><span></span><code>hannah-train<span class="w"> </span>hydra/sweeper<span class="o">=</span>optuna<span class="w"> </span>--cfg<span class="w"> </span>hydra<span class="w"> </span>-p<span class="w"> </span>hydra.sweeper
 <span class="c1"># @package hydra.sweeper</span>
 sampler:
-  _target_: optuna.samplers.TPESampler
-  seed: null
-  consider_prior: <span class="nb">true</span>
-  prior_weight: <span class="m">1</span>.0
-  consider_magic_clip: <span class="nb">true</span>
-  consider_endpoints: <span class="nb">false</span>
-  n_startup_trials: <span class="m">10</span>
-  n_ei_candidates: <span class="m">24</span>
-  multivariate: <span class="nb">false</span>
-  warn_independent_sampling: <span class="nb">true</span>
-_target_: hydra_plugins.hydra_optuna_sweeper.optuna_sweeper.OptunaSweeper
-direction: minimize
-storage: null
-study_name: null
-n_trials: <span class="m">20</span>
-n_jobs: <span class="m">2</span>
-search_space: <span class="o">{}</span>
+<span class="w">  </span>_target_:<span class="w"> </span>optuna.samplers.TPESampler
+<span class="w">  </span>seed:<span class="w"> </span>null
+<span class="w">  </span>consider_prior:<span class="w"> </span><span class="nb">true</span>
+<span class="w">  </span>prior_weight:<span class="w"> </span><span class="m">1</span>.0
+<span class="w">  </span>consider_magic_clip:<span class="w"> </span><span class="nb">true</span>
+<span class="w">  </span>consider_endpoints:<span class="w"> </span><span class="nb">false</span>
+<span class="w">  </span>n_startup_trials:<span class="w"> </span><span class="m">10</span>
+<span class="w">  </span>n_ei_candidates:<span class="w"> </span><span class="m">24</span>
+<span class="w">  </span>multivariate:<span class="w"> </span><span class="nb">false</span>
+<span class="w">  </span>warn_independent_sampling:<span class="w"> </span><span class="nb">true</span>
+_target_:<span class="w"> </span>hydra_plugins.hydra_optuna_sweeper.optuna_sweeper.OptunaSweeper
+direction:<span class="w"> </span>minimize
+storage:<span class="w"> </span>null
+study_name:<span class="w"> </span>null
+n_trials:<span class="w"> </span><span class="m">20</span>
+n_jobs:<span class="w"> </span><span class="m">2</span>
+search_space:<span class="w"> </span><span class="o">{}</span>
 </code></pre></div>
 
 <p>Try especially increasing the number of trials to run <code>n_trials</code>, and if the sweeper options are dependent on each other try enabling multivariate sampling e.g. <code>sampler.multivariate</code>.</p>
 <h2 id="state-persistence">State Persistence</h2>
 <p>If you want to save the optimization results for later analyis you can save them to a relational or redis database by setting
 the <code>study_name</code> and <code>storage</code> options. e.g.:</p>
-<div class="codehilite"><pre><span></span><code>hannah-train experiment_id=&quot;test_optuna_resume&quot; hydra/sweeper=optuna hydra.sweeper.study_name=&#39;<span class="cp">${</span><span class="n">experiment_id</span><span class="cp">}</span>&#39; hydra.sweeper.storage=&#39;sqlite:///<span class="cp">${</span><span class="n">experiment_id</span><span class="cp">}</span>.sqlite&#39;  trainer.max_epochs=15 scheduler.max_lr=&#39;interval(0.0001, 0.1)&#39; module.num_workers=4 -m
+<div class="codehilite"><pre><span></span><code>hannah-train<span class="w"> </span>experiment_id=&quot;test_optuna_resume&quot;<span class="w"> </span>hydra/sweeper=optuna<span class="w"> </span>hydra.sweeper.study_name=&#39;<span class="cp">${</span><span class="n">experiment_id</span><span class="cp">}</span>&#39;<span class="w"> </span>hydra.sweeper.storage=&#39;sqlite:///<span class="cp">${</span><span class="n">experiment_id</span><span class="cp">}</span>.sqlite&#39;<span class="w">  </span>trainer.max_epochs=15<span class="w"> </span>scheduler.max_lr=&#39;interval(0.0001,<span class="w"> </span>0.1)&#39;<span class="w"> </span>module.num_workers=4<span class="w"> </span>-m
 </code></pre></div>
 
 <p>The tuning results can then be visualized using the tools from <a href="https://optuna.readthedocs.io/en/stable/search.html?q=visualize&amp;check_keywords=yes&amp;area=default#"><code>optuna.visualize</code></a>:
