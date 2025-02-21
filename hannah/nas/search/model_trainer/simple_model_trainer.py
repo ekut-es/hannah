@@ -77,6 +77,8 @@ class SimpleModelTrainer:
                     config.trainer, callbacks=callbacks, logger=logger
                 )
                 module = model
+                if config.module.get("channels_last", False):
+                    module = module.to(memory_format=torch.channels_last)
                 trainer.fit(module)
 
                 ckpt_path = "best"
