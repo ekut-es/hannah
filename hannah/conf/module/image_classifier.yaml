@@ -20,3 +20,4 @@ _target_: hannah.modules.vision.ImageClassifierModule
 num_workers: 0
 batch_size: 128
 shuffle_all_dataloaders: False
+channels_last: True
