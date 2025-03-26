@@ -101,5 +101,12 @@
         "submitit",
         "tablefmt"
     ],
-    "terminal.integrated.allowChords": false
+    "terminal.integrated.allowChords": false,
+    "spellright.language": [
+        "de"
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex"
+    ]
 }

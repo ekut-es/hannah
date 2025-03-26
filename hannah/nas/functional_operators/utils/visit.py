@@ -16,9 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from hannah.nas.expressions.choice import SymbolicSequence
+from hannah.nas.expressions.utils import extract_parameter_from_expression
 from ..op import BaseNode
 from hannah.nas.functional_operators.op import ChoiceOp
+from hannah.nas.functional_operators.operators import Conv2d
 from hannah.nas.parameters.parameters import Parameter
+from hannah.nas.core.expression import Expression
+
 
 
 def post_order(op: BaseNode):
@@ -54,18 +59,38 @@ def get_active_parameters(space, parametrization=None):
 
     while queue:
         node = queue.pop(0)
-        for k, p in node._PARAMETERS.items():
+        # FIXME: This should be done in parametrize.py. This is just a hack
+        if isinstance(node, Conv2d):
+            node_attrs = {'out_channels': node.out_channels, "in_channels": node.in_channels, "kernel_size": node.kernel_size, "stride": node.stride, "dilation": node.dilation, "groups": node.groups}
+            params = {}
+            for k, p in node_attrs.items():
+                if isinstance(p, Parameter):
+                    params[p.name] = p
+                elif isinstance(p, SymbolicSequence):
+                    pass
+                elif isinstance(p, Expression):
+                    extracted_params = extract_parameter_from_expression(p)
+                    for extracted in extracted_params:
+                        params[extracted.name] = extracted
+
+        else:
+            params = node._PARAMETERS
+        for k, p in params.items():
             if isinstance(p, Parameter):
-                active_params[p.id] = parametrization[p.id]
+                if p.id in parametrization:
+                    active_params[p.id] = parametrization[p.id]
         for operand in node.operands:
             while isinstance(operand, ChoiceOp):
                 for k, p in operand._PARAMETERS.items():
                     if isinstance(p, Parameter):
-                        active_params[p.id] = parametrization[p.id]
-                active_op_index = operand.switch.evaluate()
+                        if p.id in parametrization:
+                            active_params[p.id] = parametrization[p.id]
+                if operand.switch.id in parametrization:
+                    active_op_index = parametrization[operand.switch.id].evaluate()
+                else:
+                    active_op_index = operand.switch.evaluate()  # FIXME: TEST
                 operand = operand.operands[active_op_index]
             if operand.id not in visited:
                 queue.append(operand)
                 visited.append(operand.id)
     return active_params
-

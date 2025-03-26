@@ -1,0 +1,4 @@
+_target_: hannah.models.mnasnet.MNASNET
+name: "mnasnet0_5"
+width: 0.5
+labels: 10

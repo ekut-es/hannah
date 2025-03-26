@@ -172,7 +172,7 @@ class RandomWalkConstraintSolver:
                 return False
 
     def solve(self, module, parameters, fix_vars=[]):
-        print("Start constraint solving")
+        logger.info("Start constraint solving")
         mod = deepcopy(module)  # FIXME copying is inefficient
         # mod = module
         self.solution = deepcopy(parameters)
@@ -196,7 +196,7 @@ class RandomWalkConstraintSolver:
                 # active_params = get_active_parameter(params)
                 active_params = list(get_active_parameters(mod).keys())
 
-                param_keys = [p for p in all_param_keys if p in active_params]
+                param_keys = [p for p in all_param_keys if p in active_params and p not in fix_vars]
                 current = con.lhs.evaluate()
                 if con.evaluate():
                     self.solution.update(params)

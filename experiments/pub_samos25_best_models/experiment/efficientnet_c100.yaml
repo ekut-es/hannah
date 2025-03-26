@@ -1,0 +1,21 @@
+# @package _global_
+defaults:
+  - override /model: timm_efficientnet_lite1
+  - override /augmentation: cifar_augment
+  - override /dataset: cifar100
+
+
+module:
+  batch_size: 256
+  num_workers: 8
+
+trainer:
+  max_epochs: 200
+
+scheduler:
+  T_max: 200
+
+
+seed: [1234]
+
+experiment_id: efficientnet_cifar100_sgd_cosine_b256_e200

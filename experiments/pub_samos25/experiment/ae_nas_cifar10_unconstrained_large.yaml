@@ -1,0 +1,33 @@
+# @package _global_
+defaults:
+  - override /nas: aging_evolution_nas
+  - override /model: embedded_vision_net_large
+  - override /dataset: cifar10
+  - override /nas/constraint_model: null
+  - override /nas/predictor: [macs]
+
+
+
+model:
+  num_classes: 10
+
+  constraints:
+    - name: weights
+
+nas:
+  budget: 600
+  n_jobs: 1
+  num_selected_candidates: 1
+  total_candidates: 1
+  bounds:
+    val_error: 0.01
+  sampler:
+    population_size: 30
+    sample_size: 20
+
+
+
+
+seed: [1234]
+
+experiment_id: "ae_nas_cifar10_unconstrained_large"
