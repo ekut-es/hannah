@@ -1,0 +1,22 @@
+# @package _global_
+defaults:
+  - override /model: timm_efficientnet_lite1
+  - override /augmentation: cifar_augment
+
+
+module:
+  batch_size: 512
+  num_workers: 8
+  channels_last: True
+
+trainer:
+  max_epochs: 100
+  precision: 16
+  # num_sanity_val_steps: 0
+
+scheduler:
+  max_lr: 0.01
+
+seed: [1234]
+
+experiment_id: "efficientnet_cifar10_bs512_maxlr_0_01_e100"

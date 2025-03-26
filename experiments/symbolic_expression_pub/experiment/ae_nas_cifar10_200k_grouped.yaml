@@ -1,0 +1,221 @@
+# @package _global_
+defaults:
+  # - /nas/parametrization: best_200k
+  - override /nas: aging_evolution_nas
+  - override /model: embedded_vision_net_grouped_pw
+  - override /dataset: cifar10
+  - override /nas/constraint_model: random_walk
+  - override /nas/predictor: [macs]
+
+
+
+model:
+  num_classes: 10
+
+  constraints:
+    - name: weights
+
+nas:
+  budget: 600
+  n_jobs: 1
+  num_selected_candidates: 1
+  total_candidates: 1
+  bounds:
+    val_error: 0.01
+    total_weights: 200000
+  sampler:
+    population_size: 30
+    sample_size: 20
+
+  parametrization:
+    embedded_vision_net_0.ChoiceOp_0.num_blocks: 2
+    embedded_vision_net_0.block_0.ChoiceOp_0.depth: 1
+    embedded_vision_net_0.block_0.ChoiceOp_1.residual_choice: 1
+    embedded_vision_net_0.block_0.pattern_0.ChoiceOp_0.choice: 3
+    embedded_vision_net_0.block_0.pattern_0.Conv2d_0.stride: 1
+    embedded_vision_net_0.block_0.pattern_0.Conv2d_0.weight.kernel_size: 7
+    embedded_vision_net_0.block_0.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 2
+    embedded_vision_net_0.block_0.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_0.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 3
+    embedded_vision_net_0.block_0.pattern_1.ChoiceOp_0.choice: 2
+    embedded_vision_net_0.block_0.pattern_1.Conv2d_0.weight.kernel_size: 3
+    embedded_vision_net_0.block_0.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 1
+    embedded_vision_net_0.block_0.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_0.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_0.pattern_2.ChoiceOp_0.choice: 4
+    embedded_vision_net_0.block_0.pattern_2.Conv2d_0.weight.kernel_size: 9
+    embedded_vision_net_0.block_0.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_0.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_0.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 3
+    embedded_vision_net_0.block_1.ChoiceOp_0.depth: 0
+    embedded_vision_net_0.block_1.ChoiceOp_1.residual_choice: 0
+    embedded_vision_net_0.block_1.pattern_0.ChoiceOp_0.choice: 4
+    embedded_vision_net_0.block_1.pattern_0.Conv2d_0.stride: 2
+    embedded_vision_net_0.block_1.pattern_0.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_1.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 1
+    embedded_vision_net_0.block_1.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_1.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_1.pattern_1.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_1.pattern_1.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_1.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_1.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_1.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_1.pattern_2.ChoiceOp_0.choice: 3
+    embedded_vision_net_0.block_1.pattern_2.Conv2d_0.weight.kernel_size: 3
+    embedded_vision_net_0.block_1.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 4
+    embedded_vision_net_0.block_1.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_1.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_2.ChoiceOp_0.depth: 1
+    embedded_vision_net_0.block_2.ChoiceOp_1.residual_choice: 0
+    embedded_vision_net_0.block_2.pattern_0.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_2.pattern_0.Conv2d_0.stride: 1
+    embedded_vision_net_0.block_2.pattern_0.Conv2d_0.weight.kernel_size: 3
+    embedded_vision_net_0.block_2.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 4
+    embedded_vision_net_0.block_2.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_2.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_2.pattern_1.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_2.pattern_1.Conv2d_0.weight.kernel_size: 7
+    embedded_vision_net_0.block_2.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_2.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_2.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 3
+    embedded_vision_net_0.block_2.pattern_2.ChoiceOp_0.choice: 4
+    embedded_vision_net_0.block_2.pattern_2.Conv2d_0.weight.kernel_size: 7
+    embedded_vision_net_0.block_2.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_2.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_2.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_3.ChoiceOp_0.depth: 2
+    embedded_vision_net_0.block_3.ChoiceOp_1.residual_choice: 1
+    embedded_vision_net_0.block_3.pattern_0.ChoiceOp_0.choice: 4
+    embedded_vision_net_0.block_3.pattern_0.Conv2d_0.stride: 1
+    embedded_vision_net_0.block_3.pattern_0.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_3.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 3
+    embedded_vision_net_0.block_3.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_3.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_3.pattern_1.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_3.pattern_1.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_3.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 6
+    embedded_vision_net_0.block_3.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_3.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 3
+    embedded_vision_net_0.block_3.pattern_2.ChoiceOp_0.choice: 4
+    embedded_vision_net_0.block_3.pattern_2.Conv2d_0.weight.kernel_size: 9
+    embedded_vision_net_0.block_3.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 6
+    embedded_vision_net_0.block_3.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_3.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_4.ChoiceOp_0.depth: 0
+    embedded_vision_net_0.block_4.ChoiceOp_1.residual_choice: 0
+    embedded_vision_net_0.block_4.pattern_0.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_4.pattern_0.Conv2d_0.stride: 2
+    embedded_vision_net_0.block_4.pattern_0.Conv2d_0.weight.kernel_size: 9
+    embedded_vision_net_0.block_4.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_4.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_4.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_4.pattern_1.ChoiceOp_0.choice: 4
+    embedded_vision_net_0.block_4.pattern_1.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_4.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 2
+    embedded_vision_net_0.block_4.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_4.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_4.pattern_2.ChoiceOp_0.choice: 3
+    embedded_vision_net_0.block_4.pattern_2.Conv2d_0.weight.kernel_size: 3
+    embedded_vision_net_0.block_4.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 6
+    embedded_vision_net_0.block_4.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_4.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_5.ChoiceOp_0.depth: 1
+    embedded_vision_net_0.block_5.ChoiceOp_1.residual_choice: 0
+    embedded_vision_net_0.block_5.pattern_0.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_5.pattern_0.Conv2d_0.stride: 2
+    embedded_vision_net_0.block_5.pattern_0.Conv2d_0.weight.kernel_size: 9
+    embedded_vision_net_0.block_5.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 4
+    embedded_vision_net_0.block_5.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_5.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_5.pattern_1.ChoiceOp_0.choice: 3
+    embedded_vision_net_0.block_5.pattern_1.Conv2d_0.weight.kernel_size: 9
+    embedded_vision_net_0.block_5.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 2
+    embedded_vision_net_0.block_5.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_5.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_5.pattern_2.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_5.pattern_2.Conv2d_0.weight.kernel_size: 9
+    embedded_vision_net_0.block_5.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 3
+    embedded_vision_net_0.block_5.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_5.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_6.ChoiceOp_0.depth: 1
+    embedded_vision_net_0.block_6.ChoiceOp_1.residual_choice: 0
+    embedded_vision_net_0.block_6.pattern_0.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_6.pattern_0.Conv2d_0.stride: 2
+    embedded_vision_net_0.block_6.pattern_0.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_6.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 6
+    embedded_vision_net_0.block_6.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_6.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_6.pattern_1.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_6.pattern_1.Conv2d_0.weight.kernel_size: 9
+    embedded_vision_net_0.block_6.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_6.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_6.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_6.pattern_2.ChoiceOp_0.choice: 2
+    embedded_vision_net_0.block_6.pattern_2.Conv2d_0.weight.kernel_size: 7
+    embedded_vision_net_0.block_6.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 6
+    embedded_vision_net_0.block_6.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_6.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_7.ChoiceOp_0.depth: 1
+    embedded_vision_net_0.block_7.ChoiceOp_1.residual_choice: 0
+    embedded_vision_net_0.block_7.pattern_0.ChoiceOp_0.choice: 2
+    embedded_vision_net_0.block_7.pattern_0.Conv2d_0.stride: 2
+    embedded_vision_net_0.block_7.pattern_0.Conv2d_0.weight.kernel_size: 7
+    embedded_vision_net_0.block_7.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 6
+    embedded_vision_net_0.block_7.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_7.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 3
+    embedded_vision_net_0.block_7.pattern_1.ChoiceOp_0.choice: 2
+    embedded_vision_net_0.block_7.pattern_1.Conv2d_0.weight.kernel_size: 9
+    embedded_vision_net_0.block_7.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 2
+    embedded_vision_net_0.block_7.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_7.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_7.pattern_2.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_7.pattern_2.Conv2d_0.weight.kernel_size: 7
+    embedded_vision_net_0.block_7.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_7.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_7.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 2
+    embedded_vision_net_0.block_8.ChoiceOp_0.depth: 2
+    embedded_vision_net_0.block_8.ChoiceOp_1.residual_choice: 1
+    embedded_vision_net_0.block_8.pattern_0.ChoiceOp_0.choice: 4
+    embedded_vision_net_0.block_8.pattern_0.Conv2d_0.stride: 2
+    embedded_vision_net_0.block_8.pattern_0.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_8.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_8.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_8.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 3
+    embedded_vision_net_0.block_8.pattern_1.ChoiceOp_0.choice: 0
+    embedded_vision_net_0.block_8.pattern_1.Conv2d_0.weight.kernel_size: 3
+    embedded_vision_net_0.block_8.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 5
+    embedded_vision_net_0.block_8.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_8.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 3
+    embedded_vision_net_0.block_8.pattern_2.ChoiceOp_0.choice: 2
+    embedded_vision_net_0.block_8.pattern_2.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_8.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 4
+    embedded_vision_net_0.block_8.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_8.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 3
+    embedded_vision_net_0.block_9.ChoiceOp_0.depth: 2
+    embedded_vision_net_0.block_9.ChoiceOp_1.residual_choice: 1
+    embedded_vision_net_0.block_9.pattern_0.ChoiceOp_0.choice: 1
+    embedded_vision_net_0.block_9.pattern_0.Conv2d_0.stride: 2
+    embedded_vision_net_0.block_9.pattern_0.Conv2d_0.weight.kernel_size: 3
+    embedded_vision_net_0.block_9.pattern_0.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 1
+    embedded_vision_net_0.block_9.pattern_0.pooling_0.ChoiceOp_0.pool_mode: 1
+    embedded_vision_net_0.block_9.pattern_0.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_9.pattern_1.ChoiceOp_0.choice: 3
+    embedded_vision_net_0.block_9.pattern_1.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_9.pattern_1.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 4
+    embedded_vision_net_0.block_9.pattern_1.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_9.pattern_1.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.block_9.pattern_2.ChoiceOp_0.choice: 0
+    embedded_vision_net_0.block_9.pattern_2.Conv2d_0.weight.kernel_size: 5
+    embedded_vision_net_0.block_9.pattern_2.expand_reduce_0.expansion_0.Conv2d_0.weight.expand_ratio: 6
+    embedded_vision_net_0.block_9.pattern_2.pooling_0.ChoiceOp_0.pool_mode: 0
+    embedded_vision_net_0.block_9.pattern_2.reduce_expand_0.reduction_0.Conv2d_0.weight.reduce_ratio: 4
+    embedded_vision_net_0.stem_0.Conv2d_0.stride: 1
+    embedded_vision_net_0.stem_0.Conv2d_0.weight.kernel_size: 3
+
+
+
+
+
+seed: [1234]
+
+experiment_id: "ae_nas_cifar10_w200000_grouped"

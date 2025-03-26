@@ -22,7 +22,8 @@ speech_recognition.egg-info/
 .ropeproject
 .ModelCheckpoint
 .ipynb_checkpoints
-
+/data/*
+/runs/*
 venv/
 srf-venv/
 

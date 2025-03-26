@@ -1,0 +1,23 @@
+# @package _global_
+defaults:
+  - override /model: embedded_vision_net_model
+  - override /augmentation: cifar_augment
+
+model:
+  param_path: /local/reiber/hannah/experiments/symbolic_expression_pub/parameters.pkl
+  task_name: 500k_new
+  index: 975
+  input_shape: [1, 3, 32, 32]
+  labels: 100
+
+module:
+  batch_size: 128
+  num_workers: 32
+
+trainer:
+  max_epochs: 300
+
+scheduler:
+  max_lr: 0.001
+
+experiment_id: best_model_augment_adam_lr001_b128_e300

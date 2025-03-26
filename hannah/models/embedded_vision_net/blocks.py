@@ -65,10 +65,10 @@ def grouped_pointwise(input, out_channels):
 
 @scope
 def expansion(input, expanded_channels):
-    pw = partial(pointwise_conv2d, out_channels=expanded_channels)
-    grouped_pw = partial(grouped_pointwise, out_channels=expanded_channels)
-    return choice(input, pw, grouped_pw)
-    # return pointwise_conv2d(input, out_channels=expanded_channels)
+    # pw = partial(pointwise_conv2d, out_channels=expanded_channels)
+    # grouped_pw = partial(grouped_pointwise, out_channels=expanded_channels)
+    # return choice(input, pw, grouped_pw)
+    return pointwise_conv2d(input, out_channels=expanded_channels)
 
 
 @scope
@@ -80,10 +80,10 @@ def spatial_correlation(input, out_channels, kernel_size, stride=1):
 
 @scope
 def reduction(input, out_channels):
-    pw = partial(pointwise_conv2d, out_channels=out_channels)
-    grouped_pw = partial(grouped_pointwise, out_channels=out_channels)
-    return choice(input, pw, grouped_pw)
-    # return pointwise_conv2d(input, out_channels=out_channels)
+    # pw = partial(pointwise_conv2d, out_channels=out_channels)
+    # grouped_pw = partial(grouped_pointwise, out_channels=out_channels)
+    # return choice(input, pw, grouped_pw)
+    return pointwise_conv2d(input, out_channels=out_channels)
 
 
 @scope

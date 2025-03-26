@@ -230,17 +230,109 @@ def search_space_cwm(name, input, num_classes=10):
     return out
 
 
-def model(name, param_path, task_name, index, input_shape, labels):
-    from pathlib import Path
+# def model(name, param_path, task_name, index, input_shape, labels):
+#     from pathlib import Path
 
-    import pandas as pd
+#     import pandas as pd
 
-    params = pd.read_pickle(Path(param_path))
+#     params = pd.read_pickle(Path(param_path))
+#     input = Tensor(name="input", shape=input_shape, axis=("N", "C", "H", "W"))
+#     space = embedded_vision_net(name=name, input=input, num_classes=labels)
+#     # params = pd.read_pickle(Path("~/projects/hannah/experiments/embedded_vision_net_ri/parameters.pkl"))
+#     parameters = params[task_name][index]
+#     set_parametrization(parameters, space.parametrization(flatten=True))
+#     mod = BasicExecutor(space)
+#     mod.initialize()
+#     return mod
+
+def backbone_large(input, num_classes=10, max_channels=1024, max_blocks=9):
+    out_channels = IntScalarParameter(
+        64, max_channels, step_size=64, name="out_channels"
+    )
+    kernel_size = CategoricalParameter([3, 5, 7, 9], name="kernel_size")
+    stride = CategoricalParameter([1, 2], name="stride")
+    expand_ratio = IntScalarParameter(2, 6, name="expand_ratio")
+    reduce_ratio = IntScalarParameter(3, 6, name="reduce_ratio")
+    depth = IntScalarParameter(0, 2, name="depth")
+
+    num_blocks = IntScalarParameter(0, max_blocks, name="num_blocks")
+    exits = []
+
+    # stem_kernel_size = CategoricalParameter([3, 5], name="kernel_size")
+    stem_channels = IntScalarParameter(min=32, max=256, step_size=32, name="out_channels")
+    out = stem(input, 3, 2, stem_channels)
+    for i in range(num_blocks.max + 1):
+        out = block(
+            out,
+            depth=depth.new(),
+            stride=stride.new(),
+            out_channels=out_channels.new(),
+            kernel_size=kernel_size.new(),
+            expand_ratio=expand_ratio.new(),
+            reduce_ratio=reduce_ratio.new(),
+        )
+        exits.append(out)
+
+    out = dynamic_depth(*exits, switch=num_blocks)
+
+    output_fmap = out.shape()[2]
+
+    out = classifier_head(out, num_classes=num_classes)
+
+    stride_params = [
+        v
+        for k, v in out.parametrization(flatten=True).items()
+        if k.split(".")[-1] == "stride"
+    ]
+    out.cond(output_fmap > 1, allowed_params=stride_params)
+
+    return out
+
+
+@search_space
+def embedded_vision_net_large(
+    name,
+    input,
+    num_classes: int,
+    max_channels=512,
+    max_blocks=9,
+    constraints: list[dict] = [],
+):
+    arch = backbone(input, num_classes, max_channels, max_blocks=max_blocks)
+    for con in constraints:
+        if con.name == "weights":
+            arch.weights = extract_weights_recursive(arch)
+            weight_params = extract_parameter_from_expression(arch.weights)
+            weight_params = [
+                p
+                for p in weight_params
+                if "stride" not in p.name and "groups" not in p.name
+            ]
+            if "upper" in con:
+                arch.cond(arch.weights < con.upper, weight_params)
+            if "lower" in con:
+                arch.cond(arch.weights > con.lower, weight_params)
+        elif con.name == "macs":
+            arch.macs = extract_macs_recursive(arch)
+            mac_params = extract_parameter_from_expression(arch.macs)
+            mac_params = [
+                p
+                for p in mac_params
+                if "stride" not in p.name and "groups" not in p.name
+            ]
+            if "upper" in con:
+                arch.cond(arch.macs < con.upper, mac_params)
+            if "lower" in con:
+                arch.cond(arch.macs > con.lower, mac_params)
+        else:
+            raise NotImplementedError(f"Constraint {con.name} not implemented")
+    return arch
+
+
+def model(name, parametrization, input_shape, labels):
     input = Tensor(name="input", shape=input_shape, axis=("N", "C", "H", "W"))
-    space = search_space(name=name, input=input, num_classes=labels)
-    # params = pd.read_pickle(Path("~/projects/hannah/experiments/embedded_vision_net_ri/parameters.pkl"))
-    parameters = params[task_name][index]
-    set_parametrization(parameters, space.parametrization(flatten=True))
+    space = embedded_vision_net(name=name, input=input, num_classes=labels)
+    set_parametrization(parametrization, space.parametrization(flatten=True))
     mod = BasicExecutor(space)
     mod.initialize()
     return mod

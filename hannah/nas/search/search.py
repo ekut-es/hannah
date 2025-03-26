@@ -112,6 +112,8 @@ class DirectNAS(NASBase):
         total_candidates=100,
         num_selected_candidates=10,
         constrained_sampling_on_search=False,
+        constrained_init_batch=True,
+        parametrization=None,
         *args,
         **kwargs,
     ) -> None:
@@ -122,11 +124,23 @@ class DirectNAS(NASBase):
         self.total_candidates = total_candidates
         self.num_selected_candidates = num_selected_candidates
         self.constrained_sampling_on_search = constrained_sampling_on_search
+        self.constrained_init_batch = constrained_init_batch
+        self.fixed_parametrization = parametrization
 
     def before_search(self):
+        sys.setrecursionlimit(1500)
         self.initialize_dataset()
         self.search_space = self.build_search_space()
         parametrization = self.search_space.parametrization(flatten=True)
+        if self.fixed_parametrization is not None:
+            new_parametrization = {}
+            for k, v in parametrization.items():
+                if k in self.fixed_parametrization:
+                    v.current_value = self.fixed_parametrization[k]
+                else:
+                    new_parametrization[k] = v
+            parametrization = new_parametrization
+
         self.sampler = instantiate(
             self.config.nas.sampler,
             search_space=self.search_space,
@@ -168,7 +182,7 @@ class DirectNAS(NASBase):
                 remaining_candidates,
                 remaining_candidates,
                 presample=self.presample,
-                constrain=False,  # FIXME: shouldn't this be true?
+                constrain=self.constrained_init_batch,
             )
 
     def search(self):
@@ -269,7 +283,7 @@ class DirectNAS(NASBase):
         if presample:
             msglogger.info(f"Skipped {skip_ct} models for not meeting constraints.")
 
-        if self.predictors:
+        if "gcn" in self.predictors:
             candidates.sort(key=lambda x: x[2][sort_key])
             candidates = candidates[:num_candidates]
 
@@ -336,12 +350,11 @@ class DirectNAS(NASBase):
             while True:
                 try:
                     parameters, keys = self.sampler.next_parameters()
-                    fixed_vars = [
-                        self.search_space.parametrization(flatten=True)[key]
-                        for key in keys
-                    ]
+                    if self.fixed_parametrization is not None:
+                        keys.extend(list(self.fixed_parametrization.keys()))
+                    # TODO: Asynchronous constraint solving
                     self.constraint_model.solve(
-                        self.search_space, parameters, fix_vars=fixed_vars
+                        self.search_space, parameters, fix_vars=keys
                     )
                     parameters = self.constraint_model.get_constrained_params(
                         parameters

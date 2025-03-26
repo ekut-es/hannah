@@ -1,0 +1,20 @@
+# @package _global_
+defaults:
+  - override /model: timm_mobilenetv3_small_100
+  - override /augmentation: cifar_augment
+  - override /dataset: cifar10
+
+module:
+  batch_size: 256
+  num_workers: 8
+
+trainer:
+  max_epochs: 100
+
+scheduler:
+  T_max: 100
+
+
+seed: [1234]
+
+experiment_id: mobilenetv3_small100_cifar10_sgd_cosine_b256_e100

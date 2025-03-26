@@ -157,6 +157,20 @@ class IntScalarParameter(Parameter):
     def from_float(self, val):
         return int(val * (self.max - self.min) + self.min)
 
+    def increase(self):
+        if self.current_value + self.step_size <= self.max:
+            self.current_value += self.step_size
+        else:
+            self.current_value = self.max
+        return self.current_value
+
+    def decrease(self):
+        if self.current_value - self.step_size >= self.min:
+            self.current_value -= self.step_size
+        else:
+            self.current_value = self.min
+        return self.current_value
+
 
 class FloatScalarParameter(Parameter):
     def __init__(
