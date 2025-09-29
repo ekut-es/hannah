@@ -66,7 +66,7 @@ def compute_preds(df, logP, log_transitions, emissions, step=1, size=500):
             df_temp["preds"].to_numpy()[0::step],
             logP=logP,
             logA=log_transitions,
-            logB=np.log(emissions),
+            logB=emissions,
             size=size,
         )
 
