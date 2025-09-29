@@ -170,7 +170,7 @@
 <p>Next, the Viterbi Decoding computes the most likely sequence of hidden states (or classes in this case) based on the provided observations given by the neural network. For applications such as the VCE, a HMM in combination with Viterbi Decoding is a very reasonable choice as there is some preknowledge about this application. For example, we can leverage the knowledge in which order the capsule traverses the gastrointestinal tract. Furthermore, we know that the capsule cannot move back to a preceding organ after it has entered the next one. This can be encoded in the transition probabilities of the HMM.</p>
 <p>As a first step, one needs to invoke a training with HANNAH for one of the supported datasets. This generates two output files named as <code>{model_name}_cnn_train_output</code> and <code>{model_name}_cnn_train_output</code>. Both are CSV Files, containing for each input one row, where the columns indicate the study id, the CNN evaluation and the true label (e.g. <code>100,0,1</code> for study ID=100, prediction of CNN = 0, true label = 1). Subsequently, they can be read into <code>hmm_window.py</code> (which allows to compute the Viterbi algorithm with a predefined window size).</p>
 <p>Thus, the Viterbi Decoding can be invoked by:</p>
-<div class="codehilite"><pre><span></span><code>python hannah/sequential_analysis/hmm/hmm_window.py --cnn_output_dir &#39;/PATH/TO/TRAINED_MODELS/DIR/&#39; --class_of_interest 2
+<div class="codehilite"><pre><span></span><code>python hannah/sequential_analysis/hmm/hmm_window.py --cnn_output_dir &#39;/PATH/TO/TRAINED_MODELS/DIR/&#39; --class_of_interest 2 --quantization False
 </code></pre></div>
 
 <p>Parameters that can be specified are:</p>
@@ -181,6 +181,10 @@
 <dd>default = "mobilenetv3_small_075", Name of the CNN used for training.</dd>
 <dt><code>window_size</code></dt>
 <dd>default = 300, Window size used during Viterbi Decoding.</dd>
+<dt><code>quantization</code></dt>
+<dd>default = False, If desired to validate on Hardware, the matrices should be quantized.</dd>
+<dt><code>quant_type</code></dt>
+<dd>default = rounding, only needs to be specified if quantization is True. Besides <code>rounding</code>, <code>linear_scaling</code> is an option.</dd>
 <dt><code>window_size_sweep</code></dt>
 <dd>default = False, type=bool, Whether to perform a window size sweep first.</dd>
 <dt><code>class_of_interest</code></dt>
