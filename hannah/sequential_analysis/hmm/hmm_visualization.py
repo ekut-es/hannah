@@ -76,12 +76,14 @@ def plot_accuracies_grid_search(acc, x, name="none.png", ylim=1):
     fig.savefig(file_path + name, format="pdf")
 
 
-def visualize_single_study(df_single_study, log_transitions, emissions, logP):
+def visualize_single_study(df_single_study, log_A, logB, logP):
     preds_viterbi = viterbi_window(
         df_single_study["preds"].to_numpy(),
         logP=logP,
-        logA=log_transitions,
-        logB=np.log(emissions),
+        logA=log_A,
+        logB=logB,
+        size=100,
+        class_of_interest=2
     )
     df_single_study["preds_HMM"] = preds_viterbi
     sns.set_theme()
@@ -166,3 +168,29 @@ def plot_window_sweep(acc, delays, sizes):
     plt.title("Average accuracies and delays for different window sizes")
     plt.tight_layout()
     fig.savefig(file_path + "window_size_sweep.pdf", format="pdf")
+
+
+def plot_delay_distribution(delays):
+    sns.set_theme()
+    fig = plt.figure()
+    # Compute median delay - since it can be negative, use absolute values.
+    median_delay = np.median(np.absolute(delays))
+
+    sns.histplot(delays, bins=150)
+    plt.xlabel('#Frames Delay')
+    plt.ylabel('#VCE Studies') 
+    plt.text(0.96, 0.85, f"Median: {median_delay}", fontsize=9,fontweight="bold", transform=plt.gca().transAxes, ha='right', va='top')
+    plt.tight_layout()
+
+    fig.savefig(file_path + "delay_hist.pdf", bbox_inches="tight", format="pdf")
+
+
+def plot_likelihood_acc_delay(acc, delays, likelihood):
+    sns.set_theme()
+    fig = plt.figure(figsize=(10, 6))
+    plt.scatter(likelihood, acc, s=5, linewidths=4, c=delays, cmap=plt.cm.winter)
+    plt.colorbar().set_label('Delays')
+    plt.xlabel('Likelihood')
+    plt.ylabel('Accuracy [%]')
+    plt.title('Correlation: Likelihood - Accuracy - Delay' ,fontweight='bold')
+    fig.savefig(file_path + "likelihood_acc_delay.pdf", format="pdf")

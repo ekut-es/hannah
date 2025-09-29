@@ -19,13 +19,6 @@
 import numpy as np
 import itertools
 
-def get_observation_possibilities(window_size=4, file_name='viterbi_arrays'):
-    arr = np.array(range(window_size))
-    permutation = itertools.product(arr, arr, arr, arr)
-    final_combinations = [perm for perm in permutation]
-    final_combinations_arr = np.array(final_combinations)
-    np.save(file_name, final_combinations_arr)
-
 
 # https://crawlingrobotfortress.blogspot.com/2016/07/python-recipe-for-numerically-stable.html
 def viterbi(Y, logP, logA, logB):
@@ -49,7 +42,6 @@ def viterbi(Y, logP, logA, logB):
     T = len(Y)  # Number of observations
     N = np.shape(logB)[1]  # Number of states
     Y = np.int32(Y)
-
     assert np.shape(logA) == (K, K)
     assert np.shape(logB) == (K, N)
 
@@ -104,27 +96,25 @@ def viterbi_window(Y, logP, logA, logB, size=300, class_of_interest=3):
     size: int
         Specifying the window size
     """
+
     K = len(logP)  # Number of states
     T = len(Y)  # Number of observations
     N = np.shape(logB)[1]  # Number of states
     Y = np.int32(Y)
     X_final = np.zeros((T,), "int")
-    
     assert np.shape(logA) == (K, K)
     assert np.shape(logB) == (K, N)
-    get_observation_possibilities()
 
     # The initial guess for the first state is initialized as the
     # probability of observing the first observation given said
     # state, multiplied by the prior for that state.
     logT1 = np.zeros(
-        (K, min(size + 1, T)), "float"
+        (K, min(size + 1, T)), "int"
     )  # Store probability of most likely path
     logT1[:, 0] = logP + logB[:, Y[0]]
 
     # Store estimated most likely path
-    T2 = np.zeros((K, min(size + 1, T)), "float")
-
+    T2 = np.zeros((K, min(size + 1, T)), "int")
     # Iterate over all observations from left to right
     for i in range(1, T):
         window_index = i
@@ -159,3 +149,6 @@ def viterbi_window(Y, logP, logA, logB, size=300, class_of_interest=3):
     for x in range(size): 
         X_final[T - size + x] = X[x]
     return X_final
+
+
+

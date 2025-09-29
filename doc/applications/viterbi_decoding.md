@@ -9,7 +9,7 @@ As a first step, one needs to invoke a training with HANNAH for one of the suppo
 
 Thus, the Viterbi Decoding can be invoked by:
 
-	python hannah/sequential_analysis/hmm/hmm_window.py --cnn_output_dir '/PATH/TO/TRAINED_MODELS/DIR/' --class_of_interest 2
+	python hannah/sequential_analysis/hmm/hmm_window.py --cnn_output_dir '/PATH/TO/TRAINED_MODELS/DIR/' --class_of_interest 2 --quantization False
 
 Parameters that can be specified are:
 
@@ -21,6 +21,12 @@ Parameters that can be specified are:
 
 `window_size`
 : default = 300, Window size used during Viterbi Decoding.
+
+`quantization`
+: default = False, If desired to validate on Hardware, the matrices should be quantized.
+
+`quant_type`
+: default = rounding, only needs to be specified if quantization is True. Besides ``rounding``, ``linear_scaling`` is an option.
 
 `window_size_sweep`
 : default = False, type=bool, Whether to perform a window size sweep first.
